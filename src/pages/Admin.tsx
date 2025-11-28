@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Select,
   SelectContent,
@@ -62,6 +64,7 @@ const availableRoles = [
 const Admin = () => {
   const { user, loading, companyId, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -337,164 +340,177 @@ const Admin = () => {
         </div>
       </header>
 
-      <main className="w-full px-4 py-8">
+      <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full max-w-3xl mx-auto" style={{ gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' }}>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Brukere
+          <TabsList className={`grid w-full max-w-3xl mx-auto ${isMobile ? 'grid-cols-2' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
+            <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Brukere</span>
+              <span className="sm:hidden">Bruk.</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-2">
-              <UserCog className="h-4 w-4" />
-              Kunder
+            <TabsTrigger value="customers" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <UserCog className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Kunder</span>
+              <span className="sm:hidden">Kund.</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              E-postmaler
+            <TabsTrigger value="email-templates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">E-postmaler</span>
+              <span className="sm:hidden">E-post</span>
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="companies" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Selskaper
+              <TabsTrigger value="companies" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Selskaper</span>
+                <span className="sm:hidden">Selskap</span>
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="users" className="mt-6">
-            <div className="space-y-6">
+          <TabsContent value="users" className="mt-4 sm:mt-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Pending Users */}
               {pendingUsers.length > 0 && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <UserCog className="w-5 h-5" />
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
                       Ventende godkjenninger ({pendingUsers.length})
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                       Brukere som venter på godkjenning
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                  <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Navn</TableHead>
-                      <TableHead>Selskap</TableHead>
-                      <TableHead>Bruker ID</TableHead>
-                      <TableHead>Opprettet</TableHead>
-                      <TableHead className="text-right">Handlinger</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingUsers.map((profile) => (
-                      <TableRow key={profile.id}>
-                        <TableCell>{profile.full_name || "Ikke oppgitt"}</TableCell>
-                        <TableCell>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
-                        <TableCell className="font-mono text-xs">{profile.id.slice(0, 8)}...</TableCell>
-                        <TableCell>
-                          {new Date(profile.created_at).toLocaleDateString("nb-NO")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              onClick={() => approveUser(profile.id)}
-                              className="gap-2"
-                            >
-                              <Check className="w-4 h-4" />
-                              Godkjenn
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteUser(profile.id, profile.full_name)}
-                              className="gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Slett
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+                  <CardContent className="px-2 sm:px-6">
+                    <ScrollArea className="w-full">
+                      <div className="min-w-[600px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs sm:text-sm">Navn</TableHead>
+                              <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Selskap</TableHead>
+                              <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Bruker ID</TableHead>
+                              <TableHead className="text-xs sm:text-sm">Opprettet</TableHead>
+                              <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingUsers.map((profile) => (
+                              <TableRow key={profile.id}>
+                                <TableCell className="text-xs sm:text-sm">{profile.full_name || "Ikke oppgitt"}</TableCell>
+                                <TableCell className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
+                                <TableCell className={`font-mono text-xs ${isMobile ? 'hidden' : ''}`}>{profile.id.slice(0, 8)}...</TableCell>
+                                <TableCell className="text-xs sm:text-sm">
+                                  {new Date(profile.created_at).toLocaleDateString("nb-NO")}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex gap-1 sm:gap-2 justify-end">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => approveUser(profile.id)}
+                                      className={`gap-1 ${isMobile ? 'h-8 px-2' : 'gap-2'}`}
+                                    >
+                                      <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                                      <span className="hidden sm:inline">Godkjenn</span>
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => deleteUser(profile.id, profile.full_name)}
+                                      className={`gap-1 ${isMobile ? 'h-8 px-2' : 'gap-2'}`}
+                                    >
+                                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                      <span className="hidden sm:inline">Slett</span>
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Approved Users */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Godkjente brukere ({approvedUsers.length})</CardTitle>
-              <CardDescription>
-                Administrer roller for godkjente brukere
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Navn</TableHead>
-                    <TableHead>Selskap</TableHead>
-                    <TableHead>Bruker ID</TableHead>
-                    <TableHead>Rolle</TableHead>
-                    <TableHead className="text-right">Endre rolle</TableHead>
-                    <TableHead className="text-right">Handlinger</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {approvedUsers.map((profile) => {
-                    const userRole = userRoles.find((r) => r.user_id === profile.id);
-                    return (
-                      <TableRow key={profile.id}>
-                        <TableCell>{profile.full_name || "Ikke oppgitt"}</TableCell>
-                        <TableCell>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
-                        <TableCell className="font-mono text-xs">{profile.id.slice(0, 8)}...</TableCell>
-                        <TableCell>
-                          {userRole ? (
-                            <Badge variant="secondary">
-                              {getRoleLabel(userRole.role)}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              Ingen rolle
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Select 
-                            value={userRole?.role || ""} 
-                            onValueChange={(value) => assignRole(profile.id, value)}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue placeholder="Velg rolle" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableRoles.map((role) => (
-                                <SelectItem key={role.value} value={role.value}>
-                                  {role.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteUser(profile.id, profile.full_name)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+              {/* Approved Users */}
+              <Card>
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="text-base sm:text-lg">Godkjente brukere ({approvedUsers.length})</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Administrer roller for godkjente brukere
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-2 sm:px-6">
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[700px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs sm:text-sm">Navn</TableHead>
+                            <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Selskap</TableHead>
+                            <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Bruker ID</TableHead>
+                            <TableHead className="text-xs sm:text-sm">Rolle</TableHead>
+                            <TableHead className="text-right text-xs sm:text-sm">Endre rolle</TableHead>
+                            <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {approvedUsers.map((profile) => {
+                            const userRole = userRoles.find((r) => r.user_id === profile.id);
+                            return (
+                              <TableRow key={profile.id}>
+                                <TableCell className="text-xs sm:text-sm">{profile.full_name || "Ikke oppgitt"}</TableCell>
+                                <TableCell className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
+                                <TableCell className={`font-mono text-xs ${isMobile ? 'hidden' : ''}`}>{profile.id.slice(0, 8)}...</TableCell>
+                                <TableCell>
+                                  {userRole ? (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getRoleLabel(userRole.role)}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      Ingen rolle
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Select 
+                                    value={userRole?.role || ""} 
+                                    onValueChange={(value) => assignRole(profile.id, value)}
+                                  >
+                                    <SelectTrigger className={`${isMobile ? 'w-[140px] h-8 text-xs' : 'w-[180px]'}`}>
+                                      <SelectValue placeholder="Velg rolle" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {availableRoles.map((role) => (
+                                        <SelectItem key={role.value} value={role.value} className="text-xs sm:text-sm">
+                                          {role.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => deleteUser(profile.id, profile.full_name)}
+                                    className={isMobile ? 'h-8 px-2' : ''}
+                                  >
+                                    <Trash2 className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
