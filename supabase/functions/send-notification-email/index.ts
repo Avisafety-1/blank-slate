@@ -277,11 +277,11 @@ serve(async (req: Request): Promise<Response> => {
     if (type === 'notify_admins_new_user' && companyId && newUser) {
       console.log(`Finding admins for new user notification in company ${companyId}`);
 
-      // Find all admins in the company with notifications enabled
+      // Find all admins and superadmins in the company with notifications enabled
       const { data: adminRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id')
-        .eq('role', 'admin');
+        .in('role', ['admin', 'superadmin']);
 
       if (rolesError) throw rolesError;
       if (!adminRoles || adminRoles.length === 0) {
