@@ -457,6 +457,14 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm">E-post innhold (Visuell editor)</Label>
                 <div className="border rounded-lg overflow-hidden bg-white">
+                  <style>{`
+                    .quill-editor-container .ql-container {
+                      min-height: ${isMobile ? "500px" : "600px"};
+                    }
+                    .quill-editor-container .ql-editor {
+                      min-height: ${isMobile ? "460px" : "560px"};
+                    }
+                  `}</style>
                   <ReactQuill
                     ref={quillRef}
                     theme="snow"
@@ -465,7 +473,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                     modules={modules}
                     formats={formats}
                     placeholder="Skriv inn e-postinnholdet her..."
-                    style={{ minHeight: isMobile ? "500px" : "600px" }}
+                    className="quill-editor-container"
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
