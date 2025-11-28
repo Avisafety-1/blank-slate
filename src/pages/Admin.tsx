@@ -40,6 +40,7 @@ import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 interface Profile {
   id: string;
   full_name: string | null;
+  email: string | null;
   approved: boolean;
   approved_at: string | null;
   approved_by: string | null;
@@ -158,10 +159,7 @@ const Admin = () => {
 
       // Get user details and send approval email
       const profile = profiles.find(p => p.id === userId);
-      if (profile) {
-        // Get user email from auth
-        const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-        
+      if (profile?.email) {
         // Get company name
         const { data: company } = await supabase
           .from("companies")
@@ -169,13 +167,13 @@ const Admin = () => {
           .eq("id", companyId)
           .single();
 
-        if (authUser?.user?.email && company) {
+        if (company) {
           // Send approval email via edge function
           await supabase.functions.invoke('send-user-approved-email', {
             body: {
               user_id: userId,
               user_name: profile.full_name || "Bruker",
-              user_email: authUser.user.email,
+              user_email: profile.email,
               company_name: company.navn,
               company_id: companyId
             }
