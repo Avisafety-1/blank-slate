@@ -49,6 +49,34 @@ const Resources = () => {
       fetchEquipment();
       fetchPersonnel();
     }
+
+    // Real-time subscriptions
+    const dronesChannel = supabase
+      .channel('drones-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, fetchDrones)
+      .subscribe();
+
+    const equipmentChannel = supabase
+      .channel('equipment-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, fetchEquipment)
+      .subscribe();
+
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchPersonnel)
+      .subscribe();
+
+    const competenciesChannel = supabase
+      .channel('competencies-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, fetchPersonnel)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(dronesChannel);
+      supabase.removeChannel(equipmentChannel);
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(competenciesChannel);
+    };
   }, [user]);
 
   const fetchDrones = async () => {
