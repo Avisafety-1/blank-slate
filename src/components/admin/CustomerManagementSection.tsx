@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +49,7 @@ interface Customer {
 
 export const CustomerManagementSection = () => {
   const { companyId, isSuperAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -186,146 +189,153 @@ export const CustomerManagementSection = () => {
 
   return (
     <>
-      <GlassCard className="p-6">
-        <div className="flex justify-between items-center mb-6">
+      <GlassCard className="p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Kundeadministrasjon</h2>
+            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <h2 className="text-base sm:text-xl font-semibold">Kundeadministrasjon</h2>
           </div>
-          <Button onClick={handleAddCustomer}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ny kunde
+          <Button onClick={handleAddCustomer} size={isMobile ? "sm" : "default"}>
+            <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {isMobile ? "Ny" : "Ny kunde"}
           </Button>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="mb-4 sm:mb-6 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Søk etter kunde (navn, kontaktperson, e-post)..."
+            placeholder={isMobile ? "Søk etter kunde..." : "Søk etter kunde (navn, kontaktperson, e-post)..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className={`pl-9 sm:pl-10 ${isMobile ? 'text-sm h-9' : ''}`}
           />
         </div>
 
         {customers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen kunder funnet. Opprett din første kunde.
           </div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen kunder matcher søket "{searchQuery}"
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Navn</TableHead>
-                  <TableHead>Kontaktperson</TableHead>
-                  <TableHead>Kontaktinfo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Handlinger</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        {customer.navn}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {customer.kontaktperson ? (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          {customer.kontaktperson}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        {customer.epost && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            {customer.epost}
-                          </div>
-                        )}
-                        {customer.telefon && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {customer.telefon}
-                          </div>
-                        )}
-                        {customer.adresse && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            {customer.adresse}
-                          </div>
-                        )}
-                        {!customer.epost &&
-                          !customer.telefon &&
-                          !customer.adresse && (
-                            <span className="text-muted-foreground">
-                              Ingen kontaktinfo
-                            </span>
-                          )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={customer.aktiv}
-                          onCheckedChange={() => handleToggleActive(customer)}
-                        />
-                        <Label className="cursor-pointer">
-                          <Badge
-                            variant={customer.aktiv ? "default" : "secondary"}
-                          >
-                            {customer.aktiv ? "Aktiv" : "Inaktiv"}
-                          </Badge>
-                        </Label>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewCustomer(customer)}
-                          title="Vis historikk"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditCustomer(customer)}
-                          title="Rediger"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteClick(customer)}
-                          title="Slett"
-                        >
-                          Slett
-                        </Button>
-                      </div>
-                    </TableCell>
+          <ScrollArea className="w-full">
+            <div className="min-w-[700px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Navn</TableHead>
+                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktperson</TableHead>
+                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell className="font-medium text-xs sm:text-sm">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate max-w-[120px] sm:max-w-none">{customer.navn}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className={isMobile ? 'hidden' : ''}>
+                        {customer.kontaktperson ? (
+                          <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{customer.kontaktperson}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs sm:text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className={isMobile ? 'hidden' : ''}>
+                        <div className="space-y-1 text-xs sm:text-sm">
+                          {customer.epost && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Mail className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate max-w-[150px]">{customer.epost}</span>
+                            </div>
+                          )}
+                          {customer.telefon && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Phone className="h-3 w-3 flex-shrink-0" />
+                              {customer.telefon}
+                            </div>
+                          )}
+                          {customer.adresse && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate max-w-[150px]">{customer.adresse}</span>
+                            </div>
+                          )}
+                          {!customer.epost &&
+                            !customer.telefon &&
+                            !customer.adresse && (
+                              <span className="text-muted-foreground text-xs">
+                                Ingen kontaktinfo
+                              </span>
+                            )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Switch
+                            checked={customer.aktiv}
+                            onCheckedChange={() => handleToggleActive(customer)}
+                            className={isMobile ? 'scale-75' : ''}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={customer.aktiv ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 sm:gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewCustomer(customer)}
+                            title="Vis historikk"
+                            className={isMobile ? 'h-8 w-8 p-0' : ''}
+                          >
+                            <Eye className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditCustomer(customer)}
+                            title="Rediger"
+                            className={isMobile ? 'h-8 w-8 p-0' : ''}
+                          >
+                            <Pencil className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteClick(customer)}
+                            title="Slett"
+                            className={isMobile ? 'h-8 px-2 text-xs' : ''}
+                          >
+                            {isMobile ? <span>X</span> : "Slett"}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
         )}
       </GlassCard>
 
