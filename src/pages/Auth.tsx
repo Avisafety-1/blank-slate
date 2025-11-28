@@ -106,10 +106,22 @@ const Auth = () => {
         });
         if (error) throw error;
         if (data.user) {
-          // Update profile with company_id
-          await supabase.from('profiles').update({
-            company_id: selectedCompanyId
-          }).eq('id', data.user.id);
+          // Upsert profile - creates if doesn't exist, updates if it does
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              full_name: fullName,
+              company_id: selectedCompanyId,
+              approved: false
+            }, {
+              onConflict: 'id'
+            });
+
+          if (profileError) {
+            console.error('Feil ved oppretting av profil:', profileError);
+            // User is still created in auth, continue with notification
+          }
 
           // Get company name for the notification
           const {
