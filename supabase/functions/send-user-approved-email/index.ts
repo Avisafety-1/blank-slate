@@ -60,7 +60,7 @@ serve(async (req) => {
       .from('email_templates')
       .select('subject, content')
       .eq('company_id', company_id)
-      .eq('template_type', 'user_approved')
+      .eq('template_type', 'customer_welcome')
       .maybeSingle();
 
     if (templateError) {
