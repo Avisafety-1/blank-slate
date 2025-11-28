@@ -43,7 +43,7 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
 
     if (emailSettings) {
       console.log("Using email settings from database for company:", companyId);
-      emailHost = emailSettings.smtp_host;
+      emailHost = emailSettings.smtp_host?.toLowerCase(); // Ensure hostname is lowercase
       emailPort = emailSettings.smtp_port;
       emailUser = emailSettings.smtp_user;
       emailPass = emailSettings.smtp_pass;
