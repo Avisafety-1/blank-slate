@@ -14,16 +14,54 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [checkingToken, setCheckingToken] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
 
   useEffect(() => {
-    // Check if we have a valid recovery token
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        toast.error("Ugyldig eller utløpt tilbakestillingslenke");
+    // Listen for auth state changes, specifically PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth event:', event);
+        if (event === 'PASSWORD_RECOVERY') {
+          // Token is valid, user can set new password
+          setIsValidToken(true);
+          setCheckingToken(false);
+        } else if (event === 'SIGNED_IN' && session) {
+          // Session established after recovery
+          setIsValidToken(true);
+          setCheckingToken(false);
+        }
+      }
+    );
+
+    // Check URL hash for errors
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+      if (error) {
+        console.error('Password reset error:', error, errorDescription);
+        toast.error("Lenken er ugyldig eller utløpt");
+        navigate("/auth");
+        return;
+      }
+    }
+
+    // Timeout to avoid hanging forever
+    const timeout = setTimeout(() => {
+      if (!isValidToken) {
+        console.error('Token validation timeout');
+        toast.error("Kunne ikke verifisere tilbakestillingslenken");
         navigate("/auth");
       }
-    });
-  }, [navigate]);
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [navigate, isValidToken]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +93,32 @@ const ResetPassword = () => {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking token
+  if (checkingToken) {
+    return (
+      <div className="min-h-screen relative flex items-center justify-center">
+        <div
+          className="fixed inset-0 z-0"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${droneBackground})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        <div className="relative z-10 w-full max-w-md px-4">
+          <Card className="bg-card/95 backdrop-blur-sm border-border/50">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground">Verifiserer lenke...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative flex items-center justify-center">
