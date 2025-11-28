@@ -116,16 +116,49 @@ serve(async (req) => {
         .replace(/\{\{company_name\}\}/g, company_name);
     }
 
-    // Get email configuration from environment
-    const emailHost = Deno.env.get('EMAIL_HOST');
-    const emailPort = parseInt(Deno.env.get('EMAIL_PORT') || '465');
-    const emailUser = Deno.env.get('EMAIL_USER');
-    const emailPass = Deno.env.get('EMAIL_PASS');
-    const emailSecure = Deno.env.get('EMAIL_SECURE') === 'true';
+    // Get email configuration from database or fallback to environment
+    let emailHost: string | undefined;
+    let emailPort: number;
+    let emailUser: string | undefined;
+    let emailPass: string | undefined;
+    let emailSecure: boolean;
+    let fromName: string | undefined;
+    let fromEmail: string | undefined;
+
+    // Try to fetch settings from database first
+    const { data: emailSettings, error: settingsError } = await supabase
+      .from('email_settings')
+      .select('*')
+      .eq('company_id', company_id)
+      .eq('enabled', true)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error("Error fetching email settings:", settingsError);
+    }
+
+    if (emailSettings) {
+      console.log("Using email settings from database");
+      emailHost = emailSettings.smtp_host;
+      emailPort = emailSettings.smtp_port;
+      emailUser = emailSettings.smtp_user;
+      emailPass = emailSettings.smtp_pass;
+      emailSecure = emailSettings.smtp_secure;
+      fromName = emailSettings.from_name;
+      fromEmail = emailSettings.from_email || emailSettings.smtp_user;
+    } else {
+      console.log("Using email settings from environment variables");
+      emailHost = Deno.env.get('EMAIL_HOST');
+      emailPort = parseInt(Deno.env.get('EMAIL_PORT') || '465');
+      emailUser = Deno.env.get('EMAIL_USER');
+      emailPass = Deno.env.get('EMAIL_PASS');
+      emailSecure = Deno.env.get('EMAIL_SECURE') === 'true';
+      fromEmail = emailUser;
+    }
 
     if (!emailHost || !emailUser || !emailPass) {
       console.error("Email configuration missing");
-      throw new Error("Email configuration is incomplete");
+      throw new Error("Email configuration is incomplete. Please configure SMTP settings in admin panel or environment variables.");
     }
 
     console.log("Email config:", { emailHost, emailPort, emailUser, emailSecure });
@@ -145,8 +178,10 @@ serve(async (req) => {
 
     console.log("Attempting to send email to:", user_email);
 
+    const senderAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail!;
+
     await client.send({
-      from: emailUser,
+      from: senderAddress,
       to: user_email,
       subject: emailSubject,
       content: "auto",
