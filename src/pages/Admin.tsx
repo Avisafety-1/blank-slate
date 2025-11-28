@@ -347,25 +347,25 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className={`grid w-full max-w-3xl mx-auto ${isMobile ? 'grid-cols-2' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
-            <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+          <TabsList className={`grid w-full max-w-3xl mx-auto ${isMobile ? 'grid-cols-2 gap-2 p-2' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
+            <TabsTrigger value="users" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Brukere</span>
               <span className="sm:hidden">Bruk.</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <UserCog className="h-3 w-3 sm:h-4 sm:w-4" />
+            <TabsTrigger value="customers" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+              <UserCog className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Kunder</span>
               <span className="sm:hidden">Kund.</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+              <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden sm:inline">E-postmaler</span>
               <span className="sm:hidden">E-post</span>
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="companies" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+              <TabsTrigger value="companies" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Selskaper</span>
                 <span className="sm:hidden">Selskap</span>
               </TabsTrigger>
@@ -462,7 +462,7 @@ const Admin = () => {
                               value={userRole?.role || ""} 
                               onValueChange={(value) => assignRole(profile.id, value)}
                             >
-                              <SelectTrigger className="w-[160px] sm:w-[200px] h-9 sm:h-10">
+                              <SelectTrigger className="w-[110px] sm:w-[140px] h-9 sm:h-10">
                                 <SelectValue placeholder="Velg rolle" />
                               </SelectTrigger>
                               <SelectContent className="z-50">
