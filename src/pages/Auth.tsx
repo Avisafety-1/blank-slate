@@ -202,13 +202,13 @@ const Auth = () => {
     }
     setLoading(true);
     try {
-      const {
-        error
-      } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: resetEmail }
       });
+      
       if (error) throw error;
-      toast.success("En e-post med instruksjoner er sendt til deg!");
+      
+      toast.success("Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke!");
       setShowResetPassword(false);
       setResetEmail("");
     } catch (error: any) {
