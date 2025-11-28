@@ -39,6 +39,65 @@ export const DocumentSection = () => {
 
   useEffect(() => {
     fetchDocuments();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('documents-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'documents'
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newDoc = payload.new as any;
+            const mappedDoc: Document = {
+              id: newDoc.id,
+              tittel: newDoc.tittel,
+              kategori: newDoc.kategori,
+              versjon: newDoc.versjon || "1.0",
+              gyldig_til: newDoc.gyldig_til ? new Date(newDoc.gyldig_til) : undefined,
+              sist_endret: newDoc.oppdatert_dato ? new Date(newDoc.oppdatert_dato) : new Date(newDoc.opprettet_dato!),
+              varsel_dager_for_utløp: newDoc.varsel_dager_for_utløp || 30,
+              synlighet: "Intern" as any,
+              fil_url: newDoc.fil_url,
+              fil_navn: newDoc.fil_navn,
+              nettside_url: newDoc.nettside_url,
+              utsteder: newDoc.opprettet_av,
+              merknader: undefined,
+            };
+            setDocuments(prev => [mappedDoc, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedDoc = payload.new as any;
+            const mappedDoc: Document = {
+              id: updatedDoc.id,
+              tittel: updatedDoc.tittel,
+              kategori: updatedDoc.kategori,
+              versjon: updatedDoc.versjon || "1.0",
+              gyldig_til: updatedDoc.gyldig_til ? new Date(updatedDoc.gyldig_til) : undefined,
+              sist_endret: updatedDoc.oppdatert_dato ? new Date(updatedDoc.oppdatert_dato) : new Date(updatedDoc.opprettet_dato!),
+              varsel_dager_for_utløp: updatedDoc.varsel_dager_for_utløp || 30,
+              synlighet: "Intern" as any,
+              fil_url: updatedDoc.fil_url,
+              fil_navn: updatedDoc.fil_navn,
+              nettside_url: updatedDoc.nettside_url,
+              utsteder: updatedDoc.opprettet_av,
+              merknader: undefined,
+            };
+            setDocuments(prev => prev.map(doc => doc.id === mappedDoc.id ? mappedDoc : doc));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedDoc = payload.old as any;
+            setDocuments(prev => prev.filter(doc => doc.id !== deletedDoc.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchDocuments = async () => {

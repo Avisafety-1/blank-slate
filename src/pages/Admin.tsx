@@ -128,6 +128,26 @@ const Admin = () => {
       if (rolesError) throw rolesError;
 
       setUserRoles(rolesData || []);
+
+      // Set up real-time subscriptions
+      const profilesChannel = supabase
+        .channel('admin-profiles-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          fetchData();
+        })
+        .subscribe();
+
+      const rolesChannel = supabase
+        .channel('admin-roles-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+          fetchData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(profilesChannel);
+        supabase.removeChannel(rolesChannel);
+      };
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Feil ved henting av data");

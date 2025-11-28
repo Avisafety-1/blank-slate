@@ -61,6 +61,28 @@ const Documents = () => {
       return data as Document[];
     }
   });
+
+  // Real-time subscription for documents
+  useEffect(() => {
+    const channel = supabase
+      .channel('documents-page-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'documents'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
   const filteredDocuments = documents?.filter(doc => {
     const matchesSearch = searchQuery === "" || doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) || doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.fil_url?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.nettside_url?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(doc.kategori as DocumentCategory);
