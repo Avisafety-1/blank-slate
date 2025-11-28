@@ -113,6 +113,7 @@ const Auth = () => {
               id: data.user.id,
               full_name: fullName,
               company_id: selectedCompanyId,
+              email: email,
               approved: false
             }, {
               onConflict: 'id'
