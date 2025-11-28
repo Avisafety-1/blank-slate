@@ -54,9 +54,8 @@ interface UserRole {
 const availableRoles = [
   { value: "superadmin", label: "Super Administrator" },
   { value: "admin", label: "Administrator" },
-  { value: "operativ_leder", label: "Operativ Leder" },
-  { value: "pilot", label: "Pilot" },
-  { value: "tekniker", label: "Tekniker" },
+  { value: "saksbehandler", label: "Saksbehandler" },
+  { value: "operatør", label: "Operatør" },
   { value: "lesetilgang", label: "Lesetilgang" },
 ];
 
