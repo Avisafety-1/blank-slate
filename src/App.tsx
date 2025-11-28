@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DomainGuard } from "@/components/DomainGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -30,16 +31,20 @@ const App = () => {
               <Toaster />
               <Sonner />
               <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/" element={<Index />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/ressurser" element={<Resources />} />
-                <Route path="/kart" element={<KartPage />} />
-                <Route path="/dokumenter" element={<Documents />} />
-                <Route path="/kalender" element={<Kalender />} />
-                <Route path="/hendelser" element={<Hendelser />} />
-                <Route path="/status" element={<Status />} />
+                {/* Public routes - login domain */}
+                <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
+                <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
+                
+                {/* Protected routes - app domain */}
+                <Route path="/" element={<DomainGuard><Index /></DomainGuard>} />
+                <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
+                <Route path="/ressurser" element={<DomainGuard><Resources /></DomainGuard>} />
+                <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
+                <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
+                <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
+                <Route path="/hendelser" element={<DomainGuard><Hendelser /></DomainGuard>} />
+                <Route path="/status" element={<DomainGuard><Status /></DomainGuard>} />
+                
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

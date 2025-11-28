@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { redirectToApp } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,12 +55,10 @@ const Auth = () => {
   useEffect(() => {
     console.log('Auth page - user:', user?.email, 'authLoading:', authLoading);
     if (!authLoading && user) {
-      console.log('Redirecting to home page');
-      navigate("/", {
-        replace: true
-      });
+      console.log('Redirecting to app domain');
+      redirectToApp('/');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading]);
   useEffect(() => {
     if (!isLogin) {
       fetchCompanies();
@@ -109,7 +108,7 @@ const Auth = () => {
             return;
           }
           toast.success("Innlogging vellykket!");
-          navigate("/");
+          redirectToApp('/');
         }
       } else {
         const {
@@ -119,7 +118,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: 'https://login.avisafe.no/auth',
             data: {
               full_name: fullName,
               company_id: selectedCompanyId
@@ -185,7 +184,10 @@ const Auth = () => {
       const {
         error
       } = await supabase.auth.signInWithOAuth({
-        provider: 'google'
+        provider: 'google',
+        options: {
+          redirectTo: 'https://app.avisafe.no'
+        }
       });
       if (error) throw error;
     } catch (error: any) {
