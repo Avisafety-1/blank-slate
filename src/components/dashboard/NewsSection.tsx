@@ -1,0 +1,151 @@
+import { GlassCard } from "@/components/GlassCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Newspaper, Pin, Plus } from "lucide-react";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { useState, useEffect } from "react";
+import { NewsDetailDialog } from "./NewsDetailDialog";
+import { AddNewsDialog } from "./AddNewsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+
+type News = any;
+
+export const NewsSection = () => {
+  const [selectedNews, setSelectedNews] = useState<News | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editingNews, setEditingNews] = useState<News | null>(null);
+  const [news, setNews] = useState<News[]>([]);
+  
+  useEffect(() => {
+    fetchNews();
+    
+    const channel = supabase
+      .channel('news-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'news'
+        },
+        () => {
+          fetchNews();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchNews = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('news')
+        .select('*')
+        .order('publisert', { ascending: false });
+
+      if (error) throw error;
+      setNews(data || []);
+    } catch (error) {
+      console.error('Error fetching news:', error);
+    }
+  };
+  
+  const sortedNews = [...news].sort((a, b) => {
+    if (a.pin_on_top && !b.pin_on_top) return -1;
+    if (!a.pin_on_top && b.pin_on_top) return 1;
+    return new Date(b.publisert).getTime() - new Date(a.publisert).getTime();
+  });
+
+  const handleNewsClick = (news: News) => {
+    setSelectedNews(news);
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (news: News) => {
+    setEditingNews(news);
+    setDialogOpen(false);
+    setAddDialogOpen(true);
+  };
+
+  const handleAddDialogClose = (open: boolean) => {
+    setAddDialogOpen(open);
+    if (!open) {
+      setEditingNews(null);
+    }
+  };
+
+  return (
+    <>
+      <GlassCard className="h-auto overflow-hidden">
+        <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+            <h2 className="text-sm sm:text-base font-semibold truncate">Nyheter</h2>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setAddDialogOpen(true)}
+            className="h-7 sm:h-8 px-2 sm:px-3"
+          >
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+            <span className="text-xs sm:text-sm">Legg til</span>
+          </Button>
+        </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+        {sortedNews.map((news) => (
+          <div
+            key={news.id}
+            onClick={() => handleNewsClick(news)}
+            className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-start gap-1.5 sm:gap-2">
+              {news.pin_on_top && (
+                <Pin className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-xs sm:text-sm mb-1">{news.tittel}</h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2 mb-1 sm:mb-1.5">
+                  {news.innhold}
+                </p>
+                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                  <span>{format(new Date(news.publisert), "dd. MMM", { locale: nb })}</span>
+                  <span>•</span>
+                  <span className="truncate">{news.forfatter}</span>
+                  {news.synlighet !== "Alle" && (
+                    <>
+                      <span>•</span>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
+                        {news.synlighet}
+                      </Badge>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+    
+      <NewsDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        news={selectedNews}
+        onEdit={handleEdit}
+      />
+      
+      <AddNewsDialog
+        open={addDialogOpen}
+        onOpenChange={handleAddDialogClose}
+        news={editingNews}
+      />
+    </>
+  );
+};
