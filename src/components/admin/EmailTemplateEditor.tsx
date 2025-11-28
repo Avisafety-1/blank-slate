@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon } from "lucide-react";
+import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -59,7 +59,11 @@ const templateTypes = [
   },
 ];
 
-export const EmailTemplateEditor = () => {
+interface EmailTemplateEditorProps {
+  onOpenEmailSettings: () => void;
+}
+
+export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditorProps) => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
   const [selectedTemplateType, setSelectedTemplateType] = useState("customer_welcome");
@@ -356,6 +360,15 @@ export const EmailTemplateEditor = () => {
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <h2 className="text-base sm:text-xl font-semibold">E-postmaler</h2>
+            <Button
+              onClick={onOpenEmailSettings}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="gap-2"
+            >
+              <Settings className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+              {isMobile ? "Innstillinger" : "E-postinnstillinger"}
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button 
