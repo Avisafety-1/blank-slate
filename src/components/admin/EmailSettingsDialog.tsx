@@ -386,7 +386,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
 
           <div className="border-t pt-4 space-y-4">
             <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>Test e-post</h3>
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <Input
                 type="email"
                 value={testEmail}
@@ -394,26 +394,27 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
                 placeholder="test@example.com"
                 className={isMobile ? "h-9 text-sm" : ""}
               />
-              <Button
-                onClick={handleTestEmail}
-                disabled={testing || !settings.smtp_host}
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-              >
-                {testing ? (
-                  <Loader2 className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} animate-spin`} />
-                ) : (
-                  <Send className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
-                )}
-                {isMobile ? "Send" : "Send test"}
-              </Button>
+              <p className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}>
+                Send en test-epost for å verifisere at innstillingene fungerer
+              </p>
             </div>
-            <p className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}>
-              Send en test-epost for å verifisere at innstillingene fungerer
-            </p>
           </div>
 
           <div className="flex gap-2 pt-4">
+            <Button
+              onClick={handleTestEmail}
+              disabled={testing || !settings.smtp_host}
+              variant="outline"
+              className="flex-1"
+              size={isMobile ? "sm" : "default"}
+            >
+              {testing ? (
+                <Loader2 className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} animate-spin`} />
+              ) : (
+                <Send className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
+              )}
+              {isMobile ? "Send" : "Send test"}
+            </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
