@@ -127,9 +127,27 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Error sending test email:", error);
     
+    let userMessage = "Kunne ikke sende test e-post";
+    const errorMsg = error.message?.toLowerCase() || '';
+    
+    // Analyser feilkoden for bedre melding
+    if (errorMsg.includes('535') || errorMsg.includes('authentication failed')) {
+      userMessage = "Feil passord eller e-postoppsett. Sjekk brukernavn og passord.";
+    } else if (errorMsg.includes('534')) {
+      userMessage = "E-postkontoen krever app-passord. Opprett et i e-posttilbyderens innstillinger.";
+    } else if (errorMsg.includes('550')) {
+      userMessage = "Mottakeradressen ble avvist av serveren.";
+    } else if (errorMsg.includes('553')) {
+      userMessage = "Avsenderadressen er ikke godkjent for denne kontoen.";
+    } else if (errorMsg.includes('connection refused') || errorMsg.includes('could not connect')) {
+      userMessage = "Kunne ikke koble til SMTP-serveren. Sjekk servernavn og port.";
+    } else if (errorMsg.includes('timeout')) {
+      userMessage = "Tilkobling til e-postserveren tok for lang tid.";
+    }
+    
     return new Response(
       JSON.stringify({ 
-        error: "Kunne ikke sende test e-post", 
+        error: userMessage, 
         details: error.message 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
