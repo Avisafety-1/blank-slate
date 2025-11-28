@@ -29,6 +29,27 @@ const Auth = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  
+  // Handle email confirmation messages from URL hash
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+      
+      if (error === 'access_denied' || errorDescription?.includes('already been consumed')) {
+        toast.error("Denne lenken er allerede brukt eller utløpt.");
+      } else if (!error && hash.includes('access_token')) {
+        // Successful email verification
+        toast.success("E-posten din er bekreftet! Din konto venter nå på godkjenning fra administrator.");
+      }
+      
+      // Clean up URL hash
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+  
   useEffect(() => {
     console.log('Auth page - user:', user?.email, 'authLoading:', authLoading);
     if (!authLoading && user) {
@@ -97,7 +118,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/auth`,
             data: {
               full_name: fullName,
               company_id: selectedCompanyId
