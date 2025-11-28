@@ -186,6 +186,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
             alvorlighetsgrad: formData.alvorlighetsgrad,
             lokasjon: formData.lokasjon,
           }),
+          companyId: companyId,
         });
       }
 

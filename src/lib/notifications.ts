@@ -12,6 +12,7 @@ interface SendNotificationParams {
   notificationType: NotificationType;
   subject: string;
   htmlContent: string;
+  companyId?: string;
 }
 
 export const sendNotificationEmail = async ({
@@ -19,6 +20,7 @@ export const sendNotificationEmail = async ({
   notificationType,
   subject,
   htmlContent,
+  companyId,
 }: SendNotificationParams) => {
   try {
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
@@ -27,6 +29,7 @@ export const sendNotificationEmail = async ({
         notificationType,
         subject,
         htmlContent,
+        companyId,
       },
     });
 
