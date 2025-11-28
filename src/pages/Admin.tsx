@@ -372,7 +372,7 @@ const Admin = () => {
             )}
           </TabsList>
 
-          <TabsContent value="users" className="mt-6 sm:mt-8">
+          <TabsContent value="users" className="mt-8 sm:mt-12">
             <div className="space-y-4 sm:space-y-6">
               {/* Pending Users */}
               {pendingUsers.length > 0 && (
@@ -492,16 +492,16 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="customers" className="mt-6 sm:mt-8">
+          <TabsContent value="customers" className="mt-8 sm:mt-12">
             <CustomerManagementSection />
           </TabsContent>
 
-          <TabsContent value="email-templates" className="mt-6 sm:mt-8">
+          <TabsContent value="email-templates" className="mt-8 sm:mt-12">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
           </TabsContent>
 
           {isSuperAdmin && (
-            <TabsContent value="companies" className="mt-6 sm:mt-8">
+            <TabsContent value="companies" className="mt-8 sm:mt-12">
               <CompanyManagementSection />
             </TabsContent>
           )}
