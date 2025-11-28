@@ -310,6 +310,59 @@ export type Database = {
           },
         ]
       }
+      email_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean | null
+          from_email: string | null
+          from_name: string | null
+          id: string
+          smtp_host: string | null
+          smtp_pass: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          smtp_user: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           company_id: string
