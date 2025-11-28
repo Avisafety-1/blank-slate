@@ -282,6 +282,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
             alvorlighetsgrad: incident.alvorlighetsgrad,
             lokasjon: incident.lokasjon,
           }),
+          companyId: incident.company_id,
         });
       }
 
