@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ const templateTypes = [
 
 export const EmailTemplateEditor = () => {
   const { companyId } = useAuth();
+  const isMobile = useIsMobile();
   const [selectedTemplateType, setSelectedTemplateType] = useState("customer_welcome");
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [subject, setSubject] = useState("");
@@ -339,9 +341,9 @@ export const EmailTemplateEditor = () => {
 
   if (loading) {
     return (
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-center py-8">
-          <p className="text-muted-foreground">Laster mal...</p>
+      <GlassCard className="p-3 sm:p-6">
+        <div className="flex items-center justify-center py-6 sm:py-8">
+          <p className="text-sm sm:text-base text-muted-foreground">Laster mal...</p>
         </div>
       </GlassCard>
     );
@@ -349,38 +351,54 @@ export const EmailTemplateEditor = () => {
 
   return (
     <>
-      <GlassCard className="p-6">
-        <div className="flex justify-between items-center mb-6">
+      <GlassCard className="p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">E-postmaler</h2>
+            <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <h2 className="text-base sm:text-xl font-semibold">E-postmaler</h2>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleReset} disabled={!template}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tilbakestill
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={handleReset} 
+              disabled={!template}
+              size={isMobile ? "sm" : "default"}
+              className={isMobile ? 'flex-1' : ''}
+            >
+              <RefreshCw className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {isMobile ? "Tilbake" : "Tilbakestill"}
             </Button>
-            <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Forhåndsvis
+            <Button 
+              variant="outline" 
+              onClick={() => setPreviewOpen(true)}
+              size={isMobile ? "sm" : "default"}
+              className={isMobile ? 'flex-1' : ''}
+            >
+              <Eye className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {isMobile ? "Vis" : "Forhåndsvis"}
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Lagrer..." : "Lagre mal"}
+            <Button 
+              onClick={handleSave} 
+              disabled={saving}
+              size={isMobile ? "sm" : "default"}
+              className={isMobile ? 'flex-1' : ''}
+            >
+              <Save className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {saving ? "Lagrer..." : "Lagre"}
             </Button>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="template-type">Maltype</Label>
+            <Label htmlFor="template-type" className="text-xs sm:text-sm">Maltype</Label>
             <Select value={selectedTemplateType} onValueChange={setSelectedTemplateType}>
-              <SelectTrigger>
+              <SelectTrigger className={isMobile ? 'h-9 text-sm' : ''}>
                 <SelectValue placeholder="Velg maltype" />
               </SelectTrigger>
               <SelectContent>
                 {templateTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
+                  <SelectItem key={type.value} value={type.value} className="text-xs sm:text-sm">
                     {type.label}
                   </SelectItem>
                 ))}
@@ -388,42 +406,43 @@ export const EmailTemplateEditor = () => {
             </Select>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h3 className="font-semibold text-sm mb-2">Tilgjengelige variabler:</h3>
-            <div className="space-y-1 text-sm text-muted-foreground">
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+            <h3 className="font-semibold text-xs sm:text-sm mb-2">Tilgjengelige variabler:</h3>
+            <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
               {currentTemplateType?.variables.map((variable) => (
                 <p key={variable}>
-                  <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded">{variable}</code>
+                  <code className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs">{variable}</code>
                 </p>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">E-post emne</Label>
+            <Label htmlFor="subject" className="text-xs sm:text-sm">E-post emne</Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Skriv inn e-post emne..."
+              className={isMobile ? 'h-9 text-sm' : ''}
             />
           </div>
 
           <Tabs value={editorMode} onValueChange={(v) => setEditorMode(v as "visual" | "html")}>
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="visual" className="flex items-center gap-2">
-                <EyeIcon className="h-4 w-4" />
-                Visuell Editor
+            <TabsList className={`grid w-full grid-cols-2 ${isMobile ? 'h-8' : 'max-w-md'}`}>
+              <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? 'text-xs' : ''}`}>
+                <EyeIcon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                {isMobile ? "Visuell" : "Visuell Editor"}
               </TabsTrigger>
-              <TabsTrigger value="html" className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                HTML Kode
+              <TabsTrigger value="html" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? 'text-xs' : ''}`}>
+                <Code className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                {isMobile ? "HTML" : "HTML Kode"}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="visual" className="mt-4">
+            <TabsContent value="visual" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label>E-post innhold (Visuell editor)</Label>
+                <Label className="text-xs sm:text-sm">E-post innhold (Visuell editor)</Label>
                 <div className="border rounded-lg overflow-hidden bg-white">
                   <ReactQuill
                     ref={quillRef}
@@ -433,27 +452,27 @@ export const EmailTemplateEditor = () => {
                     modules={modules}
                     formats={formats}
                     placeholder="Skriv inn e-postinnholdet her..."
-                    style={{ minHeight: "400px" }}
+                    style={{ minHeight: isMobile ? "300px" : "400px" }}
                   />
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Bruk verktøylinjen ovenfor for å formatere teksten. Du kan bruke variabler fra listen ovenfor i teksten.
                 </p>
               </div>
             </TabsContent>
 
-            <TabsContent value="html" className="mt-4">
+            <TabsContent value="html" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label htmlFor="content">E-post innhold (HTML)</Label>
+                <Label htmlFor="content" className="text-xs sm:text-sm">E-post innhold (HTML)</Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Skriv inn HTML-innhold..."
-                  rows={20}
-                  className="font-mono text-sm"
+                  rows={isMobile ? 15 : 20}
+                  className={`font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Du kan bruke HTML og inline CSS for å style e-posten.
                 </p>
               </div>
@@ -464,23 +483,23 @@ export const EmailTemplateEditor = () => {
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[85vh]' : 'max-w-3xl max-h-[90vh]'} overflow-y-auto`}>
           <DialogHeader>
-            <DialogTitle>Forhåndsvisning av e-post</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Forhåndsvisning av e-post</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <Label className="text-sm text-muted-foreground">Maltype:</Label>
-              <p className="font-semibold">{currentTemplateType?.label}</p>
+              <Label className="text-xs sm:text-sm text-muted-foreground">Maltype:</Label>
+              <p className="font-semibold text-sm sm:text-base">{currentTemplateType?.label}</p>
             </div>
             <div>
-              <Label className="text-sm text-muted-foreground">Emne:</Label>
-              <p className="font-semibold">{getPreviewContent().slice(0, 100)}</p>
+              <Label className="text-xs sm:text-sm text-muted-foreground">Emne:</Label>
+              <p className="font-semibold text-sm sm:text-base">{subject || "Ingen emne"}</p>
             </div>
             <div className="border rounded-lg overflow-hidden">
               <div 
                 dangerouslySetInnerHTML={{ __html: getPreviewContent() }}
-                className="bg-white"
+                className={`bg-white ${isMobile ? 'text-sm' : ''}`}
               />
             </div>
           </div>
