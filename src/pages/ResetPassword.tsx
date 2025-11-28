@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Shield } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
+import avisafeLogo from "@/assets/avisafe-logo.png";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -72,12 +72,8 @@ const ResetPassword = () => {
       <div className="relative z-10 w-full max-w-md px-4">
         <Card className="bg-card/95 backdrop-blur-sm border-border/50">
           <CardHeader className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <Shield className="w-10 h-10 text-primary" />
-              <div>
-                <CardTitle className="text-2xl">Sikkerhetsstyringssystem</CardTitle>
-                <CardDescription className="text-primary">Drone Operations</CardDescription>
-              </div>
+            <div className="flex items-center justify-center">
+              <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
               <CardTitle className="text-xl">Sett nytt passord</CardTitle>
