@@ -123,23 +123,13 @@ const Auth = () => {
             // User is still created in auth, continue with notification
           }
 
-          // Get company name for the notifications
+          // Get company name for the notification
           const {
             data: companyData
           } = await supabase.from('companies').select('navn').eq('id', selectedCompanyId).single();
 
+          // Send notifications to admins via edge function
           if (companyData) {
-            // Send welcome email to the new user
-            await supabase.functions.invoke('send-user-welcome-email', {
-              body: {
-                user_name: fullName,
-                user_email: email,
-                company_name: companyData.navn,
-                company_id: selectedCompanyId
-              }
-            });
-
-            // Send notification to admins
             await supabase.functions.invoke('send-notification-email', {
               body: {
                 type: 'notify_admins_new_user',
