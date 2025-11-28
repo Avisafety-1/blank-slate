@@ -14,15 +14,6 @@ import { ProfileDialog } from "@/components/ProfileDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Select,
@@ -396,55 +387,46 @@ const Admin = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-2 sm:px-6">
-                    <ScrollArea className="w-full">
-                      <div className="min-w-[600px]">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs sm:text-sm">Navn</TableHead>
-                              <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Selskap</TableHead>
-                              <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Bruker ID</TableHead>
-                              <TableHead className="text-xs sm:text-sm">Opprettet</TableHead>
-                              <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pendingUsers.map((profile) => (
-                              <TableRow key={profile.id}>
-                                <TableCell className="text-xs sm:text-sm">{profile.full_name || "Ikke oppgitt"}</TableCell>
-                                <TableCell className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
-                                <TableCell className={`font-mono text-xs ${isMobile ? 'hidden' : ''}`}>{profile.id.slice(0, 8)}...</TableCell>
-                                <TableCell className="text-xs sm:text-sm">
-                                  {new Date(profile.created_at).toLocaleDateString("nb-NO")}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex gap-1 sm:gap-2 justify-end">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => approveUser(profile.id)}
-                                      disabled={approvingUsers.has(profile.id)}
-                                      className={`gap-1 ${isMobile ? 'h-8 px-2' : 'gap-2'}`}
-                                    >
-                                      <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                                      <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? 'Godkjenner...' : 'Godkjenn'}</span>
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => deleteUser(profile.id, profile.full_name)}
-                                      className={`gap-1 ${isMobile ? 'h-8 px-2' : 'gap-2'}`}
-                                    >
-                                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                                      <span className="hidden sm:inline">Slett</span>
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </ScrollArea>
+                    <div className="space-y-2">
+                      {pendingUsers.map((profile) => (
+                        <div 
+                          key={profile.id}
+                          className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">
+                              {profile.full_name || "Ikke oppgitt"}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate">{profile.email || "Ingen e-post"}</span>
+                              <span>•</span>
+                              <span>{new Date(profile.created_at).toLocaleDateString("nb-NO")}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => approveUser(profile.id)}
+                              disabled={approvingUsers.has(profile.id)}
+                              className="h-9 sm:h-10"
+                            >
+                              <Check className="w-4 h-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? 'Godkjenner...' : 'Godkjenn'}</span>
+                              <span className="sm:hidden">OK</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteUser(profile.id, profile.full_name)}
+                              className="h-9 sm:h-10 px-2 sm:px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -458,72 +440,53 @@ const Admin = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
-                  <ScrollArea className="w-full">
-                    <div className="min-w-[700px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs sm:text-sm">Navn</TableHead>
-                            <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Selskap</TableHead>
-                            <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Bruker ID</TableHead>
-                            <TableHead className="text-xs sm:text-sm">Rolle</TableHead>
-                            <TableHead className="text-right text-xs sm:text-sm">Endre rolle</TableHead>
-                            <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {approvedUsers.map((profile) => {
-                            const userRole = userRoles.find((r) => r.user_id === profile.id);
-                            return (
-                              <TableRow key={profile.id}>
-                                <TableCell className="text-xs sm:text-sm">{profile.full_name || "Ikke oppgitt"}</TableCell>
-                                <TableCell className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
-                                <TableCell className={`font-mono text-xs ${isMobile ? 'hidden' : ''}`}>{profile.id.slice(0, 8)}...</TableCell>
-                                <TableCell>
-                                  {userRole ? (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {getRoleLabel(userRole.role)}
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      Ingen rolle
-                                    </span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Select 
-                                    value={userRole?.role || ""} 
-                                    onValueChange={(value) => assignRole(profile.id, value)}
-                                  >
-                                    <SelectTrigger className={`${isMobile ? 'w-[140px] h-8 text-xs' : 'w-[180px]'}`}>
-                                      <SelectValue placeholder="Velg rolle" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availableRoles.map((role) => (
-                                        <SelectItem key={role.value} value={role.value} className="text-xs sm:text-sm">
-                                          {role.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => deleteUser(profile.id, profile.full_name)}
-                                    className={isMobile ? 'h-8 px-2' : ''}
-                                  >
-                                    <Trash2 className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </ScrollArea>
+                  <div className="space-y-2">
+                    {approvedUsers.map((profile) => {
+                      const userRole = userRoles.find((r) => r.user_id === profile.id);
+                      return (
+                        <div 
+                          key={profile.id}
+                          className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">
+                              {profile.full_name || "Ikke oppgitt"}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {profile.email || "Ingen e-post"}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Select 
+                              value={userRole?.role || ""} 
+                              onValueChange={(value) => assignRole(profile.id, value)}
+                            >
+                              <SelectTrigger className="w-[160px] sm:w-[200px] h-9 sm:h-10">
+                                <SelectValue placeholder="Velg rolle" />
+                              </SelectTrigger>
+                              <SelectContent className="z-50">
+                                {availableRoles.map((role) => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteUser(profile.id, profile.full_name)}
+                              className="h-9 sm:h-10 px-2 sm:px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </div>
