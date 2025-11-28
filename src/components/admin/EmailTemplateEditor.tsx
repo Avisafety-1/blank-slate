@@ -465,7 +465,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                     modules={modules}
                     formats={formats}
                     placeholder="Skriv inn e-postinnholdet her..."
-                    style={{ minHeight: isMobile ? "300px" : "400px" }}
+                    style={{ minHeight: isMobile ? "500px" : "600px" }}
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
@@ -482,7 +482,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Skriv inn HTML-innhold..."
-                  rows={isMobile ? 15 : 20}
+                  rows={isMobile ? 20 : 25}
                   className={`font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
                 />
                 <p className="text-xs sm:text-sm text-muted-foreground">
