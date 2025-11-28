@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyManagementSection } from "@/components/admin/CompanyManagementSection";
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
+import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 
 interface Profile {
   id: string;
@@ -69,6 +70,7 @@ const Admin = () => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -519,7 +521,20 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="email-templates" className="mt-6">
-            <EmailTemplateEditor />
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setEmailSettingsOpen(true)}
+                  variant="outline"
+                  size={isMobile ? "sm" : "default"}
+                  className="gap-2"
+                >
+                  <Settings className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+                  {isMobile ? "Innstillinger" : "E-postinnstillinger"}
+                </Button>
+              </div>
+              <EmailTemplateEditor />
+            </div>
           </TabsContent>
 
           {isSuperAdmin && (
@@ -529,6 +544,11 @@ const Admin = () => {
           )}
         </Tabs>
       </main>
+
+      <EmailSettingsDialog 
+        open={emailSettingsOpen}
+        onOpenChange={setEmailSettingsOpen}
+      />
     </div>
   );
 };
