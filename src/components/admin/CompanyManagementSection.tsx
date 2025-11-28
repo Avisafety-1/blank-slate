@@ -11,6 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +42,7 @@ interface Company {
 }
 
 export const CompanyManagementSection = () => {
+  const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -142,9 +145,9 @@ export const CompanyManagementSection = () => {
 
   if (loading) {
     return (
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-center py-8">
-          <p className="text-muted-foreground">Laster selskaper...</p>
+      <GlassCard className="p-3 sm:p-6">
+        <div className="flex items-center justify-center py-6 sm:py-8">
+          <p className="text-sm sm:text-base text-muted-foreground">Laster selskaper...</p>
         </div>
       </GlassCard>
     );
@@ -152,120 +155,126 @@ export const CompanyManagementSection = () => {
 
   return (
     <>
-      <GlassCard className="p-6">
-        <div className="flex justify-between items-center mb-6">
+      <GlassCard className="p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Selskapsadministrasjon</h2>
+            <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
           </div>
-          <Button onClick={handleAddCompany}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nytt selskap
+          <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
+            <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {isMobile ? "Nytt" : "Nytt selskap"}
           </Button>
         </div>
 
         {companies.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen selskaper funnet. Opprett ditt første selskap.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Navn</TableHead>
-                  <TableHead>Org.nr</TableHead>
-                  <TableHead>Kontaktinfo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Handlinger</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {companies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {company.navn}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {company.org_nummer ? (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Hash className="h-3 w-3" />
-                          {company.org_nummer}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        {company.kontakt_epost && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            {company.kontakt_epost}
-                          </div>
-                        )}
-                        {company.kontakt_telefon && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {company.kontakt_telefon}
-                          </div>
-                        )}
-                        {company.adresse && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            {company.adresse}
-                          </div>
-                        )}
-                        {!company.kontakt_epost &&
-                          !company.kontakt_telefon &&
-                          !company.adresse && (
-                            <span className="text-muted-foreground">
-                              Ingen kontaktinfo
-                            </span>
-                          )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={company.aktiv}
-                          onCheckedChange={() => handleToggleActive(company)}
-                        />
-                        <Label className="cursor-pointer">
-                          <Badge
-                            variant={company.aktiv ? "default" : "secondary"}
-                          >
-                            {company.aktiv ? "Aktiv" : "Inaktiv"}
-                          </Badge>
-                        </Label>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditCompany(company)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteClick(company)}
-                        >
-                          Slett
-                        </Button>
-                      </div>
-                    </TableCell>
+          <ScrollArea className="w-full">
+            <div className="min-w-[700px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Navn</TableHead>
+                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Org.nr</TableHead>
+                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {companies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell className="font-medium text-xs sm:text-sm">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate max-w-[120px] sm:max-w-none">{company.navn}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className={isMobile ? 'hidden' : ''}>
+                        {company.org_nummer ? (
+                          <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                            <Hash className="h-3 w-3 flex-shrink-0" />
+                            {company.org_nummer}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs sm:text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className={isMobile ? 'hidden' : ''}>
+                        <div className="space-y-1 text-xs sm:text-sm">
+                          {company.kontakt_epost && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Mail className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate max-w-[150px]">{company.kontakt_epost}</span>
+                            </div>
+                          )}
+                          {company.kontakt_telefon && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Phone className="h-3 w-3 flex-shrink-0" />
+                              {company.kontakt_telefon}
+                            </div>
+                          )}
+                          {company.adresse && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate max-w-[150px]">{company.adresse}</span>
+                            </div>
+                          )}
+                          {!company.kontakt_epost &&
+                            !company.kontakt_telefon &&
+                            !company.adresse && (
+                              <span className="text-muted-foreground text-xs">
+                                Ingen kontaktinfo
+                              </span>
+                            )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Switch
+                            checked={company.aktiv}
+                            onCheckedChange={() => handleToggleActive(company)}
+                            className={isMobile ? 'scale-75' : ''}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={company.aktiv ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {company.aktiv ? "Aktiv" : "Inaktiv"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 sm:gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditCompany(company)}
+                            className={isMobile ? 'h-8 w-8 p-0' : ''}
+                          >
+                            <Pencil className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteClick(company)}
+                            className={isMobile ? 'h-8 px-2 text-xs' : ''}
+                          >
+                            {isMobile ? <span>X</span> : "Slett"}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
         )}
       </GlassCard>
 
