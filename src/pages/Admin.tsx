@@ -188,23 +188,28 @@ const Admin = () => {
 
   const assignRole = async (userId: string, role: string) => {
     try {
-      // Check if role already exists
-      const existingRole = userRoles.find(
-        (r) => r.user_id === userId && r.role === role
-      );
+      // Get existing role for the user
+      const existingRole = userRoles.find((r) => r.user_id === userId);
 
       if (existingRole) {
-        toast.info("Bruker har allerede denne rollen");
-        return;
+        // Update existing role
+        const { error } = await supabase
+          .from("user_roles")
+          .update({ role: role as any })
+          .eq("user_id", userId);
+
+        if (error) throw error;
+        toast.success("Rolle oppdatert");
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from("user_roles")
+          .insert([{ user_id: userId, role: role as any }]);
+
+        if (error) throw error;
+        toast.success("Rolle tildelt");
       }
 
-      const { error } = await supabase
-        .from("user_roles")
-        .insert([{ user_id: userId, role: role as any }]);
-
-      if (error) throw error;
-
-      toast.success("Rolle tildelt");
       fetchData();
     } catch (error) {
       console.error("Error assigning role:", error);
@@ -433,42 +438,35 @@ const Admin = () => {
                     <TableHead>Navn</TableHead>
                     <TableHead>Selskap</TableHead>
                     <TableHead>Bruker ID</TableHead>
-                    <TableHead>Roller</TableHead>
-                    <TableHead className="text-right">Tildel rolle</TableHead>
+                    <TableHead>Rolle</TableHead>
+                    <TableHead className="text-right">Endre rolle</TableHead>
                     <TableHead className="text-right">Handlinger</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {approvedUsers.map((profile) => {
-                    const roles = getUserRoles(profile.id);
+                    const userRole = userRoles.find((r) => r.user_id === profile.id);
                     return (
                       <TableRow key={profile.id}>
                         <TableCell>{profile.full_name || "Ikke oppgitt"}</TableCell>
                         <TableCell>{(profile as any).companies?.navn || "Ukjent"}</TableCell>
                         <TableCell className="font-mono text-xs">{profile.id.slice(0, 8)}...</TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            {roles.length > 0 ? (
-                              roles.map((role) => (
-                                <Badge
-                                  key={role.id}
-                                  variant="secondary"
-                                  className="gap-2 cursor-pointer hover:bg-destructive/10"
-                                  onClick={() => removeRole(role.id)}
-                                >
-                                  {getRoleLabel(role.role)}
-                                  <X className="w-3 h-3" />
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                Ingen roller
-                              </span>
-                            )}
-                          </div>
+                          {userRole ? (
+                            <Badge variant="secondary">
+                              {getRoleLabel(userRole.role)}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Ingen rolle
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Select onValueChange={(value) => assignRole(profile.id, value)}>
+                          <Select 
+                            value={userRole?.role || ""} 
+                            onValueChange={(value) => assignRole(profile.id, value)}
+                          >
                             <SelectTrigger className="w-[180px]">
                               <SelectValue placeholder="Velg rolle" />
                             </SelectTrigger>

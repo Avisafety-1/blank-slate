@@ -100,15 +100,19 @@ export const CalendarWidget = () => {
 
   const checkAdminStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      setIsAdmin(data?.role === 'admin');
+    if (!user) return;
+
+    const { data, error } = await supabase.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+
+    if (error) {
+      console.error('Error checking admin status:', error);
+      return;
     }
+    
+    setIsAdmin(data || false);
   };
 
   const fetchAllEvents = async () => {

@@ -19,7 +19,10 @@ interface Profile {
 }
 
 interface UserRole {
+  id: string;
+  user_id: string;
   role: string;
+  created_at: string;
 }
 
 interface CalendarEvent {
@@ -69,7 +72,7 @@ const severityColors = {
 export const ProfileDialog = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [roles, setRoles] = useState<UserRole[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
@@ -101,12 +104,16 @@ export const ProfileDialog = () => {
         setProfile(profileData);
       }
 
-      // Fetch roles
-      const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      // Fetch user's single role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      if (rolesData) {
-        setRoles(rolesData);
-        setIsAdmin(rolesData.some((role) => role.role === "admin"));
+      if (roleData) {
+        setUserRole(roleData.role);
+        setIsAdmin(roleData.role === 'admin' || roleData.role === 'superadmin');
       }
 
       // Fetch calendar events
@@ -201,13 +208,16 @@ export const ProfileDialog = () => {
 
   const getRoleBadgeVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
+      case "superadmin":
+        return "destructive";
       case "admin":
         return "destructive";
-      case "operativ_leder":
+      case "saksbehandler":
         return "default";
-      case "pilot":
-      case "tekniker":
+      case "operatør":
         return "secondary";
+      case "lesetilgang":
+        return "outline";
       default:
         return "outline";
     }
@@ -215,10 +225,10 @@ export const ProfileDialog = () => {
 
   const getRoleDisplayName = (role: string): string => {
     const roleMap: { [key: string]: string } = {
+      superadmin: "Super Administrator",
       admin: "Administrator",
-      operativ_leder: "Operativ leder",
-      pilot: "Pilot",
-      tekniker: "Tekniker",
+      saksbehandler: "Saksbehandler",
+      operatør: "Operatør",
       lesetilgang: "Lesetilgang",
     };
     return roleMap[role] || role;
@@ -284,22 +294,18 @@ export const ProfileDialog = () => {
                 </CardContent>
               </Card>
 
-              {/* Roles */}
+              {/* Role */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Roller</CardTitle>
+                  <CardTitle>Rolle</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {roles.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {roles.map((role, index) => (
-                        <Badge key={index} variant={getRoleBadgeVariant(role.role)}>
-                          {getRoleDisplayName(role.role)}
-                        </Badge>
-                      ))}
-                    </div>
+                  {userRole ? (
+                    <Badge variant={getRoleBadgeVariant(userRole)}>
+                      {getRoleDisplayName(userRole)}
+                    </Badge>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Ingen roller tildelt</p>
+                    <p className="text-sm text-muted-foreground">Ingen rolle tildelt</p>
                   )}
                 </CardContent>
               </Card>
