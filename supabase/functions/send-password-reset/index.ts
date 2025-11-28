@@ -59,12 +59,16 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Kunne ikke hente brukerinfo");
     }
 
-    // Generate password reset link using Supabase Auth
+    // Generate password reset link - use the Lovable project URL directly
+    const redirectUrl = 'https://d5204389-1e73-493a-85e2-7981b39460ee.lovableproject.com/reset-password';
+    
+    console.log(`Using redirect URL: ${redirectUrl}`);
+    
     const { data, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://d5204389-1e73-493a-85e2-7981b39460ee.lovableproject.com'}/reset-password`
+        redirectTo: redirectUrl
       }
     });
 
