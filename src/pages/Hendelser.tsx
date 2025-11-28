@@ -173,7 +173,6 @@ const Hendelser = () => {
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url(${droneBackground})`,
           backgroundSize: "cover",
           backgroundPosition: "center center",
-          backgroundAttachment: "fixed",
           backgroundRepeat: "no-repeat",
         }}
       />

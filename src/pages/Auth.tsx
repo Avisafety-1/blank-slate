@@ -222,8 +222,7 @@ const Auth = () => {
       <div className="fixed inset-0 z-0" style={{
       backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${droneBackground})`,
       backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundAttachment: "fixed"
+      backgroundPosition: "center"
     }} />
 
       {/* Content */}
