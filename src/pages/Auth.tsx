@@ -270,9 +270,15 @@ const Auth = () => {
                   <Label htmlFor="password">Passord</Label>
                 </div>
                 <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
-                {isLogin && <span className="text-xs text-muted-foreground block mt-1">
-                    Glemt passord? Send mail til kontakt@avisafe.no      
-                  </span>}
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(true)}
+                    className="text-xs text-primary hover:underline block mt-1"
+                  >
+                    Glemt passord?
+                  </button>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Behandler..." : isLogin ? "Logg inn" : "Opprett konto"}
