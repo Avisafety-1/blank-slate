@@ -72,6 +72,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
+  const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) {
@@ -145,6 +146,13 @@ const Admin = () => {
   };
 
   const approveUser = async (userId: string) => {
+    // Prevent double clicks
+    if (approvingUsers.has(userId)) {
+      return;
+    }
+
+    setApprovingUsers(prev => new Set(prev).add(userId));
+
     try {
       const { error } = await supabase
         .from("profiles")
@@ -186,6 +194,12 @@ const Admin = () => {
     } catch (error) {
       console.error("Error approving user:", error);
       toast.error("Feil ved godkjenning av bruker");
+    } finally {
+      setApprovingUsers(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     }
   };
 
@@ -408,10 +422,11 @@ const Admin = () => {
                                     <Button
                                       size="sm"
                                       onClick={() => approveUser(profile.id)}
+                                      disabled={approvingUsers.has(profile.id)}
                                       className={`gap-1 ${isMobile ? 'h-8 px-2' : 'gap-2'}`}
                                     >
                                       <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                                      <span className="hidden sm:inline">Godkjenn</span>
+                                      <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? 'Godkjenner...' : 'Godkjenn'}</span>
                                     </Button>
                                     <Button
                                       size="sm"
