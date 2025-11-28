@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Shield, Chrome } from "lucide-react";
+import { Chrome } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
+import avisafeLogo from "@/assets/avisafe-logo.png";
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -229,12 +230,8 @@ const Auth = () => {
       <div className="relative z-10 w-full max-w-md px-4">
         <Card className="bg-card/95 backdrop-blur-sm border-border/50">
           <CardHeader className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <Shield className="w-10 h-10 text-primary" />
-              <div>
-                <CardTitle className="text-2xl">Sikkerhetsstyring</CardTitle>
-                <CardDescription className="text-primary">Droneoperasjoner</CardDescription>
-              </div>
+            <div className="flex items-center justify-center">
+              <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
               <CardTitle className="text-xl">
