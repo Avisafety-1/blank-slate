@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEmailConfig } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,14 +117,19 @@ serve(async (req: Request): Promise<Response> => {
         </div>
       `;
 
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
       const client = new SMTPClient({
         connection: {
-          hostname: Deno.env.get("EMAIL_HOST") ?? "",
-          port: parseInt(Deno.env.get("EMAIL_PORT") ?? "587"),
-          tls: Deno.env.get("EMAIL_SECURE") === "true",
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
           auth: {
-            username: Deno.env.get("EMAIL_USER") ?? "",
-            password: Deno.env.get("EMAIL_PASS") ?? "",
+            username: emailConfig.user,
+            password: emailConfig.pass,
           },
         },
       });
@@ -136,7 +142,7 @@ serve(async (req: Request): Promise<Response> => {
         console.log(`Sending new incident notification to ${user.email}`);
 
         await client.send({
-          from: Deno.env.get("EMAIL_USER") ?? "",
+          from: senderAddress,
           to: user.email,
           subject: `Ny hendelse: ${incident.tittel}`,
           html: incidentHtml,
@@ -224,14 +230,19 @@ serve(async (req: Request): Promise<Response> => {
         </div>
       `;
 
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
       const client = new SMTPClient({
         connection: {
-          hostname: Deno.env.get("EMAIL_HOST") ?? "",
-          port: parseInt(Deno.env.get("EMAIL_PORT") ?? "587"),
-          tls: Deno.env.get("EMAIL_SECURE") === "true",
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
           auth: {
-            username: Deno.env.get("EMAIL_USER") ?? "",
-            password: Deno.env.get("EMAIL_PASS") ?? "",
+            username: emailConfig.user,
+            password: emailConfig.pass,
           },
         },
       });
@@ -244,7 +255,7 @@ serve(async (req: Request): Promise<Response> => {
         console.log(`Sending new mission notification to ${user.email}`);
 
         await client.send({
-          from: Deno.env.get("EMAIL_USER") ?? "",
+          from: senderAddress,
           to: user.email,
           subject: `Nytt oppdrag: ${mission.tittel}`,
           html: missionHtml,
@@ -347,14 +358,19 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </body>
 </html>`;
 
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
       const client = new SMTPClient({
         connection: {
-          hostname: Deno.env.get("EMAIL_HOST") ?? "",
-          port: parseInt(Deno.env.get("EMAIL_PORT") ?? "587"),
-          tls: Deno.env.get("EMAIL_SECURE") === "true",
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
           auth: {
-            username: Deno.env.get("EMAIL_USER") ?? "",
-            password: Deno.env.get("EMAIL_PASS") ?? "",
+            username: emailConfig.user,
+            password: emailConfig.pass,
           },
         },
       });
@@ -372,7 +388,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         console.log(`Sending new user notification to ${user.email}`);
 
         await client.send({
-          from: Deno.env.get("EMAIL_USER") ?? "",
+          from: senderAddress,
           to: user.email,
           subject: 'Ny bruker venter på godkjenning',
           html: html,
@@ -428,20 +444,25 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     console.log(`Sending email to ${user.email}`);
 
     // 3. Send email via SMTP
+    const emailConfig = await getEmailConfig(companyId);
+    const senderAddress = emailConfig.fromName 
+      ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+      : emailConfig.fromEmail;
+
     const client = new SMTPClient({
       connection: {
-        hostname: Deno.env.get("EMAIL_HOST") ?? "",
-        port: parseInt(Deno.env.get("EMAIL_PORT") ?? "587"),
-        tls: Deno.env.get("EMAIL_SECURE") === "true",
+        hostname: emailConfig.host,
+        port: emailConfig.port,
+        tls: emailConfig.secure,
         auth: {
-          username: Deno.env.get("EMAIL_USER") ?? "",
-          password: Deno.env.get("EMAIL_PASS") ?? "",
+          username: emailConfig.user,
+          password: emailConfig.pass,
         },
       },
     });
 
     await client.send({
-      from: Deno.env.get("EMAIL_USER") ?? "",
+      from: senderAddress,
       to: user.email,
       subject: subject,
       html: htmlContent,
