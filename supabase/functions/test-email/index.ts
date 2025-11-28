@@ -45,11 +45,14 @@ serve(async (req) => {
     console.log("Email configuration retrieved for company:", company_id);
 
     // Create SMTP client
+    // Port 587 uses STARTTLS, port 465 uses implicit TLS
+    const useTLS = emailConfig.port === 465 ? true : (emailConfig.port === 587 ? true : emailConfig.secure);
+    
     const client = new SMTPClient({
       connection: {
         hostname: emailConfig.host,
         port: emailConfig.port,
-        tls: emailConfig.secure,
+        tls: useTLS,
         auth: {
           username: emailConfig.user,
           password: emailConfig.pass,
