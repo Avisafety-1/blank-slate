@@ -521,20 +521,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="email-templates" className="mt-6">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => setEmailSettingsOpen(true)}
-                  variant="outline"
-                  size={isMobile ? "sm" : "default"}
-                  className="gap-2"
-                >
-                  <Settings className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
-                  {isMobile ? "Innstillinger" : "E-postinnstillinger"}
-                </Button>
-              </div>
-              <EmailTemplateEditor />
-            </div>
+            <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
           </TabsContent>
 
           {isSuperAdmin && (
