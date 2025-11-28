@@ -59,8 +59,8 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Kunne ikke hente brukerinfo");
     }
 
-    // Generate password reset link - use the Lovable project URL directly
-    const redirectUrl = 'https://d5204389-1e73-493a-85e2-7981b39460ee.lovableproject.com/reset-password';
+    // Generate password reset link - use login domain
+    const redirectUrl = 'https://login.avisafe.no/reset-password';
     
     console.log(`Using redirect URL: ${redirectUrl}`);
     
