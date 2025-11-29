@@ -52,6 +52,30 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     ).addTo(map);
 
+    // NRL - Nasjonalt register over luftfartshindre (Geonorge)
+    L.tileLayer.wms(
+      "https://wms.geonorge.no/skwms1/wms.nrl5?",
+      {
+        layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.8,
+        attribution: 'NRL Luftfartshindre',
+      }
+    ).addTo(map);
+
+    // Naturverns-restriksjonsområder (Miljødirektoratet)
+    L.tileLayer.wms(
+      "https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?",
+      {
+        layers: "0",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.7,
+        attribution: 'Miljødirektoratet - Verneområder',
+      }
+    ).addTo(map);
+
     // Geolokasjon med fallback
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
