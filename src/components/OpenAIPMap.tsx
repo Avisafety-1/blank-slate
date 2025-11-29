@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
 import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
+import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
@@ -15,6 +16,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
+  const [layers, setLayers] = useState<LayerConfig[]>([]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -29,7 +31,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     }).addTo(map);
 
     // Lag for lag-kontroll
-    const overlayLayers: { [key: string]: L.Layer } = {};
+    const layerConfigs: LayerConfig[] = [];
 
     // OpenAIP-luftrom (bygger URL med apiKey i stedet for {key}-option)
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
@@ -40,7 +42,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         subdomains: "abc",
       }).addTo(map);
       
-      overlayLayers["🛩️ Luftrom (OpenAIP)"] = airspaceLayer;
+      layerConfigs.push({
+        id: "airspace",
+        name: "🛩️ Luftrom (OpenAIP)",
+        layer: airspaceLayer,
+        enabled: true,
+      });
     } else if (!openAipConfig.apiKey) {
       console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
     }
@@ -56,7 +63,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'NSM Sensorforbudsområder',
       }
     ).addTo(map);
-    overlayLayers["🚫 NSM Sensorforbudsområder"] = nsmLayer;
+    layerConfigs.push({
+      id: "nsm",
+      name: "🚫 NSM Sensorforbudsområder",
+      layer: nsmLayer,
+      enabled: true,
+    });
 
     // NRL - Nasjonalt register over luftfartshindre (Geonorge)
     const nrlLayer = L.tileLayer.wms(
@@ -69,7 +81,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'NRL Luftfartshindre',
       }
     ).addTo(map);
-    overlayLayers["⚠️ Luftfartshindre (NRL)"] = nrlLayer;
+    layerConfigs.push({
+      id: "nrl",
+      name: "⚠️ Luftfartshindre (NRL)",
+      layer: nrlLayer,
+      enabled: true,
+    });
 
     // Naturverns-restriksjonsområder (Miljødirektoratet)
     const naturvernLayer = L.tileLayer.wms(
@@ -82,7 +99,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'Miljødirektoratet - Verneområder',
       }
     ).addTo(map);
-    overlayLayers["🌲 Naturvern-restriksjoner"] = naturvernLayer;
+    layerConfigs.push({
+      id: "naturvern",
+      name: "🌲 Naturvern-restriksjoner",
+      layer: naturvernLayer,
+      enabled: true,
+    });
 
     // Geolokasjon med fallback
     if (navigator.geolocation) {
@@ -114,18 +136,25 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // Eget lag for flytrafikk (Airplanes.live)
     const aircraftLayer = L.layerGroup().addTo(map);
-    overlayLayers["✈️ Flytrafikk (live)"] = aircraftLayer;
+    layerConfigs.push({
+      id: "aircraft",
+      name: "✈️ Flytrafikk (live)",
+      layer: aircraftLayer,
+      enabled: true,
+    });
 
     // Eget lag for oppdrag/missions
     const missionsLayer = L.layerGroup().addTo(map);
     missionsLayerRef.current = missionsLayer;
-    overlayLayers["📍 Oppdrag"] = missionsLayer;
+    layerConfigs.push({
+      id: "missions",
+      name: "📍 Oppdrag",
+      layer: missionsLayer,
+      enabled: true,
+    });
 
-    // Legg til lag-kontroll i høyre hjørne
-    L.control.layers({}, overlayLayers, {
-      position: 'topright',
-      collapsed: false,
-    }).addTo(map);
+    // Sett layer state
+    setLayers(layerConfigs);
 
     async function fetchAircraft() {
       try {
@@ -287,7 +316,28 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       missionsChannel.unsubscribe();
       map.remove();
     };
-  }, []);
+  }, [onMissionClick]);
 
-  return <div ref={mapRef} className="w-full h-full" />;
+  const handleLayerToggle = (id: string, enabled: boolean) => {
+    setLayers((prevLayers) =>
+      prevLayers.map((layer) => {
+        if (layer.id === id) {
+          if (enabled) {
+            layer.layer.addTo(layer.layer as any);
+          } else {
+            (layer.layer as any).remove();
+          }
+          return { ...layer, enabled };
+        }
+        return layer;
+      })
+    );
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapRef} className="w-full h-full" />
+      <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
+    </div>
+  );
 }
