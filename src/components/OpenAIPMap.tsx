@@ -42,12 +42,13 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // NSM Sensorforbudsområder (WMS-lag)
     L.tileLayer.wms(
-      "https://nsm.geodataonline.no/arcgis/services/Restriksjonsomraader/Restriksjonsomraader/MapServer/WMSServer",
+      "https://nsm.geodataonline.no/arcgis/services/Restriksjonsomraader/Restriksjonsomraader/MapServer/WMSServer?",
       {
         layers: "0",
         format: "image/png",
         transparent: true,
-        opacity: 0.7,
+        opacity: 1.0,
+        attribution: 'NSM Sensorforbudsområder',
       }
     ).addTo(map);
 
