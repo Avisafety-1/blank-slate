@@ -85,7 +85,7 @@ const Documents = () => {
   }, [refetch]);
   const filteredDocuments = documents?.filter(doc => {
     const matchesSearch = searchQuery === "" || doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) || doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.fil_url?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.nettside_url?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(doc.kategori as DocumentCategory);
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(doc.kategori.toLowerCase().trim() as DocumentCategory);
     return matchesSearch && matchesCategory;
   });
   const handleOpenDocument = (document: Document) => {
