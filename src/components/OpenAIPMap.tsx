@@ -23,25 +23,30 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     const map = L.map(mapRef.current).setView(DEFAULT_POS, 8);
 
     // OSM-bakgrunn
-    L.tileLayer(openAipConfig.tiles.base, {
+    const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
       attribution: openAipConfig.attribution,
       subdomains: "abc",
     }).addTo(map);
+
+    // Lag for lag-kontroll
+    const overlayLayers: { [key: string]: L.Layer } = {};
 
     // OpenAIP-luftrom (bygger URL med apiKey i stedet for {key}-option)
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
 
-      L.tileLayer(airspaceUrl, {
+      const airspaceLayer = L.tileLayer(airspaceUrl, {
         opacity: 0.55,
         subdomains: "abc",
       }).addTo(map);
+      
+      overlayLayers["🛩️ Luftrom (OpenAIP)"] = airspaceLayer;
     } else if (!openAipConfig.apiKey) {
       console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
     }
 
     // NSM Sensorforbudsområder (WMS-lag)
-    L.tileLayer.wms(
+    const nsmLayer = L.tileLayer.wms(
       "https://nsm.geodataonline.no/arcgis/services/Restriksjonsomraader/Restriksjonsomraader/MapServer/WMSServer?",
       {
         layers: "0",
@@ -51,9 +56,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'NSM Sensorforbudsområder',
       }
     ).addTo(map);
+    overlayLayers["🚫 NSM Sensorforbudsområder"] = nsmLayer;
 
     // NRL - Nasjonalt register over luftfartshindre (Geonorge)
-    L.tileLayer.wms(
+    const nrlLayer = L.tileLayer.wms(
       "https://wms.geonorge.no/skwms1/wms.nrl5?",
       {
         layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt",
@@ -63,9 +69,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'NRL Luftfartshindre',
       }
     ).addTo(map);
+    overlayLayers["⚠️ Luftfartshindre (NRL)"] = nrlLayer;
 
     // Naturverns-restriksjonsområder (Miljødirektoratet)
-    L.tileLayer.wms(
+    const naturvernLayer = L.tileLayer.wms(
       "https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?",
       {
         layers: "0",
@@ -75,6 +82,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         attribution: 'Miljødirektoratet - Verneområder',
       }
     ).addTo(map);
+    overlayLayers["🌲 Naturvern-restriksjoner"] = naturvernLayer;
 
     // Geolokasjon med fallback
     if (navigator.geolocation) {
@@ -106,10 +114,18 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // Eget lag for flytrafikk (Airplanes.live)
     const aircraftLayer = L.layerGroup().addTo(map);
+    overlayLayers["✈️ Flytrafikk (live)"] = aircraftLayer;
 
     // Eget lag for oppdrag/missions
     const missionsLayer = L.layerGroup().addTo(map);
     missionsLayerRef.current = missionsLayer;
+    overlayLayers["📍 Oppdrag"] = missionsLayer;
+
+    // Legg til lag-kontroll i høyre hjørne
+    L.control.layers({}, overlayLayers, {
+      position: 'topright',
+      collapsed: false,
+    }).addTo(map);
 
     async function fetchAircraft() {
       try {
