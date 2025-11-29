@@ -40,6 +40,17 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
     }
 
+    // NSM Sensorforbudsområder (WMS-lag)
+    L.tileLayer.wms(
+      "https://nsm.geodataonline.no/arcgis/services/Restriksjonsomraader/Restriksjonsomraader/MapServer/WMSServer",
+      {
+        layers: "0",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.7,
+      }
+    ).addTo(map);
+
     // Geolokasjon med fallback
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
