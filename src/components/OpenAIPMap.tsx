@@ -52,20 +52,11 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
     }
 
-    // NSM Sensorforbudsområder (WMS-lag)
-    const nsmLayer = L.tileLayer.wms(
-      "https://nsm.geodataonline.no/arcgis/services/Restriksjonsomraader/Restriksjonsomraader/MapServer/WMSServer?",
-      {
-        layers: "0",
-        format: "image/png",
-        transparent: true,
-        opacity: 1.0,
-        attribution: 'NSM Sensorforbudsområder',
-      }
-    ).addTo(map);
+    // NSM Forbudsområder (GeoJSON fra FeatureServer)
+    const nsmLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "nsm",
-      name: "🚫 NSM Sensorforbudsområder",
+      name: "🚫 NSM Forbudsområder",
       layer: nsmLayer,
       enabled: true,
     });
@@ -155,6 +146,36 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // Sett layer state
     setLayers(layerConfigs);
+
+    // Funksjon for å hente NSM GeoJSON-data
+    async function fetchNsmData() {
+      try {
+        const url = "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error("Feil ved henting av NSM-data:", response.status);
+          return;
+        }
+        
+        const geojson = await response.json();
+        
+        // Legg til GeoJSON-lag med røde polygoner
+        const geoJsonLayer = L.geoJSON(geojson, {
+          style: {
+            color: '#ff0000',
+            weight: 2,
+            fillColor: '#ff0000',
+            fillOpacity: 0.25,
+          }
+        });
+        
+        nsmLayer.clearLayers();
+        nsmLayer.addLayer(geoJsonLayer);
+      } catch (err) {
+        console.error("Kunne ikke hente NSM Forbudsområder:", err);
+      }
+    }
 
     async function fetchAircraft() {
       try {
@@ -278,6 +299,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     }
 
     // Første kall
+    fetchNsmData();
     fetchAircraft();
     fetchAndDisplayMissions();
 
