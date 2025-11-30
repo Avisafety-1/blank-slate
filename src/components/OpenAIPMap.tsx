@@ -46,9 +46,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       
       layerConfigs.push({
         id: "airspace",
-        name: "🛩️ Luftrom (OpenAIP)",
+        name: "Luftrom (OpenAIP)",
         layer: airspaceLayer,
         enabled: true,
+        icon: "layers",
       });
     } else if (!openAipConfig.apiKey) {
       console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
@@ -58,9 +59,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     const nsmLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "nsm",
-      name: "🚫 NSM Forbudsområder",
+      name: "NSM Forbudsområder",
       layer: nsmLayer,
       enabled: true,
+      icon: "ban",
     });
 
     // NRL - Nasjonalt register over luftfartshindre (Geonorge)
@@ -76,9 +78,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     );
     layerConfigs.push({
       id: "nrl",
-      name: "⚠️ Luftfartshindre (NRL)",
+      name: "Luftfartshindre (NRL)",
       layer: nrlLayer,
       enabled: false,
+      icon: "alertTriangle",
     });
 
     // Naturverns-restriksjonsområder (Miljødirektoratet)
@@ -94,27 +97,30 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     ).addTo(map);
     layerConfigs.push({
       id: "naturvern",
-      name: "🌲 Naturvern-restriksjoner",
+      name: "Naturvern-restriksjoner",
       layer: naturvernLayer,
       enabled: true,
+      icon: "treePine",
     });
 
     // RPAS 5km Restriksjonssoner (Luftfartstilsynet)
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "rpas",
-      name: "🚁 RPAS 5km soner",
+      name: "RPAS 5km soner",
       layer: rpasLayer,
       enabled: true,
+      icon: "radio",
     });
 
     // Flyplasser (Luftfartstilsynet)
     const airportsLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "airports",
-      name: "🛬 Flyplasser",
+      name: "Flyplasser",
       layer: airportsLayer,
       enabled: true,
+      icon: "planeLanding",
     });
 
     // Geolokasjon med fallback
@@ -149,9 +155,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     const aircraftLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "aircraft",
-      name: "✈️ Flytrafikk (live)",
+      name: "Flytrafikk (live)",
       layer: aircraftLayer,
       enabled: true,
+      icon: "plane",
     });
 
     // Eget lag for oppdrag/missions
@@ -159,9 +166,10 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     missionsLayerRef.current = missionsLayer;
     layerConfigs.push({
       id: "missions",
-      name: "📍 Oppdrag",
+      name: "Oppdrag",
       layer: missionsLayer,
       enabled: true,
+      icon: "mapPin",
     });
 
     // Sett layer state
