@@ -77,6 +77,13 @@ const Admin = () => {
     }
   }, [user]);
 
+  // Refetch data when companyId changes (e.g., superadmin switches company)
+  useEffect(() => {
+    if (isAdmin && companyId !== undefined) {
+      fetchData();
+    }
+  }, [companyId]);
+
   const checkAdminStatus = async () => {
     try {
       const { data, error } = await supabase.rpc('has_role', {
