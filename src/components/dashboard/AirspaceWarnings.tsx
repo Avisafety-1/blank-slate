@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, AlertCircle, Info, Loader2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertTriangle, AlertCircle, Info, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AirspaceWarning {
   zone_type: string;
@@ -20,6 +21,7 @@ interface AirspaceWarningsProps {
 export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps) => {
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (!latitude || !longitude) {
@@ -77,37 +79,57 @@ export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps)
     return null;
   }
 
-  return (
-    <div className="space-y-3 mt-3">
-      {warnings.map((warning, index) => {
-        const isWarning = warning.level === "warning";
-        const isCaution = warning.level === "caution";
-        const isNote = warning.level === "note";
+  const firstWarning = warnings[0];
+  const remainingWarnings = warnings.slice(1);
+  const remainingCount = remainingWarnings.length;
 
-        return (
-          <Alert
-            key={index}
-            variant={isWarning ? "destructive" : "default"}
-            className={
-              isWarning
-                ? "border-destructive bg-destructive/10"
-                : isCaution
-                ? "border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100"
-                : "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100"
-            }
-          >
-            {isWarning && <AlertTriangle className="h-5 w-5 text-destructive" />}
-            {isCaution && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-            {isNote && <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            <AlertTitle className="font-semibold">
-              {isWarning && "ADVARSEL"}
-              {isCaution && "FORSIKTIGHET"}
-              {isNote && "INFORMASJON"}
-            </AlertTitle>
-            <AlertDescription className="text-sm mt-1">{warning.message}</AlertDescription>
-          </Alert>
-        );
-      })}
+  const renderAlert = (warning: AirspaceWarning, index: number) => {
+    const isWarning = warning.level === "warning";
+    const isCaution = warning.level === "caution";
+    const isNote = warning.level === "note";
+
+    return (
+      <Alert
+        key={index}
+        variant={isWarning ? "destructive" : "default"}
+        className={
+          isWarning
+            ? "border-destructive bg-destructive/10"
+            : isCaution
+            ? "border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100"
+            : "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100"
+        }
+      >
+        {isWarning && <AlertTriangle className="h-5 w-5 text-destructive" />}
+        {isCaution && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+        {isNote && <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+        <AlertTitle className="font-semibold">
+          {isWarning && "ADVARSEL"}
+          {isCaution && "FORSIKTIGHET"}
+          {isNote && "INFORMASJON"}
+        </AlertTitle>
+        <AlertDescription className="text-sm mt-1">{warning.message}</AlertDescription>
+      </Alert>
+    );
+  };
+
+  return (
+    <div className="space-y-2 mt-3">
+      {/* Vis første (mest alvorlige) advarsel */}
+      {renderAlert(firstWarning, 0)}
+      
+      {/* Vis dropdown for resten hvis det finnes flere */}
+      {remainingCount > 0 && (
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <span>+{remainingCount} {remainingCount === 1 ? 'annen advarsel' : 'andre advarsler'}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-2">
+            {remainingWarnings.map((warning, index) => renderAlert(warning, index + 1))}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 };
