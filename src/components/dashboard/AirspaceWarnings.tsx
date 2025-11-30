@@ -121,9 +121,14 @@ export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps)
       {/* Vis dropdown for resten hvis det finnes flere */}
       {remainingCount > 0 && (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2">
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            <span>+{remainingCount} {remainingCount === 1 ? 'annen advarsel' : 'andre advarsler'}</span>
+          <CollapsibleTrigger asChild>
+            <button 
+              type="button"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2 cursor-pointer"
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <span>+{remainingCount} {remainingCount === 1 ? 'annen advarsel' : 'andre advarsler'}</span>
+            </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-2 mt-2">
             {remainingWarnings.map((warning, index) => renderAlert(warning, index + 1))}
