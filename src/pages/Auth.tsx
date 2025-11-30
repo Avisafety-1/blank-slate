@@ -169,6 +169,7 @@ const Auth = () => {
           setPassword("");
           setFullName("");
           setSelectedCompanyId("");
+          setIsLogin(true);
         }
       }
     } catch (error: any) {
