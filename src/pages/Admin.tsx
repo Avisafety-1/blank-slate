@@ -103,14 +103,14 @@ const Admin = () => {
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      // Fetch profiles - filter by company if not superadmin
+      // Fetch profiles - filter by company
       let profilesQuery = supabase
         .from("profiles")
         .select("*, companies(navn)")
         .order("created_at", { ascending: false });
       
-      // Regular admin sees only their company
-      if (!isSuperAdmin && companyId) {
+      // Filter by company if companyId is set
+      if (companyId) {
         profilesQuery = profilesQuery.eq('company_id', companyId);
       }
 
