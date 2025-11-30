@@ -72,7 +72,7 @@ const StatusCard = ({
     </div>;
 };
 export const StatusPanel = () => {
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
   const [personnelDialogOpen, setPersonnelDialogOpen] = useState(false);
@@ -86,7 +86,7 @@ export const StatusPanel = () => {
       fetchEquipment();
       fetchPersonnel();
     }
-  }, [user]);
+  }, [user, companyId]);
 
   const fetchDrones = async () => {
     const { data, error } = await supabase

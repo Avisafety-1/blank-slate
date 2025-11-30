@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { supabase } from "@/integrations/supabase/client";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { nb } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MonthData {
   month: string;
@@ -12,6 +13,7 @@ interface MonthData {
 }
 
 export const KPIChart = () => {
+  const { companyId } = useAuth();
   const [chartData, setChartData] = useState<MonthData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,7 @@ export const KPIChart = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchIncidentStats = async () => {
     try {

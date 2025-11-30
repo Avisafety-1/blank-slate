@@ -29,7 +29,7 @@ export interface Document {
   opprettet_av: string | null;
 }
 const Documents = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, companyId } = useAuth();
   const navigate = useNavigate();
   const { isAdmin } = useAdminCheck();
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,7 +49,7 @@ const Documents = () => {
     isLoading,
     refetch
   } = useQuery({
-    queryKey: ["documents"],
+    queryKey: ["documents", companyId],
     queryFn: async () => {
       const {
         data,

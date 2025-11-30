@@ -8,6 +8,7 @@ import { DocumentDetailDialog } from "./DocumentDetailDialog";
 import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const getDocumentStatus = (doc: Document) => {
   if (!doc.gyldig_til) return "Grønn";
@@ -30,6 +31,7 @@ const StatusDot = ({ status }: { status: string }) => {
 };
 
 export const DocumentSection = () => {
+  const { companyId } = useAuth();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -98,7 +100,7 @@ export const DocumentSection = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchDocuments = async () => {
     try {

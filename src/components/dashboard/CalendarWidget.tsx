@@ -96,7 +96,7 @@ export const CalendarWidget = () => {
   useEffect(() => {
     fetchAllEvents();
     checkAdminStatus();
-  }, []);
+  }, [companyId]);
 
   const checkAdminStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -203,7 +203,7 @@ export const CalendarWidget = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchCustomEvents = async () => {
     try {

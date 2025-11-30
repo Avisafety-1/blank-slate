@@ -10,6 +10,7 @@ import { AddMissionDialog } from "./AddMissionDialog";
 import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Mission = any;
 type MissionSora = any;
@@ -27,6 +28,7 @@ const riskColors: Record<string, string> = {
 };
 
 export const MissionsSection = () => {
+  const { companyId } = useAuth();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -56,7 +58,7 @@ export const MissionsSection = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchMissions = async () => {
     const { data, error } = await (supabase as any)
