@@ -113,6 +113,16 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "radio",
     });
 
+    // RPAS CTR/TIZ Kontrollsoner (Luftfartstilsynet)
+    const rpasCtрLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "rpas_ctr",
+      name: "RPAS CTR/TIZ",
+      layer: rpasCtрLayer,
+      enabled: true,
+      icon: "shield",
+    });
+
     // Flyplasser (Luftfartstilsynet)
     const airportsLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
@@ -240,6 +250,44 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         rpasLayer.addLayer(geoJsonLayer);
       } catch (err) {
         console.error("Kunne ikke hente RPAS 5km soner:", err);
+      }
+    }
+
+    // Funksjon for å hente RPAS CTR/TIZ GeoJSON-data
+    async function fetchRpasCtрData() {
+      try {
+        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error("Feil ved henting av RPAS CTR/TIZ-data:", response.status);
+          return;
+        }
+        
+        const geojson = await response.json();
+        
+        // Legg til GeoJSON-lag med rosa/lilla polygoner (distinkt fra andre lag)
+        const geoJsonLayer = L.geoJSON(geojson, {
+          style: {
+            color: '#ec4899',      // Rosa kant
+            weight: 2,
+            fillColor: '#ec4899',  // Rosa fyll
+            fillOpacity: 0.2,
+          },
+          onEachFeature: (feature, layer) => {
+            // Legg til popup med informasjon om sonen
+            if (feature.properties) {
+              const props = feature.properties;
+              const name = props.navn || props.name || props.NAVN || 'Ukjent';
+              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
+            }
+          }
+        });
+        
+        rpasCtрLayer.clearLayers();
+        rpasCtрLayer.addLayer(geoJsonLayer);
+      } catch (err) {
+        console.error("Kunne ikke hente RPAS CTR/TIZ soner:", err);
       }
     }
 
@@ -431,6 +479,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     // Første kall
     fetchNsmData();
     fetchRpasData();
+    fetchRpasCtрData();
     fetchAirportsData();
     fetchAircraft();
     fetchAndDisplayMissions();
