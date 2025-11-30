@@ -99,6 +99,15 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       enabled: true,
     });
 
+    // RPAS 5km Restriksjonssoner (Luftfartstilsynet)
+    const rpasLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "rpas",
+      name: "🚁 RPAS 5km soner",
+      layer: rpasLayer,
+      enabled: true,
+    });
+
     // Geolokasjon med fallback
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -176,6 +185,44 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         nsmLayer.addLayer(geoJsonLayer);
       } catch (err) {
         console.error("Kunne ikke hente NSM Forbudsområder:", err);
+      }
+    }
+
+    // Funksjon for å hente RPAS 5km GeoJSON-data
+    async function fetchRpasData() {
+      try {
+        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_5km/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error("Feil ved henting av RPAS-data:", response.status);
+          return;
+        }
+        
+        const geojson = await response.json();
+        
+        // Legg til GeoJSON-lag med oransje polygoner (distinkt fra NSM som er rød)
+        const geoJsonLayer = L.geoJSON(geojson, {
+          style: {
+            color: '#f97316',      // Oransje kant
+            weight: 2,
+            fillColor: '#f97316',  // Oransje fyll
+            fillOpacity: 0.2,
+          },
+          onEachFeature: (feature, layer) => {
+            // Legg til popup med informasjon om sonen
+            if (feature.properties) {
+              const props = feature.properties;
+              const name = props.navn || props.name || props.NAVN || 'Ukjent';
+              layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
+            }
+          }
+        });
+        
+        rpasLayer.clearLayers();
+        rpasLayer.addLayer(geoJsonLayer);
+      } catch (err) {
+        console.error("Kunne ikke hente RPAS 5km soner:", err);
       }
     }
 
@@ -302,6 +349,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // Første kall
     fetchNsmData();
+    fetchRpasData();
     fetchAircraft();
     fetchAndDisplayMissions();
 
