@@ -188,26 +188,10 @@ export const CompanyManagementSection = () => {
             <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
           </div>
-          <div className="flex items-center gap-2">
-            {isSuperAdmin && companies.length > 0 && (
-              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className={isMobile ? "w-[140px]" : "w-[180px]"}>
-                  <SelectValue placeholder="Velg selskap..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.navn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
-              <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-              {isMobile ? "Nytt" : "Nytt selskap"}
-            </Button>
-          </div>
+          <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
+            <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {isMobile ? "Nytt" : "Nytt selskap"}
+          </Button>
         </div>
 
         {companies.length === 0 ? (
