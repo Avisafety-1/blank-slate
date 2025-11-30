@@ -108,6 +108,15 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       enabled: true,
     });
 
+    // Flyplasser (Luftfartstilsynet)
+    const airportsLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "airports",
+      name: "🛬 Flyplasser",
+      layer: airportsLayer,
+      enabled: true,
+    });
+
     // Geolokasjon med fallback
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -223,6 +232,55 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         rpasLayer.addLayer(geoJsonLayer);
       } catch (err) {
         console.error("Kunne ikke hente RPAS 5km soner:", err);
+      }
+    }
+
+    // Funksjon for å hente flyplasser fra Luftfartstilsynet
+    async function fetchAirportsData() {
+      try {
+        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/FlyplassInfo_PROD/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error("Feil ved henting av flyplassdata:", response.status);
+          return;
+        }
+        
+        const geojson = await response.json();
+        
+        // Legg til GeoJSON-lag med markører for flyplasser
+        const geoJsonLayer = L.geoJSON(geojson, {
+          pointToLayer: (feature, latlng) => {
+            // Bruk et flyplassikon (sirkel med distinkt farge)
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: '#6366f1',    // Indigo farge
+              fillOpacity: 0.9,
+              color: '#ffffff',
+              weight: 2,
+            });
+          },
+          onEachFeature: (feature, layer) => {
+            // Legg til popup med flyplassinformasjon
+            if (feature.properties) {
+              const props = feature.properties;
+              const name = props.NAVN || props.navn || props.name || 'Ukjent flyplass';
+              const icao = props.ICAO || props.icao || '';
+              const iata = props.IATA || props.iata || '';
+              
+              let popupContent = `<strong>✈️ ${name}</strong>`;
+              if (icao) popupContent += `<br/>ICAO: ${icao}`;
+              if (iata) popupContent += `<br/>IATA: ${iata}`;
+              
+              layer.bindPopup(popupContent);
+            }
+          }
+        });
+        
+        airportsLayer.clearLayers();
+        airportsLayer.addLayer(geoJsonLayer);
+      } catch (err) {
+        console.error("Kunne ikke hente flyplasser:", err);
       }
     }
 
@@ -350,6 +408,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     // Første kall
     fetchNsmData();
     fetchRpasData();
+    fetchAirportsData();
     fetchAircraft();
     fetchAndDisplayMissions();
 
