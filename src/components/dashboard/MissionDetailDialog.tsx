@@ -8,6 +8,7 @@ import { MapPin, Calendar, AlertTriangle, Pencil } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
+import { MissionMapPreview } from "./MissionMapPreview";
 
 type Mission = any;
 
@@ -97,6 +98,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               </div>
             </div>
           </div>
+
+          {mission.latitude && mission.longitude && (
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-3">Kartvisning</p>
+              <MissionMapPreview latitude={mission.latitude} longitude={mission.longitude} />
+            </div>
+          )}
 
           {mission.beskrivelse && (
             <div className="border-t border-border pt-4">

@@ -1,0 +1,136 @@
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+interface MissionMapPreviewProps {
+  latitude: number;
+  longitude: number;
+}
+
+export const MissionMapPreview = ({ latitude, longitude }: MissionMapPreviewProps) => {
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || !latitude || !longitude) return;
+
+    // Initialize map
+    const map = L.map(mapRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    }).setView([latitude, longitude], 11);
+    
+    leafletMapRef.current = map;
+
+    // Add base layer
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    // Add mission marker
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+          <circle cx="12" cy="10" r="3" fill="#3b82f6"/>
+        </svg>
+      </div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
+
+    L.marker([latitude, longitude], { icon })
+      .addTo(map)
+      .bindPopup("Oppdragsposisjon");
+
+    // Fetch and display airspace zones
+    const zonesLayer = L.layerGroup().addTo(map);
+
+    async function fetchZones() {
+      try {
+        // NSM zones (red)
+        const nsmResponse = await fetch(
+          "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
+        );
+        if (nsmResponse.ok) {
+          const nsmData = await nsmResponse.json();
+          L.geoJSON(nsmData, {
+            style: {
+              color: '#ef4444',
+              weight: 2,
+              fillColor: '#ef4444',
+              fillOpacity: 0.15,
+            },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || 'NSM Forbudsområde';
+              layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
+            }
+          }).addTo(zonesLayer);
+        }
+
+        // RPAS 5km zones (orange)
+        const rpasResponse = await fetch(
+          "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
+        );
+        if (rpasResponse.ok) {
+          const rpasData = await rpasResponse.json();
+          L.geoJSON(rpasData, {
+            style: {
+              color: '#f97316',
+              weight: 2,
+              fillColor: '#f97316',
+              fillOpacity: 0.15,
+            },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || 'RPAS 5km sone';
+              layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
+            }
+          }).addTo(zonesLayer);
+        }
+
+        // RPAS CTR/TIZ zones (pink)
+        const ctrResponse = await fetch(
+          "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
+        );
+        if (ctrResponse.ok) {
+          const ctrData = await ctrResponse.json();
+          L.geoJSON(ctrData, {
+            style: {
+              color: '#ec4899',
+              weight: 2,
+              fillColor: '#ec4899',
+              fillOpacity: 0.15,
+            },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || 'CTR/TIZ';
+              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
+            }
+          }).addTo(zonesLayer);
+        }
+      } catch (err) {
+        console.error("Feil ved henting av luftromssoner:", err);
+      }
+    }
+
+    fetchZones();
+
+    // Cleanup
+    return () => {
+      map.remove();
+    };
+  }, [latitude, longitude]);
+
+  return (
+    <div className="relative w-full h-[300px] rounded-lg overflow-hidden border border-border">
+      <div ref={mapRef} className="absolute inset-0" />
+    </div>
+  );
+};
