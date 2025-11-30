@@ -259,14 +259,29 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         // Legg til GeoJSON-lag med markører for flyplasser
         const geoJsonLayer = L.geoJSON(geojson, {
           pointToLayer: (feature, latlng) => {
-            // Bruk et flyplassikon (sirkel med distinkt farge)
-            return L.circleMarker(latlng, {
-              radius: 8,
-              fillColor: '#6366f1',    // Indigo farge
-              fillOpacity: 0.9,
-              color: '#ffffff',
-              weight: 2,
+            // Bruk et distinkt flyplassikon (plane landing SVG)
+            const icon = L.divIcon({
+              className: '',
+              html: `<div style="
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #6366f1;
+                border-radius: 6px;
+                border: 2px solid #ffffff;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 22h20"/>
+                  <path d="M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 9l.45-1.4L9 6 12 3c.73-.73 1.93-.73 2.66 0s.73 1.93 0 2.66L12 9l-1 4 1.13.7a2 2 0 0 0 1.8 0l.17-.1a2 2 0 0 1 1.8 0L17 14l-2 4-1.9.4-2.5-3.8"/>
+                </svg>
+              </div>`,
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
             });
+            return L.marker(latlng, { icon });
           },
           onEachFeature: (feature, layer) => {
             // Legg til popup med flyplassinformasjon
