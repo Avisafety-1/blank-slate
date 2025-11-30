@@ -14,6 +14,7 @@ interface OpenAIPMapProps {
 
 export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
@@ -23,6 +24,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
     // Init Leaflet-kart
     const map = L.map(mapRef.current).setView(DEFAULT_POS, 8);
+    leafletMapRef.current = map;
 
     // OSM-bakgrunn
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
@@ -341,13 +343,16 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
   }, [onMissionClick]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+    
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
         if (layer.id === id) {
           if (enabled) {
-            layer.layer.addTo(layer.layer as any);
+            layer.layer.addTo(map);
           } else {
-            (layer.layer as any).remove();
+            layer.layer.remove();
           }
           return { ...layer, enabled };
         }
