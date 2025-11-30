@@ -114,22 +114,41 @@ export const Header = () => {
             </div>
           </Button>
           
-          {/* Mobile Navigation - Hamburger Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="sm">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-card/95 backdrop-blur-md border-glass z-50">
-              <DropdownMenuItem onClick={() => navigate("/kart")}>Kart</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/dokumenter")}>Dokumenter</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/kalender")}>Kalender</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/hendelser")}>Hendelser</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/status")}>Status</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/ressurser")}>Ressurser</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Mobile company selector and menu */}
+          <div className="flex items-center gap-1 md:hidden">
+            {isSuperAdmin && companies.length > 0 && (
+              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
+                <SelectTrigger className="w-[120px] h-8">
+                  <Building2 className="w-3 h-3 mr-1" />
+                  <SelectValue placeholder="Velg..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.navn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {/* Mobile Navigation - Hamburger Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Menu className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-50">
+                <DropdownMenuItem onClick={() => navigate("/kart")}>Kart</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dokumenter")}>Dokumenter</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/kalender")}>Kalender</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/hendelser")}>Hendelser</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/status")}>Status</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/ressurser")}>Ressurser</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 flex-shrink">
@@ -141,11 +160,11 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>Ressurser</Button>
           </nav>
           
-          <nav className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+          <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9">
-                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <SelectTrigger className="w-[180px] h-9">
+                  <Building2 className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Velg selskap..." />
                 </SelectTrigger>
                 <SelectContent>
