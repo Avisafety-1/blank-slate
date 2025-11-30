@@ -13,6 +13,7 @@ import { IncidentDetailDialog } from "./IncidentDetailDialog";
 import { AddIncidentDialog } from "./AddIncidentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const severityColors = {
   Lav: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -37,6 +38,7 @@ const statusColors = {
 type Incident = Tables<"incidents">;
 
 export const IncidentsSection = () => {
+  const { companyId } = useAuth();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export const IncidentsSection = () => {
   // Fetch incidents from database
   useEffect(() => {
     fetchIncidents();
-  }, []);
+  }, [companyId]);
 
   // Real-time subscription
   useEffect(() => {
@@ -99,7 +101,7 @@ export const IncidentsSection = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   // Fetch follow-up incidents for logged-in user
   useEffect(() => {
@@ -150,7 +152,7 @@ export const IncidentsSection = () => {
     return () => {
       supabase.removeChannel(followUpChannel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchIncidents = async () => {
     try {

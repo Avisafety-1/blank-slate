@@ -70,7 +70,7 @@ const COLORS = {
 
 const Status = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<"month" | "quarter" | "year">("year");
   const [kpiData, setKpiData] = useState<KPIData>({
@@ -103,7 +103,7 @@ const Status = () => {
     }
 
     fetchAllStatistics();
-  }, [user, navigate, timePeriod]);
+  }, [user, navigate, timePeriod, companyId]);
 
   const fetchAllStatistics = async () => {
     setLoading(true);

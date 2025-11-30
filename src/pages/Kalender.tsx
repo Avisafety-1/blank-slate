@@ -49,7 +49,7 @@ const getColorForType = (type: string): string => {
 
 export default function Kalender() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -107,7 +107,7 @@ export default function Kalender() {
 
   useEffect(() => {
     fetchCustomEvents();
-  }, []);
+  }, [companyId]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -177,7 +177,7 @@ export default function Kalender() {
       supabase.removeChannel(incidentsChannel);
       supabase.removeChannel(documentsChannel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchCustomEvents = async () => {
     try {

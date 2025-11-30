@@ -20,7 +20,7 @@ import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDia
 
 const Resources = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, companyId } = useAuth();
   const [drones, setDrones] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [personnel, setPersonnel] = useState<any[]>([]);
@@ -77,7 +77,7 @@ const Resources = () => {
       supabase.removeChannel(profilesChannel);
       supabase.removeChannel(competenciesChannel);
     };
-  }, [user]);
+  }, [user, companyId]);
 
   const fetchDrones = async () => {
     const { data, error } = await (supabase as any)

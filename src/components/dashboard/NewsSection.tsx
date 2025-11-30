@@ -9,10 +9,12 @@ import { NewsDetailDialog } from "./NewsDetailDialog";
 import { AddNewsDialog } from "./AddNewsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type News = any;
 
 export const NewsSection = () => {
+  const { companyId } = useAuth();
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -40,7 +42,7 @@ export const NewsSection = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   const fetchNews = async () => {
     try {

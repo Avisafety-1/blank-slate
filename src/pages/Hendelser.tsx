@@ -50,7 +50,7 @@ const statusColors: Record<string, string> = {
 
 const Hendelser = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, companyId } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
@@ -88,7 +88,7 @@ const Hendelser = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     filterIncidents();
