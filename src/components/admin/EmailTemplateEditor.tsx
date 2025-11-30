@@ -9,19 +9,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -38,19 +27,25 @@ interface EmailTemplate {
 
 const templateTypes = [
   {
-    value: "customer_welcome",
-    label: "Kunde velkomst",
-    variables: ["{{customer_name}}", "{{company_name}}"],
-  },
-  {
     value: "user_approved",
     label: "Bruker godkjent",
     variables: ["{{user_name}}", "{{company_name}}"],
   },
   {
+    value: "customer_welcome",
+    label: "Ny kunde",
+    variables: ["{{customer_name}}", "{{company_name}}"],
+  },
+  {
     value: "mission_confirmation",
     label: "Oppdragsbekreftelse",
-    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{company_name}}"],
+    variables: [
+      "{{mission_title}}",
+      "{{mission_location}}",
+      "{{mission_date}}",
+      "{{mission_status}}",
+      "{{company_name}}",
+    ],
   },
   {
     value: "document_reminder",
@@ -78,9 +73,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
   // Handle image upload to Supabase Storage
   const handleImageUpload = async () => {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
     input.click();
 
     input.onchange = async () => {
@@ -89,20 +84,18 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
       try {
         // Upload image to Supabase Storage
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split(".").pop();
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
         const filePath = `${companyId}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('email-images')
-          .upload(filePath, file);
+        const { error: uploadError } = await supabase.storage.from("email-images").upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
         // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('email-images')
-          .getPublicUrl(filePath);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("email-images").getPublicUrl(filePath);
 
         // Read image dimensions
         const img = new Image();
@@ -135,37 +128,46 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
         img.src = publicUrl;
       } catch (error) {
-        console.error('Error uploading image:', error);
+        console.error("Error uploading image:", error);
         toast.error("Kunne ikke laste opp bilde");
       }
     };
   };
 
   // Quill modules configuration
-  const modules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'align': [] }],
-        ['link', 'image'],
-        ['clean']
-      ],
-      handlers: {
-        image: handleImageUpload
-      }
-    }
-  }), [companyId]);
+  const modules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ align: [] }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        handlers: {
+          image: handleImageUpload,
+        },
+      },
+    }),
+    [companyId],
+  );
 
   const formats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike',
-    'color', 'background',
-    'list', 'bullet',
-    'align',
-    'link', 'image'
+    "header",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "color",
+    "background",
+    "list",
+    "bullet",
+    "align",
+    "link",
+    "image",
   ];
 
   useEffect(() => {
@@ -225,14 +227,12 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         if (error) throw error;
       } else {
         // Create new template
-        const { error } = await supabase
-          .from("email_templates")
-          .insert({
-            company_id: companyId,
-            template_type: selectedTemplateType,
-            subject,
-            content,
-          });
+        const { error } = await supabase.from("email_templates").insert({
+          company_id: companyId,
+          template_type: selectedTemplateType,
+          subject,
+          content,
+        });
 
         if (error) throw error;
       }
@@ -256,7 +256,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   };
 
   const getPreviewContent = () => {
-    const currentTemplateType = templateTypes.find(t => t.value === selectedTemplateType);
+    const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
     let previewContent = content;
 
     // Replace variables with sample data
@@ -341,7 +341,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     return content;
   };
 
-  const currentTemplateType = templateTypes.find(t => t.value === selectedTemplateType);
+  const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
 
   if (loading) {
     return (
@@ -371,32 +371,32 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <Button 
-              variant="outline" 
-              onClick={handleReset} 
+            <Button
+              variant="outline"
+              onClick={handleReset}
               disabled={!template}
               size={isMobile ? "sm" : "default"}
-              className={isMobile ? 'flex-1' : ''}
+              className={isMobile ? "flex-1" : ""}
             >
-              <RefreshCw className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              <RefreshCw className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
               {isMobile ? "Tilbake" : "Tilbakestill"}
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setPreviewOpen(true)}
               size={isMobile ? "sm" : "default"}
-              className={isMobile ? 'flex-1' : ''}
+              className={isMobile ? "flex-1" : ""}
             >
-              <Eye className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              <Eye className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
               {isMobile ? "Vis" : "Forhåndsvis"}
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={saving}
               size={isMobile ? "sm" : "default"}
-              className={isMobile ? 'flex-1' : ''}
+              className={isMobile ? "flex-1" : ""}
             >
-              <Save className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              <Save className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
               {saving ? "Lagrer..." : "Lagre"}
             </Button>
           </div>
@@ -404,9 +404,11 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
         <div className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="template-type" className="text-xs sm:text-sm">Maltype</Label>
+            <Label htmlFor="template-type" className="text-xs sm:text-sm">
+              Maltype
+            </Label>
             <Select value={selectedTemplateType} onValueChange={setSelectedTemplateType}>
-              <SelectTrigger className={isMobile ? 'h-9 text-sm' : ''}>
+              <SelectTrigger className={isMobile ? "h-9 text-sm" : ""}>
                 <SelectValue placeholder="Velg maltype" />
               </SelectTrigger>
               <SelectContent>
@@ -424,31 +426,35 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
               {currentTemplateType?.variables.map((variable) => (
                 <p key={variable}>
-                  <code className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs">{variable}</code>
+                  <code className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs">
+                    {variable}
+                  </code>
                 </p>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject" className="text-xs sm:text-sm">E-post emne</Label>
+            <Label htmlFor="subject" className="text-xs sm:text-sm">
+              E-post emne
+            </Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Skriv inn e-post emne..."
-              className={isMobile ? 'h-9 text-sm' : ''}
+              className={isMobile ? "h-9 text-sm" : ""}
             />
           </div>
 
           <Tabs value={editorMode} onValueChange={(v) => setEditorMode(v as "visual" | "html")}>
-            <TabsList className={`grid w-full grid-cols-2 ${isMobile ? 'h-8' : 'max-w-md'}`}>
-              <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? 'text-xs' : ''}`}>
-                <EyeIcon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+            <TabsList className={`grid w-full grid-cols-2 ${isMobile ? "h-8" : "max-w-md"}`}>
+              <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
+                <EyeIcon className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
                 {isMobile ? "Visuell" : "Visuell Editor"}
               </TabsTrigger>
-              <TabsTrigger value="html" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? 'text-xs' : ''}`}>
-                <Code className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+              <TabsTrigger value="html" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
+                <Code className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
                 {isMobile ? "HTML" : "HTML Kode"}
               </TabsTrigger>
             </TabsList>
@@ -477,21 +483,24 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Bruk verktøylinjen ovenfor for å formatere teksten. Du kan bruke variabler fra listen ovenfor i teksten.
+                  Bruk verktøylinjen ovenfor for å formatere teksten. Du kan bruke variabler fra listen ovenfor i
+                  teksten.
                 </p>
               </div>
             </TabsContent>
 
             <TabsContent value="html" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label htmlFor="content" className="text-xs sm:text-sm">E-post innhold (HTML)</Label>
+                <Label htmlFor="content" className="text-xs sm:text-sm">
+                  E-post innhold (HTML)
+                </Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Skriv inn HTML-innhold..."
                   rows={isMobile ? 20 : 25}
-                  className={`font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
+                  className={`font-mono ${isMobile ? "text-xs" : "text-sm"}`}
                 />
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Du kan bruke HTML og inline CSS for å style e-posten.
@@ -504,7 +513,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[85vh]' : 'max-w-3xl max-h-[90vh]'} overflow-y-auto`}>
+        <DialogContent
+          className={`${isMobile ? "max-w-[95vw] max-h-[85vh]" : "max-w-3xl max-h-[90vh]"} overflow-y-auto`}
+        >
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Forhåndsvisning av e-post</DialogTitle>
           </DialogHeader>
@@ -518,9 +529,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               <p className="font-semibold text-sm sm:text-base">{subject || "Ingen emne"}</p>
             </div>
             <div className="border rounded-lg overflow-hidden">
-              <div 
+              <div
                 dangerouslySetInnerHTML={{ __html: getPreviewContent() }}
-                className={`bg-white ${isMobile ? 'text-sm' : ''}`}
+                className={`bg-white ${isMobile ? "text-sm" : ""}`}
               />
             </div>
           </div>
