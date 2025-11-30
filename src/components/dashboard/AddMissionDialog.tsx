@@ -601,7 +601,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
+              <PopoverContent className="w-[300px] p-0 z-[1001]">
                 <Command>
                   <CommandInput placeholder="Søk kunde..." />
                   <CommandList>
@@ -688,7 +688,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
+              <PopoverContent className="w-[300px] p-0 z-[1001]">
                 <Command>
                   <CommandInput placeholder="Søk personell..." />
                   <CommandList>
@@ -753,7 +753,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
+              <PopoverContent className="w-[300px] p-0 z-[1001]">
                 <Command>
                   <CommandInput placeholder="Søk utstyr..." />
                   <CommandList>
@@ -818,7 +818,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
+              <PopoverContent className="w-[300px] p-0 z-[1001]">
                 <Command>
                   <CommandInput placeholder="Søk drone..." />
                   <CommandList>
