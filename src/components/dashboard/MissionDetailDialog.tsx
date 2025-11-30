@@ -7,6 +7,7 @@ import { nb } from "date-fns/locale";
 import { MapPin, Calendar, AlertTriangle, Pencil } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
+import { AirspaceWarnings } from "./AirspaceWarnings";
 
 type Mission = any;
 
@@ -78,6 +79,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 <p className="text-base">{mission.lokasjon}</p>
               </div>
             </div>
+
+            {mission.latitude && mission.longitude && (
+              <AirspaceWarnings 
+                latitude={mission.latitude} 
+                longitude={mission.longitude} 
+              />
+            )}
 
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
