@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.sync-geo-layers]
 verify_jwt = false
+
+[functions.drone-weather]
+verify_jwt = false

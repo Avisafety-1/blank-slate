@@ -14,6 +14,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 
 interface AddMissionDialogProps {
   open: boolean;
@@ -521,6 +522,12 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
             <AirspaceWarnings 
               latitude={formData.latitude} 
               longitude={formData.longitude} 
+            />
+            
+            <DroneWeatherPanel 
+              latitude={formData.latitude} 
+              longitude={formData.longitude}
+              compact={true}
             />
           </div>
 
