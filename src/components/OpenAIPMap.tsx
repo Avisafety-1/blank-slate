@@ -73,12 +73,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         opacity: 0.8,
         attribution: 'NRL Luftfartshindre',
       }
-    ).addTo(map);
+    );
     layerConfigs.push({
       id: "nrl",
       name: "⚠️ Luftfartshindre (NRL)",
       layer: nrlLayer,
-      enabled: true,
+      enabled: false,
     });
 
     // Naturverns-restriksjonsområder (Miljødirektoratet)
