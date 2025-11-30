@@ -61,7 +61,7 @@ interface EmailTemplateEditorProps {
 export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditorProps) => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
-  const [selectedTemplateType, setSelectedTemplateType] = useState("customer_welcome");
+  const [selectedTemplateType, setSelectedTemplateType] = useState("user_approved");
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
