@@ -1,4 +1,4 @@
-import { Shield, LogOut, Settings, Menu } from "lucide-react";
+import { Shield, LogOut, Settings, Menu, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,6 +6,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,17 +21,28 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface Company {
+  id: string;
+  navn: string;
+}
+
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin } = useAuth();
+  const { signOut, companyName, isSuperAdmin, companyId, refetchUserInfo, user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
-  const { user } = useAuth();
+  const [companies, setCompanies] = useState<Company[]>([]);
 
   useEffect(() => {
     if (user) {
       checkAdminStatus();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetchCompanies();
+    }
+  }, [isSuperAdmin]);
 
   const checkAdminStatus = async () => {
     try {
@@ -37,6 +55,38 @@ export const Header = () => {
       setIsAdmin(data || false);
     } catch (error) {
       console.error("Error checking admin status:", error);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("id, navn")
+        .order("navn", { ascending: true });
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  };
+
+  const handleCompanySwitch = async (newCompanyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ company_id: newCompanyId })
+        .eq('id', user?.id);
+      
+      if (error) throw error;
+      
+      await refetchUserInfo();
+      const company = companies.find(c => c.id === newCompanyId);
+      toast.success(`Byttet til ${company?.navn}`);
+    } catch (error) {
+      console.error("Error switching company:", error);
+      toast.error("Kunne ikke bytte selskap");
     }
   };
 
@@ -92,6 +142,21 @@ export const Header = () => {
           </nav>
           
           <nav className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+            {isSuperAdmin && companies.length > 0 && (
+              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9">
+                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <SelectValue placeholder="Velg selskap..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.navn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {isAdmin && (
               <Button
                 variant="ghost"
