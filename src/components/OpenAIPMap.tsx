@@ -476,6 +476,109 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
+    // Map click handler for drone weather
+    map.on('click', async (e: any) => {
+      const { lat, lng } = e.latlng;
+      
+      const popup = L.popup()
+        .setLatLng([lat, lng])
+        .setContent(`
+          <div style="min-width: 280px; padding: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+              Dronevær for valgt posisjon
+            </div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+              Koordinater: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+            </div>
+            <div id="weather-content-${Date.now()}" style="text-align: center; padding: 12px;">
+              <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+              <div style="margin-top: 8px; font-size: 12px; color: #666;">Laster værdata...</div>
+            </div>
+            <style>
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+            </style>
+          </div>
+        `)
+        .openOn(map);
+      
+      // Fetch weather data
+      try {
+        const { data, error } = await supabase.functions.invoke('drone-weather', {
+          body: { lat, lon: lng }
+        });
+        
+        const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
+        if (!contentEl) return;
+        
+        if (error || !data) {
+          contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Kunne ikke hente værdata</div>';
+          return;
+        }
+        
+        const recommendation = data.drone_flight_recommendation;
+        const recommendationColors: Record<string, any> = {
+          warning: { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' },
+          caution: { bg: '#fef3c7', border: '#f59e0b', color: '#f59e0b' },
+          ok: { bg: '#d1fae5', border: '#10b981', color: '#10b981' },
+        };
+        const colors = recommendationColors[recommendation] || { bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' };
+        
+        const recommendationText: Record<string, string> = {
+          warning: 'Anbefales ikke å fly',
+          caution: 'Fly med forsiktighet',
+          ok: 'Gode flyforhold',
+        };
+        
+        let html = `
+          <div style="padding: 8px; background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 6px; margin-bottom: 12px;">
+            <div style="color: ${colors.color}; font-weight: 600; font-size: 13px;">
+              ${recommendationText[recommendation] || 'Ukjent'}
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
+            <div>
+              <div style="color: #6b7280; font-size: 11px;">Vind</div>
+              <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 11px;">Temp</div>
+              <div style="font-weight: 600;">${data.current.temperature?.toFixed(1) || '-'}°C</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
+              <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
+            </div>
+          </div>
+        `;
+        
+        if (data.warnings && data.warnings.length > 0) {
+          html += '<div style="margin-top: 12px; font-size: 11px;">';
+          data.warnings.forEach((w: any) => {
+            const wColors: Record<string, any> = {
+              warning: { bg: '#fee2e2', border: '#dc2626' },
+              caution: { bg: '#fef3c7', border: '#f59e0b' },
+              note: { bg: '#dbeafe', border: '#3b82f6' },
+            };
+            const wColor = wColors[w.level] || wColors.note;
+            html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${w.message}</div>`;
+          });
+          html += '</div>';
+        }
+        
+        html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
+        
+        contentEl.innerHTML = html;
+      } catch (err) {
+        console.error('Error fetching weather in map popup:', err);
+        const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
+        if (contentEl) {
+          contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Feil ved henting av værdata</div>';
+        }
+      }
+    });
+
     // Første kall
     fetchNsmData();
     fetchRpasData();
@@ -516,6 +619,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     return () => {
       clearInterval(interval);
       map.off("moveend");
+      map.off("click");
       missionsChannel.unsubscribe();
       map.remove();
     };
