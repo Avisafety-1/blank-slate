@@ -148,6 +148,29 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/ressurser")}>Ressurser</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/admin")}
+                className="gap-1 relative h-8 w-8 p-0"
+                title="Administrator"
+              >
+                <Settings className="w-4 h-4" />
+                <PendingApprovalsBadge isAdmin={isAdmin} />
+              </Button>
+            )}
+            <ProfileDialog />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              title="Logg ut"
+              className="h-8 w-8 p-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
           
           {/* Desktop Navigation */}
