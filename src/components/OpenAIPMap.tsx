@@ -208,7 +208,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     // Funksjon for å hente RPAS 5km GeoJSON-data
     async function fetchRpasData() {
       try {
-        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_5km/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
         
         const response = await fetch(url);
         if (!response.ok) {
