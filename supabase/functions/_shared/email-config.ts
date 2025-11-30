@@ -64,8 +64,16 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
     fromEmail = emailUser;
   }
 
+  // Final fallback to default AviSafe SMTP settings
   if (!emailHost || !emailUser || !emailPass) {
-    throw new Error("Email configuration is incomplete. Please configure SMTP settings in admin panel or environment variables.");
+    console.log("Using default AviSafe email settings");
+    emailHost = 'send.one.com';
+    emailPort = 465;
+    emailUser = 'noreply@avisafe.no';
+    emailPass = 'Avisafe!';
+    emailSecure = true;
+    fromEmail = 'noreply@avisafe.no';
+    fromName = 'AviSafe';
   }
 
   return {
