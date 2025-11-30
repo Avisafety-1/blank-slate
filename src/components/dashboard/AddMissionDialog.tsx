@@ -13,6 +13,7 @@ import { Loader2, Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 
 interface AddMissionDialogProps {
   open: boolean;
@@ -515,6 +516,11 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                 });
               }}
               placeholder="Søk etter adresse..."
+            />
+            
+            <AirspaceWarnings 
+              latitude={formData.latitude} 
+              longitude={formData.longitude} 
             />
           </div>
 

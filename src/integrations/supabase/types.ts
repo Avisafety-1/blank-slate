@@ -1338,6 +1338,10 @@ export type Database = {
             }
             Returns: string
           }
+      check_mission_airspace: {
+        Args: { p_lat: number; p_lon: number }
+        Returns: Json
+      }
       check_mission_zone_conflicts: {
         Args: { p_latitude: number; p_longitude: number }
         Returns: {
