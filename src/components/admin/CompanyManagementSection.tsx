@@ -28,6 +28,14 @@ import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash } from "lucide-react
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Company {
   id: string;
@@ -42,6 +50,7 @@ interface Company {
 }
 
 export const CompanyManagementSection = () => {
+  const { companyId, isSuperAdmin, refetchUserInfo, user } = useAuth();
   const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +152,24 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleCompanySwitch = async (newCompanyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ company_id: newCompanyId })
+        .eq('id', user?.id);
+      
+      if (error) throw error;
+      
+      await refetchUserInfo();
+      const company = companies.find(c => c.id === newCompanyId);
+      toast.success(`Byttet til ${company?.navn}`);
+    } catch (error) {
+      console.error("Error switching company:", error);
+      toast.error("Kunne ikke bytte selskap");
+    }
+  };
+
   if (loading) {
     return (
       <GlassCard className="p-3 sm:p-6">
@@ -161,10 +188,26 @@ export const CompanyManagementSection = () => {
             <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
           </div>
-          <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
-            <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-            {isMobile ? "Nytt" : "Nytt selskap"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && companies.length > 0 && (
+              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
+                <SelectTrigger className={isMobile ? "w-[140px]" : "w-[180px]"}>
+                  <SelectValue placeholder="Velg selskap..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.navn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
+              <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {isMobile ? "Nytt" : "Nytt selskap"}
+            </Button>
+          </div>
         </div>
 
         {companies.length === 0 ? (

@@ -12,6 +12,7 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   userRole: string | null;
   signOut: () => Promise<void>;
+  refetchUserInfo: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   isSuperAdmin: false,
   userRole: null,
   signOut: async () => {},
+  refetchUserInfo: async () => {},
 });
 
 export const useAuth = () => {
@@ -130,8 +132,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const refetchUserInfo = async () => {
+    if (user) {
+      await fetchUserInfo(user.id);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, companyId, companyName, isSuperAdmin, userRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, companyId, companyName, isSuperAdmin, userRole, signOut, refetchUserInfo }}>
       {children}
     </AuthContext.Provider>
   );

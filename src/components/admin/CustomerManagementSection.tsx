@@ -90,8 +90,8 @@ export const CustomerManagementSection = () => {
         .select("*")
         .order("navn", { ascending: true });
 
-      // Filter by company if not superadmin
-      if (!isSuperAdmin && companyId) {
+      // Filter by company if companyId is set
+      if (companyId) {
         query = query.eq("company_id", companyId);
       }
 
