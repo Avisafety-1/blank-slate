@@ -18,7 +18,8 @@ import {
   Download,
   Search,
   Loader2,
-  Edit
+  Edit,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -54,6 +55,7 @@ const Oppdrag = () => {
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -181,6 +183,11 @@ const Oppdrag = () => {
     fetchMissions();
     setEditDialogOpen(false);
     setEditingMission(null);
+  };
+
+  const handleMissionAdded = () => {
+    fetchMissions();
+    setAddDialogOpen(false);
   };
 
   const exportToPDF = async (mission: Mission) => {
@@ -442,12 +449,18 @@ const Oppdrag = () => {
 
             {/* Filter Controls */}
             <GlassCard className="p-4 space-y-4">
-              <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as "active" | "completed")}>
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                  <TabsTrigger value="active">Pågående og kommende</TabsTrigger>
-                  <TabsTrigger value="completed">Fullførte</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center justify-between gap-4">
+                <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as "active" | "completed")} className="flex-1">
+                  <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="active">Pågående og kommende</TabsTrigger>
+                    <TabsTrigger value="completed">Fullførte</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <Button onClick={() => setAddDialogOpen(true)} size="lg">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Legg til oppdrag
+                </Button>
+              </div>
 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -653,6 +666,13 @@ const Oppdrag = () => {
             )}
           </div>
         </main>
+
+        {/* Add Mission Dialog */}
+        <AddMissionDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onMissionAdded={handleMissionAdded}
+        />
 
         {/* Edit Mission Dialog */}
         <AddMissionDialog
