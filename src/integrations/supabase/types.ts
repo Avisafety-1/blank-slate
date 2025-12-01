@@ -1003,6 +1003,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          adresse: string | null
           approved: boolean | null
           approved_at: string | null
           approved_by: string | null
@@ -1012,9 +1013,14 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          nødkontakt_navn: string | null
+          nødkontakt_telefon: string | null
+          telefon: string | null
+          tittel: string | null
           updated_at: string | null
         }
         Insert: {
+          adresse?: string | null
           approved?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
@@ -1024,9 +1030,14 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          nødkontakt_navn?: string | null
+          nødkontakt_telefon?: string | null
+          telefon?: string | null
+          tittel?: string | null
           updated_at?: string | null
         }
         Update: {
+          adresse?: string | null
           approved?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
@@ -1036,6 +1047,10 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          nødkontakt_navn?: string | null
+          nødkontakt_telefon?: string | null
+          telefon?: string | null
+          tittel?: string | null
           updated_at?: string | null
         }
         Relationships: [
