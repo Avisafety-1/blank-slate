@@ -384,9 +384,9 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
           const track = typeof ac.track === "number" ? ac.track : 0;
           const altitude = ac.alt_baro ?? 0;
           
-          // Rødt ikon for fly under 1000 fot, ellers standard rødt
+          // Rødt ikon for fly under 1000 fot, grått/blått for høyere
           const isLowAltitude = altitude < 1000;
-          const filter = isLowAltitude ? 'brightness(0.8) saturate(1.5)' : '';
+          const filter = isLowAltitude ? '' : 'hue-rotate(200deg) saturate(0.6)';
 
           // Fly-ikon rotert etter heading
           const icon = L.divIcon({
