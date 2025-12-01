@@ -661,7 +661,7 @@ const Oppdrag = () => {
                         />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
-                          <div className="h-[200px]">
+                          <div className="h-[200px] relative z-0">
                             <MissionMapPreview
                               latitude={mission.latitude}
                               longitude={mission.longitude}
