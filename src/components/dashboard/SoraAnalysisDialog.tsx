@@ -195,11 +195,18 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
           return;
         }
         
+        if (!user?.id) {
+          toast.error("Kunne ikke finne bruker-ID");
+          return;
+        }
+        
         const { error } = await supabase
           .from("mission_sora")
           .insert({
             ...soraData,
             company_id: companyId,
+            prepared_by: user.id,
+            prepared_at: new Date().toISOString(),
           });
 
         if (error) throw error;
