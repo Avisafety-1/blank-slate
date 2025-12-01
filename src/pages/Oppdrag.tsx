@@ -29,6 +29,7 @@ import autoTable from "jspdf-autotable";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
+import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { toast } from "sonner";
 
 type Mission = any;
@@ -56,6 +57,8 @@ const Oppdrag = () => {
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
+  const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -188,6 +191,17 @@ const Oppdrag = () => {
   const handleMissionAdded = () => {
     fetchMissions();
     setAddDialogOpen(false);
+  };
+
+  const handleEditSora = (missionId: string) => {
+    setSoraEditingMissionId(missionId);
+    setSoraDialogOpen(true);
+  };
+
+  const handleSoraSaved = () => {
+    fetchMissions();
+    setSoraDialogOpen(false);
+    setSoraEditingMissionId(null);
   };
 
   const exportToPDF = async (mission: Mission) => {
@@ -677,15 +691,26 @@ const Oppdrag = () => {
                       <div className="pt-2 border-t border-border/50">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-xs font-semibold text-muted-foreground">SORA-ANALYSE</p>
-                          <Badge variant="outline" className={
-                            mission.sora.sora_status === "Ferdig" 
-                              ? "bg-green-500/20 text-green-300 border-green-500/30"
-                              : mission.sora.sora_status === "Pågår"
-                              ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
-                              : "bg-gray-500/20 text-gray-300 border-gray-500/30"
-                          }>
-                            {mission.sora.sora_status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => handleEditSora(mission.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Rediger
+                            </Button>
+                            <Badge variant="outline" className={
+                              mission.sora.sora_status === "Ferdig" 
+                                ? "bg-green-500/20 text-green-300 border-green-500/30"
+                                : mission.sora.sora_status === "Pågår"
+                                ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+                                : "bg-gray-500/20 text-gray-300 border-gray-500/30"
+                            }>
+                              {mission.sora.sora_status}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                           {mission.sora.sail && (
@@ -748,6 +773,14 @@ const Oppdrag = () => {
           onOpenChange={setEditDialogOpen}
           onMissionAdded={handleMissionUpdated}
           mission={editingMission}
+        />
+
+        {/* SORA Analysis Dialog */}
+        <SoraAnalysisDialog
+          open={soraDialogOpen}
+          onOpenChange={setSoraDialogOpen}
+          missionId={soraEditingMissionId || undefined}
+          onSaved={handleSoraSaved}
         />
       </div>
     </div>
