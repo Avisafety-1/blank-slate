@@ -13,7 +13,7 @@ import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialo
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 import { Header } from "@/components/Header";
-export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "annet";
+export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "annet";
 export interface Document {
   id: string;
   tittel: string;
