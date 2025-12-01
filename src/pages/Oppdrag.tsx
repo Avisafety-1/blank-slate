@@ -438,9 +438,43 @@ const Oppdrag = () => {
         }
       }
       
-      // Save PDF
-      pdf.save(`oppdrag-${mission.tittel.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
-      toast.success("PDF eksportert");
+      // Generate PDF as blob and upload to documents
+      const pdfBlob = pdf.output('blob');
+      const fileName = `oppdrag-${mission.tittel.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${Date.now()}.pdf`;
+      const filePath = `${companyId}/${fileName}`;
+      
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+      
+      // Create document record
+      const { error: insertError } = await supabase
+        .from('documents')
+        .insert({
+          tittel: `Oppdragsrapport - ${mission.tittel}`,
+          beskrivelse: `Eksportert rapport for oppdrag ${mission.tittel}`,
+          kategori: 'oppdrag',
+          fil_url: publicUrl,
+          fil_navn: fileName,
+          fil_storrelse: pdfBlob.size,
+          company_id: companyId,
+          opprettet_av: user?.id,
+        });
+      
+      if (insertError) throw insertError;
+      
+      toast.success("PDF eksportert og lagret i dokumenter");
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Kunne ikke eksportere PDF");

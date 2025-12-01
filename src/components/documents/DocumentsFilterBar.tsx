@@ -27,6 +27,9 @@ const CATEGORIES: {
   value: "nettsider",
   label: "Nettsider"
 }, {
+  value: "oppdrag",
+  label: "Oppdrag"
+}, {
   value: "annet",
   label: "Annet"
 }];
