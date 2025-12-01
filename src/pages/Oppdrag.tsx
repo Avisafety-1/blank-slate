@@ -460,23 +460,24 @@ const Oppdrag = () => {
 
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-bold text-foreground">Oppdrag</h1>
+              <h1 className="text-2xl sm:text-4xl font-bold text-foreground">Oppdrag</h1>
             </div>
 
             {/* Filter Controls */}
-            <GlassCard className="p-4 space-y-4">
-              <div className="flex items-center justify-between gap-4">
+            <GlassCard className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as "active" | "completed")} className="flex-1">
-                  <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="active">Pågående og kommende</TabsTrigger>
-                    <TabsTrigger value="completed">Fullførte</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="active" className="text-xs sm:text-sm">Pågående og kommende</TabsTrigger>
+                    <TabsTrigger value="completed" className="text-xs sm:text-sm">Fullførte</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <Button onClick={() => setAddDialogOpen(true)} size="lg">
+                <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto" size="lg">
                   <Plus className="h-4 w-4 mr-2" />
-                  Legg til oppdrag
+                  <span className="hidden sm:inline">Legg til oppdrag</span>
+                  <span className="sm:hidden">Nytt oppdrag</span>
                 </Button>
               </div>
 
@@ -503,30 +504,30 @@ const Oppdrag = () => {
                 </p>
               </GlassCard>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {filteredMissions.map((mission) => (
-                  <GlassCard key={mission.id} className="p-6 space-y-4">
+                  <GlassCard key={mission.id} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                     {/* Header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-2 flex-1">
-                        <h3 className="text-xl font-semibold text-foreground">{mission.tittel}</h3>
+                    <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 sm:gap-4">
+                      <div className="space-y-2 flex-1 w-full">
+                        <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
                         <div className="flex flex-wrap gap-2">
-                          <Badge className={statusColors[mission.status] || ""}>{mission.status}</Badge>
-                          <Badge className={riskColors[mission.risk_nivå] || ""}>{mission.risk_nivå} risiko</Badge>
+                          <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
+                          <Badge className={`text-xs ${riskColors[mission.risk_nivå] || ""}`}>{mission.risk_nivå} risiko</Badge>
                           {mission.sora && (
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="text-xs">
                               <FileText className="h-3 w-3 mr-1" />
                               SORA: {mission.sora.sora_status}
                             </Badge>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button onClick={() => handleEditMission(mission)} size="sm" variant="outline">
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <Button onClick={() => handleEditMission(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
                           <Edit className="h-4 w-4 mr-2" />
                           Rediger
                         </Button>
-                        <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline">
+                        <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
                           <Download className="h-4 w-4 mr-2" />
                           Eksporter PDF
                         </Button>
@@ -653,7 +654,7 @@ const Oppdrag = () => {
 
                     {/* Weather and Map Data */}
                     {mission.latitude && mission.longitude && (
-                      <div className="pt-2 border-t border-border/50 space-y-4">
+                      <div className="pt-2 border-t border-border/50 space-y-3 sm:space-y-4">
                         <DroneWeatherPanel
                           latitude={mission.latitude}
                           longitude={mission.longitude}
@@ -661,7 +662,7 @@ const Oppdrag = () => {
                         />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
-                          <div className="h-[200px] relative overflow-hidden">
+                          <div className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg">
                             <MissionMapPreview
                               latitude={mission.latitude}
                               longitude={mission.longitude}
