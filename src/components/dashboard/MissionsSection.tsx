@@ -11,6 +11,7 @@ import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 
 type Mission = any;
 type MissionSora = any;
@@ -178,7 +179,7 @@ export const MissionsSection = () => {
                   <span className="truncate">{mission.lokasjon}</span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs mb-1.5">
                   <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
                     {format(new Date(mission.tidspunkt), "dd. MMM HH:mm", { locale: nb })}
                   </Badge>
@@ -186,6 +187,16 @@ export const MissionsSection = () => {
                     {mission.risk_nivå}
                   </Badge>
                 </div>
+
+                {mission.latitude && mission.longitude && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DroneWeatherPanel 
+                      latitude={mission.latitude} 
+                      longitude={mission.longitude} 
+                      compact 
+                    />
+                  </div>
+                )}
               </div>
             ))
           )}
