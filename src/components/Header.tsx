@@ -140,6 +140,7 @@ export const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-50">
+                <DropdownMenuItem onClick={() => navigate("/oppdrag")}>Oppdrag</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/kart")}>Kart</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dokumenter")}>Dokumenter</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/kalender")}>Kalender</DropdownMenuItem>
@@ -175,6 +176,7 @@ export const Header = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 flex-shrink">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>Oppdrag</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>Kart</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>Dokumenter</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>Kalender</Button>
