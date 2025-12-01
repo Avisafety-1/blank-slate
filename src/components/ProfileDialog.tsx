@@ -395,7 +395,7 @@ export const ProfileDialog = () => {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh] sm:top-[50%] sm:translate-y-[-50%] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
         <DialogHeader>
           <DialogTitle>Min profil</DialogTitle>
         </DialogHeader>
@@ -439,7 +439,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {/* Profile Tab */}
-              <TabsContent value="profile" className="space-y-4 mt-4">
+              <TabsContent value="profile" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -593,7 +593,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="space-y-4 mt-4">
+              <TabsContent value="security" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>Sikkerhet</CardTitle>
@@ -618,7 +618,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Competencies Tab */}
-              <TabsContent value="competencies" className="space-y-4 mt-4">
+              <TabsContent value="competencies" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -686,7 +686,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Emergency Contact Tab */}
-              <TabsContent value="emergency" className="space-y-4 mt-4">
+              <TabsContent value="emergency" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -755,7 +755,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="space-y-4 mt-4">
+              <TabsContent value="notifications" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>Varslinger</CardTitle>
@@ -861,7 +861,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Incidents Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-4">
+              <TabsContent value="incidents" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>Hendelser til oppfølging ({followUpIncidents.length})</CardTitle>
