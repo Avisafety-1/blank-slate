@@ -469,6 +469,7 @@ const Oppdrag = () => {
           fil_navn: fileName,
           fil_storrelse: pdfBlob.size,
           company_id: companyId,
+          user_id: user?.id,
           opprettet_av: user?.id,
         });
       
