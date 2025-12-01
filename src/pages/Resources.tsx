@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { AddDroneDialog } from "@/components/resources/AddDroneDialog";
 import { AddEquipmentDialog } from "@/components/resources/AddEquipmentDialog";
@@ -366,10 +367,23 @@ const Resources = () => {
                       setPersonCompetencyDialogOpen(true);
                     }}
                   >
-                    <h3 className="font-semibold mb-2">
-                      {person.full_name || "Ukjent navn"}
-                    </h3>
-                    <div className="text-sm space-y-1">
+                    <div className="flex items-start gap-3 mb-2">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={person.avatar_url || ""} />
+                        <AvatarFallback>
+                          {person.full_name?.charAt(0) || person.email?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">
+                          {person.full_name || "Ukjent navn"}
+                        </h3>
+                        {person.email && (
+                          <p className="text-xs text-muted-foreground">{person.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-sm space-y-1 ml-[52px]">
                       {person.personnel_competencies && person.personnel_competencies.length > 0 ? (
                         person.personnel_competencies.map((comp: any) => (
                           <div key={comp.id} className="flex justify-between items-center py-1">
