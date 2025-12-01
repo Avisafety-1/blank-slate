@@ -16,6 +16,7 @@ import Documents from "./pages/Documents";
 import Kalender from "./pages/Kalender";
 import Hendelser from "./pages/Hendelser";
 import Status from "./pages/Status";
+import Oppdrag from "./pages/Oppdrag";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => {
                 <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
                 <Route path="/hendelser" element={<DomainGuard><Hendelser /></DomainGuard>} />
                 <Route path="/status" element={<DomainGuard><Status /></DomainGuard>} />
+                <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
