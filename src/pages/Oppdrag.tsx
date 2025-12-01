@@ -653,6 +653,55 @@ const Oppdrag = () => {
                       </div>
                     )}
 
+                    {/* SORA Analysis */}
+                    {mission.sora && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold text-muted-foreground">SORA-ANALYSE</p>
+                          <Badge variant="outline" className={
+                            mission.sora.sora_status === "Ferdig" 
+                              ? "bg-green-500/20 text-green-300 border-green-500/30"
+                              : mission.sora.sora_status === "Pågår"
+                              ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+                              : "bg-gray-500/20 text-gray-300 border-gray-500/30"
+                          }>
+                            {mission.sora.sora_status}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          {mission.sora.sail && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">SAIL</p>
+                              <p className="font-medium text-foreground">{mission.sora.sail}</p>
+                            </div>
+                          )}
+                          {mission.sora.igrc && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Initial GRC</p>
+                              <p className="font-medium text-foreground">{mission.sora.igrc}</p>
+                            </div>
+                          )}
+                          {mission.sora.fgrc && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Final GRC</p>
+                              <p className="font-medium text-foreground">{mission.sora.fgrc}</p>
+                            </div>
+                          )}
+                          {mission.sora.residual_risk_level && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Residual Risk</p>
+                              <p className="font-medium text-foreground">{mission.sora.residual_risk_level}</p>
+                            </div>
+                          )}
+                        </div>
+                        {mission.sora.residual_risk_comment && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {mission.sora.residual_risk_comment}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Notes */}
                     {mission.merknader && (
                       <div className="pt-2 border-t border-border/50">
