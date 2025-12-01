@@ -206,6 +206,24 @@ const Oppdrag = () => {
       
       let yPos = 45;
       
+      // Add map image if coordinates exist
+      if (mission.latitude && mission.longitude) {
+        try {
+          // Generate static map URL (using OpenStreetMap static map service)
+          const mapWidth = 600;
+          const mapHeight = 300;
+          const zoom = 12;
+          const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${mission.latitude},${mission.longitude}&zoom=${zoom}&size=${mapWidth}x${mapHeight}&markers=${mission.latitude},${mission.longitude},red-pushpin`;
+          
+          // Add map image to PDF
+          pdf.addImage(mapUrl, 'PNG', 15, yPos, 180, 90);
+          yPos += 100;
+        } catch (mapError) {
+          console.error("Error adding map to PDF:", mapError);
+          // Continue without map if there's an error
+        }
+      }
+      
       // Basic info
       pdf.setFontSize(12);
       pdf.setFont("helvetica", "bold");
