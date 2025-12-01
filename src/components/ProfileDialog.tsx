@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
+import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { toast } from "sonner";
 
 interface Profile {
@@ -98,6 +99,7 @@ export const ProfileDialog = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [competencyDialogOpen, setCompetencyDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -440,15 +442,15 @@ export const ProfileDialog = () => {
               <TabsContent value="profile" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <CardTitle>Profilinformasjon</CardTitle>
                       {!isEditing ? (
-                        <Button onClick={() => setIsEditing(true)} size="sm">
+                        <Button onClick={() => setIsEditing(true)} size="sm" className="w-full sm:w-auto">
                           Rediger
                         </Button>
                       ) : (
-                        <div className="flex gap-2">
-                          <Button onClick={handleSaveProfile} size="sm">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <Button onClick={handleSaveProfile} size="sm" className="flex-1 sm:flex-none">
                             <Save className="h-4 w-4 mr-1" />
                             Lagre
                           </Button>
@@ -461,6 +463,7 @@ export const ProfileDialog = () => {
                             }}
                             variant="outline"
                             size="sm"
+                            className="flex-1 sm:flex-none"
                           >
                             Avbryt
                           </Button>
@@ -618,7 +621,16 @@ export const ProfileDialog = () => {
               <TabsContent value="competencies" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Mine kompetanser ({competencies.length})</CardTitle>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <CardTitle>Mine kompetanser ({competencies.length})</CardTitle>
+                      <Button 
+                        onClick={() => setCompetencyDialogOpen(true)} 
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        Legg til
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {competencies.length > 0 ? (
@@ -677,10 +689,10 @@ export const ProfileDialog = () => {
               <TabsContent value="emergency" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <CardTitle>Nødkontakt</CardTitle>
                       {!isEditing && (
-                        <Button onClick={() => setIsEditing(true)} size="sm">
+                        <Button onClick={() => setIsEditing(true)} size="sm" className="w-full sm:w-auto">
                           Rediger
                         </Button>
                       )}
@@ -721,7 +733,7 @@ export const ProfileDialog = () => {
 
                     {isEditing && (
                       <div className="flex gap-2 pt-4">
-                        <Button onClick={handleSaveProfile} size="sm">
+                        <Button onClick={handleSaveProfile} size="sm" className="flex-1 sm:flex-none">
                           <Save className="h-4 w-4 mr-1" />
                           Lagre
                         </Button>
@@ -732,6 +744,7 @@ export const ProfileDialog = () => {
                           }}
                           variant="outline"
                           size="sm"
+                          className="flex-1 sm:flex-none"
                         >
                           Avbryt
                         </Button>
@@ -894,6 +907,19 @@ export const ProfileDialog = () => {
           incident={selectedIncident}
           open={incidentDialogOpen}
           onOpenChange={setIncidentDialogOpen}
+        />
+      )}
+
+      {/* Competency Dialog */}
+      {user && (
+        <PersonCompetencyDialog
+          open={competencyDialogOpen}
+          onOpenChange={setCompetencyDialogOpen}
+          person={{ id: user.id, full_name: profile?.full_name || user.email || 'Bruker', personnel_competencies: competencies }}
+          onCompetencyUpdated={() => {
+            fetchUserData();
+            setCompetencyDialogOpen(false);
+          }}
         />
       )}
     </Dialog>
