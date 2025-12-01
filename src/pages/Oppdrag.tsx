@@ -651,9 +651,14 @@ const Oppdrag = () => {
                       </div>
                     )}
 
-                    {/* Map and Weather Data */}
+                    {/* Weather and Map Data */}
                     {mission.latitude && mission.longitude && (
                       <div className="pt-2 border-t border-border/50 space-y-4">
+                        <DroneWeatherPanel
+                          latitude={mission.latitude}
+                          longitude={mission.longitude}
+                          compact
+                        />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
                           <div className="h-[200px]">
@@ -663,11 +668,6 @@ const Oppdrag = () => {
                             />
                           </div>
                         </div>
-                        <DroneWeatherPanel
-                          latitude={mission.latitude}
-                          longitude={mission.longitude}
-                          compact
-                        />
                       </div>
                     )}
 
