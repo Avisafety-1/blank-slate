@@ -5,6 +5,7 @@ import { openAipConfig } from "@/lib/openaip";
 import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
+import airplaneIcon from "@/assets/airplane-icon.png";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
@@ -381,16 +382,25 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
           if (lat == null || lon == null) continue;
 
           const track = typeof ac.track === "number" ? ac.track : 0;
+          const altitude = ac.alt_baro ?? 0;
+          
+          // Rødt ikon for fly under 1000 fot, ellers standard rødt
+          const isLowAltitude = altitude < 1000;
+          const filter = isLowAltitude ? 'brightness(0.8) saturate(1.5)' : '';
 
-          // Lite fly-ikon (✈️), rotert etter heading
+          // Fly-ikon rotert etter heading
           const icon = L.divIcon({
-            className: "", // vi styler direkte i HTML
+            className: "",
             html: `<div style="
-              font-size: 26px;
+              width: 32px;
+              height: 32px;
               transform: translate(-50%, -50%) rotate(${track}deg);
               transform-origin: center center;
-            ">✈️</div>`,
-            iconSize: [18, 18],
+              filter: ${filter};
+            ">
+              <img src="${airplaneIcon}" style="width: 100%; height: 100%;" alt="aircraft" />
+            </div>`,
+            iconSize: [32, 32],
           });
 
           const marker = L.marker([lat, lon], { icon });
