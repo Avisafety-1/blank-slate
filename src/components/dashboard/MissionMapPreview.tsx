@@ -129,8 +129,8 @@ export const MissionMapPreview = ({ latitude, longitude }: MissionMapPreviewProp
   }, [latitude, longitude]);
 
   return (
-    <div className="relative w-full h-[300px] rounded-lg overflow-hidden border border-border z-0">
-      <div ref={mapRef} className="absolute inset-0 z-0" />
+    <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
+      <div ref={mapRef} className="absolute inset-0" />
     </div>
   );
 };
