@@ -9,6 +9,7 @@ import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
+import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 
 type Mission = any;
 
@@ -82,10 +83,16 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             </div>
 
             {mission.latitude && mission.longitude && (
-              <AirspaceWarnings 
-                latitude={mission.latitude} 
-                longitude={mission.longitude} 
-              />
+              <>
+                <AirspaceWarnings 
+                  latitude={mission.latitude} 
+                  longitude={mission.longitude} 
+                />
+                <DroneWeatherPanel 
+                  latitude={mission.latitude} 
+                  longitude={mission.longitude} 
+                />
+              </>
             )}
 
             <div className="flex items-start gap-3">
