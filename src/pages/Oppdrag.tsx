@@ -17,7 +17,8 @@ import {
   FileText, 
   Download,
   Search,
-  Loader2
+  Loader2,
+  Edit
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -25,6 +26,8 @@ import droneBackground from "@/assets/drone-background.png";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
+import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
 import { toast } from "sonner";
 
 type Mission = any;
@@ -49,6 +52,8 @@ const Oppdrag = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -166,6 +171,17 @@ const Oppdrag = () => {
       mission.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
+  const handleEditMission = (mission: Mission) => {
+    setEditingMission(mission);
+    setEditDialogOpen(true);
+  };
+
+  const handleMissionUpdated = () => {
+    fetchMissions();
+    setEditDialogOpen(false);
+    setEditingMission(null);
+  };
 
   const exportToPDF = async (mission: Mission) => {
     try {
@@ -474,10 +490,16 @@ const Oppdrag = () => {
                           )}
                         </div>
                       </div>
-                      <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Eksporter PDF
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button onClick={() => handleEditMission(mission)} size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Rediger
+                        </Button>
+                        <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline">
+                          <Download className="h-4 w-4 mr-2" />
+                          Eksporter PDF
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Basic Info */}
@@ -598,9 +620,18 @@ const Oppdrag = () => {
                       </div>
                     )}
 
-                    {/* Weather Data */}
+                    {/* Map and Weather Data */}
                     {mission.latitude && mission.longitude && (
-                      <div className="pt-2 border-t border-border/50">
+                      <div className="pt-2 border-t border-border/50 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
+                          <div className="h-[200px]">
+                            <MissionMapPreview
+                              latitude={mission.latitude}
+                              longitude={mission.longitude}
+                            />
+                          </div>
+                        </div>
                         <DroneWeatherPanel
                           latitude={mission.latitude}
                           longitude={mission.longitude}
@@ -622,6 +653,14 @@ const Oppdrag = () => {
             )}
           </div>
         </main>
+
+        {/* Edit Mission Dialog */}
+        <AddMissionDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onMissionAdded={handleMissionUpdated}
+          mission={editingMission}
+        />
       </div>
     </div>
   );
