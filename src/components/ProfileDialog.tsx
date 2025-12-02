@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
+import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { toast } from "sonner";
 
 interface Profile {
@@ -100,6 +101,7 @@ export const ProfileDialog = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [competencyDialogOpen, setCompetencyDialogOpen] = useState(false);
+  const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -623,13 +625,24 @@ export const ProfileDialog = () => {
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <CardTitle>Mine kompetanser ({competencies.length})</CardTitle>
-                      <Button 
-                        onClick={() => setCompetencyDialogOpen(true)} 
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        Legg til
-                      </Button>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button 
+                          onClick={() => setLogbookDialogOpen(true)} 
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Book className="h-4 w-4 mr-1" />
+                          Loggbok
+                        </Button>
+                        <Button 
+                          onClick={() => setCompetencyDialogOpen(true)} 
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                        >
+                          Legg til
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -920,6 +933,16 @@ export const ProfileDialog = () => {
             fetchUserData();
             setCompetencyDialogOpen(false);
           }}
+        />
+      )}
+
+      {/* Logbook Dialog */}
+      {user && (
+        <FlightLogbookDialog
+          open={logbookDialogOpen}
+          onOpenChange={setLogbookDialogOpen}
+          personId={user.id}
+          personName={profile?.full_name || user.email || 'Bruker'}
         />
       )}
     </Dialog>
