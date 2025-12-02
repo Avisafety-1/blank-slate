@@ -23,6 +23,7 @@ interface Equipment {
   neste_vedlikehold: string | null;
   tilgjengelig: boolean;
   aktiv: boolean;
+  flyvetimer?: number;
 }
 
 interface EquipmentDetailDialogProps {
@@ -50,6 +51,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     merknader: "",
     sist_vedlikeholdt: "",
     neste_vedlikehold: "",
+    flyvetimer: 0,
   });
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         merknader: equipment.merknader || "",
         sist_vedlikeholdt: equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toISOString().split('T')[0] : "",
         neste_vedlikehold: equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toISOString().split('T')[0] : "",
+        flyvetimer: equipment.flyvetimer || 0,
       });
       setIsEditing(false);
     }
@@ -82,6 +85,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           merknader: formData.merknader || null,
           sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
           neste_vedlikehold: formData.neste_vedlikehold || null,
+          flyvetimer: formData.flyvetimer,
         })
         .eq("id", equipment.id);
 
@@ -157,6 +161,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   <p className="text-base">{equipment.serienummer}</p>
                 </div>
                 <div>
+                  <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
+                  <p className="text-base">{equipment.flyvetimer || 0} timer</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
                   <Badge className={`${statusColors[equipment.status] || ""} border`}>
                     {equipment.status}
@@ -231,6 +242,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                     onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="flyvetimer">Flyvetimer</Label>
+                  <Input
+                    id="flyvetimer"
+                    type="number"
+                    min="0"
+                    value={formData.flyvetimer}
+                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Status</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>

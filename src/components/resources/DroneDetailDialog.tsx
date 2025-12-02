@@ -10,8 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
+import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 
 interface Drone {
   id: string;
@@ -44,7 +45,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
+  const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
+  const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     modell: "",
     registrering: "",
@@ -68,6 +71,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
       });
       setIsEditing(false);
       fetchLinkedEquipment();
+      fetchLinkedPersonnel();
     }
   }, [drone]);
 
@@ -92,6 +96,46 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
       console.error("Error fetching linked equipment:", error);
     } else {
       setLinkedEquipment(data || []);
+    }
+  };
+
+  const fetchLinkedPersonnel = async () => {
+    if (!drone) return;
+
+    const { data, error } = await (supabase as any)
+      .from("drone_personnel")
+      .select(`
+        id,
+        profile:profile_id (
+          id,
+          full_name,
+          email,
+          tittel
+        )
+      `)
+      .eq("drone_id", drone.id);
+
+    if (error) {
+      console.error("Error fetching linked personnel:", error);
+    } else {
+      setLinkedPersonnel(data || []);
+    }
+  };
+
+  const handleRemovePersonnel = async (linkId: string, personName: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("drone_personnel")
+        .delete()
+        .eq("id", linkId);
+
+      if (error) throw error;
+
+      toast.success(`${personName} fjernet`);
+      fetchLinkedPersonnel();
+    } catch (error: any) {
+      console.error("Error removing personnel:", error);
+      toast.error(`Kunne ikke fjerne personell: ${error.message}`);
     }
   };
 
@@ -246,6 +290,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
               )}
 
+              {/* Linked Equipment Section */}
               <div className="border-t border-border pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -290,6 +335,59 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveEquipment(link.id, eq.navn)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Linked Personnel Section */}
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Tilknyttet personell</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setAddPersonnelDialogOpen(true)}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                  </Button>
+                </div>
+                
+                {linkedPersonnel.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen personell tilknyttet
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedPersonnel.map((link: any) => {
+                      const person = link.profile;
+                      if (!person) return null;
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{person.full_name || "Ukjent"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {person.tittel || person.email || ""}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemovePersonnel(link.id, person.full_name)}
                             className="h-8 w-8 p-0"
                           >
                             <X className="w-4 h-4" />
@@ -430,6 +528,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         droneId={drone?.id || ""}
         existingEquipmentIds={linkedEquipment.map((link) => link.equipment?.id).filter(Boolean)}
         onEquipmentAdded={fetchLinkedEquipment}
+      />
+
+      <AddPersonnelToDroneDialog
+        open={addPersonnelDialogOpen}
+        onOpenChange={setAddPersonnelDialogOpen}
+        droneId={drone?.id || ""}
+        existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
+        onPersonnelAdded={fetchLinkedPersonnel}
       />
     </Dialog>
   );

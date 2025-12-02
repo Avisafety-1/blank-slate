@@ -63,6 +63,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         merknader: (formData.get("merknader") as string) || null,
         sist_vedlikeholdt: (formData.get("sist_vedlikeholdt") as string) || null,
         neste_vedlikehold: (formData.get("neste_vedlikehold") as string) || null,
+        flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
       }]);
 
       if (error) {
@@ -129,6 +130,10 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           <div>
             <Label htmlFor="neste_vedlikehold">Neste vedlikehold</Label>
             <Input id="neste_vedlikehold" name="neste_vedlikehold" type="date" />
+          </div>
+          <div>
+            <Label htmlFor="flyvetimer">Flyvetimer</Label>
+            <Input id="flyvetimer" name="flyvetimer" type="number" min="0" defaultValue="0" />
           </div>
           <div>
             <Label htmlFor="merknader">Merknader</Label>
