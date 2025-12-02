@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface AddDroneDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface AddDroneDialogProps {
 export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: AddDroneDialogProps) => {
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const terminology = useTerminology();
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -75,12 +77,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         });
         
         if (error.code === "42501" || error.message?.includes("policy")) {
-          toast.error("Du har ikke tillatelse til å legge til drone");
+          toast.error(`Du har ikke tillatelse til å legge til ${terminology.vehicleLower}`);
         } else {
-          toast.error(`Kunne ikke legge til drone: ${error.message || "Ukjent feil"}`);
+          toast.error(`Kunne ikke legge til ${terminology.vehicleLower}: ${error.message || "Ukjent feil"}`);
         }
       } else {
-        toast.success("Drone lagt til");
+        toast.success(`${terminology.vehicle} lagt til`);
         form.reset();
         onDroneAdded();
         onOpenChange(false);
@@ -94,7 +96,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Legg til ny drone</DialogTitle>
+          <DialogTitle>{terminology.addVehicle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddDrone} className="space-y-4">
           <div>
@@ -119,7 +121,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
             </Select>
           </div>
           <div>
-            <Label htmlFor="flyvetimer">Flyvetimer</Label>
+            <Label htmlFor="flyvetimer">{terminology.flightHours}</Label>
             <Input id="flyvetimer" name="flyvetimer" type="number" defaultValue={0} />
           </div>
           <div>
@@ -135,7 +137,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
             <Textarea id="merknader" name="merknader" />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Legger til..." : "Legg til drone"}
+            {isSubmitting ? "Legger til..." : terminology.addVehicle}
           </Button>
         </form>
       </DialogContent>

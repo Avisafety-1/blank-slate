@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface DroneListDialogProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface DroneListDialogProps {
 export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }: DroneListDialogProps) => {
   const [selectedDrone, setSelectedDrone] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const terminology = useTerminology();
 
   const handleDroneClick = (drone: any) => {
     setSelectedDrone(drone);
@@ -30,7 +32,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Droner ({drones.length})</DialogTitle>
+          <DialogTitle>{terminology.vehicles} ({drones.length})</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface AddMissionDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
   const [openCustomerPopover, setOpenCustomerPopover] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
+  const terminology = useTerminology();
   
   const [formData, setFormData] = useState({
     tittel: "",
@@ -137,7 +139,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
       .eq("aktiv", true);
     
     if (error) {
-      toast.error("Kunne ikke hente droner");
+      toast.error(`Kunne ikke hente ${terminology.vehiclesLower}`);
       console.error(error);
     } else {
       setDrones(data || []);
@@ -812,7 +814,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
           </div>
 
           <div>
-            <Label>Droner</Label>
+            <Label>{terminology.vehicles}</Label>
             <Popover open={openDronePopover} onOpenChange={setOpenDronePopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -821,15 +823,15 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                   aria-expanded={openDronePopover}
                   className="w-full justify-between"
                 >
-                  Velg drone...
+                  {terminology.selectVehicle}...
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0 z-[1001]">
                 <Command>
-                  <CommandInput placeholder="Søk drone..." />
+                  <CommandInput placeholder={`Søk ${terminology.vehicleLower}...`} />
                   <CommandList>
-                    <CommandEmpty>Ingen droner funnet.</CommandEmpty>
+                    <CommandEmpty>{terminology.noVehicles}.</CommandEmpty>
                     <CommandGroup>
                       {drones.map((drone) => (
                         <CommandItem

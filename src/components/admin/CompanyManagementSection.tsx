@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ interface Company {
   kontakt_epost: string | null;
   kontakt_telefon: string | null;
   aktiv: boolean;
+  selskapstype: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -205,6 +206,7 @@ export const CompanyManagementSection = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Navn</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Type</TableHead>
                     <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Org.nr</TableHead>
                     <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
@@ -218,6 +220,21 @@ export const CompanyManagementSection = () => {
                         <div className="flex items-center gap-1 sm:gap-2">
                           <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                           <span className="truncate max-w-[120px] sm:max-w-none">{company.navn}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        <div className="flex items-center gap-1">
+                          {company.selskapstype === 'flyselskap' ? (
+                            <>
+                              <Plane className="h-3 w-3 text-muted-foreground" />
+                              <span className={isMobile ? 'hidden' : ''}>Flyselskap</span>
+                            </>
+                          ) : (
+                            <>
+                              <Radio className="h-3 w-3 text-muted-foreground" />
+                              <span className={isMobile ? 'hidden' : ''}>Droneoperatør</span>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className={isMobile ? 'hidden' : ''}>

@@ -4,6 +4,7 @@ import { AlertCircle, Wind, Droplets, Thermometer, Eye, CloudRain, Loader2, Aler
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface DroneWeatherPanelProps {
   latitude: number | null;
@@ -44,6 +45,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const terminology = useTerminology();
 
   useEffect(() => {
     if (latitude && longitude) {
@@ -83,7 +85,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Henter dronevær...</span>
+        <span>Henter {terminology.vehicleWeather.toLowerCase()}...</span>
       </div>
     );
   }
@@ -148,7 +150,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
           getRecommendationColor(weatherData.drone_flight_recommendation)
         )}>
           {getRecommendationIcon(weatherData.drone_flight_recommendation)}
-          <span>Dronevær: {getRecommendationText(weatherData.drone_flight_recommendation)}</span>
+          <span>{terminology.vehicleWeather}: {getRecommendationText(weatherData.drone_flight_recommendation)}</span>
         </div>
 
         {weatherData.warnings.length > 0 && (
@@ -191,7 +193,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
   return (
     <Card className="mt-2 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Dronevær</h3>
+        <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
         <div className={cn(
           "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
           getRecommendationColor(weatherData.drone_flight_recommendation)
