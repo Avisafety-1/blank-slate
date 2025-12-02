@@ -251,6 +251,42 @@ export type Database = {
           },
         ]
       }
+      drone_personnel: {
+        Row: {
+          created_at: string | null
+          drone_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          drone_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string | null
+          drone_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_personnel_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_personnel_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drones: {
         Row: {
           aktiv: boolean
@@ -405,6 +441,7 @@ export type Database = {
         Row: {
           aktiv: boolean
           company_id: string
+          flyvetimer: number
           id: string
           merknader: string | null
           navn: string
@@ -421,6 +458,7 @@ export type Database = {
         Insert: {
           aktiv?: boolean
           company_id: string
+          flyvetimer?: number
           id?: string
           merknader?: string | null
           navn: string
@@ -437,6 +475,7 @@ export type Database = {
         Update: {
           aktiv?: boolean
           company_id?: string
+          flyvetimer?: number
           id?: string
           merknader?: string | null
           navn?: string
@@ -456,6 +495,139 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flight_log_equipment: {
+        Row: {
+          equipment_id: string
+          flight_log_id: string
+          id: string
+        }
+        Insert: {
+          equipment_id: string
+          flight_log_id: string
+          id?: string
+        }
+        Update: {
+          equipment_id?: string
+          flight_log_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flight_log_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_log_equipment_flight_log_id_fkey"
+            columns: ["flight_log_id"]
+            isOneToOne: false
+            referencedRelation: "flight_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flight_log_personnel: {
+        Row: {
+          flight_log_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          flight_log_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          flight_log_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flight_log_personnel_flight_log_id_fkey"
+            columns: ["flight_log_id"]
+            isOneToOne: false
+            referencedRelation: "flight_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_log_personnel_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flight_logs: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          departure_location: string
+          drone_id: string
+          flight_date: string
+          flight_duration_minutes: number
+          id: string
+          landing_location: string
+          mission_id: string | null
+          movements: number
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          departure_location: string
+          drone_id: string
+          flight_date?: string
+          flight_duration_minutes: number
+          id?: string
+          landing_location: string
+          mission_id?: string | null
+          movements?: number
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          departure_location?: string
+          drone_id?: string
+          flight_date?: string
+          flight_duration_minutes?: number
+          id?: string
+          landing_location?: string
+          mission_id?: string | null
+          movements?: number
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flight_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_logs_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_logs_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
             referencedColumns: ["id"]
           },
         ]

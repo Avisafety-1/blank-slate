@@ -8,7 +8,8 @@ import { MissionsSection } from "@/components/dashboard/MissionsSection";
 import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
-import { Shield } from "lucide-react";
+import { Shield, Clock } from "lucide-react";
+import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { Header } from "@/components/Header";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,7 @@ const Index = () => {
   const [layout, setLayout] = useState(defaultLayout);
   const [isApproved, setIsApproved] = useState(false);
   const [checkingApproval, setCheckingApproval] = useState(true);
+  const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -217,8 +219,20 @@ const Index = () => {
 
                   {/* Center Column - Drone space and missions */}
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
-                    {/* AI Search Bar above missions */}
-                    <AISearchBar />
+                    {/* AI Search Bar and Flight Log button */}
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <AISearchBar />
+                      </div>
+                      <Button 
+                        onClick={() => setLogFlightDialogOpen(true)}
+                        className="gap-2 shrink-0"
+                        variant="secondary"
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span className="hidden sm:inline">Logg flytid</span>
+                      </Button>
+                    </div>
 
                     {/* Missions - pushed to bottom with mt-auto */}
                     <div className="mt-auto">
@@ -257,6 +271,12 @@ const Index = () => {
           </DndContext>
         </main>
       </div>
+
+      {/* Log Flight Time Dialog */}
+      <LogFlightTimeDialog 
+        open={logFlightDialogOpen} 
+        onOpenChange={setLogFlightDialogOpen} 
+      />
     </div>
   );
 };

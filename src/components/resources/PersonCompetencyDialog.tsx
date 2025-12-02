@@ -9,9 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Calendar } from "lucide-react";
+import { Pencil, Trash2, Calendar, Book } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
 
 interface Competency {
   id: string;
@@ -44,6 +45,7 @@ export function PersonCompetencyDialog({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
+  const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
   
   // New competency form state
   const [newType, setNewType] = useState("");
@@ -216,7 +218,18 @@ export function PersonCompetencyDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Kompetanser - {person.full_name}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Kompetanser - {person.full_name}</DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLogbookDialogOpen(true)}
+                className="gap-2"
+              >
+                <Book className="w-4 h-4" />
+                Loggbok
+              </Button>
+            </div>
           </DialogHeader>
 
           <ScrollArea className="h-[calc(90vh-8rem)] px-1">
@@ -438,6 +451,13 @@ export function PersonCompetencyDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FlightLogbookDialog
+        open={logbookDialogOpen}
+        onOpenChange={setLogbookDialogOpen}
+        personId={person.id}
+        personName={person.full_name}
+      />
     </>
   );
 }
