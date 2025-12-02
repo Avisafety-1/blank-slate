@@ -148,19 +148,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
 
       if (flightLogError) throw flightLogError;
 
-      // 2. Update drone flight hours
-      const { data: currentDrone } = await supabase
-        .from("drones")
-        .select("flyvetimer")
-        .eq("id", formData.droneId)
-        .single();
-
-      if (currentDrone) {
-        const flightHours = Math.round(formData.flightDurationMinutes / 60 * 100) / 100;
-        await supabase
-          .from("drones")
-          .update({ flyvetimer: currentDrone.flyvetimer + flightHours })
-          .eq("id", formData.droneId);
+      // 2. Update drone flight hours using RPC function (bypasses RLS)
+      const { error: droneUpdateError } = await supabase.rpc('add_drone_flight_hours', {
+        p_drone_id: formData.droneId,
+        p_minutes: formData.flightDurationMinutes
+      });
+      
+      if (droneUpdateError) {
+        console.error("Error updating drone flight hours:", droneUpdateError);
       }
 
       // 3. Update equipment flight hours and create flight_log_equipment entries
@@ -173,19 +168,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
             equipment_id: equipmentId,
           });
 
-        // Update equipment flight hours
-        const { data: currentEquipment } = await supabase
-          .from("equipment")
-          .select("flyvetimer")
-          .eq("id", equipmentId)
-          .single();
-
-        if (currentEquipment) {
-          const flightHours = Math.round(formData.flightDurationMinutes / 60 * 100) / 100;
-          await supabase
-            .from("equipment")
-            .update({ flyvetimer: (currentEquipment as any).flyvetimer + flightHours })
-            .eq("id", equipmentId);
+        // Update equipment flight hours using RPC function (bypasses RLS)
+        const { error: equipmentUpdateError } = await supabase.rpc('add_equipment_flight_hours', {
+          p_equipment_id: equipmentId,
+          p_minutes: formData.flightDurationMinutes
+        });
+        
+        if (equipmentUpdateError) {
+          console.error("Error updating equipment flight hours:", equipmentUpdateError);
         }
       }
 

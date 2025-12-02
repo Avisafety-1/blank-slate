@@ -1487,6 +1487,14 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      add_drone_flight_hours: {
+        Args: { p_drone_id: string; p_minutes: number }
+        Returns: undefined
+      }
+      add_equipment_flight_hours: {
+        Args: { p_equipment_id: string; p_minutes: number }
+        Returns: undefined
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
