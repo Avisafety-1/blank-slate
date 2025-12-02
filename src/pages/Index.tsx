@@ -179,6 +179,16 @@ const Index = () => {
 
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
+          {/* Mobile-only Log Flight Time button */}
+          <Button 
+            onClick={() => setLogFlightDialogOpen(true)}
+            className="w-full gap-2 mb-3 lg:hidden"
+            variant="secondary"
+          >
+            <Clock className="w-4 h-4" />
+            Logg flytid
+          </Button>
+
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
@@ -226,11 +236,11 @@ const Index = () => {
                       </div>
                       <Button 
                         onClick={() => setLogFlightDialogOpen(true)}
-                        className="gap-2 shrink-0"
+                        className="gap-2 shrink-0 hidden lg:flex"
                         variant="secondary"
                       >
                         <Clock className="w-4 h-4" />
-                        <span className="hidden sm:inline">Logg flytid</span>
+                        Logg flytid
                       </Button>
                     </div>
 
