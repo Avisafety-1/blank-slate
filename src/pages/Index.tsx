@@ -230,13 +230,11 @@ const Index = () => {
                   {/* Center Column - Drone space and missions */}
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* AI Search Bar and Flight Log button */}
-                    <div className="flex gap-2 items-center">
-                      <div className="flex-1">
-                        <AISearchBar />
-                      </div>
+                    <div className="flex flex-col gap-2">
+                      <AISearchBar />
                       <Button 
                         onClick={() => setLogFlightDialogOpen(true)}
-                        className="gap-2 shrink-0 hidden lg:flex"
+                        className="w-full gap-2 hidden lg:flex"
                         variant="secondary"
                       >
                         <Clock className="w-4 h-4" />
