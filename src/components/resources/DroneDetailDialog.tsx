@@ -243,7 +243,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-base">{drone.flyvetimer} timer</p>
+                  <p className="text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
@@ -426,8 +426,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                   <Input
                     id="flyvetimer"
                     type="number"
+                    step="0.01"
+                    min="0"
                     value={formData.flyvetimer}
-                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div>

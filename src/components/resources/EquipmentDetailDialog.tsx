@@ -162,7 +162,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-base">{equipment.flyvetimer || 0} timer</p>
+                  <p className="text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
                 </div>
               </div>
 
@@ -247,9 +247,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   <Input
                     id="flyvetimer"
                     type="number"
+                    step="0.01"
                     min="0"
                     value={formData.flyvetimer}
-                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
               </div>
