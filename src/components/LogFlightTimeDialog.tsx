@@ -268,14 +268,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
           <div>
             <Label htmlFor="mission">Tilknytt oppdrag (valgfritt)</Label>
             <Select 
-              value={formData.missionId} 
-              onValueChange={(value) => setFormData({ ...formData, missionId: value })}
+              value={formData.missionId || "none"} 
+              onValueChange={(value) => setFormData({ ...formData, missionId: value === "none" ? "" : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Velg oppdrag" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Ingen</SelectItem>
+                <SelectItem value="none">Ingen</SelectItem>
                 {missions.map((mission) => (
                   <SelectItem key={mission.id} value={mission.id}>
                     {mission.tittel} - {new Date(mission.tidspunkt).toLocaleDateString('nb-NO')}
