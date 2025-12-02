@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Calendar, Book } from "lucide-react";
+import { Pencil, Trash2, Book } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
@@ -216,32 +216,30 @@ export function PersonCompetencyDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Kompetanser - {person.full_name}</DialogTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLogbookDialogOpen(true)}
-                className="gap-2"
-              >
-                <Book className="w-4 h-4" />
-                Loggbok
-              </Button>
-            </div>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-4 sm:p-6">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-base sm:text-lg pr-8">{person.full_name}</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLogbookDialogOpen(true)}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <Book className="w-4 h-4" />
+              Loggbok
+            </Button>
           </DialogHeader>
 
-          <ScrollArea className="h-[calc(90vh-8rem)] px-1">
+          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)]">
             {/* Existing Competencies */}
-            <div className="space-y-4 mb-6 px-3">
-              <h3 className="text-sm font-semibold text-muted-foreground">📋 Eksisterende kompetanser</h3>
+            <div className="space-y-3 mb-6">
+              <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
               
               {(person.personnel_competencies || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
               ) : (
                 (person.personnel_competencies || []).map((competency) => (
-                  <div key={competency.id} className="border rounded-lg p-4 space-y-3 bg-card">
+                  <div key={competency.id} className="border rounded-lg p-3 sm:p-4 space-y-2 bg-card">
                     {editingId === competency.id ? (
                       // Edit mode
                       <div className="space-y-3">
@@ -276,21 +274,23 @@ export function PersonCompetencyDialog({
                             onChange={(e) => setEditDescription(e.target.value)}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <Label>Utstedt dato</Label>
+                            <Label className="text-xs">Utstedt</Label>
                             <Input
                               type="date"
                               value={editIssueDate}
                               onChange={(e) => setEditIssueDate(e.target.value)}
+                              className="h-9"
                             />
                           </div>
                           <div>
-                            <Label>Utløper dato</Label>
+                            <Label className="text-xs">Utløper</Label>
                             <Input
                               type="date"
                               value={editExpiryDate}
                               onChange={(e) => setEditExpiryDate(e.target.value)}
+                              className="h-9"
                             />
                           </div>
                         </div>
@@ -313,47 +313,41 @@ export function PersonCompetencyDialog({
                     ) : (
                       // View mode
                       <>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold">{competency.navn}</h4>
-                            <p className="text-sm text-muted-foreground">({competency.type})</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-sm sm:text-base truncate">{competency.navn}</h4>
+                            <span className="text-xs text-muted-foreground">{competency.type}</span>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1 shrink-0">
                             <Button
                               onClick={() => handleStartEdit(competency)}
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="h-8 w-8"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               onClick={() => handleDeleteClick(competency.id)}
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="h-8 w-8"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
                         {competency.beskrivelse && (
-                          <p className="text-sm">{competency.beskrivelse}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">{competency.beskrivelse}</p>
                         )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           {competency.utstedt_dato && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>
-                                Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yyyy", { locale: nb })}
-                              </span>
-                            </div>
+                            <span>Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
                           )}
                           {competency.utloper_dato && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>
-                                Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yyyy", { locale: nb })}
-                              </span>
-                            </div>
+                            <span className={new Date(competency.utloper_dato) < new Date() ? "text-destructive" : ""}>
+                              Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
+                            </span>
                           )}
                         </div>
                       </>
@@ -364,70 +358,75 @@ export function PersonCompetencyDialog({
             </div>
 
             {/* Add New Competency Form */}
-            <div className="border-t pt-6 px-3">
-              <h3 className="text-sm font-semibold mb-4">➕ Legg til ny kompetanse</h3>
-              <form onSubmit={handleAddCompetency} className="space-y-4">
-                <div>
-                  <Label htmlFor="new-type">Type *</Label>
-                  <Select value={newType} onValueChange={setNewType}>
-                    <SelectTrigger id="new-type">
-                      <SelectValue placeholder="Velg type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Kurs">Kurs</SelectItem>
-                      <SelectItem value="Sertifikat">Sertifikat</SelectItem>
-                      <SelectItem value="Lisens">Lisens</SelectItem>
-                      <SelectItem value="Utdanning">Utdanning</SelectItem>
-                      <SelectItem value="Godkjenning">Godkjenning</SelectItem>
-                      <SelectItem value="Kompetanse">Kompetanse</SelectItem>
-                      <SelectItem value="Annet">Annet</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
+              <form onSubmit={handleAddCompetency} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="new-type" className="text-xs">Type *</Label>
+                    <Select value={newType} onValueChange={setNewType}>
+                      <SelectTrigger id="new-type" className="h-9">
+                        <SelectValue placeholder="Velg type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Kurs">Kurs</SelectItem>
+                        <SelectItem value="Sertifikat">Sertifikat</SelectItem>
+                        <SelectItem value="Lisens">Lisens</SelectItem>
+                        <SelectItem value="Utdanning">Utdanning</SelectItem>
+                        <SelectItem value="Godkjenning">Godkjenning</SelectItem>
+                        <SelectItem value="Kompetanse">Kompetanse</SelectItem>
+                        <SelectItem value="Annet">Annet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="new-name" className="text-xs">Navn *</Label>
+                    <Input
+                      id="new-name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="F.eks. A3 drone"
+                      className="h-9"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="new-name">Navn *</Label>
-                  <Input
-                    id="new-name"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="F.eks. A3 drone"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="new-description">Beskrivelse</Label>
+                  <Label htmlFor="new-description" className="text-xs">Beskrivelse</Label>
                   <Textarea
                     id="new-description"
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Valgfri beskrivelse"
+                    placeholder="Valgfri"
+                    className="min-h-[60px]"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="new-issue-date">Utstedt dato</Label>
+                    <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
                     <Input
                       id="new-issue-date"
                       type="date"
                       value={newIssueDate}
                       onChange={(e) => setNewIssueDate(e.target.value)}
+                      className="h-9"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="new-expiry-date">Utløper dato</Label>
+                    <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
                     <Input
                       id="new-expiry-date"
                       type="date"
                       value={newExpiryDate}
                       onChange={(e) => setNewExpiryDate(e.target.value)}
+                      className="h-9"
                     />
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full">
-                  Legg til kompetanse
+                <Button type="submit" className="w-full h-10">
+                  Legg til
                 </Button>
               </form>
             </div>
