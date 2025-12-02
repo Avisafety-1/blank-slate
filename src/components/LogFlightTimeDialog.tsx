@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User } from "lucide-react";
 
 interface LogFlightTimeDialogProps {
   open: boolean;
@@ -28,17 +28,25 @@ interface Mission {
   tidspunkt: string;
 }
 
+interface Personnel {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
 export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [linkedEquipment, setLinkedEquipment] = useState<string[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     droneId: "",
     missionId: "",
+    pilotId: "",
     departureLocation: "",
     landingLocation: "",
     flightDurationMinutes: 0,
@@ -51,6 +59,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     if (open && companyId) {
       fetchDrones();
       fetchMissions();
+      fetchPersonnel();
     }
   }, [open, companyId]);
 
@@ -81,6 +90,16 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
       .limit(50);
     
     if (data) setMissions(data);
+  };
+
+  const fetchPersonnel = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("approved", true)
+      .order("full_name");
+    
+    if (data) setPersonnel(data);
   };
 
   const fetchDroneLinks = async (droneId: string) => {
@@ -179,7 +198,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
         }
       }
 
-      // 4. Create flight_log_personnel entries
+      // 4. Create flight_log_personnel entries for linked personnel
       for (const profileId of linkedPersonnel) {
         await (supabase as any)
           .from("flight_log_personnel")
@@ -189,12 +208,23 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
           });
       }
 
+      // 5. Add pilot to flight log personnel if selected and not already linked
+      if (formData.pilotId && !linkedPersonnel.includes(formData.pilotId)) {
+        await (supabase as any)
+          .from("flight_log_personnel")
+          .insert({
+            flight_log_id: flightLog.id,
+            profile_id: formData.pilotId,
+          });
+      }
+
       toast.success("Flytid logget!");
       
       // Reset form
       setFormData({
         droneId: "",
         missionId: "",
+        pilotId: "",
         departureLocation: "",
         landingLocation: "",
         flightDurationMinutes: 0,
@@ -246,7 +276,34 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
                   </SelectItem>
                 ))}
               </SelectContent>
+          </Select>
+          </div>
+
+          {/* Pilot selection */}
+          <div>
+            <Label htmlFor="pilot" className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              Pilot (valgfritt)
+            </Label>
+            <Select 
+              value={formData.pilotId || "none"} 
+              onValueChange={(value) => setFormData({ ...formData, pilotId: value === "none" ? "" : value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Velg pilot" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Ingen</SelectItem>
+                {personnel.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name || person.email || 'Ukjent'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Piloten får flytiden logget i sin loggbok
+            </p>
             {selectedDrone && (linkedEquipment.length > 0 || linkedPersonnel.length > 0) && (
               <p className="text-xs text-muted-foreground mt-1">
                 {linkedEquipment.length} utstyr og {linkedPersonnel.length} personell tilknyttet
