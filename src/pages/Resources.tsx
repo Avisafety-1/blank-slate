@@ -367,38 +367,60 @@ const Resources = () => {
                       setPersonCompetencyDialogOpen(true);
                     }}
                   >
-                    <div className="flex items-start gap-3 mb-2">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={person.avatar_url || ""} />
                         <AvatarFallback>
                           {person.full_name?.charAt(0) || person.email?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">
                           {person.full_name || "Ukjent navn"}
                         </h3>
-                        {person.email && (
-                          <p className="text-xs text-muted-foreground">{person.email}</p>
+                        {person.tittel && (
+                          <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
                         )}
                       </div>
                     </div>
-                    <div className="text-sm space-y-1 ml-[52px]">
-                      {person.personnel_competencies && person.personnel_competencies.length > 0 ? (
-                        person.personnel_competencies.map((comp: any) => (
-                          <div key={comp.id} className="flex justify-between items-center py-1">
-                            <span>{comp.navn}</span>
-                            {comp.utloper_dato && (
-                              <span className="text-xs text-muted-foreground">
-                                Utløper: {format(new Date(comp.utloper_dato), "dd.MM.yyyy")}
+                    
+                    {/* Competencies - compact mobile layout */}
+                    {person.personnel_competencies && person.personnel_competencies.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/50">
+                        <div className="flex flex-wrap gap-1.5">
+                          {person.personnel_competencies.slice(0, 3).map((comp: any) => {
+                            const isExpired = comp.utloper_dato && new Date(comp.utloper_dato) < new Date();
+                            const isExpiringSoon = comp.utloper_dato && 
+                              new Date(comp.utloper_dato) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) &&
+                              !isExpired;
+                            
+                            return (
+                              <span 
+                                key={comp.id} 
+                                className={`text-xs px-2 py-0.5 rounded-full ${
+                                  isExpired 
+                                    ? 'bg-destructive/20 text-destructive' 
+                                    : isExpiringSoon
+                                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                                    : 'bg-primary/10 text-primary'
+                                }`}
+                              >
+                                {comp.navn}
                               </span>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground">Ingen kompetanser registrert</p>
-                      )}
-                    </div>
+                            );
+                          })}
+                          {person.personnel_competencies.length > 3 && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              +{person.personnel_competencies.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(!person.personnel_competencies || person.personnel_competencies.length === 0) && (
+                      <p className="text-xs text-muted-foreground mt-2">Ingen kompetanser</p>
+                    )}
                   </div>
                 ))}
                 {personnel.filter((person) => {
