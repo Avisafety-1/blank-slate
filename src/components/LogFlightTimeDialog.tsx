@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User } from "lucide-react";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface LogFlightTimeDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ interface Personnel {
 
 export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
+  const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -130,7 +132,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     if (!user || !companyId || isSubmitting) return;
     
     if (!formData.droneId) {
-      toast.error("Velg en drone");
+      toast.error(`Velg en ${terminology.vehicleLower}`);
       return;
     }
     
@@ -256,15 +258,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Drone selection */}
+          {/* Drone/Fly selection */}
           <div>
-            <Label htmlFor="drone">Drone *</Label>
+            <Label htmlFor="drone">{terminology.vehicle} *</Label>
             <Select 
               value={formData.droneId} 
               onValueChange={(value) => setFormData({ ...formData, droneId: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Velg drone" />
+                <SelectValue placeholder={terminology.selectVehicle} />
               </SelectTrigger>
               <SelectContent>
                 {drones.map((drone) => (

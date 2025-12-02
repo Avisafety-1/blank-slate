@@ -3,12 +3,15 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export type CompanyType = 'droneoperator' | 'flyselskap' | null;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   companyId: string | null;
   companyName: string | null;
+  companyType: CompanyType;
   isSuperAdmin: boolean;
   userRole: string | null;
   signOut: () => Promise<void>;
@@ -21,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   companyId: null,
   companyName: null,
+  companyType: null,
   isSuperAdmin: false,
   userRole: null,
   signOut: async () => {},
@@ -41,6 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [companyType, setCompanyType] = useState<CompanyType>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -72,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else if (event === 'SIGNED_OUT') {
           setCompanyId(null);
           setCompanyName(null);
+          setCompanyType(null);
           setIsSuperAdmin(false);
           setUserRole(null);
         }
@@ -94,14 +100,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserInfo = async (userId: string) => {
     try {
-      // Fetch company info
+      // Fetch company info including type
       const { data: profile } = await supabase
         .from('profiles')
         .select(`
           company_id,
           companies (
             id,
-            navn
+            navn,
+            selskapstype
           )
         `)
         .eq('id', userId)
@@ -109,7 +116,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (profile) {
         setCompanyId(profile.company_id);
-        setCompanyName((profile.companies as any)?.navn || null);
+        const company = profile.companies as any;
+        setCompanyName(company?.navn || null);
+        setCompanyType(company?.selskapstype || 'droneoperator');
       }
 
       // Fetch user's single role
@@ -139,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, companyId, companyName, isSuperAdmin, userRole, signOut, refetchUserInfo }}>
+    <AuthContext.Provider value={{ user, session, loading, companyId, companyName, companyType, isSuperAdmin, userRole, signOut, refetchUserInfo }}>
       {children}
     </AuthContext.Provider>
   );

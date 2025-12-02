@@ -21,7 +21,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plane, Radio } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface Company {
   id: string;
@@ -31,6 +32,7 @@ interface Company {
   kontakt_epost: string | null;
   kontakt_telefon: string | null;
   aktiv: boolean;
+  selskapstype?: string | null;
 }
 
 interface CompanyManagementDialogProps {
@@ -45,6 +47,7 @@ const companySchema = z.object({
     .trim()
     .min(1, "Selskapsnavn er påkrevd")
     .max(200, "Selskapsnavn må være under 200 tegn"),
+  selskapstype: z.enum(['droneoperator', 'flyselskap']),
   org_nummer: z.string()
     .trim()
     .max(20, "Org.nummer må være under 20 tegn")
@@ -83,6 +86,7 @@ export const CompanyManagementDialog = ({
     resolver: zodResolver(companySchema),
     defaultValues: {
       navn: "",
+      selskapstype: "droneoperator",
       org_nummer: "",
       adresse: "",
       kontakt_epost: "",
@@ -95,6 +99,7 @@ export const CompanyManagementDialog = ({
       if (company) {
         form.reset({
           navn: company.navn,
+          selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
           org_nummer: company.org_nummer || "",
           adresse: company.adresse || "",
           kontakt_epost: company.kontakt_epost || "",
@@ -103,6 +108,7 @@ export const CompanyManagementDialog = ({
       } else {
         form.reset({
           navn: "",
+          selskapstype: "droneoperator",
           org_nummer: "",
           adresse: "",
           kontakt_epost: "",
@@ -118,6 +124,7 @@ export const CompanyManagementDialog = ({
     try {
       const companyData = {
         navn: data.navn,
+        selskapstype: data.selskapstype,
         org_nummer: data.org_nummer || null,
         adresse: data.adresse || null,
         kontakt_epost: data.kontakt_epost || null,
@@ -170,6 +177,59 @@ export const CompanyManagementDialog = ({
                   <FormLabel>Selskapsnavn *</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Skriv inn selskapsnavn" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="selskapstype"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Selskapstype *</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <div className="relative">
+                        <RadioGroupItem
+                          value="droneoperator"
+                          id="droneoperator"
+                          className="peer sr-only"
+                        />
+                        <label
+                          htmlFor="droneoperator"
+                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <Radio className="mb-2 h-6 w-6" />
+                          <span className="font-medium">Droneoperatør</span>
+                          <span className="text-xs text-muted-foreground mt-1">
+                            For droneoperasjoner
+                          </span>
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <RadioGroupItem
+                          value="flyselskap"
+                          id="flyselskap"
+                          className="peer sr-only"
+                        />
+                        <label
+                          htmlFor="flyselskap"
+                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <Plane className="mb-2 h-6 w-6" />
+                          <span className="font-medium">Flyselskap</span>
+                          <span className="text-xs text-muted-foreground mt-1">
+                            For flyoperasjoner
+                          </span>
+                        </label>
+                      </div>
+                    </RadioGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

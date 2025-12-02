@@ -71,6 +71,7 @@ export type Database = {
           kontakt_telefon: string | null
           navn: string
           org_nummer: string | null
+          selskapstype: string | null
           updated_at: string
         }
         Insert: {
@@ -82,6 +83,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn: string
           org_nummer?: string | null
+          selskapstype?: string | null
           updated_at?: string
         }
         Update: {
@@ -93,6 +95,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn?: string
           org_nummer?: string | null
+          selskapstype?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -13,6 +13,7 @@ import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
+import { useTerminology } from "@/hooks/useTerminology";
 
 interface Drone {
   id: string;
@@ -42,6 +43,7 @@ const statusColors: Record<string, string> = {
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
+  const terminology = useTerminology();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
@@ -176,12 +178,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
       if (error) throw error;
 
-      toast.success("Drone oppdatert");
+      toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
       onDroneUpdated();
     } catch (error: any) {
       console.error("Error updating drone:", error);
-      toast.error(`Kunne ikke oppdatere drone: ${error.message}`);
+      toast.error(`Kunne ikke oppdatere ${terminology.vehicleLower}: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -198,12 +200,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
       if (error) throw error;
 
-      toast.success("Drone slettet");
+      toast.success(`${terminology.vehicle} slettet`);
       onOpenChange(false);
       onDroneUpdated();
     } catch (error: any) {
       console.error("Error deleting drone:", error);
-      toast.error(`Kunne ikke slette drone: ${error.message}`);
+      toast.error(`Kunne ikke slette ${terminology.vehicleLower}: ${error.message}`);
     }
   };
 
@@ -216,7 +218,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Plane className="w-5 h-5 text-primary" />
-              {isEditing ? "Rediger drone" : drone.modell}
+              {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
             </DialogTitle>
             {!isEditing && (
               <Badge className={`${statusColors[drone.status] || ""} border`}>
