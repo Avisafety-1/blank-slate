@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-import { AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock, MessageSquare } from "lucide-react";
 
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -46,6 +46,7 @@ export const IncidentsSection = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [myFollowUpIncidents, setMyFollowUpIncidents] = useState<Incident[]>([]);
   const [followUpLoading, setFollowUpLoading] = useState(true);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   // Fetch incidents from database
   useEffect(() => {
@@ -154,6 +155,67 @@ export const IncidentsSection = () => {
     };
   }, [companyId]);
 
+  // Fetch comment counts for all incidents
+  useEffect(() => {
+    const fetchCommentCounts = async () => {
+      const allIncidentIds = [...new Set([...incidents.map(i => i.id), ...myFollowUpIncidents.map(i => i.id)])];
+      if (allIncidentIds.length === 0) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('incident_comments')
+          .select('incident_id')
+          .in('incident_id', allIncidentIds);
+
+        if (error) throw error;
+
+        const counts: Record<string, number> = {};
+        data?.forEach(row => {
+          counts[row.incident_id] = (counts[row.incident_id] || 0) + 1;
+        });
+        setCommentCounts(counts);
+      } catch (error) {
+        console.error('Error fetching comment counts:', error);
+      }
+    };
+
+    fetchCommentCounts();
+  }, [incidents, myFollowUpIncidents]);
+
+  // Real-time subscription for comment changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('incident-comments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'incident_comments'
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newComment = payload.new as { incident_id: string };
+            setCommentCounts(prev => ({
+              ...prev,
+              [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedComment = payload.old as { incident_id: string };
+            setCommentCounts(prev => ({
+              ...prev,
+              [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchIncidents = async () => {
     try {
       const { data, error } = await supabase
@@ -234,6 +296,12 @@ export const IncidentsSection = () => {
                         {incident.kategori && (
                           <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">{incident.kategori}</Badge>
                         )}
+                        {commentCounts[incident.id] > 0 && (
+                          <span className="flex items-center gap-0.5 text-muted-foreground">
+                            <MessageSquare className="w-3 h-3" />
+                            {commentCounts[incident.id]}
+                          </span>
+                        )}
                         <span className="text-muted-foreground">
                           {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: nb })}
                         </span>
@@ -280,6 +348,12 @@ export const IncidentsSection = () => {
                           <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
                             {incident.kategori}
                           </Badge>
+                        )}
+                        {commentCounts[incident.id] > 0 && (
+                          <span className="flex items-center gap-0.5 text-muted-foreground">
+                            <MessageSquare className="w-3 h-3" />
+                            {commentCounts[incident.id]}
+                          </span>
                         )}
                         <span className="text-muted-foreground">
                           {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: nb })}
