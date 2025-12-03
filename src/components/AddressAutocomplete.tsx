@@ -12,11 +12,16 @@ interface AddressAutocompleteProps {
   placeholder?: string;
 }
 
-interface NominatimResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-  place_id: number;
+interface KartverketResult {
+  adressetekst: string;
+  representasjonspunkt: {
+    lat: number;
+    lon: number;
+  };
+}
+
+interface KartverketResponse {
+  adresser: KartverketResult[];
 }
 
 export function AddressAutocomplete({
@@ -27,7 +32,7 @@ export function AddressAutocomplete({
   placeholder = "Søk etter adresse...",
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(value);
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [suggestions, setSuggestions] = useState<KartverketResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -58,13 +63,11 @@ export function AddressAutocomplete({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(searchQuery)}`,
+        `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(searchQuery)}&treffPerSide=5&asciiKompatibel=true`,
         {
           method: "GET",
           headers: {
             Accept: "application/json",
-            "User-Agent": "avisafe-sms/1.0 (contact: support@avisafe.no)",
-            "Accept-Language": "nb",
           },
         }
       );
@@ -73,9 +76,9 @@ export function AddressAutocomplete({
         throw new Error("Kunne ikke hente adresser");
       }
 
-      const data: NominatimResult[] = await response.json();
-      setSuggestions(data);
-      setIsOpen(data.length > 0);
+      const data: KartverketResponse = await response.json();
+      setSuggestions(data.adresser || []);
+      setIsOpen((data.adresser || []).length > 0);
     } catch (error) {
       console.error("Feil ved henting av adresser:", error);
       setSuggestions([]);
@@ -98,8 +101,8 @@ export function AddressAutocomplete({
     }, 350);
   };
 
-  const handleSelectSuggestion = (suggestion: NominatimResult) => {
-    const address = suggestion.display_name;
+  const handleSelectSuggestion = (suggestion: KartverketResult) => {
+    const address = suggestion.adressetekst;
     setQuery(address);
     onChange(address);
     setIsOpen(false);
@@ -108,8 +111,8 @@ export function AddressAutocomplete({
     if (onSelectLocation) {
       onSelectLocation({
         address,
-        lat: Number(suggestion.lat),
-        lon: Number(suggestion.lon),
+        lat: suggestion.representasjonspunkt.lat,
+        lon: suggestion.representasjonspunkt.lon,
       });
     }
   };
@@ -137,9 +140,9 @@ export function AddressAutocomplete({
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
           <ul className="py-1">
-            {suggestions.map((suggestion) => (
+            {suggestions.map((suggestion, index) => (
               <li
-                key={suggestion.place_id}
+                key={`${suggestion.adressetekst}-${index}`}
                 onClick={() => handleSelectSuggestion(suggestion)}
                 className={cn(
                   "px-3 py-2 cursor-pointer hover:bg-accent transition-colors",
@@ -148,7 +151,7 @@ export function AddressAutocomplete({
               >
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                  <span className="line-clamp-2">{suggestion.display_name}</span>
+                  <span className="line-clamp-2">{suggestion.adressetekst}</span>
                 </div>
               </li>
             ))}
