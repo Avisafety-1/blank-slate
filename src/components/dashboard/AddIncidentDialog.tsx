@@ -27,6 +27,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
   const [submitting, setSubmitting] = useState(false);
   const [missions, setMissions] = useState<Array<{ id: string; tittel: string; status: string; tidspunkt: string; lokasjon: string }>>([]);
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [causeTypes, setCauseTypes] = useState<Array<{ id: string; navn: string }>>([]);
+  const [contributingCauses, setContributingCauses] = useState<Array<{ id: string; navn: string }>>([]);
   const [formData, setFormData] = useState({
     tittel: "",
     beskrivelse: "",
@@ -37,12 +39,15 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
     lokasjon: "",
     mission_id: "",
     oppfolgingsansvarlig_id: "",
+    hovedaarsak: "",
+    medvirkende_aarsak: "",
   });
 
   useEffect(() => {
     if (open) {
       fetchMissions();
       fetchUsers();
+      fetchCauseTypes();
       if (defaultDate) {
         // Format date to datetime-local format
         const year = defaultDate.getFullYear();
@@ -63,6 +68,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
         lokasjon: "",
         mission_id: "",
         oppfolgingsansvarlig_id: "",
+        hovedaarsak: "",
+        medvirkende_aarsak: "",
       });
     }
   }, [open, defaultDate]);
@@ -94,6 +101,30 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchCauseTypes = async () => {
+    try {
+      const { data: causes, error: causesError } = await supabase
+        .from('incident_cause_types')
+        .select('id, navn')
+        .eq('aktiv', true)
+        .order('rekkefolge');
+
+      if (causesError) throw causesError;
+      setCauseTypes(causes || []);
+
+      const { data: contributing, error: contributingError } = await supabase
+        .from('incident_contributing_causes')
+        .select('id, navn')
+        .eq('aktiv', true)
+        .order('rekkefolge');
+
+      if (contributingError) throw contributingError;
+      setContributingCauses(contributing || []);
+    } catch (error) {
+      console.error('Error fetching cause types:', error);
     }
   };
 
@@ -152,6 +183,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
           rapportert_av: user.email || 'Ukjent',
           mission_id: formData.mission_id || null,
           oppfolgingsansvarlig_id: formData.oppfolgingsansvarlig_id || null,
+          hovedaarsak: formData.hovedaarsak || null,
+          medvirkende_aarsak: formData.medvirkende_aarsak || null,
         });
 
       if (error) throw error;
@@ -306,6 +339,44 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
               onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
               placeholder="F.eks. Teknisk, Operasjonell, etc."
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hovedaarsak">Hovedårsak (valgfritt)</Label>
+            <Select
+              value={formData.hovedaarsak}
+              onValueChange={(value) => setFormData({ ...formData, hovedaarsak: value })}
+            >
+              <SelectTrigger id="hovedaarsak">
+                <SelectValue placeholder="Velg hovedårsak..." />
+              </SelectTrigger>
+              <SelectContent>
+                {causeTypes.map((cause) => (
+                  <SelectItem key={cause.id} value={cause.navn}>
+                    {cause.navn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="medvirkende_aarsak">Medvirkende årsak (valgfritt)</Label>
+            <Select
+              value={formData.medvirkende_aarsak}
+              onValueChange={(value) => setFormData({ ...formData, medvirkende_aarsak: value })}
+            >
+              <SelectTrigger id="medvirkende_aarsak">
+                <SelectValue placeholder="Velg medvirkende årsak..." />
+              </SelectTrigger>
+              <SelectContent>
+                {contributingCauses.map((cause) => (
+                  <SelectItem key={cause.id} value={cause.navn}>
+                    {cause.navn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

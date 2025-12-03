@@ -372,6 +372,16 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
                 {incident.kategori}
               </Badge>
             )}
+            {incident.hovedaarsak && (
+              <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                Hovedårsak: {incident.hovedaarsak}
+              </Badge>
+            )}
+            {incident.medvirkende_aarsak && (
+              <Badge variant="outline" className="bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30">
+                Medvirkende: {incident.medvirkende_aarsak}
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3">
