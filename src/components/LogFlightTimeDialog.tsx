@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation, User } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User, CheckCircle } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 
 interface LogFlightTimeDialogProps {
@@ -55,6 +56,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     movements: 1,
     flightDate: new Date().toISOString().split('T')[0],
     notes: "",
+    markMissionCompleted: false,
   });
 
   useEffect(() => {
@@ -220,7 +222,22 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
           });
       }
 
-      toast.success("Flytid logget!");
+      // 6. Update mission status to "Fullført" if checkbox is checked
+      if (formData.missionId && formData.markMissionCompleted) {
+        const { error: missionUpdateError } = await supabase
+          .from("missions")
+          .update({ status: "Fullført" })
+          .eq("id", formData.missionId);
+        
+        if (missionUpdateError) {
+          console.error("Error updating mission status:", missionUpdateError);
+          toast.warning("Flytid logget, men kunne ikke oppdatere oppdragsstatus");
+        } else {
+          toast.success("Flytid logget og oppdrag markert som fullført!");
+        }
+      } else {
+        toast.success("Flytid logget!");
+      }
       
       // Reset form
       setFormData({
@@ -233,6 +250,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
         movements: 1,
         flightDate: new Date().toISOString().split('T')[0],
         notes: "",
+        markMissionCompleted: false,
       });
       
       onOpenChange(false);
@@ -318,7 +336,11 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
             <Label htmlFor="mission">Tilknytt oppdrag (valgfritt)</Label>
             <Select 
               value={formData.missionId || "none"} 
-              onValueChange={(value) => setFormData({ ...formData, missionId: value === "none" ? "" : value })}
+              onValueChange={(value) => setFormData({ 
+                ...formData, 
+                missionId: value === "none" ? "" : value,
+                markMissionCompleted: false 
+              })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Velg oppdrag" />
@@ -332,6 +354,25 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
                 ))}
               </SelectContent>
             </Select>
+            
+            {/* Option to mark mission as completed */}
+            {formData.missionId && (
+              <div className="flex items-center justify-between mt-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <Label htmlFor="markCompleted" className="text-sm cursor-pointer">
+                    Sett oppdrag til fullført
+                  </Label>
+                </div>
+                <Switch
+                  id="markCompleted"
+                  checked={formData.markMissionCompleted}
+                  onCheckedChange={(checked) => 
+                    setFormData({ ...formData, markMissionCompleted: checked })
+                  }
+                />
+              </div>
+            )}
           </div>
 
           {/* Flight date */}
