@@ -84,7 +84,8 @@ const Status = () => {
   const [missionsByStatus, setMissionsByStatus] = useState<StatusData[]>([]);
   const [missionsByRisk, setMissionsByRisk] = useState<StatusData[]>([]);
   const [incidentsByMonth, setIncidentsByMonth] = useState<MonthData[]>([]);
-  const [incidentsByCategory, setIncidentsByCategory] = useState<StatusData[]>([]);
+  const [incidentsByMainCause, setIncidentsByMainCause] = useState<StatusData[]>([]);
+  const [incidentsByContributingCause, setIncidentsByContributingCause] = useState<StatusData[]>([]);
   const [incidentsBySeverity, setIncidentsBySeverity] = useState<StatusData[]>([]);
   const [daysSinceLastSevere, setDaysSinceLastSevere] = useState<number>(0);
   const [droneStatus, setDroneStatus] = useState<StatusData[]>([]);
@@ -221,7 +222,7 @@ const Status = () => {
     
     const { data: incidents } = await supabase
       .from("incidents")
-      .select("hendelsestidspunkt, kategori, alvorlighetsgrad")
+      .select("hendelsestidspunkt, hovedaarsak, medvirkende_aarsak, alvorlighetsgrad")
       .gte("hendelsestidspunkt", startDate)
       .order("hendelsestidspunkt", { ascending: false });
 
@@ -248,14 +249,26 @@ const Status = () => {
       Object.entries(monthlyData).map(([month, count]) => ({ month, count }))
     );
 
-    // Incidents by category
-    const categoryCounts: { [key: string]: number } = {};
+    // Incidents by main cause (hovedårsak)
+    const mainCauseCounts: { [key: string]: number } = {};
     incidents.forEach((i) => {
-      const category = i.kategori || "Ukjent";
-      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      const cause = i.hovedaarsak || "Ikke angitt";
+      mainCauseCounts[cause] = (mainCauseCounts[cause] || 0) + 1;
     });
-    setIncidentsByCategory(
-      Object.entries(categoryCounts).map(([name, value]) => ({ name, value }))
+    setIncidentsByMainCause(
+      Object.entries(mainCauseCounts).map(([name, value]) => ({ name, value }))
+    );
+
+    // Incidents by contributing cause (medvirkende årsak)
+    const contributingCauseCounts: { [key: string]: number } = {};
+    incidents.forEach((i) => {
+      const cause = i.medvirkende_aarsak || "Ikke angitt";
+      contributingCauseCounts[cause] = (contributingCauseCounts[cause] || 0) + 1;
+    });
+    setIncidentsByContributingCause(
+      Object.entries(contributingCauseCounts)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
     );
 
     // Incidents by severity
@@ -400,13 +413,21 @@ const Status = () => {
       const wsIncidentsMonth = XLSX.utils.aoa_to_sheet(incidentMonthData);
       XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, "Hendelser per måned");
 
-      // Incidents by Category
-      const incidentCategoryData = [
-        ["Kategori", "Antall"],
-        ...incidentsByCategory.map(item => [item.name, item.value])
+      // Incidents by Main Cause
+      const incidentMainCauseData = [
+        ["Hovedårsak", "Antall"],
+        ...incidentsByMainCause.map(item => [item.name, item.value])
       ];
-      const wsIncidentsCategory = XLSX.utils.aoa_to_sheet(incidentCategoryData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsCategory, "Hendelser per kategori");
+      const wsIncidentsMainCause = XLSX.utils.aoa_to_sheet(incidentMainCauseData);
+      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, "Hovedårsaker");
+
+      // Incidents by Contributing Cause
+      const incidentContributingData = [
+        ["Medvirkende årsak", "Antall"],
+        ...incidentsByContributingCause.map(item => [item.name, item.value])
+      ];
+      const wsIncidentsContributing = XLSX.utils.aoa_to_sheet(incidentContributingData);
+      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, "Medvirkende årsaker");
 
       // Incidents by Severity
       const incidentSeverityData = [
@@ -760,14 +781,35 @@ const Status = () => {
         yPos += 70;
       }
 
-      // Incidents by Category Pie Chart
-      if (incidentsByCategory.length > 0) {
+      // Incidents by Main Cause Pie Chart
+      if (incidentsByMainCause.length > 0) {
         if (yPos > 200) {
           doc.addPage();
           yPos = 20;
         }
-        drawPieChart(incidentsByCategory, 60, yPos + 35, 30, "Hendelser per kategori");
+        drawPieChart(incidentsByMainCause, 60, yPos + 35, 30, "Fordeling hovedårsaker");
         yPos += 100;
+      }
+
+      // Incidents by Contributing Cause Table
+      if (incidentsByContributingCause.length > 0) {
+        if (yPos > 200) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Medvirkende årsaker", 20, yPos);
+        yPos += 5;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Årsak', 'Antall']],
+          body: incidentsByContributingCause.map(item => [item.name, item.value.toString()]),
+          theme: 'grid',
+          headStyles: { fillColor: COLORS.warning },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 15;
       }
 
       // Incidents by Severity Bar Chart
@@ -1105,7 +1147,7 @@ const Status = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Hendelser per måned (siste 6 mnd)
+              Hendelser per måned
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={incidentsByMonth}>
@@ -1126,12 +1168,12 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Hendelser per kategori
+              Fordeling hovedårsaker
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={incidentsByCategory}
+                  data={incidentsByMainCause}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -1140,7 +1182,7 @@ const Status = () => {
                   fill={COLORS.destructive}
                   dataKey="value"
                 >
-                  {incidentsByCategory.map((entry, index) => (
+                  {incidentsByMainCause.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={Object.values(COLORS)[index % Object.values(COLORS).length]}
@@ -1179,6 +1221,34 @@ const Status = () => {
             </ResponsiveContainer>
           </GlassCard>
         </div>
+
+        {/* Contributing Causes - Full Width Horizontal Bar Chart */}
+        <GlassCard className="p-6">
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Medvirkende årsaker
+          </h2>
+          <ResponsiveContainer width="100%" height={Math.max(300, incidentsByContributingCause.length * 35)}>
+            <BarChart data={incidentsByContributingCause} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
+              <YAxis
+                type="category"
+                dataKey="name"
+                stroke="hsl(var(--muted-foreground))"
+                width={180}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                }}
+              />
+              <Bar dataKey="value" fill={COLORS.warning} name="Antall" />
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
 
         {/* Resource & Document Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
