@@ -38,6 +38,12 @@ export const DocumentSection = () => {
   const [selectedDocStatus, setSelectedDocStatus] = useState<string>("Grønn");
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredDocuments = documents.filter((doc) =>
+    doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.kategori.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     fetchDocuments();
@@ -162,7 +168,12 @@ export const DocumentSection = () => {
 
         <div className="relative mb-2 sm:mb-3">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-          <Input placeholder="Søk..." className="pl-7 sm:pl-8 h-8 sm:h-9 text-xs sm:text-sm" />
+          <Input 
+            placeholder="Søk..." 
+            className="pl-7 sm:pl-8 h-8 sm:h-9 text-xs sm:text-sm" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         <div className="space-y-1.5 sm:space-y-2 flex-1 overflow-y-auto">
@@ -170,12 +181,14 @@ export const DocumentSection = () => {
             <div className="flex items-center justify-center py-8">
               <p className="text-xs sm:text-sm text-muted-foreground">Laster dokumenter...</p>
             </div>
-          ) : documents.length === 0 ? (
+          ) : filteredDocuments.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-xs sm:text-sm text-muted-foreground">Ingen dokumenter lagt til ennå</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {searchQuery ? "Ingen dokumenter funnet" : "Ingen dokumenter lagt til ennå"}
+              </p>
             </div>
           ) : (
-            documents.map((doc) => {
+            filteredDocuments.map((doc) => {
               const status = getDocumentStatus(doc);
               return (
                 <div
