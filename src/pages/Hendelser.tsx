@@ -8,11 +8,12 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+
 type Incident = {
   id: string;
   tittel: string;
@@ -30,19 +31,23 @@ type Incident = {
   oppfolgingsansvarlig_id: string | null;
   company_id: string;
 };
+
 const statusOptions = ["Alle", "Åpen", "Under behandling", "Ferdigbehandlet", "Lukket"];
+
 const severityColors: Record<string, string> = {
   Kritisk: "bg-red-100 text-red-900 border-red-300 dark:bg-red-900/30 dark:text-red-100 dark:border-red-700",
   Høy: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-900/30 dark:text-orange-100 dark:border-orange-700",
   Middels: "bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-100 dark:border-yellow-700",
   Lav: "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/30 dark:text-blue-100 dark:border-blue-700"
 };
+
 const statusColors: Record<string, string> = {
   Åpen: "bg-red-100 text-red-900 border-red-300 dark:bg-red-900/30 dark:text-red-100 dark:border-red-700",
   "Under behandling": "bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-100 dark:border-yellow-700",
   Ferdigbehandlet: "bg-green-100 text-green-900 border-green-300 dark:bg-green-900/30 dark:text-green-100 dark:border-green-700",
   Lukket: "bg-gray-100 text-gray-900 border-gray-300 dark:bg-gray-700/30 dark:text-gray-100 dark:border-gray-600"
 };
+
 const Hendelser = () => {
   const navigate = useNavigate();
   const {
@@ -53,12 +58,14 @@ const Hendelser = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Alle");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth", {
@@ -66,6 +73,7 @@ const Hendelser = () => {
       });
     }
   }, [user, authLoading, navigate]);
+
   useEffect(() => {
     fetchIncidents();
     const channel = supabase.channel('incidents_changes').on('postgres_changes', {
@@ -79,9 +87,71 @@ const Hendelser = () => {
       supabase.removeChannel(channel);
     };
   }, [companyId]);
+
+  // Fetch comment counts when incidents change
+  useEffect(() => {
+    const fetchCommentCounts = async () => {
+      if (incidents.length === 0) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('incident_comments')
+          .select('incident_id')
+          .in('incident_id', incidents.map(i => i.id));
+
+        if (error) throw error;
+
+        const counts: Record<string, number> = {};
+        data?.forEach(row => {
+          counts[row.incident_id] = (counts[row.incident_id] || 0) + 1;
+        });
+        setCommentCounts(counts);
+      } catch (error) {
+        console.error('Error fetching comment counts:', error);
+      }
+    };
+
+    fetchCommentCounts();
+  }, [incidents]);
+
+  // Real-time subscription for comment changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('hendelser-comments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'incident_comments'
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newComment = payload.new as { incident_id: string };
+            setCommentCounts(prev => ({
+              ...prev,
+              [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedComment = payload.old as { incident_id: string };
+            setCommentCounts(prev => ({
+              ...prev,
+              [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   useEffect(() => {
     filterIncidents();
   }, [incidents, searchQuery, selectedStatus]);
+
   const fetchIncidents = async () => {
     try {
       const {
@@ -114,6 +184,7 @@ const Hendelser = () => {
       setLoading(false);
     }
   };
+
   const filterIncidents = () => {
     let filtered = [...incidents];
 
@@ -129,15 +200,18 @@ const Hendelser = () => {
     }
     setFilteredIncidents(filtered);
   };
+
   const handleIncidentClick = (incident: Incident) => {
     setSelectedIncident(incident);
     setDetailDialogOpen(true);
   };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-foreground">Laster...</p>
       </div>;
   }
+
   return <div className="min-h-screen relative w-full overflow-x-hidden">
       {/* Background with gradient overlay */}
       <div className="fixed inset-0 z-0" style={{
@@ -212,6 +286,12 @@ const Hendelser = () => {
                         </span>
                         {incident.rapportert_av && <span>👤 {incident.rapportert_av}</span>}
                         {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && <span>🔔 Ansvarlig: {oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>}
+                        {commentCounts[incident.id] > 0 && (
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {commentCounts[incident.id]}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -226,4 +306,5 @@ const Hendelser = () => {
       <IncidentDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} incident={selectedIncident} />
     </div>;
 };
+
 export default Hendelser;
