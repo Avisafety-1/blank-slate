@@ -12,8 +12,8 @@ export const GlassCard = ({ children, className, dragHandleProps }: GlassCardPro
   return (
     <div
       className={cn(
-        "bg-card/40 backdrop-blur-md border border-glass rounded-lg p-3 sm:p-5 shadow-lg relative group w-full overflow-hidden",
-        className
+        "bg-card/50 backdrop-blur-md border border-glass rounded-lg p-3 sm:p-5 shadow-lg relative group w-full overflow-hidden",
+        className,
       )}
     >
       {dragHandleProps && (
