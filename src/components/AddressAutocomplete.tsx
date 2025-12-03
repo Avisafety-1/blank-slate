@@ -14,6 +14,9 @@ interface AddressAutocompleteProps {
 
 interface KartverketResult {
   adressetekst: string;
+  postnummer: string;
+  poststed: string;
+  kommunenavn: string;
   representasjonspunkt: {
     lat: number;
     lon: number;
@@ -101,8 +104,12 @@ export function AddressAutocomplete({
     }, 350);
   };
 
+  const formatFullAddress = (suggestion: KartverketResult) => {
+    return `${suggestion.adressetekst}, ${suggestion.postnummer} ${suggestion.poststed}`;
+  };
+
   const handleSelectSuggestion = (suggestion: KartverketResult) => {
-    const address = suggestion.adressetekst;
+    const address = formatFullAddress(suggestion);
     setQuery(address);
     onChange(address);
     setIsOpen(false);
@@ -151,7 +158,7 @@ export function AddressAutocomplete({
               >
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                  <span className="line-clamp-2">{suggestion.adressetekst}</span>
+                  <span className="line-clamp-2">{formatFullAddress(suggestion)}</span>
                 </div>
               </li>
             ))}
