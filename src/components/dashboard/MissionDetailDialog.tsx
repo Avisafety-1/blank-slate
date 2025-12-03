@@ -109,7 +109,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           {mission.latitude && mission.longitude && (
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-3">Kartvisning</p>
-              <MissionMapPreview latitude={mission.latitude} longitude={mission.longitude} />
+              <div className="h-[200px] relative overflow-hidden rounded-lg">
+                <MissionMapPreview latitude={mission.latitude} longitude={mission.longitude} />
+              </div>
             </div>
           )}
 
