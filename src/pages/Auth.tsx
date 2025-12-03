@@ -224,7 +224,7 @@ const Auth = () => {
   return <div className="min-h-screen relative flex items-center justify-center">
       {/* Background */}
       <div className="fixed inset-0 z-0" style={{
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${droneBackground})`,
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
       backgroundSize: "cover",
       backgroundPosition: "center"
     }} />
