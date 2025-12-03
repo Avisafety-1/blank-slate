@@ -571,7 +571,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1001]">
                   <SelectItem value="Planlagt">Planlagt</SelectItem>
                   <SelectItem value="Pågående">Pågående</SelectItem>
                   <SelectItem value="Fullført">Fullført</SelectItem>
@@ -585,7 +585,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1001]">
                   <SelectItem value="Lav">Lav</SelectItem>
                   <SelectItem value="Middels">Middels</SelectItem>
                   <SelectItem value="Høy">Høy</SelectItem>
