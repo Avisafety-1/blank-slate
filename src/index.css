@@ -63,7 +63,7 @@ All colors MUST be HSL.
     --background: 210 30% 8%;
     --foreground: 210 20% 98%;
 
-    --card: 210 24% 18%;
+    --card: 210 24% 30%;
     --card-foreground: 210 20% 98%;
 
     --popover: 210 24% 12%;
@@ -92,7 +92,7 @@ All colors MUST be HSL.
     --status-yellow: 38 92% 50%;
     --status-red: 0 84% 60%;
 
-    --glass-bg: 210 24% 18% / 0.6;
+    --glass-bg: 210 24% 30% / 0.6;
     --glass-border: 210 20% 25% / 0.3;
 
     --sidebar-background: 240 5.9% 10%;
