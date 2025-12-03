@@ -30,6 +30,8 @@ type Incident = {
   mission_id: string | null;
   oppfolgingsansvarlig_id: string | null;
   company_id: string;
+  hovedaarsak: string | null;
+  medvirkende_aarsak: string | null;
 };
 
 const statusOptions = ["Alle", "Åpen", "Under behandling", "Ferdigbehandlet", "Lukket"];
@@ -271,6 +273,16 @@ const Hendelser = () => {
                           {incident.alvorlighetsgrad}
                         </Badge>
                         {incident.kategori && <Badge variant="outline">{incident.kategori}</Badge>}
+                        {incident.hovedaarsak && (
+                          <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-100 dark:border-amber-700">
+                            {incident.hovedaarsak}
+                          </Badge>
+                        )}
+                        {incident.medvirkende_aarsak && (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700/30 dark:text-slate-100 dark:border-slate-600">
+                            {incident.medvirkende_aarsak}
+                          </Badge>
+                        )}
                       </div>
                       
                       {incident.beskrivelse && <p className="text-sm text-foreground opacity-90 line-clamp-2 mb-2">

@@ -635,6 +635,33 @@ export type Database = {
           },
         ]
       }
+      incident_cause_types: {
+        Row: {
+          aktiv: boolean
+          beskrivelse: string | null
+          created_at: string | null
+          id: string
+          navn: string
+          rekkefolge: number
+        }
+        Insert: {
+          aktiv?: boolean
+          beskrivelse?: string | null
+          created_at?: string | null
+          id?: string
+          navn: string
+          rekkefolge?: number
+        }
+        Update: {
+          aktiv?: boolean
+          beskrivelse?: string | null
+          created_at?: string | null
+          id?: string
+          navn?: string
+          rekkefolge?: number
+        }
+        Relationships: []
+      }
       incident_comments: {
         Row: {
           comment_text: string
@@ -670,15 +697,44 @@ export type Database = {
           },
         ]
       }
+      incident_contributing_causes: {
+        Row: {
+          aktiv: boolean
+          beskrivelse: string | null
+          created_at: string | null
+          id: string
+          navn: string
+          rekkefolge: number
+        }
+        Insert: {
+          aktiv?: boolean
+          beskrivelse?: string | null
+          created_at?: string | null
+          id?: string
+          navn: string
+          rekkefolge?: number
+        }
+        Update: {
+          aktiv?: boolean
+          beskrivelse?: string | null
+          created_at?: string | null
+          id?: string
+          navn?: string
+          rekkefolge?: number
+        }
+        Relationships: []
+      }
       incidents: {
         Row: {
           alvorlighetsgrad: string
           beskrivelse: string | null
           company_id: string
           hendelsestidspunkt: string
+          hovedaarsak: string | null
           id: string
           kategori: string | null
           lokasjon: string | null
+          medvirkende_aarsak: string | null
           mission_id: string | null
           oppdatert_dato: string | null
           oppfolgingsansvarlig_id: string | null
@@ -693,9 +749,11 @@ export type Database = {
           beskrivelse?: string | null
           company_id: string
           hendelsestidspunkt: string
+          hovedaarsak?: string | null
           id?: string
           kategori?: string | null
           lokasjon?: string | null
+          medvirkende_aarsak?: string | null
           mission_id?: string | null
           oppdatert_dato?: string | null
           oppfolgingsansvarlig_id?: string | null
@@ -710,9 +768,11 @@ export type Database = {
           beskrivelse?: string | null
           company_id?: string
           hendelsestidspunkt?: string
+          hovedaarsak?: string | null
           id?: string
           kategori?: string | null
           lokasjon?: string | null
+          medvirkende_aarsak?: string | null
           mission_id?: string | null
           oppdatert_dato?: string | null
           oppfolgingsansvarlig_id?: string | null

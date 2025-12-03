@@ -296,6 +296,11 @@ export const IncidentsSection = () => {
                         {incident.kategori && (
                           <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">{incident.kategori}</Badge>
                         )}
+                        {incident.hovedaarsak && (
+                          <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
+                            {incident.hovedaarsak}
+                          </Badge>
+                        )}
                         {commentCounts[incident.id] > 0 && (
                           <span className="flex items-center gap-0.5 text-muted-foreground">
                             <MessageSquare className="w-3 h-3" />
@@ -347,6 +352,11 @@ export const IncidentsSection = () => {
                         {incident.kategori && (
                           <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
                             {incident.kategori}
+                          </Badge>
+                        )}
+                        {incident.hovedaarsak && (
+                          <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
+                            {incident.hovedaarsak}
                           </Badge>
                         )}
                         {commentCounts[incident.id] > 0 && (
