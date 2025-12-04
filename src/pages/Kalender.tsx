@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, CheckCircle2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
 import { Header } from "@/components/Header";
 import { format, isSameDay } from "date-fns";
@@ -437,6 +437,90 @@ export default function Kalender() {
     }
   };
 
+  const handleMarkMaintenanceComplete = async (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!event.id || !event.sourceTable) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      if (event.sourceTable === 'drones') {
+        // Fetch drone to get interval
+        const { data: drone, error: fetchError } = await supabase
+          .from('drones')
+          .select('inspection_interval_days')
+          .eq('id', event.id)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        let nextInspection: string | null = null;
+        if (drone?.inspection_interval_days) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
+          nextInspection = nextDate.toISOString().split('T')[0];
+        }
+        
+        const { error } = await supabase
+          .from('drones')
+          .update({
+            sist_inspeksjon: today,
+            neste_inspeksjon: nextInspection,
+          })
+          .eq('id', event.id);
+        
+        if (error) throw error;
+        toast.success('Inspeksjon registrert som utført');
+        
+      } else if (event.sourceTable === 'equipment') {
+        const { error } = await supabase
+          .from('equipment')
+          .update({
+            sist_vedlikeholdt: today,
+            neste_vedlikehold: null,
+          })
+          .eq('id', event.id);
+        
+        if (error) throw error;
+        toast.success('Vedlikehold registrert som utført');
+        
+      } else if (event.sourceTable === 'drone_accessories') {
+        // Fetch accessory to get interval
+        const { data: accessory, error: fetchError } = await supabase
+          .from('drone_accessories')
+          .select('vedlikeholdsintervall_dager')
+          .eq('id', event.id)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        let nextMaintenance: string | null = null;
+        if (accessory?.vedlikeholdsintervall_dager) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + accessory.vedlikeholdsintervall_dager);
+          nextMaintenance = nextDate.toISOString().split('T')[0];
+        }
+        
+        const { error } = await supabase
+          .from('drone_accessories')
+          .update({
+            sist_vedlikehold: today,
+            neste_vedlikehold: nextMaintenance,
+          })
+          .eq('id', event.id);
+        
+        if (error) throw error;
+        toast.success('Vedlikehold registrert som utført');
+      }
+      
+      fetchCustomEvents();
+    } catch (error: any) {
+      console.error('Error marking maintenance complete:', error);
+      toast.error('Kunne ikke registrere vedlikehold');
+    }
+  };
+
   const handleEventClick = async (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -733,28 +817,47 @@ export default function Kalender() {
 
           <div className="space-y-3">
             {selectedEvents.length > 0 ? (
-              selectedEvents.map((event, index) => (
-                <div
-                  key={event.id || index}
-                  className="p-3 bg-card/30 rounded-lg border border-border hover:bg-card/50 cursor-pointer transition-colors"
-                  onClick={(e) => handleEventClick(event, e)}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
-                      {event.description && (
-                        <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        {event.type}
-                      </Badge>
-                    </div>
-                    <div className={cn("text-xs font-medium", event.color)}>
-                      {format(event.date, "HH:mm")}
+              selectedEvents.map((event, index) => {
+                const isMaintenanceEvent = event.sourceTable === 'drones' || 
+                  event.sourceTable === 'equipment' || 
+                  event.sourceTable === 'drone_accessories';
+                
+                return (
+                  <div
+                    key={event.id || index}
+                    className="p-3 bg-card/30 rounded-lg border border-border hover:bg-card/50 cursor-pointer transition-colors"
+                    onClick={(e) => handleEventClick(event, e)}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
+                        {event.description && (
+                          <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {event.type}
+                          </Badge>
+                          {isMaintenanceEvent && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                              onClick={(e) => handleMarkMaintenanceComplete(event, e)}
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              Utført
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className={cn("text-xs font-medium", event.color)}>
+                        {format(event.date, "HH:mm")}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Ingen hendelser denne dagen
