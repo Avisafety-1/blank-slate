@@ -105,11 +105,13 @@ export const AddMissionDialog = ({
           longitude: mission.longitude || null,
         });
         setSelectedCustomer(mission.customer_id || "");
-        // Load existing route data from mission
-        if (mission.route) {
+        // Prioritize initialRouteData (from route planner) over mission.route (from DB)
+        if (initialRouteData) {
+          setRouteData(initialRouteData);
+        } else if (mission.route) {
           setRouteData(mission.route as RouteData);
         } else {
-          setRouteData(initialRouteData || null);
+          setRouteData(null);
         }
         fetchMissionPersonnel(mission.id);
         fetchMissionEquipment(mission.id);
