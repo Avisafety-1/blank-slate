@@ -93,7 +93,8 @@ const Oppdrag = () => {
   // Handle navigation state from route planner
   useEffect(() => {
     const state = location.state as any;
-    if (state?.openDialog) {
+    // Check if we have routeData or formData from route planner (or openDialog for backward compatibility)
+    if (state?.routeData || state?.formData || state?.openDialog) {
       setInitialRouteData(state.routeData || null);
       setInitialFormData(state.formData || null);
       setInitialSelectedPersonnel(state.selectedPersonnel || []);
@@ -101,21 +102,13 @@ const Oppdrag = () => {
       setInitialSelectedDrones(state.selectedDrones || []);
       setInitialSelectedCustomer(state.selectedCustomer || "");
       
-      if (state.missionId) {
-        // Find the mission and open edit dialog
-        const mission = missions.find(m => m.id === state.missionId);
-        if (mission) {
-          setEditingMission(mission);
-          setEditDialogOpen(true);
-        }
-      } else {
-        setAddDialogOpen(true);
-      }
+      // Open the add dialog to continue editing the mission
+      setAddDialogOpen(true);
       
       // Clear the navigation state
       navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.state, missions, navigate, location.pathname]);
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     if (!loading && !user) {
