@@ -15,7 +15,7 @@ import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
-import { calculateMaintenanceStatus, getStatusColorClasses } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
 
 interface Drone {
   id: string;
@@ -34,6 +34,7 @@ interface Drone {
   payload: number | null;
   inspection_start_date: string | null;
   inspection_interval_days: number | null;
+  varsel_dager: number | null;
 }
 
 interface Accessory {
@@ -42,6 +43,7 @@ interface Accessory {
   vedlikeholdsintervall_dager: number | null;
   sist_vedlikehold: string | null;
   neste_vedlikehold: string | null;
+  varsel_dager: number | null;
 }
 
 interface DroneDetailDialogProps {
@@ -82,6 +84,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     payload: "",
     inspection_start_date: "",
     inspection_interval_days: "",
+    varsel_dager: "14",
   });
 
   useEffect(() => {
@@ -100,6 +103,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         payload: drone.payload !== null ? String(drone.payload) : "",
         inspection_start_date: drone.inspection_start_date ? new Date(drone.inspection_start_date).toISOString().split('T')[0] : "",
         inspection_interval_days: drone.inspection_interval_days !== null ? String(drone.inspection_interval_days) : "",
+        varsel_dager: drone.varsel_dager !== null ? String(drone.varsel_dager) : "14",
       });
       setIsEditing(false);
       setShowAddAccessory(false);
@@ -145,7 +149,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           navn,
           type,
           serienummer,
-          status
+          status,
+          neste_vedlikehold,
+          varsel_dager
         )
       `)
       .eq("drone_id", drone.id);
@@ -318,6 +324,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           payload: formData.payload ? parseFloat(formData.payload) : null,
           inspection_start_date: formData.inspection_start_date || null,
           inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
+          varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
         })
         .eq("id", drone.id);
 
@@ -356,7 +363,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
   if (!drone) return null;
 
-  const calculatedStatus = calculateMaintenanceStatus(drone.neste_inspeksjon);
+  // Calculate aggregated status based on drone + accessories + linked equipment
+  const linkedEquipmentData = linkedEquipment.map((link: any) => link.equipment).filter(Boolean);
+  const { status: aggregatedStatus, affectedItems } = calculateDroneAggregatedStatus(
+    { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+    accessories,
+    linkedEquipmentData
+  );
+  const droneOwnStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -368,11 +382,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
               {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
             </DialogTitle>
             {!isEditing && (
-              <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
-                {calculatedStatus}
+              <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
+                {aggregatedStatus}
               </Badge>
             )}
           </div>
+          {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              ⚠️ Status påvirket av: {affectedItems.join(", ")}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4">
@@ -418,8 +437,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
-                    {calculatedStatus}
+                  <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
+                    {aggregatedStatus}
                   </Badge>
                 </div>
               </div>
@@ -501,8 +520,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{eq.navn}</p>
-                              <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold))} border text-xs`}>
-                                {calculateMaintenanceStatus(eq.neste_vedlikehold)}
+                              <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))} border text-xs`}>
+                                {calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • SN: {eq.serienummer}</p>
@@ -803,7 +822,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
               {/* Inspection interval section */}
               <div className="border-t pt-4 mt-4">
                 <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="inspection_start_date">Startdato</Label>
                     <Input 
@@ -821,6 +840,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                       placeholder="f.eks. 90"
                       value={formData.inspection_interval_days}
                       onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                    <Input 
+                      id="varsel_dager" 
+                      type="number" 
+                      placeholder="14"
+                      value={formData.varsel_dager}
+                      onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
                     />
                   </div>
                 </div>

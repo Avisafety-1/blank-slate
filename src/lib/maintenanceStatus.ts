@@ -42,3 +42,78 @@ export const getStatusColorClasses = (status: Status): string => {
   };
   return colors[status] || "";
 };
+
+/**
+ * Status priority for comparison
+ */
+const STATUS_PRIORITY: Record<Status, number> = {
+  "Rød": 2,
+  "Gul": 1,
+  "Grønn": 0,
+};
+
+/**
+ * Interface for items with maintenance/inspection dates
+ */
+interface MaintenanceItem {
+  neste_inspeksjon?: string | null;
+  neste_vedlikehold?: string | null;
+  varsel_dager?: number | null;
+}
+
+/**
+ * Calculates aggregated status for a drone based on:
+ * - The drone's own inspection status
+ * - All linked accessories
+ * - All linked equipment
+ * 
+ * Returns the "worst" status (Rød > Gul > Grønn)
+ */
+export const calculateDroneAggregatedStatus = (
+  drone: MaintenanceItem,
+  accessories: MaintenanceItem[],
+  linkedEquipment: MaintenanceItem[]
+): { status: Status; affectedItems: string[] } => {
+  const affectedItems: string[] = [];
+  let worstPriority = 0;
+  
+  // Calculate drone's own status
+  const droneStatus = calculateMaintenanceStatus(
+    drone.neste_inspeksjon,
+    drone.varsel_dager ?? 14
+  );
+  worstPriority = STATUS_PRIORITY[droneStatus];
+  
+  // Check all accessories
+  for (const acc of accessories) {
+    const accStatus = calculateMaintenanceStatus(
+      acc.neste_vedlikehold,
+      acc.varsel_dager ?? 14
+    );
+    const accPriority = STATUS_PRIORITY[accStatus];
+    if (accPriority > 0) {
+      affectedItems.push((acc as any).navn || "Tilbehør");
+    }
+    worstPriority = Math.max(worstPriority, accPriority);
+  }
+  
+  // Check all linked equipment
+  for (const eq of linkedEquipment) {
+    const eqStatus = calculateMaintenanceStatus(
+      eq.neste_vedlikehold,
+      eq.varsel_dager ?? 14
+    );
+    const eqPriority = STATUS_PRIORITY[eqStatus];
+    if (eqPriority > 0) {
+      affectedItems.push((eq as any).navn || "Utstyr");
+    }
+    worstPriority = Math.max(worstPriority, eqPriority);
+  }
+  
+  // Find the status with matching priority
+  const status = (Object.entries(STATUS_PRIORITY).find(
+    ([_, priority]) => priority === worstPriority
+  )?.[0] || "Grønn") as Status;
+  
+  return { status, affectedItems };
+};

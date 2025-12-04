@@ -232,6 +232,7 @@ export type Database = {
           sist_vedlikehold: string | null
           updated_at: string | null
           user_id: string
+          varsel_dager: number | null
           vedlikeholdsintervall_dager: number | null
         }
         Insert: {
@@ -244,6 +245,7 @@ export type Database = {
           sist_vedlikehold?: string | null
           updated_at?: string | null
           user_id: string
+          varsel_dager?: number | null
           vedlikeholdsintervall_dager?: number | null
         }
         Update: {
@@ -256,6 +258,7 @@ export type Database = {
           sist_vedlikehold?: string | null
           updated_at?: string | null
           user_id?: string
+          varsel_dager?: number | null
           vedlikeholdsintervall_dager?: number | null
         }
         Relationships: [
@@ -368,6 +371,7 @@ export type Database = {
           status: string
           tilgjengelig: boolean
           user_id: string
+          varsel_dager: number | null
           vekt: number | null
         }
         Insert: {
@@ -390,6 +394,7 @@ export type Database = {
           status?: string
           tilgjengelig?: boolean
           user_id: string
+          varsel_dager?: number | null
           vekt?: number | null
         }
         Update: {
@@ -412,6 +417,7 @@ export type Database = {
           status?: string
           tilgjengelig?: boolean
           user_id?: string
+          varsel_dager?: number | null
           vekt?: number | null
         }
         Relationships: [
@@ -532,6 +538,7 @@ export type Database = {
           tilgjengelig: boolean
           type: string
           user_id: string
+          varsel_dager: number | null
         }
         Insert: {
           aktiv?: boolean
@@ -549,6 +556,7 @@ export type Database = {
           tilgjengelig?: boolean
           type: string
           user_id: string
+          varsel_dager?: number | null
         }
         Update: {
           aktiv?: boolean
@@ -566,6 +574,7 @@ export type Database = {
           tilgjengelig?: boolean
           type?: string
           user_id?: string
+          varsel_dager?: number | null
         }
         Relationships: [
           {

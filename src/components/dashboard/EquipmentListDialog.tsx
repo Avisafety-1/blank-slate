@@ -47,7 +47,7 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
                   <h3 className="font-semibold text-lg">{item.navn}</h3>
                   <p className="text-sm text-muted-foreground">{item.type}</p>
                 </div>
-                <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold) as Status} />
+                <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status} />
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">

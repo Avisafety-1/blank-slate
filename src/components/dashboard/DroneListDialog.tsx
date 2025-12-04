@@ -49,7 +49,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
                   <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
                 </div>
-                <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon) as Status} />
+                <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) as Status} />
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">

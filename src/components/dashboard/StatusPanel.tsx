@@ -8,24 +8,21 @@ import { PersonnelListDialog } from "./PersonnelListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
-import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
+
 interface StatusCounts {
   Grønn: number;
   Gul: number;
   Rød: number;
 }
-const countByStatus = (items: {
-  status: Status;
-}[]): StatusCounts => {
+
+const countByStatus = (items: { status: Status }[]): StatusCounts => {
   return items.reduce((acc, item) => {
     acc[item.status]++;
     return acc;
-  }, {
-    Grønn: 0,
-    Gul: 0,
-    Rød: 0
-  });
+  }, { Grønn: 0, Gul: 0, Rød: 0 });
 };
+
 const StatusCard = ({
   title,
   icon: Icon,
@@ -49,7 +46,11 @@ const StatusCard = ({
     Gul: "border-status-yellow",
     Rød: "border-status-red"
   };
-  return <div onClick={onClick} className={`${bgColors[primaryStatus]} ${borderColors[primaryStatus]} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200`}>
+  return (
+    <div 
+      onClick={onClick} 
+      className={`${bgColors[primaryStatus]} ${borderColors[primaryStatus]} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200`}
+    >
       <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
         <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         <h3 className="font-semibold text-xs sm:text-sm">{title}</h3>
@@ -71,8 +72,10 @@ const StatusCard = ({
           <span className="whitespace-nowrap">{counts.Rød}</span>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export const StatusPanel = () => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
@@ -92,19 +95,54 @@ export const StatusPanel = () => {
   }, [user, companyId]);
 
   const fetchDrones = async () => {
-    const { data, error } = await supabase
+    // Fetch drones with their accessories and linked equipment
+    const { data: dronesData, error } = await supabase
       .from("drones")
       .select("*")
       .eq("aktiv", true);
     
-    if (!error && data) {
-      // Calculate dynamic status based on neste_inspeksjon
-      const dronesWithDynamicStatus = data.map(drone => ({
-        ...drone,
-        status: calculateMaintenanceStatus(drone.neste_inspeksjon) as Status
-      }));
-      setDrones(dronesWithDynamicStatus);
+    if (error || !dronesData) {
+      console.error("Error fetching drones:", error);
+      return;
     }
+
+    // Fetch accessories and linked equipment for each drone
+    const dronesWithAggregatedStatus = await Promise.all(
+      dronesData.map(async (drone) => {
+        // Fetch accessories
+        const { data: accessories } = await supabase
+          .from("drone_accessories")
+          .select("*")
+          .eq("drone_id", drone.id);
+
+        // Fetch linked equipment
+        const { data: linkedEquipmentData } = await supabase
+          .from("drone_equipment")
+          .select(`
+            equipment:equipment_id (
+              id,
+              neste_vedlikehold,
+              varsel_dager
+            )
+          `)
+          .eq("drone_id", drone.id);
+
+        const linkedEquipment = (linkedEquipmentData || [])
+          .map((link: any) => link.equipment)
+          .filter(Boolean);
+
+        // Calculate aggregated status
+        const { status } = calculateDroneAggregatedStatus(
+          { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+          accessories || [],
+          linkedEquipment
+        );
+
+        return { ...drone, status };
+      })
+    );
+
+    setDrones(dronesWithAggregatedStatus);
   };
 
   const fetchEquipment = async () => {
@@ -114,10 +152,10 @@ export const StatusPanel = () => {
       .eq("aktiv", true);
     
     if (!error && data) {
-      // Calculate dynamic status based on neste_vedlikehold
+      // Calculate dynamic status based on neste_vedlikehold with varsel_dager
       const equipmentWithDynamicStatus = data.map(item => ({
         ...item,
-        status: calculateMaintenanceStatus(item.neste_vedlikehold) as Status
+        status: calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status
       }));
       setEquipment(equipmentWithDynamicStatus);
     }
@@ -142,9 +180,11 @@ export const StatusPanel = () => {
   const droneStatus = countByStatus(drones);
   const equipmentStatus = countByStatus(equipment);
   const personnelStatus = countByStatus(personnel);
-  return <>
+
+  return (
+    <>
       <GlassCard className="overflow-hidden">
-        <h2 className="text-sm sm:text-base font-semibold mb-3">Ressursstatus </h2>
+        <h2 className="text-sm sm:text-base font-semibold mb-3">Ressursstatus</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
           <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onClick={() => setDroneDialogOpen(true)} />
           <StatusCard title="Utstyr" icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
@@ -170,5 +210,6 @@ export const StatusPanel = () => {
         personnel={personnel}
         onPersonnelUpdated={fetchPersonnel}
       />
-    </>;
+    </>
+  );
 };
