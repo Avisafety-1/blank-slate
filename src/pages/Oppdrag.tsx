@@ -50,17 +50,17 @@ const riskColors: Record<string, string> = {
 };
 
 const incidentSeverityColors: Record<string, string> = {
-  Lav: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  Middels: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  Høy: "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  Kritisk: "bg-red-500/20 text-red-300 border-red-500/30",
+  Lav: "bg-blue-500/20 text-blue-900 border-blue-500/30",
+  Middels: "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
+  Høy: "bg-orange-500/20 text-orange-900 border-orange-500/30",
+  Kritisk: "bg-red-500/20 text-red-900 border-red-500/30",
 };
 
 const incidentStatusColors: Record<string, string> = {
-  Åpen: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Under behandling": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  Løst: "bg-green-500/20 text-green-300 border-green-500/30",
-  Lukket: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  Åpen: "bg-blue-500/20 text-blue-900 border-blue-500/30",
+  "Under behandling": "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
+  Løst: "bg-green-500/20 text-green-900 border-green-500/30",
+  Lukket: "bg-gray-500/20 text-gray-900 border-gray-500/30",
 };
 
 const Oppdrag = () => {
@@ -833,7 +833,7 @@ const Oppdrag = () => {
                                       {incident.alvorlighetsgrad}
                                     </Badge>
                                     {incident.hovedaarsak && (
-                                      <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                                      <Badge variant="outline" className="bg-amber-500/20 text-amber-900 border-amber-500/30">
                                         {incident.hovedaarsak}
                                       </Badge>
                                     )}
