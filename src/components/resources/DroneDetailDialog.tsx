@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -35,6 +35,14 @@ interface Drone {
   inspection_interval_days: number | null;
 }
 
+interface Accessory {
+  id: string;
+  navn: string;
+  vedlikeholdsintervall_dager: number | null;
+  sist_vedlikehold: string | null;
+  neste_vedlikehold: string | null;
+}
+
 interface DroneDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,8 +64,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
+  const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
+  const [showAddAccessory, setShowAddAccessory] = useState(false);
+  const [newAccessory, setNewAccessory] = useState({
+    navn: "",
+    vedlikeholdsintervall_dager: "",
+    sist_vedlikehold: "",
+  });
   const [formData, setFormData] = useState({
     modell: "",
     serienummer: "",
@@ -92,8 +107,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         inspection_interval_days: drone.inspection_interval_days !== null ? String(drone.inspection_interval_days) : "",
       });
       setIsEditing(false);
+      setShowAddAccessory(false);
+      setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
       fetchLinkedEquipment();
       fetchLinkedPersonnel();
+      fetchAccessories();
     }
   }, [drone]);
 
@@ -165,6 +183,89 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     } else {
       setLinkedPersonnel(data || []);
     }
+  };
+
+  const fetchAccessories = async () => {
+    if (!drone) return;
+
+    const { data, error } = await supabase
+      .from("drone_accessories")
+      .select("*")
+      .eq("drone_id", drone.id)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching accessories:", error);
+    } else {
+      setAccessories(data || []);
+    }
+  };
+
+  const handleAddAccessory = async () => {
+    if (!drone || !user || !companyId || !newAccessory.navn.trim()) {
+      toast.error("Fyll inn navn på utstyret");
+      return;
+    }
+
+    try {
+      let neste_vedlikehold: string | null = null;
+      if (newAccessory.vedlikeholdsintervall_dager && newAccessory.sist_vedlikehold) {
+        const days = parseInt(newAccessory.vedlikeholdsintervall_dager);
+        if (!isNaN(days) && days > 0) {
+          const nextDate = new Date(newAccessory.sist_vedlikehold);
+          nextDate.setDate(nextDate.getDate() + days);
+          neste_vedlikehold = nextDate.toISOString().split('T')[0];
+        }
+      }
+
+      const { error } = await supabase.from("drone_accessories").insert({
+        drone_id: drone.id,
+        company_id: companyId,
+        user_id: user.id,
+        navn: newAccessory.navn.trim(),
+        vedlikeholdsintervall_dager: newAccessory.vedlikeholdsintervall_dager ? parseInt(newAccessory.vedlikeholdsintervall_dager) : null,
+        sist_vedlikehold: newAccessory.sist_vedlikehold || null,
+        neste_vedlikehold,
+      });
+
+      if (error) throw error;
+
+      toast.success("Utstyr lagt til");
+      setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
+      setShowAddAccessory(false);
+      fetchAccessories();
+    } catch (error: any) {
+      console.error("Error adding accessory:", error);
+      toast.error(`Kunne ikke legge til utstyr: ${error.message}`);
+    }
+  };
+
+  const handleDeleteAccessory = async (accessory: Accessory) => {
+    try {
+      const { error } = await supabase
+        .from("drone_accessories")
+        .delete()
+        .eq("id", accessory.id);
+
+      if (error) throw error;
+
+      toast.success(`${accessory.navn} slettet`);
+      fetchAccessories();
+    } catch (error: any) {
+      console.error("Error deleting accessory:", error);
+      toast.error(`Kunne ikke slette utstyr: ${error.message}`);
+    }
+  };
+
+  const getMaintenanceStatusColor = (neste_vedlikehold: string | null) => {
+    if (!neste_vedlikehold) return "";
+    const today = new Date();
+    const nextDate = new Date(neste_vedlikehold);
+    const daysUntil = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntil < 0) return "text-red-600 dark:text-red-400";
+    if (daysUntil <= 14) return "text-amber-600 dark:text-amber-400";
+    return "text-green-600 dark:text-green-400";
   };
 
   const handleRemovePersonnel = async (linkId: string, personName: string) => {
@@ -516,6 +617,108 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+
+              {/* Valgfritt utstyr Section */}
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Valgfritt utstyr</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowAddAccessory(true)}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                  </Button>
+                </div>
+
+                {showAddAccessory && (
+                  <div className="p-3 border border-border rounded-lg bg-background/50 mb-3 space-y-3">
+                    <div>
+                      <Label htmlFor="acc-navn" className="text-xs">Navn</Label>
+                      <Input
+                        id="acc-navn"
+                        placeholder="f.eks. ND-filter, Ekstra propeller"
+                        value={newAccessory.navn}
+                        onChange={(e) => setNewAccessory({ ...newAccessory, navn: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="acc-interval" className="text-xs">Vedlikeholdsintervall (dager)</Label>
+                        <Input
+                          id="acc-interval"
+                          type="number"
+                          placeholder="f.eks. 90"
+                          value={newAccessory.vedlikeholdsintervall_dager}
+                          onChange={(e) => setNewAccessory({ ...newAccessory, vedlikeholdsintervall_dager: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="acc-sist" className="text-xs">Sist vedlikehold</Label>
+                        <Input
+                          id="acc-sist"
+                          type="date"
+                          value={newAccessory.sist_vedlikehold}
+                          onChange={(e) => setNewAccessory({ ...newAccessory, sist_vedlikehold: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setShowAddAccessory(false);
+                        setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
+                      }}>
+                        Avbryt
+                      </Button>
+                      <Button size="sm" onClick={handleAddAccessory}>
+                        Legg til
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {accessories.length === 0 && !showAddAccessory ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen valgfritt utstyr lagt til
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {accessories.map((acc) => (
+                      <div
+                        key={acc.id}
+                        className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{acc.navn}</p>
+                          <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                            {acc.vedlikeholdsintervall_dager && (
+                              <span>Intervall: {acc.vedlikeholdsintervall_dager} dager</span>
+                            )}
+                            {acc.neste_vedlikehold && (
+                              <span className={getMaintenanceStatusColor(acc.neste_vedlikehold)}>
+                                Neste: {new Date(acc.neste_vedlikehold).toLocaleDateString('nb-NO')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteAccessory(acc)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
