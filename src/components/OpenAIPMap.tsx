@@ -91,7 +91,8 @@ export function OpenAIPMap({
         color: '#3b82f6',
         weight: 3,
         opacity: 0.8,
-        dashArray: '10, 5'
+        dashArray: '10, 5',
+        pane: 'routePane'
       }).addTo(routeLayerRef.current);
     }
 
@@ -125,7 +126,8 @@ export function OpenAIPMap({
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         }),
-        draggable: mode === 'routePlanning'
+        draggable: mode === 'routePlanning',
+        pane: 'routePane'
       });
 
       if (mode === 'routePlanning') {
@@ -192,7 +194,8 @@ export function OpenAIPMap({
           iconSize: [100, 24],
           iconAnchor: [50, -10],
         }),
-        interactive: false
+        interactive: false,
+        pane: 'routePane'
       }).addTo(routeLayerRef.current);
     }
   }, [mode, onRouteChange]);
@@ -203,6 +206,13 @@ export function OpenAIPMap({
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
     leafletMapRef.current = map;
+
+    // Create custom pane for route elements with higher z-index
+    map.createPane('routePane');
+    const routePane = map.getPane('routePane');
+    if (routePane) {
+      routePane.style.zIndex = '650'; // Above markers (600), below popups (700)
+    }
 
     // OSM background
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
