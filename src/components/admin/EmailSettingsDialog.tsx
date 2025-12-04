@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Settings, Save, Send, Loader2, Eye, EyeOff } from "lucide-react";
+import { Settings, Save, Send, Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -41,8 +41,9 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [testEmail, setTestEmail] = useState("");
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [settings, setSettings] = useState<EmailSettings>({
     company_id: companyId || "",
     smtp_host: "",
@@ -65,9 +66,11 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
     if (!companyId) return;
 
     setLoading(true);
+    setNewPassword("");
     try {
+      // Bruk safe view som maskerer passord
       const { data, error } = await supabase
-        .from("email_settings" as any)
+        .from("email_settings_safe" as any)
         .select("*")
         .eq("company_id", companyId)
         .maybeSingle();
@@ -75,7 +78,10 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
       if (error) throw error;
 
       if (data) {
-        setSettings(data as unknown as EmailSettings);
+        const settingsData = data as unknown as EmailSettings;
+        setSettings(settingsData);
+        // Sjekk om passord allerede eksisterer (maskert som ********)
+        setHasExistingPassword(settingsData.smtp_pass === '********');
       } else {
         // Reset to defaults if no settings found
         setSettings({
@@ -89,6 +95,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
           from_email: "",
           enabled: false,
         });
+        setHasExistingPassword(false);
       }
     } catch (error: any) {
       console.error("Error fetching email settings:", error);
@@ -117,45 +124,31 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
       return;
     }
 
+    // Valider at passord er oppgitt for nye innstillinger
+    if (!hasExistingPassword && !newPassword) {
+      toast.error("Vennligst oppgi et passord");
+      return;
+    }
+
     setSaving(true);
     try {
-      if (settings.id) {
-        // Update existing settings
-        const { error } = await supabase
-          .from("email_settings" as any)
-          .update({
-            smtp_host: settings.smtp_host,
-            smtp_port: settings.smtp_port,
-            smtp_user: settings.smtp_user,
-            smtp_pass: settings.smtp_pass,
-            smtp_secure: settings.smtp_secure,
-            from_name: settings.from_name,
-            from_email: settings.from_email,
-            enabled: settings.enabled,
-          })
-          .eq("id", settings.id);
+      // Bruk RPC-funksjonen for sikker oppdatering
+      const { error } = await supabase.rpc('update_email_settings', {
+        p_company_id: companyId,
+        p_smtp_host: settings.smtp_host,
+        p_smtp_port: settings.smtp_port,
+        p_smtp_user: settings.smtp_user,
+        p_smtp_pass: newPassword || '********', // '********' = behold eksisterende
+        p_smtp_secure: settings.smtp_secure,
+        p_from_name: settings.from_name || '',
+        p_from_email: settings.from_email,
+        p_enabled: settings.enabled,
+      });
 
-        if (error) throw error;
-      } else {
-        // Create new settings
-        const { error } = await supabase
-          .from("email_settings" as any)
-          .insert({
-            company_id: companyId,
-            smtp_host: settings.smtp_host,
-            smtp_port: settings.smtp_port,
-            smtp_user: settings.smtp_user,
-            smtp_pass: settings.smtp_pass,
-            smtp_secure: settings.smtp_secure,
-            from_name: settings.from_name,
-            from_email: settings.from_email,
-            enabled: settings.enabled,
-          });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast.success("Innstillinger lagret");
+      setNewPassword("");
       fetchSettings();
     } catch (error: any) {
       console.error("Error saving settings:", error);
@@ -318,31 +311,19 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
                 <Label htmlFor="smtp_pass" className={isMobile ? "text-xs" : "text-sm"}>
                   Passord *
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="smtp_pass"
-                    type={showPassword ? "text" : "password"}
-                    value={settings.smtp_pass}
-                    onChange={(e) =>
-                      setSettings({ ...settings, smtp_pass: e.target.value })
-                    }
-                    placeholder="••••••••"
-                    className={`${isMobile ? "h-9 text-sm" : ""} pr-10`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <Input
+                  id="smtp_pass"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={hasExistingPassword ? "●●●●●●●● (la stå for å beholde)" : "Skriv inn passord"}
+                  className={isMobile ? "h-9 text-sm" : ""}
+                />
+                {hasExistingPassword && (
+                  <p className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}>
+                    Passord er allerede satt. La feltet stå tomt for å beholde.
+                  </p>
+                )}
               </div>
             </div>
           </div>

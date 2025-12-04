@@ -1417,6 +1417,59 @@ export type Database = {
       }
     }
     Views: {
+      email_settings_safe: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          enabled: boolean | null
+          from_email: string | null
+          from_name: string | null
+          id: string | null
+          smtp_host: string | null
+          smtp_pass: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          smtp_user: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string | null
+          smtp_host?: string | null
+          smtp_pass?: never
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string | null
+          smtp_host?: string | null
+          smtp_pass?: never
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null
@@ -2378,6 +2431,20 @@ export type Database = {
         Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_email_settings: {
+        Args: {
+          p_company_id: string
+          p_enabled: boolean
+          p_from_email: string
+          p_from_name: string
+          p_smtp_host: string
+          p_smtp_pass: string
+          p_smtp_port: number
+          p_smtp_secure: boolean
+          p_smtp_user: string
+        }
+        Returns: undefined
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
