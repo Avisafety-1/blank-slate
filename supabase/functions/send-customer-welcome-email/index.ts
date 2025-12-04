@@ -163,7 +163,6 @@ serve(async (req) => {
           from: senderAddress,
           to: customer_email,
           subject: emailSubject,
-          content: "auto",
           html: emailContent,
         });
 
