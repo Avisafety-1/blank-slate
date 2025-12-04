@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Chrome } from "lucide-react";
+import { Chrome, CheckCircle2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
 import avisafeLogo from "@/assets/avisafe-logo.png";
+
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -24,11 +24,8 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [companies, setCompanies] = useState<Array<{
-    id: string;
-    navn: string;
-  }>>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [registrationCode, setRegistrationCode] = useState("");
+  const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string } | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   
@@ -59,19 +56,30 @@ const Auth = () => {
       redirectToApp('/');
     }
   }, [user, authLoading]);
+
+  // Validate registration code when it changes
   useEffect(() => {
-    if (!isLogin) {
-      fetchCompanies();
+    const validateCode = async () => {
+      if (registrationCode.length === 6) {
+        const { data, error } = await supabase.rpc('get_company_by_registration_code', {
+          p_code: registrationCode
+        });
+        
+        if (!error && data && data.length > 0) {
+          setValidatedCompany({ id: data[0].company_id, name: data[0].company_name });
+        } else {
+          setValidatedCompany(null);
+        }
+      } else {
+        setValidatedCompany(null);
+      }
+    };
+
+    if (!isLogin && registrationCode) {
+      validateCode();
     }
-  }, [isLogin]);
-  const fetchCompanies = async () => {
-    const {
-      data
-    } = await supabase.from('companies').select('id, navn').eq('aktiv', true).order('navn');
-    if (data) {
-      setCompanies(data);
-    }
-  };
+  }, [registrationCode, isLogin]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -82,8 +90,8 @@ const Auth = () => {
       toast.error("Vennligst fyll ut fullt navn");
       return;
     }
-    if (!isLogin && !selectedCompanyId) {
-      toast.error("Vennligst velg et selskap");
+    if (!isLogin && !validatedCompany) {
+      toast.error("Vennligst skriv inn en gyldig registreringskode");
       return;
     }
     setLoading(true);
@@ -121,7 +129,7 @@ const Auth = () => {
             emailRedirectTo: 'https://login.avisafe.no/auth',
             data: {
               full_name: fullName,
-              company_id: selectedCompanyId
+              company_id: validatedCompany!.id
             }
           }
         });
@@ -133,7 +141,7 @@ const Auth = () => {
             .upsert({
               id: data.user.id,
               full_name: fullName,
-              company_id: selectedCompanyId,
+              company_id: validatedCompany!.id,
               email: email,
               approved: false
             }, {
@@ -145,30 +153,25 @@ const Auth = () => {
             // User is still created in auth, continue with notification
           }
 
-          // Get company name for the notification
-          const {
-            data: companyData
-          } = await supabase.from('companies').select('navn').eq('id', selectedCompanyId).single();
-
           // Send notifications to admins via edge function
-          if (companyData) {
-            await supabase.functions.invoke('send-notification-email', {
-              body: {
-                type: 'notify_admins_new_user',
-                companyId: selectedCompanyId,
-                newUser: {
-                  fullName: fullName,
-                  email: email,
-                  companyName: companyData.navn
-                }
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              type: 'notify_admins_new_user',
+              companyId: validatedCompany!.id,
+              newUser: {
+                fullName: fullName,
+                email: email,
+                companyName: validatedCompany!.name
               }
-            });
-          }
+            }
+          });
+
           toast.success("Konto opprettet! Venter på godkjenning fra administrator.");
           setEmail("");
           setPassword("");
           setFullName("");
-          setSelectedCompanyId("");
+          setRegistrationCode("");
+          setValidatedCompany(null);
           setIsLogin(true);
         }
       }
@@ -179,6 +182,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
@@ -197,6 +201,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) {
@@ -221,13 +226,15 @@ const Auth = () => {
       setLoading(false);
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center">
+
+  return (
+    <div className="min-h-screen relative flex items-center justify-center">
       {/* Background */}
       <div className="fixed inset-0 z-0" style={{
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center"
-    }} />
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }} />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-md px-4">
@@ -247,32 +254,74 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAuth} className="space-y-4">
-              {!isLogin && <div className="space-y-2">
+              {!isLogin && (
+                <div className="space-y-2">
                   <Label htmlFor="fullName">Fullt navn</Label>
-                  <Input id="fullName" type="text" placeholder="Ola Nordmann" value={fullName} onChange={e => setFullName(e.target.value)} required={!isLogin} />
-                </div>}
-              {!isLogin && <div className="space-y-2">
-                  <Label htmlFor="company">Velg selskap</Label>
-                  <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId} required={!isLogin}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Velg et selskap" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map(company => <SelectItem key={company.id} value={company.id}>
-                          {company.navn}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>}
+                  <Input 
+                    id="fullName" 
+                    type="text" 
+                    placeholder="Ola Nordmann" 
+                    value={fullName} 
+                    onChange={e => setFullName(e.target.value)} 
+                    required={!isLogin} 
+                  />
+                </div>
+              )}
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="registrationCode">Registreringskode</Label>
+                  <div className="relative">
+                    <Input 
+                      id="registrationCode" 
+                      type="text" 
+                      placeholder="ABC123" 
+                      value={registrationCode} 
+                      onChange={e => setRegistrationCode(e.target.value.toUpperCase().slice(0, 6))} 
+                      required={!isLogin}
+                      maxLength={6}
+                      className="font-mono uppercase tracking-wider"
+                    />
+                    {validatedCompany && (
+                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {validatedCompany && (
+                    <p className="text-sm text-green-600 flex items-center gap-1">
+                      Selskap: {validatedCompany.name}
+                    </p>
+                  )}
+                  {registrationCode.length === 6 && !validatedCompany && (
+                    <p className="text-sm text-destructive">Ugyldig registreringskode</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Kontakt din administrator for å få registreringskoden
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">E-post</Label>
-                <Input id="email" type="email" placeholder="din@epost.no" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="din@epost.no" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required 
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Passord</Label>
                 </div>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required 
+                  minLength={6} 
+                />
                 {isLogin && (
                   <button
                     type="button"
@@ -283,7 +332,7 @@ const Auth = () => {
                   </button>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || (!isLogin && !validatedCompany)}>
                 {loading ? "Behandler..." : isLogin ? "Logg inn" : "Opprett konto"}
               </Button>
             </form>
@@ -297,13 +346,27 @@ const Auth = () => {
               </div>
             </div>
 
-            <Button type="button" variant="outline" onClick={handleGoogleSignIn} disabled={loading} className="w-full text-center py-0 my-[19px] bg-blue-200 hover:bg-blue-100">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleGoogleSignIn} 
+              disabled={loading} 
+              className="w-full text-center py-0 my-[19px] bg-blue-200 hover:bg-blue-100"
+            >
               <Chrome className="mr-2 h-4 w-4" />
               Logg inn med Google
             </Button>
 
             <div className="text-center text-sm">
-              <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setRegistrationCode("");
+                  setValidatedCompany(null);
+                }} 
+                className="text-primary hover:underline"
+              >
                 {isLogin ? "Har du ikke konto? Opprett en her" : "Har du allerede konto? Logg inn her"}
               </button>
             </div>
@@ -323,13 +386,25 @@ const Auth = () => {
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="resetEmail">E-post</Label>
-              <Input id="resetEmail" type="email" placeholder="din@epost.no" value={resetEmail} onChange={e => setResetEmail(e.target.value)} required />
+              <Input 
+                id="resetEmail" 
+                type="email" 
+                placeholder="din@epost.no" 
+                value={resetEmail} 
+                onChange={e => setResetEmail(e.target.value)} 
+                required 
+              />
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => {
-              setShowResetPassword(false);
-              setResetEmail("");
-            }} className="flex-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setResetEmail("");
+                }} 
+                className="flex-1"
+              >
                 Avbryt
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
@@ -339,6 +414,8 @@ const Auth = () => {
           </form>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default Auth;
