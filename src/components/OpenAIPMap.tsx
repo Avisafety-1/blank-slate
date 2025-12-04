@@ -840,11 +840,11 @@ export function OpenAIPMap({
   }, [updateRouteDisplay, onRouteChange]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden">
       <div ref={mapRef} className="w-full h-full" />
       
       {/* Map controls */}
-      <div className="fixed top-20 right-4 z-[1000] flex flex-col gap-2">
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
         {/* Weather toggle button */}
         {mode === "view" && (
           <Button
@@ -863,7 +863,7 @@ export function OpenAIPMap({
       
       {/* Weather enabled hint */}
       {mode === "view" && weatherEnabled && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
         </div>
       )}
