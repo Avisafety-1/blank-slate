@@ -236,7 +236,7 @@ export default function KartPage() {
         {!isRoutePlanning && (
           <Button
             onClick={handleStartRoutePlanning}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] shadow-lg"
+            className="absolute bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-[1000] shadow-lg"
             size="lg"
           >
             <Route className="h-4 w-4 mr-2" />
