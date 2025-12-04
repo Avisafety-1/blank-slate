@@ -59,12 +59,14 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         user_id: userId,
         company_id: companyId,
         modell: formData.get("modell") as string,
-        registrering: formData.get("registrering") as string,
+        serienummer: formData.get("serienummer") as string,
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
         merknader: (formData.get("merknader") as string) || null,
         sist_inspeksjon: (formData.get("sist_inspeksjon") as string) || null,
         neste_inspeksjon: (formData.get("neste_inspeksjon") as string) || null,
+        kjøpsdato: (formData.get("kjøpsdato") as string) || null,
+        klasse: (formData.get("klasse") as string) || null,
       }]);
 
       if (error) {
@@ -104,8 +106,28 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
             <Input id="modell" name="modell" required />
           </div>
           <div>
-            <Label htmlFor="registrering">Registrering</Label>
-            <Input id="registrering" name="registrering" required />
+            <Label htmlFor="serienummer">Serienummer</Label>
+            <Input id="serienummer" name="serienummer" required />
+          </div>
+          <div>
+            <Label htmlFor="klasse">Klasse</Label>
+            <Select name="klasse">
+              <SelectTrigger>
+                <SelectValue placeholder="Velg klasse" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="C0">C0</SelectItem>
+                <SelectItem value="C1">C1</SelectItem>
+                <SelectItem value="C2">C2</SelectItem>
+                <SelectItem value="C3">C3</SelectItem>
+                <SelectItem value="C4">C4</SelectItem>
+                <SelectItem value="C5">C5</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
+            <Input id="kjøpsdato" name="kjøpsdato" type="date" />
           </div>
           <div>
             <Label htmlFor="status">Status</Label>

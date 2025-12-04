@@ -294,7 +294,7 @@ const Status = () => {
   };
 
   const fetchResourceStatistics = async () => {
-    const { data: drones } = await supabase.from("drones").select("status, flyvetimer, modell, registrering");
+    const { data: drones } = await supabase.from("drones").select("status, flyvetimer, modell, serienummer");
     const { data: equipment } = await supabase.from("equipment").select("status");
 
     if (drones) {
@@ -309,7 +309,7 @@ const Status = () => {
         .sort((a, b) => b.flyvetimer - a.flyvetimer)
         .slice(0, 10)
         .map((d) => ({
-          name: `${d.modell} (${d.registrering})`,
+          name: `${d.modell} (SN: ${d.serienummer})`,
           hours: d.flyvetimer,
         }));
       setFlightHoursByDrone(sortedDrones);

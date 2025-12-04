@@ -18,7 +18,7 @@ import { useTerminology } from "@/hooks/useTerminology";
 interface Drone {
   id: string;
   modell: string;
-  registrering: string;
+  serienummer: string;
   status: string;
   flyvetimer: number;
   merknader: string | null;
@@ -26,6 +26,8 @@ interface Drone {
   neste_inspeksjon: string | null;
   tilgjengelig: boolean;
   aktiv: boolean;
+  kjøpsdato: string | null;
+  klasse: string | null;
 }
 
 interface DroneDetailDialogProps {
@@ -52,24 +54,28 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     modell: "",
-    registrering: "",
+    serienummer: "",
     status: "Grønn",
     flyvetimer: 0,
     merknader: "",
     sist_inspeksjon: "",
     neste_inspeksjon: "",
+    kjøpsdato: "",
+    klasse: "",
   });
 
   useEffect(() => {
     if (drone) {
       setFormData({
         modell: drone.modell,
-        registrering: drone.registrering,
+        serienummer: drone.serienummer,
         status: drone.status,
         flyvetimer: drone.flyvetimer,
         merknader: drone.merknader || "",
         sist_inspeksjon: drone.sist_inspeksjon ? new Date(drone.sist_inspeksjon).toISOString().split('T')[0] : "",
         neste_inspeksjon: drone.neste_inspeksjon ? new Date(drone.neste_inspeksjon).toISOString().split('T')[0] : "",
+        kjøpsdato: drone.kjøpsdato ? new Date(drone.kjøpsdato).toISOString().split('T')[0] : "",
+        klasse: drone.klasse || "",
       });
       setIsEditing(false);
       fetchLinkedEquipment();
@@ -167,12 +173,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         .from("drones")
         .update({
           modell: formData.modell,
-          registrering: formData.registrering,
+          serienummer: formData.serienummer,
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
           sist_inspeksjon: formData.sist_inspeksjon || null,
           neste_inspeksjon: formData.neste_inspeksjon || null,
+          kjøpsdato: formData.kjøpsdato || null,
+          klasse: formData.klasse || null,
         })
         .eq("id", drone.id);
 
@@ -237,8 +245,19 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                   <p className="text-base">{drone.modell}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Registrering</p>
-                  <p className="text-base">{drone.registrering}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Serienummer</p>
+                  <p className="text-base">{drone.serienummer}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Klasse</p>
+                  <p className="text-base">{drone.klasse || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Kjøpsdato</p>
+                  <p className="text-base">{drone.kjøpsdato ? new Date(drone.kjøpsdato).toLocaleDateString('nb-NO') : "-"}</p>
                 </div>
               </div>
 
@@ -413,11 +432,39 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                   />
                 </div>
                 <div>
-                  <Label htmlFor="registrering">Registrering</Label>
+                  <Label htmlFor="serienummer">Serienummer</Label>
                   <Input
-                    id="registrering"
-                    value={formData.registrering}
-                    onChange={(e) => setFormData({ ...formData, registrering: e.target.value })}
+                    id="serienummer"
+                    value={formData.serienummer}
+                    onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="klasse">Klasse</Label>
+                  <Select value={formData.klasse || ""} onValueChange={(value) => setFormData({ ...formData, klasse: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Velg klasse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="C0">C0</SelectItem>
+                      <SelectItem value="C1">C1</SelectItem>
+                      <SelectItem value="C2">C2</SelectItem>
+                      <SelectItem value="C3">C3</SelectItem>
+                      <SelectItem value="C4">C4</SelectItem>
+                      <SelectItem value="C5">C5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
+                  <Input
+                    id="kjøpsdato"
+                    type="date"
+                    value={formData.kjøpsdato}
+                    onChange={(e) => setFormData({ ...formData, kjøpsdato: e.target.value })}
                   />
                 </div>
               </div>
