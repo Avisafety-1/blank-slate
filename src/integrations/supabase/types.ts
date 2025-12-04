@@ -1014,6 +1014,7 @@ export type Database = {
           oppdatert_dato: string
           opprettet_dato: string
           risk_nivå: string
+          route: Json | null
           slutt_tidspunkt: string | null
           status: string
           tidspunkt: string
@@ -1032,6 +1033,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string
+          route?: Json | null
           slutt_tidspunkt?: string | null
           status?: string
           tidspunkt: string
@@ -1050,6 +1052,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string
+          route?: Json | null
           slutt_tidspunkt?: string | null
           status?: string
           tidspunkt?: string

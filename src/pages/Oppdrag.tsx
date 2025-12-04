@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { GlassCard } from "@/components/GlassCard";
@@ -20,7 +20,9 @@ import {
   Loader2,
   Edit,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  Route,
+  Ruler
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -30,7 +32,7 @@ import autoTable from "jspdf-autotable";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
-import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
+import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { toast } from "sonner";
@@ -67,6 +69,7 @@ const incidentStatusColors: Record<string, string> = {
 const Oppdrag = () => {
   const { user, loading, companyId } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,6 +81,41 @@ const Oppdrag = () => {
   const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  
+  // State for route planner navigation
+  const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
+  const [initialFormData, setInitialFormData] = useState<any>(null);
+  const [initialSelectedPersonnel, setInitialSelectedPersonnel] = useState<string[]>([]);
+  const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
+  const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
+  const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
+
+  // Handle navigation state from route planner
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.openDialog) {
+      setInitialRouteData(state.routeData || null);
+      setInitialFormData(state.formData || null);
+      setInitialSelectedPersonnel(state.selectedPersonnel || []);
+      setInitialSelectedEquipment(state.selectedEquipment || []);
+      setInitialSelectedDrones(state.selectedDrones || []);
+      setInitialSelectedCustomer(state.selectedCustomer || "");
+      
+      if (state.missionId) {
+        // Find the mission and open edit dialog
+        const mission = missions.find(m => m.id === state.missionId);
+        if (mission) {
+          setEditingMission(mission);
+          setEditDialogOpen(true);
+        }
+      } else {
+        setAddDialogOpen(true);
+      }
+      
+      // Clear the navigation state
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, missions, navigate, location.pathname]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -310,6 +348,53 @@ const Oppdrag = () => {
             1: { cellWidth: 35 },
             2: { cellWidth: 25 },
             3: { cellWidth: 95 }
+          }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 10;
+      }
+      
+      // Route info
+      if (mission.route && (mission.route as any).coordinates?.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Planlagt flyrute", 15, yPos);
+        yPos += 7;
+        
+        const routeData = mission.route as any;
+        const routeInfo = [
+          ["Antall punkter", String(routeData.coordinates.length)],
+          ["Total avstand", `${(routeData.totalDistance || 0).toFixed(2)} km`],
+        ];
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: routeInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+        
+        // Route coordinates table
+        const coordData = routeData.coordinates.map((coord: any, index: number) => [
+          String(index + 1),
+          coord.lat.toFixed(6),
+          coord.lng.toFixed(6)
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Punkt", "Breddegrad", "Lengdegrad"]],
+          body: coordData,
+          theme: "grid",
+          styles: { fontSize: 8 },
+          columnStyles: { 
+            0: { cellWidth: 20 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 50 }
           }
         });
         
@@ -809,6 +894,26 @@ const Oppdrag = () => {
                       </div>
                     </div>
 
+                    {/* Route Info */}
+                    {mission.route && (mission.route as any).coordinates?.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Route className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs font-semibold text-muted-foreground">PLANLAGT RUTE</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-primary" />
+                            <span>{(mission.route as any).coordinates.length} punkter</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{((mission.route as any).totalDistance || 0).toFixed(2)} km</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Description */}
                     {mission.beskrivelse && (
                       <div className="pt-2 border-t border-border/50">
@@ -964,16 +1069,50 @@ const Oppdrag = () => {
         {/* Add Mission Dialog */}
         <AddMissionDialog
           open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
+          onOpenChange={(open) => {
+            setAddDialogOpen(open);
+            if (!open) {
+              // Clear initial data when dialog closes
+              setInitialRouteData(null);
+              setInitialFormData(null);
+              setInitialSelectedPersonnel([]);
+              setInitialSelectedEquipment([]);
+              setInitialSelectedDrones([]);
+              setInitialSelectedCustomer("");
+            }
+          }}
           onMissionAdded={handleMissionAdded}
+          initialRouteData={initialRouteData}
+          initialFormData={initialFormData}
+          initialSelectedPersonnel={initialSelectedPersonnel}
+          initialSelectedEquipment={initialSelectedEquipment}
+          initialSelectedDrones={initialSelectedDrones}
+          initialSelectedCustomer={initialSelectedCustomer}
         />
 
         {/* Edit Mission Dialog */}
         <AddMissionDialog
           open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) {
+              // Clear initial data when dialog closes
+              setInitialRouteData(null);
+              setInitialFormData(null);
+              setInitialSelectedPersonnel([]);
+              setInitialSelectedEquipment([]);
+              setInitialSelectedDrones([]);
+              setInitialSelectedCustomer("");
+            }
+          }}
           onMissionAdded={handleMissionUpdated}
           mission={editingMission}
+          initialRouteData={initialRouteData}
+          initialFormData={initialFormData}
+          initialSelectedPersonnel={initialSelectedPersonnel}
+          initialSelectedEquipment={initialSelectedEquipment}
+          initialSelectedDrones={initialSelectedDrones}
+          initialSelectedCustomer={initialSelectedCustomer}
         />
 
         {/* SORA Analysis Dialog */}
