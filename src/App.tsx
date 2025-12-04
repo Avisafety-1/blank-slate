@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import Resources from "./pages/Resources";
 import KartPage from "./pages/Kart";
+import RoutePlanner from "./pages/RoutePlanner";
 import Documents from "./pages/Documents";
 import Kalender from "./pages/Kalender";
 import Hendelser from "./pages/Hendelser";
@@ -41,6 +42,7 @@ const App = () => {
                 <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
                 <Route path="/ressurser" element={<DomainGuard><Resources /></DomainGuard>} />
                 <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
+                <Route path="/kart/planlegg" element={<DomainGuard><RoutePlanner /></DomainGuard>} />
                 <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
                 <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
                 <Route path="/hendelser" element={<DomainGuard><Hendelser /></DomainGuard>} />

@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Check, ChevronsUpDown, Plus, X } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -17,11 +18,22 @@ import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 
+export interface RouteData {
+  coordinates: { lat: number; lng: number }[];
+  totalDistance: number;
+}
+
 interface AddMissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMissionAdded: () => void;
-  mission?: any; // Valgfri - hvis satt, er vi i redigeringsmodus
+  mission?: any;
+  initialRouteData?: RouteData | null;
+  initialFormData?: any;
+  initialSelectedPersonnel?: string[];
+  initialSelectedEquipment?: string[];
+  initialSelectedDrones?: string[];
+  initialSelectedCustomer?: string;
 }
 
 type Profile = Tables<"profiles">;
@@ -29,34 +41,47 @@ type Equipment = any;
 type Customer = any;
 type Drone = any;
 
-export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }: AddMissionDialogProps) => {
+export const AddMissionDialog = ({ 
+  open, 
+  onOpenChange, 
+  onMissionAdded, 
+  mission,
+  initialRouteData,
+  initialFormData,
+  initialSelectedPersonnel,
+  initialSelectedEquipment,
+  initialSelectedDrones,
+  initialSelectedCustomer
+}: AddMissionDialogProps) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedPersonnel, setSelectedPersonnel] = useState<string[]>([]);
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-  const [selectedDrones, setSelectedDrones] = useState<string[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [selectedPersonnel, setSelectedPersonnel] = useState<string[]>(initialSelectedPersonnel || []);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>(initialSelectedEquipment || []);
+  const [selectedDrones, setSelectedDrones] = useState<string[]>(initialSelectedDrones || []);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>(initialSelectedCustomer || "");
   const [openPersonnelPopover, setOpenPersonnelPopover] = useState(false);
   const [openEquipmentPopover, setOpenEquipmentPopover] = useState(false);
   const [openDronePopover, setOpenDronePopover] = useState(false);
   const [openCustomerPopover, setOpenCustomerPopover] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
+  const [routeData, setRouteData] = useState<RouteData | null>(initialRouteData || null);
   const terminology = useTerminology();
   
   const [formData, setFormData] = useState({
-    tittel: "",
-    lokasjon: "",
-    tidspunkt: "",
-    beskrivelse: "",
-    merknader: "",
-    status: "Planlagt",
-    risk_nivå: "Lav",
-    latitude: null as number | null,
-    longitude: null as number | null,
+    tittel: initialFormData?.tittel || "",
+    lokasjon: initialFormData?.lokasjon || "",
+    tidspunkt: initialFormData?.tidspunkt || "",
+    beskrivelse: initialFormData?.beskrivelse || "",
+    merknader: initialFormData?.merknader || "",
+    status: initialFormData?.status || "Planlagt",
+    risk_nivå: initialFormData?.risk_nivå || "Lav",
+    latitude: initialFormData?.latitude || null as number | null,
+    longitude: initialFormData?.longitude || null as number | null,
   });
 
   useEffect(() => {
@@ -80,9 +105,33 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
           longitude: mission.longitude || null,
         });
         setSelectedCustomer(mission.customer_id || "");
+        // Load existing route data from mission
+        if (mission.route) {
+          setRouteData(mission.route as RouteData);
+        } else {
+          setRouteData(initialRouteData || null);
+        }
         fetchMissionPersonnel(mission.id);
         fetchMissionEquipment(mission.id);
         fetchMissionDrones(mission.id);
+      } else if (initialFormData) {
+        // Restore form data from navigation state (returning from route planner)
+        setFormData({
+          tittel: initialFormData.tittel || "",
+          lokasjon: initialFormData.lokasjon || "",
+          tidspunkt: initialFormData.tidspunkt || "",
+          beskrivelse: initialFormData.beskrivelse || "",
+          merknader: initialFormData.merknader || "",
+          status: initialFormData.status || "Planlagt",
+          risk_nivå: initialFormData.risk_nivå || "Lav",
+          latitude: initialFormData.latitude || null,
+          longitude: initialFormData.longitude || null,
+        });
+        setRouteData(initialRouteData || null);
+        if (initialSelectedPersonnel) setSelectedPersonnel(initialSelectedPersonnel);
+        if (initialSelectedEquipment) setSelectedEquipment(initialSelectedEquipment);
+        if (initialSelectedDrones) setSelectedDrones(initialSelectedDrones);
+        if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
       } else {
         // Reset form når vi oppretter nytt oppdrag
         setFormData({
@@ -100,9 +149,10 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
         setSelectedEquipment([]);
         setSelectedDrones([]);
         setSelectedCustomer("");
+        setRouteData(null);
       }
     }
-  }, [open, mission]);
+  }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
 
   const fetchProfiles = async () => {
     const { data, error } = await supabase
@@ -279,6 +329,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
             customer_id: selectedCustomer || null,
             latitude: formData.latitude,
             longitude: formData.longitude,
+            route: routeData,
             oppdatert_dato: new Date().toISOString(),
           })
           .eq("id", mission.id);
@@ -350,6 +401,7 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
             company_id: profile.company_id,
             latitude: formData.latitude,
             longitude: formData.longitude,
+            route: routeData,
           })
           .select()
           .single();
@@ -531,6 +583,79 @@ export const AddMissionDialog = ({ open, onOpenChange, onMissionAdded, mission }
               longitude={formData.longitude}
               compact={true}
             />
+          </div>
+
+          {/* Route Planning */}
+          <div>
+            <Label>Flyrute</Label>
+            <div className="mt-1.5">
+              {routeData ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm bg-secondary/50 px-3 py-2 rounded-md">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span>{routeData.coordinates.length} punkter</span>
+                    <span className="text-muted-foreground">•</span>
+                    <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{routeData.totalDistance.toFixed(2)} km</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/kart/planlegg', {
+                        state: {
+                          returnTo: '/oppdrag',
+                          missionId: mission?.id,
+                          existingRoute: routeData,
+                          formData,
+                          selectedPersonnel,
+                          selectedEquipment,
+                          selectedDrones,
+                          selectedCustomer
+                        }
+                      });
+                      onOpenChange(false);
+                    }}
+                  >
+                    <Route className="h-4 w-4 mr-1" />
+                    Rediger
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRouteData(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    navigate('/kart/planlegg', {
+                      state: {
+                        returnTo: '/oppdrag',
+                        missionId: mission?.id,
+                        existingRoute: null,
+                        formData,
+                        selectedPersonnel,
+                        selectedEquipment,
+                        selectedDrones,
+                        selectedCustomer
+                      }
+                    });
+                    onOpenChange(false);
+                  }}
+                >
+                  <Route className="h-4 w-4 mr-2" />
+                  Planlegg rute på kart
+                </Button>
+              )}
+            </div>
           </div>
 
           <div>
