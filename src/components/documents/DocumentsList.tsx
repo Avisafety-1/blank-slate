@@ -81,16 +81,19 @@ const DocumentsList = ({
         <TableHeader>
           <TableRow>
             <TableHead className="bg-slate-200 text-slate-950 opacity-100">Tittel</TableHead>
-            <TableHead className="bg-slate-200 text-slate-950 shadow-sm">Kategori</TableHead>
+            <TableHead className="bg-slate-200 text-slate-950 shadow-sm px-2 md:px-4">
+              <span className="md:hidden">Kat.</span>
+              <span className="hidden md:inline">Kategori</span>
+            </TableHead>
             <TableHead className="bg-slate-200 text-slate-950 hidden md:table-cell">Utløpsdato</TableHead>
             <TableHead className="bg-slate-200 text-slate-950 hidden lg:table-cell">Opprettet</TableHead>
-            <TableHead className="bg-slate-200 text-slate-950 text-right">Handlinger</TableHead>
+            <TableHead className="bg-slate-200 text-slate-950 text-right pl-1 md:pl-4">Handlinger</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {documents.map(doc => <TableRow key={doc.id} className="cursor-pointer hover:bg-accent" onClick={() => onDocumentClick(doc)}>
               <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none truncate">{doc.tittel}</TableCell>
-              <TableCell className="bg-slate-200/50 text-slate-950">
+              <TableCell className="bg-slate-200/50 text-slate-950 px-2 md:px-4">
                 <Badge variant="secondary" className="text-xs whitespace-nowrap">
                   {CATEGORY_LABELS[doc.kategori] || doc.kategori}
                 </Badge>
@@ -105,7 +108,7 @@ const DocumentsList = ({
               locale: nb
             })}
               </TableCell>
-              <TableCell className="bg-slate-200/50 text-slate-950 text-right">
+              <TableCell className="bg-slate-200/50 text-slate-950 text-right pl-1 md:pl-4">
                 <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
                   {doc.nettside_url && (
                     <Button
