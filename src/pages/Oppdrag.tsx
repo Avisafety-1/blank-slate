@@ -19,7 +19,8 @@ import {
   Search,
   Loader2,
   Edit,
-  Plus
+  Plus,
+  AlertTriangle
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -30,6 +31,7 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
+import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { toast } from "sonner";
 
 type Mission = any;
@@ -47,6 +49,20 @@ const riskColors: Record<string, string> = {
   Høy: "bg-red-500/20 text-red-300 border-red-500/30"
 };
 
+const incidentSeverityColors: Record<string, string> = {
+  Lav: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  Middels: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  Høy: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  Kritisk: "bg-red-500/20 text-red-300 border-red-500/30",
+};
+
+const incidentStatusColors: Record<string, string> = {
+  Åpen: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Under behandling": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  Løst: "bg-green-500/20 text-green-300 border-green-500/30",
+  Lukket: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+};
+
 const Oppdrag = () => {
   const { user, loading, companyId } = useAuth();
   const navigate = useNavigate();
@@ -59,6 +75,8 @@ const Oppdrag = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [soraDialogOpen, setSoraDialogOpen] = useState(false);
   const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -149,12 +167,19 @@ const Oppdrag = () => {
             .eq("mission_id", mission.id)
             .single();
 
+          // Fetch incidents linked to this mission
+          const { data: incidents } = await supabase
+            .from("incidents")
+            .select("*")
+            .eq("mission_id", mission.id);
+
           return {
             ...mission,
             personnel: personnel || [],
             drones: drones || [],
             equipment: equipment || [],
-            sora: sora || null
+            sora: sora || null,
+            incidents: incidents || []
           };
         })
       );
@@ -781,6 +806,52 @@ const Oppdrag = () => {
                       </div>
                     )}
 
+                    {/* Incidents Section */}
+                    {mission.incidents?.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                          <p className="text-xs font-semibold text-muted-foreground">
+                            TILKNYTTEDE HENDELSER ({mission.incidents.length})
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {mission.incidents.map((incident: any) => (
+                            <div
+                              key={incident.id}
+                              onClick={() => {
+                                setSelectedIncident(incident);
+                                setIncidentDialogOpen(true);
+                              }}
+                              className="p-2 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-sm">{incident.tittel}</h4>
+                                  <div className="flex flex-wrap items-center gap-1 text-xs mt-1">
+                                    <Badge className={incidentSeverityColors[incident.alvorlighetsgrad] || ""}>
+                                      {incident.alvorlighetsgrad}
+                                    </Badge>
+                                    {incident.hovedaarsak && (
+                                      <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                                        {incident.hovedaarsak}
+                                      </Badge>
+                                    )}
+                                    <span className="text-muted-foreground">
+                                      {format(new Date(incident.hendelsestidspunkt), "dd. MMM yyyy", { locale: nb })}
+                                    </span>
+                                  </div>
+                                </div>
+                                <Badge className={incidentStatusColors[incident.status] || ""}>
+                                  {incident.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Notes */}
                     {mission.merknader && (
                       <div className="pt-2 border-t border-border/50">
@@ -816,6 +887,13 @@ const Oppdrag = () => {
           onOpenChange={setSoraDialogOpen}
           missionId={soraEditingMissionId || undefined}
           onSaved={handleSoraSaved}
+        />
+
+        {/* Incident Detail Dialog */}
+        <IncidentDetailDialog
+          open={incidentDialogOpen}
+          onOpenChange={setIncidentDialogOpen}
+          incident={selectedIncident}
         />
       </div>
     </div>
