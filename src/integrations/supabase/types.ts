@@ -299,6 +299,8 @@ export type Database = {
           company_id: string
           flyvetimer: number
           id: string
+          inspection_interval_days: number | null
+          inspection_start_date: string | null
           kjøpsdato: string | null
           klasse: string | null
           merknader: string | null
@@ -306,17 +308,21 @@ export type Database = {
           neste_inspeksjon: string | null
           oppdatert_dato: string
           opprettet_dato: string
+          payload: number | null
           serienummer: string
           sist_inspeksjon: string | null
           status: string
           tilgjengelig: boolean
           user_id: string
+          vekt: number | null
         }
         Insert: {
           aktiv?: boolean
           company_id: string
           flyvetimer?: number
           id?: string
+          inspection_interval_days?: number | null
+          inspection_start_date?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
@@ -324,17 +330,21 @@ export type Database = {
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
+          payload?: number | null
           serienummer: string
           sist_inspeksjon?: string | null
           status?: string
           tilgjengelig?: boolean
           user_id: string
+          vekt?: number | null
         }
         Update: {
           aktiv?: boolean
           company_id?: string
           flyvetimer?: number
           id?: string
+          inspection_interval_days?: number | null
+          inspection_start_date?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
@@ -342,11 +352,13 @@ export type Database = {
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
+          payload?: number | null
           serienummer?: string
           sist_inspeksjon?: string | null
           status?: string
           tilgjengelig?: boolean
           user_id?: string
+          vekt?: number | null
         }
         Relationships: [
           {
