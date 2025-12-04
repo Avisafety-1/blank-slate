@@ -51,11 +51,11 @@ export default function KartPage() {
     }
   }, [location.state]);
 
-  const handleMissionClick = (mission: any) => {
+  const handleMissionClick = useCallback((mission: any) => {
     if (isRoutePlanning) return; // Don't open missions in route planning mode
     setSelectedMission(mission);
     setMissionDialogOpen(true);
-  };
+  }, [isRoutePlanning]);
 
   const handleRouteChange = useCallback((route: RouteData) => {
     setCurrentRoute(route);
