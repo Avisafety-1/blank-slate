@@ -82,25 +82,25 @@ const DocumentsList = ({
           <TableRow>
             <TableHead className="bg-slate-200 text-slate-950 opacity-100">Tittel</TableHead>
             <TableHead className="bg-slate-200 text-slate-950 shadow-sm">Kategori</TableHead>
-            <TableHead className="bg-slate-200 text-slate-950">Utløpsdato</TableHead>
-            <TableHead className="bg-slate-200 text-slate-950">Opprettet</TableHead>
+            <TableHead className="bg-slate-200 text-slate-950 hidden md:table-cell">Utløpsdato</TableHead>
+            <TableHead className="bg-slate-200 text-slate-950 hidden lg:table-cell">Opprettet</TableHead>
             <TableHead className="bg-slate-200 text-slate-950 text-right">Handlinger</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {documents.map(doc => <TableRow key={doc.id} className="cursor-pointer hover:bg-accent" onClick={() => onDocumentClick(doc)}>
-              <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none">{doc.tittel}</TableCell>
+              <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none truncate">{doc.tittel}</TableCell>
               <TableCell className="bg-slate-200/50 text-slate-950">
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs whitespace-nowrap">
                   {CATEGORY_LABELS[doc.kategori] || doc.kategori}
                 </Badge>
               </TableCell>
-              <TableCell className="bg-slate-200/50 text-slate-950">
+              <TableCell className="bg-slate-200/50 text-slate-950 hidden md:table-cell">
                 {doc.gyldig_til ? format(new Date(doc.gyldig_til), "dd.MM.yyyy", {
               locale: nb
             }) : "Ingen utløpsdato"}
               </TableCell>
-              <TableCell className="bg-slate-200/50 text-slate-950">
+              <TableCell className="bg-slate-200/50 text-slate-950 hidden lg:table-cell">
                 {format(new Date(doc.opprettet_dato), "dd.MM.yyyy", {
               locale: nb
             })}
