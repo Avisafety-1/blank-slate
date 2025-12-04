@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { getEmailConfig } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,7 @@ serve(async (req) => {
 
   try {
     const { customer_id, customer_name, customer_email, company_name, company_id }: CustomerWelcomeRequest = await req.json();
-    console.log("Processing welcome email for customer:", customer_name, customer_email);
+    console.log("Processing welcome email for customer:", customer_name, customer_email, "company_id:", company_id);
 
     if (!customer_email) {
       console.log("No email provided for customer, skipping notification");
@@ -115,81 +116,111 @@ serve(async (req) => {
         .replace(/\{\{company_name\}\}/g, company_name);
     }
 
-    // Get email configuration from database or fallback to environment
-    let emailHost: string | undefined;
-    let emailPort: number;
-    let emailUser: string | undefined;
-    let emailPass: string | undefined;
-    let emailSecure: boolean;
-    let fromName: string | undefined;
-    let fromEmail: string | undefined;
+    // Get email configuration using shared helper
+    const emailConfig = await getEmailConfig(company_id);
+    console.log("Email config loaded:", { 
+      host: emailConfig.host, 
+      port: emailConfig.port, 
+      user: emailConfig.user, 
+      secure: emailConfig.secure,
+      fromEmail: emailConfig.fromEmail
+    });
 
-    // Try to fetch settings from database first
-    const { data: emailSettings, error: settingsError } = await supabase
-      .from('email_settings')
-      .select('*')
-      .eq('company_id', company_id)
-      .eq('enabled', true)
-      .maybeSingle();
+    // Determine TLS settings based on port
+    const useTLS = emailConfig.port === 465 ? true : 
+                   (emailConfig.port === 587 ? true : emailConfig.secure);
 
-    if (settingsError) {
-      console.error("Error fetching email settings:", settingsError);
-    }
+    const senderAddress = emailConfig.fromName 
+      ? `${emailConfig.fromName} <${emailConfig.fromEmail}>` 
+      : emailConfig.fromEmail;
 
-    if (emailSettings) {
-      console.log("Using email settings from database");
-      emailHost = emailSettings.smtp_host;
-      emailPort = emailSettings.smtp_port;
-      emailUser = emailSettings.smtp_user;
-      emailPass = emailSettings.smtp_pass;
-      emailSecure = emailSettings.smtp_secure;
-      fromName = emailSettings.from_name;
-      fromEmail = emailSettings.from_email || emailSettings.smtp_user;
-    } else {
-      console.log("Using email settings from environment variables");
-      emailHost = Deno.env.get('EMAIL_HOST');
-      emailPort = parseInt(Deno.env.get('EMAIL_PORT') || '465');
-      emailUser = Deno.env.get('EMAIL_USER');
-      emailPass = Deno.env.get('EMAIL_PASS');
-      emailSecure = Deno.env.get('EMAIL_SECURE') === 'true';
-      fromEmail = emailUser;
-    }
+    console.log("Attempting to send email to:", customer_email, "from:", senderAddress);
 
-    if (!emailHost || !emailUser || !emailPass) {
-      console.error("Email configuration missing");
-      throw new Error("Email configuration is incomplete. Please configure SMTP settings in admin panel or environment variables.");
-    }
+    // Retry logic for sporadic SMTP failures
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    let success = false;
 
-    console.log("Email config:", { emailHost, emailPort, emailUser, emailSecure });
-
-    // Create SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailHost,
-        port: emailPort,
-        tls: emailSecure,
-        auth: {
-          username: emailUser,
-          password: emailPass,
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let client: SMTPClient | null = null;
+      
+      try {
+        console.log(`Send attempt ${attempt}/${maxRetries}`);
+        
+        client = new SMTPClient({
+          connection: {
+            hostname: emailConfig.host,
+            port: emailConfig.port,
+            tls: useTLS,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
         },
-      },
-    });
+        });
 
-    console.log("Attempting to send email to:", customer_email);
+        await client.send({
+          from: senderAddress,
+          to: customer_email,
+          subject: emailSubject,
+          content: "auto",
+          html: emailContent,
+        });
 
-    const senderAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail!;
+        await client.close();
+        success = true;
+        console.log("Customer welcome email sent successfully to:", customer_email);
+        break;
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`Send attempt ${attempt} failed:`, lastError.message);
+        
+        // Try to close the client if it exists
+        if (client) {
+          try {
+            await client.close();
+          } catch (closeError) {
+            console.log("Error closing client:", closeError);
+          }
+        }
+        
+        if (attempt < maxRetries) {
+          const waitTime = 1000 * attempt; // Exponential backoff: 1s, 2s, 3s
+          console.log(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
 
-    await client.send({
-      from: senderAddress,
-      to: customer_email,
-      subject: emailSubject,
-      content: "auto",
-      html: emailContent,
-    });
-
-    await client.close();
-
-    console.log("Customer welcome email sent successfully to:", customer_email);
+    if (!success) {
+      console.error("All send attempts failed. Last error:", lastError?.message);
+      
+      // Provide user-friendly error message
+      let userMessage = "Kunne ikke sende e-post.";
+      const errorMsg = lastError?.message?.toLowerCase() || "";
+      
+      if (errorMsg.includes("auth") || errorMsg.includes("credentials") || errorMsg.includes("535")) {
+        userMessage = "Feil brukernavn eller passord for SMTP-server.";
+      } else if (errorMsg.includes("connection") || errorMsg.includes("timeout") || errorMsg.includes("econnrefused")) {
+        userMessage = "Kunne ikke koble til e-postserveren. Sjekk SMTP-host og port.";
+      } else if (errorMsg.includes("tls") || errorMsg.includes("ssl") || errorMsg.includes("certificate")) {
+        userMessage = "TLS/SSL-feil. Prøv å endre sikkerhetsinnstillinger.";
+      } else if (errorMsg.includes("datamode") || errorMsg.includes("bad resource")) {
+        userMessage = "E-postserveren avsluttet forbindelsen uventet. Dette kan være et midlertidig problem.";
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: userMessage,
+          details: lastError?.message
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -205,12 +236,11 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in send-customer-welcome-email function:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorDetails = error instanceof Error ? error.toString() : String(error);
     
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: errorDetails
+        details: error instanceof Error ? error.toString() : String(error)
       }),
       { 
         status: 500, 
