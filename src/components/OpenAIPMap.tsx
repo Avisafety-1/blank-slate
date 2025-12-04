@@ -77,10 +77,19 @@ export function OpenAIPMap({
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
-    if (!routeLayerRef.current || !leafletMapRef.current) return;
+    console.log('updateRouteDisplay called, points:', routePointsRef.current.length);
+    console.log('routeLayerRef.current:', !!routeLayerRef.current);
+    console.log('leafletMapRef.current:', !!leafletMapRef.current);
+    
+    if (!routeLayerRef.current || !leafletMapRef.current) {
+      console.log('Early return - refs not ready');
+      return;
+    }
     
     routeLayerRef.current.clearLayers();
     const points = routePointsRef.current;
+    
+    console.log('Drawing route with points:', points);
     
     if (points.length === 0) return;
 
@@ -107,7 +116,7 @@ export function OpenAIPMap({
 
       const marker = L.marker([point.lat, point.lng], {
         icon: L.divIcon({
-          className: '',
+          className: 'route-marker',
           html: `<div style="
             width: 28px;
             height: 28px;
@@ -181,7 +190,7 @@ export function OpenAIPMap({
       const midPoint = points[Math.floor(points.length / 2)];
       L.marker([midPoint.lat, midPoint.lng], {
         icon: L.divIcon({
-          className: '',
+          className: 'route-marker',
           html: `<div style="
             background: white;
             padding: 4px 8px;
@@ -212,7 +221,9 @@ export function OpenAIPMap({
     const routePane = map.getPane('routePane');
     if (routePane) {
       routePane.style.zIndex = '650'; // Above markers (600), below popups (700)
+      routePane.style.pointerEvents = 'auto';
     }
+    console.log('routePane created:', !!routePane);
 
     // OSM background
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
