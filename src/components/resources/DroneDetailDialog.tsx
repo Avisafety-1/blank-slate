@@ -485,6 +485,56 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days) && (
                 <div className="border-t border-border pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Inspeksjon
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        if (!user || !companyId) return;
+                        try {
+                          const today = new Date().toISOString().split('T')[0];
+                          let nextInspection: string | null = null;
+                          if (drone.inspection_interval_days) {
+                            const nextDate = new Date();
+                            nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
+                            nextInspection = nextDate.toISOString().split('T')[0];
+                          }
+                          
+                          const { error: updateError } = await supabase
+                            .from('drones')
+                            .update({
+                              sist_inspeksjon: today,
+                              neste_inspeksjon: nextInspection,
+                            })
+                            .eq('id', drone.id);
+                          
+                          if (updateError) throw updateError;
+                          
+                          await supabase.from('drone_inspections').insert({
+                            drone_id: drone.id,
+                            company_id: companyId,
+                            user_id: user.id,
+                            inspection_date: new Date().toISOString(),
+                            inspection_type: 'Manuell inspeksjon',
+                            notes: 'Utført fra dronekort',
+                          });
+                          
+                          toast.success('Inspeksjon registrert');
+                          onDroneUpdated();
+                        } catch (error: any) {
+                          toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
+                        }
+                      }}
+                      className="gap-2"
+                    >
+                      <Wrench className="w-4 h-4" />
+                      Utfør inspeksjon
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     {drone.sist_inspeksjon && (
                       <div className="flex items-start gap-2">
