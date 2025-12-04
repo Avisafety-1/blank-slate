@@ -464,27 +464,35 @@ export default function Kalender() {
           nextInspection = nextDate.toISOString().split('T')[0];
         }
         
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('drones')
           .update({
             sist_inspeksjon: today,
             neste_inspeksjon: nextInspection,
           })
-          .eq('id', event.id);
+          .eq('id', event.id)
+          .select();
         
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Oppdatering feilet - mangler tilgang');
+        }
         toast.success('Inspeksjon registrert som utført');
         
       } else if (event.sourceTable === 'equipment') {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('equipment')
           .update({
             sist_vedlikeholdt: today,
             neste_vedlikehold: null,
           })
-          .eq('id', event.id);
+          .eq('id', event.id)
+          .select();
         
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Oppdatering feilet - mangler tilgang');
+        }
         toast.success('Vedlikehold registrert som utført');
         
       } else if (event.sourceTable === 'drone_accessories') {
@@ -504,22 +512,27 @@ export default function Kalender() {
           nextMaintenance = nextDate.toISOString().split('T')[0];
         }
         
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('drone_accessories')
           .update({
             sist_vedlikehold: today,
             neste_vedlikehold: nextMaintenance,
           })
-          .eq('id', event.id);
+          .eq('id', event.id)
+          .select();
         
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Oppdatering feilet - mangler tilgang');
+        }
         toast.success('Vedlikehold registrert som utført');
       }
       
+      setDialogOpen(false);
       fetchCustomEvents();
     } catch (error: any) {
       console.error('Error marking maintenance complete:', error);
-      toast.error('Kunne ikke registrere vedlikehold');
+      toast.error(error.message || 'Kunne ikke registrere vedlikehold');
     }
   };
 
