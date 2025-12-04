@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState } from "react";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
+import { Status } from "@/types";
 
 interface EquipmentListDialogProps {
   open: boolean;
@@ -45,7 +47,7 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
                   <h3 className="font-semibold text-lg">{item.navn}</h3>
                   <p className="text-sm text-muted-foreground">{item.type}</p>
                 </div>
-                <StatusBadge status={item.status} />
+                <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold) as Status} />
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
