@@ -102,8 +102,26 @@ const Oppdrag = () => {
       setInitialSelectedDrones(state.selectedDrones || []);
       setInitialSelectedCustomer(state.selectedCustomer || "");
       
-      // Open the add dialog to continue editing the mission
-      setAddDialogOpen(true);
+      // Check if we're editing an existing mission
+      if (state.missionId) {
+        // Fetch the mission and open edit dialog
+        const fetchMission = async () => {
+          const { data } = await supabase
+            .from('missions')
+            .select('*')
+            .eq('id', state.missionId)
+            .maybeSingle();
+          
+          if (data) {
+            setEditingMission(data);
+            setEditDialogOpen(true);
+          }
+        };
+        fetchMission();
+      } else {
+        // Open the add dialog for new mission
+        setAddDialogOpen(true);
+      }
       
       // Clear the navigation state
       navigate(location.pathname, { replace: true, state: null });
