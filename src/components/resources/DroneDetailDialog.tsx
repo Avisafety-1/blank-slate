@@ -328,43 +328,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
       if (error) throw error;
 
-      // Sync calendar event for next inspection
-      if (formData.neste_inspeksjon && user && companyId) {
-        // Check for existing calendar event
-        const { data: existingEvent } = await supabase
-          .from("calendar_events")
-          .select("id")
-          .like("description", `drone_inspection:${drone.id}`)
-          .single();
-
-        if (existingEvent) {
-          // Update existing event
-          await supabase
-            .from("calendar_events")
-            .update({
-              title: `Inspeksjon: ${formData.modell}`,
-              event_date: formData.neste_inspeksjon,
-            })
-            .eq("id", existingEvent.id);
-        } else {
-          // Create new event
-          await supabase.from("calendar_events").insert({
-            user_id: user.id,
-            company_id: companyId,
-            title: `Inspeksjon: ${formData.modell}`,
-            type: "Vedlikehold",
-            description: `drone_inspection:${drone.id}`,
-            event_date: formData.neste_inspeksjon,
-          });
-        }
-      } else if (!formData.neste_inspeksjon) {
-        // Remove calendar event if neste_inspeksjon is cleared
-        await supabase
-          .from("calendar_events")
-          .delete()
-          .like("description", `drone_inspection:${drone.id}`);
-      }
-
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
       onDroneUpdated();
@@ -380,12 +343,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     if (!drone || !isAdmin) return;
 
     try {
-      // Also delete associated calendar event
-      await supabase
-        .from("calendar_events")
-        .delete()
-        .like("description", `drone_inspection:${drone.id}`);
-
       const { error } = await supabase
         .from("drones")
         .delete()
