@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -64,6 +64,7 @@ const Admin = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
+  const [registrationCode, setRegistrationCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -110,6 +111,19 @@ const Admin = () => {
   const fetchData = async () => {
     setLoadingData(true);
     try {
+      // Fetch company registration code
+      if (companyId) {
+        const { data: companyData } = await supabase
+          .from("companies")
+          .select("registration_code")
+          .eq("id", companyId)
+          .single();
+        
+        if (companyData) {
+          setRegistrationCode(companyData.registration_code);
+        }
+      }
+
       // Fetch profiles - filter by company
       let profilesQuery = supabase
         .from("profiles")
@@ -160,6 +174,13 @@ const Admin = () => {
       toast.error("Feil ved henting av data");
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const copyRegistrationCode = () => {
+    if (registrationCode) {
+      navigator.clipboard.writeText(registrationCode);
+      toast.success("Registreringskode kopiert!");
     }
   };
 
@@ -401,6 +422,32 @@ const Admin = () => {
 
           <TabsContent value="users" className="mt-8 sm:mt-12">
             <div className="space-y-4 sm:space-y-6">
+              {/* Registration Code Card */}
+              {registrationCode && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-3 sm:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      Registreringskode
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Del denne koden med nye brukere som skal registrere seg i systemet
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 sm:px-6">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <code className="text-xl sm:text-2xl font-mono font-bold bg-background px-4 py-2 rounded-md border tracking-widest">
+                        {registrationCode}
+                      </code>
+                      <Button variant="outline" size="sm" onClick={copyRegistrationCode}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        Kopier
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Pending Users */}
               {pendingUsers.length > 0 && (
                 <Card>

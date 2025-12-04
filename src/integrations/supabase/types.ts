@@ -71,6 +71,7 @@ export type Database = {
           kontakt_telefon: string | null
           navn: string
           org_nummer: string | null
+          registration_code: string
           selskapstype: string | null
           updated_at: string
         }
@@ -83,6 +84,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn: string
           org_nummer?: string | null
+          registration_code: string
           selskapstype?: string | null
           updated_at?: string
         }
@@ -95,6 +97,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn?: string
           org_nummer?: string | null
+          registration_code?: string
           selskapstype?: string | null
           updated_at?: string
         }
@@ -1794,6 +1797,13 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_company_by_registration_code: {
+        Args: { p_code: string }
+        Returns: {
+          company_id: string
+          company_name: string
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
