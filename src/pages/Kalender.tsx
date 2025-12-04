@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar as CalendarIcon, Plus, CheckCircle2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import droneBackground from "@/assets/drone-background.png";
 import { Header } from "@/components/Header";
 import { format, isSameDay } from "date-fns";
@@ -834,22 +836,27 @@ export default function Kalender() {
                         {event.description && (
                           <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
                         )}
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {event.type}
-                          </Badge>
-                          {isMaintenanceEvent && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
-                              onClick={(e) => handleMarkMaintenanceComplete(event, e)}
+                        <Badge variant="outline" className="text-xs">
+                          {event.type}
+                        </Badge>
+                        {isMaintenanceEvent && (
+                          <div 
+                            className="flex items-center gap-2 mt-2 pt-2 border-t border-border"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Switch
+                              id={`maintenance-${event.id}`}
+                              onCheckedChange={() => handleMarkMaintenanceComplete(event, { stopPropagation: () => {} } as React.MouseEvent)}
+                              className="data-[state=checked]:bg-green-500"
+                            />
+                            <Label 
+                              htmlFor={`maintenance-${event.id}`}
+                              className="text-xs text-muted-foreground cursor-pointer"
                             >
-                              <CheckCircle2 className="w-3 h-3" />
-                              Utført
-                            </Button>
-                          )}
-                        </div>
+                              Marker som utført
+                            </Label>
+                          </div>
+                        )}
                       </div>
                       <div className={cn("text-xs font-medium", event.color)}>
                         {format(event.date, "HH:mm")}
