@@ -45,7 +45,7 @@ interface CalendarEvent {
   id?: string;
   isCustom?: boolean;
   sourceId?: string;
-  sourceType?: 'mission' | 'document' | 'drone' | 'equipment' | 'incident' | 'custom';
+  sourceType?: 'mission' | 'document' | 'drone' | 'equipment' | 'incident' | 'custom' | 'accessory';
 }
 
 type CalendarEventDB = Tables<"calendar_events">;
@@ -198,6 +198,15 @@ export const CalendarWidget = () => {
         },
         () => fetchRealCalendarEvents()
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'drone_accessories'
+        },
+        () => fetchRealCalendarEvents()
+      )
       .subscribe();
 
     return () => {
@@ -312,6 +321,24 @@ export const CalendarWidget = () => {
           color: "text-red-500",
           sourceId: i.id,
           sourceType: 'incident' as const,
+        })));
+      }
+
+      // Fetch drone accessories with maintenance dates
+      const { data: accessories } = await supabase
+        .from('drone_accessories')
+        .select('id, navn, neste_vedlikehold')
+        .not('neste_vedlikehold', 'is', null)
+        .order('neste_vedlikehold', { ascending: true });
+      
+      if (accessories) {
+        events.push(...accessories.map(a => ({
+          type: "Vedlikehold",
+          title: `${a.navn} - vedlikehold`,
+          date: new Date(a.neste_vedlikehold!),
+          color: "text-orange-500",
+          sourceId: a.id,
+          sourceType: 'accessory' as const,
         })));
       }
 

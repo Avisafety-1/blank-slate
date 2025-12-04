@@ -58,6 +58,9 @@ export default function Kalender() {
   const [missions, setMissions] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [drones, setDrones] = useState<any[]>([]);
+  const [equipment, setEquipment] = useState<any[]>([]);
+  const [accessories, setAccessories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -171,11 +174,59 @@ export default function Kalender() {
       )
       .subscribe();
 
+    const dronesChannel = supabase
+      .channel('drones-calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'drones'
+        },
+        () => {
+          fetchCustomEvents();
+        }
+      )
+      .subscribe();
+
+    const equipmentChannel = supabase
+      .channel('equipment-calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'equipment'
+        },
+        () => {
+          fetchCustomEvents();
+        }
+      )
+      .subscribe();
+
+    const accessoriesChannel = supabase
+      .channel('accessories-calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'drone_accessories'
+        },
+        () => {
+          fetchCustomEvents();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(calendarChannel);
       supabase.removeChannel(missionsChannel);
       supabase.removeChannel(incidentsChannel);
       supabase.removeChannel(documentsChannel);
+      supabase.removeChannel(dronesChannel);
+      supabase.removeChannel(equipmentChannel);
+      supabase.removeChannel(accessoriesChannel);
     };
   }, [companyId]);
 
@@ -219,6 +270,39 @@ export default function Kalender() {
 
       if (!documentsError) {
         setDocuments(documentsData || []);
+      }
+
+      // Fetch drones with inspection dates
+      const { data: dronesData, error: dronesError } = await supabase
+        .from('drones')
+        .select('id, modell, neste_inspeksjon')
+        .not('neste_inspeksjon', 'is', null)
+        .order('neste_inspeksjon', { ascending: true });
+
+      if (!dronesError) {
+        setDrones(dronesData || []);
+      }
+
+      // Fetch equipment with maintenance dates
+      const { data: equipmentData, error: equipmentError } = await supabase
+        .from('equipment')
+        .select('id, navn, neste_vedlikehold')
+        .not('neste_vedlikehold', 'is', null)
+        .order('neste_vedlikehold', { ascending: true });
+
+      if (!equipmentError) {
+        setEquipment(equipmentData || []);
+      }
+
+      // Fetch drone accessories with maintenance dates
+      const { data: accessoriesData, error: accessoriesError } = await supabase
+        .from('drone_accessories')
+        .select('id, navn, neste_vedlikehold')
+        .not('neste_vedlikehold', 'is', null)
+        .order('neste_vedlikehold', { ascending: true });
+
+      if (!accessoriesError) {
+        setAccessories(accessoriesData || []);
       }
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
@@ -281,6 +365,36 @@ export default function Kalender() {
       description: doc.kategori,
       color: getColorForType("Dokument"),
       sourceTable: 'documents',
+    })),
+    
+    // Drones (inspection)
+    ...drones.map((drone) => ({
+      id: drone.id,
+      type: "Vedlikehold",
+      title: `${drone.modell} - inspeksjon`,
+      date: new Date(drone.neste_inspeksjon),
+      color: getColorForType("Vedlikehold"),
+      sourceTable: 'drones',
+    })),
+    
+    // Equipment (maintenance)
+    ...equipment.map((eq) => ({
+      id: eq.id,
+      type: "Vedlikehold",
+      title: `${eq.navn} - vedlikehold`,
+      date: new Date(eq.neste_vedlikehold),
+      color: getColorForType("Vedlikehold"),
+      sourceTable: 'equipment',
+    })),
+    
+    // Drone accessories (maintenance)
+    ...accessories.map((acc) => ({
+      id: acc.id,
+      type: "Vedlikehold",
+      title: `${acc.navn} - vedlikehold`,
+      date: new Date(acc.neste_vedlikehold),
+      color: getColorForType("Vedlikehold"),
+      sourceTable: 'drone_accessories',
     })),
   ];
 
