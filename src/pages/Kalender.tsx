@@ -477,6 +477,19 @@ export default function Kalender() {
         if (!data || data.length === 0) {
           throw new Error('Ingen rettighet til å oppdatere dette');
         }
+
+        // Also log to drone_inspections for the logbook
+        if (user && companyId) {
+          await supabase.from('drone_inspections').insert({
+            drone_id: event.id,
+            company_id: companyId,
+            user_id: user.id,
+            inspection_date: new Date().toISOString(),
+            inspection_type: 'Planlagt inspeksjon',
+            notes: `Utført via kalender`,
+          });
+        }
+        
         toast.success('Inspeksjon registrert som utført');
         
       } else if (event.sourceTable === 'equipment') {
