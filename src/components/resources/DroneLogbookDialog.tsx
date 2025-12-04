@@ -22,10 +22,13 @@ import {
   Plus, 
   Calendar,
   User,
-  Trash2
+  Trash2,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface DroneLogbookDialogProps {
   open: boolean;
@@ -278,6 +281,81 @@ export const DroneLogbookDialog = ({
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!user || !companyId) {
+      toast.error("Du må være innlogget");
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF();
+      const dateStr = format(new Date(), 'dd.MM.yyyy');
+      const timeStr = format(new Date(), 'HH:mm');
+      
+      // Header
+      pdf.setFontSize(18);
+      pdf.text(`Loggbok - ${droneModell}`, 14, 20);
+      pdf.setFontSize(11);
+      pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
+      pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
+      
+      // Table with all entries
+      const tableData = allLogs.map(log => [
+        format(log.date, 'dd.MM.yyyy HH:mm'),
+        log.badgeText,
+        log.title,
+        log.description || '',
+        log.userName || 'Ukjent'
+      ]);
+
+      autoTable(pdf, {
+        startY: 45,
+        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
+        body: tableData,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [59, 130, 246] },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 45 },
+          3: { cellWidth: 55 },
+          4: { cellWidth: 30 },
+        },
+      });
+
+      // Convert PDF to blob
+      const pdfBlob = pdf.output('blob');
+      const safeModelName = droneModell.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      const fileName = `loggbok-${safeModelName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const filePath = `${companyId}/${user.id}/${Date.now()}-${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, pdfBlob, { contentType: 'application/pdf' });
+
+      if (uploadError) throw uploadError;
+
+      // Create document entry
+      const { error: insertError } = await supabase.from('documents').insert({
+        tittel: `Loggbok - ${droneModell} - ${dateStr}`,
+        kategori: 'loggbok',
+        fil_url: filePath,
+        fil_navn: fileName,
+        fil_storrelse: pdfBlob.size,
+        company_id: companyId,
+        user_id: user.id,
+      });
+
+      if (insertError) throw insertError;
+
+      toast.success('Loggbok eksportert til dokumenter');
+    } catch (error: any) {
+      console.error('Error exporting PDF:', error);
+      toast.error(`Kunne ikke eksportere: ${error.message}`);
+    }
+  };
+
   const filteredLogs = activeTab === 'all' 
     ? allLogs 
     : allLogs.filter(log => {
@@ -303,7 +381,7 @@ export const DroneLogbookDialog = ({
           </p>
         </DialogHeader>
 
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2">
           <Button 
             variant="outline" 
             size="sm" 
@@ -311,6 +389,14 @@ export const DroneLogbookDialog = ({
           >
             <Plus className="w-4 h-4 mr-2" />
             Legg til innlegg
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportPDF}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Eksporter til PDF
           </Button>
         </div>
 
