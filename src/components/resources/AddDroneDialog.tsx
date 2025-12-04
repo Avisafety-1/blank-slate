@@ -19,6 +19,9 @@ interface AddDroneDialogProps {
 export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: AddDroneDialogProps) => {
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
+  const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
+  const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const terminology = useTerminology();
 
   useEffect(() => {
@@ -39,6 +42,21 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
     }
   }, [userId]);
 
+  // Calculate next inspection when start date or interval changes
+  useEffect(() => {
+    if (inspectionStartDate && inspectionIntervalDays) {
+      const startDate = new Date(inspectionStartDate);
+      const days = parseInt(inspectionIntervalDays);
+      if (!isNaN(days) && days > 0) {
+        const nextDate = new Date(startDate);
+        nextDate.setDate(nextDate.getDate() + days);
+        setCalculatedNextInspection(nextDate.toISOString().split('T')[0]);
+      }
+    } else {
+      setCalculatedNextInspection("");
+    }
+  }, [inspectionStartDate, inspectionIntervalDays]);
+
   const handleAddDrone = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -53,9 +71,11 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
       setIsSubmitting(false);
       return;
     }
+
+    const nesteInspeksjon = calculatedNextInspection || (formData.get("neste_inspeksjon") as string) || null;
     
     try {
-      const { error } = await (supabase as any).from("drones").insert([{
+      const { data: droneData, error } = await (supabase as any).from("drones").insert([{
         user_id: userId,
         company_id: companyId,
         modell: formData.get("modell") as string,
@@ -64,28 +84,41 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
         merknader: (formData.get("merknader") as string) || null,
         sist_inspeksjon: (formData.get("sist_inspeksjon") as string) || null,
-        neste_inspeksjon: (formData.get("neste_inspeksjon") as string) || null,
+        neste_inspeksjon: nesteInspeksjon,
         kjøpsdato: (formData.get("kjøpsdato") as string) || null,
         klasse: (formData.get("klasse") as string) || null,
-      }]);
+        vekt: formData.get("vekt") ? parseFloat(formData.get("vekt") as string) : null,
+        payload: formData.get("payload") ? parseFloat(formData.get("payload") as string) : null,
+        inspection_start_date: inspectionStartDate || null,
+        inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
+      }]).select().single();
 
       if (error) {
         console.error("Error adding drone:", error);
-        console.error("Error details:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
         if (error.code === "42501" || error.message?.includes("policy")) {
           toast.error(`Du har ikke tillatelse til å legge til ${terminology.vehicleLower}`);
         } else {
           toast.error(`Kunne ikke legge til ${terminology.vehicleLower}: ${error.message || "Ukjent feil"}`);
         }
       } else {
+        // Create calendar event for next inspection if set
+        if (nesteInspeksjon && droneData) {
+          const modell = formData.get("modell") as string;
+          await supabase.from("calendar_events").insert({
+            user_id: userId,
+            company_id: companyId,
+            title: `Inspeksjon: ${modell}`,
+            type: "Vedlikehold",
+            description: `drone_inspection:${droneData.id}`,
+            event_date: nesteInspeksjon,
+          });
+        }
+        
         toast.success(`${terminology.vehicle} lagt til`);
         form.reset();
+        setInspectionStartDate("");
+        setInspectionIntervalDays("");
+        setCalculatedNextInspection("");
         onDroneAdded();
         onOpenChange(false);
       }
@@ -96,7 +129,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{terminology.addVehicle}</DialogTitle>
         </DialogHeader>
@@ -125,6 +158,16 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
+              <Input id="vekt" name="vekt" type="number" step="0.01" placeholder="f.eks. 0.9" />
+            </div>
+            <div>
+              <Label htmlFor="payload">Payload (kg)</Label>
+              <Input id="payload" name="payload" type="number" step="0.01" placeholder="f.eks. 0.5" />
+            </div>
+          </div>
           <div>
             <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
             <Input id="kjøpsdato" name="kjøpsdato" type="date" />
@@ -150,9 +193,52 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
             <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
             <Input id="sist_inspeksjon" name="sist_inspeksjon" type="date" />
           </div>
+          
+          {/* Inspection interval section */}
+          <div className="border-t pt-4 mt-4">
+            <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="inspection_start_date">Startdato</Label>
+                <Input 
+                  id="inspection_start_date" 
+                  type="date" 
+                  value={inspectionStartDate}
+                  onChange={(e) => setInspectionStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                <Input 
+                  id="inspection_interval_days" 
+                  type="number" 
+                  placeholder="f.eks. 90"
+                  value={inspectionIntervalDays}
+                  onChange={(e) => setInspectionIntervalDays(e.target.value)}
+                />
+              </div>
+            </div>
+            {calculatedNextInspection && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Beregnet neste inspeksjon: <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
+              </p>
+            )}
+          </div>
+          
           <div>
-            <Label htmlFor="neste_inspeksjon">Neste inspeksjon</Label>
-            <Input id="neste_inspeksjon" name="neste_inspeksjon" type="date" />
+            <Label htmlFor="neste_inspeksjon">Neste inspeksjon {calculatedNextInspection && "(overstyrt av intervall)"}</Label>
+            <Input 
+              id="neste_inspeksjon" 
+              name="neste_inspeksjon" 
+              type="date" 
+              value={calculatedNextInspection}
+              onChange={(e) => {
+                if (!inspectionIntervalDays) {
+                  setCalculatedNextInspection(e.target.value);
+                }
+              }}
+              disabled={!!calculatedNextInspection}
+            />
           </div>
           <div>
             <Label htmlFor="merknader">Merknader</Label>

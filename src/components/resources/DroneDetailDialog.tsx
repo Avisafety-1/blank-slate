@@ -10,10 +10,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Drone {
   id: string;
@@ -28,6 +29,10 @@ interface Drone {
   aktiv: boolean;
   kjøpsdato: string | null;
   klasse: string | null;
+  vekt: number | null;
+  payload: number | null;
+  inspection_start_date: string | null;
+  inspection_interval_days: number | null;
 }
 
 interface DroneDetailDialogProps {
@@ -45,6 +50,7 @@ const statusColors: Record<string, string> = {
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
+  const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +68,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     neste_inspeksjon: "",
     kjøpsdato: "",
     klasse: "",
+    vekt: "",
+    payload: "",
+    inspection_start_date: "",
+    inspection_interval_days: "",
   });
 
   useEffect(() => {
@@ -76,12 +86,39 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         neste_inspeksjon: drone.neste_inspeksjon ? new Date(drone.neste_inspeksjon).toISOString().split('T')[0] : "",
         kjøpsdato: drone.kjøpsdato ? new Date(drone.kjøpsdato).toISOString().split('T')[0] : "",
         klasse: drone.klasse || "",
+        vekt: drone.vekt !== null ? String(drone.vekt) : "",
+        payload: drone.payload !== null ? String(drone.payload) : "",
+        inspection_start_date: drone.inspection_start_date ? new Date(drone.inspection_start_date).toISOString().split('T')[0] : "",
+        inspection_interval_days: drone.inspection_interval_days !== null ? String(drone.inspection_interval_days) : "",
       });
       setIsEditing(false);
       fetchLinkedEquipment();
       fetchLinkedPersonnel();
     }
   }, [drone]);
+
+  // Calculate next inspection when start date, interval, or sist_inspeksjon changes
+  useEffect(() => {
+    if (formData.inspection_start_date && formData.inspection_interval_days) {
+      const days = parseInt(formData.inspection_interval_days);
+      if (!isNaN(days) && days > 0) {
+        // Use sist_inspeksjon if it's after start date, otherwise use start date
+        let baseDate = new Date(formData.inspection_start_date);
+        if (formData.sist_inspeksjon) {
+          const sistInspDate = new Date(formData.sist_inspeksjon);
+          if (sistInspDate > baseDate) {
+            baseDate = sistInspDate;
+          }
+        }
+        const nextDate = new Date(baseDate);
+        nextDate.setDate(nextDate.getDate() + days);
+        const calculatedDate = nextDate.toISOString().split('T')[0];
+        if (calculatedDate !== formData.neste_inspeksjon) {
+          setFormData(prev => ({ ...prev, neste_inspeksjon: calculatedDate }));
+        }
+      }
+    }
+  }, [formData.inspection_start_date, formData.inspection_interval_days, formData.sist_inspeksjon]);
 
   const fetchLinkedEquipment = async () => {
     if (!drone) return;
@@ -181,10 +218,51 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           neste_inspeksjon: formData.neste_inspeksjon || null,
           kjøpsdato: formData.kjøpsdato || null,
           klasse: formData.klasse || null,
+          vekt: formData.vekt ? parseFloat(formData.vekt) : null,
+          payload: formData.payload ? parseFloat(formData.payload) : null,
+          inspection_start_date: formData.inspection_start_date || null,
+          inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
         })
         .eq("id", drone.id);
 
       if (error) throw error;
+
+      // Sync calendar event for next inspection
+      if (formData.neste_inspeksjon && user && companyId) {
+        // Check for existing calendar event
+        const { data: existingEvent } = await supabase
+          .from("calendar_events")
+          .select("id")
+          .like("description", `drone_inspection:${drone.id}`)
+          .single();
+
+        if (existingEvent) {
+          // Update existing event
+          await supabase
+            .from("calendar_events")
+            .update({
+              title: `Inspeksjon: ${formData.modell}`,
+              event_date: formData.neste_inspeksjon,
+            })
+            .eq("id", existingEvent.id);
+        } else {
+          // Create new event
+          await supabase.from("calendar_events").insert({
+            user_id: user.id,
+            company_id: companyId,
+            title: `Inspeksjon: ${formData.modell}`,
+            type: "Vedlikehold",
+            description: `drone_inspection:${drone.id}`,
+            event_date: formData.neste_inspeksjon,
+          });
+        }
+      } else if (!formData.neste_inspeksjon) {
+        // Remove calendar event if neste_inspeksjon is cleared
+        await supabase
+          .from("calendar_events")
+          .delete()
+          .like("description", `drone_inspection:${drone.id}`);
+      }
 
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
@@ -201,6 +279,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     if (!drone || !isAdmin) return;
 
     try {
+      // Also delete associated calendar event
+      await supabase
+        .from("calendar_events")
+        .delete()
+        .like("description", `drone_inspection:${drone.id}`);
+
       const { error } = await supabase
         .from("drones")
         .delete()
@@ -263,6 +347,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <p className="text-sm font-medium text-muted-foreground">Vekt MTOM</p>
+                  <p className="text-base">{drone.vekt !== null ? `${drone.vekt} kg` : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Payload</p>
+                  <p className="text-base">{drone.payload !== null ? `${drone.payload} kg` : "-"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
                 </div>
@@ -274,7 +369,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
               </div>
 
-              {(drone.sist_inspeksjon || drone.neste_inspeksjon) && (
+              {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days) && (
                 <div className="border-t border-border pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     {drone.sist_inspeksjon && (
@@ -296,6 +391,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                       </div>
                     )}
                   </div>
+                  {drone.inspection_interval_days && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Inspeksjonsintervall: {drone.inspection_interval_days} dager
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -471,6 +571,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
+                  <Input
+                    id="vekt"
+                    type="number"
+                    step="0.01"
+                    value={formData.vekt}
+                    onChange={(e) => setFormData({ ...formData, vekt: e.target.value })}
+                    placeholder="f.eks. 0.9"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="payload">Payload (kg)</Label>
+                  <Input
+                    id="payload"
+                    type="number"
+                    step="0.01"
+                    value={formData.payload}
+                    onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
+                    placeholder="f.eks. 0.5"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="flyvetimer">Flyvetimer</Label>
                   <Input
                     id="flyvetimer"
@@ -513,8 +638,40 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     type="date"
                     value={formData.neste_inspeksjon}
                     onChange={(e) => setFormData({ ...formData, neste_inspeksjon: e.target.value })}
+                    disabled={!!formData.inspection_interval_days}
                   />
                 </div>
+              </div>
+
+              {/* Inspection interval section */}
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="inspection_start_date">Startdato</Label>
+                    <Input 
+                      id="inspection_start_date" 
+                      type="date" 
+                      value={formData.inspection_start_date}
+                      onChange={(e) => setFormData({ ...formData, inspection_start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                    <Input 
+                      id="inspection_interval_days" 
+                      type="number" 
+                      placeholder="f.eks. 90"
+                      value={formData.inspection_interval_days}
+                      onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
+                    />
+                  </div>
+                </div>
+                {formData.inspection_start_date && formData.inspection_interval_days && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Neste inspeksjon beregnes automatisk basert på intervall
+                  </p>
+                )}
               </div>
 
               <div>
