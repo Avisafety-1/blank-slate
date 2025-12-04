@@ -145,12 +145,13 @@ export default function KartPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col w-full overflow-hidden">
-      {!isRoutePlanning && <Header />}
+    <div className="h-screen flex flex-col w-full">
+      {/* Always show Header for navigation access */}
+      <Header />
       
-      {/* Route Planning Header */}
+      {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
-        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 z-[1001]">
+        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0">
           {/* Mobile: stacked layout, Desktop: side-by-side */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             {/* Info section */}
@@ -222,7 +223,7 @@ export default function KartPage() {
       )}
 
       {/* Map Content */}
-      <div className="flex-1 relative overflow-hidden z-0">
+      <div className="flex-1 relative overflow-hidden">
         <OpenAIPMap 
           onMissionClick={handleMissionClick}
           mode={isRoutePlanning ? "routePlanning" : "view"}
@@ -236,7 +237,7 @@ export default function KartPage() {
         {!isRoutePlanning && (
           <Button
             onClick={handleStartRoutePlanning}
-            className="absolute bottom-24 sm:bottom-8 left-1/2 -translate-x-1/2 z-[1000] shadow-lg"
+            className="absolute bottom-24 sm:bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-[1000] shadow-lg"
             size="lg"
           >
             <Route className="h-4 w-4 mr-2" />
