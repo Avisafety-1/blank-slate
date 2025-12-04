@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { Search, Plus } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Equipment {
   id: string;
@@ -36,6 +37,7 @@ export const AddEquipmentToDroneDialog = ({
   existingEquipmentIds,
   onEquipmentAdded 
 }: AddEquipmentToDroneDialogProps) => {
+  const { user, companyId } = useAuth();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
@@ -65,18 +67,38 @@ export const AddEquipmentToDroneDialog = ({
     }
   };
 
-  const handleAddEquipment = async (equipmentId: string) => {
-    setAdding(equipmentId);
+  const logEquipmentHistory = async (equipmentId: string, equipmentName: string) => {
+    if (!user || !companyId) return;
+    try {
+      await supabase.from("drone_equipment_history").insert({
+        drone_id: droneId,
+        company_id: companyId,
+        user_id: user.id,
+        action: 'added',
+        item_type: 'equipment',
+        item_id: equipmentId,
+        item_name: equipmentName,
+      });
+    } catch (error) {
+      console.error("Error logging equipment history:", error);
+    }
+  };
+
+  const handleAddEquipment = async (equipmentItem: Equipment) => {
+    setAdding(equipmentItem.id);
     
     try {
       const { error } = await supabase
         .from("drone_equipment")
         .insert({
           drone_id: droneId,
-          equipment_id: equipmentId,
+          equipment_id: equipmentItem.id,
         });
 
       if (error) throw error;
+
+      // Log to equipment history
+      await logEquipmentHistory(equipmentItem.id, equipmentItem.navn);
 
       toast.success("Utstyr lagt til");
       onEquipmentAdded();
@@ -139,7 +161,7 @@ export const AddEquipmentToDroneDialog = ({
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => handleAddEquipment(item.id)}
+                  onClick={() => handleAddEquipment(item)}
                   disabled={adding === item.id}
                   className="gap-2"
                 >
