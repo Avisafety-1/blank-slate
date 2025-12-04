@@ -131,53 +131,73 @@ export default function KartPage() {
       
       {/* Route Planning Header */}
       {isRoutePlanning && (
-        <div className="bg-background border-b border-border px-4 py-3 flex items-center justify-between z-[1001]">
-          <div className="flex items-center gap-3">
-            <Route className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="font-semibold text-foreground">Planlegg flyrute</h1>
-              <p className="text-xs text-muted-foreground">
-                {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''} 
-                {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
-              </p>
+        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 z-[1001]">
+          {/* Mobile: stacked layout, Desktop: side-by-side */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            {/* Info section */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
+                <p className="text-xs text-muted-foreground">
+                  {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''} 
+                  {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
+                </p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleUndoPoint}
-              disabled={currentRoute.coordinates.length === 0}
-            >
-              <Undo className="h-4 w-4 mr-1" />
-              Angre
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearRoute}
-              disabled={currentRoute.coordinates.length === 0}
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Nullstill
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancelRoute}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Avbryt
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveRoute}
-              disabled={currentRoute.coordinates.length < 2}
-            >
-              <Save className="h-4 w-4 mr-1" />
-              Lagre rute
-            </Button>
+            
+            {/* Actions - responsive grid on mobile */}
+            <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2">
+              {/* Undo & Clear grouped together */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndoPoint}
+                  disabled={currentRoute.coordinates.length === 0}
+                  className="h-8 px-2 sm:px-3"
+                  title="Angre siste punkt"
+                >
+                  <Undo className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Angre</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearRoute}
+                  disabled={currentRoute.coordinates.length === 0}
+                  className="h-8 px-2 sm:px-3"
+                  title="Nullstill rute"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Nullstill</span>
+                </Button>
+              </div>
+              
+              {/* Cancel & Save grouped together */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelRoute}
+                  className="h-8 px-2 sm:px-3"
+                  title="Avbryt"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Avbryt</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveRoute}
+                  disabled={currentRoute.coordinates.length < 2}
+                  className="h-8 px-2 sm:px-3"
+                  title="Lagre rute"
+                >
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Lagre</span>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
