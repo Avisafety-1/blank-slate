@@ -21,7 +21,7 @@ interface LogFlightTimeDialogProps {
 interface Drone {
   id: string;
   modell: string;
-  registrering: string;
+  serienummer: string;
 }
 
 interface Mission {
@@ -79,7 +79,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
   const fetchDrones = async () => {
     const { data } = await supabase
       .from("drones")
-      .select("id, modell, registrering")
+      .select("id, modell, serienummer")
       .eq("aktiv", true)
       .order("modell");
     
@@ -291,7 +291,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
                   <SelectItem key={drone.id} value={drone.id}>
                     <span className="flex items-center gap-2">
                       <Plane className="w-4 h-4" />
-                      {drone.modell} ({drone.registrering})
+                      {drone.modell} (SN: {drone.serienummer})
                     </span>
                   </SelectItem>
                 ))}

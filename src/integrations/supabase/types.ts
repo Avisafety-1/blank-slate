@@ -299,12 +299,14 @@ export type Database = {
           company_id: string
           flyvetimer: number
           id: string
+          kjøpsdato: string | null
+          klasse: string | null
           merknader: string | null
           modell: string
           neste_inspeksjon: string | null
           oppdatert_dato: string
           opprettet_dato: string
-          registrering: string
+          serienummer: string
           sist_inspeksjon: string | null
           status: string
           tilgjengelig: boolean
@@ -315,12 +317,14 @@ export type Database = {
           company_id: string
           flyvetimer?: number
           id?: string
+          kjøpsdato?: string | null
+          klasse?: string | null
           merknader?: string | null
           modell: string
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
-          registrering: string
+          serienummer: string
           sist_inspeksjon?: string | null
           status?: string
           tilgjengelig?: boolean
@@ -331,12 +335,14 @@ export type Database = {
           company_id?: string
           flyvetimer?: number
           id?: string
+          kjøpsdato?: string | null
+          klasse?: string | null
           merknader?: string | null
           modell?: string
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
-          registrering?: string
+          serienummer?: string
           sist_inspeksjon?: string | null
           status?: string
           tilgjengelig?: boolean

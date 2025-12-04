@@ -45,7 +45,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
-                  <p className="text-sm text-muted-foreground">{drone.registrering}</p>
+                  <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
                 </div>
                 <StatusBadge status={drone.status} />
               </div>

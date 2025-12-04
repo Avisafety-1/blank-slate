@@ -201,7 +201,7 @@ const Oppdrag = () => {
           // Fetch drones
           const { data: drones } = await supabase
             .from("mission_drones")
-            .select("drone_id, drones(id, modell, registrering)")
+            .select("drone_id, drones(id, modell, serienummer)")
             .eq("mission_id", mission.id);
 
           // Fetch equipment
@@ -501,12 +501,12 @@ const Oppdrag = () => {
         
         const dronesData = mission.drones.map((d: any) => [
           d.drones?.modell || "Ukjent",
-          d.drones?.registrering || "-"
+          d.drones?.serienummer || "-"
         ]);
         
         autoTable(pdf, {
           startY: yPos,
-          head: [["Modell", "Registrering"]],
+          head: [["Modell", "Serienummer"]],
           body: dronesData,
           theme: "grid",
           styles: { fontSize: 9 }
@@ -876,7 +876,7 @@ const Oppdrag = () => {
                           <ul className="space-y-1">
                             {mission.drones.map((d: any) => (
                               <li key={d.drone_id} className="text-sm text-foreground">
-                                {d.drones?.modell} ({d.drones?.registrering})
+                                {d.drones?.modell} (SN: {d.drones?.serienummer})
                               </li>
                             ))}
                           </ul>
