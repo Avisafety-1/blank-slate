@@ -116,18 +116,18 @@ export const AddMissionDialog = ({
         fetchMissionPersonnel(mission.id);
         fetchMissionEquipment(mission.id);
         fetchMissionDrones(mission.id);
-      } else if (initialFormData) {
+      } else if (initialFormData || initialRouteData) {
         // Restore form data from navigation state (returning from route planner)
         setFormData({
-          tittel: initialFormData.tittel || "",
-          lokasjon: initialFormData.lokasjon || "",
-          tidspunkt: initialFormData.tidspunkt || "",
-          beskrivelse: initialFormData.beskrivelse || "",
-          merknader: initialFormData.merknader || "",
-          status: initialFormData.status || "Planlagt",
-          risk_nivå: initialFormData.risk_nivå || "Lav",
-          latitude: initialFormData.latitude || null,
-          longitude: initialFormData.longitude || null,
+          tittel: initialFormData?.tittel || "",
+          lokasjon: initialFormData?.lokasjon || "",
+          tidspunkt: initialFormData?.tidspunkt || "",
+          beskrivelse: initialFormData?.beskrivelse || "",
+          merknader: initialFormData?.merknader || "",
+          status: initialFormData?.status || "Planlagt",
+          risk_nivå: initialFormData?.risk_nivå || "Lav",
+          latitude: initialFormData?.latitude || null,
+          longitude: initialFormData?.longitude || null,
         });
         setRouteData(initialRouteData || null);
         if (initialSelectedPersonnel) setSelectedPersonnel(initialSelectedPersonnel);
