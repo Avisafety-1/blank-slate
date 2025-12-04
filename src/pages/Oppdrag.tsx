@@ -29,6 +29,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
@@ -733,6 +734,10 @@ const Oppdrag = () => {
                           latitude={mission.latitude}
                           longitude={mission.longitude}
                           compact
+                        />
+                        <AirspaceWarnings
+                          latitude={mission.latitude}
+                          longitude={mission.longitude}
                         />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
