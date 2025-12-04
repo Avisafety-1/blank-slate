@@ -101,19 +101,6 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           toast.error(`Kunne ikke legge til ${terminology.vehicleLower}: ${error.message || "Ukjent feil"}`);
         }
       } else {
-        // Create calendar event for next inspection if set
-        if (nesteInspeksjon && droneData) {
-          const modell = formData.get("modell") as string;
-          await supabase.from("calendar_events").insert({
-            user_id: userId,
-            company_id: companyId,
-            title: `Inspeksjon: ${modell}`,
-            type: "Vedlikehold",
-            description: `drone_inspection:${droneData.id}`,
-            event_date: nesteInspeksjon,
-          });
-        }
-        
         toast.success(`${terminology.vehicle} lagt til`);
         form.reset();
         setInspectionStartDate("");
