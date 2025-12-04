@@ -25,6 +25,7 @@ interface Equipment {
   tilgjengelig: boolean;
   aktiv: boolean;
   flyvetimer?: number;
+  varsel_dager?: number | null;
 }
 
 interface EquipmentDetailDialogProps {
@@ -47,6 +48,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     sist_vedlikeholdt: "",
     neste_vedlikehold: "",
     flyvetimer: 0,
+    varsel_dager: "14",
   });
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         sist_vedlikeholdt: equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toISOString().split('T')[0] : "",
         neste_vedlikehold: equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toISOString().split('T')[0] : "",
         flyvetimer: equipment.flyvetimer || 0,
+        varsel_dager: equipment.varsel_dager !== null && equipment.varsel_dager !== undefined ? String(equipment.varsel_dager) : "14",
       });
       setIsEditing(false);
     }
@@ -81,6 +84,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
           neste_vedlikehold: formData.neste_vedlikehold || null,
           flyvetimer: formData.flyvetimer,
+          varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
         })
         .eq("id", equipment.id);
 
@@ -119,7 +123,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
 
   if (!equipment) return null;
 
-  const calculatedStatus = calculateMaintenanceStatus(equipment.neste_vedlikehold);
+  const calculatedStatus = calculateMaintenanceStatus(equipment.neste_vedlikehold, equipment.varsel_dager ?? 14);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -169,6 +173,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
                     {calculatedStatus}
                   </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Varsel dager</p>
+                  <p className="text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
                 </div>
               </div>
 
@@ -265,6 +273,17 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                       <SelectItem value="Rød">Rød</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                  <Input
+                    id="varsel_dager"
+                    type="number"
+                    min="1"
+                    placeholder="14"
+                    value={formData.varsel_dager}
+                    onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                  />
                 </div>
               </div>
 

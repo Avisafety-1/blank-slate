@@ -209,7 +209,7 @@ const Resources = () => {
                         <h3 className="font-semibold">{drone.modell}</h3>
                         <p className="text-sm text-muted-foreground">{drone.registrering}</p>
                       </div>
-                      <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon) as Status} />
+                      <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>Flyvetimer: {drone.flyvetimer}</p>
@@ -290,7 +290,7 @@ const Resources = () => {
                         <h3 className="font-semibold">{item.navn}</h3>
                         <p className="text-sm text-muted-foreground">{item.type}</p>
                       </div>
-                      <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold) as Status} />
+                      <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>
