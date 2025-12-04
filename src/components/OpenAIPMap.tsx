@@ -370,6 +370,7 @@ export function OpenAIPMap({
         
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
+          interactive: mode !== 'routePlanning',
           style: {
             color: '#ff0000',
             weight: 2,
@@ -393,18 +394,19 @@ export function OpenAIPMap({
         
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
+          interactive: mode !== 'routePlanning',
           style: {
             color: '#f97316',
             weight: 2,
             fillColor: '#f97316',
             fillOpacity: 0.2,
           },
-          onEachFeature: (feature, layer) => {
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             if (feature.properties) {
               const name = feature.properties.navn || feature.properties.name || 'Ukjent';
               layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
             }
-          }
+          } : undefined
         });
         
         rpasLayer.clearLayers();
@@ -422,18 +424,19 @@ export function OpenAIPMap({
         
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
+          interactive: mode !== 'routePlanning',
           style: {
             color: '#ec4899',
             weight: 2,
             fillColor: '#ec4899',
             fillOpacity: 0.2,
           },
-          onEachFeature: (feature, layer) => {
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             if (feature.properties) {
               const name = feature.properties.navn || feature.properties.name || 'Ukjent';
               layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
             }
-          }
+          } : undefined
         });
         
         rpasCtрLayer.clearLayers();
@@ -473,9 +476,9 @@ export function OpenAIPMap({
               iconSize: [28, 28],
               iconAnchor: [14, 14],
             });
-            return L.marker(latlng, { icon });
+            return L.marker(latlng, { icon, interactive: mode !== 'routePlanning' });
           },
-          onEachFeature: (feature, layer) => {
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             if (feature.properties) {
               const props = feature.properties;
               const name = props.NAVN || props.navn || 'Ukjent flyplass';
@@ -488,7 +491,7 @@ export function OpenAIPMap({
               
               layer.bindPopup(popupContent);
             }
-          }
+          } : undefined
         });
         
         airportsLayer.clearLayers();
@@ -535,7 +538,7 @@ export function OpenAIPMap({
             iconSize: [32, 32],
           });
 
-          const marker = L.marker([lat, lon], { icon });
+          const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
           marker.bindPopup(`
             <div>
               <strong>${ac.call || "Ukjent callsign"}</strong><br/>
