@@ -29,19 +29,26 @@ export interface Document {
   opprettet_av: string | null;
 }
 const Documents = () => {
-  const { user, loading, companyId } = useAuth();
+  const {
+    user,
+    loading,
+    companyId
+  } = useAuth();
   const navigate = useNavigate();
-  const { isAdmin } = useAdminCheck();
+  const {
+    isAdmin
+  } = useAdminCheck();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<DocumentCategory[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
   useEffect(() => {
     if (!loading && !user) {
-      navigate("/auth", { replace: true });
+      navigate("/auth", {
+        replace: true
+      });
     }
   }, [user, loading, navigate]);
   const {
@@ -64,21 +71,13 @@ const Documents = () => {
 
   // Real-time subscription for documents
   useEffect(() => {
-    const channel = supabase
-      .channel('documents-page-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'documents'
-        },
-        () => {
-          refetch();
-        }
-      )
-      .subscribe();
-
+    const channel = supabase.channel('documents-page-changes').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'documents'
+    }, () => {
+      refetch();
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
@@ -113,15 +112,11 @@ const Documents = () => {
     handleCloseModal();
     toast.success("Dokument slettet");
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-foreground">Laster...</p>
-      </div>
-    );
+      </div>;
   }
-
   return <div className="min-h-screen relative w-full overflow-x-hidden">
       {/* Background with gradient overlay */}
       <div className="fixed inset-0 z-0" style={{
@@ -139,7 +134,7 @@ const Documents = () => {
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-bold text-foreground">Dokumenter</h1>
+              <h1 className="text-4xl font-bold text-foreground">Dok.</h1>
               {isAdmin && <Button onClick={() => setCreateDialogOpen(true)} size="lg">
                   <Plus className="mr-2" />
                   Nytt dokument
@@ -150,14 +145,10 @@ const Documents = () => {
 
             <DocumentsList documents={filteredDocuments || []} isLoading={isLoading} onDocumentClick={handleOpenDocument} />
 
-            <DocumentUploadDialog
-              open={createDialogOpen}
-              onOpenChange={setCreateDialogOpen}
-              onSuccess={() => {
-                refetch();
-                toast.success("Dokument opprettet");
-              }}
-            />
+            <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
+            refetch();
+            toast.success("Dokument opprettet");
+          }} />
 
             <DocumentCardModal document={selectedDocument} isOpen={isModalOpen} onClose={handleCloseModal} onSaveSuccess={handleSaveSuccess} onDeleteSuccess={handleDeleteSuccess} isAdmin={isAdmin} isCreating={isCreating} />
           </div>
