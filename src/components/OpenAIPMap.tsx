@@ -5,6 +5,8 @@ import { openAipConfig } from "@/lib/openaip";
 import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
+import { Button } from "@/components/ui/button";
+import { CloudSun } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
@@ -65,6 +67,13 @@ export function OpenAIPMap({
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
+  const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const weatherEnabledRef = useRef(false);
+  
+  // Sync ref with state for use in event handlers
+  useEffect(() => {
+    weatherEnabledRef.current = weatherEnabled;
+  }, [weatherEnabled]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -611,8 +620,8 @@ export function OpenAIPMap({
             totalDistance: calculateTotalDistance(routePointsRef.current)
           });
         }
-      } else {
-        // Show weather popup (existing behavior)
+      } else if (weatherEnabledRef.current) {
+        // Show weather popup only when weather is enabled
         const popup = L.popup()
           .setLatLng([lat, lng])
           .setContent(`
@@ -799,7 +808,31 @@ export function OpenAIPMap({
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
+      
+      {/* Map controls */}
+      <div className="fixed top-20 right-4 z-[1000] flex flex-col gap-2">
+        {/* Weather toggle button */}
+        {mode === "view" && (
+          <Button
+            variant={weatherEnabled ? "default" : "secondary"}
+            size="icon"
+            className={`shadow-lg ${weatherEnabled ? '' : 'bg-card hover:bg-accent'}`}
+            onClick={() => setWeatherEnabled(!weatherEnabled)}
+            title={weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
+          >
+            <CloudSun className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
+      
       <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
+      
+      {/* Weather enabled hint */}
+      {mode === "view" && weatherEnabled && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
+          <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
+        </div>
+      )}
       
       {/* Route planning instructions */}
       {mode === "routePlanning" && (
