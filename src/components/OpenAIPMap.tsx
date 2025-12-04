@@ -213,8 +213,8 @@ export function OpenAIPMap({
 
   // Sync with controlled route from parent (for clear/undo operations)
   useEffect(() => {
-    if (controlledRoute && controlledRoute.coordinates.length === 0 && routePointsRef.current.length > 0) {
-      routePointsRef.current = [];
+    if (controlledRoute && controlledRoute.coordinates.length < routePointsRef.current.length) {
+      routePointsRef.current = [...controlledRoute.coordinates];
       updateRouteDisplay();
     }
   }, [controlledRoute?.coordinates.length, updateRouteDisplay]);
