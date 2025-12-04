@@ -38,16 +38,16 @@ import { toast } from "sonner";
 type Mission = any;
 
 const statusColors: Record<string, string> = {
-  Planlagt: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  Pågående: "bg-green-500/20 text-green-300 border-green-500/30",
-  Fullført: "bg-gray-500/20 text-gray-300 border-gray-500/30",
-  Avbrutt: "bg-red-500/20 text-red-300 border-red-500/30"
+  Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
+  Pågående: "bg-green-500/20 text-green-900 border-green-500/30",
+  Fullført: "bg-gray-500/20 text-gray-900 border-gray-500/30",
+  Avbrutt: "bg-red-500/20 text-red-900 border-red-500/30"
 };
 
 const riskColors: Record<string, string> = {
-  Lav: "bg-green-500/20 text-green-300 border-green-500/30",
-  Middels: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  Høy: "bg-red-500/20 text-red-300 border-red-500/30"
+  Lav: "bg-green-500/20 text-green-900 border-green-500/30",
+  Middels: "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
+  Høy: "bg-red-500/20 text-red-900 border-red-500/30"
 };
 
 const incidentSeverityColors: Record<string, string> = {
