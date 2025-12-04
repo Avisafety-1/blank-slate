@@ -235,6 +235,21 @@ const Oppdrag = () => {
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.getWidth();
       
+      // Fetch airspace warnings if coordinates exist
+      let airspaceWarnings: any[] = [];
+      if (mission.latitude && mission.longitude) {
+        const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
+          p_lat: mission.latitude,
+          p_lon: mission.longitude,
+        });
+        if (airspaceData) {
+          const severityOrder: Record<string, number> = { warning: 0, caution: 1, note: 2 };
+          airspaceWarnings = (airspaceData as any[]).sort(
+            (a, b) => (severityOrder[a.level] || 3) - (severityOrder[b.level] || 3)
+          );
+        }
+      }
+      
       // Header
       pdf.setFontSize(18);
       pdf.setFont("helvetica", "bold");
@@ -262,6 +277,43 @@ const Oppdrag = () => {
           console.error("Error adding map to PDF:", mapError);
           // Continue without map if there's an error
         }
+      }
+      
+      // Airspace Warnings
+      if (airspaceWarnings.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Luftromsadvarsler", 15, yPos);
+        yPos += 7;
+        
+        const levelLabels: Record<string, string> = {
+          warning: "ADVARSEL",
+          caution: "FORSIKTIGHET",
+          note: "INFORMASJON"
+        };
+        
+        const airspaceData = airspaceWarnings.map((w: any) => [
+          levelLabels[w.level] || w.level,
+          w.zone_name || "-",
+          w.is_inside ? "Innenfor sone" : `${Math.round(w.distance_meters)}m unna`,
+          w.message || "-"
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Nivå", "Sone", "Avstand", "Melding"]],
+          body: airspaceData,
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2 },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 25 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 95 }
+          }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 10;
       }
       
       // Basic info
@@ -421,6 +473,44 @@ const Oppdrag = () => {
           theme: "grid",
           styles: { fontSize: 9 },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 10;
+      }
+      
+      // Incidents
+      if (mission.incidents?.length > 0) {
+        if (yPos > 220) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Tilknyttede hendelser", 15, yPos);
+        yPos += 7;
+        
+        const incidentData = mission.incidents.map((incident: any) => [
+          incident.tittel,
+          incident.alvorlighetsgrad,
+          incident.status,
+          incident.hovedaarsak || "-",
+          format(new Date(incident.hendelsestidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Tittel", "Alvorlighet", "Status", "Hovedårsak", "Tidspunkt"]],
+          body: incidentData,
+          theme: "grid",
+          styles: { fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 35 }
+          }
         });
         
         yPos = (pdf as any).lastAutoTable.finalY + 10;
