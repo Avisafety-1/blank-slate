@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, Plus } from "lucide-react";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -62,36 +62,55 @@ export default function KartPage() {
     setCurrentRoute(route);
   }, []);
 
+  // Start route planning directly from /kart
+  const handleStartRoutePlanning = () => {
+    setIsRoutePlanning(true);
+    setRoutePlanningState(null); // No state means started from /kart
+    setCurrentRoute({ coordinates: [], totalDistance: 0 });
+  };
+
   const handleSaveRoute = () => {
-    if (!routePlanningState) return;
-    
-    // Navigate back with the route data
-    navigate(routePlanningState.returnTo, {
-      state: {
-        routeData: currentRoute,
-        formData: routePlanningState.formData,
-        selectedPersonnel: routePlanningState.selectedPersonnel,
-        selectedEquipment: routePlanningState.selectedEquipment,
-        selectedDrones: routePlanningState.selectedDrones,
-        selectedCustomer: routePlanningState.selectedCustomer,
-        missionId: routePlanningState.missionId,
-      }
-    });
+    if (routePlanningState) {
+      // Coming from mission edit - go back there
+      navigate(routePlanningState.returnTo, {
+        state: {
+          routeData: currentRoute,
+          formData: routePlanningState.formData,
+          selectedPersonnel: routePlanningState.selectedPersonnel,
+          selectedEquipment: routePlanningState.selectedEquipment,
+          selectedDrones: routePlanningState.selectedDrones,
+          selectedCustomer: routePlanningState.selectedCustomer,
+          missionId: routePlanningState.missionId,
+        }
+      });
+    } else {
+      // Started from /kart - go to new mission dialog
+      navigate('/oppdrag', {
+        state: {
+          routeData: currentRoute,
+          openDialog: true,
+        }
+      });
+    }
   };
 
   const handleCancelRoute = () => {
-    if (!routePlanningState) return;
-    
-    // Navigate back without saving
-    navigate(routePlanningState.returnTo, {
-      state: {
-        formData: routePlanningState.formData,
-        selectedPersonnel: routePlanningState.selectedPersonnel,
-        selectedEquipment: routePlanningState.selectedEquipment,
-        selectedDrones: routePlanningState.selectedDrones,
-        selectedCustomer: routePlanningState.selectedCustomer,
-      }
-    });
+    if (routePlanningState) {
+      // Coming from mission edit - go back without saving
+      navigate(routePlanningState.returnTo, {
+        state: {
+          formData: routePlanningState.formData,
+          selectedPersonnel: routePlanningState.selectedPersonnel,
+          selectedEquipment: routePlanningState.selectedEquipment,
+          selectedDrones: routePlanningState.selectedDrones,
+          selectedCustomer: routePlanningState.selectedCustomer,
+        }
+      });
+    } else {
+      // Started from /kart - just exit route planning mode
+      setIsRoutePlanning(false);
+      setCurrentRoute({ coordinates: [], totalDistance: 0 });
+    }
   };
 
   const handleClearRoute = () => {
@@ -212,6 +231,18 @@ export default function KartPage() {
           initialCenter={routePlanningState?.initialCenter}
           controlledRoute={currentRoute}
         />
+        
+        {/* Route Planning Button - visible when not in route planning mode */}
+        {!isRoutePlanning && (
+          <Button
+            onClick={handleStartRoutePlanning}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] shadow-lg"
+            size="lg"
+          >
+            <Route className="h-4 w-4 mr-2" />
+            Planlegg ny rute
+          </Button>
+        )}
       </div>
 
       {/* Mission Detail Dialog */}
