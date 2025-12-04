@@ -933,6 +933,7 @@ const Oppdrag = () => {
                             <MissionMapPreview
                               latitude={mission.latitude}
                               longitude={mission.longitude}
+                              route={mission.route as any}
                             />
                           </div>
                         </div>
