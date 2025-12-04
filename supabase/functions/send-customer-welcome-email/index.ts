@@ -152,11 +152,11 @@ serve(async (req) => {
             hostname: emailConfig.host,
             port: emailConfig.port,
             tls: useTLS,
-          auth: {
-            username: emailConfig.user,
-            password: emailConfig.pass,
+            auth: {
+              username: emailConfig.user,
+              password: emailConfig.pass,
+            },
           },
-        },
         });
 
         await client.send({
