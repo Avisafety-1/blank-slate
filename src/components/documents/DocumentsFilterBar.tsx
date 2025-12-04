@@ -30,6 +30,9 @@ const CATEGORIES: {
   value: "oppdrag",
   label: "Oppdrag"
 }, {
+  value: "loggbok",
+  label: "Loggbok"
+}, {
   value: "annet",
   label: "Annet"
 }];
