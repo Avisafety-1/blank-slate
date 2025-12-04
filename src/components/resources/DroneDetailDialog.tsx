@@ -15,6 +15,7 @@ import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
+import { calculateMaintenanceStatus, getStatusColorClasses } from "@/lib/maintenanceStatus";
 
 interface Drone {
   id: string;
@@ -49,12 +50,6 @@ interface DroneDetailDialogProps {
   drone: Drone | null;
   onDroneUpdated: () => void;
 }
-
-const statusColors: Record<string, string> = {
-  Grønn: "bg-status-green/20 text-green-700 dark:text-green-300 border-status-green/30",
-  Gul: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300 border-status-yellow/30",
-  Rød: "bg-status-red/20 text-red-700 dark:text-red-300 border-status-red/30",
-};
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
@@ -361,6 +356,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
   if (!drone) return null;
 
+  const calculatedStatus = calculateMaintenanceStatus(drone.neste_inspeksjon);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -371,8 +368,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
               {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
             </DialogTitle>
             {!isEditing && (
-              <Badge className={`${statusColors[drone.status] || ""} border`}>
-                {drone.status}
+              <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
+                {calculatedStatus}
               </Badge>
             )}
           </div>
@@ -421,8 +418,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge className={`${statusColors[drone.status] || ""} border`}>
-                    {drone.status}
+                  <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
+                    {calculatedStatus}
                   </Badge>
                 </div>
               </div>
@@ -504,8 +501,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{eq.navn}</p>
-                              <Badge className={`${statusColors[eq.status] || ""} border text-xs`}>
-                                {eq.status}
+                              <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold))} border text-xs`}>
+                                {calculateMaintenanceStatus(eq.neste_vedlikehold)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • SN: {eq.serienummer}</p>

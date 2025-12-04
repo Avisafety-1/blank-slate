@@ -8,6 +8,7 @@ import { PersonnelListDialog } from "./PersonnelListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
+import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 interface StatusCounts {
   Grønn: number;
   Gul: number;
@@ -97,7 +98,12 @@ export const StatusPanel = () => {
       .eq("aktiv", true);
     
     if (!error && data) {
-      setDrones(data);
+      // Calculate dynamic status based on neste_inspeksjon
+      const dronesWithDynamicStatus = data.map(drone => ({
+        ...drone,
+        status: calculateMaintenanceStatus(drone.neste_inspeksjon) as Status
+      }));
+      setDrones(dronesWithDynamicStatus);
     }
   };
 
@@ -108,7 +114,12 @@ export const StatusPanel = () => {
       .eq("aktiv", true);
     
     if (!error && data) {
-      setEquipment(data);
+      // Calculate dynamic status based on neste_vedlikehold
+      const equipmentWithDynamicStatus = data.map(item => ({
+        ...item,
+        status: calculateMaintenanceStatus(item.neste_vedlikehold) as Status
+      }));
+      setEquipment(equipmentWithDynamicStatus);
     }
   };
 

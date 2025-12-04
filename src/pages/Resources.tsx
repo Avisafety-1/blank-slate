@@ -19,6 +19,8 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
+import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
+import { Status } from "@/types";
 
 const Resources = () => {
   const navigate = useNavigate();
@@ -207,7 +209,7 @@ const Resources = () => {
                         <h3 className="font-semibold">{drone.modell}</h3>
                         <p className="text-sm text-muted-foreground">{drone.registrering}</p>
                       </div>
-                      <StatusBadge status={drone.status as any} />
+                      <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>Flyvetimer: {drone.flyvetimer}</p>
@@ -288,7 +290,7 @@ const Resources = () => {
                         <h3 className="font-semibold">{item.navn}</h3>
                         <p className="text-sm text-muted-foreground">{item.type}</p>
                       </div>
-                      <StatusBadge status={item.status as any} />
+                      <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>

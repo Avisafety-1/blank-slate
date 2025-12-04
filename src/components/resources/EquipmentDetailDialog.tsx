@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Gauge, Calendar, AlertTriangle, Trash2 } from "lucide-react";
+import { calculateMaintenanceStatus, getStatusColorClasses } from "@/lib/maintenanceStatus";
 
 interface Equipment {
   id: string;
@@ -32,12 +33,6 @@ interface EquipmentDetailDialogProps {
   equipment: Equipment | null;
   onEquipmentUpdated: () => void;
 }
-
-const statusColors: Record<string, string> = {
-  Grønn: "bg-status-green/20 text-green-700 dark:text-green-300 border-status-green/30",
-  Gul: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300 border-status-yellow/30",
-  Rød: "bg-status-red/20 text-red-700 dark:text-red-300 border-status-red/30",
-};
 
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
@@ -124,6 +119,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
 
   if (!equipment) return null;
 
+  const calculatedStatus = calculateMaintenanceStatus(equipment.neste_vedlikehold);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -134,8 +131,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
               {isEditing ? "Rediger utstyr" : equipment.navn}
             </DialogTitle>
             {!isEditing && (
-              <Badge className={`${statusColors[equipment.status] || ""} border`}>
-                {equipment.status}
+              <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
+                {calculatedStatus}
               </Badge>
             )}
           </div>
@@ -169,8 +166,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge className={`${statusColors[equipment.status] || ""} border`}>
-                    {equipment.status}
+                  <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
+                    {calculatedStatus}
                   </Badge>
                 </div>
               </div>
