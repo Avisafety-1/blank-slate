@@ -188,6 +188,7 @@ export default function KartPage() {
           existingRoute={routePlanningState?.existingRoute}
           onRouteChange={handleRouteChange}
           initialCenter={routePlanningState?.initialCenter}
+          controlledRoute={currentRoute}
         />
       </div>
 

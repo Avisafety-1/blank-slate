@@ -27,6 +27,7 @@ interface OpenAIPMapProps {
   existingRoute?: RouteData | null;
   onRouteChange?: (route: RouteData) => void;
   initialCenter?: [number, number];
+  controlledRoute?: RouteData | null;
 }
 
 // Calculate distance between two points using Haversine formula
@@ -58,7 +59,8 @@ export function OpenAIPMap({
   mode = "view", 
   existingRoute,
   onRouteChange,
-  initialCenter 
+  initialCenter,
+  controlledRoute
 }: OpenAIPMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -208,6 +210,14 @@ export function OpenAIPMap({
       }).addTo(routeLayerRef.current);
     }
   }, [mode, onRouteChange]);
+
+  // Sync with controlled route from parent (for clear/undo operations)
+  useEffect(() => {
+    if (controlledRoute && controlledRoute.coordinates.length === 0 && routePointsRef.current.length > 0) {
+      routePointsRef.current = [];
+      updateRouteDisplay();
+    }
+  }, [controlledRoute?.coordinates.length, updateRouteDisplay]);
 
   useEffect(() => {
     if (!mapRef.current) return;
