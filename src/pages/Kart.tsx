@@ -17,6 +17,7 @@ interface RoutePlanningState {
   selectedDrones?: string[];
   selectedCustomer?: string | null;
   initialCenter?: [number, number];
+  missionId?: string;
 }
 
 export default function KartPage() {
@@ -73,6 +74,7 @@ export default function KartPage() {
         selectedEquipment: routePlanningState.selectedEquipment,
         selectedDrones: routePlanningState.selectedDrones,
         selectedCustomer: routePlanningState.selectedCustomer,
+        missionId: routePlanningState.missionId,
       }
     });
   };

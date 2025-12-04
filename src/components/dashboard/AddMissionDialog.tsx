@@ -602,7 +602,7 @@ export const AddMissionDialog = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                  onClick={() => {
                       navigate('/kart', {
                         state: {
                           mode: 'routePlanning',
@@ -613,6 +613,7 @@ export const AddMissionDialog = ({
                           selectedEquipment,
                           selectedDrones,
                           selectedCustomer,
+                          missionId: mission?.id,
                           initialCenter: formData.latitude && formData.longitude 
                             ? [formData.latitude, formData.longitude] as [number, number]
                             : undefined
@@ -649,6 +650,7 @@ export const AddMissionDialog = ({
                         selectedEquipment,
                         selectedDrones,
                         selectedCustomer,
+                        missionId: mission?.id,
                         initialCenter: formData.latitude && formData.longitude 
                           ? [formData.latitude, formData.longitude] as [number, number]
                           : undefined
