@@ -134,7 +134,7 @@ const Documents = () => {
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-bold text-foreground">Dok.</h1>
+              <h1 className="text-4xl font-bold text-foreground">Dokumenter</h1>
               {isAdmin && <Button onClick={() => setCreateDialogOpen(true)} size="lg">
                   <Plus className="mr-2" />
                   Nytt dokument
