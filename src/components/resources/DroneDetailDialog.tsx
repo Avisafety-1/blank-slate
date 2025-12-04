@@ -10,9 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
+import { DroneLogbookDialog } from "./DroneLogbookDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
@@ -64,6 +65,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
+  const [logbookOpen, setLogbookOpen] = useState(false);
   const [showAddAccessory, setShowAddAccessory] = useState(false);
   const [newAccessory, setNewAccessory] = useState({
     navn: "",
@@ -202,6 +204,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     }
   };
 
+  const logEquipmentHistory = async (action: 'added' | 'removed', itemType: 'equipment' | 'accessory', itemId: string | null, itemName: string) => {
+    if (!user || !companyId || !drone) return;
+    try {
+      await supabase.from("drone_equipment_history").insert({
+        drone_id: drone.id,
+        company_id: companyId,
+        user_id: user.id,
+        action,
+        item_type: itemType,
+        item_id: itemId,
+        item_name: itemName,
+      });
+    } catch (error) {
+      console.error("Error logging equipment history:", error);
+    }
+  };
+
   const handleAddAccessory = async () => {
     if (!drone || !user || !companyId || !newAccessory.navn.trim()) {
       toast.error("Fyll inn navn på utstyret");
@@ -219,7 +238,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         }
       }
 
-      const { error } = await supabase.from("drone_accessories").insert({
+      const { data, error } = await supabase.from("drone_accessories").insert({
         drone_id: drone.id,
         company_id: companyId,
         user_id: user.id,
@@ -227,9 +246,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         vedlikeholdsintervall_dager: newAccessory.vedlikeholdsintervall_dager ? parseInt(newAccessory.vedlikeholdsintervall_dager) : null,
         sist_vedlikehold: newAccessory.sist_vedlikehold || null,
         neste_vedlikehold,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Log to equipment history
+      await logEquipmentHistory('added', 'accessory', data?.id || null, newAccessory.navn.trim());
 
       toast.success("Utstyr lagt til");
       setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
@@ -249,6 +271,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         .eq("id", accessory.id);
 
       if (error) throw error;
+
+      // Log to equipment history
+      await logEquipmentHistory('removed', 'accessory', accessory.id, accessory.navn);
 
       toast.success(`${accessory.navn} slettet`);
       fetchAccessories();
@@ -286,7 +311,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     }
   };
 
-  const handleRemoveEquipment = async (linkId: string, equipmentName: string) => {
+  const handleRemoveEquipment = async (linkId: string, equipmentName: string, equipmentId?: string) => {
     try {
       const { error } = await supabase
         .from("drone_equipment")
@@ -294,6 +319,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         .eq("id", linkId);
 
       if (error) throw error;
+
+      // Log to equipment history
+      await logEquipmentHistory('removed', 'equipment', equipmentId || null, equipmentName);
 
       toast.success(`${equipmentName} fjernet`);
       fetchLinkedEquipment();
@@ -381,11 +409,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
               <Plane className="w-5 h-5 text-primary" />
               {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
             </DialogTitle>
-            {!isEditing && (
-              <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
-                {aggregatedStatus}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {!isEditing && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setLogbookOpen(true)}
+                  >
+                    <Book className="w-4 h-4 mr-2" />
+                    Loggbok
+                  </Button>
+                  <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
+                    {aggregatedStatus}
+                  </Badge>
+                </>
+              )}
+            </div>
           </div>
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -529,7 +569,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleRemoveEquipment(link.id, eq.navn)}
+                            onClick={() => handleRemoveEquipment(link.id, eq.navn, eq.id)}
                             className="h-8 w-8 p-0"
                           >
                             <X className="w-4 h-4" />
@@ -930,6 +970,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         droneId={drone?.id || ""}
         existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
         onPersonnelAdded={fetchLinkedPersonnel}
+      />
+
+      <DroneLogbookDialog
+        open={logbookOpen}
+        onOpenChange={setLogbookOpen}
+        droneId={drone?.id || ""}
+        droneModell={drone?.modell || ""}
+        flyvetimer={drone?.flyvetimer || 0}
       />
     </Dialog>
   );

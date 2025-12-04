@@ -314,6 +314,156 @@ export type Database = {
           },
         ]
       }
+      drone_equipment_history: {
+        Row: {
+          action: string
+          company_id: string
+          created_at: string | null
+          drone_id: string
+          id: string
+          item_id: string | null
+          item_name: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          company_id: string
+          created_at?: string | null
+          drone_id: string
+          id?: string
+          item_id?: string | null
+          item_name: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          created_at?: string | null
+          drone_id?: string
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_equipment_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_equipment_history_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drone_inspections: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          drone_id: string
+          id: string
+          inspection_date: string
+          inspection_type: string | null
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          drone_id: string
+          id?: string
+          inspection_date: string
+          inspection_type?: string | null
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          drone_id?: string
+          id?: string
+          inspection_date?: string
+          inspection_type?: string | null
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_inspections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_inspections_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drone_log_entries: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string | null
+          drone_id: string
+          entry_date: string
+          entry_type: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          drone_id: string
+          entry_date: string
+          entry_type?: string | null
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          drone_id?: string
+          entry_date?: string
+          entry_type?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_log_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_log_entries_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drone_personnel: {
         Row: {
           created_at: string | null
