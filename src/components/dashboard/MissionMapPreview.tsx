@@ -2,12 +2,23 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+interface RoutePoint {
+  lat: number;
+  lng: number;
+}
+
+interface RouteData {
+  coordinates: RoutePoint[];
+  totalDistance: number;
+}
+
 interface MissionMapPreviewProps {
   latitude: number;
   longitude: number;
+  route?: RouteData | null;
 }
 
-export const MissionMapPreview = ({ latitude, longitude }: MissionMapPreviewProps) => {
+export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPreviewProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
 
@@ -50,6 +61,63 @@ export const MissionMapPreview = ({ latitude, longitude }: MissionMapPreviewProp
     L.marker([latitude, longitude], { icon })
       .addTo(map)
       .bindPopup("Oppdragsposisjon");
+
+    // Display route if provided
+    if (route && route.coordinates.length > 0) {
+      const routeLayer = L.layerGroup().addTo(map);
+      
+      // Draw polyline
+      if (route.coordinates.length > 1) {
+        const latLngs = route.coordinates.map(p => [p.lat, p.lng] as [number, number]);
+        L.polyline(latLngs, {
+          color: '#3b82f6',
+          weight: 3,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }).addTo(routeLayer);
+      }
+
+      // Add numbered markers for route points
+      route.coordinates.forEach((point, index) => {
+        const isFirst = index === 0;
+        const isLast = index === route.coordinates.length - 1 && route.coordinates.length > 1;
+        
+        let bgColor = '#3b82f6'; // blue default
+        if (isFirst) bgColor = '#22c55e'; // green for start
+        else if (isLast) bgColor = '#ef4444'; // red for end
+
+        const marker = L.marker([point.lat, point.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: `<div style="
+              width: 24px;
+              height: 24px;
+              background: ${bgColor};
+              border: 2px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: bold;
+              font-size: 11px;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ">${index + 1}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          }),
+        });
+        marker.addTo(routeLayer);
+      });
+
+      // Fit bounds to show entire route
+      const allPoints = [
+        [latitude, longitude] as [number, number],
+        ...route.coordinates.map(p => [p.lat, p.lng] as [number, number])
+      ];
+      const bounds = L.latLngBounds(allPoints);
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
 
     // Fetch and display airspace zones
     const zonesLayer = L.layerGroup().addTo(map);
@@ -126,7 +194,7 @@ export const MissionMapPreview = ({ latitude, longitude }: MissionMapPreviewProp
     return () => {
       map.remove();
     };
-  }, [latitude, longitude]);
+  }, [latitude, longitude, route]);
 
   return (
     <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">

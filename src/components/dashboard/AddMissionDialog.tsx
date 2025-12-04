@@ -603,16 +603,19 @@ export const AddMissionDialog = ({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      navigate('/kart/planlegg', {
+                      navigate('/kart', {
                         state: {
+                          mode: 'routePlanning',
                           returnTo: '/oppdrag',
-                          missionId: mission?.id,
                           existingRoute: routeData,
                           formData,
                           selectedPersonnel,
                           selectedEquipment,
                           selectedDrones,
-                          selectedCustomer
+                          selectedCustomer,
+                          initialCenter: formData.latitude && formData.longitude 
+                            ? [formData.latitude, formData.longitude] as [number, number]
+                            : undefined
                         }
                       });
                       onOpenChange(false);
@@ -636,16 +639,19 @@ export const AddMissionDialog = ({
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
-                    navigate('/kart/planlegg', {
+                    navigate('/kart', {
                       state: {
+                        mode: 'routePlanning',
                         returnTo: '/oppdrag',
-                        missionId: mission?.id,
                         existingRoute: null,
                         formData,
                         selectedPersonnel,
                         selectedEquipment,
                         selectedDrones,
-                        selectedCustomer
+                        selectedCustomer,
+                        initialCenter: formData.latitude && formData.longitude 
+                          ? [formData.latitude, formData.longitude] as [number, number]
+                          : undefined
                       }
                     });
                     onOpenChange(false);

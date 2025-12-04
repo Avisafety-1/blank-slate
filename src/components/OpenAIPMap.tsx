@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
@@ -9,37 +9,203 @@ import airplaneIcon from "@/assets/airplane-icon.png";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
-interface OpenAIPMapProps {
-  onMissionClick?: (mission: any) => void;
+export interface RoutePoint {
+  lat: number;
+  lng: number;
 }
 
-export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
+export interface RouteData {
+  coordinates: RoutePoint[];
+  totalDistance: number;
+}
+
+interface OpenAIPMapProps {
+  onMissionClick?: (mission: any) => void;
+  mode?: "view" | "routePlanning";
+  existingRoute?: RouteData | null;
+  onRouteChange?: (route: RouteData) => void;
+  initialCenter?: [number, number];
+}
+
+// Calculate distance between two points using Haversine formula
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function calculateTotalDistance(points: RoutePoint[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += calculateDistance(
+      points[i-1].lat, points[i-1].lng,
+      points[i].lat, points[i].lng
+    );
+  }
+  return total;
+}
+
+export function OpenAIPMap({ 
+  onMissionClick, 
+  mode = "view", 
+  existingRoute,
+  onRouteChange,
+  initialCenter 
+}: OpenAIPMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
+
+  // Update route display
+  const updateRouteDisplay = useCallback(() => {
+    if (!routeLayerRef.current || !leafletMapRef.current) return;
+    
+    routeLayerRef.current.clearLayers();
+    const points = routePointsRef.current;
+    
+    if (points.length === 0) return;
+
+    // Draw polyline
+    if (points.length > 1) {
+      const latLngs = points.map(p => [p.lat, p.lng] as [number, number]);
+      L.polyline(latLngs, {
+        color: '#3b82f6',
+        weight: 3,
+        opacity: 0.8,
+        dashArray: '10, 5'
+      }).addTo(routeLayerRef.current);
+    }
+
+    // Add numbered markers
+    points.forEach((point, index) => {
+      const isFirst = index === 0;
+      const isLast = index === points.length - 1 && points.length > 1;
+      
+      let bgColor = '#3b82f6'; // blue default
+      if (isFirst) bgColor = '#22c55e'; // green for start
+      else if (isLast) bgColor = '#ef4444'; // red for end
+
+      const marker = L.marker([point.lat, point.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="
+            width: 28px;
+            height: 28px;
+            background: ${bgColor};
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: ${mode === 'routePlanning' ? 'move' : 'default'};
+          ">${index + 1}</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+        draggable: mode === 'routePlanning'
+      });
+
+      if (mode === 'routePlanning') {
+        // Drag to move point
+        marker.on('dragend', (e: any) => {
+          const { lat, lng } = e.target.getLatLng();
+          routePointsRef.current[index] = { lat, lng };
+          updateRouteDisplay();
+          if (onRouteChange) {
+            onRouteChange({
+              coordinates: [...routePointsRef.current],
+              totalDistance: calculateTotalDistance(routePointsRef.current)
+            });
+          }
+        });
+
+        // Right-click to remove point
+        marker.on('contextmenu', (e: any) => {
+          L.DomEvent.stopPropagation(e);
+          routePointsRef.current.splice(index, 1);
+          updateRouteDisplay();
+          if (onRouteChange) {
+            onRouteChange({
+              coordinates: [...routePointsRef.current],
+              totalDistance: calculateTotalDistance(routePointsRef.current)
+            });
+          }
+        });
+      }
+
+      // Show distance in popup
+      let popupContent = `<strong>Punkt ${index + 1}</strong>`;
+      if (index > 0) {
+        const dist = calculateDistance(
+          points[index - 1].lat, points[index - 1].lng,
+          point.lat, point.lng
+        );
+        popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
+      }
+      if (mode === 'routePlanning') {
+        popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
+      }
+      marker.bindPopup(popupContent);
+      
+      marker.addTo(routeLayerRef.current!);
+    });
+
+    // Show total distance on last segment
+    if (points.length > 1) {
+      const totalDist = calculateTotalDistance(points);
+      const midPoint = points[Math.floor(points.length / 2)];
+      L.marker([midPoint.lat, midPoint.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            white-space: nowrap;
+          ">Total: ${totalDist.toFixed(2)} km</div>`,
+          iconSize: [100, 24],
+          iconAnchor: [50, -10],
+        }),
+        interactive: false
+      }).addTo(routeLayerRef.current);
+    }
+  }, [mode, onRouteChange]);
 
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Init Leaflet-kart
-    const map = L.map(mapRef.current).setView(DEFAULT_POS, 8);
+    const startCenter = initialCenter || DEFAULT_POS;
+    const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
     leafletMapRef.current = map;
 
-    // OSM-bakgrunn
+    // OSM background
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
       attribution: openAipConfig.attribution,
       subdomains: "abc",
     }).addTo(map);
 
-    // Lag for lag-kontroll
     const layerConfigs: LayerConfig[] = [];
 
-    // OpenAIP-luftrom (bygger URL med apiKey i stedet for {key}-option)
+    // OpenAIP airspace
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
-
       const airspaceLayer = L.tileLayer(airspaceUrl, {
         opacity: 0.55,
         subdomains: "abc",
@@ -52,11 +218,9 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
         enabled: true,
         icon: "layers",
       });
-    } else if (!openAipConfig.apiKey) {
-      console.warn("OpenAIP API key mangler – viser kun OSM-bakgrunn (ingen luftromslag).");
     }
 
-    // NSM Forbudsområder (GeoJSON fra FeatureServer)
+    // NSM Forbudsområder
     const nsmLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "nsm",
@@ -66,7 +230,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "ban",
     });
 
-    // NRL - Nasjonalt register over luftfartshindre (Geonorge)
+    // NRL - Luftfartshindre
     const nrlLayer = L.tileLayer.wms(
       "https://wms.geonorge.no/skwms1/wms.nrl5?",
       {
@@ -85,7 +249,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "alertTriangle",
     });
 
-    // Naturverns-restriksjonsområder (Miljødirektoratet)
+    // Naturvern
     const naturvernLayer = L.tileLayer.wms(
       "https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?",
       {
@@ -104,7 +268,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "treePine",
     });
 
-    // RPAS 5km Restriksjonssoner (Luftfartstilsynet)
+    // RPAS 5km soner
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "rpas",
@@ -114,7 +278,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "radio",
     });
 
-    // RPAS CTR/TIZ Kontrollsoner (Luftfartstilsynet)
+    // RPAS CTR/TIZ
     const rpasCtрLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "rpas_ctr",
@@ -124,7 +288,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "shield",
     });
 
-    // Flyplasser (Luftfartstilsynet)
+    // Airports
     const airportsLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "airports",
@@ -134,14 +298,13 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "planeLanding",
     });
 
-    // Geolokasjon med fallback
-    if (navigator.geolocation) {
+    // Geolocation
+    if (!initialCenter && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           map.setView(coords, 9);
           
-          // Legg til brukerens posisjon som blå sirkel
           if (userMarkerRef.current) {
             userMarkerRef.current.setLatLng(coords);
           } else {
@@ -152,17 +315,14 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
               color: '#ffffff',
               weight: 2,
             }).addTo(map);
-            
             userMarkerRef.current.bindPopup("Din posisjon");
           }
         },
-        () => {
-          console.log("Geolokasjon nektet, bruker default posisjon");
-        },
+        () => console.log("Geolokasjon nektet"),
       );
     }
 
-    // Eget lag for flytrafikk (Airplanes.live)
+    // Aircraft layer
     const aircraftLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "aircraft",
@@ -172,34 +332,34 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       icon: "plane",
     });
 
-    // Eget lag for oppdrag/missions
-    const missionsLayer = L.layerGroup().addTo(map);
+    // Missions layer - only in view mode
+    const missionsLayer = L.layerGroup();
+    if (mode === "view") {
+      missionsLayer.addTo(map);
+    }
     missionsLayerRef.current = missionsLayer;
     layerConfigs.push({
       id: "missions",
       name: "Oppdrag",
       layer: missionsLayer,
-      enabled: true,
+      enabled: mode === "view",
       icon: "mapPin",
     });
 
-    // Sett layer state
+    // Route layer for route planning
+    const routeLayer = L.layerGroup().addTo(map);
+    routeLayerRef.current = routeLayer;
+
     setLayers(layerConfigs);
 
-    // Funksjon for å hente NSM GeoJSON-data
+    // Data fetching functions
     async function fetchNsmData() {
       try {
         const url = "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        
         const response = await fetch(url);
-        if (!response.ok) {
-          console.error("Feil ved henting av NSM-data:", response.status);
-          return;
-        }
+        if (!response.ok) return;
         
         const geojson = await response.json();
-        
-        // Legg til GeoJSON-lag med røde polygoner
         const geoJsonLayer = L.geoJSON(geojson, {
           style: {
             color: '#ff0000',
@@ -216,32 +376,23 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
-    // Funksjon for å hente RPAS 5km GeoJSON-data
     async function fetchRpasData() {
       try {
         const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        
         const response = await fetch(url);
-        if (!response.ok) {
-          console.error("Feil ved henting av RPAS-data:", response.status);
-          return;
-        }
+        if (!response.ok) return;
         
         const geojson = await response.json();
-        
-        // Legg til GeoJSON-lag med oransje polygoner (distinkt fra NSM som er rød)
         const geoJsonLayer = L.geoJSON(geojson, {
           style: {
-            color: '#f97316',      // Oransje kant
+            color: '#f97316',
             weight: 2,
-            fillColor: '#f97316',  // Oransje fyll
+            fillColor: '#f97316',
             fillOpacity: 0.2,
           },
           onEachFeature: (feature, layer) => {
-            // Legg til popup med informasjon om sonen
             if (feature.properties) {
-              const props = feature.properties;
-              const name = props.navn || props.name || props.NAVN || 'Ukjent';
+              const name = feature.properties.navn || feature.properties.name || 'Ukjent';
               layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
             }
           }
@@ -254,32 +405,23 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
-    // Funksjon for å hente RPAS CTR/TIZ GeoJSON-data
     async function fetchRpasCtрData() {
       try {
         const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        
         const response = await fetch(url);
-        if (!response.ok) {
-          console.error("Feil ved henting av RPAS CTR/TIZ-data:", response.status);
-          return;
-        }
+        if (!response.ok) return;
         
         const geojson = await response.json();
-        
-        // Legg til GeoJSON-lag med rosa/lilla polygoner (distinkt fra andre lag)
         const geoJsonLayer = L.geoJSON(geojson, {
           style: {
-            color: '#ec4899',      // Rosa kant
+            color: '#ec4899',
             weight: 2,
-            fillColor: '#ec4899',  // Rosa fyll
+            fillColor: '#ec4899',
             fillOpacity: 0.2,
           },
           onEachFeature: (feature, layer) => {
-            // Legg til popup med informasjon om sonen
             if (feature.properties) {
-              const props = feature.properties;
-              const name = props.navn || props.name || props.NAVN || 'Ukjent';
+              const name = feature.properties.navn || feature.properties.name || 'Ukjent';
               layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
             }
           }
@@ -292,23 +434,15 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
-    // Funksjon for å hente flyplasser fra Luftfartstilsynet
     async function fetchAirportsData() {
       try {
         const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/FlyplassInfo_PROD/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        
         const response = await fetch(url);
-        if (!response.ok) {
-          console.error("Feil ved henting av flyplassdata:", response.status);
-          return;
-        }
+        if (!response.ok) return;
         
         const geojson = await response.json();
-        
-        // Legg til GeoJSON-lag med markører for flyplasser
         const geoJsonLayer = L.geoJSON(geojson, {
           pointToLayer: (feature, latlng) => {
-            // Bruk et distinkt flyplassikon (plane landing SVG)
             const icon = L.divIcon({
               className: '',
               html: `<div style="
@@ -333,10 +467,9 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
             return L.marker(latlng, { icon });
           },
           onEachFeature: (feature, layer) => {
-            // Legg til popup med flyplassinformasjon
             if (feature.properties) {
               const props = feature.properties;
-              const name = props.NAVN || props.navn || props.name || 'Ukjent flyplass';
+              const name = props.NAVN || props.navn || 'Ukjent flyplass';
               const icao = props.ICAO || props.icao || '';
               const iata = props.IATA || props.iata || '';
               
@@ -359,19 +492,12 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     async function fetchAircraft() {
       try {
         const center = map.getCenter();
-        const radiusNm = 150; // radius i nautiske mil rundt kartets sentrum
-
-        const url = `${airplanesLiveConfig.baseUrl}/point/` + `${center.lat}/${center.lng}/${radiusNm}`;
-
+        const radiusNm = 150;
+        const url = `${airplanesLiveConfig.baseUrl}/point/${center.lat}/${center.lng}/${radiusNm}`;
         const response = await fetch(url);
-        if (!response.ok) {
-          console.warn("Airplanes.live error:", response.status, response.statusText);
-          return;
-        }
+        if (!response.ok) return;
 
         const json = await response.json();
-
-        // Airplanes.live bruker typisk "ac" som liste med fly
         const aircraft = json.ac || json.aircraft || [];
 
         aircraftLayer.clearLayers();
@@ -383,12 +509,9 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
 
           const track = typeof ac.track === "number" ? ac.track : 0;
           const altitude = ac.alt_baro ?? 0;
-          
-          // Rødt ikon for fly under 3000 fot, grått/blått for høyere
           const isLowAltitude = altitude < 3000;
           const filter = isLowAltitude ? '' : 'hue-rotate(200deg) saturate(0.6)';
 
-          // Fly-ikon rotert etter heading
           const icon = L.divIcon({
             className: "",
             html: `<div style="
@@ -404,8 +527,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
           });
 
           const marker = L.marker([lat, lon], { icon });
-
-          const popup = `
+          marker.bindPopup(`
             <div>
               <strong>${ac.call || "Ukjent callsign"}</strong><br/>
               ICAO24: ${ac.hex || "?"}<br/>
@@ -414,9 +536,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
               Heading: ${ac.track ?? "?"}°<br/>
               Type: ${ac.t || "?"}
             </div>
-          `;
-
-          marker.bindPopup(popup);
+          `);
           marker.addTo(aircraftLayer);
         }
       } catch (err) {
@@ -424,8 +544,9 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
-    // Funksjon for å hente og vise oppdrag
     async function fetchAndDisplayMissions() {
+      if (mode !== "view") return;
+      
       try {
         const { data: missions, error } = await supabase
           .from("missions")
@@ -433,24 +554,17 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
           .not("latitude", "is", null)
           .not("longitude", "is", null);
 
-        if (error) {
-          console.error("Feil ved henting av oppdrag:", error);
-          return;
-        }
-
-        if (!missionsLayerRef.current) return;
+        if (error || !missionsLayerRef.current) return;
         
         missionsLayerRef.current.clearLayers();
 
         missions?.forEach((mission) => {
           if (!mission.latitude || !mission.longitude) return;
 
-          // Velg farge basert på status
-          let markerColor = '#3b82f6'; // blå (Planlagt)
-          if (mission.status === 'Pågående') markerColor = '#eab308'; // gul
-          else if (mission.status === 'Fullført') markerColor = '#6b7280'; // grå
+          let markerColor = '#3b82f6';
+          if (mission.status === 'Pågående') markerColor = '#eab308';
+          else if (mission.status === 'Fullført') markerColor = '#6b7280';
           
-          // Opprett en pin med divIcon (SVG MapPin)
           const icon = L.divIcon({
             className: '',
             html: `<div style="
@@ -471,14 +585,11 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
           });
 
           const marker = L.marker([mission.latitude, mission.longitude], { icon });
-
-          // Klikk-handler for å åpne detalj-dialog
           marker.on('click', () => {
             if (onMissionClick) {
               onMissionClick(mission);
             }
           });
-
           marker.addTo(missionsLayerRef.current!);
         });
       } catch (err) {
@@ -486,110 +597,124 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       }
     }
 
-    // Map click handler for drone weather
-    map.on('click', async (e: any) => {
+    // Map click handler - different behavior for route planning vs view mode
+    const handleMapClick = async (e: any) => {
       const { lat, lng } = e.latlng;
       
-      const popup = L.popup()
-        .setLatLng([lat, lng])
-        .setContent(`
-          <div style="min-width: 280px; padding: 8px;">
-            <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
-              Dronevær for valgt posisjon
-            </div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
-              Koordinater: ${lat.toFixed(4)}, ${lng.toFixed(4)}
-            </div>
-            <div id="weather-content-${Date.now()}" style="text-align: center; padding: 12px;">
-              <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-              <div style="margin-top: 8px; font-size: 12px; color: #666;">Laster værdata...</div>
-            </div>
-            <style>
-              @keyframes spin {
-                to { transform: rotate(360deg); }
-              }
-            </style>
-          </div>
-        `)
-        .openOn(map);
-      
-      // Fetch weather data
-      try {
-        const { data, error } = await supabase.functions.invoke('drone-weather', {
-          body: { lat, lon: lng }
-        });
-        
-        const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
-        if (!contentEl) return;
-        
-        if (error || !data) {
-          contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Kunne ikke hente værdata</div>';
-          return;
-        }
-        
-        const recommendation = data.drone_flight_recommendation;
-        const recommendationColors: Record<string, any> = {
-          warning: { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' },
-          caution: { bg: '#fef3c7', border: '#f59e0b', color: '#f59e0b' },
-          ok: { bg: '#d1fae5', border: '#10b981', color: '#10b981' },
-        };
-        const colors = recommendationColors[recommendation] || { bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' };
-        
-        const recommendationText: Record<string, string> = {
-          warning: 'Anbefales ikke å fly',
-          caution: 'Fly med forsiktighet',
-          ok: 'Gode flyforhold',
-        };
-        
-        let html = `
-          <div style="padding: 8px; background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 6px; margin-bottom: 12px;">
-            <div style="color: ${colors.color}; font-weight: 600; font-size: 13px;">
-              ${recommendationText[recommendation] || 'Ukjent'}
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
-            <div>
-              <div style="color: #6b7280; font-size: 11px;">Vind</div>
-              <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
-            </div>
-            <div>
-              <div style="color: #6b7280; font-size: 11px;">Temp</div>
-              <div style="font-weight: 600;">${data.current.temperature?.toFixed(1) || '-'}°C</div>
-            </div>
-            <div>
-              <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
-              <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
-            </div>
-          </div>
-        `;
-        
-        if (data.warnings && data.warnings.length > 0) {
-          html += '<div style="margin-top: 12px; font-size: 11px;">';
-          data.warnings.forEach((w: any) => {
-            const wColors: Record<string, any> = {
-              warning: { bg: '#fee2e2', border: '#dc2626' },
-              caution: { bg: '#fef3c7', border: '#f59e0b' },
-              note: { bg: '#dbeafe', border: '#3b82f6' },
-            };
-            const wColor = wColors[w.level] || wColors.note;
-            html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${w.message}</div>`;
+      if (mode === "routePlanning") {
+        // Add point to route
+        routePointsRef.current.push({ lat, lng });
+        updateRouteDisplay();
+        if (onRouteChange) {
+          onRouteChange({
+            coordinates: [...routePointsRef.current],
+            totalDistance: calculateTotalDistance(routePointsRef.current)
           });
-          html += '</div>';
         }
+      } else {
+        // Show weather popup (existing behavior)
+        const popup = L.popup()
+          .setLatLng([lat, lng])
+          .setContent(`
+            <div style="min-width: 280px; padding: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+                Dronevær for valgt posisjon
+              </div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                Koordinater: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+              </div>
+              <div id="weather-content-${Date.now()}" style="text-align: center; padding: 12px;">
+                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div style="margin-top: 8px; font-size: 12px; color: #666;">Laster værdata...</div>
+              </div>
+              <style>
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              </style>
+            </div>
+          `)
+          .openOn(map);
         
-        html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
-        
-        contentEl.innerHTML = html;
-      } catch (err) {
-        console.error('Error fetching weather in map popup:', err);
-        const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
-        if (contentEl) {
-          contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Feil ved henting av værdata</div>';
+        try {
+          const { data, error } = await supabase.functions.invoke('drone-weather', {
+            body: { lat, lon: lng }
+          });
+          
+          const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
+          if (!contentEl) return;
+          
+          if (error || !data) {
+            contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Kunne ikke hente værdata</div>';
+            return;
+          }
+          
+          const recommendation = data.drone_flight_recommendation;
+          const recommendationColors: Record<string, any> = {
+            warning: { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' },
+            caution: { bg: '#fef3c7', border: '#f59e0b', color: '#f59e0b' },
+            ok: { bg: '#d1fae5', border: '#10b981', color: '#10b981' },
+          };
+          const colors = recommendationColors[recommendation] || { bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' };
+          
+          const recommendationText: Record<string, string> = {
+            warning: 'Anbefales ikke å fly',
+            caution: 'Fly med forsiktighet',
+            ok: 'Gode flyforhold',
+          };
+          
+          let html = `
+            <div style="padding: 8px; background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 6px; margin-bottom: 12px;">
+              <div style="color: ${colors.color}; font-weight: 600; font-size: 13px;">
+                ${recommendationText[recommendation] || 'Ukjent'}
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
+              <div>
+                <div style="color: #6b7280; font-size: 11px;">Vind</div>
+                <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 11px;">Temp</div>
+                <div style="font-weight: 600;">${data.current.temperature?.toFixed(1) || '-'}°C</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
+                <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
+              </div>
+            </div>
+          `;
+          
+          if (data.warnings && data.warnings.length > 0) {
+            html += '<div style="margin-top: 12px; font-size: 11px;">';
+            data.warnings.forEach((w: any) => {
+              const wColors: Record<string, any> = {
+                warning: { bg: '#fee2e2', border: '#dc2626' },
+                caution: { bg: '#fef3c7', border: '#f59e0b' },
+                note: { bg: '#dbeafe', border: '#3b82f6' },
+              };
+              const wColor = wColors[w.level] || wColors.note;
+              html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${w.message}</div>`;
+            });
+            html += '</div>';
+          }
+          
+          html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
+          
+          contentEl.innerHTML = html;
+        } catch (err) {
+          console.error('Error fetching weather in map popup:', err);
+          const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
+          if (contentEl) {
+            contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Feil ved henting av værdata</div>';
+          }
         }
       }
-    });
+    };
 
-    // Første kall
+    map.on('click', handleMapClick);
+
+    // Initialize data
     fetchNsmData();
     fetchRpasData();
     fetchRpasCtрData();
@@ -597,35 +722,29 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     fetchAircraft();
     fetchAndDisplayMissions();
 
-    // Oppdater hvert 10. sekund (API er rate limited til 1 request/sek)
+    // Display existing route if provided
+    if (existingRoute && existingRoute.coordinates.length > 0) {
+      routePointsRef.current = [...existingRoute.coordinates];
+      updateRouteDisplay();
+    }
+
     const interval = setInterval(fetchAircraft, 10000);
 
-    // Lytt til endringer i missions-tabellen (realtime)
     const missionsChannel = supabase
       .channel('missions-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'missions'
-        },
-        () => {
-          fetchAndDisplayMissions(); // Oppdater pins ved endringer
-        }
+        { event: '*', schema: 'public', table: 'missions' },
+        () => fetchAndDisplayMissions()
       )
       .subscribe();
 
-    // Oppdater etter pan/zoom (med enkel debounce)
     let refreshTimer: number | undefined;
     map.on("moveend", () => {
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-      }
+      if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(fetchAircraft, 800);
     });
 
-    // Rydd opp ved unmount
     return () => {
       clearInterval(interval);
       map.off("moveend");
@@ -633,7 +752,7 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
       missionsChannel.unsubscribe();
       map.remove();
     };
-  }, [onMissionClick]);
+  }, [onMissionClick, mode, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;
@@ -654,10 +773,40 @@ export function OpenAIPMap({ onMissionClick }: OpenAIPMapProps = {}) {
     );
   };
 
+  // Method to clear route (exposed via ref if needed)
+  const clearRoute = useCallback(() => {
+    routePointsRef.current = [];
+    updateRouteDisplay();
+    if (onRouteChange) {
+      onRouteChange({ coordinates: [], totalDistance: 0 });
+    }
+  }, [updateRouteDisplay, onRouteChange]);
+
+  // Method to undo last point
+  const undoLastPoint = useCallback(() => {
+    if (routePointsRef.current.length > 0) {
+      routePointsRef.current.pop();
+      updateRouteDisplay();
+      if (onRouteChange) {
+        onRouteChange({
+          coordinates: [...routePointsRef.current],
+          totalDistance: calculateTotalDistance(routePointsRef.current)
+        });
+      }
+    }
+  }, [updateRouteDisplay, onRouteChange]);
+
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
       <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
+      
+      {/* Route planning instructions */}
+      {mode === "routePlanning" && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
+          <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
+        </div>
+      )}
     </div>
   );
 }
