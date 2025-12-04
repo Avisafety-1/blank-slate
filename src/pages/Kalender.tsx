@@ -475,7 +475,7 @@ export default function Kalender() {
         
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error('Oppdatering feilet - mangler tilgang');
+          throw new Error('Ingen rettighet til å oppdatere dette');
         }
         toast.success('Inspeksjon registrert som utført');
         
@@ -491,7 +491,7 @@ export default function Kalender() {
         
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error('Oppdatering feilet - mangler tilgang');
+          throw new Error('Ingen rettighet til å oppdatere dette');
         }
         toast.success('Vedlikehold registrert som utført');
         
@@ -523,7 +523,7 @@ export default function Kalender() {
         
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error('Oppdatering feilet - mangler tilgang');
+          throw new Error('Ingen rettighet til å oppdatere dette');
         }
         toast.success('Vedlikehold registrert som utført');
       }
