@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -600,6 +600,45 @@ export const AddMissionDialog = ({
                     <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{routeData.totalDistance.toFixed(2)} km</span>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      if (routeData.coordinates.length > 0) {
+                        const startPoint = routeData.coordinates[0];
+                        // Reverse geocode to get address
+                        try {
+                          const response = await fetch(
+                            `https://ws.geonorge.no/adresser/v1/punktsok?lat=${startPoint.lat}&lon=${startPoint.lng}&radius=100&treffPerSide=1`
+                          );
+                          const data = await response.json();
+                          let address = `${startPoint.lat.toFixed(5)}, ${startPoint.lng.toFixed(5)}`;
+                          if (data.adresser && data.adresser.length > 0) {
+                            const addr = data.adresser[0];
+                            address = `${addr.adressetekst}, ${addr.postnummer} ${addr.poststed}`;
+                          }
+                          setFormData({
+                            ...formData,
+                            lokasjon: address,
+                            latitude: startPoint.lat,
+                            longitude: startPoint.lng
+                          });
+                        } catch (error) {
+                          // Fallback to coordinates if geocoding fails
+                          setFormData({
+                            ...formData,
+                            lokasjon: `${startPoint.lat.toFixed(5)}, ${startPoint.lng.toFixed(5)}`,
+                            latitude: startPoint.lat,
+                            longitude: startPoint.lng
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <Navigation className="h-4 w-4 mr-1" />
+                    Bruk startpunkt
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
