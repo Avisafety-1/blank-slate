@@ -221,6 +221,60 @@ export type Database = {
           },
         ]
       }
+      drone_accessories: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          drone_id: string
+          id: string
+          navn: string
+          neste_vedlikehold: string | null
+          sist_vedlikehold: string | null
+          updated_at: string | null
+          user_id: string
+          vedlikeholdsintervall_dager: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          drone_id: string
+          id?: string
+          navn: string
+          neste_vedlikehold?: string | null
+          sist_vedlikehold?: string | null
+          updated_at?: string | null
+          user_id: string
+          vedlikeholdsintervall_dager?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          drone_id?: string
+          id?: string
+          navn?: string
+          neste_vedlikehold?: string | null
+          sist_vedlikehold?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vedlikeholdsintervall_dager?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_accessories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_accessories_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drone_equipment: {
         Row: {
           created_at: string | null
