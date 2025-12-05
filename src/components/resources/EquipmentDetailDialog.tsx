@@ -3,15 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Gauge, Calendar, AlertTriangle, Trash2 } from "lucide-react";
-import { calculateMaintenanceStatus, getStatusColorClasses } from "@/lib/maintenanceStatus";
 
 interface Equipment {
   id: string;
@@ -26,6 +23,8 @@ interface Equipment {
   aktiv: boolean;
   flyvetimer?: number;
   varsel_dager?: number | null;
+  vekt?: number | null;
+  vedlikeholdsintervall_dager?: number | null;
 }
 
 interface EquipmentDetailDialogProps {
@@ -43,12 +42,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     navn: "",
     type: "",
     serienummer: "",
-    status: "Grønn",
     merknader: "",
     sist_vedlikeholdt: "",
     neste_vedlikehold: "",
     flyvetimer: 0,
     varsel_dager: "14",
+    vekt: "",
+    vedlikeholdsintervall_dager: "",
   });
 
   useEffect(() => {
@@ -57,12 +57,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         navn: equipment.navn,
         type: equipment.type,
         serienummer: equipment.serienummer,
-        status: equipment.status,
         merknader: equipment.merknader || "",
         sist_vedlikeholdt: equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toISOString().split('T')[0] : "",
         neste_vedlikehold: equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toISOString().split('T')[0] : "",
         flyvetimer: equipment.flyvetimer || 0,
         varsel_dager: equipment.varsel_dager !== null && equipment.varsel_dager !== undefined ? String(equipment.varsel_dager) : "14",
+        vekt: equipment.vekt !== null && equipment.vekt !== undefined ? String(equipment.vekt) : "",
+        vedlikeholdsintervall_dager: equipment.vedlikeholdsintervall_dager !== null && equipment.vedlikeholdsintervall_dager !== undefined ? String(equipment.vedlikeholdsintervall_dager) : "",
       });
       setIsEditing(false);
     }
@@ -79,12 +80,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           navn: formData.navn,
           type: formData.type,
           serienummer: formData.serienummer,
-          status: formData.status,
           merknader: formData.merknader || null,
           sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
           neste_vedlikehold: formData.neste_vedlikehold || null,
           flyvetimer: formData.flyvetimer,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
+          vekt: formData.vekt ? parseFloat(formData.vekt) : null,
+          vedlikeholdsintervall_dager: formData.vedlikeholdsintervall_dager ? parseInt(formData.vedlikeholdsintervall_dager) : null,
         })
         .eq("id", equipment.id);
 
@@ -123,23 +125,14 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
 
   if (!equipment) return null;
 
-  const calculatedStatus = calculateMaintenanceStatus(equipment.neste_vedlikehold, equipment.varsel_dager ?? 14);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-primary" />
-              {isEditing ? "Rediger utstyr" : equipment.navn}
-            </DialogTitle>
-            {!isEditing && (
-              <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
-                {calculatedStatus}
-              </Badge>
-            )}
-          </div>
+          <DialogTitle className="flex items-center gap-2">
+            <Gauge className="w-5 h-5 text-primary" />
+            {isEditing ? "Rediger utstyr" : equipment.navn}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -162,22 +155,25 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   <p className="text-base">{equipment.serienummer}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
+                  <p className="text-sm font-medium text-muted-foreground">Vekt</p>
+                  <p className="text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge className={`${getStatusColorClasses(calculatedStatus)} border`}>
-                    {calculatedStatus}
-                  </Badge>
+                  <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
+                  <p className="text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Varsel dager</p>
-                  <p className="text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+                  <p className="text-sm font-medium text-muted-foreground">Vedlikeholdsintervall</p>
+                  <p className="text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
                 </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Varsel dager</p>
+                <p className="text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
               </div>
 
               {(equipment.sist_vedlikeholdt || equipment.neste_vedlikehold) && (
@@ -248,6 +244,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   />
                 </div>
                 <div>
+                  <Label htmlFor="vekt">Vekt (kg)</Label>
+                  <Input
+                    id="vekt"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.vekt}
+                    onChange={(e) => setFormData({ ...formData, vekt: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="flyvetimer">Flyvetimer</Label>
                   <Input
                     id="flyvetimer"
@@ -258,33 +268,29 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                     onChange={(e) => setFormData({ ...formData, flyvetimer: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Grønn">Grønn</SelectItem>
-                      <SelectItem value="Gul">Gul</SelectItem>
-                      <SelectItem value="Rød">Rød</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                  <Label htmlFor="vedlikeholdsintervall_dager">Vedlikeholdsintervall (dager)</Label>
                   <Input
-                    id="varsel_dager"
+                    id="vedlikeholdsintervall_dager"
                     type="number"
                     min="1"
-                    placeholder="14"
-                    value={formData.varsel_dager}
-                    onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                    placeholder="30"
+                    value={formData.vedlikeholdsintervall_dager}
+                    onChange={(e) => setFormData({ ...formData, vedlikeholdsintervall_dager: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                <Input
+                  id="varsel_dager"
+                  type="number"
+                  min="1"
+                  placeholder="14"
+                  value={formData.varsel_dager}
+                  onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
