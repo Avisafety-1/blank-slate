@@ -55,7 +55,7 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
         <Button
           variant="secondary"
           size="icon"
-          className="absolute top-16 right-4 z-[1000] shadow-lg bg-card hover:bg-accent"
+          className="absolute top-16 right-4 z-[1050] shadow-lg bg-card hover:bg-accent"
           aria-label="Kartlag"
         >
           <Layers className="h-5 w-5" />
