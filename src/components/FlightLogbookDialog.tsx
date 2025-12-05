@@ -27,9 +27,9 @@ interface FlightLog {
   flight_duration_minutes: number;
   movements: number;
   notes: string | null;
-  drone: {
+drone: {
     modell: string;
-    registrering: string;
+    serienummer: string;
   } | null;
   mission: {
     tittel: string;
@@ -126,7 +126,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           notes,
           drone:drone_id (
             modell,
-            registrering
+            serienummer
           ),
           mission:mission_id (
             tittel
@@ -277,7 +277,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                       {log.drone && (
                         <div className="flex items-center gap-1">
                           <Plane className="w-3 h-3" />
-                          <span>{log.drone.modell} ({log.drone.registrering})</span>
+                          <span>{log.drone.modell} (SN: {log.drone.serienummer})</span>
                         </div>
                       )}
                     </div>
