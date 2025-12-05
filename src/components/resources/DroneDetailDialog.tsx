@@ -447,7 +447,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Klasse</p>
                   <p className="text-sm sm:text-base">{drone.klasse || "-"}</p>
@@ -458,7 +458,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Vekt MTOM</p>
                   <p className="text-sm sm:text-base">{drone.vekt !== null ? `${drone.vekt} kg` : "-"}</p>
@@ -469,7 +469,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
