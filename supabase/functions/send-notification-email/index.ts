@@ -35,6 +35,14 @@ interface EmailRequest {
     lokasjon: string;
     tidspunkt: string;
     beskrivelse?: string;
+    status?: string;
+    riskNiva?: string;
+    merknader?: string;
+    kunde?: string;
+    personell?: string[];
+    droner?: string[];
+    utstyr?: string[];
+    ruteLengde?: number;
   };
 }
 
@@ -214,20 +222,46 @@ serve(async (req: Request): Promise<Response> => {
         minute: '2-digit'
       });
 
+      const riskColors: Record<string, string> = {
+        'Lav': '#22c55e',
+        'Middels': '#eab308',
+        'Høy': '#f97316',
+        'Kritisk': '#ef4444'
+      };
+
+      const formatDistance = (meters?: number) => {
+        if (!meters) return null;
+        return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+      };
+
       const missionHtml = `
         <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Nytt oppdrag planlagt</h1>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
           <h2 style="color: #333; font-size: 18px; margin-bottom: 15px;">${mission.tittel}</h2>
-          <div style="margin-bottom: 10px;">
-            <strong style="color: #666;">Lokasjon:</strong>
-            <span style="color: #333; margin-left: 8px;">${mission.lokasjon}</span>
-          </div>
-          <div style="margin-bottom: 10px;">
-            <strong style="color: #666;">Tidspunkt:</strong>
-            <span style="color: #333; margin-left: 8px;">${missionDate}</span>
-          </div>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            ${mission.status ? `<tr><td style="padding: 8px 0; color: #666; width: 120px;"><strong>Status:</strong></td><td style="padding: 8px 0;"><span style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 4px;">${mission.status}</span></td></tr>` : ''}
+            ${mission.riskNiva ? `<tr><td style="padding: 8px 0; color: #666;"><strong>Risikonivå:</strong></td><td style="padding: 8px 0;"><span style="background: ${riskColors[mission.riskNiva] || '#666'}; color: white; padding: 4px 12px; border-radius: 4px;">${mission.riskNiva}</span></td></tr>` : ''}
+            <tr><td style="padding: 8px 0; color: #666;"><strong>Lokasjon:</strong></td><td style="padding: 8px 0; color: #333;">${mission.lokasjon}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666;"><strong>Tidspunkt:</strong></td><td style="padding: 8px 0; color: #333;">${missionDate}</td></tr>
+            ${mission.kunde ? `<tr><td style="padding: 8px 0; color: #666;"><strong>Kunde:</strong></td><td style="padding: 8px 0; color: #333;">${mission.kunde}</td></tr>` : ''}
+            ${mission.ruteLengde ? `<tr><td style="padding: 8px 0; color: #666;"><strong>Rutelengde:</strong></td><td style="padding: 8px 0; color: #333;">${formatDistance(mission.ruteLengde)}</td></tr>` : ''}
+          </table>
+
           ${mission.beskrivelse ? `<div style="margin-top: 15px;"><strong style="color: #666;">Beskrivelse:</strong><p style="color: #333; margin-top: 5px;">${mission.beskrivelse}</p></div>` : ''}
+          ${mission.merknader ? `<div style="margin-top: 15px;"><strong style="color: #666;">Merknader:</strong><p style="color: #333; margin-top: 5px;">${mission.merknader}</p></div>` : ''}
         </div>
+
+        ${(mission.personell && mission.personell.length > 0) || (mission.droner && mission.droner.length > 0) || (mission.utstyr && mission.utstyr.length > 0) ? `
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+          <h3 style="color: #333; font-size: 16px; margin-bottom: 15px;">Ressurser</h3>
+          ${mission.personell && mission.personell.length > 0 ? `<div style="margin-bottom: 10px;"><strong style="color: #666;">👤 Personell:</strong> <span style="color: #333;">${mission.personell.join(', ')}</span></div>` : ''}
+          ${mission.droner && mission.droner.length > 0 ? `<div style="margin-bottom: 10px;"><strong style="color: #666;">🚁 Droner:</strong> <span style="color: #333;">${mission.droner.join(', ')}</span></div>` : ''}
+          ${mission.utstyr && mission.utstyr.length > 0 ? `<div style="margin-bottom: 10px;"><strong style="color: #666;">🔧 Utstyr:</strong> <span style="color: #333;">${mission.utstyr.join(', ')}</span></div>` : ''}
+        </div>
+        ` : ''}
+
+        <p style="margin-top: 20px; color: #666;">Logg inn i Avisafe for mer informasjon.</p>
       `;
 
       const emailConfig = await getEmailConfig(companyId);

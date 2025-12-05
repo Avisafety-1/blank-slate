@@ -454,6 +454,26 @@ export const AddMissionDialog = ({
 
         // Send email notification for new mission
         try {
+          // Gather names for notification
+          const customerName = selectedCustomer 
+            ? customers.find(c => c.id === selectedCustomer)?.navn 
+            : undefined;
+          
+          const personnelNames = selectedPersonnel
+            .map(id => profiles.find(p => p.id === id)?.full_name)
+            .filter(Boolean) as string[];
+          
+          const droneModels = selectedDrones
+            .map(id => {
+              const drone = drones.find(d => d.id === id);
+              return drone ? `${drone.modell} (SN: ${drone.serienummer})` : null;
+            })
+            .filter(Boolean) as string[];
+          
+          const equipmentNames = selectedEquipment
+            .map(id => equipment.find(e => e.id === id)?.navn)
+            .filter(Boolean) as string[];
+
           await supabase.functions.invoke('send-notification-email', {
             body: {
               type: 'notify_new_mission',
@@ -462,7 +482,15 @@ export const AddMissionDialog = ({
                 tittel: formData.tittel,
                 lokasjon: formData.lokasjon,
                 tidspunkt: formData.tidspunkt,
-                beskrivelse: formData.beskrivelse
+                beskrivelse: formData.beskrivelse,
+                status: formData.status,
+                riskNiva: formData.risk_nivå,
+                merknader: formData.merknader,
+                kunde: customerName,
+                personell: personnelNames,
+                droner: droneModels,
+                utstyr: equipmentNames,
+                ruteLengde: routeData?.totalDistance
               }
             }
           });
