@@ -745,6 +745,57 @@ export type Database = {
           },
         ]
       }
+      equipment_log_entries: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string | null
+          entry_date: string
+          entry_type: string | null
+          equipment_id: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          entry_date: string
+          entry_type?: string | null
+          equipment_id: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          entry_date?: string
+          entry_type?: string | null
+          equipment_id?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_log_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_log_entries_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flight_log_equipment: {
         Row: {
           equipment_id: string

@@ -8,7 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book } from "lucide-react";
+import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 
 interface Equipment {
   id: string;
@@ -36,8 +38,10 @@ interface EquipmentDetailDialogProps {
 
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
+  const { user, companyId } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLogbook, setShowLogbook] = useState(false);
   const [formData, setFormData] = useState({
     navn: "",
     type: "",
@@ -107,6 +111,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         .eq("id", equipment.id);
 
       if (error) throw error;
+
+      // Log maintenance to equipment_log_entries
+      if (user && companyId) {
+        await supabase.from("equipment_log_entries").insert({
+          equipment_id: equipment.id,
+          company_id: companyId,
+          user_id: user.id,
+          entry_date: today,
+          entry_type: "vedlikehold",
+          title: "Vedlikehold utført",
+          description: "Utført via utstyrskort",
+        });
+      }
 
       toast.success(`Vedlikehold utført for ${equipment.navn}`);
       onEquipmentUpdated();
@@ -182,6 +199,17 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
             <Gauge className="w-5 h-5 text-primary" />
             {isEditing ? "Rediger utstyr" : equipment.navn}
           </DialogTitle>
+          {!isEditing && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowLogbook(true)}
+              className="w-full mt-2"
+            >
+              <Book className="w-4 h-4 mr-2" />
+              Loggbok
+            </Button>
+          )}
         </DialogHeader>
 
         <div className="space-y-4">
@@ -425,6 +453,14 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <EquipmentLogbookDialog
+        open={showLogbook}
+        onOpenChange={setShowLogbook}
+        equipmentId={equipment.id}
+        equipmentNavn={equipment.navn}
+        flyvetimer={equipment.flyvetimer || 0}
+      />
     </Dialog>
   );
 };
