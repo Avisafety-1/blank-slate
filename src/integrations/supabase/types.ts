@@ -1543,6 +1543,7 @@ export type Database = {
           company_id: string
           created_at: string | null
           email: string | null
+          flyvetimer: number | null
           full_name: string | null
           id: string
           nødkontakt_navn: string | null
@@ -1560,6 +1561,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           email?: string | null
+          flyvetimer?: number | null
           full_name?: string | null
           id: string
           nødkontakt_navn?: string | null
@@ -1577,6 +1579,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           email?: string | null
+          flyvetimer?: number | null
           full_name?: string | null
           id?: string
           nødkontakt_navn?: string | null
