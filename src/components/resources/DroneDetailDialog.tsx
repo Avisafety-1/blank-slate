@@ -422,9 +422,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     <span className="hidden sm:inline">Loggbok</span>
                     <span className="sm:hidden">Logg</span>
                   </Button>
-                  <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
-                    {aggregatedStatus}
-                  </Badge>
                 </>
               )}
             </div>
