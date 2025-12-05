@@ -5,7 +5,6 @@ import { nb } from "date-fns/locale";
 import { useState } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
-import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 
 interface DroneListDialogProps {
@@ -49,7 +48,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
                   <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
                 </div>
-                <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) as Status} />
+                <StatusBadge status={drone.status as Status} />
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
