@@ -3,7 +3,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { sendNotificationEmail, generateIncidentNotificationHTML } from "@/lib/notifications";
+import { useAuth } from "@/contexts/AuthContext";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type Incident = Tables<"incidents">;
 
@@ -46,6 +49,7 @@ const statusColors = {
 };
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentDetailDialogProps) => {
+  const { user, companyId } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
@@ -57,6 +61,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
   const [submittingComment, setSubmittingComment] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
   const [selectedResponsibleId, setSelectedResponsibleId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -307,13 +312,170 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!incident || !companyId || !user) return;
+    
+    setExporting(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPos = 20;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("HENDELSESRAPPORT", pageWidth / 2, yPos, { align: "center" });
+      yPos += 10;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
+      doc.text(incident.tittel, pageWidth / 2, yPos, { align: "center" });
+      yPos += 10;
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Eksportert: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, pageWidth / 2, yPos, { align: "center" });
+      doc.setTextColor(0);
+      yPos += 15;
+
+      // Detaljer
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("DETALJER", 14, yPos);
+      yPos += 8;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      const details = [
+        ["Status", incident.status],
+        ["Alvorlighetsgrad", incident.alvorlighetsgrad],
+        ["Kategori", incident.kategori || "Ikke spesifisert"],
+        ["Hovedårsak", incident.hovedaarsak || "Ikke spesifisert"],
+        ["Medvirkende årsak", incident.medvirkende_aarsak || "Ikke spesifisert"],
+        ["Hendelsestidspunkt", format(new Date(incident.hendelsestidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })],
+        ["Lokasjon", incident.lokasjon || "Ikke spesifisert"],
+        ["Rapportert av", incident.rapportert_av || "Ikke spesifisert"],
+        ["Oppfølgingsansvarlig", oppfolgingsansvarlig?.full_name || "Ikke tildelt"],
+      ];
+
+      if (relatedMission) {
+        details.push(["Knyttet oppdrag", relatedMission.tittel]);
+      }
+
+      details.forEach(([label, value]) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(`${label}:`, 14, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(value, 60, yPos);
+        yPos += 6;
+      });
+
+      yPos += 10;
+
+      // Beskrivelse
+      if (incident.beskrivelse) {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("BESKRIVELSE", 14, yPos);
+        yPos += 8;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const splitDescription = doc.splitTextToSize(incident.beskrivelse, pageWidth - 28);
+        doc.text(splitDescription, 14, yPos);
+        yPos += splitDescription.length * 5 + 10;
+      }
+
+      // Kommentarer
+      if (comments.length > 0) {
+        if (yPos > 250) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("KOMMENTARER", 14, yPos);
+        yPos += 8;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [["Dato", "Av", "Kommentar"]],
+          body: comments.map(c => [
+            format(new Date(c.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+            c.created_by_name,
+            c.comment_text
+          ]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [59, 130, 246] },
+          columnStyles: {
+            0: { cellWidth: 35 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 'auto' }
+          }
+        });
+      }
+
+      // Generer filnavn og blob
+      const dateStr = format(new Date(), "yyyy-MM-dd");
+      const safeTitle = incident.tittel.replace(/[^a-zA-Z0-9æøåÆØÅ\s-]/g, '').substring(0, 30);
+      const fileName = `hendelsesrapport-${safeTitle}-${dateStr}.pdf`;
+      
+      const pdfBlob = doc.output('blob');
+      const filePath = `${companyId}/${fileName}`;
+
+      // Last opp til Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Opprett dokumentoppføring
+      const { error: docError } = await supabase
+        .from('documents')
+        .insert({
+          tittel: `Hendelsesrapport - ${incident.tittel} - ${format(new Date(), "dd.MM.yyyy", { locale: nb })}`,
+          kategori: 'rapporter',
+          fil_url: filePath,
+          fil_navn: fileName,
+          company_id: companyId,
+          user_id: user.id,
+          beskrivelse: `Automatisk generert rapport for hendelse: ${incident.tittel}`
+        });
+
+      if (docError) throw docError;
+
+      toast.success("Hendelsesrapport lagret i dokumenter");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Kunne ikke eksportere rapport");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!incident) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">{incident.tittel}</DialogTitle>
+        <DialogHeader className="flex flex-row items-start justify-between gap-2">
+          <DialogTitle className="text-lg sm:text-xl flex-1">{incident.tittel}</DialogTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            disabled={exporting}
+            className="shrink-0"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {exporting ? "Eksporterer..." : "Eksporter PDF"}
+          </Button>
         </DialogHeader>
         
         <div className="space-y-4">
