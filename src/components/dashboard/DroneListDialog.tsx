@@ -53,27 +53,27 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
               
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Flyvetimer:</span>
-                  <span className="ml-2 font-medium">{drone.flyvetimer}</span>
+                  <p className="text-muted-foreground text-xs">Flyvetimer</p>
+                  <p className="font-medium">{drone.flyvetimer}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Tilgjengelig:</span>
-                  <span className="ml-2 font-medium">{drone.tilgjengelig ? "Ja" : "Nei"}</span>
+                  <p className="text-muted-foreground text-xs">Tilgjengelig</p>
+                  <p className="font-medium">{drone.tilgjengelig ? "Ja" : "Nei"}</p>
                 </div>
                 {drone.neste_inspeksjon && (
                   <div>
-                    <span className="text-muted-foreground">Neste inspeksjon:</span>
-                    <span className="ml-2 font-medium">
-                      {format(new Date(drone.neste_inspeksjon), "dd.MM.yyyy", { locale: nb })}
-                    </span>
+                    <p className="text-muted-foreground text-xs">Neste insp.</p>
+                    <p className="font-medium">
+                      {format(new Date(drone.neste_inspeksjon), "dd.MM.yy", { locale: nb })}
+                    </p>
                   </div>
                 )}
                 {drone.sist_inspeksjon && (
                   <div>
-                    <span className="text-muted-foreground">Sist inspeksjon:</span>
-                    <span className="ml-2 font-medium">
-                      {format(new Date(drone.sist_inspeksjon), "dd.MM.yyyy", { locale: nb })}
-                    </span>
+                    <p className="text-muted-foreground text-xs">Sist insp.</p>
+                    <p className="font-medium">
+                      {format(new Date(drone.sist_inspeksjon), "dd.MM.yy", { locale: nb })}
+                    </p>
                   </div>
                 )}
               </div>
