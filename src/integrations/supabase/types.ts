@@ -689,6 +689,9 @@ export type Database = {
           type: string
           user_id: string
           varsel_dager: number | null
+          vedlikehold_startdato: string | null
+          vedlikeholdsintervall_dager: number | null
+          vekt: number | null
         }
         Insert: {
           aktiv?: boolean
@@ -707,6 +710,9 @@ export type Database = {
           type: string
           user_id: string
           varsel_dager?: number | null
+          vedlikehold_startdato?: string | null
+          vedlikeholdsintervall_dager?: number | null
+          vekt?: number | null
         }
         Update: {
           aktiv?: boolean
@@ -725,6 +731,9 @@ export type Database = {
           type?: string
           user_id?: string
           varsel_dager?: number | null
+          vedlikehold_startdato?: string | null
+          vedlikeholdsintervall_dager?: number | null
+          vekt?: number | null
         }
         Relationships: [
           {
