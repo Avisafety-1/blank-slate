@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Gauge, Calendar, AlertTriangle, Trash2 } from "lucide-react";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench } from "lucide-react";
 
 interface Equipment {
   id: string;
@@ -68,6 +68,55 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
       setIsEditing(false);
     }
   }, [equipment]);
+
+  // Calculate next maintenance when last maintenance or interval changes
+  useEffect(() => {
+    if (isEditing && formData.sist_vedlikeholdt && formData.vedlikeholdsintervall_dager) {
+      const days = parseInt(formData.vedlikeholdsintervall_dager);
+      if (!isNaN(days) && days > 0) {
+        const nextDate = new Date(formData.sist_vedlikeholdt);
+        nextDate.setDate(nextDate.getDate() + days);
+        const calculatedDate = nextDate.toISOString().split('T')[0];
+        if (calculatedDate !== formData.neste_vedlikehold) {
+          setFormData(prev => ({ ...prev, neste_vedlikehold: calculatedDate }));
+        }
+      }
+    }
+  }, [isEditing, formData.sist_vedlikeholdt, formData.vedlikeholdsintervall_dager]);
+
+  const handlePerformMaintenance = async () => {
+    if (!equipment || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      let neste_vedlikehold: string | null = null;
+      
+      if (equipment.vedlikeholdsintervall_dager) {
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + equipment.vedlikeholdsintervall_dager);
+        neste_vedlikehold = nextDate.toISOString().split('T')[0];
+      }
+
+      const { error } = await supabase
+        .from("equipment")
+        .update({
+          sist_vedlikeholdt: today,
+          neste_vedlikehold,
+        })
+        .eq("id", equipment.id);
+
+      if (error) throw error;
+
+      toast.success(`Vedlikehold utført for ${equipment.navn}`);
+      onEquipmentUpdated();
+    } catch (error: any) {
+      console.error("Error performing maintenance:", error);
+      toast.error(`Kunne ikke oppdatere vedlikehold: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!equipment || isSubmitting) return;
@@ -176,30 +225,37 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                 <p className="text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
               </div>
 
-              {(equipment.sist_vedlikeholdt || equipment.neste_vedlikehold) && (
-                <div className="border-t border-border pt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {equipment.sist_vedlikeholdt && (
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Sist vedlikeholdt</p>
-                          <p className="text-base">{new Date(equipment.sist_vedlikeholdt).toLocaleDateString('nb-NO')}</p>
-                        </div>
-                      </div>
-                    )}
-                    {equipment.neste_vedlikehold && (
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Neste vedlikehold</p>
-                          <p className="text-base">{new Date(equipment.neste_vedlikehold).toLocaleDateString('nb-NO')}</p>
-                        </div>
-                      </div>
-                    )}
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium">Vedlikehold</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePerformMaintenance}
+                    disabled={isSubmitting}
+                    className="text-xs gap-1"
+                  >
+                    <Wrench className="w-3 h-3" />
+                    Utfør vedlikehold
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Sist vedlikeholdt</p>
+                      <p className="text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString('nb-NO') : "Ikke utført"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Neste vedlikehold</p>
+                      <p className="text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString('nb-NO') : "Ikke satt"}</p>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
 
               {equipment.merknader && (
                 <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
