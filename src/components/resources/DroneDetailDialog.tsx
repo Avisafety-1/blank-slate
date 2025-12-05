@@ -436,7 +436,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         <div className="space-y-4">
           {!isEditing ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Modell</p>
                   <p className="text-sm sm:text-base">{drone.modell}</p>
