@@ -284,6 +284,35 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     }
   };
 
+  const handleAccessoryInspection = async (accessory: Accessory) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      let neste_vedlikehold: string | null = null;
+      
+      if (accessory.vedlikeholdsintervall_dager) {
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + accessory.vedlikeholdsintervall_dager);
+        neste_vedlikehold = nextDate.toISOString().split('T')[0];
+      }
+
+      const { error } = await supabase
+        .from("drone_accessories")
+        .update({
+          sist_vedlikehold: today,
+          neste_vedlikehold,
+        })
+        .eq("id", accessory.id);
+
+      if (error) throw error;
+
+      toast.success(`Vedlikehold utført for ${accessory.navn}`);
+      fetchAccessories();
+    } catch (error: any) {
+      console.error("Error updating accessory inspection:", error);
+      toast.error(`Kunne ikke oppdatere vedlikehold: ${error.message}`);
+    }
+  };
+
   const getMaintenanceStatusColor = (neste_vedlikehold: string | null) => {
     if (!neste_vedlikehold) return "";
     const today = new Date();
@@ -772,14 +801,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                             )}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteAccessory(acc)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {acc.vedlikeholdsintervall_dager && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAccessoryInspection(acc)}
+                              className="h-8 text-xs px-2"
+                            >
+                              <Wrench className="w-3 h-3 mr-1" />
+                              Utfør
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteAccessory(acc)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
