@@ -500,6 +500,36 @@ export type Database = {
           },
         ]
       }
+      drone_telemetry: {
+        Row: {
+          alt: number | null
+          created_at: string | null
+          drone_id: string | null
+          id: string
+          lat: number | null
+          lon: number | null
+          raw: Json | null
+        }
+        Insert: {
+          alt?: number | null
+          created_at?: string | null
+          drone_id?: string | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          raw?: Json | null
+        }
+        Update: {
+          alt?: number | null
+          created_at?: string | null
+          drone_id?: string | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          raw?: Json | null
+        }
+        Relationships: []
+      }
       drones: {
         Row: {
           aktiv: boolean
