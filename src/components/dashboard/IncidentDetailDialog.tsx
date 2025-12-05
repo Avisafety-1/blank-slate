@@ -419,7 +419,14 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
 
       // Generer filnavn og blob
       const dateStr = format(new Date(), "yyyy-MM-dd");
-      const safeTitle = incident.tittel.replace(/[^a-zA-Z0-9æøåÆØÅ\s-]/g, '').substring(0, 30);
+      const safeTitle = incident.tittel
+        .trim()
+        .toLowerCase()
+        .replace(/æ/g, 'ae').replace(/ø/g, 'o').replace(/å/g, 'a')
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 30);
       const fileName = `hendelsesrapport-${safeTitle}-${dateStr}.pdf`;
       
       const pdfBlob = doc.output('blob');
