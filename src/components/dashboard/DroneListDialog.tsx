@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
+import { Status } from "@/types";
 
 interface DroneListDialogProps {
   open: boolean;
@@ -41,9 +43,12 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
               onClick={() => handleDroneClick(drone)}
               className="border border-border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
             >
-              <div>
-                <h3 className="font-semibold text-lg">{drone.modell}</h3>
-                <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg">{drone.modell}</h3>
+                  <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
+                </div>
+                <StatusBadge status={drone.status as Status} />
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
