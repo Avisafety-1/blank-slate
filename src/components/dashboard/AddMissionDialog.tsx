@@ -571,7 +571,7 @@ export const AddMissionDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 !z-[1000]">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{mission ? "Rediger oppdrag" : "Legg til oppdrag"}</DialogTitle>
         </DialogHeader>
@@ -773,7 +773,7 @@ export const AddMissionDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[1001]">
+                <SelectContent>
                   <SelectItem value="Planlagt">Planlagt</SelectItem>
                   <SelectItem value="Pågående">Pågående</SelectItem>
                   <SelectItem value="Fullført">Fullført</SelectItem>
@@ -787,7 +787,7 @@ export const AddMissionDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[1001]">
+                <SelectContent>
                   <SelectItem value="Lav">Lav</SelectItem>
                   <SelectItem value="Middels">Middels</SelectItem>
                   <SelectItem value="Høy">Høy</SelectItem>
@@ -812,7 +812,7 @@ export const AddMissionDialog = ({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0 z-[1001]">
+              <PopoverContent className="w-[300px] p-0">
                 <Command>
                   <CommandInput placeholder="Søk kunde..." />
                   <CommandList>
@@ -899,7 +899,7 @@ export const AddMissionDialog = ({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0 z-[1001]">
+              <PopoverContent className="w-[300px] p-0">
                 <Command>
                   <CommandInput placeholder="Søk personell..." />
                   <CommandList>
@@ -964,7 +964,7 @@ export const AddMissionDialog = ({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0 z-[1001]">
+              <PopoverContent className="w-[300px] p-0">
                 <Command>
                   <CommandInput placeholder="Søk utstyr..." />
                   <CommandList>
@@ -1029,7 +1029,7 @@ export const AddMissionDialog = ({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0 z-[1001]">
+              <PopoverContent className="w-[300px] p-0">
                 <Command>
                   <CommandInput placeholder={`Søk ${terminology.vehicleLower}...`} />
                   <CommandList>
