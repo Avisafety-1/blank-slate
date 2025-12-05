@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, AlertTriangle, Weight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Equipment {
@@ -14,6 +14,7 @@ interface Equipment {
   type: string;
   serienummer: string;
   status: string;
+  vekt: number | null;
 }
 
 interface AddEquipmentToDroneDialogProps {
@@ -22,6 +23,8 @@ interface AddEquipmentToDroneDialogProps {
   droneId: string;
   existingEquipmentIds: string[];
   onEquipmentAdded: () => void;
+  dronePayload: number | null;
+  currentEquipmentWeight: number;
 }
 
 const statusColors: Record<string, string> = {
@@ -35,7 +38,9 @@ export const AddEquipmentToDroneDialog = ({
   onOpenChange, 
   droneId, 
   existingEquipmentIds,
-  onEquipmentAdded 
+  onEquipmentAdded,
+  dronePayload,
+  currentEquipmentWeight
 }: AddEquipmentToDroneDialogProps) => {
   const { user, companyId } = useAuth();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -51,7 +56,7 @@ export const AddEquipmentToDroneDialog = ({
   const fetchAvailableEquipment = async () => {
     const { data, error } = await supabase
       .from("equipment")
-      .select("id, navn, type, serienummer, status")
+      .select("id, navn, type, serienummer, status, vekt")
       .eq("aktiv", true)
       .order("navn");
 
@@ -59,7 +64,6 @@ export const AddEquipmentToDroneDialog = ({
       console.error("Error fetching equipment:", error);
       toast.error("Kunne ikke hente utstyr");
     } else {
-      // Filter out equipment that's already linked
       const available = (data || []).filter(
         (item) => !existingEquipmentIds.includes(item.id)
       );
@@ -84,6 +88,20 @@ export const AddEquipmentToDroneDialog = ({
     }
   };
 
+  const getWeightStatus = (equipmentWeight: number | null): "ok" | "warning" | "exceeded" => {
+    if (!dronePayload || !equipmentWeight) return "ok";
+    
+    const newTotalWeight = currentEquipmentWeight + equipmentWeight;
+    
+    if (newTotalWeight > dronePayload) {
+      return "exceeded";
+    }
+    if (newTotalWeight > dronePayload - 0.1) {
+      return "warning";
+    }
+    return "ok";
+  };
+
   const handleAddEquipment = async (equipmentItem: Equipment) => {
     setAdding(equipmentItem.id);
     
@@ -97,12 +115,11 @@ export const AddEquipmentToDroneDialog = ({
 
       if (error) throw error;
 
-      // Log to equipment history
       await logEquipmentHistory(equipmentItem.id, equipmentItem.navn);
 
       toast.success("Utstyr lagt til");
       onEquipmentAdded();
-      fetchAvailableEquipment(); // Refresh list
+      fetchAvailableEquipment();
     } catch (error: any) {
       console.error("Error adding equipment:", error);
       toast.error(`Kunne ikke legge til utstyr: ${error.message}`);
@@ -128,6 +145,15 @@ export const AddEquipmentToDroneDialog = ({
           <DialogTitle>Legg til utstyr</DialogTitle>
         </DialogHeader>
 
+        {dronePayload !== null && (
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-sm">
+            <Weight className="w-4 h-4 text-muted-foreground" />
+            <span>
+              Utstyrsvekt: <strong>{currentEquipmentWeight.toFixed(2)} kg</strong> / Payload: <strong>{dronePayload} kg</strong>
+            </span>
+          </div>
+        )}
+
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -144,32 +170,63 @@ export const AddEquipmentToDroneDialog = ({
               {search ? `Ingen treff for "${search}"` : "Ingen tilgjengelig utstyr"}
             </p>
           ) : (
-            filteredEquipment.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start justify-between p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium">{item.navn}</h4>
-                    <Badge className={`${statusColors[item.status] || ""} border text-xs`}>
-                      {item.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{item.type}</p>
-                  <p className="text-xs text-muted-foreground mt-1">SN: {item.serienummer}</p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleAddEquipment(item)}
-                  disabled={adding === item.id}
-                  className="gap-2"
+            filteredEquipment.map((item) => {
+              const weightStatus = getWeightStatus(item.vekt);
+              const newTotalWeight = currentEquipmentWeight + (item.vekt || 0);
+              
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors"
                 >
-                  <Plus className="w-4 h-4" />
-                  {adding === item.id ? "Legger til..." : "Legg til"}
-                </Button>
-              </div>
-            ))
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium">{item.navn}</h4>
+                        <Badge className={`${statusColors[item.status] || ""} border text-xs`}>
+                          {item.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{item.type}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                        <span>SN: {item.serienummer}</span>
+                        {item.vekt !== null && (
+                          <span className="flex items-center gap-1">
+                            <Weight className="w-3 h-3" />
+                            {item.vekt} kg
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddEquipment(item)}
+                      disabled={adding === item.id}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {adding === item.id ? "Legger til..." : "Legg til"}
+                    </Button>
+                  </div>
+                  
+                  {dronePayload !== null && item.vekt !== null && weightStatus !== "ok" && (
+                    <div className={`flex items-center gap-2 mt-2 p-2 rounded text-xs ${
+                      weightStatus === "exceeded" 
+                        ? "bg-destructive/10 text-destructive" 
+                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    }`}>
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span>
+                        {weightStatus === "exceeded" 
+                          ? `Overskrider payload! Ny totalvekt: ${newTotalWeight.toFixed(2)} kg`
+                          : `Nær payload-grense. Ny totalvekt: ${newTotalWeight.toFixed(2)} kg`
+                        }
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 

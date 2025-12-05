@@ -153,7 +153,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           serienummer,
           status,
           neste_vedlikehold,
-          varsel_dager
+          varsel_dager,
+          vekt
         )
       `)
       .eq("drone_id", drone.id);
@@ -1011,6 +1012,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         droneId={drone?.id || ""}
         existingEquipmentIds={linkedEquipment.map((link) => link.equipment?.id).filter(Boolean)}
         onEquipmentAdded={fetchLinkedEquipment}
+        dronePayload={drone?.payload ?? null}
+        currentEquipmentWeight={linkedEquipment.reduce((sum, link) => sum + (link.equipment?.vekt || 0), 0)}
       />
 
       <AddPersonnelToDroneDialog
