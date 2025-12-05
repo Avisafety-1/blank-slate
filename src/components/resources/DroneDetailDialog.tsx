@@ -430,6 +430,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   );
   const droneOwnStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
 
+  // Calculate payload status
+  const totalEquipmentWeight = linkedEquipmentData.reduce((sum: number, eq: any) => sum + (eq?.vekt || 0), 0);
+  const payloadStatus = drone.payload !== null && totalEquipmentWeight > 0
+    ? totalEquipmentWeight > drone.payload
+      ? "exceeded"
+      : totalEquipmentWeight > drone.payload - 0.1
+        ? "warning"
+        : "ok"
+    : "ok";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -459,6 +469,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
               ⚠️ Status påvirket av: {affectedItems.join(", ")}
+            </p>
+          )}
+          {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
+            <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
+              {payloadStatus === "exceeded" 
+                ? `⚠️ Payload overskredet! Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
+                : `⚠️ Nær payload-grense. Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
+              }
             </p>
           )}
         </DialogHeader>
