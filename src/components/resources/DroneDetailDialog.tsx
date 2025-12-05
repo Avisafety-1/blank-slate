@@ -404,21 +404,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <DialogTitle className="flex items-center gap-2">
               <Plane className="w-5 h-5 text-primary" />
               {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
             </DialogTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {!isEditing && (
                 <>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setLogbookOpen(true)}
+                    className="text-xs sm:text-sm"
                   >
-                    <Book className="w-4 h-4 mr-2" />
-                    Loggbok
+                    <Book className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Loggbok</span>
+                    <span className="sm:hidden">Logg</span>
                   </Button>
                   <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
                     {aggregatedStatus}
@@ -437,43 +439,43 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         <div className="space-y-4">
           {!isEditing ? (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Modell</p>
-                  <p className="text-base">{drone.modell}</p>
+                  <p className="text-sm sm:text-base">{drone.modell}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Serienummer</p>
-                  <p className="text-base">{drone.serienummer}</p>
+                  <p className="text-sm sm:text-base">{drone.serienummer}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Klasse</p>
-                  <p className="text-base">{drone.klasse || "-"}</p>
+                  <p className="text-sm sm:text-base">{drone.klasse || "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kjøpsdato</p>
-                  <p className="text-base">{drone.kjøpsdato ? new Date(drone.kjøpsdato).toLocaleDateString('nb-NO') : "-"}</p>
+                  <p className="text-sm sm:text-base">{drone.kjøpsdato ? new Date(drone.kjøpsdato).toLocaleDateString('nb-NO') : "-"}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Vekt MTOM</p>
-                  <p className="text-base">{drone.vekt !== null ? `${drone.vekt} kg` : "-"}</p>
+                  <p className="text-sm sm:text-base">{drone.vekt !== null ? `${drone.vekt} kg` : "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Payload</p>
-                  <p className="text-base">{drone.payload !== null ? `${drone.payload} kg` : "-"}</p>
+                  <p className="text-sm sm:text-base">{drone.payload !== null ? `${drone.payload} kg` : "-"}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
+                  <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
@@ -485,7 +487,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days) && (
                 <div className="border-t border-border pt-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       Inspeksjon
@@ -493,6 +495,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     <Button
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={async () => {
                         if (!user || !companyId) return;
                         try {
@@ -529,9 +532,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                           toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
                         }
                       }}
-                      className="gap-2"
                     >
-                      <Wrench className="w-4 h-4" />
+                      <Wrench className="w-4 h-4 mr-1" />
                       Utfør inspeksjon
                     </Button>
                   </div>
@@ -577,7 +579,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               {/* Linked Equipment Section */}
               <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-muted-foreground" />
                     <p className="text-sm font-medium text-muted-foreground">Tilknyttet utstyr</p>
@@ -586,7 +588,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     size="sm" 
                     variant="outline"
                     onClick={() => setAddEquipmentDialogOpen(true)}
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -633,7 +635,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               {/* Linked Personnel Section */}
               <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-muted-foreground" />
                     <p className="text-sm font-medium text-muted-foreground">Tilknyttet personell</p>
@@ -642,7 +644,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     size="sm" 
                     variant="outline"
                     onClick={() => setAddPersonnelDialogOpen(true)}
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -686,7 +688,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
 
               {/* Valgfritt utstyr Section */}
               <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-muted-foreground" />
                     <p className="text-sm font-medium text-muted-foreground">Valgfritt utstyr</p>
@@ -695,7 +697,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     size="sm" 
                     variant="outline"
                     onClick={() => setShowAddAccessory(true)}
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" />
                     Legg til

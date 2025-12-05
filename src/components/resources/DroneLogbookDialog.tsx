@@ -381,11 +381,12 @@ export const DroneLogbookDialog = ({
           </p>
         </DialogHeader>
 
-        <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setShowAddEntry(!showAddEntry)}
+            className="w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Legg til innlegg
@@ -394,22 +395,23 @@ export const DroneLogbookDialog = ({
             variant="outline" 
             size="sm" 
             onClick={handleExportPDF}
+            className="w-full sm:w-auto"
           >
             <FileText className="w-4 h-4 mr-2" />
-            Eksporter til PDF
+            Eksporter PDF
           </Button>
         </div>
 
         {showAddEntry && (
-          <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Type</Label>
+                <Label className="text-xs sm:text-sm">Type</Label>
                 <Select 
                   value={newEntry.entry_type} 
                   onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -421,9 +423,10 @@ export const DroneLogbookDialog = ({
                 </Select>
               </div>
               <div>
-                <Label>Dato</Label>
+                <Label className="text-xs sm:text-sm">Dato</Label>
                 <Input
                   type="date"
+                  className="h-9"
                   value={newEntry.entry_date}
                   onChange={(e) => setNewEntry(prev => ({ ...prev, entry_date: e.target.value }))}
                 />
@@ -454,16 +457,16 @@ export const DroneLogbookDialog = ({
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="all">Alle</TabsTrigger>
-            <TabsTrigger value="flights">Flyturer</TabsTrigger>
-            <TabsTrigger value="inspections">Insp.</TabsTrigger>
-            <TabsTrigger value="equipment">Utstyr</TabsTrigger>
-            <TabsTrigger value="manual">Manuell</TabsTrigger>
+          <TabsList className="flex w-full overflow-x-auto no-scrollbar">
+            <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
+            <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Fly</TabsTrigger>
+            <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">Insp.</TabsTrigger>
+            <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">Utstyr</TabsTrigger>
+            <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Man.</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8 text-muted-foreground">
                   Laster loggbok...
@@ -498,14 +501,15 @@ export const DroneLogbookDialog = ({
                                 {log.description}
                               </p>
                             )}
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 sm:gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
-                                {format(log.date, 'dd.MM.yyyy HH:mm', { locale: nb })}
+                                <span className="sm:hidden">{format(log.date, 'dd.MM.yy', { locale: nb })}</span>
+                                <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy HH:mm', { locale: nb })}</span>
                               </span>
                               <span className="flex items-center gap-1">
                                 <User className="w-3 h-3" />
-                                {log.userName}
+                                <span className="truncate max-w-[80px] sm:max-w-none">{log.userName}</span>
                               </span>
                             </div>
                           </div>
