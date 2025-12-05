@@ -372,6 +372,16 @@ export function OpenAIPMap({
       icon: "plane",
     });
 
+    // Drone telemetry layer
+    const droneLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "drones",
+      name: "Droner (live)",
+      layer: droneLayer,
+      enabled: true,
+      icon: "navigation",
+    });
+
     // Missions layer - only in view mode
     const missionsLayer = L.layerGroup();
     if (mode === "view") {
@@ -391,6 +401,75 @@ export function OpenAIPMap({
     routeLayerRef.current = routeLayer;
 
     setLayers(layerConfigs);
+
+    // Fetch drone telemetry from database
+    async function fetchDroneTelemetry() {
+      try {
+        const { data: telemetry, error } = await supabase
+          .from('drone_telemetry')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error || !telemetry) return;
+        
+        droneLayer.clearLayers();
+        
+        // Group by drone_id, take only latest position per drone
+        const latestByDrone = new Map<string, typeof telemetry[0]>();
+        telemetry.forEach(t => {
+          const droneId = t.drone_id || 'unknown';
+          if (!latestByDrone.has(droneId)) {
+            latestByDrone.set(droneId, t);
+          }
+        });
+        
+        latestByDrone.forEach((t, droneId) => {
+          if (!t.lat || !t.lon) return;
+          
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: #10b981;
+              border: 2px solid white;
+              border-radius: 50%;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+                <circle cx="12" cy="12" r="3"/>
+                <line x1="12" y1="9" x2="12" y2="3" stroke-width="2"/>
+                <line x1="12" y1="15" x2="12" y2="21" stroke-width="2"/>
+                <line x1="9" y1="12" x2="3" y2="12" stroke-width="2"/>
+                <line x1="15" y1="12" x2="21" y2="12" stroke-width="2"/>
+                <circle cx="12" cy="3" r="2"/>
+                <circle cx="12" cy="21" r="2"/>
+                <circle cx="3" cy="12" r="2"/>
+                <circle cx="21" cy="12" r="2"/>
+              </svg>
+            </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          });
+          
+          const marker = L.marker([t.lat, t.lon], { icon, interactive: mode !== 'routePlanning' });
+          const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
+          marker.bindPopup(`
+            <div>
+              <strong>🛸 ${droneId}</strong><br/>
+              Høyde: ${t.alt ?? '?'} m<br/>
+              Oppdatert: ${updatedTime}
+            </div>
+          `);
+          marker.addTo(droneLayer);
+        });
+      } catch (err) {
+        console.error('Feil ved henting av dronetelemetri:', err);
+      }
+    }
 
     // Data fetching functions
     async function fetchNsmData() {
@@ -763,6 +842,7 @@ export function OpenAIPMap({
     fetchRpasCtрData();
     fetchAirportsData();
     fetchAircraft();
+    fetchDroneTelemetry();
     fetchAndDisplayMissions();
 
     // Display existing route if provided
@@ -772,6 +852,7 @@ export function OpenAIPMap({
     }
 
     const interval = setInterval(fetchAircraft, 10000);
+    const droneInterval = setInterval(fetchDroneTelemetry, 5000);
 
     const missionsChannel = supabase
       .channel('missions-changes')
@@ -779,6 +860,15 @@ export function OpenAIPMap({
         'postgres_changes',
         { event: '*', schema: 'public', table: 'missions' },
         () => fetchAndDisplayMissions()
+      )
+      .subscribe();
+
+    const telemetryChannel = supabase
+      .channel('telemetry-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drone_telemetry' },
+        () => fetchDroneTelemetry()
       )
       .subscribe();
 
@@ -790,9 +880,11 @@ export function OpenAIPMap({
 
     return () => {
       clearInterval(interval);
+      clearInterval(droneInterval);
       map.off("moveend");
       map.off("click");
       missionsChannel.unsubscribe();
+      telemetryChannel.unsubscribe();
       map.remove();
     };
   }, [onMissionClick, mode, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
