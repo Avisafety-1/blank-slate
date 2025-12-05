@@ -84,6 +84,26 @@ const Resources = () => {
     };
   }, [user, companyId]);
 
+  // Sync selectedDrone with updated drones data
+  useEffect(() => {
+    if (selectedDrone && drones.length > 0) {
+      const updatedDrone = drones.find(d => d.id === selectedDrone.id);
+      if (updatedDrone) {
+        setSelectedDrone(updatedDrone);
+      }
+    }
+  }, [drones]);
+
+  // Sync selectedEquipment with updated equipment data
+  useEffect(() => {
+    if (selectedEquipment && equipment.length > 0) {
+      const updatedEquipment = equipment.find(e => e.id === selectedEquipment.id);
+      if (updatedEquipment) {
+        setSelectedEquipment(updatedEquipment);
+      }
+    }
+  }, [equipment]);
+
   const fetchDrones = async () => {
     const { data, error } = await (supabase as any)
       .from("drones")
