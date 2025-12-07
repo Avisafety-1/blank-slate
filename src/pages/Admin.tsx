@@ -395,7 +395,7 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className={`grid w-full max-w-3xl mx-auto ${isMobile ? 'grid-cols-2 gap-2 p-2 bg-transparent' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
+          <TabsList className={`grid w-full max-w-3xl mx-auto relative z-10 ${isMobile ? 'grid-cols-2 gap-2 p-2 bg-transparent' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
             <TabsTrigger value="users" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
               <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Brukere</span>
