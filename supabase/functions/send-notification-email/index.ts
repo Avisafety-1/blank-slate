@@ -14,7 +14,7 @@ interface EmailRequest {
   subject?: string;
   htmlContent?: string;
   // Different notification modes
-  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission';
+  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'bulk_email_users' | 'bulk_email_customers';
   companyId?: string;
   // For new user notifications
   newUser?: {
@@ -516,6 +516,144 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       return new Response(
         JSON.stringify({ message: `Sent ${sentCount} notifications` }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle bulk email to users
+    if (type === 'bulk_email_users' && companyId && subject && htmlContent) {
+      console.log(`Sending bulk email to users in company ${companyId}`);
+      
+      const { data: eligibleUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('company_id', companyId)
+        .eq('approved', true)
+        .not('email', 'is', null);
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw usersError;
+      }
+
+      if (!eligibleUsers || eligibleUsers.length === 0) {
+        console.log('No approved users with email found in company');
+        return new Response(
+          JSON.stringify({ success: true, emailsSent: 0, message: 'No eligible users to email' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
+      const client = new SMTPClient({
+        connection: {
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
+        },
+      });
+
+      let emailsSent = 0;
+      for (const user of eligibleUsers) {
+        if (!user.email) continue;
+
+        console.log(`Sending bulk email to user ${user.email}`);
+
+        try {
+          await client.send({
+            from: senderAddress,
+            to: user.email,
+            subject: subject,
+            html: htmlContent,
+          });
+          emailsSent++;
+        } catch (sendError) {
+          console.error(`Failed to send to ${user.email}:`, sendError);
+        }
+      }
+
+      await client.close();
+      console.log(`Sent ${emailsSent} bulk user emails`);
+
+      return new Response(
+        JSON.stringify({ success: true, emailsSent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Handle bulk email to customers
+    if (type === 'bulk_email_customers' && companyId && subject && htmlContent) {
+      console.log(`Sending bulk email to customers in company ${companyId}`);
+      
+      const { data: customers, error: customersError } = await supabase
+        .from('customers')
+        .select('id, navn, epost')
+        .eq('company_id', companyId)
+        .eq('aktiv', true)
+        .not('epost', 'is', null);
+
+      if (customersError) {
+        console.error('Error fetching customers:', customersError);
+        throw customersError;
+      }
+
+      if (!customers || customers.length === 0) {
+        console.log('No active customers with email found in company');
+        return new Response(
+          JSON.stringify({ success: true, emailsSent: 0, message: 'No eligible customers to email' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
+      const client = new SMTPClient({
+        connection: {
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
+        },
+      });
+
+      let emailsSent = 0;
+      for (const customer of customers) {
+        if (!customer.epost) continue;
+
+        console.log(`Sending bulk email to customer ${customer.epost}`);
+
+        try {
+          await client.send({
+            from: senderAddress,
+            to: customer.epost,
+            subject: subject,
+            html: htmlContent,
+          });
+          emailsSent++;
+        } catch (sendError) {
+          console.error(`Failed to send to ${customer.epost}:`, sendError);
+        }
+      }
+
+      await client.close();
+      console.log(`Sent ${emailsSent} bulk customer emails`);
+
+      return new Response(
+        JSON.stringify({ success: true, emailsSent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
