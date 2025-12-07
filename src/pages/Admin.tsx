@@ -27,6 +27,7 @@ import { CompanyManagementSection } from "@/components/admin/CompanyManagementSe
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
+import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
 
 interface Profile {
   id: string;
@@ -572,6 +573,7 @@ const Admin = () => {
 
           <TabsContent value="email-templates" className="mt-20 sm:mt-12">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
+            <BulkEmailSender />
           </TabsContent>
 
           {isSuperAdmin && (
