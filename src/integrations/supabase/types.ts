@@ -610,6 +610,110 @@ export type Database = {
           },
         ]
       }
+      dronetag_devices: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          device_id: string
+          id: string
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          device_id: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          device_id?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dronetag_devices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dronetag_positions: {
+        Row: {
+          alt_agl: number | null
+          alt_msl: number | null
+          battery: number | null
+          company_id: string | null
+          created_at: string
+          device_id: string
+          heading: number | null
+          id: string
+          lat: number | null
+          lon: number | null
+          speed: number | null
+          status: Json | null
+          timestamp: string
+          vert_speed: number | null
+        }
+        Insert: {
+          alt_agl?: number | null
+          alt_msl?: number | null
+          battery?: number | null
+          company_id?: string | null
+          created_at?: string
+          device_id: string
+          heading?: number | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          speed?: number | null
+          status?: Json | null
+          timestamp: string
+          vert_speed?: number | null
+        }
+        Update: {
+          alt_agl?: number | null
+          alt_msl?: number | null
+          battery?: number | null
+          company_id?: string | null
+          created_at?: string
+          device_id?: string
+          heading?: number | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          speed?: number | null
+          status?: Json | null
+          timestamp?: string
+          vert_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dronetag_positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dronetag_positions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "dronetag_devices"
+            referencedColumns: ["device_id"]
+          },
+        ]
+      }
       email_settings: {
         Row: {
           company_id: string
@@ -1839,6 +1943,18 @@ export type Database = {
           f_table_schema?: unknown
           srid?: number | null
           type?: string | null
+        }
+        Relationships: []
+      }
+      latest_drone_positions: {
+        Row: {
+          alt: number | null
+          created_at: string | null
+          drone_id: string | null
+          id: string | null
+          lat: number | null
+          lon: number | null
+          raw: Json | null
         }
         Relationships: []
       }
