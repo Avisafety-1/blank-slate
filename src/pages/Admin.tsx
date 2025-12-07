@@ -420,7 +420,7 @@ const Admin = () => {
             )}
           </TabsList>
 
-          <TabsContent value="users" className="mt-22 sm:mt-12">
+          <TabsContent value="users" className="mt-18 sm:mt-12">
             <div className="space-y-4 sm:space-y-6">
               {/* Registration Code Card */}
               {registrationCode && (
