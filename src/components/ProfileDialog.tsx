@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -420,7 +420,7 @@ export const ProfileDialog = () => {
                   <span className="hidden sm:inline">Sikkerhet</span>
                 </TabsTrigger>
                 <TabsTrigger value="competencies" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                  <Award className="h-3 w-3 mr-1" />
                   <span className="hidden sm:inline">Kompetanse</span>
                 </TabsTrigger>
                 <TabsTrigger value="emergency" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
