@@ -618,7 +618,7 @@ export const CalendarWidget = () => {
                     <ChevronDown className="w-4 h-4 ml-auto" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+                <DropdownMenuContent align="end" className="w-56 bg-background z-[1250]">
                   <DropdownMenuItem
                     onClick={() => {
                       setCreateIncidentOpen(true);
