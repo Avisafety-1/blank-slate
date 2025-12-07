@@ -193,11 +193,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Gauge className="w-5 h-5 text-primary" />
-            {isEditing ? "Rediger utstyr" : equipment.navn}
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <span className="truncate">{isEditing ? "Rediger utstyr" : equipment.navn}</span>
           </DialogTitle>
           {!isEditing && (
             <Button 
@@ -212,75 +212,75 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           )}
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {!isEditing ? (
             <>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Navn</p>
-                  <p className="text-base">{equipment.navn}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Navn</p>
+                  <p className="text-sm sm:text-base">{equipment.navn}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Type</p>
-                  <p className="text-base">{equipment.type}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Serienummer</p>
-                  <p className="text-base">{equipment.serienummer}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Vekt</p>
-                  <p className="text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Type</p>
+                  <p className="text-sm sm:text-base">{equipment.type}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Serienummer</p>
+                  <p className="text-sm sm:text-base">{equipment.serienummer}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Vedlikeholdsintervall</p>
-                  <p className="text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vekt</p>
+                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Varsel dager</p>
-                <p className="text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Flyvetimer</p>
+                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
+                </div>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall</p>
+                  <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="flex justify-between sm:block">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
+                <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+              </div>
+
+              <div className="border-t border-border pt-3 sm:pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <p className="text-sm font-medium">Vedlikehold</p>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handlePerformMaintenance}
                     disabled={isSubmitting}
-                    className="text-xs gap-1"
+                    className="text-xs gap-1 w-full sm:w-auto"
                   >
                     <Wrench className="w-3 h-3" />
                     Utfør vedlikehold
                   </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Sist vedlikeholdt</p>
-                      <p className="text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString('nb-NO') : "Ikke utført"}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sist vedl.</p>
                     </div>
+                    <p className="text-sm sm:text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString('nb-NO') : "Ikke utført"}</p>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Neste vedlikehold</p>
-                      <p className="text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString('nb-NO') : "Ikke satt"}</p>
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Neste vedl.</p>
                     </div>
+                    <p className="text-sm sm:text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString('nb-NO') : "Ikke satt"}</p>
                   </div>
                 </div>
               </div>
@@ -288,10 +288,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
               {equipment.merknader && (
                 <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
-                      <p className="text-sm mt-1 text-amber-900 dark:text-amber-100 whitespace-pre-wrap">{equipment.merknader}</p>
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                      <p className="text-xs sm:text-sm mt-1 text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words">{equipment.merknader}</p>
                     </div>
                   </div>
                 </div>
@@ -299,36 +299,39 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
             </>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="navn">Navn</Label>
+                  <Label htmlFor="navn" className="text-xs sm:text-sm">Navn</Label>
                   <Input
                     id="navn"
                     value={formData.navn}
                     onChange={(e) => setFormData({ ...formData, navn: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="type">Type</Label>
+                  <Label htmlFor="type" className="text-xs sm:text-sm">Type</Label>
                   <Input
                     id="type"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="serienummer">Serienummer</Label>
+                  <Label htmlFor="serienummer" className="text-xs sm:text-sm">Serienummer</Label>
                   <Input
                     id="serienummer"
                     value={formData.serienummer}
                     onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="vekt">Vekt (kg)</Label>
+                  <Label htmlFor="vekt" className="text-xs sm:text-sm">Vekt (kg)</Label>
                   <Input
                     id="vekt"
                     type="number"
@@ -336,13 +339,14 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                     min="0"
                     value={formData.vekt}
                     onChange={(e) => setFormData({ ...formData, vekt: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="flyvetimer">Flyvetimer</Label>
+                  <Label htmlFor="flyvetimer" className="text-xs sm:text-sm">Flyvetimer</Label>
                   <Input
                     id="flyvetimer"
                     type="number"
@@ -350,10 +354,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                     min="0"
                     value={formData.flyvetimer}
                     onChange={(e) => setFormData({ ...formData, flyvetimer: parseFloat(e.target.value) || 0 })}
+                    className="text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="vedlikeholdsintervall_dager">Vedlikeholdsintervall (dager)</Label>
+                  <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">Vedl.intervall (dager)</Label>
                   <Input
                     id="vedlikeholdsintervall_dager"
                     type="number"
@@ -361,12 +366,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                     placeholder="30"
                     value={formData.vedlikeholdsintervall_dager}
                     onChange={(e) => setFormData({ ...formData, vedlikeholdsintervall_dager: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
                 <Input
                   id="varsel_dager"
                   type="number"
@@ -374,37 +380,41 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                   placeholder="14"
                   value={formData.varsel_dager}
                   onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                  className="text-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
+                  <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">Sist vedlikeholdt</Label>
                   <Input
                     id="sist_vedlikeholdt"
                     type="date"
                     value={formData.sist_vedlikeholdt}
                     onChange={(e) => setFormData({ ...formData, sist_vedlikeholdt: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="neste_vedlikehold">Neste vedlikehold</Label>
+                  <Label htmlFor="neste_vedlikehold" className="text-xs sm:text-sm">Neste vedlikehold</Label>
                   <Input
                     id="neste_vedlikehold"
                     type="date"
                     value={formData.neste_vedlikehold}
                     onChange={(e) => setFormData({ ...formData, neste_vedlikehold: e.target.value })}
+                    className="text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="merknader">Merknader</Label>
+                <Label htmlFor="merknader" className="text-xs sm:text-sm">Merknader</Label>
                 <Textarea
                   id="merknader"
                   value={formData.merknader}
                   onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
                   rows={3}
+                  className="text-sm"
                 />
               </div>
             </>

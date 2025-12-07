@@ -31,47 +31,47 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
+        <DialogHeader className="pb-2">
           <DialogTitle>Utstyr ({equipment.length})</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           {equipment.map((item) => (
             <div 
               key={item.id} 
               onClick={() => handleEquipmentClick(item)}
-              className="border border-border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
+              className="border border-border rounded-lg p-3 sm:p-4 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">{item.navn}</h3>
-                  <p className="text-sm text-muted-foreground">{item.type}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-base sm:text-lg truncate">{item.navn}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.type}</p>
                 </div>
                 <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status} />
               </div>
               
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm">
+                <div className="flex justify-between sm:block">
                   <span className="text-muted-foreground">Serienummer:</span>
-                  <span className="ml-2 font-medium">{item.serienummer}</span>
+                  <span className="font-medium sm:ml-2">{item.serienummer}</span>
                 </div>
-                <div>
+                <div className="flex justify-between sm:block">
                   <span className="text-muted-foreground">Tilgjengelig:</span>
-                  <span className="ml-2 font-medium">{item.tilgjengelig ? "Ja" : "Nei"}</span>
+                  <span className="font-medium sm:ml-2">{item.tilgjengelig ? "Ja" : "Nei"}</span>
                 </div>
                 {item.neste_vedlikehold && (
-                  <div>
-                    <span className="text-muted-foreground">Neste vedlikehold:</span>
-                    <span className="ml-2 font-medium">
-                      {format(new Date(item.neste_vedlikehold), "dd.MM.yyyy", { locale: nb })}
+                  <div className="flex justify-between sm:block">
+                    <span className="text-muted-foreground">Neste vedl.:</span>
+                    <span className="font-medium sm:ml-2">
+                      {format(new Date(item.neste_vedlikehold), "dd.MM.yy", { locale: nb })}
                     </span>
                   </div>
                 )}
                 {item.sist_vedlikeholdt && (
-                  <div>
-                    <span className="text-muted-foreground">Sist vedlikeholdt:</span>
-                    <span className="ml-2 font-medium">
-                      {format(new Date(item.sist_vedlikeholdt), "dd.MM.yyyy", { locale: nb })}
+                  <div className="flex justify-between sm:block">
+                    <span className="text-muted-foreground">Sist vedl.:</span>
+                    <span className="font-medium sm:ml-2">
+                      {format(new Date(item.sist_vedlikeholdt), "dd.MM.yy", { locale: nb })}
                     </span>
                   </div>
                 )}
