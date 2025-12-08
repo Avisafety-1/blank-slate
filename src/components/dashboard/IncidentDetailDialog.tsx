@@ -352,13 +352,14 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader className="flex flex-row items-start justify-between gap-2">
-          <DialogTitle className="text-lg sm:text-xl flex-1">{incident.tittel}</DialogTitle>
-          <div className="flex gap-2 shrink-0">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-lg sm:text-xl pr-8">{incident.tittel}</DialogTitle>
+          <div className="flex flex-col sm:flex-row gap-2">
             {onEditRequest && (
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   onOpenChange(false);
                   onEditRequest(incident);
@@ -371,6 +372,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={handleExportPDF}
               disabled={exporting}
             >
