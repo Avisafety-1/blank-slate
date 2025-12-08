@@ -66,6 +66,7 @@ const Hendelser = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [incidentToEdit, setIncidentToEdit] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -208,6 +209,18 @@ const Hendelser = () => {
     setDetailDialogOpen(true);
   };
 
+  const handleEditRequest = (incident: Incident) => {
+    setIncidentToEdit(incident);
+    setAddDialogOpen(true);
+  };
+
+  const handleAddDialogClose = (open: boolean) => {
+    setAddDialogOpen(open);
+    if (!open) {
+      setIncidentToEdit(null);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-foreground">Laster...</p>
@@ -313,9 +326,18 @@ const Hendelser = () => {
         </main>
       </div>
 
-      <AddIncidentDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+      <AddIncidentDialog 
+        open={addDialogOpen} 
+        onOpenChange={handleAddDialogClose} 
+        incidentToEdit={incidentToEdit}
+      />
 
-      <IncidentDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} incident={selectedIncident} />
+      <IncidentDetailDialog 
+        open={detailDialogOpen} 
+        onOpenChange={setDetailDialogOpen} 
+        incident={selectedIncident} 
+        onEditRequest={handleEditRequest}
+      />
     </div>;
 };
 

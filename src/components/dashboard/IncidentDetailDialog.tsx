@@ -3,7 +3,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText, Edit } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface IncidentDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   incident: Incident | null;
+  onEditRequest?: (incident: Incident) => void;
 }
 
 const severityColors = {
@@ -48,7 +49,7 @@ const statusColors = {
   Ferdigbehandlet: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30",
 };
 
-export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentDetailDialogProps) => {
+export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
   const { user, companyId } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -473,16 +474,30 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident }: IncidentD
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="flex flex-row items-start justify-between gap-2">
           <DialogTitle className="text-lg sm:text-xl flex-1">{incident.tittel}</DialogTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportPDF}
-            disabled={exporting}
-            className="shrink-0"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            {exporting ? "Eksporterer..." : "Eksporter PDF"}
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            {onEditRequest && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEditRequest(incident);
+                }}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Rediger
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={exporting}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {exporting ? "Eksporterer..." : "Eksporter PDF"}
+            </Button>
+          </div>
         </DialogHeader>
         
         <div className="space-y-4">
