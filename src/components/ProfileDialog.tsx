@@ -43,6 +43,7 @@ interface Competency {
   beskrivelse: string | null;
   utstedt_dato: string | null;
   utloper_dato: string | null;
+  påvirker_status?: boolean;
 }
 
 interface Incident {

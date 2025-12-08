@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ interface Competency {
   beskrivelse: string | null;
   utstedt_dato: string | null;
   utloper_dato: string | null;
+  påvirker_status?: boolean;
 }
 
 interface Person {
@@ -53,6 +55,7 @@ export function PersonCompetencyDialog({
   const [newDescription, setNewDescription] = useState("");
   const [newIssueDate, setNewIssueDate] = useState("");
   const [newExpiryDate, setNewExpiryDate] = useState("");
+  const [newAffectsStatus, setNewAffectsStatus] = useState(true);
 
   // Edit competency form state
   const [editType, setEditType] = useState("");
@@ -60,6 +63,7 @@ export function PersonCompetencyDialog({
   const [editDescription, setEditDescription] = useState("");
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editExpiryDate, setEditExpiryDate] = useState("");
+  const [editAffectsStatus, setEditAffectsStatus] = useState(true);
 
   const handleAddCompetency = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +84,7 @@ export function PersonCompetencyDialog({
       beskrivelse: newDescription || null,
       utstedt_dato: newIssueDate || null,
       utloper_dato: newExpiryDate || null,
+      påvirker_status: newAffectsStatus,
     });
 
     if (error) {
@@ -118,6 +123,7 @@ export function PersonCompetencyDialog({
     setNewDescription("");
     setNewIssueDate("");
     setNewExpiryDate("");
+    setNewAffectsStatus(true);
     
     onCompetencyUpdated();
   };
@@ -129,6 +135,7 @@ export function PersonCompetencyDialog({
     setEditDescription(competency.beskrivelse || "");
     setEditIssueDate(competency.utstedt_dato || "");
     setEditExpiryDate(competency.utloper_dato || "");
+    setEditAffectsStatus(competency.påvirker_status !== false);
   };
 
   const handleCancelEdit = () => {
@@ -138,6 +145,7 @@ export function PersonCompetencyDialog({
     setEditDescription("");
     setEditIssueDate("");
     setEditExpiryDate("");
+    setEditAffectsStatus(true);
   };
 
   const handleUpdateCompetency = async (competencyId: string) => {
@@ -158,6 +166,7 @@ export function PersonCompetencyDialog({
         beskrivelse: editDescription || null,
         utstedt_dato: editIssueDate || null,
         utloper_dato: editExpiryDate || null,
+        påvirker_status: editAffectsStatus,
       })
       .eq("id", competencyId);
 
@@ -294,7 +303,17 @@ export function PersonCompetencyDialog({
                             />
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2 pt-2">
+                          <Switch
+                            id={`edit-affects-status-${competency.id}`}
+                            checked={editAffectsStatus}
+                            onCheckedChange={setEditAffectsStatus}
+                          />
+                          <Label htmlFor={`edit-affects-status-${competency.id}`} className="text-xs">
+                            Påvirker status
+                          </Label>
+                        </div>
+                        <div className="flex gap-2 pt-2">
                           <Button
                             onClick={() => handleUpdateCompetency(competency.id)}
                             size="sm"
@@ -349,6 +368,30 @@ export function PersonCompetencyDialog({
                               Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
                             </span>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                          <Switch
+                            id={`affects-status-${competency.id}`}
+                            checked={competency.påvirker_status !== false}
+                            onCheckedChange={async (checked) => {
+                              const { error } = await supabase
+                                .from("personnel_competencies")
+                                .update({ påvirker_status: checked })
+                                .eq("id", competency.id);
+                              if (error) {
+                                toast({
+                                  title: "Feil",
+                                  description: "Kunne ikke oppdatere innstilling",
+                                  variant: "destructive",
+                                });
+                              } else {
+                                onCompetencyUpdated();
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`affects-status-${competency.id}`} className="text-xs text-muted-foreground">
+                            Påvirker status
+                          </Label>
                         </div>
                       </>
                     )}
@@ -423,6 +466,17 @@ export function PersonCompetencyDialog({
                       className="h-9"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="new-affects-status"
+                    checked={newAffectsStatus}
+                    onCheckedChange={setNewAffectsStatus}
+                  />
+                  <Label htmlFor="new-affects-status" className="text-xs">
+                    Påvirker status
+                  </Label>
                 </div>
 
                 <Button type="submit" className="w-full h-10">

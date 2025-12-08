@@ -8,7 +8,7 @@ import { PersonnelListDialog } from "./PersonnelListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
-import { calculateMaintenanceStatus, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 
 interface StatusCounts {
   Grønn: number;
@@ -168,10 +168,13 @@ export const StatusPanel = () => {
       .eq("approved", true);
     
     if (!error && data) {
-      // Map profiles to include a status field (default to "Grønn")
+      // Map profiles to include a status field based on competency expiry
       const personnelWithStatus = data.map(profile => ({
         ...profile,
-        status: "Grønn" as Status
+        status: calculatePersonnelAggregatedStatus(
+          profile.personnel_competencies || [],
+          30 // Warning 30 days before expiry
+        )
       }));
       setPersonnel(personnelWithStatus);
     }
