@@ -47,6 +47,7 @@ export const IncidentsSection = () => {
   const [myFollowUpIncidents, setMyFollowUpIncidents] = useState<Incident[]>([]);
   const [followUpLoading, setFollowUpLoading] = useState(true);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
 
   // Fetch incidents from database
   useEffect(() => {
@@ -240,6 +241,11 @@ export const IncidentsSection = () => {
     setDetailDialogOpen(true);
   };
 
+  const handleEditRequest = (incident: Incident) => {
+    setEditingIncident(incident);
+    setAddDialogOpen(true);
+  };
+
   return (
     <>
       <GlassCard className="h-full flex flex-col overflow-hidden">
@@ -386,13 +392,18 @@ export const IncidentsSection = () => {
 
       <AddIncidentDialog
         open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
+        onOpenChange={(open) => {
+          setAddDialogOpen(open);
+          if (!open) setEditingIncident(null);
+        }}
+        incidentToEdit={editingIncident}
       />
       
       <IncidentDetailDialog 
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         incident={selectedIncident}
+        onEditRequest={handleEditRequest}
       />
     </GlassCard>
     </>
