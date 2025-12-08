@@ -8,11 +8,13 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 
 type Incident = {
   id: string;
@@ -34,6 +36,13 @@ type Incident = {
   medvirkende_aarsak: string | null;
 };
 
+type IncidentComment = {
+  id: string;
+  comment_text: string;
+  created_by_name: string;
+  created_at: string;
+};
+
 const statusOptions = ["Alle", "Åpen", "Under behandling", "Ferdigbehandlet", "Lukket"];
 
 const severityColors: Record<string, string> = {
@@ -52,15 +61,13 @@ const statusColors: Record<string, string> = {
 
 const Hendelser = () => {
   const navigate = useNavigate();
-  const {
-    user,
-    loading: authLoading,
-    companyId
-  } = useAuth();
+  const { user, loading: authLoading, companyId } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [comments, setComments] = useState<Record<string, IncidentComment[]>>({});
+  const [missions, setMissions] = useState<Record<string, { tittel: string }>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Alle");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -68,12 +75,11 @@ const Hendelser = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [incidentToEdit, setIncidentToEdit] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/auth", {
-        replace: true
-      });
+      navigate("/auth", { replace: true });
     }
   }, [user, authLoading, navigate]);
 
@@ -91,30 +97,73 @@ const Hendelser = () => {
     };
   }, [companyId]);
 
-  // Fetch comment counts when incidents change
+  // Fetch comment counts and comments when incidents change
   useEffect(() => {
-    const fetchCommentCounts = async () => {
+    const fetchCommentsData = async () => {
       if (incidents.length === 0) return;
 
       try {
         const { data, error } = await supabase
           .from('incident_comments')
-          .select('incident_id')
-          .in('incident_id', incidents.map(i => i.id));
+          .select('id, incident_id, comment_text, created_by_name, created_at')
+          .in('incident_id', incidents.map(i => i.id))
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
 
         const counts: Record<string, number> = {};
+        const commentsMap: Record<string, IncidentComment[]> = {};
+        
         data?.forEach(row => {
           counts[row.incident_id] = (counts[row.incident_id] || 0) + 1;
+          if (!commentsMap[row.incident_id]) {
+            commentsMap[row.incident_id] = [];
+          }
+          commentsMap[row.incident_id].push({
+            id: row.id,
+            comment_text: row.comment_text,
+            created_by_name: row.created_by_name,
+            created_at: row.created_at
+          });
         });
+        
         setCommentCounts(counts);
+        setComments(commentsMap);
       } catch (error) {
-        console.error('Error fetching comment counts:', error);
+        console.error('Error fetching comments:', error);
       }
     };
 
-    fetchCommentCounts();
+    fetchCommentsData();
+  }, [incidents]);
+
+  // Fetch linked missions
+  useEffect(() => {
+    const fetchMissions = async () => {
+      const incidentsWithMissions = incidents.filter(i => i.mission_id);
+      if (incidentsWithMissions.length === 0) return;
+
+      const missionIds = [...new Set(incidentsWithMissions.map(i => i.mission_id).filter(Boolean))];
+      
+      try {
+        const { data, error } = await supabase
+          .from('missions')
+          .select('id, tittel')
+          .in('id', missionIds);
+
+        if (error) throw error;
+
+        const missionsMap: Record<string, { tittel: string }> = {};
+        data?.forEach(m => {
+          missionsMap[m.id] = { tittel: m.tittel };
+        });
+        setMissions(missionsMap);
+      } catch (error) {
+        console.error('Error fetching missions:', error);
+      }
+    };
+
+    fetchMissions();
   }, [incidents]);
 
   // Real-time subscription for comment changes
@@ -130,16 +179,29 @@ const Hendelser = () => {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newComment = payload.new as { incident_id: string };
+            const newComment = payload.new as { incident_id: string; id: string; comment_text: string; created_by_name: string; created_at: string };
             setCommentCounts(prev => ({
               ...prev,
               [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
             }));
+            setComments(prev => ({
+              ...prev,
+              [newComment.incident_id]: [...(prev[newComment.incident_id] || []), {
+                id: newComment.id,
+                comment_text: newComment.comment_text,
+                created_by_name: newComment.created_by_name,
+                created_at: newComment.created_at
+              }]
+            }));
           } else if (payload.eventType === 'DELETE') {
-            const deletedComment = payload.old as { incident_id: string };
+            const deletedComment = payload.old as { incident_id: string; id: string };
             setCommentCounts(prev => ({
               ...prev,
               [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
+            }));
+            setComments(prev => ({
+              ...prev,
+              [deletedComment.incident_id]: (prev[deletedComment.incident_id] || []).filter(c => c.id !== deletedComment.id)
             }));
           }
         }
@@ -157,10 +219,7 @@ const Hendelser = () => {
 
   const fetchIncidents = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('incidents').select('*').order('opprettet_dato', {
+      const { data, error } = await supabase.from('incidents').select('*').order('opprettet_dato', {
         ascending: false
       });
       if (error) throw error;
@@ -170,9 +229,7 @@ const Hendelser = () => {
       const incidentsWithResponsible = (data || []).filter(inc => inc.oppfolgingsansvarlig_id);
       if (incidentsWithResponsible.length > 0) {
         const userIds = [...new Set(incidentsWithResponsible.map(inc => inc.oppfolgingsansvarlig_id))];
-        const {
-          data: profiles
-        } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
         if (profiles) {
           const responsibleMap: Record<string, string> = {};
           profiles.forEach(profile => {
@@ -199,7 +256,13 @@ const Hendelser = () => {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(incident => incident.tittel.toLowerCase().includes(query) || incident.beskrivelse?.toLowerCase().includes(query) || incident.kategori?.toLowerCase().includes(query) || incident.rapportert_av?.toLowerCase().includes(query) || incident.lokasjon?.toLowerCase().includes(query));
+      filtered = filtered.filter(incident => 
+        incident.tittel.toLowerCase().includes(query) || 
+        incident.beskrivelse?.toLowerCase().includes(query) || 
+        incident.kategori?.toLowerCase().includes(query) || 
+        incident.rapportert_av?.toLowerCase().includes(query) || 
+        incident.lokasjon?.toLowerCase().includes(query)
+      );
     }
     setFilteredIncidents(filtered);
   };
@@ -221,71 +284,121 @@ const Hendelser = () => {
     }
   };
 
+  const handleExportPDF = async (incident: Incident) => {
+    if (!companyId || !user) return;
+    
+    setExportingId(incident.id);
+    
+    const success = await exportIncidentPDF({
+      incident,
+      comments: comments[incident.id] || [],
+      oppfolgingsansvarligName: incident.oppfolgingsansvarlig_id ? oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] || null : null,
+      relatedMissionTitle: incident.mission_id ? missions[incident.mission_id]?.tittel || null : null,
+      companyId,
+      userId: user.id
+    });
+
+    if (success) {
+      toast.success("Hendelsesrapport lagret i dokumenter");
+    } else {
+      toast.error("Kunne ikke eksportere rapport");
+    }
+    
+    setExportingId(null);
+  };
+
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-foreground">Laster...</p>
-      </div>;
+      </div>
+    );
   }
 
-  return <div className="min-h-screen relative w-full overflow-x-hidden">
+  return (
+    <div className="min-h-screen relative w-full overflow-x-hidden">
       {/* Background with gradient overlay */}
-      <div className="fixed inset-0 z-0" style={{
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url(${droneBackground})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center center",
-      backgroundRepeat: "no-repeat"
-    }} />
+      <div 
+        className="fixed inset-0 z-0" 
+        style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url(${droneBackground})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat"
+        }} 
+      />
 
       {/* Content */}
       <div className="relative z-10 w-full">
         <Header />
         
         <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">Hendelser</h1>
-          
-        </div>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">Hendelser</h1>
+          </div>
 
-        <GlassCard className="mb-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Søk i hendelser..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+          <GlassCard className="mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Søk i hendelser..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)} 
+                  className="pl-9" 
+                />
+              </div>
+              
+              <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Legg til hendelse
+              </Button>
             </div>
-            
-            <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Legg til hendelse
-            </Button>
-          </div>
 
-          <div className="flex gap-2 mt-4 flex-wrap">
-            {statusOptions.map(status => <Button key={status} variant={selectedStatus === status ? "default" : "outline"} size="sm" onClick={() => setSelectedStatus(status)}>
-                {status}
-              </Button>)}
-          </div>
-        </GlassCard>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              {statusOptions.map(status => (
+                <Button 
+                  key={status} 
+                  variant={selectedStatus === status ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setSelectedStatus(status)}
+                >
+                  {status}
+                </Button>
+              ))}
+            </div>
+          </GlassCard>
 
-        {loading ? <GlassCard>
-            <p className="text-center text-muted-foreground py-8">Laster hendelser...</p>
-          </GlassCard> : filteredIncidents.length === 0 ? <GlassCard>
-            <p className="text-center text-muted-foreground py-8">
-              {searchQuery || selectedStatus !== "Alle" ? "Ingen hendelser funnet med valgte filtre" : "Ingen hendelser rapportert ennå"}
-            </p>
-          </GlassCard> : <div className="grid gap-4">
-            {filteredIncidents.map(incident => <GlassCard key={incident.id}>
-                <div className="cursor-pointer hover:opacity-80 transition-opacity" onClick={() => handleIncidentClick(incident)}>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="font-semibold text-lg">{incident.tittel}</h3>
+          {loading ? (
+            <GlassCard>
+              <p className="text-center text-muted-foreground py-8">Laster hendelser...</p>
+            </GlassCard>
+          ) : filteredIncidents.length === 0 ? (
+            <GlassCard>
+              <p className="text-center text-muted-foreground py-8">
+                {searchQuery || selectedStatus !== "Alle" 
+                  ? "Ingen hendelser funnet med valgte filtre" 
+                  : "Ingen hendelser rapportert ennå"}
+              </p>
+            </GlassCard>
+          ) : (
+            <div className="grid gap-4">
+              {filteredIncidents.map(incident => (
+                <GlassCard key={incident.id} className="space-y-4">
+                  {/* Header with title and action buttons */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <h3 className="font-semibold text-lg sm:text-xl">{incident.tittel}</h3>
+                      <div className="flex flex-wrap gap-2">
                         <Badge className={statusColors[incident.status] || ""}>
                           {incident.status}
                         </Badge>
                         <Badge className={severityColors[incident.alvorlighetsgrad] || ""}>
                           {incident.alvorlighetsgrad}
                         </Badge>
-                        {incident.kategori && <Badge variant="outline">{incident.kategori}</Badge>}
+                        {incident.kategori && (
+                          <Badge variant="outline">{incident.kategori}</Badge>
+                        )}
                         {incident.hovedaarsak && (
                           <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-100 dark:border-amber-700">
                             {incident.hovedaarsak}
@@ -297,32 +410,100 @@ const Hendelser = () => {
                           </Badge>
                         )}
                       </div>
-                      
-                      {incident.beskrivelse && <p className="text-sm text-foreground opacity-90 line-clamp-2 mb-2">
-                          {incident.beskrivelse}
-                        </p>}
-                      
-                      <div className="flex gap-4 text-xs text-foreground opacity-80 flex-wrap">
-                        {incident.lokasjon && <span>📍 {incident.lokasjon}</span>}
-                        <span>
-                          📅 {format(new Date(incident.hendelsestidspunkt), "d. MMM yyyy HH:mm", {
-                        locale: nb
-                      })}
-                        </span>
-                        {incident.rapportert_av && <span>👤 {incident.rapportert_av}</span>}
-                        {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && <span>🔔 Ansvarlig: {oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>}
-                        {commentCounts[incident.id] > 0 && (
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            {commentCounts[incident.id]}
-                          </span>
-                        )}
-                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 shrink-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditRequest(incident)}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Rediger
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleExportPDF(incident)}
+                        disabled={exportingId === incident.id}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        {exportingId === incident.id ? "Eksporterer..." : "PDF"}
+                      </Button>
                     </div>
                   </div>
-                </div>
-              </GlassCard>)}
-          </div>}
+
+                  {/* Info grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {incident.lokasjon && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span>{incident.lokasjon}</span>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2">
+                      <Calendar className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <span>
+                        {format(new Date(incident.hendelsestidspunkt), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
+                      </span>
+                    </div>
+                    {incident.rapportert_av && (
+                      <div className="flex items-start gap-2">
+                        <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span>Rapportert av: {incident.rapportert_av}</span>
+                      </div>
+                    )}
+                    {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
+                      <div className="flex items-start gap-2">
+                        <Bell className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span>Ansvarlig: {oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {incident.beskrivelse && (
+                    <div className="pt-3 border-t border-border/50">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Beskrivelse
+                      </p>
+                      <p className="text-sm whitespace-pre-wrap">{incident.beskrivelse}</p>
+                    </div>
+                  )}
+
+                  {/* Linked mission */}
+                  {incident.mission_id && missions[incident.mission_id] && (
+                    <div className="pt-3 border-t border-border/50">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Tilknyttet oppdrag
+                      </p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Link2 className="w-4 h-4 text-muted-foreground" />
+                        <span>{missions[incident.mission_id].tittel}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comments and details link */}
+                  <div className="pt-3 border-t border-border/50">
+                    <button
+                      onClick={() => handleIncidentClick(incident)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>
+                        {commentCounts[incident.id] 
+                          ? `${commentCounts[incident.id]} kommentar${commentCounts[incident.id] > 1 ? 'er' : ''}`
+                          : 'Ingen kommentarer'
+                        }
+                        {' – Klikk for detaljer og kommentarer'}
+                      </span>
+                    </button>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
@@ -338,7 +519,8 @@ const Hendelser = () => {
         incident={selectedIncident} 
         onEditRequest={handleEditRequest}
       />
-    </div>;
+    </div>
+  );
 };
 
 export default Hendelser;
