@@ -15,14 +15,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendNotificationEmail, generateIncidentNotificationHTML } from "@/lib/notifications";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Incident = Tables<"incidents">;
 
 interface AddIncidentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
+  incidentToEdit?: Incident | null;
 }
 
-export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncidentDialogProps) => {
+export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [missions, setMissions] = useState<Array<{ id: string; tittel: string; status: string; tidspunkt: string; lokasjon: string }>>([]);
@@ -48,7 +52,31 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
       fetchMissions();
       fetchUsers();
       fetchCauseTypes();
-      if (defaultDate) {
+      
+      // Hvis vi redigerer, forhåndsutfyll skjemaet
+      if (incidentToEdit) {
+        const dt = new Date(incidentToEdit.hendelsestidspunkt);
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        const dateTimeStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        setFormData({
+          tittel: incidentToEdit.tittel || "",
+          beskrivelse: incidentToEdit.beskrivelse || "",
+          hendelsestidspunkt: dateTimeStr,
+          alvorlighetsgrad: incidentToEdit.alvorlighetsgrad || "Middels",
+          status: incidentToEdit.status || "Åpen",
+          kategori: incidentToEdit.kategori || "",
+          lokasjon: incidentToEdit.lokasjon || "",
+          mission_id: incidentToEdit.mission_id || "",
+          oppfolgingsansvarlig_id: incidentToEdit.oppfolgingsansvarlig_id || "",
+          hovedaarsak: incidentToEdit.hovedaarsak || "",
+          medvirkende_aarsak: incidentToEdit.medvirkende_aarsak || "",
+        });
+      } else if (defaultDate) {
         // Format date to datetime-local format
         const year = defaultDate.getFullYear();
         const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
@@ -72,7 +100,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
         medvirkende_aarsak: "",
       });
     }
-  }, [open, defaultDate]);
+  }, [open, defaultDate, incidentToEdit]);
 
   const fetchMissions = async () => {
     try {
@@ -168,79 +196,100 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
         return;
       }
 
-      const { error } = await supabase
-        .from('incidents')
-        .insert({
-          company_id: companyId,
-          user_id: user.id,
-          tittel: formData.tittel,
-          beskrivelse: formData.beskrivelse,
-          hendelsestidspunkt: new Date(formData.hendelsestidspunkt).toISOString(),
-          alvorlighetsgrad: formData.alvorlighetsgrad,
-          status: formData.status,
-          kategori: formData.kategori || null,
-          lokasjon: formData.lokasjon || null,
-          rapportert_av: user.email || 'Ukjent',
-          mission_id: formData.mission_id || null,
-          oppfolgingsansvarlig_id: formData.oppfolgingsansvarlig_id || null,
-          hovedaarsak: formData.hovedaarsak || null,
-          medvirkende_aarsak: formData.medvirkende_aarsak || null,
-        });
+      const incidentData = {
+        tittel: formData.tittel,
+        beskrivelse: formData.beskrivelse || null,
+        hendelsestidspunkt: new Date(formData.hendelsestidspunkt).toISOString(),
+        alvorlighetsgrad: formData.alvorlighetsgrad,
+        status: formData.status,
+        kategori: formData.kategori || null,
+        lokasjon: formData.lokasjon || null,
+        mission_id: formData.mission_id || null,
+        oppfolgingsansvarlig_id: formData.oppfolgingsansvarlig_id || null,
+        hovedaarsak: formData.hovedaarsak || null,
+        medvirkende_aarsak: formData.medvirkende_aarsak || null,
+        oppdatert_dato: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      if (incidentToEdit) {
+        // UPDATE eksisterende hendelse
+        const { error } = await supabase
+          .from('incidents')
+          .update(incidentData)
+          .eq('id', incidentToEdit.id);
 
-      // Send email notification for new incident
-      try {
-        await supabase.functions.invoke('send-notification-email', {
-          body: {
-            type: 'notify_new_incident',
-            companyId: companyId,
-            incident: {
+        if (error) throw error;
+
+        toast.success("Hendelse oppdatert!");
+      } else {
+        // INSERT ny hendelse
+        const { error } = await supabase
+          .from('incidents')
+          .insert({
+            ...incidentData,
+            company_id: companyId,
+            user_id: user.id,
+            rapportert_av: user.email || 'Ukjent',
+          });
+
+        if (error) throw error;
+
+        // Send email notification for new incident (kun ved ny hendelse)
+        try {
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              type: 'notify_new_incident',
+              companyId: companyId,
+              incident: {
+                tittel: formData.tittel,
+                beskrivelse: formData.beskrivelse,
+                alvorlighetsgrad: formData.alvorlighetsgrad,
+                lokasjon: formData.lokasjon
+              }
+            }
+          });
+        } catch (emailError) {
+          console.error('Error sending new incident notification:', emailError);
+        }
+
+        // Send email notification to follow-up responsible (kun ved ny hendelse)
+        if (formData.oppfolgingsansvarlig_id) {
+          await sendNotificationEmail({
+            recipientId: formData.oppfolgingsansvarlig_id,
+            notificationType: 'email_followup_assigned',
+            subject: `Du er satt som oppfølgingsansvarlig: ${formData.tittel}`,
+            htmlContent: generateIncidentNotificationHTML({
               tittel: formData.tittel,
               beskrivelse: formData.beskrivelse,
               alvorlighetsgrad: formData.alvorlighetsgrad,
-              lokasjon: formData.lokasjon
-            }
-          }
-        });
-      } catch (emailError) {
-        console.error('Error sending new incident notification:', emailError);
-      }
+              lokasjon: formData.lokasjon,
+            }),
+            companyId: companyId,
+          });
+        }
 
-      // Send email notification to follow-up responsible
-      if (formData.oppfolgingsansvarlig_id) {
-        await sendNotificationEmail({
-          recipientId: formData.oppfolgingsansvarlig_id,
-          notificationType: 'email_followup_assigned',
-          subject: `Du er satt som oppfølgingsansvarlig: ${formData.tittel}`,
-          htmlContent: generateIncidentNotificationHTML({
-            tittel: formData.tittel,
-            beskrivelse: formData.beskrivelse,
-            alvorlighetsgrad: formData.alvorlighetsgrad,
-            lokasjon: formData.lokasjon,
-          }),
-          companyId: companyId,
-        });
+        toast.success("Hendelse rapportert!");
       }
-
-      toast.success("Hendelse rapportert!");
+      
       onOpenChange(false);
       
     } catch (error: any) {
       console.error('Submit error:', error);
-      toast.error(`Feil ved rapportering: ${error.message}`);
+      toast.error(`Feil ved lagring: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const isEditing = !!incidentToEdit;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Rapporter hendelse</DialogTitle>
+          <DialogTitle>{isEditing ? "Rediger hendelse" : "Rapporter hendelse"}</DialogTitle>
           <DialogDescription>
-            Fyll ut informasjon om hendelsen
+            {isEditing ? "Oppdater informasjon om hendelsen" : "Fyll ut informasjon om hendelsen"}
           </DialogDescription>
         </DialogHeader>
 
@@ -422,7 +471,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate }: AddIncide
               disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
               className="flex-1"
             >
-              {submitting ? "Rapporterer..." : "Rapporter"}
+              {submitting 
+                ? (isEditing ? "Lagrer..." : "Rapporterer...") 
+                : (isEditing ? "Lagre endringer" : "Rapporter")}
             </Button>
           </div>
         </div>
