@@ -38,6 +38,9 @@ export const MissionsSection = () => {
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
 
   useEffect(() => {
+    // Auto-complete old missions on load
+    supabase.functions.invoke('auto-complete-missions').catch(console.error);
+    
     fetchMissions();
 
     const channel = supabase
@@ -61,10 +64,16 @@ export const MissionsSection = () => {
   }, [companyId]);
 
   const fetchMissions = async () => {
+    // Calculate date 1 day ago
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
     const { data, error } = await (supabase as any)
       .from("missions")
       .select("*")
       .neq("status", "Fullført")
+      .neq("status", "Avlyst")
+      .gte("tidspunkt", oneDayAgo.toISOString())
       .order("tidspunkt", { ascending: true });
 
     if (error) {
