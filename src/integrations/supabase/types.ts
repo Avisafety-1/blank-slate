@@ -1630,6 +1630,7 @@ export type Database = {
           navn: string
           oppdatert_dato: string
           opprettet_dato: string
+          påvirker_status: boolean
           profile_id: string
           type: string
           utloper_dato: string | null
@@ -1641,6 +1642,7 @@ export type Database = {
           navn: string
           oppdatert_dato?: string
           opprettet_dato?: string
+          påvirker_status?: boolean
           profile_id: string
           type: string
           utloper_dato?: string | null
@@ -1652,6 +1654,7 @@ export type Database = {
           navn?: string
           oppdatert_dato?: string
           opprettet_dato?: string
+          påvirker_status?: boolean
           profile_id?: string
           type?: string
           utloper_dato?: string | null

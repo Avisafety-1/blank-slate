@@ -2,8 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
+import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 
 interface PersonnelListDialogProps {
   open: boolean;
@@ -15,6 +16,17 @@ interface PersonnelListDialogProps {
 export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnelUpdated }: PersonnelListDialogProps) => {
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  // Calculate status for each person based on their competencies
+  const personnelWithStatus = useMemo(() => {
+    return personnel.map(person => ({
+      ...person,
+      calculatedStatus: calculatePersonnelAggregatedStatus(
+        person.personnel_competencies || [],
+        30
+      )
+    }));
+  }, [personnel]);
 
   const handlePersonClick = (person: any) => {
     setSelectedPerson(person);
@@ -34,7 +46,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
         </DialogHeader>
         
         <div className="space-y-4">
-          {personnel.map((person) => (
+          {personnelWithStatus.map((person) => (
             <div 
               key={person.id} 
               onClick={() => handlePersonClick(person)}
@@ -49,7 +61,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
                     </p>
                   )}
                 </div>
-                <StatusBadge status={person.status} />
+                <StatusBadge status={person.calculatedStatus} />
               </div>
               
               {person.personnel_competencies && person.personnel_competencies.length > 0 && (

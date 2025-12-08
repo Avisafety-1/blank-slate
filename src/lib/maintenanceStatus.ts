@@ -46,10 +46,55 @@ export const getStatusColorClasses = (status: Status): string => {
 /**
  * Status priority for comparison
  */
-const STATUS_PRIORITY: Record<Status, number> = {
+export const STATUS_PRIORITY: Record<Status, number> = {
   "Rød": 2,
   "Gul": 1,
   "Grønn": 0,
+};
+
+/**
+ * Interface for competencies with expiry dates and status flag
+ */
+interface CompetencyItem {
+  utloper_dato?: string | null;
+  påvirker_status?: boolean;
+}
+
+/**
+ * Calculates aggregated status for a person based on their competencies.
+ * Only considers competencies where påvirker_status is true.
+ * 
+ * @param competencies - Array of competencies with expiry dates and påvirker_status flag
+ * @param warningDays - Number of days before expiry to show "Gul" status (default: 30)
+ * @returns Status ("Grønn" | "Gul" | "Rød")
+ */
+export const calculatePersonnelAggregatedStatus = (
+  competencies: CompetencyItem[],
+  warningDays: number = 30
+): Status => {
+  // Filter only competencies that affect status
+  const relevantCompetencies = competencies.filter(c => c.påvirker_status !== false);
+  
+  if (relevantCompetencies.length === 0) {
+    return "Grønn"; // No relevant competencies = OK
+  }
+  
+  let worstPriority = 0;
+  
+  for (const comp of relevantCompetencies) {
+    if (!comp.utloper_dato) continue; // No expiry date = OK for this competency
+    
+    const status = calculateMaintenanceStatus(comp.utloper_dato, warningDays);
+    const priority = STATUS_PRIORITY[status];
+    worstPriority = Math.max(worstPriority, priority);
+  }
+  
+  // Find the status with matching priority
+  const status = (Object.entries(STATUS_PRIORITY).find(
+    ([_, priority]) => priority === worstPriority
+  )?.[0] || "Grønn") as Status;
+  
+  return status;
 };
 
 /**
