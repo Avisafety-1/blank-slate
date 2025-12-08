@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2 } from "lucide-react";
@@ -67,7 +68,9 @@ const Hendelser = () => {
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<Record<string, IncidentComment[]>>({});
-  const [missions, setMissions] = useState<Record<string, { tittel: string }>>({});
+  const [missions, setMissions] = useState<Record<string, any>>({});
+  const [selectedMission, setSelectedMission] = useState<any | null>(null);
+  const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Alle");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -148,14 +151,14 @@ const Hendelser = () => {
       try {
         const { data, error } = await supabase
           .from('missions')
-          .select('id, tittel')
+          .select('*')
           .in('id', missionIds);
 
         if (error) throw error;
 
-        const missionsMap: Record<string, { tittel: string }> = {};
+        const missionsMap: Record<string, any> = {};
         data?.forEach(m => {
-          missionsMap[m.id] = { tittel: m.tittel };
+          missionsMap[m.id] = m;
         });
         setMissions(missionsMap);
       } catch (error) {
@@ -477,10 +480,16 @@ const Hendelser = () => {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         Tilknyttet oppdrag
                       </p>
-                      <div className="flex items-center gap-2 text-sm">
+                      <button
+                        onClick={() => {
+                          setSelectedMission(missions[incident.mission_id]);
+                          setMissionDialogOpen(true);
+                        }}
+                        className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                      >
                         <Link2 className="w-4 h-4 text-muted-foreground" />
-                        <span>{missions[incident.mission_id].tittel}</span>
-                      </div>
+                        <span className="underline underline-offset-2">{missions[incident.mission_id].tittel}</span>
+                      </button>
                     </div>
                   )}
 
@@ -518,6 +527,12 @@ const Hendelser = () => {
         onOpenChange={setDetailDialogOpen} 
         incident={selectedIncident} 
         onEditRequest={handleEditRequest}
+      />
+
+      <MissionDetailDialog
+        open={missionDialogOpen}
+        onOpenChange={setMissionDialogOpen}
+        mission={selectedMission}
       />
     </div>
   );
