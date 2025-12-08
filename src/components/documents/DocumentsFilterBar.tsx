@@ -33,6 +33,9 @@ const CATEGORIES: {
   value: "loggbok",
   label: "Loggbok"
 }, {
+  value: "kml-kmz",
+  label: "KML/KMZ"
+}, {
   value: "annet",
   label: "Annet"
 }];
