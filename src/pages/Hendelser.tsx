@@ -9,7 +9,8 @@ import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialo
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2 } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -493,21 +494,47 @@ const Hendelser = () => {
                     </div>
                   )}
 
-                  {/* Comments and details link */}
+                  {/* Comments - Collapsible */}
                   <div className="pt-3 border-t border-border/50">
-                    <button
-                      onClick={() => handleIncidentClick(incident)}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>
-                        {commentCounts[incident.id] 
-                          ? `${commentCounts[incident.id]} kommentar${commentCounts[incident.id] > 1 ? 'er' : ''}`
-                          : 'Ingen kommentarer'
-                        }
-                        {' – Klikk for detaljer og kommentarer'}
-                      </span>
-                    </button>
+                    <Collapsible>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full text-sm text-muted-foreground hover:text-foreground transition-colors group">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4" />
+                          <span>
+                            {commentCounts[incident.id] 
+                              ? `${commentCounts[incident.id]} kommentar${commentCounts[incident.id] > 1 ? 'er' : ''}`
+                              : 'Ingen kommentarer'
+                            }
+                          </span>
+                        </div>
+                        <ChevronDown className="w-4 h-4 transition-transform group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent className="pt-3 space-y-3">
+                        {comments[incident.id]?.length > 0 ? (
+                          comments[incident.id].map((comment) => (
+                            <div key={comment.id} className="bg-muted/50 rounded-lg p-3 text-sm">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium">{comment.created_by_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground">{comment.comment_text}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">Ingen kommentarer ennå</p>
+                        )}
+                        
+                        <button
+                          onClick={() => handleIncidentClick(incident)}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Legg til kommentar eller se alle detaljer →
+                        </button>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 </GlassCard>
               ))}
