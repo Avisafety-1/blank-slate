@@ -22,8 +22,10 @@ import {
   Plus,
   AlertTriangle,
   Route,
-  Ruler
+  Ruler,
+  Navigation
 } from "lucide-react";
+import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import droneBackground from "@/assets/drone-background.png";
@@ -277,6 +279,36 @@ const Oppdrag = () => {
     fetchMissions();
     setSoraDialogOpen(false);
     setSoraEditingMissionId(null);
+  };
+
+  const exportToKMZ = async (mission: Mission) => {
+    const route = mission.route as { coordinates: { lat: number; lng: number }[]; totalDistance: number } | null;
+    
+    if (!route?.coordinates?.length) {
+      toast.error("Oppdraget har ingen planlagt rute");
+      return;
+    }
+    
+    try {
+      const blob = await generateDJIKMZ(
+        mission.tittel || 'Oppdrag',
+        route,
+        50 // Default flight height 50m
+      );
+      
+      // Download the file
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(mission.tittel || 'oppdrag')}.kmz`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success("KMZ-fil eksportert for DJI Pilot 2");
+    } catch (error) {
+      console.error("Error exporting KMZ:", error);
+      toast.error("Kunne ikke eksportere KMZ");
+    }
   };
 
   const exportToPDF = async (mission: Mission) => {
@@ -792,6 +824,12 @@ const Oppdrag = () => {
                           <Download className="h-4 w-4 mr-2" />
                           Eksporter PDF
                         </Button>
+                        {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
+                          <Button onClick={() => exportToKMZ(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
+                            <Navigation className="h-4 w-4 mr-2" />
+                            Eksporter KMZ
+                          </Button>
+                        )}
                       </div>
                     </div>
 
