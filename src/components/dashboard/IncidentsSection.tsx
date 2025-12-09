@@ -120,6 +120,7 @@ export const IncidentsSection = () => {
           .from('incidents')
           .select('*')
           .eq('oppfolgingsansvarlig_id', user.id)
+          .neq('status', 'Ferdigbehandlet')
           .order('hendelsestidspunkt', { ascending: false });
 
         if (error) throw error;
