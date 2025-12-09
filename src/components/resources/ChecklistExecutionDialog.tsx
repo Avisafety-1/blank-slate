@@ -149,12 +149,21 @@ export const ChecklistExecutionDialog = ({
                 return (
                   <div 
                     key={item.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                    role="checkbox"
+                    aria-checked={isChecked}
+                    tabIndex={0}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                       isChecked 
                         ? 'bg-primary/10 border-primary/30' 
                         : 'bg-background/50 border-border hover:bg-muted/50'
                     }`}
                     onClick={() => handleToggleItem(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleToggleItem(item.id);
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-center mt-0.5">
                       {isChecked ? (
