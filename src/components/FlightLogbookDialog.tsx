@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import { Book, Plane, MapPin, Clock, Calendar, Plus } from "lucide-react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
-
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 interface FlightLogbookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,6 +39,7 @@ drone: {
 }
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
+  const { user, companyId } = useAuth();
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMinutes, setTotalMinutes] = useState(0);
@@ -45,6 +48,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const [manualHours, setManualHours] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (open && personId) {
@@ -157,6 +161,91 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
   const totalFlytid = totalMinutes + (profileFlyvetimer * 60);
 
+  const handleExportPDF = async () => {
+    if (!companyId || !user) {
+      toast.error("Mangler bruker- eller bedriftsinformasjon");
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(18);
+      doc.text(`Loggbok - ${personName}`, 14, 20);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Eksportert: ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`, 14, 28);
+      
+      // Total flight time
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text(`Total flytid: ${formatDuration(Math.round(totalFlytid))}`, 14, 40);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Fra loggførte flyturer: ${formatDuration(totalMinutes)}`, 14, 47);
+      if (profileFlyvetimer > 0) {
+        doc.text(`Manuelt lagt til: ${formatDuration(Math.round(profileFlyvetimer * 60))}`, 14, 54);
+      }
+      
+      // Flight logs table
+      const tableData = flightLogs.map(log => [
+        format(new Date(log.flight_date), "dd.MM.yyyy"),
+        log.departure_location,
+        log.landing_location,
+        formatDuration(log.flight_duration_minutes),
+        log.drone?.modell || "-",
+        log.mission?.tittel || "-"
+      ]);
+      
+      autoTable(doc, {
+        startY: profileFlyvetimer > 0 ? 62 : 55,
+        head: [["Dato", "Avgang", "Landing", "Varighet", "Drone", "Oppdrag"]],
+        body: tableData,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] }
+      });
+      
+      // Generate filename
+      const safeName = personName.replace(/[^a-zA-Z0-9æøåÆØÅ\s]/g, "").replace(/\s+/g, "_");
+      const dateStr = format(new Date(), "yyyy-MM-dd");
+      const fileName = `loggbok_${safeName}_${dateStr}.pdf`;
+      
+      // Upload to storage
+      const pdfBlob = doc.output("blob");
+      const filePath = `${companyId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, pdfBlob, { contentType: "application/pdf", upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      // Create document record
+      const { error: docError } = await supabase.from("documents").insert({
+        company_id: companyId,
+        user_id: user.id,
+        tittel: `Loggbok - ${personName}`,
+        kategori: "loggbok",
+        fil_navn: fileName,
+        fil_url: filePath,
+        fil_storrelse: pdfBlob.size,
+        beskrivelse: `Personlig flyloggbok eksportert ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`
+      });
+      
+      if (docError) throw docError;
+      
+      toast.success("Loggbok eksportert til dokumenter");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Kunne ikke eksportere loggbok");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -188,17 +277,29 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               )}
             </div>
 
-            {/* Add manual hours */}
+            {/* Actions */}
             {!showAddHours ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddHours(true)}
-                className="w-full"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Legg til flytimer manuelt
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddHours(true)}
+                  className="flex-1"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Legg til flytimer manuelt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPDF}
+                  disabled={exporting}
+                  className="flex-1"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {exporting ? "Eksporterer..." : "Eksporter PDF"}
+                </Button>
+              </div>
             ) : (
               <div className="p-3 bg-muted/50 rounded-lg border space-y-3">
                 <div className="flex gap-3">
