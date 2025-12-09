@@ -89,7 +89,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         vekt: vektValue ? parseFloat(vektValue) : null,
         vedlikeholdsintervall_dager: vedlikeholdsintervallDager ? parseInt(vedlikeholdsintervallDager) : null,
         vedlikehold_startdato: vedlikeholdStartdato || null,
-        sjekkliste_id: selectedChecklistId || null,
+        sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
       }]);
 
       if (error) {
@@ -214,7 +214,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                   <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
