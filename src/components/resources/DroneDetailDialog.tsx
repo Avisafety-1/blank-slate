@@ -393,7 +393,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           inspection_start_date: formData.inspection_start_date || null,
           inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
-          sjekkliste_id: formData.sjekkliste_id || null,
+          sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
         })
         .eq("id", drone.id);
 
@@ -1038,7 +1038,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                       <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen sjekkliste</SelectItem>
+                      <SelectItem value="none">Ingen sjekkliste</SelectItem>
                       {checklists.map((checklist) => (
                         <SelectItem key={checklist.id} value={checklist.id}>
                           {checklist.tittel}

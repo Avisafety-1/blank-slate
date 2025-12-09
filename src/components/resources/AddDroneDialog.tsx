@@ -94,7 +94,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         payload: formData.get("payload") ? parseFloat(formData.get("payload") as string) : null,
         inspection_start_date: inspectionStartDate || null,
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
-        sjekkliste_id: selectedChecklistId || null,
+        sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
       }]).select().single();
 
       if (error) {
@@ -226,7 +226,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
                   <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
