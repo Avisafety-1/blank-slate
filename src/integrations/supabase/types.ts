@@ -548,6 +548,7 @@ export type Database = {
           payload: number | null
           serienummer: string
           sist_inspeksjon: string | null
+          sjekkliste_id: string | null
           status: string
           tilgjengelig: boolean
           user_id: string
@@ -571,6 +572,7 @@ export type Database = {
           payload?: number | null
           serienummer: string
           sist_inspeksjon?: string | null
+          sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
           user_id: string
@@ -594,6 +596,7 @@ export type Database = {
           payload?: number | null
           serienummer?: string
           sist_inspeksjon?: string | null
+          sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
           user_id?: string
@@ -606,6 +609,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drones_sjekkliste_id_fkey"
+            columns: ["sjekkliste_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
@@ -818,6 +828,7 @@ export type Database = {
           opprettet_dato: string
           serienummer: string
           sist_vedlikeholdt: string | null
+          sjekkliste_id: string | null
           status: string
           tilgjengelig: boolean
           type: string
@@ -839,6 +850,7 @@ export type Database = {
           opprettet_dato?: string
           serienummer: string
           sist_vedlikeholdt?: string | null
+          sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
           type: string
@@ -860,6 +872,7 @@ export type Database = {
           opprettet_dato?: string
           serienummer?: string
           sist_vedlikeholdt?: string | null
+          sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
           type?: string
@@ -875,6 +888,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_sjekkliste_id_fkey"
+            columns: ["sjekkliste_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]

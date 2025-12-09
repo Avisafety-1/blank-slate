@@ -5,11 +5,12 @@ import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ListChecks } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
 import DocumentsList from "@/components/documents/DocumentsList";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
+import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDialog";
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 import { Header } from "@/components/Header";
@@ -44,6 +45,7 @@ const Documents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth", {
@@ -135,10 +137,20 @@ const Documents = () => {
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <h1 className="text-4xl font-bold text-foreground"><span className="md:hidden">Dok.</span><span className="hidden md:inline">Dokumenter</span></h1>
-              {isAdmin && <Button onClick={() => setCreateDialogOpen(true)} size="lg">
-                  <Plus className="mr-2" />
-                  Nytt dokument
-                </Button>}
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Button onClick={() => setCreateChecklistOpen(true)} variant="outline" size="lg">
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">Ny sjekkliste</span>
+                    <span className="sm:hidden">Sjekkliste</span>
+                  </Button>
+                  <Button onClick={() => setCreateDialogOpen(true)} size="lg">
+                    <Plus className="mr-2" />
+                    <span className="hidden sm:inline">Nytt dokument</span>
+                    <span className="sm:hidden">Dokument</span>
+                  </Button>
+                </div>
+              )}
             </div>
 
             <DocumentsFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} selectedCategories={selectedCategories} onCategoriesChange={setSelectedCategories} />
@@ -149,6 +161,14 @@ const Documents = () => {
             refetch();
             toast.success("Dokument opprettet");
           }} />
+
+            <CreateChecklistDialog 
+              open={createChecklistOpen} 
+              onOpenChange={setCreateChecklistOpen} 
+              onSuccess={() => {
+                refetch();
+              }} 
+            />
 
             <DocumentCardModal document={selectedDocument} isOpen={isModalOpen} onClose={handleCloseModal} onSaveSuccess={handleSaveSuccess} onDeleteSuccess={handleDeleteSuccess} isAdmin={isAdmin} isCreating={isCreating} />
           </div>

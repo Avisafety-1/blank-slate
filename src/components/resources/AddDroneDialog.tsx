@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useChecklists } from "@/hooks/useChecklists";
 
 interface AddDroneDialogProps {
   open: boolean;
@@ -22,7 +23,9 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
   const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
   const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
+  const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const terminology = useTerminology();
+  const { checklists } = useChecklists();
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -91,6 +94,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         payload: formData.get("payload") ? parseFloat(formData.get("payload") as string) : null,
         inspection_start_date: inspectionStartDate || null,
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
+        sjekkliste_id: selectedChecklistId || null,
       }]).select().single();
 
       if (error) {
@@ -106,6 +110,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         setInspectionStartDate("");
         setInspectionIntervalDays("");
         setCalculatedNextInspection("");
+        setSelectedChecklistId("");
         onDroneAdded();
         onOpenChange(false);
       }
@@ -211,6 +216,29 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
               </p>
             )}
           </div>
+          
+          {/* Checklist selection */}
+          {checklists.length > 0 && (
+            <div className="border-t pt-4 mt-4">
+              <Label htmlFor="sjekkliste">Sjekkliste for inspeksjon</Label>
+              <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Ingen sjekkliste</SelectItem>
+                  {checklists.map((checklist) => (
+                    <SelectItem key={checklist.id} value={checklist.id}>
+                      {checklist.tittel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
+              </p>
+            </div>
+          )}
           
           <div>
             <Label htmlFor="neste_inspeksjon">Neste inspeksjon {calculatedNextInspection && "(overstyrt av intervall)"}</Label>
