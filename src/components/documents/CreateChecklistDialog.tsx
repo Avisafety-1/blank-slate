@@ -1,0 +1,174 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Plus, Trash2, GripVertical } from "lucide-react";
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
+interface CreateChecklistDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}
+
+export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateChecklistDialogProps) => {
+  const { user, companyId } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [title, setTitle] = useState("");
+  const [items, setItems] = useState<ChecklistItem[]>([
+    { id: crypto.randomUUID(), text: "" }
+  ]);
+
+  const handleAddItem = () => {
+    setItems([...items, { id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const handleItemChange = (id: string, text: string) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, text } : item
+    ));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user || !companyId) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
+    if (!title.trim()) {
+      toast.error("Fyll inn navn på sjekklisten");
+      return;
+    }
+
+    const validItems = items.filter(item => item.text.trim());
+    if (validItems.length === 0) {
+      toast.error("Legg til minst ett punkt i sjekklisten");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Store checklist items as JSON in beskrivelse field
+      const checklistData = JSON.stringify(validItems.map(item => ({
+        id: item.id,
+        text: item.text.trim()
+      })));
+
+      const { error } = await supabase.from("documents").insert({
+        tittel: title.trim(),
+        kategori: "sjekklister",
+        beskrivelse: checklistData,
+        company_id: companyId,
+        user_id: user.id,
+        opprettet_av: user.email || "Ukjent",
+      });
+
+      if (error) throw error;
+
+      toast.success("Sjekkliste opprettet");
+      setTitle("");
+      setItems([{ id: crypto.randomUUID(), text: "" }]);
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error creating checklist:", error);
+      toast.error(`Kunne ikke opprette sjekkliste: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setTitle("");
+    setItems([{ id: crypto.randomUUID(), text: "" }]);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Ny sjekkliste</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="title">Navn på sjekkliste</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="f.eks. Drone-inspeksjon før flyging"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sjekkliste-punkter</Label>
+            <div className="space-y-2">
+              {items.map((item, index) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+                  <Input
+                    value={item.text}
+                    onChange={(e) => handleItemChange(item.id, e.target.value)}
+                    placeholder="Beskriv sjekk-punktet..."
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveItem(item.id)}
+                    disabled={items.length === 1}
+                    className="flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddItem}
+              className="w-full mt-2"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Legg til punkt
+            </Button>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Avbryt
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Oppretter..." : "Opprett sjekkliste"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

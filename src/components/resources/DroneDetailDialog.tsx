@@ -14,8 +14,10 @@ import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight,
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
+import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChecklists } from "@/hooks/useChecklists";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
 
 interface Drone {
@@ -36,6 +38,7 @@ interface Drone {
   inspection_start_date: string | null;
   inspection_interval_days: number | null;
   varsel_dager: number | null;
+  sjekkliste_id: string | null;
 }
 
 interface Accessory {
@@ -58,6 +61,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
+  const { checklists } = useChecklists();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
@@ -66,6 +70,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [showAddAccessory, setShowAddAccessory] = useState(false);
   const [newAccessory, setNewAccessory] = useState({
     navn: "",
@@ -87,7 +92,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     inspection_start_date: "",
     inspection_interval_days: "",
     varsel_dager: "14",
+    sjekkliste_id: "",
   });
+
+  const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
 
   useEffect(() => {
     if (drone) {
@@ -106,7 +114,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         inspection_start_date: drone.inspection_start_date ? new Date(drone.inspection_start_date).toISOString().split('T')[0] : "",
         inspection_interval_days: drone.inspection_interval_days !== null ? String(drone.inspection_interval_days) : "",
         varsel_dager: drone.varsel_dager !== null ? String(drone.varsel_dager) : "14",
+        sjekkliste_id: drone.sjekkliste_id || "",
       });
+      setSelectedChecklistId(drone.sjekkliste_id || "");
       setIsEditing(false);
       setShowAddAccessory(false);
       setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
@@ -383,6 +393,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
           inspection_start_date: formData.inspection_start_date || null,
           inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
+          sjekkliste_id: formData.sjekkliste_id || null,
         })
         .eq("id", drone.id);
 
@@ -543,6 +554,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                       className="w-full sm:w-auto"
                       onClick={async () => {
                         if (!user || !companyId) return;
+                        
+                        // If checklist is configured, open checklist dialog
+                        if (drone.sjekkliste_id) {
+                          setChecklistDialogOpen(true);
+                          return;
+                        }
+                        
+                        // Otherwise, perform inspection directly
                         try {
                           const today = new Date().toISOString().split('T')[0];
                           let nextInspection: string | null = null;
@@ -1010,6 +1029,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 )}
               </div>
 
+              {/* Checklist selection in edit mode */}
+              {isEditing && checklists.length > 0 && (
+                <div className="border-t pt-4">
+                  <Label htmlFor="sjekkliste">Sjekkliste for inspeksjon</Label>
+                  <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ingen sjekkliste</SelectItem>
+                      {checklists.map((checklist) => (
+                        <SelectItem key={checklist.id} value={checklist.id}>
+                          {checklist.tittel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
+                  </p>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="merknader">Merknader</Label>
                 <Textarea
@@ -1091,6 +1133,48 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         droneModell={drone?.modell || ""}
         flyvetimer={drone?.flyvetimer || 0}
       />
+
+      {drone?.sjekkliste_id && (
+        <ChecklistExecutionDialog
+          open={checklistDialogOpen}
+          onOpenChange={setChecklistDialogOpen}
+          checklistId={drone.sjekkliste_id}
+          itemName={`${drone.modell} (${drone.serienummer})`}
+          onComplete={async () => {
+            if (!user || !companyId) return;
+            
+            const today = new Date().toISOString().split('T')[0];
+            let nextInspection: string | null = null;
+            if (drone.inspection_interval_days) {
+              const nextDate = new Date();
+              nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
+              nextInspection = nextDate.toISOString().split('T')[0];
+            }
+            
+            const { error: updateError } = await supabase
+              .from('drones')
+              .update({
+                sist_inspeksjon: today,
+                neste_inspeksjon: nextInspection,
+              })
+              .eq('id', drone.id);
+            
+            if (updateError) throw updateError;
+            
+            await supabase.from('drone_inspections').insert({
+              drone_id: drone.id,
+              company_id: companyId,
+              user_id: user.id,
+              inspection_date: new Date().toISOString(),
+              inspection_type: 'Manuell inspeksjon',
+              notes: 'Utført via sjekkliste fra dronekort',
+            });
+            
+            toast.success('Inspeksjon fullført');
+            onDroneUpdated();
+          }}
+        />
+      )}
     </Dialog>
   );
 };

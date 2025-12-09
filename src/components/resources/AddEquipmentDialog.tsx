@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { addDays, format } from "date-fns";
+import { useChecklists } from "@/hooks/useChecklists";
 
 interface AddEquipmentDialogProps {
   open: boolean;
@@ -22,6 +23,8 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   const [vedlikeholdStartdato, setVedlikeholdStartdato] = useState<string>("");
   const [vedlikeholdsintervallDager, setVedlikeholdsintervallDager] = useState<string>("");
   const [nesteVedlikehold, setNesteVedlikehold] = useState<string>("");
+  const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const { checklists } = useChecklists();
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -86,6 +89,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         vekt: vektValue ? parseFloat(vektValue) : null,
         vedlikeholdsintervall_dager: vedlikeholdsintervallDager ? parseInt(vedlikeholdsintervallDager) : null,
         vedlikehold_startdato: vedlikeholdStartdato || null,
+        sjekkliste_id: selectedChecklistId || null,
       }]);
 
       if (error) {
@@ -108,6 +112,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         setVedlikeholdStartdato("");
         setVedlikeholdsintervallDager("");
         setNesteVedlikehold("");
+        setSelectedChecklistId("");
         onEquipmentAdded();
         onOpenChange(false);
       }
@@ -199,6 +204,30 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
             <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
             <Input id="sist_vedlikeholdt" name="sist_vedlikeholdt" type="date" />
           </div>
+
+          {/* Checklist selection */}
+          {checklists.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <Label htmlFor="sjekkliste">Sjekkliste for vedlikehold</Label>
+              <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Ingen sjekkliste</SelectItem>
+                  {checklists.map((checklist) => (
+                    <SelectItem key={checklist.id} value={checklist.id}>
+                      {checklist.tittel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Hvis valgt, må sjekklisten fullføres før vedlikehold registreres
+              </p>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="merknader">Merknader</Label>
             <Textarea id="merknader" name="merknader" />
