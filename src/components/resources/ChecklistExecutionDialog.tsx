@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Circle, ClipboardCheck } from "lucide-react";
 
 interface ChecklistItem {
@@ -38,11 +38,13 @@ export const ChecklistExecutionDialog = ({
     }
   }, [open, checklistId]);
 
+  const prevOpenRef = useRef(false);
   useEffect(() => {
-    // Reset checked items when dialog opens
-    if (open) {
+    // Only reset when dialog actually opens (false → true transition)
+    if (open && !prevOpenRef.current) {
       setCheckedItems(new Set());
     }
+    prevOpenRef.current = open;
   }, [open]);
 
   const fetchChecklist = async () => {
