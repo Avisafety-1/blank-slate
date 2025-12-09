@@ -135,19 +135,17 @@ const Documents = () => {
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-bold text-foreground"><span className="md:hidden">Dok.</span><span className="hidden md:inline">Dokumenter</span></h1>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-4xl font-bold text-foreground">Dokumenter</h1>
               {isAdmin && (
                 <div className="flex gap-2">
-                  <Button onClick={() => setCreateChecklistOpen(true)} variant="outline" size="lg">
-                    <ListChecks className="mr-2 h-4 w-4" />
+                  <Button onClick={() => setCreateChecklistOpen(true)} variant="secondary" size="default">
+                    <ListChecks className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Ny sjekkliste</span>
-                    <span className="sm:hidden">Sjekkliste</span>
                   </Button>
-                  <Button onClick={() => setCreateDialogOpen(true)} size="lg">
-                    <Plus className="mr-2" />
+                  <Button onClick={() => setCreateDialogOpen(true)} size="default">
+                    <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Nytt dokument</span>
-                    <span className="sm:hidden">Dokument</span>
                   </Button>
                 </div>
               )}
