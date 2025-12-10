@@ -61,7 +61,7 @@ const Index = () => {
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   
-  const { isActive, elapsedMinutes, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, elapsedSeconds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
@@ -238,7 +238,7 @@ const Index = () => {
             {isActive && (
               <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
                 <span className="text-green-800 dark:text-green-200 font-mono text-sm">
-                  🕐 Pågående flytur: {formatElapsedTime(elapsedMinutes)}
+                  🕐 Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                 </span>
               </div>
             )}
@@ -318,7 +318,7 @@ const Index = () => {
                       {isActive && (
                         <div className="hidden lg:block p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
                           <span className="text-green-800 dark:text-green-200 font-mono text-sm">
-                            🕐 Pågående flytur: {formatElapsedTime(elapsedMinutes)}
+                            🕐 Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                           </span>
                         </div>
                       )}
