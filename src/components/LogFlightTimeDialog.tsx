@@ -131,14 +131,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
       fetchMissions();
       fetchPersonnel();
       fetchEquipment();
-      // Set logged-in user as default pilot
-      if (user) {
-        setFormData(prev => ({ ...prev, pilotId: user.id }));
-      }
-      // Set prefilled duration if provided
-      if (prefilledDuration !== undefined) {
-        setFormData(prev => ({ ...prev, flightDurationMinutes: prefilledDuration }));
-      }
+      
+      // Set default values when dialog opens
+      setFormData(prev => ({
+        ...prev,
+        // Always set logged-in user as default pilot
+        pilotId: user?.id || prev.pilotId,
+        // Set prefilled duration if provided (from timer)
+        flightDurationMinutes: prefilledDuration !== undefined ? prefilledDuration : prev.flightDurationMinutes,
+      }));
     }
   }, [open, companyId, user, prefilledDuration]);
 
