@@ -8,7 +8,7 @@ import { MissionsSection } from "@/components/dashboard/MissionsSection";
 import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
-import { Shield, Clock } from "lucide-react";
+import { Shield, Clock, Play, Square } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { Header } from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -27,6 +27,17 @@ import {
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useFlightTimer } from "@/hooks/useFlightTimer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STORAGE_KEY = "dashboard-layout";
 
@@ -47,6 +58,39 @@ const Index = () => {
   const [isApproved, setIsApproved] = useState(false);
   const [checkingApproval, setCheckingApproval] = useState(true);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
+  const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
+  const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
+  
+  const { isActive, elapsedMinutes, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+
+  const handleStartFlight = () => {
+    setStartFlightConfirmOpen(true);
+  };
+
+  const confirmStartFlight = async () => {
+    setStartFlightConfirmOpen(false);
+    const success = await startFlight();
+    if (success) {
+      toast.success("Flytur startet!");
+    }
+  };
+
+  const handleEndFlight = async () => {
+    const minutes = await endFlight();
+    if (minutes === null) {
+      toast.error("Ingen flytur ble startet");
+      return;
+    }
+    setPrefilledDuration(minutes);
+    setLogFlightDialogOpen(true);
+  };
+
+  const handleLogFlightDialogClose = (open: boolean) => {
+    setLogFlightDialogOpen(open);
+    if (!open) {
+      setPrefilledDuration(undefined);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -179,15 +223,44 @@ const Index = () => {
 
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
-          {/* Mobile-only Log Flight Time button */}
-          <Button 
-            onClick={() => setLogFlightDialogOpen(true)}
-            className="w-full gap-2 mb-3 lg:hidden"
-            variant="secondary"
-          >
-            <Clock className="w-4 h-4" />
-            Logg flytid
-          </Button>
+          {/* Mobile-only flight buttons */}
+          <div className="flex flex-col gap-2 mb-3 lg:hidden">
+            <Button 
+              onClick={() => setLogFlightDialogOpen(true)}
+              className="w-full gap-2"
+              variant="secondary"
+            >
+              <Clock className="w-4 h-4" />
+              Logg flytid
+            </Button>
+            
+            {/* Active flight timer indicator */}
+            {isActive && (
+              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
+                <span className="text-green-800 dark:text-green-200 font-mono text-sm">
+                  🕐 Pågående flytur: {formatElapsedTime(elapsedMinutes)}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleStartFlight}
+                disabled={isActive}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              >
+                <Play className="w-4 h-4 mr-1" />
+                Start flytur
+              </Button>
+              <Button 
+                onClick={handleEndFlight}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Square className="w-4 h-4 mr-1" />
+                Avslutt flytur
+              </Button>
+            </div>
+          </div>
 
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
@@ -229,7 +302,7 @@ const Index = () => {
 
                   {/* Center Column - Drone space and missions */}
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
-                    {/* AI Search Bar and Flight Log button */}
+                    {/* AI Search Bar and Flight Log buttons */}
                     <div className="flex flex-col gap-2">
                       <AISearchBar />
                       <Button 
@@ -240,6 +313,34 @@ const Index = () => {
                         <Clock className="w-4 h-4" />
                         Logg flytid
                       </Button>
+                      
+                      {/* Active flight timer indicator - Desktop */}
+                      {isActive && (
+                        <div className="hidden lg:block p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
+                          <span className="text-green-800 dark:text-green-200 font-mono text-sm">
+                            🕐 Pågående flytur: {formatElapsedTime(elapsedMinutes)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Start/End flight buttons - Desktop */}
+                      <div className="hidden lg:flex gap-2">
+                        <Button 
+                          onClick={handleStartFlight}
+                          disabled={isActive}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Start flytur
+                        </Button>
+                        <Button 
+                          onClick={handleEndFlight}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          <Square className="w-4 h-4 mr-1" />
+                          Avslutt flytur
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Missions - pushed to bottom with mt-auto */}
@@ -283,8 +384,27 @@ const Index = () => {
       {/* Log Flight Time Dialog */}
       <LogFlightTimeDialog 
         open={logFlightDialogOpen} 
-        onOpenChange={setLogFlightDialogOpen} 
+        onOpenChange={handleLogFlightDialogClose}
+        prefilledDuration={prefilledDuration}
       />
+
+      {/* Start Flight Confirmation Dialog */}
+      <AlertDialog open={startFlightConfirmOpen} onOpenChange={setStartFlightConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start logging av flytid</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil starte en flytur? Timeren vil fortsette selv om du lukker appen eller skrur av telefonen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStartFlight} className="bg-green-600 hover:bg-green-700">
+              Start flytur
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
