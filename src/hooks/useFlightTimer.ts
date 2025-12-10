@@ -7,7 +7,7 @@ const LOCAL_STORAGE_KEY = 'active_flight_start_time';
 interface FlightTimerState {
   isActive: boolean;
   startTime: Date | null;
-  elapsedMinutes: number;
+  elapsedSeconds: number;
 }
 
 export const useFlightTimer = () => {
@@ -15,7 +15,7 @@ export const useFlightTimer = () => {
   const [state, setState] = useState<FlightTimerState>({
     isActive: false,
     startTime: null,
-    elapsedMinutes: 0,
+    elapsedSeconds: 0,
   });
 
   // Check for active flight on mount
@@ -52,11 +52,11 @@ export const useFlightTimer = () => {
       }
 
       if (startTime) {
-        const elapsed = Math.floor((Date.now() - startTime.getTime()) / 60000);
+        const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
         setState({
           isActive: true,
           startTime,
-          elapsedMinutes: elapsed,
+          elapsedSeconds: elapsed,
         });
       }
     };
@@ -69,8 +69,8 @@ export const useFlightTimer = () => {
     if (!state.isActive || !state.startTime) return;
 
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - state.startTime!.getTime()) / 60000);
-      setState(prev => ({ ...prev, elapsedMinutes: elapsed }));
+      const elapsed = Math.floor((Date.now() - state.startTime!.getTime()) / 1000);
+      setState(prev => ({ ...prev, elapsedSeconds: elapsed }));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -99,7 +99,7 @@ export const useFlightTimer = () => {
     setState({
       isActive: true,
       startTime,
-      elapsedMinutes: 0,
+      elapsedSeconds: 0,
     });
 
     return true;
@@ -110,7 +110,8 @@ export const useFlightTimer = () => {
       return null;
     }
 
-    const elapsedMinutes = Math.floor((Date.now() - state.startTime.getTime()) / 60000);
+    const elapsedSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
+    const elapsedMinutes = Math.ceil(elapsedSeconds / 60); // Round up to nearest minute
 
     // Clear localStorage
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -126,24 +127,28 @@ export const useFlightTimer = () => {
     setState({
       isActive: false,
       startTime: null,
-      elapsedMinutes: 0,
+      elapsedSeconds: 0,
     });
 
     return elapsedMinutes;
   }, [state.isActive, state.startTime, user]);
 
-  const formatElapsedTime = useCallback((minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+  const formatElapsedTime = useCallback((seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    
     if (hours > 0) {
-      return `${hours}t ${mins}m`;
+      return `${hours}:${pad(mins)}:${pad(secs)}`;
     }
-    return `${mins}m`;
+    return `${pad(mins)}:${pad(secs)}`;
   }, []);
 
   return {
     isActive: state.isActive,
-    elapsedMinutes: state.elapsedMinutes,
+    elapsedSeconds: state.elapsedSeconds,
     startFlight,
     endFlight,
     formatElapsedTime,
