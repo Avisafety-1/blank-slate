@@ -243,9 +243,10 @@ const Index = () => {
             
             {/* Active flight timer indicator */}
             {isActive && (
-              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
-                <span className="text-green-800 dark:text-green-200 font-mono text-sm">
-                  🕐 Pågående flytur: {formatElapsedTime(elapsedSeconds)}
+              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center flex items-center justify-center gap-2">
+                <Clock className="w-4 h-4 text-foreground" />
+                <span className="text-foreground font-mono text-sm">
+                  Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                 </span>
               </div>
             )}
@@ -323,9 +324,10 @@ const Index = () => {
                       
                       {/* Active flight timer indicator - Desktop */}
                       {isActive && (
-                        <div className="hidden lg:block p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center">
-                          <span className="text-green-800 dark:text-green-200 font-mono text-sm">
-                            🕐 Pågående flytur: {formatElapsedTime(elapsedSeconds)}
+                        <div className="hidden lg:flex p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 items-center justify-center gap-2">
+                          <Clock className="w-4 h-4 text-foreground" />
+                          <span className="text-foreground font-mono text-sm">
+                            Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                           </span>
                         </div>
                       )}
