@@ -75,20 +75,27 @@ const Index = () => {
     }
   };
 
-  const handleEndFlight = async () => {
-    const minutes = await endFlight();
-    if (minutes === null) {
+  const handleEndFlight = () => {
+    if (!isActive) {
       toast.error("Ingen flytur ble startet");
       return;
     }
+    // Calculate current elapsed minutes (round up)
+    const minutes = Math.ceil(elapsedSeconds / 60);
     setPrefilledDuration(minutes);
     setLogFlightDialogOpen(true);
   };
 
+  const handleFlightLogged = async () => {
+    // Stop the timer only when flight is successfully logged
+    await endFlight();
+    setPrefilledDuration(undefined);
+  };
+
   const handleLogFlightDialogClose = (open: boolean) => {
     setLogFlightDialogOpen(open);
-    if (!open) {
-      setPrefilledDuration(undefined);
+    if (!open && prefilledDuration === undefined) {
+      // Only clear if not from timer (timer clears via handleFlightLogged)
     }
   };
 
@@ -386,6 +393,7 @@ const Index = () => {
         open={logFlightDialogOpen} 
         onOpenChange={handleLogFlightDialogClose}
         prefilledDuration={prefilledDuration}
+        onFlightLogged={handleFlightLogged}
       />
 
       {/* Start Flight Confirmation Dialog */}

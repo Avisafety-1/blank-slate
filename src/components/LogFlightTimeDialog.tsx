@@ -796,15 +796,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
       <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Avbryt logging av flytid?</AlertDialogTitle>
+            <AlertDialogTitle>Lukke uten å lagre?</AlertDialogTitle>
             <AlertDialogDescription>
-              Du har en pågående flytur som ikke er logget. Hvis du avbryter nå vil flytiden ikke bli lagret.
+              Flytiden vil ikke bli lagret, men timeren fortsetter å gå. Du kan åpne dialogen igjen via "Avslutt flytur"-knappen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Fortsett logging</AlertDialogCancel>
             <AlertDialogAction onClick={confirmCancel} className="bg-destructive hover:bg-destructive/90">
-              Avbryt uten å lagre
+              Lukk uten å lagre
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
