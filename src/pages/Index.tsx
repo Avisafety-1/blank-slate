@@ -396,7 +396,10 @@ const Index = () => {
         onOpenChange={handleLogFlightDialogClose}
         prefilledDuration={prefilledDuration}
         onFlightLogged={handleFlightLogged}
-        onStopTimer={endFlight}
+        onStopTimer={() => {
+          endFlight();
+          setPrefilledDuration(undefined);
+        }}
       />
 
       {/* Start Flight Confirmation Dialog */}
