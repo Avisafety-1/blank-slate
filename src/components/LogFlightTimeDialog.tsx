@@ -19,6 +19,7 @@ interface LogFlightTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFlightLogged?: () => void;
+  prefilledDuration?: number;
 }
 
 interface Drone {
@@ -45,7 +46,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefilledDuration }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,8 +108,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
       if (user) {
         setFormData(prev => ({ ...prev, pilotId: user.id }));
       }
+      // Set prefilled duration if provided
+      if (prefilledDuration !== undefined) {
+        setFormData(prev => ({ ...prev, flightDurationMinutes: prefilledDuration }));
+      }
     }
-  }, [open, companyId, user]);
+  }, [open, companyId, user, prefilledDuration]);
 
   // Fetch mission details when a mission is selected
   useEffect(() => {

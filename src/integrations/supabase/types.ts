@@ -14,6 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_flights: {
+        Row: {
+          company_id: string
+          created_at: string
+          drone_id: string | null
+          id: string
+          profile_id: string
+          start_time: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          drone_id?: string | null
+          id?: string
+          profile_id: string
+          start_time?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          drone_id?: string | null
+          id?: string
+          profile_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_flights_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_flights_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_flights_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           company_id: string
