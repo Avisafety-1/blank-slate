@@ -70,7 +70,9 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
           <SheetTitle>Kartlag</SheetTitle>
         </SheetHeader>
         <div className="mt-6 space-y-4">
-          {layers.map((layer) => {
+          {layers
+            .filter((layer) => layer.id !== 'safesky') // Hide SafeSky until API key is configured
+            .map((layer) => {
             const IconComponent = layer.icon ? iconMap[layer.icon] : null;
             return (
               <div key={layer.id} className="flex items-center space-x-3">
