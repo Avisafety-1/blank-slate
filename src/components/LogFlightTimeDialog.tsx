@@ -9,8 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation, User, CheckCircle } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
+import { LocationPickerDialog } from "./LocationPickerDialog";
 
 interface LogFlightTimeDialogProps {
   open: boolean;
@@ -58,6 +59,9 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     notes: "",
     markMissionCompleted: false,
   });
+
+  const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
+  const [landingPickerOpen, setLandingPickerOpen] = useState(false);
 
   useEffect(() => {
     if (open && companyId) {
@@ -388,32 +392,56 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
           </div>
 
           {/* Locations */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="departure" className="flex items-center gap-1">
                 <Navigation className="w-3 h-3" />
                 Avgangssted *
               </Label>
-              <Input
-                id="departure"
-                value={formData.departureLocation}
-                onChange={(e) => setFormData({ ...formData, departureLocation: e.target.value })}
-                placeholder="F.eks. Oslo"
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="departure"
+                  value={formData.departureLocation}
+                  onChange={(e) => setFormData({ ...formData, departureLocation: e.target.value })}
+                  placeholder="F.eks. Oslo"
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setDeparturePickerOpen(true)}
+                  title="Velg på kart"
+                >
+                  <Map className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label htmlFor="landing" className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 Landingssted *
               </Label>
-              <Input
-                id="landing"
-                value={formData.landingLocation}
-                onChange={(e) => setFormData({ ...formData, landingLocation: e.target.value })}
-                placeholder="F.eks. Bergen"
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="landing"
+                  value={formData.landingLocation}
+                  onChange={(e) => setFormData({ ...formData, landingLocation: e.target.value })}
+                  placeholder="F.eks. Bergen"
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setLandingPickerOpen(true)}
+                  title="Velg på kart"
+                >
+                  <Map className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -470,6 +498,20 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
             </Button>
           </DialogFooter>
         </form>
+
+        {/* Location picker dialogs */}
+        <LocationPickerDialog
+          open={departurePickerOpen}
+          onOpenChange={setDeparturePickerOpen}
+          onLocationSelected={(location) => setFormData({ ...formData, departureLocation: location })}
+          title="Velg avgangssted"
+        />
+        <LocationPickerDialog
+          open={landingPickerOpen}
+          onOpenChange={setLandingPickerOpen}
+          onLocationSelected={(location) => setFormData({ ...formData, landingLocation: location })}
+          title="Velg landingssted"
+        />
       </DialogContent>
     </Dialog>
   );
