@@ -103,8 +103,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
       fetchMissions();
       fetchPersonnel();
       fetchEquipment();
+      // Set logged-in user as default pilot
+      if (user) {
+        setFormData(prev => ({ ...prev, pilotId: user.id }));
+      }
     }
-  }, [open, companyId]);
+  }, [open, companyId, user]);
 
   // Fetch mission details when a mission is selected
   useEffect(() => {
