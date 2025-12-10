@@ -6,11 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 
@@ -507,42 +508,53 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
             </Select>
           </div>
 
-          {/* Equipment selection */}
+          {/* Equipment selection - Dropdown */}
           <div>
             <Label className="flex items-center gap-1">
               <Package className="w-3 h-3" />
               Utstyr
             </Label>
-            <div className="mt-2 max-h-32 overflow-y-auto border border-border rounded-lg p-2 space-y-1">
-              {equipmentList.length === 0 ? (
-                <p className="text-sm text-muted-foreground p-2">Ingen utstyr tilgjengelig</p>
-              ) : (
-                equipmentList.map((equipment) => (
-                  <div 
-                    key={equipment.id} 
-                    className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded cursor-pointer"
-                    onClick={() => toggleEquipment(equipment.id)}
-                  >
-                    <Checkbox
-                      id={`equipment-${equipment.id}`}
-                      checked={selectedEquipment.includes(equipment.id)}
-                      onCheckedChange={() => toggleEquipment(equipment.id)}
-                    />
-                    <label 
-                      htmlFor={`equipment-${equipment.id}`}
-                      className="text-sm cursor-pointer flex-1"
-                    >
-                      {equipment.navn} (SN: {equipment.serienummer})
-                    </label>
-                  </div>
-                ))
-              )}
-            </div>
-            {selectedEquipment.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {selectedEquipment.length} utstyr valgt
-              </p>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal mt-1"
+                >
+                  {selectedEquipment.length === 0 
+                    ? "Velg utstyr" 
+                    : `${selectedEquipment.length} utstyr valgt`}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border border-border" align="start">
+                <div className="max-h-48 overflow-y-auto p-2 space-y-1">
+                  {equipmentList.length === 0 ? (
+                    <p className="text-sm text-muted-foreground p-2">Ingen utstyr tilgjengelig</p>
+                  ) : (
+                    equipmentList.map((equipment) => (
+                      <div 
+                        key={equipment.id} 
+                        className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
+                        onClick={() => toggleEquipment(equipment.id)}
+                      >
+                        <Checkbox
+                          id={`equipment-${equipment.id}`}
+                          checked={selectedEquipment.includes(equipment.id)}
+                          onCheckedChange={() => toggleEquipment(equipment.id)}
+                        />
+                        <label 
+                          htmlFor={`equipment-${equipment.id}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {equipment.navn} (SN: {equipment.serienummer})
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Flight date */}
