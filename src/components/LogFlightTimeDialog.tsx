@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 
@@ -37,6 +38,12 @@ interface Personnel {
   email: string | null;
 }
 
+interface Equipment {
+  id: string;
+  navn: string;
+  serienummer: string;
+}
+
 export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
@@ -44,7 +51,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
   const [drones, setDrones] = useState<Drone[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
-  const [linkedEquipment, setLinkedEquipment] = useState<string[]>([]);
+  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
@@ -93,14 +101,22 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
       fetchDrones();
       fetchMissions();
       fetchPersonnel();
+      fetchEquipment();
     }
   }, [open, companyId]);
 
+  // Fetch mission details when a mission is selected
+  useEffect(() => {
+    if (formData.missionId) {
+      fetchMissionDetails(formData.missionId);
+    }
+  }, [formData.missionId]);
+
+  // Fetch drone links when drone is selected (but not from mission auto-fill)
   useEffect(() => {
     if (formData.droneId) {
       fetchDroneLinks(formData.droneId);
     } else {
-      setLinkedEquipment([]);
       setLinkedPersonnel([]);
     }
   }, [formData.droneId]);
@@ -135,15 +151,65 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     if (data) setPersonnel(data);
   };
 
+  const fetchEquipment = async () => {
+    const { data } = await supabase
+      .from("equipment")
+      .select("id, navn, serienummer")
+      .eq("aktiv", true)
+      .order("navn");
+    
+    if (data) setEquipmentList(data);
+  };
+
+  const fetchMissionDetails = async (missionId: string) => {
+    // Fetch mission drones
+    const { data: missionDrones } = await supabase
+      .from("mission_drones")
+      .select("drone_id")
+      .eq("mission_id", missionId);
+    
+    // Fetch mission personnel
+    const { data: missionPersonnel } = await supabase
+      .from("mission_personnel")
+      .select("profile_id")
+      .eq("mission_id", missionId);
+    
+    // Fetch mission equipment
+    const { data: missionEquipment } = await supabase
+      .from("mission_equipment")
+      .select("equipment_id")
+      .eq("mission_id", missionId);
+    
+    // Auto-fill drone if available
+    if (missionDrones && missionDrones.length > 0) {
+      setFormData(prev => ({ ...prev, droneId: missionDrones[0].drone_id }));
+    }
+    
+    // Auto-fill pilot if available
+    if (missionPersonnel && missionPersonnel.length > 0) {
+      setFormData(prev => ({ ...prev, pilotId: missionPersonnel[0].profile_id }));
+    }
+    
+    // Auto-fill equipment
+    if (missionEquipment && missionEquipment.length > 0) {
+      setSelectedEquipment(missionEquipment.map(e => e.equipment_id));
+    }
+  };
+
   const fetchDroneLinks = async (droneId: string) => {
-    // Fetch linked equipment
+    // Fetch linked equipment from drone
     const { data: equipmentData } = await supabase
       .from("drone_equipment")
       .select("equipment_id")
       .eq("drone_id", droneId);
     
-    if (equipmentData) {
-      setLinkedEquipment(equipmentData.map(e => e.equipment_id));
+    // Add drone-linked equipment to selected equipment (if not from mission)
+    if (equipmentData && !formData.missionId) {
+      const droneEquipmentIds = equipmentData.map(e => e.equipment_id);
+      setSelectedEquipment(prev => {
+        const combined = new Set([...prev, ...droneEquipmentIds]);
+        return Array.from(combined);
+      });
     }
 
     // Fetch linked personnel
@@ -155,6 +221,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
     if (personnelData) {
       setLinkedPersonnel(personnelData.map((p: any) => p.profile_id));
     }
+  };
+
+  const toggleEquipment = (equipmentId: string) => {
+    setSelectedEquipment(prev => 
+      prev.includes(equipmentId)
+        ? prev.filter(id => id !== equipmentId)
+        : [...prev, equipmentId]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,7 +285,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
       }
 
       // 3. Update equipment flight hours and create flight_log_equipment entries
-      for (const equipmentId of linkedEquipment) {
+      for (const equipmentId of selectedEquipment) {
         // Create flight log equipment entry
         await (supabase as any)
           .from("flight_log_equipment")
@@ -281,6 +355,10 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
         notes: "",
         markMissionCompleted: false,
       });
+      setSelectedEquipment([]);
+      setLinkedPersonnel([]);
+      setStartTime("");
+      setEndTime("");
       
       onOpenChange(false);
       onFlightLogged?.();
@@ -293,6 +371,31 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
   };
 
   const selectedDrone = drones.find(d => d.id === formData.droneId);
+  const selectedPilot = personnel.find(p => p.id === formData.pilotId);
+
+  // Build flight time summary
+  const buildFlightTimeSummary = () => {
+    const items: string[] = [];
+    
+    if (selectedPilot) {
+      items.push(selectedPilot.full_name || selectedPilot.email || 'Pilot');
+    }
+    
+    if (selectedDrone) {
+      items.push(selectedDrone.modell);
+    }
+    
+    if (selectedEquipment.length > 0) {
+      const equipmentNames = selectedEquipment
+        .map(id => equipmentList.find(e => e.id === id)?.navn)
+        .filter(Boolean);
+      items.push(...equipmentNames as string[]);
+    }
+    
+    return items;
+  };
+
+  const flightTimeSummary = buildFlightTimeSummary();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -305,71 +408,24 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Drone/Fly selection */}
+          {/* Mission selection - NOW AT TOP */}
           <div>
-            <Label htmlFor="drone">{terminology.vehicle} *</Label>
-            <Select 
-              value={formData.droneId} 
-              onValueChange={(value) => setFormData({ ...formData, droneId: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={terminology.selectVehicle} />
-              </SelectTrigger>
-              <SelectContent>
-                {drones.map((drone) => (
-                  <SelectItem key={drone.id} value={drone.id}>
-                    <span className="flex items-center gap-2">
-                      <Plane className="w-4 h-4" />
-                      {drone.modell} (SN: {drone.serienummer})
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-          </Select>
-          </div>
-
-          {/* Pilot selection */}
-          <div>
-            <Label htmlFor="pilot" className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              Pilot (valgfritt)
-            </Label>
-            <Select 
-              value={formData.pilotId || "none"} 
-              onValueChange={(value) => setFormData({ ...formData, pilotId: value === "none" ? "" : value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Velg pilot" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Ingen</SelectItem>
-                {personnel.map((person) => (
-                  <SelectItem key={person.id} value={person.id}>
-                    {person.full_name || person.email || 'Ukjent'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Piloten får flytiden logget i sin loggbok
-            </p>
-            {selectedDrone && (linkedEquipment.length > 0 || linkedPersonnel.length > 0) && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {linkedEquipment.length} utstyr og {linkedPersonnel.length} personell tilknyttet
-              </p>
-            )}
-          </div>
-
-          {/* Mission selection (optional) */}
-          <div>
-            <Label htmlFor="mission">Tilknytt oppdrag (valgfritt)</Label>
+            <Label htmlFor="mission">Tilknytt oppdrag</Label>
             <Select 
               value={formData.missionId || "none"} 
-              onValueChange={(value) => setFormData({ 
-                ...formData, 
-                missionId: value === "none" ? "" : value,
-                markMissionCompleted: false 
-              })}
+              onValueChange={(value) => {
+                const newMissionId = value === "none" ? "" : value;
+                setFormData({ 
+                  ...formData, 
+                  missionId: newMissionId,
+                  markMissionCompleted: false,
+                  // Clear auto-filled fields when removing mission
+                  ...(newMissionId === "" ? { droneId: "", pilotId: "" } : {})
+                });
+                if (newMissionId === "") {
+                  setSelectedEquipment([]);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Velg oppdrag" />
@@ -401,6 +457,91 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
                   }
                 />
               </div>
+            )}
+          </div>
+
+          {/* Drone/Fly selection */}
+          <div>
+            <Label htmlFor="drone">{terminology.vehicle} *</Label>
+            <Select 
+              value={formData.droneId} 
+              onValueChange={(value) => setFormData({ ...formData, droneId: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={terminology.selectVehicle} />
+              </SelectTrigger>
+              <SelectContent>
+                {drones.map((drone) => (
+                  <SelectItem key={drone.id} value={drone.id}>
+                    <span className="flex items-center gap-2">
+                      <Plane className="w-4 h-4" />
+                      {drone.modell} (SN: {drone.serienummer})
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+          </Select>
+          </div>
+
+          {/* Pilot selection */}
+          <div>
+            <Label htmlFor="pilot" className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              Pilot
+            </Label>
+            <Select 
+              value={formData.pilotId || "none"} 
+              onValueChange={(value) => setFormData({ ...formData, pilotId: value === "none" ? "" : value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Velg pilot" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Ingen</SelectItem>
+                {personnel.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name || person.email || 'Ukjent'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Equipment selection */}
+          <div>
+            <Label className="flex items-center gap-1">
+              <Package className="w-3 h-3" />
+              Utstyr
+            </Label>
+            <div className="mt-2 max-h-32 overflow-y-auto border border-border rounded-lg p-2 space-y-1">
+              {equipmentList.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-2">Ingen utstyr tilgjengelig</p>
+              ) : (
+                equipmentList.map((equipment) => (
+                  <div 
+                    key={equipment.id} 
+                    className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded cursor-pointer"
+                    onClick={() => toggleEquipment(equipment.id)}
+                  >
+                    <Checkbox
+                      id={`equipment-${equipment.id}`}
+                      checked={selectedEquipment.includes(equipment.id)}
+                      onCheckedChange={() => toggleEquipment(equipment.id)}
+                    />
+                    <label 
+                      htmlFor={`equipment-${equipment.id}`}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {equipment.navn} (SN: {equipment.serienummer})
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+            {selectedEquipment.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedEquipment.length} utstyr valgt
+              </p>
             )}
           </div>
 
@@ -563,6 +704,19 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
               rows={2}
             />
           </div>
+
+          {/* Flight time summary */}
+          {flightTimeSummary.length > 0 && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <span className="font-medium">Flytid logges på:</span>{" "}
+                  {flightTimeSummary.join(", ")}
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
