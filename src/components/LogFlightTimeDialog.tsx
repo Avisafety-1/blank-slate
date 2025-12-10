@@ -7,6 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -75,6 +85,23 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
   const [useTimeRange, setUseTimeRange] = useState(false);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  // Check if this dialog was opened from an active flight timer
+  const isFromActiveTimer = prefilledDuration !== undefined;
+
+  const handleCancel = () => {
+    if (isFromActiveTimer) {
+      setCancelConfirmOpen(true);
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  const confirmCancel = () => {
+    setCancelConfirmOpen(false);
+    onOpenChange(false);
+  };
 
   // Calculate duration from time range
   useEffect(() => {
@@ -740,7 +767,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               Avbryt
             </Button>
             <Button type="submit" disabled={isSubmitting}>
@@ -763,6 +790,24 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
           title="Velg landingssted"
         />
       </DialogContent>
+
+      {/* Cancel confirmation dialog for active flight timer */}
+      <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Avbryt logging av flytid?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Du har en pågående flytur som ikke er logget. Hvis du avbryter nå vil flytiden ikke bli lagret.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Fortsett logging</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancel} className="bg-destructive hover:bg-destructive/90">
+              Avbryt uten å lagre
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
