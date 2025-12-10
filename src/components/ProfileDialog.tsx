@@ -411,30 +411,30 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
-                <TabsTrigger value="profile" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <User className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Profil</span>
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
+                <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <User className="h-3 w-3" />
+                  <span>Profil</span>
                 </TabsTrigger>
-                <TabsTrigger value="security" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <Lock className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Sikkerhet</span>
+                <TabsTrigger value="security" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <Lock className="h-3 w-3" />
+                  <span>Sikkerhet</span>
                 </TabsTrigger>
-                <TabsTrigger value="competencies" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <Award className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Kompetanse</span>
+                <TabsTrigger value="competencies" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <Award className="h-3 w-3" />
+                  <span>Kompetanse</span>
                 </TabsTrigger>
-                <TabsTrigger value="emergency" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <Heart className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Nødkontakt</span>
+                <TabsTrigger value="emergency" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <Heart className="h-3 w-3" />
+                  <span>Nødkontakt</span>
                 </TabsTrigger>
-                <TabsTrigger value="notifications" className="text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <Bell className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Varslinger</span>
+                <TabsTrigger value="notifications" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <Bell className="h-3 w-3" />
+                  <span>Varslinger</span>
                 </TabsTrigger>
-                <TabsTrigger value="incidents" className="text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Hendelser</span>
+                <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Hendelser</span>
                   {followUpIncidents.length > 0 && (
                     <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px]">
                       {followUpIncidents.length}
