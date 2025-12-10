@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map } from "lucide-react";
+import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 
@@ -62,6 +62,31 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
 
   const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
   const [landingPickerOpen, setLandingPickerOpen] = useState(false);
+  const [useTimeRange, setUseTimeRange] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  // Calculate duration from time range
+  useEffect(() => {
+    if (useTimeRange && startTime && endTime) {
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
+      
+      const startTotalMinutes = startHours * 60 + startMinutes;
+      const endTotalMinutes = endHours * 60 + endMinutes;
+      
+      let durationMinutes = endTotalMinutes - startTotalMinutes;
+      
+      // Handle overnight flights (end time is earlier than start time)
+      if (durationMinutes < 0) {
+        durationMinutes += 24 * 60;
+      }
+      
+      if (durationMinutes > 0) {
+        setFormData(prev => ({ ...prev, flightDurationMinutes: durationMinutes }));
+      }
+    }
+  }, [useTimeRange, startTime, endTime]);
 
   useEffect(() => {
     if (open && companyId) {
@@ -445,10 +470,57 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
             </div>
           </div>
 
-          {/* Flight duration and movements */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="duration">Flytid (minutter) *</Label>
+          {/* Flight duration toggle and inputs */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1">
+                <Timer className="w-3 h-3" />
+                Flytid *
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${!useTimeRange ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Minutter
+                </span>
+                <Switch
+                  checked={useTimeRange}
+                  onCheckedChange={(checked) => {
+                    setUseTimeRange(checked);
+                    if (!checked) {
+                      setStartTime("");
+                      setEndTime("");
+                    }
+                  }}
+                />
+                <span className={`text-xs ${useTimeRange ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Klokkeslett
+                </span>
+              </div>
+            </div>
+
+            {useTimeRange ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startTime" className="text-xs text-muted-foreground">Fra</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endTime" className="text-xs text-muted-foreground">Til</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
               <Input
                 id="duration"
                 type="number"
@@ -458,23 +530,26 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged }: LogF
                 placeholder="45"
                 required
               />
-              {formData.flightDurationMinutes > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  = {(formData.flightDurationMinutes / 60).toFixed(2)} timer
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="movements">Antall bevegelser</Label>
-              <Input
-                id="movements"
-                type="number"
-                min="1"
-                value={formData.movements}
-                onChange={(e) => setFormData({ ...formData, movements: parseInt(e.target.value) || 1 })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
-            </div>
+            )}
+
+            {formData.flightDurationMinutes > 0 && (
+              <p className="text-xs text-muted-foreground">
+                = {formData.flightDurationMinutes} minutter ({(formData.flightDurationMinutes / 60).toFixed(2)} timer)
+              </p>
+            )}
+          </div>
+
+          {/* Movements */}
+          <div>
+            <Label htmlFor="movements">Antall bevegelser</Label>
+            <Input
+              id="movements"
+              type="number"
+              min="1"
+              value={formData.movements}
+              onChange={(e) => setFormData({ ...formData, movements: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
           </div>
 
           {/* Notes */}
