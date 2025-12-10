@@ -29,6 +29,7 @@ interface LogFlightTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFlightLogged?: () => void;
+  onStopTimer?: () => void;
   prefilledDuration?: number;
 }
 
@@ -56,7 +57,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefilledDuration }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +102,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
   const confirmCancel = () => {
     setCancelConfirmOpen(false);
     onOpenChange(false);
+    onStopTimer?.(); // Stop the timer when closing without saving
   };
 
   // Calculate duration from time range
@@ -796,9 +798,9 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, prefil
       <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lukke uten å lagre?</AlertDialogTitle>
+            <AlertDialogTitle>Avslutt flytur?</AlertDialogTitle>
             <AlertDialogDescription>
-              Flytiden vil ikke bli lagret, men timeren fortsetter å gå. Du kan åpne dialogen igjen via "Avslutt flytur"-knappen.
+              Velg om du vil stoppe flyturen uten å lagre, eller fortsette loggingen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
