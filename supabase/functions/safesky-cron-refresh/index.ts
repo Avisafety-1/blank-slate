@@ -182,10 +182,10 @@ Deno.serve(async (req) => {
     // Calculate center of Norway for the API call
     const centerLat = (NORWAY_BOUNDS.minLat + NORWAY_BOUNDS.maxLat) / 2;
     const centerLon = (NORWAY_BOUNDS.minLon + NORWAY_BOUNDS.maxLon) / 2;
-    // Large radius to cover Norway (approximately 1000km)
-    const radius = 1000;
+    // Max radius per SafeSky API docs is 20000 meters (20km)
+    const radius = 20000;
 
-    const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${centerLat.toFixed(4)}&lon=${centerLon.toFixed(4)}&radius=${radius}`;
+    const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${centerLat.toFixed(4)}&lng=${centerLon.toFixed(4)}&rad=${radius}`;
     
     let beaconsUpserted = 0;
     let beaconsDeleted = 0;
