@@ -439,9 +439,9 @@ export function OpenAIPMap({
           
           const icon = L.icon({
             iconUrl: droneIcon,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
-            popupAnchor: [0, -18],
+            iconSize: [54, 54],
+            iconAnchor: [27, 27],
+            popupAnchor: [0, -27],
           });
           
           const marker = L.marker([t.lat, t.lon], { icon, interactive: mode !== 'routePlanning' });
@@ -497,9 +497,9 @@ export function OpenAIPMap({
           // Use PNG drone icon for drones
           icon = L.icon({
             iconUrl: droneIcon,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-            popupAnchor: [0, -16],
+            iconSize: [48, 48],
+            iconAnchor: [24, 24],
+            popupAnchor: [0, -24],
           });
         } else if (isHelicopter) {
           // Helicopter icon as colored div with SVG
