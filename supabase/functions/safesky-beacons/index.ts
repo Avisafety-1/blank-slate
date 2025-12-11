@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { lat, lon, alt = 120 } = await req.json();
+    const { lat, lon } = await req.json();
     
     if (lat === undefined || lon === undefined) {
       console.error('Missing required parameters: lat, lon');
@@ -31,32 +31,30 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Posting UAV position and fetching nearby traffic for lat: ${lat}, lon: ${lon}, alt: ${alt}`);
-
-    // SafeSky sandbox API endpoint for UAV data with POST
-    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?return_nearby_traffic=true`;
+    // Calculate viewport: ~100km buffer around center point
+    // 1 degree latitude ≈ 111km, longitude varies with latitude
+    const latBuffer = 1.0;  // ~111km north-south
+    const lonBuffer = 2.0;  // ~111-150km east-west at Norwegian latitudes
     
-    // UAV beacon data to publish
-    const uavData = [{
-      id: "avisafe-map-viewer",
-      status: "GROUNDED",
-      altitude: alt,
-      course: 0,
-      ground_speed: 0,
-      latitude: lat,
-      longitude: lon,
-      last_update: Math.floor(Date.now() / 1000)
-    }];
+    const lat_nw = lat + latBuffer;   // North
+    const lon_nw = lon - lonBuffer;   // West
+    const lat_se = lat - latBuffer;   // South
+    const lon_se = lon + lonBuffer;   // East
+    
+    const viewport = `${lat_nw},${lon_nw},${lat_se},${lon_se}`;
+
+    console.log(`Fetching SafeSky beacons for viewport: ${viewport} (center: ${lat}, ${lon})`);
+
+    // GET /v1/beacons/ - fetch beacons without publishing anything
+    const safeskyUrl = `https://public-api.safesky.app/v1/beacons/?viewport=${viewport}`;
     
     const response = await fetch(safeskyUrl, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
         'x-api-key': safeskyApiKey,
       },
-      body: JSON.stringify(uavData),
     });
 
     if (!response.ok) {
