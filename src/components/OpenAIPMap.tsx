@@ -968,6 +968,9 @@ export function OpenAIPMap({
     
     // Store interval controls on the map for access in handleLayerToggle
     (map as any)._safeskyControls = { start: startSafeSkyInterval, stop: stopSafeSkyInterval };
+    
+    // Start SafeSky fetching immediately since layer is enabled by default
+    startSafeSkyInterval();
 
     const missionsChannel = supabase
       .channel('missions-changes')
