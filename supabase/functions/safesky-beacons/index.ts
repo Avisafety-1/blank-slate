@@ -31,18 +31,32 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching SafeSky beacons for lat: ${lat}, lon: ${lon}, alt: ${alt}`);
+    console.log(`Posting UAV position and fetching nearby traffic for lat: ${lat}, lon: ${lon}, alt: ${alt}`);
 
-    // SafeSky sandbox API endpoint for UAV data
-    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?lat=${lat}&lng=${lon}&alt=${alt}`;
+    // SafeSky sandbox API endpoint for UAV data with POST
+    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?return_nearby_traffic=true`;
+    
+    // UAV beacon data to publish
+    const uavData = [{
+      id: "avisafe-map-viewer",
+      status: "GROUNDED",
+      altitude: alt,
+      course: 0,
+      ground_speed: 0,
+      latitude: lat,
+      longitude: lon,
+      last_update: Math.floor(Date.now() / 1000)
+    }];
     
     const response = await fetch(safeskyUrl, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
         'x-api-key': safeskyApiKey,
       },
+      body: JSON.stringify(uavData),
     });
 
     if (!response.ok) {
