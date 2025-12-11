@@ -984,12 +984,14 @@ export function OpenAIPMap({
     let safeskyIntervalId: number | undefined;
     const startSafeSkyInterval = () => {
       if (!safeskyIntervalId) {
+        console.log('SafeSky: Starting interval');
         fetchSafeSkyData();
         safeskyIntervalId = window.setInterval(fetchSafeSkyData, 10000);
       }
     };
     const stopSafeSkyInterval = () => {
       if (safeskyIntervalId) {
+        console.log('SafeSky: Stopping interval');
         clearInterval(safeskyIntervalId);
         safeskyIntervalId = undefined;
         safeskyLayer.clearLayers();
@@ -1000,7 +1002,10 @@ export function OpenAIPMap({
     (map as any)._safeskyControls = { start: startSafeSkyInterval, stop: stopSafeSkyInterval };
     
     // Start SafeSky fetching immediately since layer is enabled by default
-    startSafeSkyInterval();
+    // Use setTimeout to ensure map is fully initialized
+    setTimeout(() => {
+      startSafeSkyInterval();
+    }, 500);
 
     const missionsChannel = supabase
       .channel('missions-changes')
