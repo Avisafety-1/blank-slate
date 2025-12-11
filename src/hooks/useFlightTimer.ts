@@ -218,17 +218,17 @@ export const useFlightTimer = () => {
     checkActiveFlight();
   }, [user, companyId, startGpsWatch]);
 
-  // Setup refresh interval based on publish mode
+  // Setup refresh interval for live_uav mode only
+  // Advisory mode is now handled by backend cron job (safesky-cron-refresh)
   useEffect(() => {
-    if (!state.isActive || state.publishMode === 'none') {
+    // Only run interval for live_uav mode - advisory is handled by backend cron
+    if (!state.isActive || state.publishMode !== 'live_uav') {
       return;
     }
 
-    // Refresh every 10 seconds
+    // Refresh every 10 seconds for live UAV position
     refreshIntervalRef.current = setInterval(() => {
-      if (state.publishMode === 'advisory' && state.missionId) {
-        publishAdvisory(state.missionId);
-      } else if (state.publishMode === 'live_uav' && lastPositionRef.current) {
+      if (lastPositionRef.current) {
         const { lat, lon, alt, speed, heading } = lastPositionRef.current;
         const altitudeDelta = startAltitudeRef.current !== null ? alt - startAltitudeRef.current : 0;
         
@@ -251,7 +251,7 @@ export const useFlightTimer = () => {
         refreshIntervalRef.current = null;
       }
     };
-  }, [state.isActive, state.publishMode, state.missionId, publishAdvisory, publishLiveUav]);
+  }, [state.isActive, state.publishMode, publishLiveUav]);
 
   // Update elapsed time every second when active
   useEffect(() => {

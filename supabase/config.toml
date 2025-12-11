@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.safesky-advisory]
 verify_jwt = false
+
+[functions.safesky-cron-refresh]
+verify_jwt = false
