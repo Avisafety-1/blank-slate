@@ -52,17 +52,22 @@ const Index = () => {
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   
-  const { isActive, elapsedSeconds, safeskyPublished, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, elapsedSeconds, publishMode, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
   };
 
-  const confirmStartFlight = async (missionId?: string, publishToSafesky?: boolean) => {
+  const confirmStartFlight = async (missionId?: string, selectedPublishMode?: 'none' | 'advisory' | 'live_uav') => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, publishToSafesky);
+    const success = await startFlight(missionId, selectedPublishMode || 'none');
     if (success) {
-      toast.success(publishToSafesky ? "Flytur startet og publisert til SafeSky!" : "Flytur startet!");
+      const modeMessages = {
+        none: "Flytur startet!",
+        advisory: "Flytur startet og rute publisert til SafeSky!",
+        live_uav: "Flytur startet med live GPS-posisjon til SafeSky!",
+      };
+      toast.success(modeMessages[selectedPublishMode || 'none']);
     }
   };
 
@@ -239,7 +244,7 @@ const Index = () => {
                 <span className="text-foreground font-mono text-sm">
                   Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                 </span>
-                {safeskyPublished && (
+                {publishMode !== 'none' && (
                   <Radio className="w-4 h-4 text-primary animate-pulse" />
                 )}
               </div>
@@ -323,7 +328,7 @@ const Index = () => {
                           <span className="text-foreground font-mono text-sm">
                             Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                           </span>
-                          {safeskyPublished && (
+                          {publishMode !== 'none' && (
                             <Radio className="w-4 h-4 text-primary animate-pulse" />
                           )}
                         </div>

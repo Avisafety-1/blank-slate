@@ -4,14 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const LOCAL_STORAGE_KEY = 'active_flight_start_time';
 const LOCAL_STORAGE_MISSION_KEY = 'active_flight_mission_id';
-const LOCAL_STORAGE_SAFESKY_KEY = 'active_flight_safesky_published';
+const LOCAL_STORAGE_PUBLISH_MODE_KEY = 'active_flight_publish_mode';
+
+export type PublishMode = 'none' | 'advisory' | 'live_uav';
 
 interface FlightTimerState {
   isActive: boolean;
   startTime: Date | null;
   elapsedSeconds: number;
   missionId: string | null;
-  safeskyPublished: boolean;
+  publishMode: PublishMode;
 }
 
 export const useFlightTimer = () => {
@@ -21,9 +23,11 @@ export const useFlightTimer = () => {
     startTime: null,
     elapsedSeconds: 0,
     missionId: null,
-    safeskyPublished: false,
+    publishMode: 'none',
   });
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastPositionRef = useRef<{ lat: number; lon: number; alt: number } | null>(null);
 
   // Function to publish/refresh SafeSky advisory
   const publishAdvisory = useCallback(async (missionId: string) => {
@@ -42,6 +46,23 @@ export const useFlightTimer = () => {
     }
   }, []);
 
+  // Function to publish live UAV position
+  const publishLiveUav = useCallback(async (lat: number, lon: number, alt: number) => {
+    try {
+      const { error } = await supabase.functions.invoke('safesky-advisory', {
+        body: { action: 'publish_live_uav', lat, lon, alt },
+      });
+      if (error) {
+        console.error('Error publishing live UAV position:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to publish live UAV position:', err);
+      return false;
+    }
+  }, []);
+
   // Function to end SafeSky advisory
   const endAdvisory = useCallback(async (missionId: string) => {
     try {
@@ -53,6 +74,37 @@ export const useFlightTimer = () => {
     }
   }, []);
 
+  // Start GPS watch for live UAV mode
+  const startGpsWatch = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not supported');
+      return;
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        lastPositionRef.current = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          alt: position.coords.altitude || 0,
+        };
+      },
+      (error) => {
+        console.error('GPS error:', error);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+  }, []);
+
+  // Stop GPS watch
+  const stopGpsWatch = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    lastPositionRef.current = null;
+  }, []);
+
   // Check for active flight on mount
   useEffect(() => {
     const checkActiveFlight = async () => {
@@ -61,7 +113,7 @@ export const useFlightTimer = () => {
       // First check localStorage for offline support
       const localStartTime = localStorage.getItem(LOCAL_STORAGE_KEY);
       const localMissionId = localStorage.getItem(LOCAL_STORAGE_MISSION_KEY);
-      const localSafeskyPublished = localStorage.getItem(LOCAL_STORAGE_SAFESKY_KEY) === 'true';
+      const localPublishMode = (localStorage.getItem(LOCAL_STORAGE_PUBLISH_MODE_KEY) as PublishMode) || 'none';
       
       // Then check database for cross-device sync
       const { data: dbFlight } = await supabase
@@ -72,20 +124,20 @@ export const useFlightTimer = () => {
 
       let startTime: Date | null = null;
       let missionId: string | null = null;
-      let safeskyPublished = false;
+      let publishMode: PublishMode = 'none';
 
       if (dbFlight) {
         startTime = new Date(dbFlight.start_time);
         missionId = dbFlight.mission_id || null;
-        safeskyPublished = dbFlight.safesky_published || false;
+        publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
         // Sync to localStorage
         localStorage.setItem(LOCAL_STORAGE_KEY, startTime.toISOString());
         if (missionId) localStorage.setItem(LOCAL_STORAGE_MISSION_KEY, missionId);
-        localStorage.setItem(LOCAL_STORAGE_SAFESKY_KEY, String(safeskyPublished));
+        localStorage.setItem(LOCAL_STORAGE_PUBLISH_MODE_KEY, publishMode);
       } else if (localStartTime) {
         startTime = new Date(localStartTime);
         missionId = localMissionId || null;
-        safeskyPublished = localSafeskyPublished;
+        publishMode = localPublishMode;
         // Sync to database if not there
         if (companyId) {
           await supabase.from('active_flights').insert({
@@ -93,7 +145,7 @@ export const useFlightTimer = () => {
             company_id: companyId,
             start_time: startTime.toISOString(),
             mission_id: missionId,
-            safesky_published: safeskyPublished,
+            publish_mode: publishMode,
           });
         }
       }
@@ -105,32 +157,42 @@ export const useFlightTimer = () => {
           startTime,
           elapsedSeconds: elapsed,
           missionId,
-          safeskyPublished,
+          publishMode,
         });
+
+        // Restart GPS watch if in live_uav mode
+        if (publishMode === 'live_uav') {
+          startGpsWatch();
+        }
       }
     };
 
     checkActiveFlight();
-  }, [user, companyId]);
+  }, [user, companyId, startGpsWatch]);
 
-  // Setup SafeSky refresh interval when active and published
+  // Setup refresh interval based on publish mode
   useEffect(() => {
-    if (state.isActive && state.safeskyPublished && state.missionId) {
-      // Refresh every 10 seconds for testing
-      refreshIntervalRef.current = setInterval(() => {
-        if (state.missionId) {
-          publishAdvisory(state.missionId);
-        }
-      }, 10000);
-
-      return () => {
-        if (refreshIntervalRef.current) {
-          clearInterval(refreshIntervalRef.current);
-          refreshIntervalRef.current = null;
-        }
-      };
+    if (!state.isActive || state.publishMode === 'none') {
+      return;
     }
-  }, [state.isActive, state.safeskyPublished, state.missionId, publishAdvisory]);
+
+    // Refresh every 10 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      if (state.publishMode === 'advisory' && state.missionId) {
+        publishAdvisory(state.missionId);
+      } else if (state.publishMode === 'live_uav' && lastPositionRef.current) {
+        const { lat, lon, alt } = lastPositionRef.current;
+        publishLiveUav(lat, lon, alt);
+      }
+    }, 10000);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [state.isActive, state.publishMode, state.missionId, publishAdvisory, publishLiveUav]);
 
   // Update elapsed time every second when active
   useEffect(() => {
@@ -144,24 +206,32 @@ export const useFlightTimer = () => {
     return () => clearInterval(interval);
   }, [state.isActive, state.startTime]);
 
-  const startFlight = useCallback(async (missionId?: string, publishToSafesky?: boolean) => {
+  const startFlight = useCallback(async (missionId?: string, publishMode: PublishMode = 'none') => {
     if (!user || !companyId) return false;
 
     const startTime = new Date();
-    const shouldPublish = publishToSafesky && missionId;
 
-    // Publish to SafeSky if requested
-    if (shouldPublish) {
+    // Initialize based on publish mode
+    if (publishMode === 'advisory' && missionId) {
       const published = await publishAdvisory(missionId);
       if (!published) {
-        console.warn('Failed to publish to SafeSky, continuing without');
+        console.warn('Failed to publish advisory, continuing without');
       }
+    } else if (publishMode === 'live_uav') {
+      startGpsWatch();
+      // Initial publish after brief delay for GPS to acquire
+      setTimeout(async () => {
+        if (lastPositionRef.current) {
+          const { lat, lon, alt } = lastPositionRef.current;
+          await publishLiveUav(lat, lon, alt);
+        }
+      }, 2000);
     }
 
     // Save to localStorage for offline support
     localStorage.setItem(LOCAL_STORAGE_KEY, startTime.toISOString());
     if (missionId) localStorage.setItem(LOCAL_STORAGE_MISSION_KEY, missionId);
-    localStorage.setItem(LOCAL_STORAGE_SAFESKY_KEY, String(shouldPublish || false));
+    localStorage.setItem(LOCAL_STORAGE_PUBLISH_MODE_KEY, publishMode);
 
     // Save to database for cross-device sync
     const { error } = await supabase.from('active_flights').insert([{
@@ -169,7 +239,7 @@ export const useFlightTimer = () => {
       company_id: companyId,
       start_time: startTime.toISOString(),
       mission_id: missionId || null,
-      safesky_published: Boolean(shouldPublish),
+      publish_mode: publishMode,
     }]);
 
     if (error) {
@@ -181,27 +251,31 @@ export const useFlightTimer = () => {
       startTime,
       elapsedSeconds: 0,
       missionId: missionId || null,
-      safeskyPublished: Boolean(shouldPublish),
+      publishMode,
     });
 
     return true;
-  }, [user, companyId, publishAdvisory]);
+  }, [user, companyId, publishAdvisory, publishLiveUav, startGpsWatch]);
 
   const endFlight = useCallback(async (): Promise<number | null> => {
     if (!state.isActive || !state.startTime) {
       return null;
     }
 
-    // Stop SafeSky refresh interval
+    // Stop refresh interval
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
 
+    // Stop GPS watch if active
+    stopGpsWatch();
+
     // End SafeSky advisory if it was published
-    if (state.safeskyPublished && state.missionId) {
+    if (state.publishMode === 'advisory' && state.missionId) {
       await endAdvisory(state.missionId);
     }
+    // Note: live_uav beacons expire automatically after 60s, no explicit delete needed
 
     const elapsedSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
     const elapsedMinutes = Math.ceil(elapsedSeconds / 60);
@@ -209,7 +283,7 @@ export const useFlightTimer = () => {
     // Clear localStorage
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(LOCAL_STORAGE_MISSION_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_SAFESKY_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_PUBLISH_MODE_KEY);
 
     // Clear database
     if (user) {
@@ -224,11 +298,11 @@ export const useFlightTimer = () => {
       startTime: null,
       elapsedSeconds: 0,
       missionId: null,
-      safeskyPublished: false,
+      publishMode: 'none',
     });
 
     return elapsedMinutes;
-  }, [state.isActive, state.startTime, state.safeskyPublished, state.missionId, user, endAdvisory]);
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -247,7 +321,7 @@ export const useFlightTimer = () => {
     isActive: state.isActive,
     elapsedSeconds: state.elapsedSeconds,
     missionId: state.missionId,
-    safeskyPublished: state.safeskyPublished,
+    publishMode: state.publishMode,
     startFlight,
     endFlight,
     formatElapsedTime,
