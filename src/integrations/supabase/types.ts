@@ -1892,6 +1892,45 @@ export type Database = {
         }
         Relationships: []
       }
+      safesky_beacons: {
+        Row: {
+          altitude: number | null
+          beacon_type: string | null
+          callsign: string | null
+          course: number | null
+          ground_speed: number | null
+          id: string
+          latitude: number
+          longitude: number
+          updated_at: string | null
+          vertical_speed: number | null
+        }
+        Insert: {
+          altitude?: number | null
+          beacon_type?: string | null
+          callsign?: string | null
+          course?: number | null
+          ground_speed?: number | null
+          id: string
+          latitude: number
+          longitude: number
+          updated_at?: string | null
+          vertical_speed?: number | null
+        }
+        Update: {
+          altitude?: number | null
+          beacon_type?: string | null
+          callsign?: string | null
+          course?: number | null
+          ground_speed?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          updated_at?: string | null
+          vertical_speed?: number | null
+        }
+        Relationships: []
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
