@@ -29,7 +29,7 @@ export const useFlightTimer = () => {
   const publishAdvisory = useCallback(async (missionId: string) => {
     try {
       const { error } = await supabase.functions.invoke('safesky-advisory', {
-        body: { action: 'publish', missionId: missionId },
+        body: { action: 'publish_advisory', missionId: missionId },
       });
       if (error) {
         console.error('Error publishing SafeSky advisory:', error);
@@ -46,7 +46,7 @@ export const useFlightTimer = () => {
   const endAdvisory = useCallback(async (missionId: string) => {
     try {
       await supabase.functions.invoke('safesky-advisory', {
-        body: { action: 'delete', missionId: missionId },
+        body: { action: 'delete_advisory', missionId: missionId },
       });
     } catch (err) {
       console.error('Failed to end SafeSky advisory:', err);
@@ -116,12 +116,12 @@ export const useFlightTimer = () => {
   // Setup SafeSky refresh interval when active and published
   useEffect(() => {
     if (state.isActive && state.safeskyPublished && state.missionId) {
-      // Refresh every 55 seconds (SafeSky requires refresh within 60s)
+      // Refresh every 10 seconds for testing
       refreshIntervalRef.current = setInterval(() => {
         if (state.missionId) {
           publishAdvisory(state.missionId);
         }
-      }, 55000);
+      }, 10000);
 
       return () => {
         if (refreshIntervalRef.current) {
