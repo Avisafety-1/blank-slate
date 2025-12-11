@@ -15,11 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Radio, MapPin, AlertCircle } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation } from 'lucide-react';
+
+type PublishMode = 'none' | 'advisory' | 'live_uav';
 
 interface Mission {
   id: string;
@@ -31,14 +33,14 @@ interface Mission {
 interface StartFlightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStartFlight: (missionId?: string, publishToSafesky?: boolean) => void;
+  onStartFlight: (missionId?: string, publishMode?: PublishMode) => void;
 }
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
   const { companyId } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
-  const [publishToSafesky, setPublishToSafesky] = useState(true);
+  const [publishMode, setPublishMode] = useState<PublishMode>('none');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   useEffect(() => {
     if (!open) {
       setSelectedMissionId('');
-      setPublishToSafesky(true);
+      setPublishMode('none');
     }
   }, [open]);
 
@@ -77,14 +79,18 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates) &&
     (selectedMission.route as { coordinates: unknown[] }).coordinates.length > 0;
 
+  // Reset publishMode to 'none' if advisory was selected but no route available
+  useEffect(() => {
+    if (publishMode === 'advisory' && !hasRoute) {
+      setPublishMode('none');
+    }
+  }, [hasRoute, publishMode]);
+
   const handleStartFlight = async () => {
     setLoading(true);
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
-      await onStartFlight(
-        missionId,
-        publishToSafesky && hasRoute ? true : false
-      );
+      await onStartFlight(missionId, publishMode);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -97,7 +103,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         <DialogHeader>
           <DialogTitle>Start flytur</DialogTitle>
           <DialogDescription>
-            Velg oppdrag og publiser til SafeSky for økt sikkerhet.
+            Velg oppdrag og hvordan du vil dele posisjonen din med SafeSky.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,35 +135,69 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Select>
           </div>
 
-          <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
-            <div className="flex items-center gap-3">
-              <Radio className="h-5 w-5 text-primary" />
-              <div className="space-y-0.5">
-                <Label htmlFor="safesky-toggle" className="cursor-pointer">
-                  Publiser til SafeSky
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {hasRoute 
-                    ? 'Din planlagte rute blir synlig for andre luftfartsaktører'
-                    : selectedMissionId 
-                      ? 'Oppdraget har ingen planlagt rute'
-                      : 'Velg et oppdrag med rute for å publisere'}
-                </p>
+          <div className="space-y-3">
+            <Label>SafeSky publisering</Label>
+            <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
+              <div className="flex items-start space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
+                <div className="space-y-0.5">
+                  <Label htmlFor="mode-none" className="cursor-pointer font-medium">
+                    Av
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ingen deling med andre luftfartsaktører
+                  </p>
+                </div>
               </div>
-            </div>
-            <Switch
-              id="safesky-toggle"
-              checked={publishToSafesky}
-              onCheckedChange={setPublishToSafesky}
-              disabled={!hasRoute}
-            />
+
+              <div className={`flex items-start space-x-3 rounded-lg border p-3 ${!hasRoute ? 'opacity-50' : ''}`}>
+                <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasRoute} className="mt-0.5" />
+                <div className="flex-1 space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Radio className="h-4 w-4 text-primary" />
+                    <Label htmlFor="mode-advisory" className={`cursor-pointer font-medium ${!hasRoute ? 'cursor-not-allowed' : ''}`}>
+                      Advisory (rute)
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {hasRoute 
+                      ? 'Publiserer planlagt ruteområde som SafeSky-advisory'
+                      : 'Krever oppdrag med planlagt rute'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="live_uav" id="mode-live" className="mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-green-500" />
+                    <Label htmlFor="mode-live" className="cursor-pointer font-medium">
+                      Live posisjon
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deler din GPS-posisjon kontinuerlig med SafeSky
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
           </div>
 
-          {publishToSafesky && hasRoute && (
+          {publishMode === 'advisory' && hasRoute && (
             <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
               <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
               <p className="text-muted-foreground">
-                SafeSky-advisoryen oppdateres automatisk hvert minutt og avsluttes når du avslutter flyturen.
+                SafeSky-advisoryen oppdateres hvert 10. sekund og avsluttes når du avslutter flyturen.
+              </p>
+            </div>
+          )}
+
+          {publishMode === 'live_uav' && (
+            <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
+              <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
+              <p className="text-muted-foreground">
+                Din GPS-posisjon oppdateres hvert 10. sekund til SafeSky. Krever tilgang til enhetens posisjon.
               </p>
             </div>
           )}

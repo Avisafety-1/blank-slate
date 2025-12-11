@@ -57,9 +57,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, missionId } = await req.json();
+    const body = await req.json();
+    const { action, missionId, lat, lon, alt } = body;
     
-    console.log(`SafeSky: action=${action}, missionId=${missionId}`);
+    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lon=${lon}, alt=${alt}`);
 
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
     if (!SAFESKY_API_KEY) {
@@ -73,6 +74,63 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle live UAV position publishing (from GPS)
+    if (action === 'publish_live_uav') {
+      if (lat === undefined || lon === undefined) {
+        return new Response(
+          JSON.stringify({ error: 'lat and lon are required for live UAV publishing' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create UAV beacon payload with provided coordinates
+      const beaconId = `AVS_LIVE_${Date.now().toString(36)}`;
+      const payload = [
+        {
+          id: beaconId,
+          altitude: alt || 50, // Default 50m if not provided
+          latitude: lat,
+          longitude: lon
+        }
+      ];
+
+      console.log('Sending live UAV beacon:', JSON.stringify(payload));
+
+      const response = await fetch(SAFESKY_UAV_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': SAFESKY_API_KEY,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const responseText = await response.text();
+      console.log(`SafeSky live UAV response: ${response.status} - ${responseText}`);
+
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'SafeSky API error', 
+            status: response.status,
+            details: responseText 
+          }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action,
+          beaconId,
+          position: { lat, lon, alt: alt || 50 },
+          message: 'Live UAV position published successfully'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Handle Advisory publishing (GeoJSON polygon for planned operations)
     if (action === 'publish_advisory' || action === 'refresh_advisory') {
@@ -170,7 +228,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Handle UAV beacon publishing (single point for live position)
+    // Handle UAV beacon publishing (single point for live position from mission)
     if (action === 'publish' || action === 'refresh') {
       if (!missionId) {
         return new Response(
@@ -271,7 +329,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use: publish, refresh, publish_advisory, refresh_advisory, delete, or delete_advisory' }),
+      JSON.stringify({ error: 'Invalid action. Use: publish, refresh, publish_advisory, refresh_advisory, publish_live_uav, delete, or delete_advisory' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
