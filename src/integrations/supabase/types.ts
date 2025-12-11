@@ -20,7 +20,9 @@ export type Database = {
           created_at: string
           drone_id: string | null
           id: string
+          mission_id: string | null
           profile_id: string
+          safesky_published: boolean | null
           start_time: string
         }
         Insert: {
@@ -28,7 +30,9 @@ export type Database = {
           created_at?: string
           drone_id?: string | null
           id?: string
+          mission_id?: string | null
           profile_id: string
+          safesky_published?: boolean | null
           start_time?: string
         }
         Update: {
@@ -36,7 +40,9 @@ export type Database = {
           created_at?: string
           drone_id?: string | null
           id?: string
+          mission_id?: string | null
           profile_id?: string
+          safesky_published?: boolean | null
           start_time?: string
         }
         Relationships: [
@@ -52,6 +58,13 @@ export type Database = {
             columns: ["drone_id"]
             isOneToOne: false
             referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_flights_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
             referencedColumns: ["id"]
           },
           {
