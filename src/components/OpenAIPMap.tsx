@@ -396,15 +396,15 @@ export function OpenAIPMap({
       icon: "mapPin",
     });
 
-    // SafeSky layer
+    // SafeSky layer - disabled until production API access is available
     const safeskyLayer = L.layerGroup();
-    layerConfigs.push({
-      id: "safesky",
-      name: "SafeSky (live)",
-      layer: safeskyLayer,
-      enabled: false,
-      icon: "radar",
-    });
+    // layerConfigs.push({
+    //   id: "safesky",
+    //   name: "SafeSky (live)",
+    //   layer: safeskyLayer,
+    //   enabled: false,
+    //   icon: "radar",
+    // });
 
     // Route layer for route planning
     const routeLayer = L.layerGroup().addTo(map);
