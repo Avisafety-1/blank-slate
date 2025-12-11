@@ -95,22 +95,22 @@ Deno.serve(async (req) => {
         altDelta > 5 ||                 // More than 5m above start altitude
         Math.abs(vSpeed) > 0.5;         // Climbing or descending > 0.5 m/s
       
-      const status = isAirborne ? "AIRBORNE" : "ON_GROUND";
+      const status = isAirborne ? "AIRBORNE" : "GROUNDED";
       
-      console.log(`Flight status: ${status} (speed=${groundSpeed.toFixed(1)} m/s, altDelta=${altDelta.toFixed(1)}m, vSpeed=${vSpeed.toFixed(2)} m/s)`);
+      console.log(`Flight status: ${status} (speed=${Math.round(groundSpeed)} m/s, altDelta=${altDelta.toFixed(1)}m, vSpeed=${vSpeed.toFixed(2)} m/s)`);
 
-      // Create UAV beacon payload with status and dynamics
+      // Create UAV beacon payload with status and dynamics (all numeric values must be integers)
       const beaconId = `AVS_LIVE_${Date.now().toString(36)}`;
       const payload = [
         {
           id: beaconId,
           latitude: lat,
           longitude: lon,
-          altitude: alt || 50,
+          altitude: Math.round(alt || 50),
           status: status,
           last_update: Math.floor(Date.now() / 1000),
-          ground_speed: groundSpeed,
-          course: heading || 0,
+          ground_speed: Math.round(groundSpeed),
+          course: Math.round(heading || 0),
         }
       ];
 
