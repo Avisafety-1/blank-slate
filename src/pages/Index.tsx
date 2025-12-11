@@ -8,7 +8,7 @@ import { MissionsSection } from "@/components/dashboard/MissionsSection";
 import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
-import { Shield, Clock, Play, Square } from "lucide-react";
+import { Shield, Clock, Play, Square, Radio } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { Header } from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -28,16 +28,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useFlightTimer } from "@/hooks/useFlightTimer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { StartFlightDialog } from "@/components/StartFlightDialog";
 
 const STORAGE_KEY = "dashboard-layout";
 
@@ -61,17 +52,17 @@ const Index = () => {
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   
-  const { isActive, elapsedSeconds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, elapsedSeconds, safeskyPublished, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
   };
 
-  const confirmStartFlight = async () => {
+  const confirmStartFlight = async (missionId?: string, publishToSafesky?: boolean) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight();
+    const success = await startFlight(missionId, publishToSafesky);
     if (success) {
-      toast.success("Flytur startet!");
+      toast.success(publishToSafesky ? "Flytur startet og publisert til SafeSky!" : "Flytur startet!");
     }
   };
 
@@ -248,6 +239,9 @@ const Index = () => {
                 <span className="text-foreground font-mono text-sm">
                   Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                 </span>
+                {safeskyPublished && (
+                  <Radio className="w-4 h-4 text-primary animate-pulse" />
+                )}
               </div>
             )}
             
@@ -329,6 +323,9 @@ const Index = () => {
                           <span className="text-foreground font-mono text-sm">
                             Pågående flytur: {formatElapsedTime(elapsedSeconds)}
                           </span>
+                          {safeskyPublished && (
+                            <Radio className="w-4 h-4 text-primary animate-pulse" />
+                          )}
                         </div>
                       )}
                       
@@ -402,23 +399,12 @@ const Index = () => {
         }}
       />
 
-      {/* Start Flight Confirmation Dialog */}
-      <AlertDialog open={startFlightConfirmOpen} onOpenChange={setStartFlightConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Start logging av flytid</AlertDialogTitle>
-            <AlertDialogDescription>
-              Er du sikker på at du vil starte en flytur? Timeren vil fortsette selv om du lukker appen eller skrur av telefonen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStartFlight} className="bg-green-600 hover:bg-green-700">
-              Start flytur
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Start Flight Dialog */}
+      <StartFlightDialog 
+        open={startFlightConfirmOpen} 
+        onOpenChange={setStartFlightConfirmOpen}
+        onStartFlight={confirmStartFlight}
+      />
     </div>
   );
 };
