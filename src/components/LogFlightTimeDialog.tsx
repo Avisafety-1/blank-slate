@@ -134,14 +134,23 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       fetchPersonnel();
       fetchEquipment();
       
-      // Set default values when dialog opens
-      setFormData(prev => ({
-        ...prev,
-        // Always set logged-in user as default pilot
-        pilotId: user?.id || prev.pilotId,
-        // Set prefilled duration if provided (from timer)
-        flightDurationMinutes: prefilledDuration !== undefined ? prefilledDuration : prev.flightDurationMinutes,
-      }));
+      // Reset form completely when dialog opens, with user as default pilot
+      setFormData({
+        droneId: "",
+        missionId: "",
+        pilotId: user?.id || "",
+        departureLocation: "",
+        landingLocation: "",
+        flightDurationMinutes: prefilledDuration !== undefined ? prefilledDuration : 0,
+        movements: 1,
+        flightDate: new Date().toISOString().split('T')[0],
+        notes: "",
+        markMissionCompleted: false,
+      });
+      setSelectedEquipment([]);
+      setLinkedPersonnel([]);
+      setStartTime("");
+      setEndTime("");
     }
   }, [open, companyId, user, prefilledDuration]);
 
