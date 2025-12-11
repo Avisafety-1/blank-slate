@@ -397,12 +397,12 @@ export function OpenAIPMap({
     });
 
     // SafeSky layer
-    const safeskyLayer = L.layerGroup();
+    const safeskyLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "safesky",
       name: "SafeSky (live)",
       layer: safeskyLayer,
-      enabled: false,
+      enabled: true,
       icon: "radar",
     });
 
