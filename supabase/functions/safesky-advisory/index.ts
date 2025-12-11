@@ -58,9 +58,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, missionId, lat, lon, alt } = body;
+    const { action, missionId, lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed } = body;
     
-    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lon=${lon}, alt=${alt}`);
+    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lon=${lon}, alt=${alt}, speed=${speed}, altDelta=${altitudeDelta}, vSpeed=${verticalSpeed}`);
 
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
     if (!SAFESKY_API_KEY) {
@@ -84,14 +84,33 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Create UAV beacon payload with provided coordinates
+      // Determine AIRBORNE vs ON_GROUND status based on flight dynamics
+      // AIRBORNE if: speed > 2 m/s, OR altitude delta > 5m, OR vertical speed > 0.5 m/s
+      const groundSpeed = speed || 0;
+      const altDelta = altitudeDelta || 0;
+      const vSpeed = verticalSpeed || 0;
+      
+      const isAirborne = 
+        groundSpeed > 2 ||              // Moving faster than 2 m/s (walking speed)
+        altDelta > 5 ||                 // More than 5m above start altitude
+        Math.abs(vSpeed) > 0.5;         // Climbing or descending > 0.5 m/s
+      
+      const status = isAirborne ? "AIRBORNE" : "ON_GROUND";
+      
+      console.log(`Flight status: ${status} (speed=${groundSpeed.toFixed(1)} m/s, altDelta=${altDelta.toFixed(1)}m, vSpeed=${vSpeed.toFixed(2)} m/s)`);
+
+      // Create UAV beacon payload with status and dynamics
       const beaconId = `AVS_LIVE_${Date.now().toString(36)}`;
       const payload = [
         {
           id: beaconId,
-          altitude: alt || 50, // Default 50m if not provided
           latitude: lat,
-          longitude: lon
+          longitude: lon,
+          altitude: alt || 50,
+          status: status,
+          last_update: Math.floor(Date.now() / 1000),
+          ground_speed: groundSpeed,
+          course: heading || 0,
         }
       ];
 
@@ -125,8 +144,10 @@ Deno.serve(async (req) => {
           success: true, 
           action,
           beaconId,
+          status,
           position: { lat, lon, alt: alt || 50 },
-          message: 'Live UAV position published successfully'
+          dynamics: { speed: groundSpeed, altitudeDelta: altDelta, verticalSpeed: vSpeed },
+          message: `Live UAV position published as ${status}`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

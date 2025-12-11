@@ -27,7 +27,15 @@ export const useFlightTimer = () => {
   });
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchIdRef = useRef<number | null>(null);
-  const lastPositionRef = useRef<{ lat: number; lon: number; alt: number } | null>(null);
+  const lastPositionRef = useRef<{ 
+    lat: number; 
+    lon: number; 
+    alt: number;
+    speed: number;
+    heading: number;
+  } | null>(null);
+  const startAltitudeRef = useRef<number | null>(null);
+  const prevPositionRef = useRef<{ alt: number; timestamp: number } | null>(null);
 
   // Function to publish/refresh SafeSky advisory
   const publishAdvisory = useCallback(async (missionId: string) => {
@@ -46,11 +54,29 @@ export const useFlightTimer = () => {
     }
   }, []);
 
-  // Function to publish live UAV position
-  const publishLiveUav = useCallback(async (lat: number, lon: number, alt: number) => {
+  // Function to publish live UAV position with flight dynamics
+  const publishLiveUav = useCallback(async (
+    lat: number, 
+    lon: number, 
+    alt: number,
+    speed: number,
+    heading: number,
+    altitudeDelta: number,
+    verticalSpeed: number
+  ) => {
+    console.log('Publishing live UAV:', { lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed });
     try {
       const { error } = await supabase.functions.invoke('safesky-advisory', {
-        body: { action: 'publish_live_uav', lat, lon, alt },
+        body: { 
+          action: 'publish_live_uav', 
+          lat, 
+          lon, 
+          alt,
+          speed,
+          heading,
+          altitudeDelta,
+          verticalSpeed
+        },
       });
       if (error) {
         console.error('Error publishing live UAV position:', error);
@@ -76,23 +102,43 @@ export const useFlightTimer = () => {
 
   // Start GPS watch for live UAV mode
   const startGpsWatch = useCallback(() => {
+    // Set initial fallback position (will be updated by GPS if available)
+    lastPositionRef.current = { lat: 63.43, lon: 10.39, alt: 50, speed: 0, heading: 0 };
+    startAltitudeRef.current = null;
+    prevPositionRef.current = null;
+
     if (!navigator.geolocation) {
-      console.warn('Geolocation not supported');
+      console.warn('Geolocation not supported, using fallback position');
       return;
     }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
+        const now = Date.now();
+        const newAlt = position.coords.altitude || 50;
+        
+        // Set start altitude on first GPS fix
+        if (startAltitudeRef.current === null) {
+          startAltitudeRef.current = newAlt;
+          console.log('Start altitude set:', newAlt);
+        }
+
         lastPositionRef.current = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
-          alt: position.coords.altitude || 0,
+          alt: newAlt,
+          speed: position.coords.speed || 0,
+          heading: position.coords.heading || 0,
         };
+
+        // Update previous position for vertical speed calculation
+        prevPositionRef.current = { alt: newAlt, timestamp: now };
       },
       (error) => {
-        console.error('GPS error:', error);
+        console.error('GPS error, using fallback position:', error);
+        // Fallback is already set, keep using it
       },
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      { enableHighAccuracy: true, maximumAge: 3000 }
     );
   }, []);
 
@@ -103,6 +149,8 @@ export const useFlightTimer = () => {
       watchIdRef.current = null;
     }
     lastPositionRef.current = null;
+    startAltitudeRef.current = null;
+    prevPositionRef.current = null;
   }, []);
 
   // Check for active flight on mount
@@ -181,8 +229,19 @@ export const useFlightTimer = () => {
       if (state.publishMode === 'advisory' && state.missionId) {
         publishAdvisory(state.missionId);
       } else if (state.publishMode === 'live_uav' && lastPositionRef.current) {
-        const { lat, lon, alt } = lastPositionRef.current;
-        publishLiveUav(lat, lon, alt);
+        const { lat, lon, alt, speed, heading } = lastPositionRef.current;
+        const altitudeDelta = startAltitudeRef.current !== null ? alt - startAltitudeRef.current : 0;
+        
+        // Calculate vertical speed from previous position
+        let verticalSpeed = 0;
+        if (prevPositionRef.current) {
+          const timeDiff = (Date.now() - prevPositionRef.current.timestamp) / 1000;
+          if (timeDiff > 0 && timeDiff < 30) {
+            verticalSpeed = (alt - prevPositionRef.current.alt) / timeDiff;
+          }
+        }
+        
+        publishLiveUav(lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed);
       }
     }, 10000);
 
@@ -222,8 +281,9 @@ export const useFlightTimer = () => {
       // Initial publish after brief delay for GPS to acquire
       setTimeout(async () => {
         if (lastPositionRef.current) {
-          const { lat, lon, alt } = lastPositionRef.current;
-          await publishLiveUav(lat, lon, alt);
+          const { lat, lon, alt, speed, heading } = lastPositionRef.current;
+          // Initial publish - no altitude delta or vertical speed yet
+          await publishLiveUav(lat, lon, alt, speed, heading, 0, 0);
         }
       }, 2000);
     }
