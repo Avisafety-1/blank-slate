@@ -31,22 +31,15 @@ serve(async (req) => {
       );
     }
 
-    // Calculate viewport: ~100km buffer around center point
-    // 1 degree latitude ≈ 111km, longitude varies with latitude
-    const latBuffer = 1.0;  // ~111km north-south
-    const lonBuffer = 2.0;  // ~111-150km east-west at Norwegian latitudes
-    
-    const lat_nw = lat + latBuffer;   // North
-    const lon_nw = lon - lonBuffer;   // West
-    const lat_se = lat - latBuffer;   // South
-    const lon_se = lon + lonBuffer;   // East
-    
-    const viewport = `${lat_nw},${lon_nw},${lat_se},${lon_se}`;
+    // Truncate to 4 decimal precision as required by SafeSky API
+    const latTrunc = lat.toFixed(4);
+    const lngTrunc = lon.toFixed(4);
+    const radius = 20000; // Max radius 20km
 
-    console.log(`Fetching SafeSky beacons for viewport: ${viewport} (center: ${lat}, ${lon})`);
+    console.log(`Fetching SafeSky UAVs at lat=${latTrunc}, lng=${lngTrunc}, rad=${radius}`);
 
-    // GET /v1/beacons - fetch beacons without publishing anything
-    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/beacons?viewport=${viewport}`;
+    // GET /v1/uav - fetch nearby aircraft
+    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?lat=${latTrunc}&lng=${lngTrunc}&rad=${radius}`;
     
     const response = await fetch(safeskyUrl, {
       method: 'GET',
@@ -67,7 +60,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log(`SafeSky returned ${Array.isArray(data) ? data.length : 0} beacons`);
+    console.log(`SafeSky returned ${Array.isArray(data) ? data.length : 0} aircraft`);
 
     return new Response(
       JSON.stringify(data),
