@@ -45,8 +45,8 @@ serve(async (req) => {
 
     console.log(`Fetching SafeSky beacons for viewport: ${viewport} (center: ${lat}, ${lon})`);
 
-    // GET /v1/beacons/ - fetch beacons without publishing anything
-    const safeskyUrl = `https://sandbox-live.safesky.app/v1/beacons?viewport=${viewport}`;
+    // GET /v1/beacons - fetch beacons without publishing anything
+    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/beacons?viewport=${viewport}`;
     
     const response = await fetch(safeskyUrl, {
       method: 'GET',
