@@ -22,16 +22,26 @@ serve(async (req) => {
       );
     }
 
+    const safeskyApiKey = Deno.env.get('SAFESKY_API_KEY');
+    if (!safeskyApiKey) {
+      console.error('SAFESKY_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'SafeSky API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`Fetching SafeSky beacons for lat: ${lat}, lon: ${lon}, alt: ${alt}`);
 
-    // SafeSky public API endpoint
-    const safeskyUrl = `https://public-api.safesky.app/v1/beacons?lat=${lat}&lng=${lon}&alt=${alt}`;
+    // SafeSky sandbox API endpoint for UAV data
+    const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?lat=${lat}&lng=${lon}&alt=${alt}`;
     
     const response = await fetch(safeskyUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
+        'x-api-key': safeskyApiKey,
       },
     });
 
