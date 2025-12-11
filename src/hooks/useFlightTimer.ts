@@ -29,7 +29,7 @@ export const useFlightTimer = () => {
   const publishAdvisory = useCallback(async (missionId: string) => {
     try {
       const { error } = await supabase.functions.invoke('safesky-advisory', {
-        body: { action: 'publish', mission_id: missionId },
+        body: { action: 'publish', missionId: missionId },
       });
       if (error) {
         console.error('Error publishing SafeSky advisory:', error);
@@ -46,7 +46,7 @@ export const useFlightTimer = () => {
   const endAdvisory = useCallback(async (missionId: string) => {
     try {
       await supabase.functions.invoke('safesky-advisory', {
-        body: { action: 'delete', mission_id: missionId },
+        body: { action: 'delete', missionId: missionId },
       });
     } catch (err) {
       console.error('Failed to end SafeSky advisory:', err);
