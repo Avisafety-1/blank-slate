@@ -8,6 +8,7 @@ import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
 import { CloudSun } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
+import droneIcon from "@/assets/drone-icon.png";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
@@ -436,33 +437,11 @@ export function OpenAIPMap({
         latestByDrone.forEach((t, droneId) => {
           if (!t.lat || !t.lon) return;
           
-          const icon = L.divIcon({
-            className: '',
-            html: `<div style="
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #10b981;
-              border: 2px solid white;
-              border-radius: 50%;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            ">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-                <circle cx="12" cy="12" r="3"/>
-                <line x1="12" y1="9" x2="12" y2="3" stroke-width="2"/>
-                <line x1="12" y1="15" x2="12" y2="21" stroke-width="2"/>
-                <line x1="9" y1="12" x2="3" y2="12" stroke-width="2"/>
-                <line x1="15" y1="12" x2="21" y2="12" stroke-width="2"/>
-                <circle cx="12" cy="3" r="2"/>
-                <circle cx="12" cy="21" r="2"/>
-                <circle cx="3" cy="12" r="2"/>
-                <circle cx="21" cy="12" r="2"/>
-              </svg>
-            </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
+          const icon = L.icon({
+            iconUrl: droneIcon,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -18],
           });
           
           const marker = L.marker([t.lat, t.lon], { icon, interactive: mode !== 'routePlanning' });
@@ -512,54 +491,51 @@ export function OpenAIPMap({
         const isDrone = beaconType.includes('drone') || beaconType.includes('uav') || beaconType === '8';
         const isHelicopter = beaconType.includes('helicopter') || beaconType.includes('heli') || beaconType === '2';
         
-        let svgIcon = '';
+        // Use different icon based on beacon type
+        let icon;
         if (isDrone) {
-          // Drone/quadcopter icon
-          svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5">
-            <circle cx="5" cy="5" r="2.5"/>
-            <circle cx="19" cy="5" r="2.5"/>
-            <circle cx="5" cy="19" r="2.5"/>
-            <circle cx="19" cy="19" r="2.5"/>
-            <line x1="5" y1="5" x2="12" y2="12" stroke="white" stroke-width="2"/>
-            <line x1="19" y1="5" x2="12" y2="12" stroke="white" stroke-width="2"/>
-            <line x1="5" y1="19" x2="12" y2="12" stroke="white" stroke-width="2"/>
-            <line x1="19" y1="19" x2="12" y2="12" stroke="white" stroke-width="2"/>
-            <circle cx="12" cy="12" r="3" fill="white"/>
-          </svg>`;
+          // Use PNG drone icon for drones
+          icon = L.icon({
+            iconUrl: droneIcon,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16],
+          });
         } else if (isHelicopter) {
-          // Helicopter icon
-          svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-            <ellipse cx="12" cy="14" rx="6" ry="4"/>
-            <line x1="4" y1="8" x2="20" y2="8" stroke-width="2"/>
-            <line x1="12" y1="8" x2="12" y2="10"/>
-            <line x1="18" y1="14" x2="22" y2="18" stroke-width="2"/>
-          </svg>`;
+          // Helicopter icon as colored div with SVG
+          icon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width: 28px;
+              height: 28px;
+              background: ${bgColor};
+              border: 2px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              transform: rotate(${course}deg);
+            ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+                <ellipse cx="12" cy="14" rx="6" ry="4"/>
+                <line x1="4" y1="8" x2="20" y2="8" stroke-width="2"/>
+                <line x1="12" y1="8" x2="12" y2="10"/>
+                <line x1="18" y1="14" x2="22" y2="18" stroke-width="2"/>
+              </svg>
+            </div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
         } else {
-          // Airplane icon (default for aircraft, planes, etc.)
-          svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5">
-            <path d="M12 2L12 8L4 14L4 16L12 13L12 19L9 21L9 23L12 22L15 23L15 21L12 19L12 13L20 16L20 14L12 8L12 2Z"/>
-          </svg>`;
+          // Use airplane PNG icon for aircraft
+          icon = L.icon({
+            iconUrl: airplaneIcon,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16],
+          });
         }
-        
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="
-            width: 28px;
-            height: 28px;
-            background: ${bgColor};
-            border: 2px solid white;
-            border-radius: ${isDrone ? '6px' : '50%'};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            transform: rotate(${isDrone ? 0 : course}deg);
-          ">
-            ${svgIcon}
-          </div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
-        });
         
         const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
         
