@@ -67,7 +67,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [open]);
 
-  const selectedMission = missions.find(m => m.id === selectedMissionId);
+  const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
+    ? missions.find(m => m.id === selectedMissionId) 
+    : null;
   const hasRoute = selectedMission?.route && 
     typeof selectedMission.route === 'object' && 
     selectedMission.route !== null &&
@@ -78,8 +80,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const handleStartFlight = async () => {
     setLoading(true);
     try {
+      const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
       await onStartFlight(
-        selectedMissionId || undefined,
+        missionId,
         publishToSafesky && hasRoute ? true : false
       );
       onOpenChange(false);
@@ -105,8 +108,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               <SelectTrigger id="mission-select">
                 <SelectValue placeholder="Ingen oppdrag valgt" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Ingen oppdrag</SelectItem>
+            <SelectContent>
+                <SelectItem value="none">Ingen oppdrag</SelectItem>
                 {missions.map((mission) => {
                   const missionHasRoute = mission.route && 
                     typeof mission.route === 'object' && 
