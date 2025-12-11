@@ -176,79 +176,136 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === PART 2: Fetch and cache SafeSky beacons ===
-    console.log('Fetching SafeSky beacons for Norway...');
-    
-    // Calculate center of Norway for the API call
-    const centerLat = (NORWAY_BOUNDS.minLat + NORWAY_BOUNDS.maxLat) / 2;
-    const centerLon = (NORWAY_BOUNDS.minLon + NORWAY_BOUNDS.maxLon) / 2;
-    // Max radius per SafeSky API docs is 20000 meters (20km)
-    const radius = 20000;
-
-    const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${centerLat.toFixed(4)}&lng=${centerLon.toFixed(4)}&rad=${radius}`;
+    // === PART 2: Fetch and cache SafeSky beacons around active flights ===
+    console.log('Fetching SafeSky beacons around active flights...');
     
     let beaconsUpserted = 0;
     let beaconsDeleted = 0;
+    const allBeacons: SafeSkyBeacon[] = [];
+    const seenBeaconIds = new Set<string>();
 
-    try {
-      const beaconsResponse = await fetch(beaconsUrl, {
-        method: 'GET',
-        headers: {
-          'x-api-key': SAFESKY_API_KEY,
-        }
-      });
+    // Fetch ALL active flights (both advisory and live_uav)
+    const { data: allActiveFlights, error: allFlightsError } = await supabase
+      .from('active_flights')
+      .select('id, mission_id, publish_mode')
+      .in('publish_mode', ['advisory', 'live_uav']);
 
-      if (beaconsResponse.ok) {
-        const beaconsData = await beaconsResponse.json();
-        console.log(`Received ${beaconsData?.length || 0} beacons from SafeSky`);
+    if (allFlightsError) {
+      console.error('Error fetching all active flights for beacons:', allFlightsError);
+    }
 
-        if (Array.isArray(beaconsData) && beaconsData.length > 0) {
-          // Transform beacons for database
-          const beaconsToUpsert: SafeSkyBeacon[] = beaconsData.map((beacon: any) => ({
-            id: beacon.id || `beacon_${beacon.latitude}_${beacon.longitude}_${Date.now()}`,
-            latitude: beacon.latitude,
-            longitude: beacon.longitude,
-            altitude: beacon.altitude || null,
-            course: beacon.course || null,
-            ground_speed: beacon.ground_speed || null,
-            vertical_speed: beacon.vertical_speed || null,
-            beacon_type: beacon.beacon_type || beacon.type || null,
-            callsign: beacon.callsign || beacon.call_sign || null,
-            updated_at: new Date().toISOString()
-          }));
+    if (allActiveFlights && allActiveFlights.length > 0) {
+      console.log(`Found ${allActiveFlights.length} active flights to fetch beacons around`);
 
-          // Upsert beacons
-          const { error: upsertError } = await supabase
-            .from('safesky_beacons')
-            .upsert(beaconsToUpsert, { onConflict: 'id' });
+      for (const flight of allActiveFlights) {
+        let queryLat: number | null = null;
+        let queryLng: number | null = null;
 
-          if (upsertError) {
-            console.error('Error upserting beacons:', upsertError);
-          } else {
-            beaconsUpserted = beaconsToUpsert.length;
-            console.log(`Upserted ${beaconsUpserted} beacons`);
+        if (flight.mission_id) {
+          // Get mission coordinates
+          const { data: mission } = await supabase
+            .from('missions')
+            .select('latitude, longitude, route')
+            .eq('id', flight.mission_id)
+            .single();
+
+          if (mission) {
+            const route = mission.route as MissionRoute | null;
+            if (route && route.coordinates && route.coordinates.length > 0) {
+              // Use first route point
+              queryLat = route.coordinates[0].lat;
+              queryLng = route.coordinates[0].lng;
+            } else if (mission.latitude && mission.longitude) {
+              // Use mission location
+              queryLat = mission.latitude;
+              queryLng = mission.longitude;
+            }
           }
         }
 
-        // Delete old beacons (older than 60 seconds)
-        const cutoffTime = new Date(Date.now() - 60000).toISOString();
-        const { error: deleteError } = await supabase
-          .from('safesky_beacons')
-          .delete()
-          .lt('updated_at', cutoffTime);
-
-        if (deleteError) {
-          console.error('Error deleting old beacons:', deleteError);
-        } else {
-          console.log('Deleted old beacons');
-          console.log(`Deleted ${beaconsDeleted} old beacons`);
+        if (queryLat === null || queryLng === null) {
+          console.log(`Flight ${flight.id}: No valid coordinates, skipping beacon fetch`);
+          continue;
         }
-      } else {
-        const errorText = await beaconsResponse.text();
-        console.error(`SafeSky beacons API error: ${beaconsResponse.status} - ${errorText}`);
+
+        const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${queryLat.toFixed(4)}&lng=${queryLng.toFixed(4)}&rad=20000`;
+        console.log(`Fetching beacons for flight ${flight.id}: ${beaconsUrl}`);
+
+        try {
+          const beaconsResponse = await fetch(beaconsUrl, {
+            method: 'GET',
+            headers: {
+              'x-api-key': SAFESKY_API_KEY,
+            }
+          });
+
+          if (beaconsResponse.ok) {
+            const beaconsData = await beaconsResponse.json();
+            console.log(`Flight ${flight.id}: Received ${beaconsData?.length || 0} beacons`);
+
+            if (Array.isArray(beaconsData)) {
+              for (const beacon of beaconsData) {
+                const beaconId = beacon.id || `beacon_${beacon.latitude}_${beacon.longitude}`;
+                if (!seenBeaconIds.has(beaconId)) {
+                  seenBeaconIds.add(beaconId);
+                  allBeacons.push({
+                    id: beaconId,
+                    latitude: beacon.latitude,
+                    longitude: beacon.longitude,
+                    altitude: beacon.altitude || null,
+                    course: beacon.course || null,
+                    ground_speed: beacon.ground_speed || null,
+                    vertical_speed: beacon.vertical_speed || null,
+                    beacon_type: beacon.beacon_type || beacon.type || null,
+                    callsign: beacon.callsign || beacon.call_sign || null,
+                  });
+                }
+              }
+            }
+          } else {
+            const errorText = await beaconsResponse.text();
+            console.error(`SafeSky beacons API error for flight ${flight.id}: ${beaconsResponse.status} - ${errorText}`);
+          }
+        } catch (err) {
+          console.error(`Error fetching beacons for flight ${flight.id}:`, err);
+        }
       }
-    } catch (beaconErr) {
-      console.error('Error fetching beacons:', beaconErr);
+    } else {
+      console.log('No active flights - skipping beacon fetch');
+    }
+
+    // Upsert all collected beacons
+    if (allBeacons.length > 0) {
+      const beaconsWithTimestamp = allBeacons.map(b => ({
+        ...b,
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error: upsertError } = await supabase
+        .from('safesky_beacons')
+        .upsert(beaconsWithTimestamp, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.error('Error upserting beacons:', upsertError);
+      } else {
+        beaconsUpserted = allBeacons.length;
+        console.log(`Upserted ${beaconsUpserted} unique beacons from all active flights`);
+      }
+    }
+
+    // Delete old beacons (older than 60 seconds)
+    const cutoffTime = new Date(Date.now() - 60000).toISOString();
+    const { data: deletedData, error: deleteError } = await supabase
+      .from('safesky_beacons')
+      .delete()
+      .lt('updated_at', cutoffTime)
+      .select('id');
+
+    if (deleteError) {
+      console.error('Error deleting old beacons:', deleteError);
+    } else {
+      beaconsDeleted = deletedData?.length || 0;
+      console.log(`Deleted ${beaconsDeleted} old beacons`);
     }
 
     const advisorySuccessCount = advisoryResults.filter(r => r.success).length;
