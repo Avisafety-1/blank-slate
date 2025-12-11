@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SAFESKY_API_URL = 'https://public-api.safesky.app/v1/advisory';
+const SAFESKY_API_URL = 'https://sandbox-public-api.safesky.app/v1/advisory';
 
 interface RoutePoint {
   lat: number;
