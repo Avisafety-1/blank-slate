@@ -138,26 +138,28 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           <div className="space-y-3">
             <Label>SafeSky publisering</Label>
             <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
-              <div className="flex items-start space-x-3 rounded-lg border p-3">
+              <label 
+                htmlFor="mode-none" 
+                className="flex items-start space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
                 <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
                 <div className="space-y-0.5">
-                  <Label htmlFor="mode-none" className="cursor-pointer font-medium">
-                    Av
-                  </Label>
+                  <span className="font-medium">Av</span>
                   <p className="text-xs text-muted-foreground">
                     Ingen deling med andre luftfartsaktører
                   </p>
                 </div>
-              </div>
+              </label>
 
-              <div className={`flex items-start space-x-3 rounded-lg border p-3 ${!hasRoute ? 'opacity-50' : ''}`}>
+              <label 
+                htmlFor="mode-advisory" 
+                className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!hasRoute ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
+              >
                 <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasRoute} className="mt-0.5" />
                 <div className="flex-1 space-y-0.5">
                   <div className="flex items-center gap-2">
                     <Radio className="h-4 w-4 text-primary" />
-                    <Label htmlFor="mode-advisory" className={`cursor-pointer font-medium ${!hasRoute ? 'cursor-not-allowed' : ''}`}>
-                      Advisory (rute)
-                    </Label>
+                    <span className="font-medium">Advisory (rute)</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {hasRoute 
@@ -165,22 +167,23 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                       : 'Krever oppdrag med planlagt rute'}
                   </p>
                 </div>
-              </div>
+              </label>
 
-              <div className="flex items-start space-x-3 rounded-lg border p-3">
+              <label 
+                htmlFor="mode-live" 
+                className="flex items-start space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
                 <RadioGroupItem value="live_uav" id="mode-live" className="mt-0.5" />
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <Navigation className="h-4 w-4 text-green-500" />
-                    <Label htmlFor="mode-live" className="cursor-pointer font-medium">
-                      Live posisjon
-                    </Label>
+                    <span className="font-medium">Live posisjon</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Deler din GPS-posisjon kontinuerlig med SafeSky
                   </p>
                 </div>
-              </div>
+              </label>
             </RadioGroup>
           </div>
 
