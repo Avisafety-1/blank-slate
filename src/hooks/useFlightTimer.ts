@@ -2,9 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const LOCAL_STORAGE_KEY = 'active_flight_start_time';
-const LOCAL_STORAGE_MISSION_KEY = 'active_flight_mission_id';
-const LOCAL_STORAGE_PUBLISH_MODE_KEY = 'active_flight_publish_mode';
+// User-specific localStorage keys to prevent cross-user state sharing
+const getStorageKey = (userId: string) => `active_flight_start_time_${userId}`;
+const getMissionKey = (userId: string) => `active_flight_mission_id_${userId}`;
+const getPublishModeKey = (userId: string) => `active_flight_publish_mode_${userId}`;
+
+// Legacy keys for cleanup
+const LEGACY_KEYS = ['active_flight_start_time', 'active_flight_mission_id', 'active_flight_publish_mode'];
 
 export type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -158,10 +162,18 @@ export const useFlightTimer = () => {
     const checkActiveFlight = async () => {
       if (!user) return;
 
+      // Clean up legacy non-user-specific keys
+      LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
+
+      // Use user-specific localStorage keys
+      const userStorageKey = getStorageKey(user.id);
+      const userMissionKey = getMissionKey(user.id);
+      const userPublishModeKey = getPublishModeKey(user.id);
+
       // First check localStorage for offline support
-      const localStartTime = localStorage.getItem(LOCAL_STORAGE_KEY);
-      const localMissionId = localStorage.getItem(LOCAL_STORAGE_MISSION_KEY);
-      const localPublishMode = (localStorage.getItem(LOCAL_STORAGE_PUBLISH_MODE_KEY) as PublishMode) || 'none';
+      const localStartTime = localStorage.getItem(userStorageKey);
+      const localMissionId = localStorage.getItem(userMissionKey);
+      const localPublishMode = (localStorage.getItem(userPublishModeKey) as PublishMode) || 'none';
       
       // Then check database for cross-device sync
       const { data: dbFlight } = await supabase
@@ -178,10 +190,10 @@ export const useFlightTimer = () => {
         startTime = new Date(dbFlight.start_time);
         missionId = dbFlight.mission_id || null;
         publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
-        // Sync to localStorage
-        localStorage.setItem(LOCAL_STORAGE_KEY, startTime.toISOString());
-        if (missionId) localStorage.setItem(LOCAL_STORAGE_MISSION_KEY, missionId);
-        localStorage.setItem(LOCAL_STORAGE_PUBLISH_MODE_KEY, publishMode);
+        // Sync to user-specific localStorage
+        localStorage.setItem(userStorageKey, startTime.toISOString());
+        if (missionId) localStorage.setItem(userMissionKey, missionId);
+        localStorage.setItem(userPublishModeKey, publishMode);
       } else if (localStartTime) {
         startTime = new Date(localStartTime);
         missionId = localMissionId || null;
@@ -288,10 +300,10 @@ export const useFlightTimer = () => {
       }, 2000);
     }
 
-    // Save to localStorage for offline support
-    localStorage.setItem(LOCAL_STORAGE_KEY, startTime.toISOString());
-    if (missionId) localStorage.setItem(LOCAL_STORAGE_MISSION_KEY, missionId);
-    localStorage.setItem(LOCAL_STORAGE_PUBLISH_MODE_KEY, publishMode);
+    // Save to user-specific localStorage for offline support
+    localStorage.setItem(getStorageKey(user.id), startTime.toISOString());
+    if (missionId) localStorage.setItem(getMissionKey(user.id), missionId);
+    localStorage.setItem(getPublishModeKey(user.id), publishMode);
 
     // Save to database for cross-device sync
     const { error } = await supabase.from('active_flights').insert([{
@@ -340,10 +352,12 @@ export const useFlightTimer = () => {
     const elapsedSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
     const elapsedMinutes = Math.ceil(elapsedSeconds / 60);
 
-    // Clear localStorage
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_MISSION_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_PUBLISH_MODE_KEY);
+    // Clear user-specific localStorage
+    if (user) {
+      localStorage.removeItem(getStorageKey(user.id));
+      localStorage.removeItem(getMissionKey(user.id));
+      localStorage.removeItem(getPublishModeKey(user.id));
+    }
 
     // Clear database
     if (user) {
