@@ -281,9 +281,20 @@ export const useFlightTimer = () => {
     if (!user || !companyId) return false;
 
     const startTime = new Date();
+    let routeData = null;
 
-    // Initialize based on publish mode
+    // Fetch route data from mission if advisory mode is selected
     if (publishMode === 'advisory' && missionId) {
+      const { data: mission } = await supabase
+        .from('missions')
+        .select('route')
+        .eq('id', missionId)
+        .single();
+      
+      if (mission?.route) {
+        routeData = mission.route;
+      }
+
       const published = await publishAdvisory(missionId);
       if (!published) {
         console.warn('Failed to publish advisory, continuing without');
@@ -305,13 +316,14 @@ export const useFlightTimer = () => {
     if (missionId) localStorage.setItem(getMissionKey(user.id), missionId);
     localStorage.setItem(getPublishModeKey(user.id), publishMode);
 
-    // Save to database for cross-device sync
+    // Save to database for cross-device sync, including route_data copy
     const { error } = await supabase.from('active_flights').insert([{
       profile_id: user.id,
       company_id: companyId,
       start_time: startTime.toISOString(),
       mission_id: missionId || null,
       publish_mode: publishMode,
+      route_data: routeData,
     }]);
 
     if (error) {

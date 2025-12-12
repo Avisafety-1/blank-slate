@@ -581,11 +581,13 @@ export function OpenAIPMap({
     }
 
     // Fetch and display active advisory areas from active_flights with publish_mode='advisory'
+    // Uses route_data directly from active_flights instead of joining with missions
+    // to avoid exposing mission data across companies
     async function fetchActiveAdvisories() {
       try {
         const { data: activeFlights, error } = await supabase
           .from('active_flights')
-          .select('id, mission_id, publish_mode, missions(tittel, route)')
+          .select('id, mission_id, publish_mode, route_data')
           .eq('publish_mode', 'advisory');
         
         if (error) {
@@ -596,8 +598,7 @@ export function OpenAIPMap({
         activeAdvisoryLayer.clearLayers();
         
         for (const flight of activeFlights || []) {
-          const mission = flight.missions as any;
-          const route = mission?.route;
+          const route = flight.route_data as any;
           
           // Skip if no valid route with at least 3 points to form a polygon
           if (!route?.coordinates || route.coordinates.length < 3) continue;
@@ -614,11 +615,10 @@ export function OpenAIPMap({
             interactive: true,
           });
           
-          // Popup with flight info
+          // Popup with flight info - no mission title shown for cross-company privacy
           polygon.bindPopup(`
             <div>
               <strong>🛸 Aktiv flytur</strong><br/>
-              ${mission?.tittel || 'Ukjent oppdrag'}<br/>
               <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
             </div>
           `);

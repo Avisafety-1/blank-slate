@@ -23,6 +23,7 @@ export type Database = {
           mission_id: string | null
           profile_id: string
           publish_mode: string | null
+          route_data: Json | null
           safesky_published: boolean | null
           start_time: string
         }
@@ -34,6 +35,7 @@ export type Database = {
           mission_id?: string | null
           profile_id: string
           publish_mode?: string | null
+          route_data?: Json | null
           safesky_published?: boolean | null
           start_time?: string
         }
@@ -45,6 +47,7 @@ export type Database = {
           mission_id?: string | null
           profile_id?: string
           publish_mode?: string | null
+          route_data?: Json | null
           safesky_published?: boolean | null
           start_time?: string
         }
