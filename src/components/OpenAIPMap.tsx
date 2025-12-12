@@ -8,7 +8,7 @@ import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
 import { CloudSun } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
-import droneIcon from "@/assets/drone-icon.png";
+import droneAnimatedIcon from "@/assets/drone-animated.gif";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
@@ -438,7 +438,7 @@ export function OpenAIPMap({
           if (!t.lat || !t.lon) return;
           
           const icon = L.icon({
-            iconUrl: droneIcon,
+            iconUrl: droneAnimatedIcon,
             iconSize: [54, 54],
             iconAnchor: [27, 27],
             popupAnchor: [0, -27],
@@ -494,9 +494,9 @@ export function OpenAIPMap({
         // Use different icon based on beacon type
         let icon;
         if (isDrone) {
-          // Use PNG drone icon for drones
+          // Use animated GIF drone icon for drones
           icon = L.icon({
-            iconUrl: droneIcon,
+            iconUrl: droneAnimatedIcon,
             iconSize: [48, 48],
             iconAnchor: [24, 24],
             popupAnchor: [0, -24],
