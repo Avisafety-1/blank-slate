@@ -437,11 +437,12 @@ export function OpenAIPMap({
         latestByDrone.forEach((t, droneId) => {
           if (!t.lat || !t.lon) return;
           
-          const icon = L.icon({
-            iconUrl: droneAnimatedIcon,
-            iconSize: [54, 54],
-            iconAnchor: [27, 27],
-            popupAnchor: [0, -27],
+          const icon = L.divIcon({
+            className: '',
+            html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;filter:brightness(0);" />`,
+            iconSize: [70, 70],
+            iconAnchor: [35, 35],
+            popupAnchor: [0, -35],
           });
           
           const marker = L.marker([t.lat, t.lon], { icon, interactive: mode !== 'routePlanning' });
@@ -494,12 +495,13 @@ export function OpenAIPMap({
         // Use different icon based on beacon type
         let icon;
         if (isDrone) {
-          // Use animated GIF drone icon for drones
-          icon = L.icon({
-            iconUrl: droneAnimatedIcon,
-            iconSize: [48, 48],
-            iconAnchor: [24, 24],
-            popupAnchor: [0, -24],
+          // Use animated GIF drone icon for drones - black with CSS filter
+          icon = L.divIcon({
+            className: '',
+            html: `<img src="${droneAnimatedIcon}" style="width:62px;height:62px;filter:brightness(0);" />`,
+            iconSize: [62, 62],
+            iconAnchor: [31, 31],
+            popupAnchor: [0, -31],
           });
         } else if (isHelicopter) {
           // Helicopter icon as colored div with SVG
