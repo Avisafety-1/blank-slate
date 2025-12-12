@@ -411,6 +411,9 @@ export function OpenAIPMap({
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
 
+    // Active advisory areas layer - always visible when active flights exist (not toggleable)
+    const activeAdvisoryLayer = L.layerGroup().addTo(map);
+
     setLayers(layerConfigs);
 
     // Fetch drone telemetry from database
@@ -574,6 +577,56 @@ export function OpenAIPMap({
         renderSafeSkyBeacons(data || []);
       } catch (err) {
         console.error('Feil ved henting av SafeSky data:', err);
+      }
+    }
+
+    // Fetch and display active advisory areas from active_flights with publish_mode='advisory'
+    async function fetchActiveAdvisories() {
+      try {
+        const { data: activeFlights, error } = await supabase
+          .from('active_flights')
+          .select('id, mission_id, publish_mode, missions(tittel, route)')
+          .eq('publish_mode', 'advisory');
+        
+        if (error) {
+          console.error('Error fetching active advisories:', error);
+          return;
+        }
+        
+        activeAdvisoryLayer.clearLayers();
+        
+        for (const flight of activeFlights || []) {
+          const mission = flight.missions as any;
+          const route = mission?.route;
+          
+          // Skip if no valid route with at least 3 points to form a polygon
+          if (!route?.coordinates || route.coordinates.length < 3) continue;
+          
+          // Build polygon from route coordinates
+          const polygonCoords = route.coordinates.map((p: any) => [p.lat, p.lng] as [number, number]);
+          
+          // Draw semi-transparent emerald polygon (similar to SafeSky app)
+          const polygon = L.polygon(polygonCoords, {
+            color: '#10b981',        // Emerald border
+            weight: 2,
+            fillColor: '#10b981',    // Emerald fill
+            fillOpacity: 0.25,       // Semi-transparent
+            interactive: true,
+          });
+          
+          // Popup with flight info
+          polygon.bindPopup(`
+            <div>
+              <strong>🛸 Aktiv flytur</strong><br/>
+              ${mission?.tittel || 'Ukjent oppdrag'}<br/>
+              <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
+            </div>
+          `);
+          
+          polygon.addTo(activeAdvisoryLayer);
+        }
+      } catch (err) {
+        console.error('Error fetching active advisories:', err);
       }
     }
 
@@ -950,6 +1003,7 @@ export function OpenAIPMap({
     fetchAircraft();
     fetchDroneTelemetry();
     fetchAndDisplayMissions();
+    fetchActiveAdvisories();
 
     // Display existing route if provided
     if (existingRoute && existingRoute.coordinates.length > 0) {
@@ -1014,6 +1068,16 @@ export function OpenAIPMap({
       )
       .subscribe();
 
+    // Real-time subscription for active flights (advisory areas)
+    const activeFlightsChannel = supabase
+      .channel('active-flights-advisories')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'active_flights' },
+        () => fetchActiveAdvisories()
+      )
+      .subscribe();
+
     let refreshTimer: number | undefined;
     map.on("moveend", () => {
       if (refreshTimer) clearTimeout(refreshTimer);
@@ -1028,6 +1092,7 @@ export function OpenAIPMap({
       map.off("click");
       missionsChannel.unsubscribe();
       telemetryChannel.unsubscribe();
+      activeFlightsChannel.unsubscribe();
       map.remove();
     };
   }, [onMissionClick, mode, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
