@@ -439,7 +439,7 @@ export function OpenAIPMap({
           
           const icon = L.divIcon({
             className: '',
-            html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;filter:brightness(0);" />`,
+            html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;" />`,
             iconSize: [70, 70],
             iconAnchor: [35, 35],
             popupAnchor: [0, -35],
@@ -498,7 +498,7 @@ export function OpenAIPMap({
           // Use animated GIF drone icon for drones - black with CSS filter
           icon = L.divIcon({
             className: '',
-            html: `<img src="${droneAnimatedIcon}" style="width:62px;height:62px;filter:brightness(0);" />`,
+            html: `<img src="${droneAnimatedIcon}" style="width:62px;height:62px;" />`,
             iconSize: [62, 62],
             iconAnchor: [31, 31],
             popupAnchor: [0, -31],
