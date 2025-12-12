@@ -2073,18 +2073,6 @@ export type Database = {
         }
         Relationships: []
       }
-      latest_drone_positions: {
-        Row: {
-          alt: number | null
-          created_at: string | null
-          drone_id: string | null
-          id: string | null
-          lat: number | null
-          lon: number | null
-          raw: Json | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
       _postgis_deprecate: {
