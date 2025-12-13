@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, MessageSquare } from "lucide-react";
 
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import type { Tables } from "@/integrations/supabase/types";
 import { IncidentDetailDialog } from "./IncidentDetailDialog";
@@ -14,6 +14,7 @@ import { AddIncidentDialog } from "./AddIncidentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const severityColors = {
   Lav: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -38,6 +39,7 @@ const statusColors = {
 type Incident = Tables<"incidents">;
 
 export const IncidentsSection = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -48,6 +50,8 @@ export const IncidentsSection = () => {
   const [followUpLoading, setFollowUpLoading] = useState(true);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
+
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   // Fetch incidents from database
   useEffect(() => {
@@ -128,7 +132,7 @@ export const IncidentsSection = () => {
         setMyFollowUpIncidents(data || []);
       } catch (error: any) {
         console.error('Error fetching follow-up incidents:', error);
-        toast.error('Kunne ikke laste oppfølgingshendelser');
+        toast.error(t('dashboard.incidents.couldNotLoadFollowUp'));
       } finally {
         setFollowUpLoading(false);
       }
@@ -155,7 +159,7 @@ export const IncidentsSection = () => {
     return () => {
       supabase.removeChannel(followUpChannel);
     };
-  }, [companyId]);
+  }, [companyId, t]);
 
   // Fetch comment counts for all incidents
   useEffect(() => {
@@ -231,7 +235,7 @@ export const IncidentsSection = () => {
       setIncidents(data || []);
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
-      toast.error('Kunne ikke laste hendelser');
+      toast.error(t('dashboard.incidents.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -253,7 +257,7 @@ export const IncidentsSection = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive flex-shrink-0" />
-          <h2 className="text-sm sm:text-base font-semibold truncate">Hendelser</h2>
+          <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.incidents.title')}</h2>
         </div>
         <Button 
           size="sm" 
@@ -262,17 +266,17 @@ export const IncidentsSection = () => {
           onClick={() => setAddDialogOpen(true)}
         >
           <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span>Rapporter hendelse</span>
+          <span>{t('dashboard.incidents.report')}</span>
         </Button>
       </div>
 
       <Tabs defaultValue="incidents" className="w-full flex-1 flex flex-col">
         <TabsList className="w-full h-8 sm:h-9">
           <TabsTrigger value="incidents" className="flex-1 text-xs sm:text-sm">
-            Hendelser ({incidents.length})
+            {t('dashboard.incidents.title')} ({incidents.length})
           </TabsTrigger>
           <TabsTrigger value="followups" className="flex-1 text-xs sm:text-sm">
-            Oppfølging ({myFollowUpIncidents.length})
+            {t('dashboard.incidents.followUp')} ({myFollowUpIncidents.length})
           </TabsTrigger>
         </TabsList>
 
@@ -280,11 +284,11 @@ export const IncidentsSection = () => {
           <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4">
             {loading ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
-                Laster hendelser...
+                {t('dashboard.incidents.loading')}
               </div>
             ) : incidents.length === 0 ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
-                Ingen hendelser registrert
+                {t('dashboard.incidents.noIncidents')}
               </div>
             ) : (
               incidents.map((incident) => (
@@ -315,7 +319,7 @@ export const IncidentsSection = () => {
                           </span>
                         )}
                         <span className="text-muted-foreground">
-                          {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: nb })}
+                          {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: dateLocale })}
                         </span>
                       </div>
                     </div>
@@ -331,11 +335,11 @@ export const IncidentsSection = () => {
           <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4">
             {followUpLoading ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
-                Laster oppfølginger...
+                {t('dashboard.incidents.loadingFollowUp')}
               </div>
             ) : myFollowUpIncidents.length === 0 ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
-                Du har ingen hendelser som oppfølgingsansvarlig
+                {t('dashboard.incidents.noFollowUp')}
               </div>
             ) : (
               myFollowUpIncidents.map((incident) => (
@@ -373,7 +377,7 @@ export const IncidentsSection = () => {
                           </span>
                         )}
                         <span className="text-muted-foreground">
-                          {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: nb })}
+                          {format(new Date(incident.hendelsestidspunkt), "dd. MMM", { locale: dateLocale })}
                         </span>
                         {incident.lokasjon && (
                           <span className="text-muted-foreground truncate">• {incident.lokasjon}</span>

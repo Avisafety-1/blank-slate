@@ -8,6 +8,7 @@ import { PersonnelListDialog } from "./PersonnelListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useTranslation } from "react-i18next";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 
 interface StatusCounts {
@@ -77,6 +78,7 @@ const StatusCard = ({
 };
 
 export const StatusPanel = () => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
@@ -187,11 +189,11 @@ export const StatusPanel = () => {
   return (
     <>
       <GlassCard className="overflow-hidden">
-        <h2 className="text-sm sm:text-base font-semibold mb-3">Ressursstatus</h2>
+        <h2 className="text-sm sm:text-base font-semibold mb-3">{t('dashboard.status.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
           <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onClick={() => setDroneDialogOpen(true)} />
-          <StatusCard title="Utstyr" icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
-          <StatusCard title="Personell" icon={Users} counts={personnelStatus} onClick={() => setPersonnelDialogOpen(true)} />
+          <StatusCard title={t('dashboard.status.equipment')} icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
+          <StatusCard title={t('dashboard.status.personnel')} icon={Users} counts={personnelStatus} onClick={() => setPersonnelDialogOpen(true)} />
         </div>
       </GlassCard>
       

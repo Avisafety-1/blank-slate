@@ -9,6 +9,7 @@ import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialo
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const getDocumentStatus = (doc: Document) => {
   if (!doc.gyldig_til) return "Grønn";
@@ -31,6 +32,7 @@ const StatusDot = ({ status }: { status: string }) => {
 };
 
 export const DocumentSection = () => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -136,7 +138,7 @@ export const DocumentSection = () => {
       setDocuments(mappedDocuments);
     } catch (error: any) {
       console.error("Error fetching documents:", error);
-      toast.error("Kunne ikke hente dokumenter");
+      toast.error(t('dashboard.documents.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -154,7 +156,7 @@ export const DocumentSection = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-            <h2 className="text-sm sm:text-base font-semibold truncate">Dokumenter</h2>
+            <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.documents.title')}</h2>
           </div>
           <Button
             size="sm"
@@ -162,14 +164,14 @@ export const DocumentSection = () => {
             onClick={() => setUploadDialogOpen(true)}
           >
             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Legg til</span>
+            <span className="hidden xs:inline">{t('actions.add')}</span>
           </Button>
         </div>
 
         <div className="relative mb-2 sm:mb-3">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
           <Input 
-            placeholder="Søk..." 
+            placeholder={t('forms.searchPlaceholder')} 
             className="pl-7 sm:pl-8 h-8 sm:h-9 text-xs sm:text-sm" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -179,12 +181,12 @@ export const DocumentSection = () => {
         <div className="space-y-1.5 sm:space-y-2 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-xs sm:text-sm text-muted-foreground">Laster dokumenter...</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('dashboard.documents.loading')}</p>
             </div>
           ) : filteredDocuments.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {searchQuery ? "Ingen dokumenter funnet" : "Ingen dokumenter lagt til ennå"}
+                {searchQuery ? t('dashboard.documents.noResults') : t('dashboard.documents.noDocuments')}
               </p>
             </div>
           ) : (
@@ -213,7 +215,7 @@ export const DocumentSection = () => {
                     <div className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs flex-shrink-0">
                       <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
                       <span className={status === "Rød" ? "text-destructive font-medium" : "text-status-yellow"}>
-                        {status === "Rød" ? "Utløpt" : "Snart"}
+                        {status === "Rød" ? t('dashboard.documents.expired') : t('dashboard.documents.expiresSoon')}
                       </span>
                     </div>
                   )}

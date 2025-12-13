@@ -25,7 +25,14 @@
     "export": "Export",
     "import": "Import",
     "upload": "Upload",
-    "download": "Download"
+    "download": "Download",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "create": "Create",
+    "update": "Update",
+    "view": "View",
+    "report": "Report"
   },
   "common": {
     "loading": "Loading...",
@@ -38,7 +45,11 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
-    "info": "Info"
+    "info": "Info",
+    "all": "All",
+    "none": "None",
+    "version": "Version",
+    "layoutUpdated": "Layout updated"
   },
   "auth": {
     "signIn": "Sign in",
@@ -48,7 +59,8 @@
     "forgotPassword": "Forgot password?",
     "resetPassword": "Reset password",
     "pendingApproval": "Pending approval",
-    "pendingDescription": "Your account is waiting for administrator approval."
+    "pendingDescription": "Your account is waiting for administrator approval. You will receive access as soon as your account is approved.",
+    "backToLogin": "Back to login"
   },
   "flight": {
     "activeFlight": "Active flight",
@@ -65,5 +77,141 @@
     "switchedTo": "Switched to {{company}}",
     "couldNotSwitch": "Could not switch company",
     "loggedOut": "Logged out"
+  },
+  "dashboard": {
+    "missions": {
+      "title": "Upcoming missions",
+      "noMissions": "No upcoming missions",
+      "soraStatus": "SORA: {{status}}",
+      "soraNoStatus": "SORA: None",
+      "newSoraAnalysis": "New SORA analysis"
+    },
+    "incidents": {
+      "title": "Incidents",
+      "report": "Report incident",
+      "loading": "Loading incidents...",
+      "noIncidents": "No incidents registered",
+      "followUp": "Follow-up",
+      "loadingFollowUp": "Loading follow-ups...",
+      "noFollowUp": "You have no incidents as follow-up responsible",
+      "couldNotLoad": "Could not load incidents",
+      "couldNotLoadFollowUp": "Could not load follow-up incidents"
+    },
+    "news": {
+      "title": "News",
+      "addNew": "Add"
+    },
+    "documents": {
+      "title": "Documents",
+      "loading": "Loading documents...",
+      "noDocuments": "No documents added yet",
+      "noResults": "No documents found",
+      "expired": "Expired",
+      "expiresSoon": "Soon",
+      "couldNotLoad": "Could not load documents"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "events": "Calendar events",
+      "addEvent": "Add event",
+      "noEvents": "No events this day",
+      "customEvent": "Custom calendar entry",
+      "eventCreated": "Calendar entry created!",
+      "titleRequired": "Title is required",
+      "noDateSelected": "No date selected",
+      "mustBeLoggedIn": "You must be logged in to create calendar entries",
+      "couldNotLoad": "Could not load calendar entries",
+      "couldNotLoadDetails": "Could not load details",
+      "missionCreated": "Mission created and added to calendar",
+      "documentCreated": "Document created and added to calendar",
+      "eventTypes": {
+        "mission": "Mission",
+        "maintenance": "Maintenance",
+        "document": "Document",
+        "meeting": "Meeting",
+        "incident": "Incident"
+      },
+      "inspection": "inspection",
+      "maintenance": "maintenance",
+      "expires": "expires"
+    },
+    "status": {
+      "title": "Resource status",
+      "equipment": "Equipment",
+      "personnel": "Personnel"
+    }
+  },
+  "missions": {
+    "title": "Missions",
+    "planned": "Planned",
+    "ongoing": "Ongoing",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "addMission": "Add mission",
+    "editMission": "Edit mission",
+    "planRoute": "Plan route",
+    "exportPdf": "Export PDF",
+    "exportKmz": "Export KMZ",
+    "location": "Location",
+    "time": "Time",
+    "customer": "Customer",
+    "personnel": "Personnel",
+    "drones": "Drones",
+    "risk": "Risk level",
+    "riskLevels": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    }
+  },
+  "incidents": {
+    "title": "Incidents",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "status": {
+      "new": "New",
+      "investigating": "Under investigation",
+      "actionTaken": "Action taken",
+      "closed": "Closed",
+      "open": "Open",
+      "inProgress": "In progress",
+      "completed": "Completed",
+      "ongoing": "Ongoing",
+      "done": "Done",
+      "delayed": "Delayed"
+    },
+    "cause": "Primary cause",
+    "contributingCause": "Contributing cause"
+  },
+  "status": {
+    "green": "Green",
+    "yellow": "Yellow",
+    "red": "Red",
+    "ok": "OK",
+    "warning": "Warning",
+    "overdue": "Overdue"
+  },
+  "forms": {
+    "title": "Title",
+    "description": "Description",
+    "date": "Date",
+    "time": "Time",
+    "location": "Location",
+    "notes": "Notes",
+    "required": "Required",
+    "type": "Type",
+    "category": "Category",
+    "searchPlaceholder": "Search..."
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "noPermission": "You do not have access to this",
+    "notFound": "Not found",
+    "loadFailed": "Could not load data"
   }
 }

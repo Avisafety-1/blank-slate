@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Plus, FileText } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AddMissionDialog } from "./AddMissionDialog";
@@ -11,6 +11,7 @@ import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 type MissionSora = any;
@@ -28,6 +29,7 @@ const riskColors: Record<string, string> = {
 };
 
 export const MissionsSection = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,6 +38,8 @@ export const MissionsSection = () => {
   const [selectedSoraMissionId, setSelectedSoraMissionId] = useState<string | undefined>(undefined);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
+
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   useEffect(() => {
     // Auto-complete old missions on load
@@ -143,10 +147,10 @@ export const MissionsSection = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-            <h2 className="text-sm sm:text-base font-semibold truncate">Kommende oppdrag</h2>
+            <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.missions.title')}</h2>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" onClick={handleNewSora} title="Ny SORA-analyse">
+            <Button size="sm" variant="outline" onClick={handleNewSora} title={t('dashboard.missions.newSoraAnalysis')}>
               <FileText className="w-4 h-4" />
             </Button>
             <Button size="sm" onClick={() => setAddDialogOpen(true)}>
@@ -157,7 +161,7 @@ export const MissionsSection = () => {
 
         <div className="space-y-1.5 sm:space-y-2 flex-1 overflow-y-auto">
           {missions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Ingen kommende oppdrag</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.missions.noMissions')}</p>
           ) : (
             missions.map((mission) => (
               <div
@@ -177,7 +181,9 @@ export const MissionsSection = () => {
                       onClick={(e) => handleSoraClick(mission.id, e)}
                       className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
                     >
-                      SORA: {missionSoras[mission.id]?.sora_status || "Ingen"}
+                      {missionSoras[mission.id]?.sora_status 
+                        ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
+                        : t('dashboard.missions.soraNoStatus')}
                     </Badge>
                   </div>
                 </div>
@@ -189,7 +195,7 @@ export const MissionsSection = () => {
                 
                 <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                   <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
-                    {format(new Date(mission.tidspunkt), "dd. MMM HH:mm", { locale: nb })}
+                    {format(new Date(mission.tidspunkt), "dd. MMM HH:mm", { locale: dateLocale })}
                   </Badge>
                   <Badge className={`${riskColors[mission.risk_nivå] || ""} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>
                     {mission.risk_nivå}
