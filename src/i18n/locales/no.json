@@ -49,18 +49,49 @@
     "all": "Alle",
     "none": "Ingen",
     "version": "Versjon",
-    "layoutUpdated": "Layout oppdatert"
+    "layoutUpdated": "Layout oppdatert",
+    "notSet": "Ikke satt",
+    "notSpecified": "Ikke oppgitt",
+    "notAssociated": "Ikke tilknyttet",
+    "unknownName": "Ukjent navn",
+    "noRole": "Ingen rolle",
+    "noResults": "Ingen treff for",
+    "processing": "Behandler..."
   },
   "auth": {
     "signIn": "Logg inn",
-    "signUp": "Registrer deg",
+    "signUp": "Opprett konto",
     "email": "E-post",
     "password": "Passord",
+    "fullName": "Fullt navn",
+    "registrationCode": "Registreringskode",
     "forgotPassword": "Glemt passord?",
     "resetPassword": "Tilbakestill passord",
     "pendingApproval": "Avventer godkjenning",
     "pendingDescription": "Din konto venter på godkjenning fra administrator. Du vil motta tilgang så snart kontoen er godkjent.",
-    "backToLogin": "Tilbake til innlogging"
+    "backToLogin": "Tilbake til innlogging",
+    "enterCredentials": "Skriv inn dine innloggingsdetaljer",
+    "fillForm": "Fyll ut skjemaet for å opprette en konto",
+    "fillAllFields": "Vennligst fyll ut alle felt",
+    "fillFullName": "Vennligst fyll ut fullt navn",
+    "enterValidCode": "Vennligst skriv inn en gyldig registreringskode",
+    "invalidCode": "Ugyldig registreringskode",
+    "company": "Selskap",
+    "contactAdmin": "Kontakt din administrator for å få registreringskoden",
+    "loginSuccess": "Innlogging vellykket!",
+    "accountCreated": "Konto opprettet! Venter på godkjenning fra administrator.",
+    "accountPendingApproval": "Din konto venter på godkjenning fra administrator",
+    "linkExpired": "Denne lenken er allerede brukt eller utløpt.",
+    "emailConfirmed": "E-posten din er bekreftet! Din konto venter nå på godkjenning fra administrator.",
+    "noAccount": "Har du ikke konto? Opprett en her",
+    "hasAccount": "Har du allerede konto? Logg inn her",
+    "signInWithGoogle": "Logg inn med Google",
+    "couldNotSignInGoogle": "Kunne ikke logge inn med Google",
+    "resetPasswordDesc": "Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.",
+    "enterEmailAddress": "Vennligst skriv inn e-postadressen din",
+    "resetEmailSent": "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke!",
+    "sendEmail": "Send e-post",
+    "sending": "Sender..."
   },
   "flight": {
     "activeFlight": "Pågående flytur",
@@ -70,7 +101,10 @@
     "flightStartedLiveUav": "Flytur startet med live GPS-posisjon til SafeSky!",
     "flightEnded": "Flytur avsluttet",
     "flightTime": "Flytid",
-    "totalFlightTime": "Total flytid"
+    "totalFlightTime": "Total flytid",
+    "flightHours": "Flyvetimer",
+    "nextInspection": "Neste inspeksjon",
+    "nextMaintenance": "Neste vedlikehold"
   },
   "header": {
     "superAdmin": "Super Administrator",
@@ -141,6 +175,22 @@
       "personnel": "Personell"
     }
   },
+  "resources": {
+    "title": "Ressurser",
+    "equipment": "Utstyr",
+    "personnel": "Personell",
+    "addCompetency": "Legg til kompetanse",
+    "searchVehicle": "Søk etter modell eller registrering...",
+    "searchEquipment": "Søk etter navn, type eller serienummer...",
+    "searchPersonnel": "Søk etter navn eller kompetanse...",
+    "noVehicles": "Ingen droner registrert",
+    "noEquipment": "Ingen utstyr registrert",
+    "noPersonnel": "Ingen personell registrert",
+    "noCompetencies": "Ingen kompetanser",
+    "couldNotLoadDrones": "Kunne ikke hente droner",
+    "couldNotLoadEquipment": "Kunne ikke hente utstyr",
+    "couldNotLoadPersonnel": "Kunne ikke hente personell"
+  },
   "missions": {
     "title": "Oppdrag",
     "planned": "Planlagt",
@@ -188,6 +238,55 @@
     "cause": "Hovedårsak",
     "contributingCause": "Medvirkende årsak"
   },
+  "profile": {
+    "title": "Min profil",
+    "info": "Profilinformasjon",
+    "security": "Sikkerhet",
+    "competencies": "Kompetanse",
+    "myCompetencies": "Mine kompetanser",
+    "emergency": "Nødkontakt",
+    "notifications": "Varslinger",
+    "incidents": "Hendelser",
+    "name": "Navn",
+    "phone": "Telefon",
+    "jobTitle": "Tittel/Stilling",
+    "company": "Firma",
+    "role": "Rolle",
+    "memberSince": "Medlem siden",
+    "address": "Adresse",
+    "logbook": "Loggbok",
+    "passwordReset": "Passord",
+    "passwordResetDesc": "Klikk på knappen under for å få tilsendt en e-post med lenke for å tilbakestille passordet ditt.",
+    "resetPassword": "Tilbakestill passord",
+    "sendingEmail": "Sender e-post...",
+    "resetEmailSent": "Tilbakestillings-e-post sendt! Sjekk innboksen din.",
+    "couldNotSendEmail": "Kunne ikke sende e-post",
+    "emergencyContactName": "Navn på nødkontakt",
+    "emergencyContactPhone": "Telefon til nødkontakt",
+    "emergencyInfo": "Viktig informasjon ved ulykker eller nødsituasjoner under feltarbeid.",
+    "issued": "Utstedt",
+    "expires": "Utløper",
+    "noCompetencies": "Ingen kompetanser registrert",
+    "profileUpdated": "Profil oppdatert",
+    "couldNotUpdateProfile": "Kunne ikke oppdatere profil",
+    "couldNotUploadPhoto": "Kunne ikke laste opp profilbilde",
+    "notificationSettings": "Varslingsinnstillinger oppdatert",
+    "couldNotUpdateSettings": "Kunne ikke oppdatere innstillinger",
+    "notifications": {
+      "newIncidents": "E-post ved nye hendelser",
+      "newIncidentsDesc": "Få beskjed når nye hendelser rapporteres",
+      "newMissions": "E-post ved nye oppdrag",
+      "newMissionsDesc": "Få beskjed når nye oppdrag opprettes",
+      "documentExpiry": "E-post når dokumenter nærmer seg utløpsdato",
+      "documentExpiryDesc": "Varsling 30 dager før dokumenter utløper",
+      "newUserPending": "E-post når nye brukere venter på godkjenning",
+      "newUserPendingDesc": "Kun for administratorer",
+      "followupAssigned": "E-post når du tildeles oppfølgingsansvar",
+      "followupAssignedDesc": "Når du blir satt som oppfølgingsansvarlig på hendelser"
+    },
+    "myIncidents": "Hendelser jeg følger opp",
+    "noIncidentsFollowUp": "Du har ingen hendelser som oppfølgingsansvarlig"
+  },
   "status": {
     "green": "Grønn",
     "yellow": "Gul",
@@ -206,12 +305,27 @@
     "required": "Påkrevd",
     "type": "Type",
     "category": "Kategori",
-    "searchPlaceholder": "Søk..."
+    "searchPlaceholder": "Søk...",
+    "fullName": "Fullt navn",
+    "placeholder": {
+      "email": "din@epost.no",
+      "phone": "+47 xxx xx xxx",
+      "address": "Gate, postnummer og sted",
+      "jobTitle": "F.eks. Dronepilot",
+      "fullName": "Fullt navn"
+    }
   },
   "errors": {
     "generic": "Noe gikk galt",
     "noPermission": "Du har ikke tilgang til dette",
     "notFound": "Ikke funnet",
     "loadFailed": "Kunne ikke laste data"
+  },
+  "roles": {
+    "superadmin": "Super Administrator",
+    "admin": "Administrator",
+    "saksbehandler": "Saksbehandler",
+    "operator": "Operatør",
+    "readonly": "Lesetilgang"
   }
 }

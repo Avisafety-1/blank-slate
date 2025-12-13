@@ -49,18 +49,49 @@
     "all": "All",
     "none": "None",
     "version": "Version",
-    "layoutUpdated": "Layout updated"
+    "layoutUpdated": "Layout updated",
+    "notSet": "Not set",
+    "notSpecified": "Not specified",
+    "notAssociated": "Not associated",
+    "unknownName": "Unknown name",
+    "noRole": "No role",
+    "noResults": "No results for",
+    "processing": "Processing..."
   },
   "auth": {
     "signIn": "Sign in",
-    "signUp": "Sign up",
+    "signUp": "Create account",
     "email": "Email",
     "password": "Password",
+    "fullName": "Full name",
+    "registrationCode": "Registration code",
     "forgotPassword": "Forgot password?",
     "resetPassword": "Reset password",
     "pendingApproval": "Pending approval",
     "pendingDescription": "Your account is waiting for administrator approval. You will receive access as soon as your account is approved.",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "enterCredentials": "Enter your login credentials",
+    "fillForm": "Fill out the form to create an account",
+    "fillAllFields": "Please fill out all fields",
+    "fillFullName": "Please fill out full name",
+    "enterValidCode": "Please enter a valid registration code",
+    "invalidCode": "Invalid registration code",
+    "company": "Company",
+    "contactAdmin": "Contact your administrator to get the registration code",
+    "loginSuccess": "Login successful!",
+    "accountCreated": "Account created! Waiting for administrator approval.",
+    "accountPendingApproval": "Your account is waiting for administrator approval",
+    "linkExpired": "This link has already been used or has expired.",
+    "emailConfirmed": "Your email is confirmed! Your account is now waiting for administrator approval.",
+    "noAccount": "Don't have an account? Create one here",
+    "hasAccount": "Already have an account? Sign in here",
+    "signInWithGoogle": "Sign in with Google",
+    "couldNotSignInGoogle": "Could not sign in with Google",
+    "resetPasswordDesc": "Enter your email address and we will send you a link to reset your password.",
+    "enterEmailAddress": "Please enter your email address",
+    "resetEmailSent": "If the email exists in the system, you will receive a reset link!",
+    "sendEmail": "Send email",
+    "sending": "Sending..."
   },
   "flight": {
     "activeFlight": "Active flight",
@@ -70,7 +101,10 @@
     "flightStartedLiveUav": "Flight started with live GPS position to SafeSky!",
     "flightEnded": "Flight ended",
     "flightTime": "Flight time",
-    "totalFlightTime": "Total flight time"
+    "totalFlightTime": "Total flight time",
+    "flightHours": "Flight hours",
+    "nextInspection": "Next inspection",
+    "nextMaintenance": "Next maintenance"
   },
   "header": {
     "superAdmin": "Super Administrator",
@@ -141,6 +175,22 @@
       "personnel": "Personnel"
     }
   },
+  "resources": {
+    "title": "Resources",
+    "equipment": "Equipment",
+    "personnel": "Personnel",
+    "addCompetency": "Add competency",
+    "searchVehicle": "Search for model or registration...",
+    "searchEquipment": "Search by name, type or serial number...",
+    "searchPersonnel": "Search by name or competency...",
+    "noVehicles": "No drones registered",
+    "noEquipment": "No equipment registered",
+    "noPersonnel": "No personnel registered",
+    "noCompetencies": "No competencies",
+    "couldNotLoadDrones": "Could not load drones",
+    "couldNotLoadEquipment": "Could not load equipment",
+    "couldNotLoadPersonnel": "Could not load personnel"
+  },
   "missions": {
     "title": "Missions",
     "planned": "Planned",
@@ -175,7 +225,7 @@
     },
     "status": {
       "new": "New",
-      "investigating": "Under investigation",
+      "investigating": "Investigating",
       "actionTaken": "Action taken",
       "closed": "Closed",
       "open": "Open",
@@ -187,6 +237,55 @@
     },
     "cause": "Primary cause",
     "contributingCause": "Contributing cause"
+  },
+  "profile": {
+    "title": "My profile",
+    "info": "Profile information",
+    "security": "Security",
+    "competencies": "Competencies",
+    "myCompetencies": "My competencies",
+    "emergency": "Emergency contact",
+    "notifications": "Notifications",
+    "incidents": "Incidents",
+    "name": "Name",
+    "phone": "Phone",
+    "jobTitle": "Title/Position",
+    "company": "Company",
+    "role": "Role",
+    "memberSince": "Member since",
+    "address": "Address",
+    "logbook": "Logbook",
+    "passwordReset": "Password",
+    "passwordResetDesc": "Click the button below to receive an email with a link to reset your password.",
+    "resetPassword": "Reset password",
+    "sendingEmail": "Sending email...",
+    "resetEmailSent": "Reset email sent! Check your inbox.",
+    "couldNotSendEmail": "Could not send email",
+    "emergencyContactName": "Emergency contact name",
+    "emergencyContactPhone": "Emergency contact phone",
+    "emergencyInfo": "Important information for accidents or emergencies during fieldwork.",
+    "issued": "Issued",
+    "expires": "Expires",
+    "noCompetencies": "No competencies registered",
+    "profileUpdated": "Profile updated",
+    "couldNotUpdateProfile": "Could not update profile",
+    "couldNotUploadPhoto": "Could not upload profile photo",
+    "notificationSettings": "Notification settings updated",
+    "couldNotUpdateSettings": "Could not update settings",
+    "notifications": {
+      "newIncidents": "Email for new incidents",
+      "newIncidentsDesc": "Get notified when new incidents are reported",
+      "newMissions": "Email for new missions",
+      "newMissionsDesc": "Get notified when new missions are created",
+      "documentExpiry": "Email when documents are expiring",
+      "documentExpiryDesc": "Notification 30 days before documents expire",
+      "newUserPending": "Email when new users are pending approval",
+      "newUserPendingDesc": "For administrators only",
+      "followupAssigned": "Email when assigned follow-up responsibility",
+      "followupAssignedDesc": "When you are assigned as follow-up responsible for incidents"
+    },
+    "myIncidents": "Incidents I'm following up",
+    "noIncidentsFollowUp": "You have no incidents as follow-up responsible"
   },
   "status": {
     "green": "Green",
@@ -206,12 +305,27 @@
     "required": "Required",
     "type": "Type",
     "category": "Category",
-    "searchPlaceholder": "Search..."
+    "searchPlaceholder": "Search...",
+    "fullName": "Full name",
+    "placeholder": {
+      "email": "your@email.com",
+      "phone": "+1 xxx xxx xxxx",
+      "address": "Street, postal code and city",
+      "jobTitle": "E.g. Drone pilot",
+      "fullName": "Full name"
+    }
   },
   "errors": {
     "generic": "Something went wrong",
     "noPermission": "You do not have access to this",
     "notFound": "Not found",
     "loadFailed": "Could not load data"
+  },
+  "roles": {
+    "superadmin": "Super Administrator",
+    "admin": "Administrator",
+    "saksbehandler": "Case handler",
+    "operator": "Operator",
+    "readonly": "Read-only access"
   }
 }

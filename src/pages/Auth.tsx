@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { redirectToApp } from "@/config/domains";
@@ -14,6 +15,7 @@ import droneBackground from "@/assets/drone-background.png";
 import avisafeLogo from "@/assets/avisafe-logo.png";
 
 const Auth = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     user,
@@ -38,17 +40,16 @@ const Auth = () => {
       const errorDescription = params.get('error_description');
       
       if (error === 'access_denied' || errorDescription?.includes('already been consumed')) {
-        toast.error("Denne lenken er allerede brukt eller utløpt.");
+        toast.error(t('auth.linkExpired'));
       } else if (!error && hash.includes('access_token')) {
         // Successful email verification
-        toast.success("E-posten din er bekreftet! Din konto venter nå på godkjenning fra administrator.");
+        toast.success(t('auth.emailConfirmed'));
       }
       
       // Clean up URL hash
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, []);
-  
+  }, [t]);
   useEffect(() => {
     console.log('Auth page - user:', user?.email, 'authLoading:', authLoading);
     if (!authLoading && user) {
@@ -83,15 +84,15 @@ const Auth = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error("Vennligst fyll ut alle felt");
+      toast.error(t('auth.fillAllFields'));
       return;
     }
     if (!isLogin && !fullName) {
-      toast.error("Vennligst fyll ut fullt navn");
+      toast.error(t('auth.fillFullName'));
       return;
     }
     if (!isLogin && !validatedCompany) {
-      toast.error("Vennligst skriv inn en gyldig registreringskode");
+      toast.error(t('auth.enterValidCode'));
       return;
     }
     setLoading(true);
@@ -112,10 +113,10 @@ const Auth = () => {
           } = await supabase.from("profiles").select("approved").eq("id", data.user.id).maybeSingle();
           if (profileData && !(profileData as any).approved) {
             await supabase.auth.signOut();
-            toast.error("Din konto venter på godkjenning fra administrator");
+            toast.error(t('auth.accountPendingApproval'));
             return;
           }
-          toast.success("Innlogging vellykket!");
+          toast.success(t('auth.loginSuccess'));
           redirectToApp('/');
         }
       } else {
@@ -149,7 +150,7 @@ const Auth = () => {
             });
 
           if (profileError) {
-            console.error('Feil ved oppretting av profil:', profileError);
+            console.error('Error creating profile:', profileError);
             // User is still created in auth, continue with notification
           }
 
@@ -166,7 +167,7 @@ const Auth = () => {
             }
           });
 
-          toast.success("Konto opprettet! Venter på godkjenning fra administrator.");
+          toast.success(t('auth.accountCreated'));
           setEmail("");
           setPassword("");
           setFullName("");
@@ -177,7 +178,7 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      toast.error(error.message || "En feil oppstod");
+      toast.error(error.message || t('errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -197,7 +198,7 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       console.error('Google sign-in error:', error);
-      toast.error(error.message || 'Kunne ikke logge inn med Google');
+      toast.error(error.message || t('auth.couldNotSignInGoogle'));
       setLoading(false);
     }
   };
@@ -205,7 +206,7 @@ const Auth = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) {
-      toast.error("Vennligst skriv inn e-postadressen din");
+      toast.error(t('auth.enterEmailAddress'));
       return;
     }
     setLoading(true);
@@ -216,12 +217,12 @@ const Auth = () => {
       
       if (error) throw error;
       
-      toast.success("Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke!");
+      toast.success(t('auth.resetEmailSent'));
       setShowResetPassword(false);
       setResetEmail("");
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.message || "En feil oppstod");
+      toast.error(error.message || t('errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -245,10 +246,10 @@ const Auth = () => {
             </div>
             <div className="text-center">
               <CardTitle className="text-xl">
-                {isLogin ? "Logg inn" : "Opprett konto"}
+                {isLogin ? t('auth.signIn') : t('auth.signUp')}
               </CardTitle>
               <CardDescription>
-                {isLogin ? "Skriv inn dine innloggingsdetaljer" : "Fyll ut skjemaet for å opprette en konto"}
+                {isLogin ? t('auth.enterCredentials') : t('auth.fillForm')}
               </CardDescription>
             </div>
           </CardHeader>
@@ -256,7 +257,7 @@ const Auth = () => {
             <form onSubmit={handleAuth} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Fullt navn</Label>
+                  <Label htmlFor="fullName">{t('auth.fullName')}</Label>
                   <Input 
                     id="fullName" 
                     type="text" 
@@ -269,7 +270,7 @@ const Auth = () => {
               )}
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="registrationCode">Registreringskode</Label>
+                  <Label htmlFor="registrationCode">{t('auth.registrationCode')}</Label>
                   <div className="relative">
                     <Input 
                       id="registrationCode" 
@@ -287,23 +288,23 @@ const Auth = () => {
                   </div>
                   {validatedCompany && (
                     <p className="text-sm text-green-600 flex items-center gap-1">
-                      Selskap: {validatedCompany.name}
+                      {t('auth.company')}: {validatedCompany.name}
                     </p>
                   )}
                   {registrationCode.length === 6 && !validatedCompany && (
-                    <p className="text-sm text-destructive">Ugyldig registreringskode</p>
+                    <p className="text-sm text-destructive">{t('auth.invalidCode')}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Kontakt din administrator for å få registreringskoden
+                    {t('auth.contactAdmin')}
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">E-post</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="din@epost.no" 
+                  placeholder={t('forms.placeholder.email')} 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   required 
@@ -311,7 +312,7 @@ const Auth = () => {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Passord</Label>
+                  <Label htmlFor="password">{t('auth.password')}</Label>
                 </div>
                 <Input 
                   id="password" 
@@ -328,12 +329,12 @@ const Auth = () => {
                     onClick={() => setShowResetPassword(true)}
                     className="text-xs text-primary hover:underline block mt-1"
                   >
-                    Glemt passord?
+                    {t('auth.forgotPassword')}
                   </button>
                 )}
               </div>
               <Button type="submit" className="w-full" disabled={loading || (!isLogin && !validatedCompany)}>
-                {loading ? "Behandler..." : isLogin ? "Logg inn" : "Opprett konto"}
+                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : t('auth.signUp')}
               </Button>
             </form>
             
@@ -354,7 +355,7 @@ const Auth = () => {
               className="w-full text-center py-0 my-[19px] bg-blue-200 hover:bg-blue-100"
             >
               <Chrome className="mr-2 h-4 w-4" />
-              Logg inn med Google
+              {t('auth.signInWithGoogle')}
             </Button>
 
             <div className="text-center text-sm">
@@ -367,7 +368,7 @@ const Auth = () => {
                 }} 
                 className="text-primary hover:underline"
               >
-                {isLogin ? "Har du ikke konto? Opprett en her" : "Har du allerede konto? Logg inn her"}
+                {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
               </button>
             </div>
           </CardContent>
@@ -378,18 +379,18 @@ const Auth = () => {
       <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tilbakestill passord</DialogTitle>
+            <DialogTitle>{t('auth.resetPassword')}</DialogTitle>
             <DialogDescription>
-              Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.
+              {t('auth.resetPasswordDesc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="resetEmail">E-post</Label>
+              <Label htmlFor="resetEmail">{t('auth.email')}</Label>
               <Input 
                 id="resetEmail" 
                 type="email" 
-                placeholder="din@epost.no" 
+                placeholder={t('forms.placeholder.email')} 
                 value={resetEmail} 
                 onChange={e => setResetEmail(e.target.value)} 
                 required 
@@ -405,10 +406,10 @@ const Auth = () => {
                 }} 
                 className="flex-1"
               >
-                Avbryt
+                {t('actions.cancel')}
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Sender..." : "Send e-post"}
+                {loading ? t('auth.sending') : t('auth.sendEmail')}
               </Button>
             </div>
           </form>
