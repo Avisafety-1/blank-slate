@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Radio, MapPin, AlertCircle, Navigation } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -38,6 +39,7 @@ interface StartFlightDialogProps {
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
   const { companyId } = useAuth();
+  const { t } = useTranslation();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [publishMode, setPublishMode] = useState<PublishMode>('none');
@@ -101,21 +103,21 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Start flytur</DialogTitle>
+          <DialogTitle>{t('flight.startFlightTitle')}</DialogTitle>
           <DialogDescription>
-            Velg oppdrag og hvordan du vil dele posisjonen din med SafeSky.
+            {t('flight.startFlightDesc')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="mission-select">Velg oppdrag (valgfritt)</Label>
+            <Label htmlFor="mission-select">{t('flight.selectMission')}</Label>
             <Select value={selectedMissionId} onValueChange={setSelectedMissionId}>
               <SelectTrigger id="mission-select">
-                <SelectValue placeholder="Ingen oppdrag valgt" />
+                <SelectValue placeholder={t('flight.noMissionSelected')} />
               </SelectTrigger>
             <SelectContent>
-                <SelectItem value="none">Ingen oppdrag</SelectItem>
+                <SelectItem value="none">{t('flight.noMission')}</SelectItem>
                 {missions.map((mission) => {
                   const missionHasRoute = mission.route && 
                     typeof mission.route === 'object' && 
@@ -136,7 +138,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           </div>
 
           <div className="space-y-3">
-            <Label>SafeSky publisering</Label>
+            <Label>{t('flight.safeskyPublishing')}</Label>
             <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
               <label 
                 htmlFor="mode-none" 
@@ -144,9 +146,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               >
                 <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
                 <div className="space-y-0.5">
-                  <span className="font-medium">Av</span>
+                  <span className="font-medium">{t('flight.safeskyOff')}</span>
                   <p className="text-xs text-muted-foreground">
-                    Ingen deling med andre luftfartsaktører
+                    {t('flight.safeskyOffDesc')}
                   </p>
                 </div>
               </label>
@@ -159,12 +161,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 <div className="flex-1 space-y-0.5">
                   <div className="flex items-center gap-2">
                     <Radio className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Advisory (rute)</span>
+                    <span className="font-medium">{t('flight.safeskyAdvisory')}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {hasRoute 
-                      ? 'Publiserer planlagt ruteområde som SafeSky-advisory'
-                      : 'Krever oppdrag med planlagt rute'}
+                      ? t('flight.safeskyAdvisoryDesc')
+                      : t('flight.safeskyAdvisoryRequiresRoute')}
                   </p>
                 </div>
               </label>
@@ -177,10 +179,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <Navigation className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">Live posisjon</span>
+                    <span className="font-medium">{t('flight.safeskyLivePosition')}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Deler din GPS-posisjon kontinuerlig med SafeSky
+                    {t('flight.safeskyLivePositionDesc')}
                   </p>
                 </div>
               </label>
@@ -191,7 +193,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
               <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
               <p className="text-muted-foreground">
-                SafeSky-advisoryen oppdateres hvert 10. sekund og avsluttes når du avslutter flyturen.
+                {t('flight.safeskyAdvisoryInfo')}
               </p>
             </div>
           )}
@@ -200,7 +202,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
               <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
               <p className="text-muted-foreground">
-                Din GPS-posisjon oppdateres hvert 10. sekund til SafeSky. Krever tilgang til enhetens posisjon.
+                {t('flight.safeskyLiveInfo')}
               </p>
             </div>
           )}
@@ -208,14 +210,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t('actions.cancel')}
           </Button>
           <Button 
             onClick={handleStartFlight} 
             disabled={loading}
             className="bg-green-600 hover:bg-green-700"
           >
-            {loading ? 'Starter...' : 'Start flytur'}
+            {loading ? t('flight.starting') : t('flight.startFlight')}
           </Button>
         </DialogFooter>
       </DialogContent>

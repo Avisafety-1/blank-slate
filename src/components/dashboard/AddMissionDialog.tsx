@@ -17,6 +17,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useTranslation } from "react-i18next";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -54,6 +55,7 @@ export const AddMissionDialog = ({
   initialSelectedCustomer
 }: AddMissionDialogProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -163,7 +165,7 @@ export const AddMissionDialog = ({
       .eq("approved", true);
     
     if (error) {
-      toast.error("Kunne ikke hente personell");
+      toast.error(t('missions.couldNotLoadPersonnel'));
       console.error(error);
     } else {
       setProfiles(data || []);
@@ -177,7 +179,7 @@ export const AddMissionDialog = ({
       .eq("aktiv", true);
     
     if (error) {
-      toast.error("Kunne ikke hente utstyr");
+      toast.error(t('missions.couldNotLoadEquipment'));
       console.error(error);
     } else {
       setEquipment(data || []);
@@ -191,7 +193,7 @@ export const AddMissionDialog = ({
       .eq("aktiv", true);
     
     if (error) {
-      toast.error(`Kunne ikke hente ${terminology.vehiclesLower}`);
+      toast.error(t('missions.couldNotLoadDrones'));
       console.error(error);
     } else {
       setDrones(data || []);
@@ -206,7 +208,7 @@ export const AddMissionDialog = ({
       .order("navn");
     
     if (error) {
-      toast.error("Kunne ikke hente kunder");
+      toast.error(t('missions.couldNotLoadCustomers'));
       console.error(error);
     } else {
       setCustomers(data || []);
@@ -254,7 +256,7 @@ export const AddMissionDialog = ({
 
   const handleCreateCustomer = async () => {
     if (!newCustomerName.trim()) {
-      toast.error("Kundenavn kan ikke være tomt");
+      toast.error(t('missions.customerName') + ' ' + t('forms.required').toLowerCase());
       return;
     }
 
@@ -285,7 +287,7 @@ export const AddMissionDialog = ({
 
       if (error) throw error;
 
-      toast.success("Kunde opprettet!");
+      toast.success(t('missions.customerCreated'));
       setCustomers([...customers, data]);
       setSelectedCustomer(data.id);
       setNewCustomerName("");
@@ -293,7 +295,7 @@ export const AddMissionDialog = ({
       setOpenCustomerPopover(false);
     } catch (error) {
       console.error("Error creating customer:", error);
-      toast.error("Kunne ikke opprette kunde");
+      toast.error(t('missions.couldNotCreateCustomer'));
     }
   };
 
@@ -382,10 +384,10 @@ export const AddMissionDialog = ({
             .from("mission_drones")
             .insert(dronesData);
           
-          if (dronesError) throw dronesError;
+        if (dronesError) throw dronesError;
         }
 
-        toast.success("Oppdrag oppdatert!");
+        toast.success(t('missions.missionUpdated'));
       } else {
         // INSERT mode
         const { data: newMission, error: missionError } = await (supabase as any)
@@ -498,7 +500,7 @@ export const AddMissionDialog = ({
           console.error('Error sending new mission notification:', emailError);
         }
 
-        toast.success("Oppdrag opprettet!");
+        toast.success(t('missions.missionCreated'));
       }
       
       onMissionAdded();
@@ -524,7 +526,7 @@ export const AddMissionDialog = ({
       setShowNewCustomerInput(false);
     } catch (error) {
       console.error("Error saving mission:", error);
-      toast.error(mission ? "Kunne ikke oppdatere oppdrag" : "Kunne ikke opprette oppdrag");
+      toast.error(mission ? t('missions.couldNotUpdateMission') : t('missions.couldNotCreateMission'));
     } finally {
       setLoading(false);
     }
@@ -573,12 +575,12 @@ export const AddMissionDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>{mission ? "Rediger oppdrag" : "Legg til oppdrag"}</DialogTitle>
+          <DialogTitle>{mission ? t('missions.editMission') : t('missions.addMission')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="tittel">Tittel *</Label>
+            <Label htmlFor="tittel">{t('forms.title')} *</Label>
             <Input
               id="tittel"
               value={formData.tittel}
@@ -589,7 +591,7 @@ export const AddMissionDialog = ({
 
           <div>
             <AddressAutocomplete
-              label="Adresse / lokasjon *"
+              label={t('missions.addressLocation') + " *"}
               value={formData.lokasjon}
               onChange={(value) => setFormData({ ...formData, lokasjon: value })}
               onSelectLocation={(location) => {
@@ -600,7 +602,7 @@ export const AddMissionDialog = ({
                   longitude: location.lon
                 });
               }}
-              placeholder="Søk etter adresse..."
+              placeholder={t('missions.searchAddress')}
             />
             
             <AirspaceWarnings 
@@ -617,13 +619,13 @@ export const AddMissionDialog = ({
 
           {/* Route Planning */}
           <div>
-            <Label>Flyrute</Label>
+            <Label>{t('missions.flightRoute')}</Label>
             <div className="mt-1.5">
               {routeData ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2 text-sm bg-secondary/50 px-3 py-2 rounded-md">
                     <MapPin className="h-4 w-4 text-primary" />
-                    <span>{routeData.coordinates.length} punkter</span>
+                    <span>{routeData.coordinates.length} {t('missions.points')}</span>
                     <span className="text-muted-foreground">•</span>
                     <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{routeData.totalDistance.toFixed(2)} km</span>
@@ -665,7 +667,7 @@ export const AddMissionDialog = ({
                     }}
                   >
                     <Navigation className="h-4 w-4 mr-1" />
-                    Bruk startpunkt
+                    {t('missions.useStartPoint')}
                   </Button>
                   <Button
                     type="button"
@@ -692,7 +694,7 @@ export const AddMissionDialog = ({
                     }}
                   >
                     <Route className="h-4 w-4 mr-1" />
-                    Rediger
+                    {t('actions.edit')}
                   </Button>
                   <Button
                     type="button"
@@ -729,14 +731,14 @@ export const AddMissionDialog = ({
                   }}
                 >
                   <Route className="h-4 w-4 mr-2" />
-                  Planlegg rute på kart
+                  {t('missions.planRouteOnMap')}
                 </Button>
               )}
             </div>
           </div>
 
           <div>
-            <Label htmlFor="tidspunkt">Tidspunkt *</Label>
+            <Label htmlFor="tidspunkt">{t('missions.time')} *</Label>
             <Input
               id="tidspunkt"
               type="datetime-local"
@@ -747,7 +749,7 @@ export const AddMissionDialog = ({
           </div>
 
           <div>
-            <Label htmlFor="beskrivelse">Beskrivelse</Label>
+            <Label htmlFor="beskrivelse">{t('missions.description')}</Label>
             <Textarea
               id="beskrivelse"
               value={formData.beskrivelse}
@@ -757,7 +759,7 @@ export const AddMissionDialog = ({
           </div>
 
           <div>
-            <Label htmlFor="merknader">Merknader</Label>
+            <Label htmlFor="merknader">{t('missions.notes')}</Label>
             <Textarea
               id="merknader"
               value={formData.merknader}
@@ -768,36 +770,36 @@ export const AddMissionDialog = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('missions.status')}</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Planlagt">Planlagt</SelectItem>
-                  <SelectItem value="Pågående">Pågående</SelectItem>
-                  <SelectItem value="Fullført">Fullført</SelectItem>
+                  <SelectItem value="Planlagt">{t('missions.planned')}</SelectItem>
+                  <SelectItem value="Pågående">{t('missions.ongoing')}</SelectItem>
+                  <SelectItem value="Fullført">{t('missions.completed')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="risk">Risiko</Label>
+              <Label htmlFor="risk">{t('missions.risk')}</Label>
               <Select value={formData.risk_nivå} onValueChange={(value) => setFormData({ ...formData, risk_nivå: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Lav">Lav</SelectItem>
-                  <SelectItem value="Middels">Middels</SelectItem>
-                  <SelectItem value="Høy">Høy</SelectItem>
+                  <SelectItem value="Lav">{t('missions.riskLevels.low')}</SelectItem>
+                  <SelectItem value="Middels">{t('missions.riskLevels.medium')}</SelectItem>
+                  <SelectItem value="Høy">{t('missions.riskLevels.high')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="kunde">Kunde</Label>
+            <Label htmlFor="kunde">{t('missions.customer')}</Label>
             <Popover open={openCustomerPopover} onOpenChange={setOpenCustomerPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -808,20 +810,20 @@ export const AddMissionDialog = ({
                 >
                   {selectedCustomer
                     ? customers.find((c) => c.id === selectedCustomer)?.navn
-                    : "Velg kunde..."}
+                    : t('missions.selectCustomer')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk kunde..." />
+                  <CommandInput placeholder={t('missions.searchCustomer')} />
                   <CommandList>
                     <CommandEmpty>
                       <div className="p-2">
                         {showNewCustomerInput ? (
                           <div className="space-y-2">
                             <Input
-                              placeholder="Kundenavn"
+                              placeholder={t('missions.customerName')}
                               value={newCustomerName}
                               onChange={(e) => setNewCustomerName(e.target.value)}
                               onKeyDown={(e) => {
@@ -833,7 +835,7 @@ export const AddMissionDialog = ({
                             />
                             <div className="flex gap-2">
                               <Button size="sm" onClick={handleCreateCustomer}>
-                                Opprett
+                                {t('actions.create')}
                               </Button>
                               <Button
                                 size="sm"
@@ -843,7 +845,7 @@ export const AddMissionDialog = ({
                                   setNewCustomerName("");
                                 }}
                               >
-                                Avbryt
+                                {t('actions.cancel')}
                               </Button>
                             </div>
                           </div>
@@ -854,7 +856,7 @@ export const AddMissionDialog = ({
                             onClick={() => setShowNewCustomerInput(true)}
                           >
                             <Plus className="mr-2 h-4 w-4" />
-                            Legg til ny kunde
+                            {t('missions.addNewCustomer')}
                           </Button>
                         )}
                       </div>
@@ -935,7 +937,7 @@ export const AddMissionDialog = ({
                       key={id}
                       className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
                     >
-                      <span>{profile?.full_name || "Ukjent"}</span>
+                      <span>{profile?.full_name || t('missions.unknown')}</span>
                       <button
                         type="button"
                         onClick={() => removePersonnel(id)}
@@ -951,7 +953,7 @@ export const AddMissionDialog = ({
           </div>
 
           <div>
-            <Label>Utstyr</Label>
+            <Label>{t('missions.equipment')}</Label>
             <Popover open={openEquipmentPopover} onOpenChange={setOpenEquipmentPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -960,15 +962,15 @@ export const AddMissionDialog = ({
                   aria-expanded={openEquipmentPopover}
                   className="w-full justify-between"
                 >
-                  Velg utstyr...
+                  {t('missions.selectEquipment')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk utstyr..." />
+                  <CommandInput placeholder={t('missions.searchEquipment')} />
                   <CommandList>
-                    <CommandEmpty>Ingen utstyr funnet.</CommandEmpty>
+                    <CommandEmpty>{t('missions.noEquipmentFound')}</CommandEmpty>
                     <CommandGroup>
                       {equipment.map((eq) => (
                         <CommandItem
@@ -1082,11 +1084,11 @@ export const AddMissionDialog = ({
 
           <div className="flex gap-2 justify-end pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Avbryt
+              {t('actions.cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mission ? "Lagre endringer" : "Opprett oppdrag"}
+              {mission ? t('missions.saveChanges') : t('missions.createMission')}
             </Button>
           </div>
         </form>
