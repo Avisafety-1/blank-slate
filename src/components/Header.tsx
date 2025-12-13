@@ -1,4 +1,4 @@
-import { Shield, LogOut, Settings, Menu, Building2 } from "lucide-react";
+import { Shield, LogOut, Settings, Menu, Building2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface Company {
   id: string;
@@ -31,6 +32,7 @@ export const Header = () => {
   const { signOut, companyName, isSuperAdmin, companyId, refetchUserInfo, user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     if (user) {
@@ -83,17 +85,22 @@ export const Header = () => {
       
       await refetchUserInfo();
       const company = companies.find(c => c.id === newCompanyId);
-      toast.success(`Byttet til ${company?.navn}`);
+      toast.success(t('header.switchedTo', { company: company?.navn }));
     } catch (error) {
       console.error("Error switching company:", error);
-      toast.error("Kunne ikke bytte selskap");
+      toast.error(t('header.couldNotSwitch'));
     }
   };
 
   const handleSignOut = async () => {
     await signOut();
-    toast.success("Logget ut");
+    toast.success(t('header.loggedOut'));
     navigate("/auth");
+  };
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'no' ? 'en' : 'no';
+    i18n.changeLanguage(newLang);
   };
 
   return (
@@ -109,7 +116,7 @@ export const Header = () => {
             <div className="text-left">
               <h1 className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold whitespace-nowrap">SMS</h1>
               <p className="text-xs lg:text-sm text-foreground/80 hidden lg:block">
-                {isSuperAdmin ? "Super Administrator" : companyName || "Drone Operations"}
+                {isSuperAdmin ? t('header.superAdmin') : companyName || "Drone Operations"}
               </p>
             </div>
           </Button>
@@ -120,7 +127,7 @@ export const Header = () => {
               <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
                 <SelectTrigger className="w-[120px] h-8">
                   <Building2 className="w-3 h-3 mr-1" />
-                  <SelectValue placeholder="Velg..." />
+                  <SelectValue placeholder={t('common.select')} />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
@@ -140,15 +147,26 @@ export const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                <DropdownMenuItem onClick={() => navigate("/oppdrag")}>Oppdrag</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/kart")}>Kart</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dokumenter")}>Dokumenter</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/kalender")}>Kalender</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/hendelser")}>Hendelser</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/status")}>Status</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/ressurser")}>Ressurser</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Language toggle - Mobile */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleLanguage}
+              className="h-8 w-8 p-0"
+              title={i18n.language === 'no' ? 'Switch to English' : 'Bytt til norsk'}
+            >
+              <Globe className="w-4 h-4" />
+            </Button>
             
             {isAdmin && (
               <Button
@@ -156,7 +174,7 @@ export const Header = () => {
                 size="sm"
                 onClick={() => navigate("/admin")}
                 className="gap-1 relative h-8 w-8 p-0"
-                title="Administrator"
+                title={t('nav.admin')}
               >
                 <Settings className="w-4 h-4" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
@@ -167,7 +185,7 @@ export const Header = () => {
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              title="Logg ut"
+              title={t('actions.signOut')}
               className="h-8 w-8 p-0"
             >
               <LogOut className="w-4 h-4" />
@@ -176,13 +194,13 @@ export const Header = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 flex-shrink">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>Oppdrag</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>Kart</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>Dokumenter</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>Kalender</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>Hendelser</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>Status</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>Ressurser</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
           </nav>
           
           <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
@@ -190,7 +208,7 @@ export const Header = () => {
               <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
                 <SelectTrigger className="w-[180px] h-9">
                   <Building2 className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Velg selskap..." />
+                  <SelectValue placeholder={t('common.selectCompany')} />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
@@ -201,13 +219,26 @@ export const Header = () => {
                 </SelectContent>
               </Select>
             )}
+            
+            {/* Language toggle - Desktop */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleLanguage}
+              className="gap-1"
+              title={i18n.language === 'no' ? 'Switch to English' : 'Bytt til norsk'}
+            >
+              <Globe className="w-4 h-4" />
+              <span className="text-xs font-medium">{i18n.language === 'no' ? 'EN' : 'NO'}</span>
+            </Button>
+            
             {isAdmin && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/admin")}
                 className="gap-2 relative"
-                title="Administrator"
+                title={t('nav.admin')}
               >
                 <Settings className="w-4 h-4" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
@@ -218,7 +249,7 @@ export const Header = () => {
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              title="Logg ut"
+              title={t('actions.signOut')}
             >
               <LogOut className="w-4 h-4" />
             </Button>
