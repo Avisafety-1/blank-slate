@@ -56,7 +56,8 @@
     "unknownName": "Ukjent navn",
     "noRole": "Ingen rolle",
     "noResults": "Ingen treff for",
-    "processing": "Behandler..."
+    "processing": "Behandler...",
+    "other": "Annet"
   },
   "auth": {
     "signIn": "Logg inn",
@@ -130,12 +131,24 @@
     "loggedOut": "Logget ut"
   },
   "dashboard": {
+    "search": {
+      "placeholder": "Søk (oppdrag, hendelser, dokumenter, utstyr...)",
+      "results": "Søkeresultater",
+      "couldNotSearch": "Kunne ikke utføre søk"
+    },
     "missions": {
       "title": "Kommende oppdrag",
       "noMissions": "Ingen kommende oppdrag",
       "soraStatus": "SORA: {{status}}",
       "soraNoStatus": "SORA: Ingen",
-      "newSoraAnalysis": "Ny SORA-analyse"
+      "newSoraAnalysis": "Ny SORA-analyse",
+      "statusPlanned": "Planlagt",
+      "statusOngoing": "Pågående",
+      "statusCompleted": "Fullført"
+    },
+    "kpi": {
+      "title": "Hendelser siste 6 mnd",
+      "loading": "Laster statistikk..."
     },
     "incidents": {
       "title": "Hendelser",
@@ -209,11 +222,15 @@
     "couldNotLoadPersonnel": "Kunne ikke hente personell"
   },
   "missions": {
-    "title": "Oppdrag",
+    "title": "Tittel",
+    "missionTitle": "Oppdrag",
+    "titlePlaceholder": "F.eks. Oppdrag i Oslo",
+    "type": "Type",
     "planned": "Planlagt",
     "ongoing": "Pågående",
     "completed": "Fullført",
     "cancelled": "Avlyst",
+    "descriptionPlaceholder": "Legg til detaljer...",
     "addMission": "Legg til oppdrag",
     "editMission": "Rediger oppdrag",
     "planRoute": "Planlegg rute",
