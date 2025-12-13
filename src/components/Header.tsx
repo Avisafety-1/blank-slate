@@ -6,13 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -127,19 +120,24 @@ export const Header = () => {
           {/* Mobile company selector and menu */}
           <div className="flex items-center gap-1 md:hidden">
             {isSuperAdmin && companies.length > 0 && (
-              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className="w-[100px] h-8 text-xs">
-                  <Building2 className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <SelectValue placeholder={t('common.select')} className="truncate" />
-                </SelectTrigger>
-                <SelectContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Building2 className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
                   {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
+                    <DropdownMenuItem 
+                      key={company.id} 
+                      onClick={() => handleCompanySwitch(company.id)}
+                      className={companyId === company.id ? "bg-accent" : ""}
+                    >
                       {company.navn}
-                    </SelectItem>
+                    </DropdownMenuItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             
             {/* Mobile Navigation - Hamburger Menu */}
@@ -208,19 +206,24 @@ export const Header = () => {
           
           <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {isSuperAdmin && companies.length > 0 && (
-              <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
-                  <SelectValue placeholder={t('common.selectCompany')} className="truncate" />
-                </SelectTrigger>
-                <SelectContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1">
+                    <Building2 className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
                   {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
+                    <DropdownMenuItem 
+                      key={company.id} 
+                      onClick={() => handleCompanySwitch(company.id)}
+                      className={companyId === company.id ? "bg-accent" : ""}
+                    >
                       {company.navn}
-                    </SelectItem>
+                    </DropdownMenuItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             
             {/* Language toggle - Desktop */}
