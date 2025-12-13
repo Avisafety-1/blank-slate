@@ -4,8 +4,9 @@ import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface MonthData {
   month: string;
@@ -13,9 +14,12 @@ interface MonthData {
 }
 
 export const KPIChart = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
   const [chartData, setChartData] = useState<MonthData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   useEffect(() => {
     fetchIncidentStats();
@@ -63,7 +67,7 @@ export const KPIChart = () => {
         }).length || 0;
 
         monthsData.push({
-          month: format(monthDate, 'MMM', { locale: nb }),
+          month: format(monthDate, 'MMM', { locale: dateLocale }),
           hendelser: count
         });
       }
@@ -81,10 +85,10 @@ export const KPIChart = () => {
       <GlassCard className="h-auto overflow-hidden">
         <div className="flex items-center gap-2 mb-3 min-w-0">
           <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
-          <h2 className="text-sm sm:text-base font-semibold truncate">Hendelser siste 6 mnd</h2>
+          <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.kpi.title')}</h2>
         </div>
         <div className="h-[200px] flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Laster statistikk...</p>
+          <p className="text-sm text-muted-foreground">{t('dashboard.kpi.loading')}</p>
         </div>
       </GlassCard>
     );
@@ -94,7 +98,7 @@ export const KPIChart = () => {
     <GlassCard className="h-auto overflow-hidden">
       <div className="flex items-center gap-2 mb-3 min-w-0">
         <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
-        <h2 className="text-sm sm:text-base font-semibold truncate">Hendelser siste 6 mnd</h2>
+        <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.kpi.title')}</h2>
       </div>
 
       <ResponsiveContainer width="100%" height={200}>

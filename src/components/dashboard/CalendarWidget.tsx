@@ -3,7 +3,7 @@ import { Calendar as CalendarIcon, Plus, ChevronDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { useState, useEffect } from "react";
 import { format, isSameDay } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTranslation } from "react-i18next";
 
 interface CalendarEvent {
   type: string;
@@ -51,7 +52,9 @@ interface CalendarEvent {
 type CalendarEventDB = Tables<"calendar_events">;
 
 export const CalendarWidget = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -226,7 +229,7 @@ export const CalendarWidget = () => {
       setCustomEvents(data || []);
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
-      toast.error('Kunne ikke laste kalenderoppføringer');
+      toast.error(t('dashboard.calendar.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -392,7 +395,7 @@ export const CalendarWidget = () => {
   const handleEventClick = async (event: CalendarEvent) => {
     if (!event.sourceId || !event.sourceType) {
       if (event.sourceType === 'custom') {
-        toast.info('Custom kalenderoppføring');
+        toast.info(t('dashboard.calendar.customEvent'));
       }
       return;
     }
@@ -440,33 +443,33 @@ export const CalendarWidget = () => {
 
         case 'drone':
         case 'equipment':
-          toast.info(`${event.title} - vedlikeholdsinformasjon`);
+          toast.info(`${event.title} - ${t('dashboard.calendar.eventTypes.maintenance')}`);
           break;
       }
     } catch (error) {
       console.error('Error fetching event details:', error);
-      toast.error('Kunne ikke laste detaljer');
+      toast.error(t('dashboard.calendar.couldNotLoadDetails'));
     }
   };
 
   const handleMissionAdded = () => {
     fetchRealCalendarEvents();
-    toast.success("Oppdrag opprettet og lagt til i kalenderen");
+    toast.success(t('dashboard.calendar.missionCreated'));
   };
 
   const handleDocumentAdded = () => {
     fetchRealCalendarEvents();
-    toast.success("Dokument opprettet og lagt til i kalenderen");
+    toast.success(t('dashboard.calendar.documentCreated'));
   };
 
   const handleAddEvent = async () => {
     if (!newEvent.title.trim()) {
-      toast.error("Tittel er påkrevd");
+      toast.error(t('dashboard.calendar.titleRequired'));
       return;
     }
 
     if (!selectedDate) {
-      toast.error("Ingen dato valgt");
+      toast.error(t('dashboard.calendar.noDateSelected'));
       return;
     }
 
@@ -474,7 +477,7 @@ export const CalendarWidget = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user || !companyId) {
-        toast.error("Du må være logget inn for å opprette kalenderoppføringer");
+        toast.error(t('dashboard.calendar.mustBeLoggedIn'));
         return;
       }
 
@@ -492,7 +495,7 @@ export const CalendarWidget = () => {
 
       if (error) throw error;
 
-      toast.success("Kalenderoppføring opprettet!");
+      toast.success(t('dashboard.calendar.eventCreated'));
       setShowAddForm(false);
       setDialogOpen(false);
       setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
@@ -509,14 +512,14 @@ export const CalendarWidget = () => {
       <GlassCard className="h-auto sm:h-[400px] flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 mb-3 min-w-0">
           <CalendarIcon className="w-5 h-5 text-primary flex-shrink-0" />
-          <h2 className="text-sm sm:text-base font-semibold truncate">Kalender</h2>
+          <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.calendar.title')}</h2>
         </div>
 
         <Calendar
           mode="single"
           selected={date}
           onSelect={handleDateClick}
-          locale={nb}
+          locale={dateLocale}
           className={cn("rounded-md border-0 pointer-events-auto w-full")}
           classNames={{
             months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -566,10 +569,10 @@ export const CalendarWidget = () => {
       <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
-            {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: nb })}
+            {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: dateLocale })}
           </DialogTitle>
             <DialogDescription>
-              Hendelser og aktiviteter for denne dagen
+              {t('dashboard.calendar.events')}
             </DialogDescription>
           </DialogHeader>
 
@@ -605,7 +608,7 @@ export const CalendarWidget = () => {
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen hendelser denne dagen
+                    {t('dashboard.calendar.noEvents')}
                   </p>
                 )}
               </div>
@@ -614,7 +617,7 @@ export const CalendarWidget = () => {
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2">
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {t('actions.add')}
                     <ChevronDown className="w-4 h-4 ml-auto" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -625,7 +628,7 @@ export const CalendarWidget = () => {
                       setDialogOpen(false);
                     }}
                   >
-                    Hendelse
+                    {t('dashboard.calendar.eventTypes.incident')}
                   </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
@@ -633,7 +636,7 @@ export const CalendarWidget = () => {
                         setDialogOpen(false);
                       }}
                     >
-                      Dokument
+                      {t('dashboard.calendar.eventTypes.document')}
                     </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -641,7 +644,7 @@ export const CalendarWidget = () => {
                       setDialogOpen(false);
                     }}
                   >
-                    Oppdrag
+                    {t('dashboard.calendar.eventTypes.mission')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -649,14 +652,14 @@ export const CalendarWidget = () => {
                       setDialogOpen(false);
                     }}
                   >
-                    Nyhet
+                    {t('dashboard.news.title')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
                       setShowAddForm(true);
                     }}
                   >
-                    Annet
+                    {t('common.other')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -664,17 +667,17 @@ export const CalendarWidget = () => {
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Tittel *</Label>
+                <Label htmlFor="title">{t('missions.title')} *</Label>
                 <Input
                   id="title"
-                  placeholder="F.eks. Oppdrag i Oslo"
+                  placeholder={t('missions.titlePlaceholder')}
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
+                <Label htmlFor="type">{t('missions.type')}</Label>
                 <Select
                   value={newEvent.type}
                   onValueChange={(value) => setNewEvent({ ...newEvent, type: value })}
@@ -683,17 +686,17 @@ export const CalendarWidget = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Oppdrag">Oppdrag</SelectItem>
-                    <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
-                    <SelectItem value="Dokument">Dokument utgår</SelectItem>
-                    <SelectItem value="Møte">Møte</SelectItem>
-                    <SelectItem value="Annet">Annet</SelectItem>
+                    <SelectItem value="Oppdrag">{t('dashboard.calendar.eventTypes.mission')}</SelectItem>
+                    <SelectItem value="Vedlikehold">{t('dashboard.calendar.eventTypes.maintenance')}</SelectItem>
+                    <SelectItem value="Dokument">{t('dashboard.calendar.expires')}</SelectItem>
+                    <SelectItem value="Møte">{t('dashboard.calendar.eventTypes.meeting')}</SelectItem>
+                    <SelectItem value="Annet">{t('common.other')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="time">Tidspunkt</Label>
+                <Label htmlFor="time">{t('missions.time')}</Label>
                 <Input
                   id="time"
                   type="time"
@@ -703,10 +706,10 @@ export const CalendarWidget = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Beskrivelse</Label>
+                <Label htmlFor="description">{t('missions.description')}</Label>
                 <Textarea
                   id="description"
-                  placeholder="Legg til detaljer..."
+                  placeholder={t('missions.descriptionPlaceholder')}
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                   rows={3}
@@ -715,10 +718,10 @@ export const CalendarWidget = () => {
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowAddForm(false)} className="flex-1">
-                  Avbryt
+                  {t('actions.cancel')}
                 </Button>
                 <Button onClick={handleAddEvent} className="flex-1">
-                  Lagre
+                  {t('actions.save')}
                 </Button>
               </div>
             </div>

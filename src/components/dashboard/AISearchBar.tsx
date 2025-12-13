@@ -12,6 +12,7 @@ import { DocumentDetailDialog } from "./DocumentDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
+import { useTranslation } from "react-i18next";
 interface SearchResults {
   summary: string;
   results: {
@@ -25,6 +26,7 @@ interface SearchResults {
   };
 }
 export const AISearchBar = () => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -56,7 +58,7 @@ export const AISearchBar = () => {
       setResults(data);
     } catch (error: any) {
       console.error("Search error:", error);
-      toast.error("Kunne ikke utføre søk");
+      toast.error(t('dashboard.search.couldNotSearch'));
     } finally {
       setIsSearching(false);
     }
@@ -145,7 +147,7 @@ export const AISearchBar = () => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1"
-            placeholder="Sok (oppdrag, hendelser, dokumenter, utstyr...)"
+            placeholder={t('dashboard.search.placeholder')}
           />
           <Button onClick={handleSearch} disabled={isSearching || !query.trim()}>
             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -156,7 +158,7 @@ export const AISearchBar = () => {
       {results && (
         <GlassCard className="p-6 space-y-4 max-h-[280px] overflow-y-auto">
           <div className="space-y-2">
-            <h3 className="font-semibold text-lg">Søkeresultater ({getTotalResults()})</h3>
+            <h3 className="font-semibold text-lg">{t('dashboard.search.results')} ({getTotalResults()})</h3>
             {results.summary && <p className="text-sm text-slate-950">{results.summary}</p>}
           </div>
 

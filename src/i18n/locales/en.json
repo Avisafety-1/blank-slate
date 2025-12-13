@@ -56,7 +56,8 @@
     "unknownName": "Unknown name",
     "noRole": "No role",
     "noResults": "No results for",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "other": "Other"
   },
   "auth": {
     "signIn": "Sign in",
@@ -130,12 +131,24 @@
     "loggedOut": "Logged out"
   },
   "dashboard": {
+    "search": {
+      "placeholder": "Search (missions, incidents, documents, equipment...)",
+      "results": "Search results",
+      "couldNotSearch": "Could not perform search"
+    },
     "missions": {
       "title": "Upcoming missions",
       "noMissions": "No upcoming missions",
       "soraStatus": "SORA: {{status}}",
       "soraNoStatus": "SORA: None",
-      "newSoraAnalysis": "New SORA analysis"
+      "newSoraAnalysis": "New SORA analysis",
+      "statusPlanned": "Planned",
+      "statusOngoing": "Ongoing",
+      "statusCompleted": "Completed"
+    },
+    "kpi": {
+      "title": "Incidents last 6 months",
+      "loading": "Loading statistics..."
     },
     "incidents": {
       "title": "Incidents",
@@ -209,11 +222,15 @@
     "couldNotLoadPersonnel": "Could not load personnel"
   },
   "missions": {
-    "title": "Missions",
+    "title": "Title",
+    "missionTitle": "Missions",
+    "titlePlaceholder": "E.g. Mission in Oslo",
+    "type": "Type",
     "planned": "Planned",
     "ongoing": "Ongoing",
     "completed": "Completed",
     "cancelled": "Cancelled",
+    "descriptionPlaceholder": "Add details...",
     "addMission": "Add mission",
     "editMission": "Edit mission",
     "planRoute": "Plan route",
