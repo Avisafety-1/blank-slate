@@ -128,9 +128,9 @@ export const Header = () => {
           <div className="flex items-center gap-1 md:hidden">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className="w-[120px] h-8">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  <SelectValue placeholder={t('common.select')} />
+                <SelectTrigger className="w-[100px] h-8 text-xs">
+                  <Building2 className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <SelectValue placeholder={t('common.select')} className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
@@ -209,9 +209,9 @@ export const Header = () => {
           <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={companyId || ""} onValueChange={handleCompanySwitch}>
-                <SelectTrigger className="w-[180px] h-9">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder={t('common.selectCompany')} />
+                <SelectTrigger className="w-[140px] h-9">
+                  <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
+                  <SelectValue placeholder={t('common.selectCompany')} className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
