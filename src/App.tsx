@@ -19,6 +19,9 @@ import Status from "./pages/Status";
 import Oppdrag from "./pages/Oppdrag";
 import NotFound from "./pages/NotFound";
 
+// Initialize i18n - must be imported after React setup
+import "./i18n";
+
 const queryClient = new QueryClient();
 
 // FIX: Refactored to explicit function body to avoid render2 error with provider nesting
