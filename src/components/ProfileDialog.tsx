@@ -349,17 +349,17 @@ export const ProfileDialog = () => {
 
   const getRoleDisplayName = (role: string): string => {
     const roleMap: { [key: string]: string } = {
-      superadmin: "Super Administrator",
-      admin: "Administrator",
-      saksbehandler: "Saksbehandler",
-      operatør: "Operatør",
-      lesetilgang: "Lesetilgang",
+      superadmin: t('roles.superadmin'),
+      admin: t('roles.admin'),
+      saksbehandler: t('roles.saksbehandler'),
+      operatør: t('roles.operator'),
+      lesetilgang: t('roles.readonly'),
     };
     return roleMap[role] || role;
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Ikke satt";
+    if (!dateString) return t('common.notSet');
     return new Date(dateString).toLocaleDateString("no-NO", {
       day: "2-digit",
       month: "short",
@@ -416,27 +416,27 @@ export const ProfileDialog = () => {
               <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
-                  <span>Profil</span>
+                  <span>{t('profile.info')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Lock className="h-3 w-3" />
-                  <span>Sikkerhet</span>
+                  <span>{t('profile.security')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="competencies" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Award className="h-3 w-3" />
-                  <span>Kompetanse</span>
+                  <span>{t('profile.competencies')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="emergency" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Heart className="h-3 w-3" />
-                  <span>Nødkontakt</span>
+                  <span>{t('profile.emergency')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="notifications" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Bell className="h-3 w-3" />
-                  <span>Varslinger</span>
+                  <span>{t('profile.notifications')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <AlertCircle className="h-3 w-3" />
-                  <span>Hendelser</span>
+                  <span>{t('profile.incidents')}</span>
                   {followUpIncidents.length > 0 && (
                     <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px]">
                       {followUpIncidents.length}
@@ -450,16 +450,16 @@ export const ProfileDialog = () => {
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <CardTitle>Profilinformasjon</CardTitle>
+                      <CardTitle>{t('profile.info')}</CardTitle>
                       {!isEditing ? (
                         <Button onClick={() => setIsEditing(true)} size="sm" className="w-full sm:w-auto">
-                          Rediger
+                          {t('actions.edit')}
                         </Button>
                       ) : (
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button onClick={handleSaveProfile} size="sm" className="flex-1 sm:flex-none">
                             <Save className="h-4 w-4 mr-1" />
-                            Lagre
+                            {t('actions.save')}
                           </Button>
                           <Button
                             onClick={() => {
@@ -472,7 +472,7 @@ export const ProfileDialog = () => {
                             size="sm"
                             className="flex-1 sm:flex-none"
                           >
-                            Avbryt
+                            {t('actions.cancel')}
                           </Button>
                         </div>
                       )}
@@ -506,15 +506,15 @@ export const ProfileDialog = () => {
                       </div>
                       <div className="flex-1 w-full space-y-2">
                         <div className="grid gap-2">
-                          <Label>Navn</Label>
+                          <Label>{t('profile.name')}</Label>
                           {isEditing ? (
                             <Input
                               value={editedProfile.full_name || ""}
                               onChange={(e) => setEditedProfile({ ...editedProfile, full_name: e.target.value })}
-                              placeholder="Fullt navn"
+                              placeholder={t('forms.placeholder.fullName')}
                             />
                           ) : (
-                            <p className="text-lg font-semibold">{profile?.full_name || "Ikke satt"}</p>
+                            <p className="text-lg font-semibold">{profile?.full_name || t('common.notSet')}</p>
                           )}
                         </div>
                       </div>
@@ -525,56 +525,56 @@ export const ProfileDialog = () => {
                     {/* Basic Info */}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>E-post</Label>
+                        <Label>{t('auth.email')}</Label>
                         <Input value={profile?.email || user?.email || ""} disabled className="bg-muted" />
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Telefon</Label>
+                        <Label>{t('profile.phone')}</Label>
                         {isEditing ? (
                           <Input
                             value={editedProfile.telefon || ""}
                             onChange={(e) => setEditedProfile({ ...editedProfile, telefon: e.target.value })}
-                            placeholder="+47 xxx xx xxx"
+                            placeholder={t('forms.placeholder.phone')}
                           />
                         ) : (
-                          <p className="text-sm py-2">{profile?.telefon || "Ikke oppgitt"}</p>
+                          <p className="text-sm py-2">{profile?.telefon || t('common.notSpecified')}</p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Tittel/Stilling</Label>
+                        <Label>{t('profile.jobTitle')}</Label>
                         {isEditing ? (
                           <Input
                             value={editedProfile.tittel || ""}
                             onChange={(e) => setEditedProfile({ ...editedProfile, tittel: e.target.value })}
-                            placeholder="F.eks. Dronepilot"
+                            placeholder={t('forms.placeholder.jobTitle')}
                           />
                         ) : (
-                          <p className="text-sm py-2">{profile?.tittel || "Ikke oppgitt"}</p>
+                          <p className="text-sm py-2">{profile?.tittel || t('common.notSpecified')}</p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Firma</Label>
-                        <p className="text-sm py-2 font-medium">{company?.navn || "Ikke tilknyttet"}</p>
+                        <Label>{t('profile.company')}</Label>
+                        <p className="text-sm py-2 font-medium">{company?.navn || t('common.notAssociated')}</p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Rolle</Label>
+                        <Label>{t('profile.role')}</Label>
                         <div className="py-1">
                           {userRole ? (
                             <Badge variant={getRoleBadgeVariant(userRole)}>
                               {getRoleDisplayName(userRole)}
                             </Badge>
                           ) : (
-                            <p className="text-sm text-muted-foreground">Ingen rolle</p>
+                            <p className="text-sm text-muted-foreground">{t('common.noRole')}</p>
                           )}
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Medlem siden</Label>
+                        <Label>{t('profile.memberSince')}</Label>
                         <p className="text-sm py-2">{formatDate(profile?.created_at)}</p>
                       </div>
                     </div>
@@ -583,16 +583,16 @@ export const ProfileDialog = () => {
 
                     {/* Address */}
                     <div className="space-y-2">
-                      <Label>Adresse</Label>
+                      <Label>{t('profile.address')}</Label>
                       {isEditing ? (
                         <Textarea
                           value={editedProfile.adresse || ""}
                           onChange={(e) => setEditedProfile({ ...editedProfile, adresse: e.target.value })}
-                          placeholder="Gate, postnummer og sted"
+                          placeholder={t('forms.placeholder.address')}
                           rows={3}
                         />
                       ) : (
-                        <p className="text-sm py-2 whitespace-pre-wrap">{profile?.adresse || "Ikke oppgitt"}</p>
+                        <p className="text-sm py-2 whitespace-pre-wrap">{profile?.adresse || t('common.notSpecified')}</p>
                       )}
                     </div>
                   </CardContent>
@@ -603,13 +603,13 @@ export const ProfileDialog = () => {
               <TabsContent value="security" className="space-y-4 mt-20 sm:mt-12 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Sikkerhet</CardTitle>
+                    <CardTitle>{t('profile.security')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Passord</Label>
+                      <Label>{t('profile.passwordReset')}</Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Klikk på knappen under for å få tilsendt en e-post med lenke for å tilbakestille passordet ditt.
+                        {t('profile.passwordResetDesc')}
                       </p>
                       <Button
                         onClick={handlePasswordReset}
@@ -617,7 +617,7 @@ export const ProfileDialog = () => {
                         variant="outline"
                       >
                         <Lock className="h-4 w-4 mr-2" />
-                        {passwordResetLoading ? "Sender e-post..." : "Tilbakestill passord"}
+                        {passwordResetLoading ? t('profile.sendingEmail') : t('profile.resetPassword')}
                       </Button>
                     </div>
                   </CardContent>
@@ -629,7 +629,7 @@ export const ProfileDialog = () => {
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <CardTitle>Mine kompetanser ({competencies.length})</CardTitle>
+                      <CardTitle>{t('profile.myCompetencies')} ({competencies.length})</CardTitle>
                       <div className="flex gap-2 w-full sm:w-auto">
                         <Button 
                           onClick={() => setLogbookDialogOpen(true)} 
@@ -638,14 +638,14 @@ export const ProfileDialog = () => {
                           className="flex-1 sm:flex-none"
                         >
                           <Book className="h-4 w-4 mr-1" />
-                          Loggbok
+                          {t('profile.logbook')}
                         </Button>
                         <Button 
                           onClick={() => setCompetencyDialogOpen(true)} 
                           size="sm"
                           className="flex-1 sm:flex-none"
                         >
-                          Legg til
+                          {t('actions.add')}
                         </Button>
                       </div>
                     </div>
@@ -677,7 +677,7 @@ export const ProfileDialog = () => {
                                 )}
                                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                                   {comp.utstedt_dato && (
-                                    <p>Utstedt: {formatDate(comp.utstedt_dato)}</p>
+                                    <p>{t('profile.issued')}: {formatDate(comp.utstedt_dato)}</p>
                                   )}
                                   {comp.utloper_dato && (
                                     <p className={
@@ -687,7 +687,7 @@ export const ProfileDialog = () => {
                                         ? "text-yellow-600 dark:text-yellow-400 font-semibold"
                                         : ""
                                     }>
-                                      Utløper: {formatDate(comp.utloper_dato)}
+                                      {t('profile.expires')}: {formatDate(comp.utloper_dato)}
                                     </p>
                                   )}
                                 </div>
@@ -697,7 +697,7 @@ export const ProfileDialog = () => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.noCompetencies')}</p>
                     )}
                   </CardContent>
                 </Card>
@@ -708,43 +708,43 @@ export const ProfileDialog = () => {
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <CardTitle>Nødkontakt</CardTitle>
+                      <CardTitle>{t('profile.emergency')}</CardTitle>
                       {!isEditing && (
                         <Button onClick={() => setIsEditing(true)} size="sm" className="w-full sm:w-auto">
-                          Rediger
+                          {t('actions.edit')}
                         </Button>
                       )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Viktig informasjon ved ulykker eller nødsituasjoner under feltarbeid.
+                      {t('profile.emergencyInfo')}
                     </p>
                     <Separator />
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Navn på nødkontakt</Label>
+                        <Label>{t('profile.emergencyContactName')}</Label>
                         {isEditing ? (
                           <Input
                             value={editedProfile.nødkontakt_navn || ""}
                             onChange={(e) => setEditedProfile({ ...editedProfile, nødkontakt_navn: e.target.value })}
-                            placeholder="Fullt navn"
+                            placeholder={t('forms.placeholder.fullName')}
                           />
                         ) : (
-                          <p className="text-sm py-2">{profile?.nødkontakt_navn || "Ikke oppgitt"}</p>
+                          <p className="text-sm py-2">{profile?.nødkontakt_navn || t('common.notSpecified')}</p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Telefon til nødkontakt</Label>
+                        <Label>{t('profile.emergencyContactPhone')}</Label>
                         {isEditing ? (
                           <Input
                             value={editedProfile.nødkontakt_telefon || ""}
                             onChange={(e) => setEditedProfile({ ...editedProfile, nødkontakt_telefon: e.target.value })}
-                            placeholder="+47 xxx xx xxx"
+                            placeholder={t('forms.placeholder.phone')}
                           />
                         ) : (
-                          <p className="text-sm py-2">{profile?.nødkontakt_telefon || "Ikke oppgitt"}</p>
+                          <p className="text-sm py-2">{profile?.nødkontakt_telefon || t('common.notSpecified')}</p>
                         )}
                       </div>
                     </div>
@@ -753,7 +753,7 @@ export const ProfileDialog = () => {
                       <div className="flex gap-2 pt-4">
                         <Button onClick={handleSaveProfile} size="sm" className="flex-1 sm:flex-none">
                           <Save className="h-4 w-4 mr-1" />
-                          Lagre
+                          {t('actions.save')}
                         </Button>
                         <Button
                           onClick={() => {
@@ -764,7 +764,7 @@ export const ProfileDialog = () => {
                           size="sm"
                           className="flex-1 sm:flex-none"
                         >
-                          Avbryt
+                          {t('actions.cancel')}
                         </Button>
                       </div>
                     )}
@@ -776,17 +776,17 @@ export const ProfileDialog = () => {
               <TabsContent value="notifications" className="space-y-4 mt-20 sm:mt-12 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Varslinger</CardTitle>
+                    <CardTitle>{t('profile.notifications')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            E-post ved nye hendelser
+                            {t('profile.notifications.newIncidents')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            Få beskjed når nye hendelser rapporteres
+                            {t('profile.notifications.newIncidentsDesc')}
                           </p>
                         </div>
                         <Switch
@@ -802,10 +802,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            E-post ved nye oppdrag
+                            {t('profile.notifications.newMissions')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            Få beskjed når nye oppdrag opprettes
+                            {t('profile.notifications.newMissionsDesc')}
                           </p>
                         </div>
                         <Switch
@@ -821,10 +821,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            E-post når dokumenter nærmer seg utløpsdato
+                            {t('profile.notifications.documentExpiry')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            Varsling 30 dager før dokumenter utløper
+                            {t('profile.notifications.documentExpiryDesc')}
                           </p>
                         </div>
                         <Switch
@@ -840,10 +840,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            E-post når nye brukere venter på godkjenning
+                            {t('profile.notifications.newUserPending')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            Kun for administratorer
+                            {t('profile.notifications.newUserPendingDesc')}
                           </p>
                         </div>
                         <Switch
@@ -860,10 +860,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            E-post når jeg settes som oppfølgingsansvarlig
+                            {t('profile.notifications.followupAssigned')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            Standard aktivert - anbefales sterkt
+                            {t('profile.notifications.followupAssignedDesc')}
                           </p>
                         </div>
                         <Switch
@@ -882,7 +882,7 @@ export const ProfileDialog = () => {
               <TabsContent value="incidents" className="space-y-4 mt-20 sm:mt-12 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Hendelser til oppfølging ({followUpIncidents.length})</CardTitle>
+                    <CardTitle>{t('profile.myIncidents')} ({followUpIncidents.length})</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {followUpIncidents.length > 0 ? (
@@ -909,7 +909,7 @@ export const ProfileDialog = () => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Ingen hendelser til oppfølging</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.noIncidentsFollowUp')}</p>
                     )}
                   </CardContent>
                 </Card>
