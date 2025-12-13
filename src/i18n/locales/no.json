@@ -1,0 +1,69 @@
+{
+  "nav": {
+    "missions": "Oppdrag",
+    "map": "Kart",
+    "documents": "Dokumenter",
+    "calendar": "Kalender",
+    "incidents": "Hendelser",
+    "status": "Status",
+    "resources": "Ressurser",
+    "admin": "Administrator"
+  },
+  "actions": {
+    "logFlightTime": "Logg flytid",
+    "startFlight": "Start flytur",
+    "endFlight": "Avslutt flytur",
+    "signOut": "Logg ut",
+    "save": "Lagre",
+    "cancel": "Avbryt",
+    "delete": "Slett",
+    "edit": "Rediger",
+    "add": "Legg til",
+    "close": "Lukk",
+    "confirm": "Bekreft",
+    "search": "Søk",
+    "export": "Eksporter",
+    "import": "Importer",
+    "upload": "Last opp",
+    "download": "Last ned"
+  },
+  "common": {
+    "loading": "Laster...",
+    "noData": "Ingen data",
+    "selectCompany": "Velg selskap...",
+    "select": "Velg...",
+    "yes": "Ja",
+    "no": "Nei",
+    "ok": "OK",
+    "error": "Feil",
+    "success": "Suksess",
+    "warning": "Advarsel",
+    "info": "Info"
+  },
+  "auth": {
+    "signIn": "Logg inn",
+    "signUp": "Registrer deg",
+    "email": "E-post",
+    "password": "Passord",
+    "forgotPassword": "Glemt passord?",
+    "resetPassword": "Tilbakestill passord",
+    "pendingApproval": "Avventer godkjenning",
+    "pendingDescription": "Din konto venter på godkjenning fra administrator."
+  },
+  "flight": {
+    "activeFlight": "Pågående flytur",
+    "noActiveFlightError": "Ingen flytur ble startet",
+    "flightStarted": "Flytur startet!",
+    "flightStartedAdvisory": "Flytur startet og rute publisert til SafeSky!",
+    "flightStartedLiveUav": "Flytur startet med live GPS-posisjon til SafeSky!",
+    "flightEnded": "Flytur avsluttet",
+    "flightTime": "Flytid",
+    "totalFlightTime": "Total flytid"
+  },
+  "header": {
+    "superAdmin": "Super Administrator",
+    "switchedTo": "Byttet til {{company}}",
+    "couldNotSwitch": "Kunne ikke bytte selskap",
+    "loggedOut": "Logget ut"
+  }
+}
