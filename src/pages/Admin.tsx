@@ -28,6 +28,7 @@ import { CustomerManagementSection } from "@/components/admin/CustomerManagement
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
+import { useTranslation } from "react-i18next";
 
 interface Profile {
   id: string;
@@ -48,17 +49,18 @@ interface UserRole {
 }
 
 const availableRoles = [
-  { value: "superadmin", label: "Super Administrator" },
-  { value: "admin", label: "Administrator" },
-  { value: "saksbehandler", label: "Saksbehandler" },
-  { value: "operatør", label: "Operatør" },
-  { value: "lesetilgang", label: "Lesetilgang" },
+  { value: "superadmin", labelKey: "roles.superadmin" },
+  { value: "admin", labelKey: "roles.admin" },
+  { value: "saksbehandler", labelKey: "roles.saksbehandler" },
+  { value: "operatør", labelKey: "roles.operator" },
+  { value: "lesetilgang", labelKey: "roles.readonly" },
 ];
 
 const Admin = () => {
   const { user, loading, companyId, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -99,12 +101,12 @@ const Admin = () => {
         setIsAdmin(true);
         fetchData();
       } else {
-        toast.error("Du har ikke tilgang til denne siden");
+        toast.error(t('admin.noAccessPage'));
         navigate("/");
       }
     } catch (error) {
       console.error("Error checking admin status:", error);
-      toast.error("Feil ved sjekking av tilgang");
+      toast.error(t('admin.errorCheckingAccess'));
       navigate("/");
     }
   };
@@ -172,7 +174,7 @@ const Admin = () => {
       };
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Feil ved henting av data");
+      toast.error(t('admin.errorFetchingData'));
     } finally {
       setLoadingData(false);
     }
@@ -181,7 +183,7 @@ const Admin = () => {
   const copyRegistrationCode = () => {
     if (registrationCode) {
       navigator.clipboard.writeText(registrationCode);
-      toast.success("Registreringskode kopiert!");
+      toast.success(t('admin.codeCopied'));
     }
   };
 
@@ -229,11 +231,11 @@ const Admin = () => {
         }
       }
 
-      toast.success("Bruker godkjent");
+      toast.success(t('admin.userApproved'));
       fetchData();
     } catch (error) {
       console.error("Error approving user:", error);
-      toast.error("Feil ved godkjenning av bruker");
+      toast.error(t('admin.errorApprovingUser'));
     } finally {
       setApprovingUsers(prev => {
         const next = new Set(prev);
@@ -256,7 +258,7 @@ const Admin = () => {
           .eq("user_id", userId);
 
         if (error) throw error;
-        toast.success("Rolle oppdatert");
+        toast.success(t('admin.roleUpdated'));
       } else {
         // Insert new role
         const { error } = await supabase
@@ -264,13 +266,13 @@ const Admin = () => {
           .insert([{ user_id: userId, role: role as any }]);
 
         if (error) throw error;
-        toast.success("Rolle tildelt");
+        toast.success(t('admin.roleAssigned'));
       }
 
       fetchData();
     } catch (error) {
       console.error("Error assigning role:", error);
-      toast.error("Feil ved tildeling av rolle");
+      toast.error(t('admin.errorAssigningRole'));
     }
   };
 
@@ -283,16 +285,16 @@ const Admin = () => {
 
       if (error) throw error;
 
-      toast.success("Rolle fjernet");
+      toast.success(t('admin.roleRemoved'));
       fetchData();
     } catch (error) {
       console.error("Error removing role:", error);
-      toast.error("Feil ved fjerning av rolle");
+      toast.error(t('admin.errorRemovingRole'));
     }
   };
 
   const deleteUser = async (userId: string, userName: string | null) => {
-    if (!confirm(`Er du sikker på at du vil slette brukeren ${userName || "Ikke oppgitt"}? Dette kan ikke angres.`)) {
+    if (!confirm(t('admin.confirmDeleteUser', { name: userName || t('common.notSpecified') }))) {
       return;
     }
 
@@ -304,11 +306,11 @@ const Admin = () => {
 
       if (error) throw error;
 
-      toast.success("Bruker slettet");
+      toast.success(t('admin.userDeleted'));
       fetchData();
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error("Feil ved sletting av bruker");
+      toast.error(t('admin.errorDeletingUser'));
     }
   };
 
@@ -317,7 +319,8 @@ const Admin = () => {
   };
 
   const getRoleLabel = (role: string) => {
-    return availableRoles.find((r) => r.value === role)?.label || role;
+    const found = availableRoles.find((r) => r.value === role);
+    return found ? t(found.labelKey) : role;
   };
 
   if (loading || loadingData) {
@@ -325,7 +328,7 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Shield className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
-          <p className="text-lg">Laster...</p>
+          <p className="text-lg">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -350,8 +353,8 @@ const Admin = () => {
             >
               <Shield className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-primary" />
               <div className="text-left">
-                <h1 className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold whitespace-nowrap">SMS Admin</h1>
-                <p className="text-xs lg:text-sm text-primary hidden lg:block">Brukergodkjenning</p>
+                <h1 className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold whitespace-nowrap">{t('admin.title')}</h1>
+                <p className="text-xs lg:text-sm text-primary hidden lg:block">{t('admin.userApproval')}</p>
               </div>
             </Button>
             
@@ -363,12 +366,12 @@ const Admin = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="bg-card/95 backdrop-blur-md border-glass z-50">
-                <DropdownMenuItem onClick={() => navigate("/kart")}>Kart</DropdownMenuItem>
-                <DropdownMenuItem>Dokumenter</DropdownMenuItem>
-                <DropdownMenuItem>Kalender</DropdownMenuItem>
-                <DropdownMenuItem>Hendelser</DropdownMenuItem>
-                <DropdownMenuItem>Status</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/ressurser")}>Ressurser</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -378,14 +381,14 @@ const Admin = () => {
                 size="sm"
                 onClick={() => navigate("/")}
               >
-                Tilbake
+                {t('actions.back')}
               </Button>
               <ProfileDialog />
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/auth")}
-                title="Logg ut"
+                title={t('actions.signOut')}
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -399,24 +402,24 @@ const Admin = () => {
           <TabsList className={`grid w-full max-w-3xl mx-auto relative z-10 ${isMobile ? 'grid-cols-2 gap-2 p-2 bg-transparent' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
             <TabsTrigger value="users" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
               <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Brukere</span>
-              <span className="sm:hidden">Bruk.</span>
+              <span className="hidden sm:inline">{t('admin.users')}</span>
+              <span className="sm:hidden">{t('admin.users').substring(0, 4)}.</span>
             </TabsTrigger>
             <TabsTrigger value="customers" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
               <UserCog className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Kunder</span>
-              <span className="sm:hidden">Kund.</span>
+              <span className="hidden sm:inline">{t('admin.customers')}</span>
+              <span className="sm:hidden">{t('admin.customers').substring(0, 4)}.</span>
             </TabsTrigger>
             <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
               <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">E-postmaler</span>
-              <span className="sm:hidden">E-post</span>
+              <span className="hidden sm:inline">{t('admin.emailTemplates')}</span>
+              <span className="sm:hidden">{t('auth.email')}</span>
             </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="companies" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
                 <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Selskaper</span>
-                <span className="sm:hidden">Selskap</span>
+                <span className="hidden sm:inline">{t('admin.companies')}</span>
+                <span className="sm:hidden">{t('admin.companies').substring(0, 6)}</span>
               </TabsTrigger>
             )}
           </TabsList>
@@ -429,10 +432,10 @@ const Admin = () => {
                   <CardHeader className="pb-3 sm:pb-4">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                      Registreringskode
+                      {t('admin.registrationCode')}
                     </CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
-                      Del denne koden med nye brukere som skal registrere seg i systemet
+                      {t('admin.registrationCodeDesc')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 sm:px-6">
@@ -442,7 +445,7 @@ const Admin = () => {
                       </code>
                       <Button variant="outline" size="sm" onClick={copyRegistrationCode}>
                         <Copy className="w-4 h-4 mr-2" />
-                        Kopier
+                        {t('admin.copy')}
                       </Button>
                     </div>
                   </CardContent>
@@ -455,10 +458,10 @@ const Admin = () => {
                   <CardHeader className="pb-3 sm:pb-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Ventende godkjenninger ({pendingUsers.length})
+                      {t('admin.pendingApprovals')} ({pendingUsers.length})
                     </CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
-                      Brukere som venter på godkjenning
+                      {t('admin.usersWaitingApproval')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-2 sm:px-6">
@@ -470,12 +473,12 @@ const Admin = () => {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm sm:text-base truncate">
-                              {profile.full_name || "Ikke oppgitt"}
+                              {profile.full_name || t('common.notSpecified')}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="truncate">{profile.email || "Ingen e-post"}</span>
+                              <span className="truncate">{profile.email || t('admin.noEmail')}</span>
                               <span>•</span>
-                              <span>{new Date(profile.created_at).toLocaleDateString("nb-NO")}</span>
+                              <span>{new Date(profile.created_at).toLocaleDateString()}</span>
                             </div>
                           </div>
                           
@@ -487,8 +490,8 @@ const Admin = () => {
                               className="h-9 sm:h-10"
                             >
                               <Check className="w-4 h-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? 'Godkjenner...' : 'Godkjenn'}</span>
-                              <span className="sm:hidden">OK</span>
+                              <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? t('admin.approving') : t('admin.approve')}</span>
+                              <span className="sm:hidden">{t('common.ok')}</span>
                             </Button>
                             <Button
                               size="sm"
@@ -509,9 +512,9 @@ const Admin = () => {
               {/* Approved Users */}
               <Card>
                 <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="text-base sm:text-lg">Godkjente brukere ({approvedUsers.length})</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({approvedUsers.length})</CardTitle>
                   <CardDescription className="text-xs sm:text-sm">
-                    Administrer roller for godkjente brukere
+                    {t('admin.manageRoles')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
@@ -525,10 +528,10 @@ const Admin = () => {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm sm:text-base truncate">
-                              {profile.full_name || "Ikke oppgitt"}
+                              {profile.full_name || t('common.notSpecified')}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {profile.email || "Ingen e-post"}
+                              {profile.email || t('admin.noEmail')}
                             </p>
                           </div>
                           
@@ -538,12 +541,12 @@ const Admin = () => {
                               onValueChange={(value) => assignRole(profile.id, value)}
                             >
                               <SelectTrigger className="w-[110px] sm:w-[140px] h-9 sm:h-10">
-                                <SelectValue placeholder="Velg rolle" />
+                                <SelectValue placeholder={t('admin.selectRole')} />
                               </SelectTrigger>
                               <SelectContent className="z-50">
                                 {availableRoles.map((role) => (
                                   <SelectItem key={role.value} value={role.value}>
-                                    {role.label}
+                                    {t(role.labelKey)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
