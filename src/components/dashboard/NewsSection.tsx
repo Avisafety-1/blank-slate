@@ -3,23 +3,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Newspaper, Pin, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { NewsDetailDialog } from "./NewsDetailDialog";
 import { AddNewsDialog } from "./AddNewsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 type News = any;
 
 export const NewsSection = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<News | null>(null);
   const [news, setNews] = useState<News[]>([]);
+
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   
   useEffect(() => {
     fetchNews();
@@ -88,7 +92,7 @@ export const NewsSection = () => {
         <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-            <h2 className="text-sm sm:text-base font-semibold truncate">Nyheter</h2>
+            <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.news.title')}</h2>
           </div>
           <Button
             size="sm"
@@ -96,7 +100,7 @@ export const NewsSection = () => {
             className="h-7 sm:h-8 px-2 sm:px-3"
           >
             <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            <span className="text-xs sm:text-sm">Legg til</span>
+            <span className="text-xs sm:text-sm">{t('dashboard.news.addNew')}</span>
           </Button>
         </div>
 
@@ -117,7 +121,7 @@ export const NewsSection = () => {
                   {news.innhold}
                 </p>
                 <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-                  <span>{format(new Date(news.publisert), "dd. MMM", { locale: nb })}</span>
+                  <span>{format(new Date(news.publisert), "dd. MMM", { locale: dateLocale })}</span>
                   <span>•</span>
                   <span className="truncate">{news.forfatter}</span>
                   {news.synlighet !== "Alle" && (

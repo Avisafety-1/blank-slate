@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   closestCenter,
@@ -43,6 +44,7 @@ const defaultLayout = [
 ];
 
 const Index = () => {
+  const { t } = useTranslation();
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [layout, setLayout] = useState(defaultLayout);
@@ -63,9 +65,9 @@ const Index = () => {
     const success = await startFlight(missionId, selectedPublishMode || 'none');
     if (success) {
       const modeMessages = {
-        none: "Flytur startet!",
-        advisory: "Flytur startet og rute publisert til SafeSky!",
-        live_uav: "Flytur startet med live GPS-posisjon til SafeSky!",
+        none: t('flight.flightStarted'),
+        advisory: t('flight.flightStartedAdvisory'),
+        live_uav: t('flight.flightStartedLiveUav'),
       };
       toast.success(modeMessages[selectedPublishMode || 'none']);
     }
@@ -73,7 +75,7 @@ const Index = () => {
 
   const handleEndFlight = () => {
     if (!isActive) {
-      toast.error("Ingen flytur ble startet");
+      toast.error(t('flight.noActiveFlightError'));
       return;
     }
     // Calculate current elapsed minutes (round up)
@@ -153,7 +155,7 @@ const Index = () => {
         newLayout.splice(newIndex, 0, movedItem);
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newLayout));
-        toast.success("Layout oppdatert");
+        toast.success(t('common.layoutUpdated'));
 
         return newLayout;
       });
@@ -165,7 +167,7 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Shield className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
-          <p className="text-lg">Laster...</p>
+          <p className="text-lg">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -176,11 +178,11 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
           <Shield className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Avventer godkjenning</h2>
+          <h2 className="text-2xl font-bold mb-2">{t('auth.pendingApproval')}</h2>
           <p className="text-muted-foreground mb-6">
-            Din konto venter på godkjenning fra administrator. Du vil motta tilgang så snart kontoen er godkjent.
+            {t('auth.pendingDescription')}
           </p>
-          <Button onClick={() => navigate("/auth")}>Tilbake til innlogging</Button>
+          <Button onClick={() => navigate("/auth")}>{t('auth.backToLogin')}</Button>
         </div>
       </div>
     );
@@ -234,7 +236,7 @@ const Index = () => {
               variant="secondary"
             >
               <Clock className="w-4 h-4" />
-              Logg flytid
+              {t('actions.logFlightTime')}
             </Button>
             
             {/* Active flight timer indicator */}
@@ -242,7 +244,7 @@ const Index = () => {
               <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center flex items-center justify-center gap-2">
                 <Clock className="w-4 h-4 text-foreground" />
                 <span className="text-foreground font-mono text-sm">
-                  Pågående flytur: {formatElapsedTime(elapsedSeconds)}
+                  {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
                 </span>
                 {publishMode !== 'none' && (
                   <Radio className="w-4 h-4 text-primary animate-pulse" />
@@ -257,14 +259,14 @@ const Index = () => {
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
               >
                 <Play className="w-4 h-4 mr-1" />
-                Start flytur
+                {t('actions.startFlight')}
               </Button>
               <Button 
                 onClick={handleEndFlight}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 <Square className="w-4 h-4 mr-1" />
-                Avslutt flytur
+                {t('actions.endFlight')}
               </Button>
             </div>
           </div>
@@ -318,7 +320,7 @@ const Index = () => {
                         variant="secondary"
                       >
                         <Clock className="w-4 h-4" />
-                        Logg flytid
+                        {t('actions.logFlightTime')}
                       </Button>
                       
                       {/* Active flight timer indicator - Desktop */}
@@ -326,7 +328,7 @@ const Index = () => {
                         <div className="hidden lg:flex p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 items-center justify-center gap-2">
                           <Clock className="w-4 h-4 text-foreground" />
                           <span className="text-foreground font-mono text-sm">
-                            Pågående flytur: {formatElapsedTime(elapsedSeconds)}
+                            {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
                           </span>
                           {publishMode !== 'none' && (
                             <Radio className="w-4 h-4 text-primary animate-pulse" />
@@ -342,14 +344,14 @@ const Index = () => {
                           className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
                         >
                           <Play className="w-4 h-4 mr-1" />
-                          Start flytur
+                          {t('actions.startFlight')}
                         </Button>
                         <Button 
                           onClick={handleEndFlight}
                           className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                         >
                           <Square className="w-4 h-4 mr-1" />
-                          Avslutt flytur
+                          {t('actions.endFlight')}
                         </Button>
                       </div>
                     </div>

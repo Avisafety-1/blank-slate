@@ -25,7 +25,14 @@
     "export": "Eksporter",
     "import": "Importer",
     "upload": "Last opp",
-    "download": "Last ned"
+    "download": "Last ned",
+    "back": "Tilbake",
+    "next": "Neste",
+    "previous": "Forrige",
+    "create": "Opprett",
+    "update": "Oppdater",
+    "view": "Vis",
+    "report": "Rapporter"
   },
   "common": {
     "loading": "Laster...",
@@ -38,7 +45,11 @@
     "error": "Feil",
     "success": "Suksess",
     "warning": "Advarsel",
-    "info": "Info"
+    "info": "Info",
+    "all": "Alle",
+    "none": "Ingen",
+    "version": "Versjon",
+    "layoutUpdated": "Layout oppdatert"
   },
   "auth": {
     "signIn": "Logg inn",
@@ -48,7 +59,8 @@
     "forgotPassword": "Glemt passord?",
     "resetPassword": "Tilbakestill passord",
     "pendingApproval": "Avventer godkjenning",
-    "pendingDescription": "Din konto venter på godkjenning fra administrator."
+    "pendingDescription": "Din konto venter på godkjenning fra administrator. Du vil motta tilgang så snart kontoen er godkjent.",
+    "backToLogin": "Tilbake til innlogging"
   },
   "flight": {
     "activeFlight": "Pågående flytur",
@@ -65,5 +77,141 @@
     "switchedTo": "Byttet til {{company}}",
     "couldNotSwitch": "Kunne ikke bytte selskap",
     "loggedOut": "Logget ut"
+  },
+  "dashboard": {
+    "missions": {
+      "title": "Kommende oppdrag",
+      "noMissions": "Ingen kommende oppdrag",
+      "soraStatus": "SORA: {{status}}",
+      "soraNoStatus": "SORA: Ingen",
+      "newSoraAnalysis": "Ny SORA-analyse"
+    },
+    "incidents": {
+      "title": "Hendelser",
+      "report": "Rapporter hendelse",
+      "loading": "Laster hendelser...",
+      "noIncidents": "Ingen hendelser registrert",
+      "followUp": "Oppfølging",
+      "loadingFollowUp": "Laster oppfølginger...",
+      "noFollowUp": "Du har ingen hendelser som oppfølgingsansvarlig",
+      "couldNotLoad": "Kunne ikke laste hendelser",
+      "couldNotLoadFollowUp": "Kunne ikke laste oppfølgingshendelser"
+    },
+    "news": {
+      "title": "Nyheter",
+      "addNew": "Legg til"
+    },
+    "documents": {
+      "title": "Dokumenter",
+      "loading": "Laster dokumenter...",
+      "noDocuments": "Ingen dokumenter lagt til ennå",
+      "noResults": "Ingen dokumenter funnet",
+      "expired": "Utløpt",
+      "expiresSoon": "Snart",
+      "couldNotLoad": "Kunne ikke hente dokumenter"
+    },
+    "calendar": {
+      "title": "Kalender",
+      "events": "Kalenderhendelser",
+      "addEvent": "Legg til hendelse",
+      "noEvents": "Ingen hendelser denne dagen",
+      "customEvent": "Custom kalenderoppføring",
+      "eventCreated": "Kalenderoppføring opprettet!",
+      "titleRequired": "Tittel er påkrevd",
+      "noDateSelected": "Ingen dato valgt",
+      "mustBeLoggedIn": "Du må være logget inn for å opprette kalenderoppføringer",
+      "couldNotLoad": "Kunne ikke laste kalenderoppføringer",
+      "couldNotLoadDetails": "Kunne ikke laste detaljer",
+      "missionCreated": "Oppdrag opprettet og lagt til i kalenderen",
+      "documentCreated": "Dokument opprettet og lagt til i kalenderen",
+      "eventTypes": {
+        "mission": "Oppdrag",
+        "maintenance": "Vedlikehold",
+        "document": "Dokument",
+        "meeting": "Møte",
+        "incident": "Hendelse"
+      },
+      "inspection": "inspeksjon",
+      "maintenance": "vedlikehold",
+      "expires": "utgår"
+    },
+    "status": {
+      "title": "Ressursstatus",
+      "equipment": "Utstyr",
+      "personnel": "Personell"
+    }
+  },
+  "missions": {
+    "title": "Oppdrag",
+    "planned": "Planlagt",
+    "ongoing": "Pågående",
+    "completed": "Fullført",
+    "cancelled": "Avlyst",
+    "addMission": "Legg til oppdrag",
+    "editMission": "Rediger oppdrag",
+    "planRoute": "Planlegg rute",
+    "exportPdf": "Eksporter PDF",
+    "exportKmz": "Eksporter KMZ",
+    "location": "Lokasjon",
+    "time": "Tidspunkt",
+    "customer": "Kunde",
+    "personnel": "Personell",
+    "drones": "Droner",
+    "risk": "Risikonivå",
+    "riskLevels": {
+      "low": "Lav",
+      "medium": "Middels",
+      "high": "Høy",
+      "critical": "Kritisk"
+    }
+  },
+  "incidents": {
+    "title": "Hendelser",
+    "severity": {
+      "low": "Lav",
+      "medium": "Middels",
+      "high": "Høy",
+      "critical": "Kritisk"
+    },
+    "status": {
+      "new": "Ny",
+      "investigating": "Under utredning",
+      "actionTaken": "Tiltak iverksatt",
+      "closed": "Lukket",
+      "open": "Åpen",
+      "inProgress": "Under behandling",
+      "completed": "Ferdigbehandlet",
+      "ongoing": "Pågår",
+      "done": "Utført",
+      "delayed": "Forsinket"
+    },
+    "cause": "Hovedårsak",
+    "contributingCause": "Medvirkende årsak"
+  },
+  "status": {
+    "green": "Grønn",
+    "yellow": "Gul",
+    "red": "Rød",
+    "ok": "OK",
+    "warning": "Advarsel",
+    "overdue": "Forfalt"
+  },
+  "forms": {
+    "title": "Tittel",
+    "description": "Beskrivelse",
+    "date": "Dato",
+    "time": "Klokkeslett",
+    "location": "Lokasjon",
+    "notes": "Merknader",
+    "required": "Påkrevd",
+    "type": "Type",
+    "category": "Kategori",
+    "searchPlaceholder": "Søk..."
+  },
+  "errors": {
+    "generic": "Noe gikk galt",
+    "noPermission": "Du har ikke tilgang til dette",
+    "notFound": "Ikke funnet",
+    "loadFailed": "Kunne ikke laste data"
   }
 }
