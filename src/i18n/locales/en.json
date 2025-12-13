@@ -246,7 +246,7 @@
     "myCompetencies": "My competencies",
     "emergency": "Emergency contact",
     "notifications": "Notifications",
-    "incidents": "Incidents",
+    "notificationsTab": "Notifications",
     "name": "Name",
     "phone": "Phone",
     "jobTitle": "Title/Position",
@@ -272,7 +272,7 @@
     "couldNotUploadPhoto": "Could not upload profile photo",
     "notificationSettings": "Notification settings updated",
     "couldNotUpdateSettings": "Could not update settings",
-    "notifications": {
+    "notificationOptions": {
       "newIncidents": "Email for new incidents",
       "newIncidentsDesc": "Get notified when new incidents are reported",
       "newMissions": "Email for new missions",

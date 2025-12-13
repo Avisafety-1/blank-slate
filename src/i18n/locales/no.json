@@ -246,7 +246,7 @@
     "myCompetencies": "Mine kompetanser",
     "emergency": "Nødkontakt",
     "notifications": "Varslinger",
-    "incidents": "Hendelser",
+    "notificationsTab": "Varslinger",
     "name": "Navn",
     "phone": "Telefon",
     "jobTitle": "Tittel/Stilling",
@@ -272,7 +272,7 @@
     "couldNotUploadPhoto": "Kunne ikke laste opp profilbilde",
     "notificationSettings": "Varslingsinnstillinger oppdatert",
     "couldNotUpdateSettings": "Kunne ikke oppdatere innstillinger",
-    "notifications": {
+    "notificationOptions": {
       "newIncidents": "E-post ved nye hendelser",
       "newIncidentsDesc": "Få beskjed når nye hendelser rapporteres",
       "newMissions": "E-post ved nye oppdrag",
