@@ -736,11 +736,11 @@ export function OpenAIPMap({
           onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             if (feature.properties) {
               const props = feature.properties;
-              const name = props.NAVN || props.navn || 'Ukjent flyplass';
               const icao = props.ICAO || props.icao || '';
               const iata = props.IATA || props.iata || '';
+              const name = props.NAVN || props.navn || props.name || props.Name || icao || 'Flyplass';
               
-              let popupContent = `<strong>✈️ ${name}</strong>`;
+              let popupContent = `<strong>${name}</strong>`;
               if (icao) popupContent += `<br/>ICAO: ${icao}`;
               if (iata) popupContent += `<br/>IATA: ${iata}`;
               
