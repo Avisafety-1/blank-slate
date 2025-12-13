@@ -18,6 +18,7 @@ import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface Profile {
   full_name: string | null;
@@ -87,6 +88,7 @@ const severityColors = {
 
 export const ProfileDialog = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -245,7 +247,7 @@ export const ProfileDialog = () => {
       return urlData.publicUrl;
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      toast.error("Kunne ikke laste opp profilbilde");
+      toast.error(t('profile.couldNotUploadPhoto'));
       return null;
     }
   };
@@ -279,14 +281,14 @@ export const ProfileDialog = () => {
 
       if (error) throw error;
 
-      toast.success("Profil oppdatert");
+      toast.success(t('profile.profileUpdated'));
       setIsEditing(false);
       setAvatarFile(null);
       setAvatarPreview(null);
       fetchUserData();
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Kunne ikke oppdatere profil");
+      toast.error(t('profile.couldNotUpdateProfile'));
     }
   };
 
@@ -301,10 +303,10 @@ export const ProfileDialog = () => {
 
       if (error) throw error;
 
-      toast.success("Tilbakestillings-e-post sendt! Sjekk innboksen din.");
+      toast.success(t('profile.resetEmailSent'));
     } catch (error: any) {
       console.error("Error sending password reset:", error);
-      toast.error(error.message || "Kunne ikke sende e-post");
+      toast.error(error.message || t('profile.couldNotSendEmail'));
     } finally {
       setPasswordResetLoading(false);
     }
@@ -323,10 +325,10 @@ export const ProfileDialog = () => {
       
       if (error) throw error;
       
-      toast.success("Varslingsinnstillinger oppdatert");
+      toast.success(t('profile.notificationSettings'));
     } catch (error: any) {
       console.error("Error updating notification preferences:", error);
-      toast.error("Kunne ikke oppdatere innstillinger");
+      toast.error(t('profile.couldNotUpdateSettings'));
       setNotificationPrefs({ ...notificationPrefs, [field]: !value });
     }
   };
@@ -388,7 +390,7 @@ export const ProfileDialog = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" title="Min profil" className="relative">
+        <Button variant="ghost" size="sm" title={t('profile.title')} className="relative">
           <User className="w-4 h-4" />
           {followUpIncidents.length > 0 && (
             <Badge
@@ -402,12 +404,12 @@ export const ProfileDialog = () => {
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] sm:top-[50%] sm:translate-y-[-50%] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
         <DialogHeader>
-          <DialogTitle>Min profil</DialogTitle>
-        </DialogHeader>
+        <DialogTitle>{t('profile.title')}</DialogTitle>
+      </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Laster...</p>
+              <p className="text-muted-foreground">{t('common.loading')}</p>
             </div>
           ) : (
             <Tabs defaultValue="profile" className="w-full">
