@@ -99,9 +99,12 @@ export const Header = () => {
   };
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === 'no' ? 'en' : 'no';
+    const currentLang = i18n.language?.startsWith('en') ? 'en' : 'no';
+    const newLang = currentLang === 'no' ? 'en' : 'no';
     i18n.changeLanguage(newLang);
   };
+
+  const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
 
   return (
     <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 z-[1100] w-full">
@@ -163,7 +166,7 @@ export const Header = () => {
               size="sm"
               onClick={toggleLanguage}
               className="h-8 w-8 p-0"
-              title={i18n.language === 'no' ? 'Switch to English' : 'Bytt til norsk'}
+              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
               <Globe className="w-4 h-4" />
             </Button>
@@ -226,10 +229,10 @@ export const Header = () => {
               size="sm"
               onClick={toggleLanguage}
               className="gap-1"
-              title={i18n.language === 'no' ? 'Switch to English' : 'Bytt til norsk'}
+              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
               <Globe className="w-4 h-4" />
-              <span className="text-xs font-medium">{i18n.language === 'no' ? 'EN' : 'NO'}</span>
+              <span className="text-xs font-medium">{displayLang}</span>
             </Button>
             
             {isAdmin && (
