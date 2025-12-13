@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { GlassCard } from "@/components/GlassCard";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +24,7 @@ import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 
 const Resources = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, loading, companyId } = useAuth();
   const terminology = useTerminology();
@@ -113,7 +115,7 @@ const Resources = () => {
     
     if (error) {
       console.error("Error fetching drones:", error);
-      toast.error("Kunne ikke hente droner");
+      toast.error(t('resources.couldNotLoadDrones'));
     } else {
       setDrones(data || []);
     }
@@ -128,7 +130,7 @@ const Resources = () => {
     
     if (error) {
       console.error("Error fetching equipment:", error);
-      toast.error("Kunne ikke hente utstyr");
+      toast.error(t('resources.couldNotLoadEquipment'));
     } else {
       setEquipment(data || []);
     }
@@ -143,7 +145,7 @@ const Resources = () => {
     
     if (error) {
       console.error("Error fetching personnel:", error);
-      toast.error("Kunne ikke hente personell");
+      toast.error(t('resources.couldNotLoadPersonnel'));
     } else {
       setPersonnel(data || []);
     }
@@ -155,7 +157,7 @@ const Resources = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -189,7 +191,7 @@ const Resources = () => {
                 </div>
                 <Button onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
                   <Plus className="w-4 h-4" />
-                  Legg til
+                  {t('actions.add')}
                 </Button>
               </div>
               
@@ -232,9 +234,9 @@ const Resources = () => {
                       <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
-                      <p>Flyvetimer: {drone.flyvetimer}</p>
+                      <p>{t('flight.flightHours')}: {drone.flyvetimer}</p>
                       {drone.neste_inspeksjon && (
-                        <p>Neste inspeksjon: {format(new Date(drone.neste_inspeksjon), "dd.MM.yyyy")}</p>
+                        <p>{t('flight.nextInspection')}: {format(new Date(drone.neste_inspeksjon), "dd.MM.yyyy")}</p>
                       )}
                     </div>
                   </div>
@@ -249,7 +251,7 @@ const Resources = () => {
                   );
                 }).length === 0 && droneSearch && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen treff for "{droneSearch}"
+                    {t('common.noResults')} "{droneSearch}"
                   </p>
                 )}
                 {drones.length === 0 && (
@@ -265,11 +267,11 @@ const Resources = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Gauge className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Utstyr</h2>
+                  <h2 className="text-lg font-semibold">{t('resources.equipment')}</h2>
                 </div>
                 <Button onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
                   <Plus className="w-4 h-4" />
-                  Legg til
+                  {t('actions.add')}
                 </Button>
               </div>
               
@@ -277,7 +279,7 @@ const Resources = () => {
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Søk etter navn, type eller serienummer..."
+                  placeholder={t('resources.searchEquipment')}
                   value={equipmentSearch}
                   onChange={(e) => setEquipmentSearch(e.target.value)}
                   className="pl-9"
@@ -315,7 +317,7 @@ const Resources = () => {
                     <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>
                       {item.neste_vedlikehold && (
-                        <p>Neste vedlikehold: {format(new Date(item.neste_vedlikehold), "dd.MM.yyyy")}</p>
+                        <p>{t('flight.nextMaintenance')}: {format(new Date(item.neste_vedlikehold), "dd.MM.yyyy")}</p>
                       )}
                     </div>
                   </div>
@@ -331,12 +333,12 @@ const Resources = () => {
                   );
                 }).length === 0 && equipmentSearch && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen treff for "{equipmentSearch}"
+                    {t('common.noResults')} "{equipmentSearch}"
                   </p>
                 )}
                 {equipment.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen utstyr registrert
+                    {t('resources.noEquipment')}
                   </p>
                 )}
               </div>
@@ -347,7 +349,7 @@ const Resources = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Personell</h2>
+                  <h2 className="text-lg font-semibold">{t('resources.personnel')}</h2>
                 </div>
                 <Button
                   onClick={() => setPersonnelDialogOpen(true)}
@@ -355,7 +357,7 @@ const Resources = () => {
                   className="gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  Legg til kompetanse
+                  {t('resources.addCompetency')}
                 </Button>
               </div>
               
@@ -363,7 +365,7 @@ const Resources = () => {
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Søk etter navn eller kompetanse..."
+                  placeholder={t('resources.searchPersonnel')}
                   value={personnelSearch}
                   onChange={(e) => setPersonnelSearch(e.target.value)}
                   className="pl-9"
@@ -400,7 +402,7 @@ const Resources = () => {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">
-                          {person.full_name || "Ukjent navn"}
+                          {person.full_name || t('common.unknownName')}
                         </h3>
                         {person.tittel && (
                           <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
@@ -443,7 +445,7 @@ const Resources = () => {
                     )}
                     
                     {(!person.personnel_competencies || person.personnel_competencies.length === 0) && (
-                      <p className="text-xs text-muted-foreground mt-2">Ingen kompetanser</p>
+                      <p className="text-xs text-muted-foreground mt-2">{t('resources.noCompetencies')}</p>
                     )}
                   </div>
                 ))}
@@ -458,12 +460,12 @@ const Resources = () => {
                   return nameMatch || competencyMatch;
                 }).length === 0 && personnelSearch && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen treff for "{personnelSearch}"
+                    {t('common.noResults')} "{personnelSearch}"
                   </p>
                 )}
                 {personnel.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen personell registrert
+                    {t('resources.noPersonnel')}
                   </p>
                 )}
               </div>
