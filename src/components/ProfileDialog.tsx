@@ -783,10 +783,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            {t('profile.notifications.newIncidents')}
+                            {t('profile.notificationOptions.newIncidents')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            {t('profile.notifications.newIncidentsDesc')}
+                            {t('profile.notificationOptions.newIncidentsDesc')}
                           </p>
                         </div>
                         <Switch
@@ -802,10 +802,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            {t('profile.notifications.newMissions')}
+                            {t('profile.notificationOptions.newMissions')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            {t('profile.notifications.newMissionsDesc')}
+                            {t('profile.notificationOptions.newMissionsDesc')}
                           </p>
                         </div>
                         <Switch
@@ -821,10 +821,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            {t('profile.notifications.documentExpiry')}
+                            {t('profile.notificationOptions.documentExpiry')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            {t('profile.notifications.documentExpiryDesc')}
+                            {t('profile.notificationOptions.documentExpiryDesc')}
                           </p>
                         </div>
                         <Switch
@@ -840,10 +840,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            {t('profile.notifications.newUserPending')}
+                            {t('profile.notificationOptions.newUserPending')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            {t('profile.notifications.newUserPendingDesc')}
+                            {t('profile.notificationOptions.newUserPendingDesc')}
                           </p>
                         </div>
                         <Switch
@@ -860,10 +860,10 @@ export const ProfileDialog = () => {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
-                            {t('profile.notifications.followupAssigned')}
+                            {t('profile.notificationOptions.followupAssigned')}
                           </label>
                           <p className="text-xs text-muted-foreground">
-                            {t('profile.notifications.followupAssignedDesc')}
+                            {t('profile.notificationOptions.followupAssignedDesc')}
                           </p>
                         </div>
                         <Switch
