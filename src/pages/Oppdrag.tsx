@@ -740,6 +740,78 @@ const Oppdrag = () => {
         yPos = (pdf as any).lastAutoTable.finalY + 10;
       }
       
+      // Flight Logs
+      if (mission.flightLogs?.length > 0) {
+        if (yPos > 220) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Flyturer", 15, yPos);
+        yPos += 7;
+        
+        // Fetch all checklist names for this mission's flight logs
+        const allChecklistIds = mission.flightLogs
+          .flatMap((log: any) => log.completed_checklists || [])
+          .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
+        
+        let checklistNameMap: Record<string, string> = {};
+        if (allChecklistIds.length > 0) {
+          const { data: checklistData } = await supabase
+            .from('documents')
+            .select('id, tittel')
+            .in('id', allChecklistIds);
+          
+          if (checklistData) {
+            checklistNameMap = Object.fromEntries(
+              checklistData.map(d => [d.id, d.tittel])
+            );
+          }
+        }
+        
+        const safeskyLabels: Record<string, string> = {
+          'none': 'Av',
+          'advisory': 'Advisory (rute)',
+          'live_uav': 'Live posisjon'
+        };
+        
+        const flightData = mission.flightLogs.map((log: any) => {
+          const checklistNames = (log.completed_checklists || [])
+            .map((id: string) => checklistNameMap[id])
+            .filter(Boolean)
+            .join(', ') || '-';
+          
+          return [
+            format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb }),
+            `${log.flight_duration_minutes} min`,
+            log.pilot?.full_name || '-',
+            log.drones?.modell || '-',
+            safeskyLabels[log.safesky_mode] || 'Av',
+            checklistNames
+          ];
+        });
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Dato", "Flytid", "Pilot", "Drone", "SafeSky", "Sjekklister"]],
+          body: flightData,
+          theme: "grid",
+          styles: { fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 32 },
+            1: { cellWidth: 18 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 },
+            4: { cellWidth: 28 },
+            5: { cellWidth: 42 }
+          }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 10;
+      }
+      
       // Description & Notes
       if (mission.beskrivelse || mission.merknader) {
         if (yPos > 240) {
