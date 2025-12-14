@@ -1,4 +1,8 @@
 {
+  "common": {
+    "optional": "valgfritt",
+    "completed": "Fullført"
+  },
   "nav": {
     "missions": "Oppdrag",
     "map": "Kart",
