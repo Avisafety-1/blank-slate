@@ -23,7 +23,10 @@ import {
   AlertTriangle,
   Route,
   Ruler,
-  Navigation
+  Navigation,
+  Clock,
+  Radio,
+  ClipboardCheck
 } from "lucide-react";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
@@ -66,6 +69,37 @@ const incidentStatusColors: Record<string, string> = {
   "Under behandling": "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
   Løst: "bg-green-500/20 text-green-900 border-green-500/30",
   Lukket: "bg-gray-500/20 text-gray-900 border-gray-500/30",
+};
+
+// Component to display checklist badges with names fetched from documents
+const ChecklistBadges = ({ checklistIds }: { checklistIds: string[] }) => {
+  const [names, setNames] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const fetchChecklistNames = async () => {
+      if (!checklistIds || checklistIds.length === 0) return;
+      
+      const { data } = await supabase
+        .from('documents')
+        .select('id, tittel')
+        .in('id', checklistIds);
+      
+      if (data) {
+        setNames(data.map(d => d.tittel));
+      }
+    };
+    
+    fetchChecklistNames();
+  }, [checklistIds]);
+  
+  if (names.length === 0) return null;
+  
+  return (
+    <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
+      <ClipboardCheck className="h-3 w-3 mr-1" />
+      ✓ {names.join(', ')}
+    </Badge>
+  );
 };
 
 const Oppdrag = () => {
@@ -225,13 +259,48 @@ const Oppdrag = () => {
             .select("*")
             .eq("mission_id", mission.id);
 
+          // Fetch flight logs linked to this mission
+          const { data: flightLogs } = await supabase
+            .from("flight_logs")
+            .select(`
+              id,
+              flight_date,
+              flight_duration_minutes,
+              departure_location,
+              landing_location,
+              safesky_mode,
+              completed_checklists,
+              user_id,
+              drone_id,
+              drones(id, modell)
+            `)
+            .eq("mission_id", mission.id)
+            .order("flight_date", { ascending: false });
+
+          // Fetch pilot names for flight logs
+          const flightLogsWithPilot = await Promise.all(
+            (flightLogs || []).map(async (log: any) => {
+              const { data: pilotData } = await supabase
+                .from("flight_log_personnel")
+                .select("profile_id, profiles(id, full_name)")
+                .eq("flight_log_id", log.id)
+                .limit(1);
+              
+              return {
+                ...log,
+                pilot: pilotData?.[0]?.profiles || null
+              };
+            })
+          );
+
           return {
             ...mission,
             personnel: personnel || [],
             drones: drones || [],
             equipment: equipment || [],
             sora: sora || null,
-            incidents: incidents || []
+            incidents: incidents || [],
+            flightLogs: flightLogsWithPilot || []
           };
         })
       );
@@ -1122,6 +1191,62 @@ const Oppdrag = () => {
                                 <Badge className={incidentStatusColors[incident.status] || ""}>
                                   {incident.status}
                                 </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Flight Logs Section */}
+                    {mission.flightLogs?.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-semibold text-muted-foreground">
+                            FLYTURER ({mission.flightLogs.length})
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {mission.flightLogs.map((log: any) => (
+                            <div
+                              key={log.id}
+                              className="p-3 bg-card/30 rounded border border-border/30"
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>{format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb })}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>{log.flight_duration_minutes} min</span>
+                                </div>
+                                {log.pilot && (
+                                  <div className="flex items-center gap-2">
+                                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span>{log.pilot.full_name}</span>
+                                  </div>
+                                )}
+                                {log.drones && (
+                                  <div className="flex items-center gap-2">
+                                    <Plane className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span>{log.drones.modell}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* SafeSky Mode and Checklists */}
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                                {log.safesky_mode && log.safesky_mode !== 'none' && (
+                                  <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
+                                    <Radio className="h-3 w-3 mr-1" />
+                                    SafeSky: {log.safesky_mode === 'advisory' ? 'Advisory' : 'Live UAV'}
+                                  </Badge>
+                                )}
+                                {log.completed_checklists && log.completed_checklists.length > 0 && (
+                                  <ChecklistBadges checklistIds={log.completed_checklists} />
+                                )}
                               </div>
                             </div>
                           ))}

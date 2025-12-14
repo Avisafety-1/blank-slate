@@ -1101,6 +1101,7 @@ export type Database = {
       flight_logs: {
         Row: {
           company_id: string
+          completed_checklists: string[] | null
           created_at: string | null
           departure_location: string
           drone_id: string
@@ -1111,10 +1112,12 @@ export type Database = {
           mission_id: string | null
           movements: number
           notes: string | null
+          safesky_mode: string | null
           user_id: string
         }
         Insert: {
           company_id: string
+          completed_checklists?: string[] | null
           created_at?: string | null
           departure_location: string
           drone_id: string
@@ -1125,10 +1128,12 @@ export type Database = {
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          safesky_mode?: string | null
           user_id: string
         }
         Update: {
           company_id?: string
+          completed_checklists?: string[] | null
           created_at?: string | null
           departure_location?: string
           drone_id?: string
@@ -1139,6 +1144,7 @@ export type Database = {
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          safesky_mode?: string | null
           user_id?: string
         }
         Relationships: [
