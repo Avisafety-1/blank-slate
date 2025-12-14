@@ -129,7 +129,10 @@
     "checklistCompleted": "Checklist completed",
     "openChecklist": "Open checklist",
     "changeChecklist": "Change",
-    "completeChecklistFirst": "Complete checklist before starting flight"
+    "checklistNotCompleted": "Checklist has not been completed",
+    "checklistWarningTitle": "Checklist not completed",
+    "checklistWarningDesc": "The before takeoff checklist has not been completed. Are you sure you want to start the flight without completing the checklist?",
+    "startAnyway": "Start anyway"
   },
   "header": {
     "superAdmin": "Super Administrator",

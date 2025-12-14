@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -19,7 +29,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, Settings2 } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, Settings2, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -53,6 +63,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [checklistCompleted, setChecklistCompleted] = useState(false);
   const [showChecklistSelector, setShowChecklistSelector] = useState(false);
   const [showChecklistExecution, setShowChecklistExecution] = useState(false);
+  const [showChecklistWarning, setShowChecklistWarning] = useState(false);
 
   // Fetch company's before takeoff checklist
   useEffect(() => {
@@ -118,8 +129,18 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [hasRoute, publishMode]);
 
+  const handleStartFlightClick = () => {
+    // If checklist exists but not completed, show warning
+    if (companyChecklistId && !checklistCompleted) {
+      setShowChecklistWarning(true);
+      return;
+    }
+    handleStartFlight();
+  };
+
   const handleStartFlight = async () => {
     setLoading(true);
+    setShowChecklistWarning(false);
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
       await onStartFlight(missionId, publishMode);
@@ -147,7 +168,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   };
 
   const selectedChecklist = checklists.find(c => c.id === companyChecklistId);
-  const canStartFlight = !companyChecklistId || checklistCompleted;
+  const checklistNotCompleted = companyChecklistId && !checklistCompleted;
 
   return (
     <>
@@ -323,11 +344,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
-            {!canStartFlight && (
+            {checklistNotCompleted && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
                 <p className="text-amber-600 dark:text-amber-400">
-                  {t('flight.completeChecklistFirst')}
+                  {t('flight.checklistNotCompleted')}
                 </p>
               </div>
             )}
@@ -338,8 +359,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               {t('actions.cancel')}
             </Button>
             <Button 
-              onClick={handleStartFlight} 
-              disabled={loading || !canStartFlight}
+              onClick={handleStartFlightClick} 
+              disabled={loading}
               className="bg-green-600 hover:bg-green-700"
             >
               {loading ? t('flight.starting') : t('flight.startFlight')}
@@ -347,6 +368,30 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Checklist Warning Dialog */}
+      <AlertDialog open={showChecklistWarning} onOpenChange={setShowChecklistWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t('flight.checklistWarningTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('flight.checklistWarningDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleStartFlight}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {t('flight.startAnyway')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Checklist Execution Dialog */}
       {companyChecklistId && (
