@@ -30,10 +30,12 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRoleCheck } from '@/hooks/useRoleCheck';
 import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
+import { toast } from 'sonner';
 
 type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -52,6 +54,7 @@ interface StartFlightDialogProps {
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
   const { companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const { t } = useTranslation();
   const { checklists } = useChecklists();
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -59,13 +62,36 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [publishMode, setPublishMode] = useState<PublishMode>('none');
   const [loading, setLoading] = useState(false);
   
-  // Linked checklists state
-  const [linkedChecklistIds, setLinkedChecklistIds] = useState<string[]>([]);
+  // Company-level linked checklists (persisted)
+  const [companyChecklistIds, setCompanyChecklistIds] = useState<string[]>([]);
+  // Session-level completion tracking
   const [completedChecklistIds, setCompletedChecklistIds] = useState<string[]>([]);
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
 
+  // Fetch company-level checklist settings
+  useEffect(() => {
+    const fetchCompanyChecklists = async () => {
+      if (!companyId || !open) return;
+
+      const { data } = await supabase
+        .from('companies')
+        .select('before_takeoff_checklist_ids')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (data?.before_takeoff_checklist_ids) {
+        setCompanyChecklistIds(data.before_takeoff_checklist_ids);
+      } else {
+        setCompanyChecklistIds([]);
+      }
+    };
+
+    fetchCompanyChecklists();
+  }, [companyId, open]);
+
+  // Fetch missions
   useEffect(() => {
     const fetchMissions = async () => {
       if (!companyId || !open) return;
@@ -85,11 +111,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchMissions();
   }, [companyId, open]);
 
+  // Reset session state when dialog closes
   useEffect(() => {
     if (!open) {
       setSelectedMissionId('');
       setPublishMode('none');
-      setLinkedChecklistIds([]);
       setCompletedChecklistIds([]);
       setActiveChecklistId(null);
     }
@@ -112,18 +138,45 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [hasRoute, publishMode]);
 
-  const linkChecklist = (checklistId: string) => {
-    setLinkedChecklistIds(prev => [...prev, checklistId]);
+  // Admin functions to link/unlink checklists (persisted to company)
+  const linkChecklist = async (checklistId: string) => {
+    if (!companyId || !isAdmin) return;
+    
+    const newIds = [...companyChecklistIds, checklistId];
+    const { error } = await supabase
+      .from('companies')
+      .update({ before_takeoff_checklist_ids: newIds })
+      .eq('id', companyId);
+
+    if (error) {
+      toast.error(t('errors.saveFailed'));
+      return;
+    }
+    
+    setCompanyChecklistIds(newIds);
     setChecklistPopoverOpen(false);
   };
 
-  const unlinkChecklist = (checklistId: string) => {
-    setLinkedChecklistIds(prev => prev.filter(id => id !== checklistId));
+  const unlinkChecklist = async (checklistId: string) => {
+    if (!companyId || !isAdmin) return;
+    
+    const newIds = companyChecklistIds.filter(id => id !== checklistId);
+    const { error } = await supabase
+      .from('companies')
+      .update({ before_takeoff_checklist_ids: newIds })
+      .eq('id', companyId);
+
+    if (error) {
+      toast.error(t('errors.saveFailed'));
+      return;
+    }
+    
+    setCompanyChecklistIds(newIds);
     setCompletedChecklistIds(prev => prev.filter(id => id !== checklistId));
   };
 
-  const availableChecklists = checklists.filter(c => !linkedChecklistIds.includes(c.id));
-  const hasIncompleteChecklists = linkedChecklistIds.some(id => !completedChecklistIds.includes(id));
+  const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
+  const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
 
   const handleStartFlightClick = () => {
     if (hasIncompleteChecklists) {
@@ -173,9 +226,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </Label>
                 
                 {/* Linked checklist cards */}
-                {linkedChecklistIds.length > 0 && (
+                {companyChecklistIds.length > 0 && (
                   <div className="space-y-2">
-                    {linkedChecklistIds.map((checklistId) => {
+                    {companyChecklistIds.map((checklistId) => {
                       const checklist = checklists.find(c => c.id === checklistId);
                       if (!checklist) return null;
                       const isCompleted = completedChecklistIds.includes(checklistId);
@@ -203,14 +256,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                                 {t('flight.openChecklist')}
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => unlinkChecklist(checklistId)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => unlinkChecklist(checklistId)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
@@ -218,8 +273,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   </div>
                 )}
 
-                {/* Link checklist button */}
-                {availableChecklists.length > 0 && (
+                {/* Link checklist button - only for admins */}
+                {isAdmin && availableChecklists.length > 0 && (
                   <Popover open={checklistPopoverOpen} onOpenChange={setChecklistPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1">
@@ -242,6 +297,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                       </div>
                     </PopoverContent>
                   </Popover>
+                )}
+
+                {/* Info for non-admins when no checklists are linked */}
+                {!isAdmin && companyChecklistIds.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('flight.noChecklistsLinked')}
+                  </p>
                 )}
               </div>
             )}

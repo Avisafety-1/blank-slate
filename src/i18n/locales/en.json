@@ -138,7 +138,8 @@
     "checklistWarningDesc": "You have linked checklists that have not been completed. Are you sure you want to start the flight?",
     "startAnyway": "Start anyway",
     "linkChecklist": "Link checklist",
-    "linkedChecklists": "Checklists"
+    "linkedChecklists": "Checklists",
+    "noChecklistsLinked": "No checklists linked. Contact an administrator to set up before takeoff checklists."
   },
   "header": {
     "superAdmin": "Super Administrator",
