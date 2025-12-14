@@ -217,8 +217,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-6 py-4">
+          <div className="flex-1 overflow-y-auto -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+            <div className="space-y-6 py-4 pb-6">
             {/* Linked Checklists Section */}
             {checklists.length > 0 && (
               <div className="space-y-3">
@@ -416,7 +416,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="flex-shrink-0 gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
