@@ -54,15 +54,15 @@ const Index = () => {
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   
-  const { isActive, elapsedSeconds, publishMode, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, elapsedSeconds, publishMode, completedChecklistIds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
   };
 
-  const confirmStartFlight = async (missionId?: string, selectedPublishMode?: 'none' | 'advisory' | 'live_uav') => {
+  const confirmStartFlight = async (missionId?: string, selectedPublishMode?: 'none' | 'advisory' | 'live_uav', checklistIds?: string[]) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, selectedPublishMode || 'none');
+    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || []);
     if (success) {
       const modeMessages = {
         none: t('flight.flightStarted'),
@@ -399,6 +399,8 @@ const Index = () => {
         open={logFlightDialogOpen} 
         onOpenChange={handleLogFlightDialogClose}
         prefilledDuration={prefilledDuration}
+        safeskyMode={publishMode}
+        completedChecklistIds={completedChecklistIds}
         onFlightLogged={handleFlightLogged}
         onStopTimer={() => {
           endFlight();

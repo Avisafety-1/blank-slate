@@ -31,6 +31,8 @@ interface LogFlightTimeDialogProps {
   onFlightLogged?: () => void;
   onStopTimer?: () => void;
   prefilledDuration?: number;
+  safeskyMode?: string;
+  completedChecklistIds?: string[];
 }
 
 interface Drone {
@@ -57,7 +59,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -317,6 +319,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           movements: formData.movements,
           flight_date: formData.flightDate,
           notes: formData.notes || null,
+          safesky_mode: safeskyMode || null,
+          completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
         })
         .select()
         .single();

@@ -50,7 +50,7 @@ interface Mission {
 interface StartFlightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStartFlight: (missionId?: string, publishMode?: PublishMode) => void;
+  onStartFlight: (missionId?: string, publishMode?: PublishMode, completedChecklistIds?: string[]) => void;
 }
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
@@ -192,7 +192,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     setShowChecklistWarning(false);
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
-      await onStartFlight(missionId, publishMode);
+      await onStartFlight(missionId, publishMode, completedChecklistIds);
       onOpenChange(false);
     } finally {
       setLoading(false);

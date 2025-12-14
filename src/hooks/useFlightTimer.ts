@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 const getStorageKey = (userId: string) => `active_flight_start_time_${userId}`;
 const getMissionKey = (userId: string) => `active_flight_mission_id_${userId}`;
 const getPublishModeKey = (userId: string) => `active_flight_publish_mode_${userId}`;
+const getChecklistsKey = (userId: string) => `active_flight_checklists_${userId}`;
 
 // Legacy keys for cleanup
-const LEGACY_KEYS = ['active_flight_start_time', 'active_flight_mission_id', 'active_flight_publish_mode'];
+const LEGACY_KEYS = ['active_flight_start_time', 'active_flight_mission_id', 'active_flight_publish_mode', 'active_flight_checklists'];
 
 export type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -18,6 +19,7 @@ interface FlightTimerState {
   elapsedSeconds: number;
   missionId: string | null;
   publishMode: PublishMode;
+  completedChecklistIds: string[];
 }
 
 export const useFlightTimer = () => {
@@ -28,6 +30,7 @@ export const useFlightTimer = () => {
     elapsedSeconds: 0,
     missionId: null,
     publishMode: 'none',
+    completedChecklistIds: [],
   });
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -169,11 +172,13 @@ export const useFlightTimer = () => {
       const userStorageKey = getStorageKey(user.id);
       const userMissionKey = getMissionKey(user.id);
       const userPublishModeKey = getPublishModeKey(user.id);
+      const userChecklistsKey = getChecklistsKey(user.id);
 
       // First check localStorage for offline support
       const localStartTime = localStorage.getItem(userStorageKey);
       const localMissionId = localStorage.getItem(userMissionKey);
       const localPublishMode = (localStorage.getItem(userPublishModeKey) as PublishMode) || 'none';
+      const localChecklists = JSON.parse(localStorage.getItem(userChecklistsKey) || '[]') as string[];
       
       // Then check database for cross-device sync
       const { data: dbFlight } = await supabase
@@ -185,11 +190,13 @@ export const useFlightTimer = () => {
       let startTime: Date | null = null;
       let missionId: string | null = null;
       let publishMode: PublishMode = 'none';
+      let completedChecklistIds: string[] = [];
 
       if (dbFlight) {
         startTime = new Date(dbFlight.start_time);
         missionId = dbFlight.mission_id || null;
         publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
+        completedChecklistIds = localChecklists; // Get from localStorage (not stored in DB)
         // Sync to user-specific localStorage
         localStorage.setItem(userStorageKey, startTime.toISOString());
         if (missionId) localStorage.setItem(userMissionKey, missionId);
@@ -198,6 +205,7 @@ export const useFlightTimer = () => {
         startTime = new Date(localStartTime);
         missionId = localMissionId || null;
         publishMode = localPublishMode;
+        completedChecklistIds = localChecklists;
         // Sync to database if not there
         if (companyId) {
           await supabase.from('active_flights').insert({
@@ -218,6 +226,7 @@ export const useFlightTimer = () => {
           elapsedSeconds: elapsed,
           missionId,
           publishMode,
+          completedChecklistIds,
         });
 
         // Restart GPS watch if in live_uav mode
@@ -277,7 +286,7 @@ export const useFlightTimer = () => {
     return () => clearInterval(interval);
   }, [state.isActive, state.startTime]);
 
-  const startFlight = useCallback(async (missionId?: string, publishMode: PublishMode = 'none') => {
+  const startFlight = useCallback(async (missionId?: string, publishMode: PublishMode = 'none', completedChecklistIds: string[] = []) => {
     if (!user || !companyId) return false;
 
     const startTime = new Date();
@@ -315,6 +324,7 @@ export const useFlightTimer = () => {
     localStorage.setItem(getStorageKey(user.id), startTime.toISOString());
     if (missionId) localStorage.setItem(getMissionKey(user.id), missionId);
     localStorage.setItem(getPublishModeKey(user.id), publishMode);
+    localStorage.setItem(getChecklistsKey(user.id), JSON.stringify(completedChecklistIds));
 
     // Save to database for cross-device sync, including route_data copy
     const { error } = await supabase.from('active_flights').insert([{
@@ -336,6 +346,7 @@ export const useFlightTimer = () => {
       elapsedSeconds: 0,
       missionId: missionId || null,
       publishMode,
+      completedChecklistIds,
     });
 
     return true;
@@ -369,6 +380,7 @@ export const useFlightTimer = () => {
       localStorage.removeItem(getStorageKey(user.id));
       localStorage.removeItem(getMissionKey(user.id));
       localStorage.removeItem(getPublishModeKey(user.id));
+      localStorage.removeItem(getChecklistsKey(user.id));
     }
 
     // Clear database
@@ -385,6 +397,7 @@ export const useFlightTimer = () => {
       elapsedSeconds: 0,
       missionId: null,
       publishMode: 'none',
+      completedChecklistIds: [],
     });
 
     return elapsedMinutes;
@@ -408,6 +421,7 @@ export const useFlightTimer = () => {
     elapsedSeconds: state.elapsedSeconds,
     missionId: state.missionId,
     publishMode: state.publishMode,
+    completedChecklistIds: state.completedChecklistIds,
     startFlight,
     endFlight,
     formatElapsedTime,
