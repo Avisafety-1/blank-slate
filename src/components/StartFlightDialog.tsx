@@ -28,6 +28,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleCheck } from '@/hooks/useRoleCheck';
@@ -208,15 +209,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('flight.startFlightTitle')}</DialogTitle>
             <DialogDescription>
               {t('flight.startFlightDesc')}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-6 py-4">
             {/* Linked Checklists Section */}
             {checklists.length > 0 && (
               <div className="space-y-3">
@@ -413,9 +415,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </p>
               </div>
             )}
-          </div>
+            </div>
+          </ScrollArea>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-shrink-0 gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('actions.cancel')}
             </Button>
