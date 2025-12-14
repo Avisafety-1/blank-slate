@@ -33,6 +33,7 @@ interface LogFlightTimeDialogProps {
   prefilledDuration?: number;
   safeskyMode?: string;
   completedChecklistIds?: string[];
+  prefilledMissionId?: string;
 }
 
 interface Drone {
@@ -59,7 +60,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,9 +138,10 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       fetchEquipment();
       
       // Reset form completely when dialog opens, with user as default pilot
+      // Pre-fill mission if provided from active flight
       setFormData({
         droneId: "",
-        missionId: "",
+        missionId: prefilledMissionId || "",
         pilotId: user?.id || "",
         departureLocation: "",
         landingLocation: "",

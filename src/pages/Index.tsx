@@ -54,7 +54,7 @@ const Index = () => {
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   
-  const { isActive, elapsedSeconds, publishMode, completedChecklistIds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
@@ -401,6 +401,7 @@ const Index = () => {
         prefilledDuration={prefilledDuration}
         safeskyMode={publishMode}
         completedChecklistIds={completedChecklistIds}
+        prefilledMissionId={activeMissionId || undefined}
         onFlightLogged={handleFlightLogged}
         onStopTimer={() => {
           endFlight();
