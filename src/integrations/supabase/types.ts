@@ -133,6 +133,7 @@ export type Database = {
         Row: {
           adresse: string | null
           aktiv: boolean
+          before_takeoff_checklist_id: string | null
           created_at: string
           id: string
           kontakt_epost: string | null
@@ -146,6 +147,7 @@ export type Database = {
         Insert: {
           adresse?: string | null
           aktiv?: boolean
+          before_takeoff_checklist_id?: string | null
           created_at?: string
           id?: string
           kontakt_epost?: string | null
@@ -159,6 +161,7 @@ export type Database = {
         Update: {
           adresse?: string | null
           aktiv?: boolean
+          before_takeoff_checklist_id?: string | null
           created_at?: string
           id?: string
           kontakt_epost?: string | null
@@ -169,7 +172,15 @@ export type Database = {
           selskapstype?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "companies_before_takeoff_checklist_id_fkey"
+            columns: ["before_takeoff_checklist_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {

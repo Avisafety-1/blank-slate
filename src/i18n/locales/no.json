@@ -122,7 +122,14 @@
     "safeskyLivePosition": "Live posisjon",
     "safeskyLivePositionDesc": "Deler din GPS-posisjon kontinuerlig med SafeSky",
     "safeskyLiveInfo": "Din GPS-posisjon oppdateres hvert 10. sekund til SafeSky. Krever tilgang til enhetens posisjon.",
-    "starting": "Starter..."
+    "starting": "Starter...",
+    "beforeTakeoffChecklist": "Before Takeoff Checklist",
+    "selectChecklist": "Velg sjekkliste",
+    "noChecklistSelected": "Ingen sjekkliste valgt",
+    "checklistCompleted": "Sjekkliste fullført",
+    "openChecklist": "Åpne sjekkliste",
+    "changeChecklist": "Endre",
+    "completeChecklistFirst": "Fullfør sjekkliste før du starter flytur"
   },
   "header": {
     "superAdmin": "Super Administrator",

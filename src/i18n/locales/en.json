@@ -122,7 +122,14 @@
     "safeskyLivePosition": "Live position",
     "safeskyLivePositionDesc": "Shares your GPS position continuously with SafeSky",
     "safeskyLiveInfo": "Your GPS position is updated every 10 seconds to SafeSky. Requires access to device location.",
-    "starting": "Starting..."
+    "starting": "Starting...",
+    "beforeTakeoffChecklist": "Before Takeoff Checklist",
+    "selectChecklist": "Select checklist",
+    "noChecklistSelected": "No checklist selected",
+    "checklistCompleted": "Checklist completed",
+    "openChecklist": "Open checklist",
+    "changeChecklist": "Change",
+    "completeChecklistFirst": "Complete checklist before starting flight"
   },
   "header": {
     "superAdmin": "Super Administrator",
