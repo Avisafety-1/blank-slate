@@ -133,7 +133,7 @@ export const ChecklistExecutionDialog = ({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 max-h-[50vh] pr-4">
+        <ScrollArea className="flex-1 min-h-0 h-[calc(90vh-280px)] pr-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Laster sjekkliste...</p>
