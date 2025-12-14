@@ -135,8 +135,10 @@
     "changeChecklist": "Endre",
     "checklistNotCompleted": "Sjekkliste er ikke fullført",
     "checklistWarningTitle": "Sjekkliste ikke fullført",
-    "checklistWarningDesc": "Before takeoff-sjekklisten er ikke fullført. Er du sikker på at du vil starte flyturen uten å fullføre sjekklisten?",
-    "startAnyway": "Start likevel"
+    "checklistWarningDesc": "Du har tilknyttede sjekklister som ikke er fullført. Er du sikker på at du vil starte flyturen?",
+    "startAnyway": "Start likevel",
+    "linkChecklist": "Knytt sjekkliste",
+    "linkedChecklists": "Sjekklister"
   },
   "header": {
     "superAdmin": "Super Administrator",

@@ -27,10 +27,10 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -59,11 +59,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [publishMode, setPublishMode] = useState<PublishMode>('none');
   const [loading, setLoading] = useState(false);
   
-  // Multi-checklist state
-  const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([]);
+  // Linked checklists state
+  const [linkedChecklistIds, setLinkedChecklistIds] = useState<string[]>([]);
   const [completedChecklistIds, setCompletedChecklistIds] = useState<string[]>([]);
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
+  const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
 
   useEffect(() => {
     const fetchMissions = async () => {
@@ -88,7 +89,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     if (!open) {
       setSelectedMissionId('');
       setPublishMode('none');
-      setSelectedChecklistIds([]);
+      setLinkedChecklistIds([]);
       setCompletedChecklistIds([]);
       setActiveChecklistId(null);
     }
@@ -111,17 +112,18 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [hasRoute, publishMode]);
 
-  const toggleChecklist = (checklistId: string) => {
-    setSelectedChecklistIds(prev => 
-      prev.includes(checklistId) 
-        ? prev.filter(id => id !== checklistId)
-        : [...prev, checklistId]
-    );
-    // Remove from completed if unchecked
+  const linkChecklist = (checklistId: string) => {
+    setLinkedChecklistIds(prev => [...prev, checklistId]);
+    setChecklistPopoverOpen(false);
+  };
+
+  const unlinkChecklist = (checklistId: string) => {
+    setLinkedChecklistIds(prev => prev.filter(id => id !== checklistId));
     setCompletedChecklistIds(prev => prev.filter(id => id !== checklistId));
   };
 
-  const hasIncompleteChecklists = selectedChecklistIds.some(id => !completedChecklistIds.includes(id));
+  const availableChecklists = checklists.filter(c => !linkedChecklistIds.includes(c.id));
+  const hasIncompleteChecklists = linkedChecklistIds.some(id => !completedChecklistIds.includes(id));
 
   const handleStartFlightClick = () => {
     if (hasIncompleteChecklists) {
@@ -162,52 +164,85 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Checklists Section */}
+            {/* Linked Checklists Section */}
             {checklists.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label className="flex items-center gap-2">
                   <ClipboardCheck className="h-4 w-4" />
-                  {t('flight.beforeTakeoffChecklist')} ({t('common.optional')})
+                  {t('flight.linkedChecklists')} ({t('common.optional')})
                 </Label>
                 
-                <div className="space-y-2 rounded-lg border p-3">
-                  {checklists.map((checklist) => {
-                    const isSelected = selectedChecklistIds.includes(checklist.id);
-                    const isCompleted = completedChecklistIds.includes(checklist.id);
-                    
-                    return (
-                      <div key={checklist.id} className="flex items-center gap-3">
-                        <Checkbox
-                          id={`checklist-${checklist.id}`}
-                          checked={isSelected}
-                          onCheckedChange={() => toggleChecklist(checklist.id)}
-                        />
-                        <label 
-                          htmlFor={`checklist-${checklist.id}`}
-                          className="flex-1 text-sm cursor-pointer"
+                {/* Linked checklist cards */}
+                {linkedChecklistIds.length > 0 && (
+                  <div className="space-y-2">
+                    {linkedChecklistIds.map((checklistId) => {
+                      const checklist = checklists.find(c => c.id === checklistId);
+                      if (!checklist) return null;
+                      const isCompleted = completedChecklistIds.includes(checklistId);
+                      
+                      return (
+                        <div 
+                          key={checklistId} 
+                          className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3"
                         >
-                          {checklist.tittel}
-                        </label>
-                        {isSelected && (
-                          isCompleted ? (
-                            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                              <Check className="h-3 w-3" />
-                              {t('common.completed')}
-                            </span>
-                          ) : (
+                          <span className="text-sm font-medium truncate flex-1">
+                            {checklist.tittel}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {isCompleted ? (
+                              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                <Check className="h-3 w-3" />
+                                {t('common.completed')}
+                              </span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setActiveChecklistId(checklistId)}
+                              >
+                                {t('flight.openChecklist')}
+                              </Button>
+                            )}
                             <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setActiveChecklistId(checklist.id)}
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => unlinkChecklist(checklistId)}
                             >
-                              {t('flight.openChecklist')}
+                              <X className="h-4 w-4" />
                             </Button>
-                          )
-                        )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Link checklist button */}
+                {availableChecklists.length > 0 && (
+                  <Popover open={checklistPopoverOpen} onOpenChange={setChecklistPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Plus className="h-4 w-4" />
+                        {t('flight.linkChecklist')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <div className="space-y-1">
+                        {availableChecklists.map((checklist) => (
+                          <Button
+                            key={checklist.id}
+                            variant="ghost"
+                            className="w-full justify-start text-sm"
+                            onClick={() => linkChecklist(checklist.id)}
+                          >
+                            {checklist.tittel}
+                          </Button>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             )}
 

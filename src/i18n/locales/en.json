@@ -134,9 +134,11 @@
     "openChecklist": "Open checklist",
     "changeChecklist": "Change",
     "checklistNotCompleted": "Checklist has not been completed",
-    "checklistWarningTitle": "Checklist not completed",
-    "checklistWarningDesc": "The before takeoff checklist has not been completed. Are you sure you want to start the flight without completing the checklist?",
-    "startAnyway": "Start anyway"
+    "checklistWarningTitle": "Incomplete checklist",
+    "checklistWarningDesc": "You have linked checklists that have not been completed. Are you sure you want to start the flight?",
+    "startAnyway": "Start anyway",
+    "linkChecklist": "Link checklist",
+    "linkedChecklists": "Checklists"
   },
   "header": {
     "superAdmin": "Super Administrator",
