@@ -1,4 +1,8 @@
 {
+  "common": {
+    "optional": "optional",
+    "completed": "Completed"
+  },
   "nav": {
     "missions": "Missions",
     "map": "Map",

@@ -27,9 +27,10 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, Settings2, AlertTriangle } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -58,31 +59,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [publishMode, setPublishMode] = useState<PublishMode>('none');
   const [loading, setLoading] = useState(false);
   
-  // Checklist state
-  const [companyChecklistId, setCompanyChecklistId] = useState<string | null>(null);
-  const [checklistCompleted, setChecklistCompleted] = useState(false);
-  const [showChecklistSelector, setShowChecklistSelector] = useState(false);
-  const [showChecklistExecution, setShowChecklistExecution] = useState(false);
+  // Multi-checklist state
+  const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([]);
+  const [completedChecklistIds, setCompletedChecklistIds] = useState<string[]>([]);
+  const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
-
-  // Fetch company's before takeoff checklist
-  useEffect(() => {
-    const fetchCompanyChecklist = async () => {
-      if (!companyId || !open) return;
-
-      const { data } = await supabase
-        .from('companies')
-        .select('before_takeoff_checklist_id')
-        .eq('id', companyId)
-        .maybeSingle();
-
-      if (data) {
-        setCompanyChecklistId(data.before_takeoff_checklist_id);
-      }
-    };
-
-    fetchCompanyChecklist();
-  }, [companyId, open]);
 
   useEffect(() => {
     const fetchMissions = async () => {
@@ -107,8 +88,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     if (!open) {
       setSelectedMissionId('');
       setPublishMode('none');
-      setChecklistCompleted(false);
-      setShowChecklistSelector(false);
+      setSelectedChecklistIds([]);
+      setCompletedChecklistIds([]);
+      setActiveChecklistId(null);
     }
   }, [open]);
 
@@ -129,9 +111,20 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [hasRoute, publishMode]);
 
+  const toggleChecklist = (checklistId: string) => {
+    setSelectedChecklistIds(prev => 
+      prev.includes(checklistId) 
+        ? prev.filter(id => id !== checklistId)
+        : [...prev, checklistId]
+    );
+    // Remove from completed if unchecked
+    setCompletedChecklistIds(prev => prev.filter(id => id !== checklistId));
+  };
+
+  const hasIncompleteChecklists = selectedChecklistIds.some(id => !completedChecklistIds.includes(id));
+
   const handleStartFlightClick = () => {
-    // If checklist exists but not completed, show warning
-    if (companyChecklistId && !checklistCompleted) {
+    if (hasIncompleteChecklists) {
       setShowChecklistWarning(true);
       return;
     }
@@ -150,25 +143,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   };
 
-  const handleSelectChecklist = async (checklistId: string) => {
-    if (!companyId) return;
-
-    await supabase
-      .from('companies')
-      .update({ before_takeoff_checklist_id: checklistId })
-      .eq('id', companyId);
-
-    setCompanyChecklistId(checklistId);
-    setShowChecklistSelector(false);
-  };
-
   const handleChecklistComplete = () => {
-    setChecklistCompleted(true);
-    setShowChecklistExecution(false);
+    if (activeChecklistId) {
+      setCompletedChecklistIds(prev => [...prev, activeChecklistId]);
+    }
+    setActiveChecklistId(null);
   };
-
-  const selectedChecklist = checklists.find(c => c.id === companyChecklistId);
-  const checklistNotCompleted = companyChecklistId && !checklistCompleted;
 
   return (
     <>
@@ -182,70 +162,54 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Before Takeoff Checklist Section */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4" />
-                {t('flight.beforeTakeoffChecklist')}
-              </Label>
-              
-              {!companyChecklistId && !showChecklistSelector ? (
-                // No checklist selected - show button to select
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setShowChecklistSelector(true)}
-                >
-                  <ClipboardCheck className="h-4 w-4 mr-2" />
-                  {t('flight.selectChecklist')}
-                </Button>
-              ) : showChecklistSelector ? (
-                // Show checklist selector dropdown
-                <Select onValueChange={handleSelectChecklist}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('flight.noChecklistSelected')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {checklists.map((checklist) => (
-                      <SelectItem key={checklist.id} value={checklist.id}>
-                        {checklist.tittel}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : checklistCompleted ? (
-                // Checklist completed - show success state
-                <div className="flex items-center gap-2 rounded-lg border border-green-500/50 bg-green-500/10 p-3">
-                  <Check className="h-5 w-5 text-green-500" />
-                  <span className="font-medium text-green-600 dark:text-green-400">
-                    {t('flight.checklistCompleted')}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-auto">
-                    {selectedChecklist?.tittel}
-                  </span>
+            {/* Checklists Section */}
+            {checklists.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  {t('flight.beforeTakeoffChecklist')} ({t('common.optional')})
+                </Label>
+                
+                <div className="space-y-2 rounded-lg border p-3">
+                  {checklists.map((checklist) => {
+                    const isSelected = selectedChecklistIds.includes(checklist.id);
+                    const isCompleted = completedChecklistIds.includes(checklist.id);
+                    
+                    return (
+                      <div key={checklist.id} className="flex items-center gap-3">
+                        <Checkbox
+                          id={`checklist-${checklist.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleChecklist(checklist.id)}
+                        />
+                        <label 
+                          htmlFor={`checklist-${checklist.id}`}
+                          className="flex-1 text-sm cursor-pointer"
+                        >
+                          {checklist.tittel}
+                        </label>
+                        {isSelected && (
+                          isCompleted ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                              <Check className="h-3 w-3" />
+                              {t('common.completed')}
+                            </span>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setActiveChecklistId(checklist.id)}
+                            >
+                              {t('flight.openChecklist')}
+                            </Button>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                // Checklist selected but not completed - show button to open
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 justify-start"
-                    onClick={() => setShowChecklistExecution(true)}
-                  >
-                    <ClipboardCheck className="h-4 w-4 mr-2" />
-                    {t('flight.openChecklist')}: {selectedChecklist?.tittel}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowChecklistSelector(true)}
-                    title={t('flight.changeChecklist')}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="mission-select">{t('flight.selectMission')}</Label>
@@ -344,7 +308,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
-            {checklistNotCompleted && (
+            {hasIncompleteChecklists && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
                 <p className="text-amber-600 dark:text-amber-400">
@@ -394,12 +358,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       </AlertDialog>
 
       {/* Checklist Execution Dialog */}
-      {companyChecklistId && (
+      {activeChecklistId && (
         <ChecklistExecutionDialog
-          open={showChecklistExecution}
-          onOpenChange={setShowChecklistExecution}
-          checklistId={companyChecklistId}
-          itemName={t('flight.beforeTakeoffChecklist')}
+          open={!!activeChecklistId}
+          onOpenChange={(open) => !open && setActiveChecklistId(null)}
+          checklistId={activeChecklistId}
+          itemName={checklists.find(c => c.id === activeChecklistId)?.tittel || ''}
           onComplete={handleChecklistComplete}
         />
       )}
