@@ -16,7 +16,7 @@ interface ChecklistExecutionDialogProps {
   onOpenChange: (open: boolean) => void;
   checklistId: string;
   itemName: string;
-  onComplete: () => Promise<void>;
+  onComplete: () => void | Promise<void>;
 }
 
 export const ChecklistExecutionDialog = ({ 
