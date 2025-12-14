@@ -134,6 +134,7 @@ export type Database = {
           adresse: string | null
           aktiv: boolean
           before_takeoff_checklist_id: string | null
+          before_takeoff_checklist_ids: string[] | null
           created_at: string
           id: string
           kontakt_epost: string | null
@@ -148,6 +149,7 @@ export type Database = {
           adresse?: string | null
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
+          before_takeoff_checklist_ids?: string[] | null
           created_at?: string
           id?: string
           kontakt_epost?: string | null
@@ -162,6 +164,7 @@ export type Database = {
           adresse?: string | null
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
+          before_takeoff_checklist_ids?: string[] | null
           created_at?: string
           id?: string
           kontakt_epost?: string | null

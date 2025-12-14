@@ -138,7 +138,8 @@
     "checklistWarningDesc": "Du har tilknyttede sjekklister som ikke er fullført. Er du sikker på at du vil starte flyturen?",
     "startAnyway": "Start likevel",
     "linkChecklist": "Knytt sjekkliste",
-    "linkedChecklists": "Sjekklister"
+    "linkedChecklists": "Sjekklister",
+    "noChecklistsLinked": "Ingen sjekklister er knyttet. Kontakt en administrator for å sette opp sjekklister."
   },
   "header": {
     "superAdmin": "Super Administrator",
