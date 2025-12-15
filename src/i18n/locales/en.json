@@ -1,8 +1,4 @@
 {
-  "common": {
-    "optional": "optional",
-    "completed": "Completed"
-  },
   "nav": {
     "missions": "Missions",
     "map": "Map",
@@ -39,6 +35,8 @@
     "report": "Report"
   },
   "common": {
+    "optional": "optional",
+    "completed": "Completed",
     "loading": "Loading...",
     "noData": "No data",
     "selectCompany": "Select company...",
