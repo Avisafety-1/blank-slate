@@ -443,6 +443,7 @@
     "errorApprovingUser": "Error approving user",
     "errorAssigningRole": "Error assigning role",
     "errorRemovingRole": "Error removing role",
-    "errorDeletingUser": "Error deleting user"
+    "errorDeletingUser": "Error deleting user",
+    "cannotAssignSuperadminToSelf": "You cannot assign yourself as superadmin"
   }
 }

@@ -443,6 +443,7 @@
     "errorApprovingUser": "Feil ved godkjenning av bruker",
     "errorAssigningRole": "Feil ved tildeling av rolle",
     "errorRemovingRole": "Feil ved fjerning av rolle",
-    "errorDeletingUser": "Feil ved sletting av bruker"
+    "errorDeletingUser": "Feil ved sletting av bruker",
+    "cannotAssignSuperadminToSelf": "Du kan ikke sette deg selv som superadmin"
   }
 }
