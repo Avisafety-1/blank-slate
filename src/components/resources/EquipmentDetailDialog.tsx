@@ -4,13 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book } from "lucide-react";
+import { useChecklists } from "@/hooks/useChecklists";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList } from "lucide-react";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
+import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 
 interface Equipment {
   id: string;
@@ -27,6 +30,7 @@ interface Equipment {
   varsel_dager?: number | null;
   vekt?: number | null;
   vedlikeholdsintervall_dager?: number | null;
+  sjekkliste_id?: string | null;
 }
 
 interface EquipmentDetailDialogProps {
@@ -39,9 +43,11 @@ interface EquipmentDetailDialogProps {
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
+  const { checklists } = useChecklists();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     navn: "",
     type: "",
@@ -53,6 +59,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     varsel_dager: "14",
     vekt: "",
     vedlikeholdsintervall_dager: "",
+    sjekkliste_id: "",
   });
 
   useEffect(() => {
@@ -68,6 +75,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         varsel_dager: equipment.varsel_dager !== null && equipment.varsel_dager !== undefined ? String(equipment.varsel_dager) : "14",
         vekt: equipment.vekt !== null && equipment.vekt !== undefined ? String(equipment.vekt) : "",
         vedlikeholdsintervall_dager: equipment.vedlikeholdsintervall_dager !== null && equipment.vedlikeholdsintervall_dager !== undefined ? String(equipment.vedlikeholdsintervall_dager) : "",
+        sjekkliste_id: equipment.sjekkliste_id || "",
       });
       setIsEditing(false);
     }
@@ -88,7 +96,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     }
   }, [isEditing, formData.sist_vedlikeholdt, formData.vedlikeholdsintervall_dager]);
 
-  const handlePerformMaintenance = async () => {
+  const performMaintenanceUpdate = async () => {
     if (!equipment || isSubmitting) return;
     
     setIsSubmitting(true);
@@ -135,6 +143,24 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     }
   };
 
+  const handlePerformMaintenance = async () => {
+    if (!equipment || isSubmitting) return;
+    
+    // If equipment has a checklist, open checklist dialog first
+    if (equipment.sjekkliste_id) {
+      setChecklistDialogOpen(true);
+      return;
+    }
+    
+    // Otherwise perform maintenance directly
+    await performMaintenanceUpdate();
+  };
+
+  const handleChecklistComplete = async () => {
+    setChecklistDialogOpen(false);
+    await performMaintenanceUpdate();
+  };
+
   const handleSave = async () => {
     if (!equipment || isSubmitting) return;
     
@@ -153,6 +179,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
           vekt: formData.vekt ? parseFloat(formData.vekt) : null,
           vedlikeholdsintervall_dager: formData.vedlikeholdsintervall_dager ? parseInt(formData.vedlikeholdsintervall_dager) : null,
+          sjekkliste_id: formData.sjekkliste_id || null,
         })
         .eq("id", equipment.id);
 
@@ -188,6 +215,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
       toast.error(`Kunne ikke slette utstyr: ${error.message}`);
     }
   };
+
+  // Get linked checklist name for display
+  const linkedChecklist = equipment?.sjekkliste_id 
+    ? checklists.find(c => c.id === equipment.sjekkliste_id) 
+    : null;
 
   if (!equipment) return null;
 
@@ -248,9 +280,24 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                 </div>
               </div>
 
-              <div className="flex justify-between sm:block">
-                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
-                <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
+                  <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+                </div>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sjekkliste</p>
+                  <p className="text-sm sm:text-base flex items-center gap-1">
+                    {linkedChecklist ? (
+                      <>
+                        <ClipboardList className="w-3 h-3 text-primary" />
+                        {linkedChecklist.tittel}
+                      </>
+                    ) : (
+                      "Ingen"
+                    )}
+                  </p>
+                </div>
               </div>
 
               <div className="border-t border-border pt-3 sm:pt-4">
@@ -371,17 +418,38 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
-                <Input
-                  id="varsel_dager"
-                  type="number"
-                  min="1"
-                  placeholder="14"
-                  value={formData.varsel_dager}
-                  onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
-                  className="text-sm"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
+                  <Input
+                    id="varsel_dager"
+                    type="number"
+                    min="1"
+                    placeholder="14"
+                    value={formData.varsel_dager}
+                    onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs sm:text-sm">Sjekkliste for vedlikehold</Label>
+                  <Select
+                    value={formData.sjekkliste_id}
+                    onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value === "none" ? "" : value })}
+                  >
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                      {checklists.map((checklist) => (
+                        <SelectItem key={checklist.id} value={checklist.id}>
+                          {checklist.tittel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -471,6 +539,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
         equipmentNavn={equipment.navn}
         flyvetimer={equipment.flyvetimer || 0}
       />
+
+      {equipment.sjekkliste_id && (
+        <ChecklistExecutionDialog
+          open={checklistDialogOpen}
+          onOpenChange={setChecklistDialogOpen}
+          checklistId={equipment.sjekkliste_id}
+          itemName={`${equipment.navn} (${equipment.serienummer})`}
+          onComplete={handleChecklistComplete}
+        />
+      )}
     </Dialog>
   );
 };
