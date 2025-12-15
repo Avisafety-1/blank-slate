@@ -1,8 +1,4 @@
 {
-  "common": {
-    "optional": "valgfritt",
-    "completed": "Fullført"
-  },
   "nav": {
     "missions": "Oppdrag",
     "map": "Kart",
@@ -39,6 +35,8 @@
     "report": "Rapporter"
   },
   "common": {
+    "optional": "valgfritt",
+    "completed": "Fullført",
     "loading": "Laster...",
     "noData": "Ingen data",
     "selectCompany": "Velg selskap...",
