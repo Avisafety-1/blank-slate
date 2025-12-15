@@ -57,7 +57,7 @@ const availableRoles = [
 ];
 
 const Admin = () => {
-  const { user, loading, companyId, isSuperAdmin } = useAuth();
+  const { user, loading, companyId, isSuperAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -393,7 +393,11 @@ const Admin = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/auth")}
+                onClick={async () => {
+                  await signOut();
+                  toast.success(t('header.loggedOut'));
+                  navigate("/auth");
+                }}
                 title={t('actions.signOut')}
               >
                 <LogOut className="w-4 h-4" />
