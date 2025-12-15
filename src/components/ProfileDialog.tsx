@@ -75,6 +75,8 @@ interface NotificationPreferences {
   email_document_expiry: boolean;
   email_new_user_pending: boolean;
   email_followup_assigned: boolean;
+  email_inspection_reminder: boolean;
+  inspection_reminder_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -196,13 +198,19 @@ export const ProfileDialog = () => {
             email_document_expiry: false,
             email_new_user_pending: false,
             email_followup_assigned: true,
+            email_inspection_reminder: false,
+            inspection_reminder_days: 14,
           })
           .select()
           .single();
         
         setNotificationPrefs(newPrefs);
       } else {
-        setNotificationPrefs(prefsData);
+        setNotificationPrefs({
+          ...prefsData,
+          email_inspection_reminder: prefsData.email_inspection_reminder ?? false,
+          inspection_reminder_days: prefsData.inspection_reminder_days ?? 14,
+        });
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -312,7 +320,7 @@ export const ProfileDialog = () => {
     }
   };
 
-  const updateNotificationPref = async (field: keyof NotificationPreferences, value: boolean) => {
+  const updateNotificationPref = async (field: keyof NotificationPreferences, value: boolean | number) => {
     if (!user || !notificationPrefs) return;
     
     setNotificationPrefs({ ...notificationPrefs, [field]: value });
@@ -329,7 +337,10 @@ export const ProfileDialog = () => {
     } catch (error: any) {
       console.error("Error updating notification preferences:", error);
       toast.error(t('profile.couldNotUpdateSettings'));
-      setNotificationPrefs({ ...notificationPrefs, [field]: !value });
+      // Revert to previous value
+      if (typeof value === 'boolean') {
+        setNotificationPrefs({ ...notificationPrefs, [field]: !value });
+      }
     }
   };
 
@@ -872,6 +883,44 @@ export const ProfileDialog = () => {
                             updateNotificationPref('email_followup_assigned', checked)
                           }
                         />
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">
+                              {t('profile.notificationOptions.inspectionReminder')}
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              {t('profile.notificationOptions.inspectionReminderDesc')}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_inspection_reminder ?? false}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPref('email_inspection_reminder', checked)
+                            }
+                          />
+                        </div>
+                        {notificationPrefs?.email_inspection_reminder && (
+                          <div className="flex items-center gap-2 pl-4">
+                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                              {t('profile.notificationOptions.daysBeforeInspection')}:
+                            </Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={90}
+                              value={notificationPrefs?.inspection_reminder_days ?? 14}
+                              onChange={(e) => 
+                                updateNotificationPref('inspection_reminder_days', parseInt(e.target.value) || 14)
+                              }
+                              className="w-20 h-8"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

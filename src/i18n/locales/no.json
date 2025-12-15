@@ -364,8 +364,12 @@
       "newUserPending": "E-post når nye brukere venter på godkjenning",
       "newUserPendingDesc": "Kun for administratorer",
       "followupAssigned": "E-post når du tildeles oppfølgingsansvar",
-      "followupAssignedDesc": "Når du blir satt som oppfølgingsansvarlig på hendelser"
+      "followupAssignedDesc": "Når du blir satt som oppfølgingsansvarlig på hendelser",
+      "inspectionReminder": "E-post før inspeksjon/vedlikehold",
+      "inspectionReminderDesc": "Varsling før planlagte inspeksjoner (drone, utstyr, tilbehør)",
+      "daysBeforeInspection": "Antall dager før"
     },
+    "incidents": "Hendelser",
     "myIncidents": "Hendelser jeg følger opp",
     "noIncidentsFollowUp": "Du har ingen hendelser som oppfølgingsansvarlig"
   },

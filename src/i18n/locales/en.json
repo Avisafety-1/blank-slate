@@ -364,8 +364,12 @@
       "newUserPending": "Email when new users are pending approval",
       "newUserPendingDesc": "For administrators only",
       "followupAssigned": "Email when assigned follow-up responsibility",
-      "followupAssignedDesc": "When you are assigned as follow-up responsible for incidents"
+      "followupAssignedDesc": "When you are assigned as follow-up responsible for incidents",
+      "inspectionReminder": "Email before inspection/maintenance",
+      "inspectionReminderDesc": "Notification before scheduled inspections (drone, equipment, accessories)",
+      "daysBeforeInspection": "Days before"
     },
+    "incidents": "Incidents",
     "myIncidents": "Incidents I'm following up",
     "noIncidentsFollowUp": "You have no incidents as follow-up responsible"
   },

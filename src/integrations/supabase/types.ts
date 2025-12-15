@@ -1664,10 +1664,12 @@ export type Database = {
           created_at: string
           email_document_expiry: boolean
           email_followup_assigned: boolean
+          email_inspection_reminder: boolean
           email_new_incident: boolean
           email_new_mission: boolean
           email_new_user_pending: boolean
           id: string
+          inspection_reminder_days: number
           updated_at: string
           user_id: string
         }
@@ -1675,10 +1677,12 @@ export type Database = {
           created_at?: string
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
+          email_inspection_reminder?: boolean
           email_new_incident?: boolean
           email_new_mission?: boolean
           email_new_user_pending?: boolean
           id?: string
+          inspection_reminder_days?: number
           updated_at?: string
           user_id: string
         }
@@ -1686,10 +1690,12 @@ export type Database = {
           created_at?: string
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
+          email_inspection_reminder?: boolean
           email_new_incident?: boolean
           email_new_mission?: boolean
           email_new_user_pending?: boolean
           id?: string
+          inspection_reminder_days?: number
           updated_at?: string
           user_id?: string
         }
