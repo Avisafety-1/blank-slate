@@ -246,6 +246,12 @@ const Admin = () => {
   };
 
   const assignRole = async (userId: string, role: string) => {
+    // Prevent non-superadmins from assigning superadmin role to themselves
+    if (role === 'superadmin' && userId === user?.id && !isSuperAdmin) {
+      toast.error(t('admin.cannotAssignSuperadminToSelf'));
+      return;
+    }
+
     try {
       // Get existing role for the user
       const existingRole = userRoles.find((r) => r.user_id === userId);

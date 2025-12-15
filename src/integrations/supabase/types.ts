@@ -751,7 +751,7 @@ export type Database = {
           heading: number | null
           id: string
           lat: number | null
-          lon: number | null
+          lng: number | null
           speed: number | null
           status: Json | null
           timestamp: string
@@ -767,7 +767,7 @@ export type Database = {
           heading?: number | null
           id?: string
           lat?: number | null
-          lon?: number | null
+          lng?: number | null
           speed?: number | null
           status?: Json | null
           timestamp: string
@@ -783,7 +783,7 @@ export type Database = {
           heading?: number | null
           id?: string
           lat?: number | null
-          lon?: number | null
+          lng?: number | null
           speed?: number | null
           status?: Json | null
           timestamp?: string
