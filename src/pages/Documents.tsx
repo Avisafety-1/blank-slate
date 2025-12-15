@@ -46,6 +46,7 @@ const Documents = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
+  const [sortByExpiry, setSortByExpiry] = useState(false);
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth", {
@@ -88,6 +89,16 @@ const Documents = () => {
     const matchesSearch = searchQuery === "" || doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) || doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.fil_url?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.nettside_url?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(doc.kategori.toLowerCase().trim() as DocumentCategory);
     return matchesSearch && matchesCategory;
+  })?.sort((a, b) => {
+    if (sortByExpiry) {
+      // Sort by expiry date - nearest first, docs without expiry at the end
+      if (!a.gyldig_til && !b.gyldig_til) return 0;
+      if (!a.gyldig_til) return 1;
+      if (!b.gyldig_til) return -1;
+      return new Date(a.gyldig_til).getTime() - new Date(b.gyldig_til).getTime();
+    }
+    // Default: sort by creation date (newest first)
+    return new Date(b.opprettet_dato).getTime() - new Date(a.opprettet_dato).getTime();
   });
   const handleOpenDocument = (document: Document) => {
     setSelectedDocument(document);
@@ -153,7 +164,13 @@ const Documents = () => {
 
             <DocumentsFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} selectedCategories={selectedCategories} onCategoriesChange={setSelectedCategories} />
 
-            <DocumentsList documents={filteredDocuments || []} isLoading={isLoading} onDocumentClick={handleOpenDocument} />
+            <DocumentsList 
+              documents={filteredDocuments || []} 
+              isLoading={isLoading} 
+              onDocumentClick={handleOpenDocument}
+              sortByExpiry={sortByExpiry}
+              onToggleSortByExpiry={() => setSortByExpiry(!sortByExpiry)}
+            />
 
             <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
             refetch();

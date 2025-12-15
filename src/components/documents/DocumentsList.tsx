@@ -5,9 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Download } from "lucide-react";
+import { ExternalLink, Download, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const openUrl = (url: string) => {
   let finalUrl = url;
@@ -20,6 +21,8 @@ interface DocumentsListProps {
   documents: Document[];
   isLoading: boolean;
   onDocumentClick: (document: Document) => void;
+  sortByExpiry: boolean;
+  onToggleSortByExpiry: () => void;
 }
 const CATEGORY_LABELS: Record<string, string> = {
   regelverk: "Regelverk",
@@ -32,7 +35,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 const DocumentsList = ({
   documents,
   isLoading,
-  onDocumentClick
+  onDocumentClick,
+  sortByExpiry,
+  onToggleSortByExpiry
 }: DocumentsListProps) => {
 
   const handleDownloadFile = async (filUrl: string, originalFileName?: string) => {
@@ -85,7 +90,18 @@ const DocumentsList = ({
               <span className="md:hidden">Kat.</span>
               <span className="hidden md:inline">Kategori</span>
             </TableHead>
-            <TableHead className="bg-slate-200 text-slate-950 hidden md:table-cell">Utløpsdato</TableHead>
+            <TableHead 
+              className={cn(
+                "bg-slate-200 text-slate-950 hidden md:table-cell cursor-pointer select-none transition-all",
+                sortByExpiry && "ring-2 ring-primary ring-inset bg-slate-300"
+              )}
+              onClick={onToggleSortByExpiry}
+            >
+              <div className="flex items-center gap-1">
+                Utløpsdato
+                <ArrowUpDown className="h-3 w-3" />
+              </div>
+            </TableHead>
             <TableHead className="bg-slate-200 text-slate-950 hidden lg:table-cell">Opprettet</TableHead>
             <TableHead className="bg-slate-200 text-slate-950 text-right pl-1 md:pl-4">Handlinger</TableHead>
           </TableRow>
