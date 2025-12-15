@@ -911,12 +911,13 @@ export const ProfileDialog = () => {
                             </Label>
                             <Input
                               type="number"
-                              min={1}
+                              min={0}
                               max={90}
                               value={notificationPrefs?.inspection_reminder_days ?? 14}
-                              onChange={(e) => 
-                                updateNotificationPref('inspection_reminder_days', parseInt(e.target.value) || 14)
-                              }
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                updateNotificationPref('inspection_reminder_days', isNaN(val) ? 0 : val);
+                              }}
                               className="w-20 h-8"
                             />
                           </div>
