@@ -24,6 +24,7 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 
 interface CalendarEvent {
   type: string;
@@ -34,6 +35,7 @@ interface CalendarEvent {
   id?: string;
   isCustom?: boolean;
   sourceTable?: string;
+  checklistId?: string | null;
 }
 
 type CalendarEventDB = Tables<"calendar_events">;
@@ -85,6 +87,10 @@ export default function Kalender() {
   const [selectedIncident, setSelectedIncident] = useState<any | null>(null);
   const [documentDetailDialogOpen, setDocumentDetailDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
+
+  // Checklist dialog state
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [pendingMaintenanceEvent, setPendingMaintenanceEvent] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -277,7 +283,7 @@ export default function Kalender() {
       // Fetch drones with inspection dates
       const { data: dronesData, error: dronesError } = await supabase
         .from('drones')
-        .select('id, modell, neste_inspeksjon')
+        .select('id, modell, neste_inspeksjon, sjekkliste_id')
         .not('neste_inspeksjon', 'is', null)
         .order('neste_inspeksjon', { ascending: true });
 
@@ -288,7 +294,7 @@ export default function Kalender() {
       // Fetch equipment with maintenance dates
       const { data: equipmentData, error: equipmentError } = await supabase
         .from('equipment')
-        .select('id, navn, neste_vedlikehold')
+        .select('id, navn, neste_vedlikehold, sjekkliste_id')
         .not('neste_vedlikehold', 'is', null)
         .order('neste_vedlikehold', { ascending: true });
 
@@ -377,6 +383,7 @@ export default function Kalender() {
       date: new Date(drone.neste_inspeksjon),
       color: getColorForType("Vedlikehold"),
       sourceTable: 'drones',
+      checklistId: drone.sjekkliste_id,
     })),
     
     // Equipment (maintenance)
@@ -387,6 +394,7 @@ export default function Kalender() {
       date: new Date(eq.neste_vedlikehold),
       color: getColorForType("Vedlikehold"),
       sourceTable: 'equipment',
+      checklistId: eq.sjekkliste_id,
     })),
     
     // Drone accessories (maintenance)
@@ -444,6 +452,20 @@ export default function Kalender() {
     
     if (!event.id || !event.sourceTable) return;
     
+    // Check if the event has a checklist configured
+    if (event.checklistId) {
+      setPendingMaintenanceEvent(event);
+      setChecklistDialogOpen(true);
+      return;
+    }
+    
+    // No checklist - proceed directly
+    await performMaintenanceUpdate(event);
+  };
+
+  const performMaintenanceUpdate = async (event: CalendarEvent) => {
+    if (!event.id || !event.sourceTable) return;
+    
     const today = new Date().toISOString().split('T')[0];
     
     try {
@@ -493,11 +515,27 @@ export default function Kalender() {
         toast.success('Inspeksjon registrert som utført');
         
       } else if (event.sourceTable === 'equipment') {
+        // Fetch equipment to get interval
+        const { data: eq, error: fetchError } = await supabase
+          .from('equipment')
+          .select('vedlikeholdsintervall_dager')
+          .eq('id', event.id)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        let nextMaintenance: string | null = null;
+        if (eq?.vedlikeholdsintervall_dager) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + eq.vedlikeholdsintervall_dager);
+          nextMaintenance = nextDate.toISOString().split('T')[0];
+        }
+        
         const { data, error } = await supabase
           .from('equipment')
           .update({
             sist_vedlikeholdt: today,
-            neste_vedlikehold: null,
+            neste_vedlikehold: nextMaintenance,
           })
           .eq('id', event.id)
           .select();
@@ -546,6 +584,13 @@ export default function Kalender() {
     } catch (error: any) {
       console.error('Error marking maintenance complete:', error);
       toast.error(error.message || 'Kunne ikke registrere vedlikehold');
+    }
+  };
+
+  const handleChecklistComplete = async () => {
+    if (pendingMaintenanceEvent) {
+      await performMaintenanceUpdate(pendingMaintenanceEvent);
+      setPendingMaintenanceEvent(null);
     }
   };
 
@@ -961,6 +1006,22 @@ export default function Kalender() {
         isAdmin={isAdmin}
         isCreating={false}
       />
+
+      {/* Checklist execution dialog for maintenance */}
+      {pendingMaintenanceEvent && pendingMaintenanceEvent.checklistId && (
+        <ChecklistExecutionDialog
+          open={checklistDialogOpen}
+          onOpenChange={(open) => {
+            setChecklistDialogOpen(open);
+            if (!open) {
+              setPendingMaintenanceEvent(null);
+            }
+          }}
+          checklistId={pendingMaintenanceEvent.checklistId}
+          itemName={pendingMaintenanceEvent.title}
+          onComplete={handleChecklistComplete}
+        />
+      )}
     </div>
   );
 }
