@@ -137,7 +137,10 @@
     "startAnyway": "Start likevel",
     "linkChecklist": "Knytt sjekkliste",
     "linkedChecklists": "Sjekklister",
-    "noChecklistsLinked": "Ingen sjekklister er knyttet. Kontakt en administrator for å sette opp sjekklister."
+    "noChecklistsLinked": "Ingen sjekklister er knyttet. Kontakt en administrator for å sette opp sjekklister.",
+    "gpsAcquiring": "Henter GPS-posisjon...",
+    "gpsNotSupported": "GPS støttes ikke på denne enheten",
+    "gpsError": "Kunne ikke hente GPS-posisjon"
   },
   "header": {
     "superAdmin": "Super Administrator",

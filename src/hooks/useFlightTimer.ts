@@ -286,7 +286,35 @@ export const useFlightTimer = () => {
     return () => clearInterval(interval);
   }, [state.isActive, state.startTime]);
 
-  const startFlight = useCallback(async (missionId?: string, publishMode: PublishMode = 'none', completedChecklistIds: string[] = []) => {
+  // Function to publish Point advisory for live_uav mode (100m radius around start position)
+  const publishPointAdvisory = useCallback(async (lat: number, lng: number, pilotName: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('safesky-advisory', {
+        body: { 
+          action: 'publish_point_advisory', 
+          lat, 
+          lng, 
+          pilotName 
+        },
+      });
+      if (error) {
+        console.error('Error publishing Point advisory:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to publish Point advisory:', err);
+      return false;
+    }
+  }, []);
+
+  const startFlight = useCallback(async (
+    missionId?: string, 
+    publishMode: PublishMode = 'none', 
+    completedChecklistIds: string[] = [],
+    startPosition?: { lat: number; lng: number },
+    pilotName?: string
+  ) => {
     if (!user || !companyId) return false;
 
     const startTime = new Date();
@@ -310,11 +338,19 @@ export const useFlightTimer = () => {
       }
     } else if (publishMode === 'live_uav') {
       startGpsWatch();
-      // Initial publish after brief delay for GPS to acquire
+      
+      // Publish Point advisory with start position (100m radius)
+      if (startPosition && pilotName) {
+        const published = await publishPointAdvisory(startPosition.lat, startPosition.lng, pilotName);
+        if (!published) {
+          console.warn('Failed to publish Point advisory, continuing without');
+        }
+      }
+      
+      // Initial UAV beacon publish after brief delay for GPS to acquire
       setTimeout(async () => {
         if (lastPositionRef.current) {
           const { lat, lon, alt, speed, heading } = lastPositionRef.current;
-          // Initial publish - no altitude delta or vertical speed yet
           await publishLiveUav(lat, lon, alt, speed, heading, 0, 0);
         }
       }, 2000);
@@ -326,7 +362,7 @@ export const useFlightTimer = () => {
     localStorage.setItem(getPublishModeKey(user.id), publishMode);
     localStorage.setItem(getChecklistsKey(user.id), JSON.stringify(completedChecklistIds));
 
-    // Save to database for cross-device sync, including route_data copy
+    // Save to database for cross-device sync, including route_data copy and live_uav start position
     const { error } = await supabase.from('active_flights').insert([{
       profile_id: user.id,
       company_id: companyId,
@@ -334,6 +370,9 @@ export const useFlightTimer = () => {
       mission_id: missionId || null,
       publish_mode: publishMode,
       route_data: routeData,
+      start_lat: startPosition?.lat || null,
+      start_lng: startPosition?.lng || null,
+      pilot_name: pilotName || null,
     }]);
 
     if (error) {
@@ -350,7 +389,7 @@ export const useFlightTimer = () => {
     });
 
     return true;
-  }, [user, companyId, publishAdvisory, publishLiveUav, startGpsWatch]);
+  }, [user, companyId, publishAdvisory, publishLiveUav, publishPointAdvisory, startGpsWatch]);
 
   const endFlight = useCallback(async (): Promise<number | null> => {
     if (!state.isActive || !state.startTime) {

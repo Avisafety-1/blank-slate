@@ -18,7 +18,7 @@ interface MissionRoute {
   totalDistance?: number;
 }
 
-interface GeoJSONFeature {
+interface GeoJSONPolygonFeature {
   type: "Feature";
   properties: {
     id: string;
@@ -33,9 +33,25 @@ interface GeoJSONFeature {
   };
 }
 
+interface GeoJSONPointFeature {
+  type: "Feature";
+  properties: {
+    id: string;
+    call_sign: string;
+    last_update: number;
+    max_altitude: number;
+    max_distance: number;
+    remarks: string;
+  };
+  geometry: {
+    type: "Point";
+    coordinates: [number, number]; // [lng, lat]
+  };
+}
+
 interface GeoJSONFeatureCollection {
   type: "FeatureCollection";
-  features: GeoJSONFeature[];
+  features: (GeoJSONPolygonFeature | GeoJSONPointFeature)[];
 }
 
 // Convert route coordinates to a closed polygon
@@ -58,9 +74,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, missionId, lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed } = body;
+    const { action, missionId, lat, lon, lng, alt, speed, heading, altitudeDelta, verticalSpeed, pilotName } = body;
     
-    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lon=${lon}, alt=${alt}, speed=${speed}, altDelta=${altitudeDelta}, vSpeed=${verticalSpeed}`);
+    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lng=${lng || lon}, pilotName=${pilotName}`);
 
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
     if (!SAFESKY_API_KEY) {
@@ -74,6 +90,79 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle Point advisory publishing for live_uav mode (100m radius)
+    if (action === 'publish_point_advisory' || action === 'refresh_point_advisory') {
+      const latitude = lat;
+      const longitude = lng || lon;
+      
+      if (latitude === undefined || longitude === undefined) {
+        return new Response(
+          JSON.stringify({ error: 'lat and lng are required for Point advisory' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const callSign = pilotName || 'Drone Pilot';
+      const advisoryId = `AVS_LIVE_${Date.now().toString(36)}`;
+
+      // Build Point GeoJSON FeatureCollection payload
+      const payload: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          properties: {
+            id: advisoryId,
+            call_sign: callSign,
+            last_update: Math.floor(Date.now() / 1000),
+            max_altitude: 120,
+            max_distance: 100, // 100m radius
+            remarks: "Live drone operation"
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [longitude, latitude] // GeoJSON uses [lng, lat]
+          }
+        }]
+      };
+
+      console.log('Point Advisory payload:', JSON.stringify(payload, null, 2));
+
+      const response = await fetch(SAFESKY_ADVISORY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': SAFESKY_API_KEY,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const responseText = await response.text();
+      console.log(`SafeSky Point Advisory response: ${response.status} - ${responseText}`);
+
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'SafeSky Point Advisory API error', 
+            status: response.status,
+            details: responseText
+          }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action,
+          advisoryId,
+          callSign,
+          position: { lat: latitude, lng: longitude },
+          message: `Point advisory ${action === 'publish_point_advisory' ? 'published' : 'refreshed'} successfully`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Handle live UAV position publishing (from GPS)
     if (action === 'publish_live_uav') {

@@ -26,7 +26,7 @@ interface MissionRoute {
   totalDistance?: number;
 }
 
-interface GeoJSONFeature {
+interface GeoJSONPolygonFeature {
   type: "Feature";
   properties: {
     id: string;
@@ -41,9 +41,25 @@ interface GeoJSONFeature {
   };
 }
 
+interface GeoJSONPointFeature {
+  type: "Feature";
+  properties: {
+    id: string;
+    call_sign: string;
+    last_update: number;
+    max_altitude: number;
+    max_distance: number;
+    remarks: string;
+  };
+  geometry: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+}
+
 interface GeoJSONFeatureCollection {
   type: "FeatureCollection";
-  features: GeoJSONFeature[];
+  features: (GeoJSONPolygonFeature | GeoJSONPointFeature)[];
 }
 
 interface SafeSkyBeacon {
@@ -88,23 +104,23 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // === PART 1: Refresh Advisory flights ===
-    const { data: activeFlights, error: flightsError } = await supabase
+    // === PART 1: Refresh Advisory flights (polygon-based from route) ===
+    const { data: polygonFlights, error: polygonFlightsError } = await supabase
       .from('active_flights')
       .select('id, mission_id, profile_id')
       .eq('publish_mode', 'advisory')
       .not('mission_id', 'is', null);
 
-    if (flightsError) {
-      console.error('Error fetching active flights:', flightsError);
+    if (polygonFlightsError) {
+      console.error('Error fetching polygon advisory flights:', polygonFlightsError);
     }
 
-    const advisoryResults: { missionId: string; success: boolean; error?: string }[] = [];
+    const advisoryResults: { flightId: string; success: boolean; error?: string }[] = [];
 
-    if (activeFlights && activeFlights.length > 0) {
-      console.log(`Found ${activeFlights.length} active advisory flights to refresh`);
+    if (polygonFlights && polygonFlights.length > 0) {
+      console.log(`Found ${polygonFlights.length} active polygon advisory flights to refresh`);
 
-      for (const flight of activeFlights) {
+      for (const flight of polygonFlights) {
         const missionId = flight.mission_id;
         if (!missionId) continue;
 
@@ -117,14 +133,14 @@ Deno.serve(async (req) => {
 
           if (missionError || !mission) {
             console.error(`Mission ${missionId} not found:`, missionError);
-            advisoryResults.push({ missionId, success: false, error: 'Mission not found' });
+            advisoryResults.push({ flightId: flight.id, success: false, error: 'Mission not found' });
             continue;
           }
 
           const route = mission.route as MissionRoute | null;
           if (!route || !route.coordinates || route.coordinates.length < 3) {
             console.warn(`Mission ${missionId} has no valid route for advisory`);
-            advisoryResults.push({ missionId, success: false, error: 'No valid route' });
+            advisoryResults.push({ flightId: flight.id, success: false, error: 'No valid route' });
             continue;
           }
 
@@ -149,7 +165,7 @@ Deno.serve(async (req) => {
             }]
           };
 
-          console.log(`Refreshing advisory for mission ${missionId} (${mission.tittel})`);
+          console.log(`Refreshing polygon advisory for mission ${missionId} (${mission.tittel})`);
 
           const response = await fetch(SAFESKY_ADVISORY_URL, {
             method: 'POST',
@@ -161,17 +177,85 @@ Deno.serve(async (req) => {
           });
 
           const responseText = await response.text();
-          console.log(`SafeSky advisory response for ${missionId}: ${response.status} - ${responseText}`);
+          console.log(`SafeSky polygon advisory response for ${missionId}: ${response.status} - ${responseText}`);
 
           if (!response.ok) {
-            advisoryResults.push({ missionId, success: false, error: `API error: ${response.status}` });
+            advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
           } else {
-            advisoryResults.push({ missionId, success: true });
+            advisoryResults.push({ flightId: flight.id, success: true });
           }
 
         } catch (err) {
-          console.error(`Error refreshing advisory for ${missionId}:`, err);
-          advisoryResults.push({ missionId, success: false, error: String(err) });
+          console.error(`Error refreshing polygon advisory for ${missionId}:`, err);
+          advisoryResults.push({ flightId: flight.id, success: false, error: String(err) });
+        }
+      }
+    }
+
+    // === PART 1B: Refresh Point Advisory flights (live_uav mode with fixed start position) ===
+    const { data: pointFlights, error: pointFlightsError } = await supabase
+      .from('active_flights')
+      .select('id, start_lat, start_lng, pilot_name')
+      .eq('publish_mode', 'live_uav')
+      .not('start_lat', 'is', null)
+      .not('start_lng', 'is', null);
+
+    if (pointFlightsError) {
+      console.error('Error fetching point advisory flights:', pointFlightsError);
+    }
+
+    if (pointFlights && pointFlights.length > 0) {
+      console.log(`Found ${pointFlights.length} active live_uav flights to refresh Point advisories`);
+
+      for (const flight of pointFlights) {
+        if (!flight.start_lat || !flight.start_lng) continue;
+
+        try {
+          const callSign = flight.pilot_name || 'Drone Pilot';
+          const advisoryId = `AVS_LIVE_${flight.id.substring(0, 8)}`;
+
+          const payload: GeoJSONFeatureCollection = {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: {
+                id: advisoryId,
+                call_sign: callSign,
+                last_update: Math.floor(Date.now() / 1000),
+                max_altitude: 120,
+                max_distance: 100, // 100m radius
+                remarks: "Live drone operation"
+              },
+              geometry: {
+                type: "Point",
+                coordinates: [flight.start_lng, flight.start_lat] // GeoJSON [lng, lat]
+              }
+            }]
+          };
+
+          console.log(`Refreshing Point advisory for flight ${flight.id} (${callSign})`);
+
+          const response = await fetch(SAFESKY_ADVISORY_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': SAFESKY_API_KEY,
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const responseText = await response.text();
+          console.log(`SafeSky Point advisory response for ${flight.id}: ${response.status} - ${responseText}`);
+
+          if (!response.ok) {
+            advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
+          } else {
+            advisoryResults.push({ flightId: flight.id, success: true });
+          }
+
+        } catch (err) {
+          console.error(`Error refreshing Point advisory for ${flight.id}:`, err);
+          advisoryResults.push({ flightId: flight.id, success: false, error: String(err) });
         }
       }
     }

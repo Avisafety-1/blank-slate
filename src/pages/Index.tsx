@@ -60,9 +60,15 @@ const Index = () => {
     setStartFlightConfirmOpen(true);
   };
 
-  const confirmStartFlight = async (missionId?: string, selectedPublishMode?: 'none' | 'advisory' | 'live_uav', checklistIds?: string[]) => {
+  const confirmStartFlight = async (
+    missionId?: string, 
+    selectedPublishMode?: 'none' | 'advisory' | 'live_uav', 
+    checklistIds?: string[],
+    startPosition?: { lat: number; lng: number },
+    pilotName?: string
+  ) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || []);
+    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName);
     if (success) {
       const modeMessages = {
         none: t('flight.flightStarted'),

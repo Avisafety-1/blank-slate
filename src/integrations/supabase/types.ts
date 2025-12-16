@@ -21,10 +21,13 @@ export type Database = {
           drone_id: string | null
           id: string
           mission_id: string | null
+          pilot_name: string | null
           profile_id: string
           publish_mode: string | null
           route_data: Json | null
           safesky_published: boolean | null
+          start_lat: number | null
+          start_lng: number | null
           start_time: string
         }
         Insert: {
@@ -33,10 +36,13 @@ export type Database = {
           drone_id?: string | null
           id?: string
           mission_id?: string | null
+          pilot_name?: string | null
           profile_id: string
           publish_mode?: string | null
           route_data?: Json | null
           safesky_published?: boolean | null
+          start_lat?: number | null
+          start_lng?: number | null
           start_time?: string
         }
         Update: {
@@ -45,10 +51,13 @@ export type Database = {
           drone_id?: string | null
           id?: string
           mission_id?: string | null
+          pilot_name?: string | null
           profile_id?: string
           publish_mode?: string | null
           route_data?: Json | null
           safesky_published?: boolean | null
+          start_lat?: number | null
+          start_lng?: number | null
           start_time?: string
         }
         Relationships: [
