@@ -50,11 +50,17 @@ interface Mission {
 interface StartFlightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStartFlight: (missionId?: string, publishMode?: PublishMode, completedChecklistIds?: string[]) => void;
+  onStartFlight: (
+    missionId?: string, 
+    publishMode?: PublishMode, 
+    completedChecklistIds?: string[],
+    startPosition?: { lat: number; lng: number },
+    pilotName?: string
+  ) => void;
 }
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
-  const { companyId } = useAuth();
+  const { user, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
   const { t } = useTranslation();
   const { checklists } = useChecklists();
@@ -70,6 +76,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
+  
+  // GPS position for live_uav mode
+  const [gpsPosition, setGpsPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [pilotName, setPilotName] = useState<string>('');
 
   // Fetch company-level checklist settings
   useEffect(() => {
@@ -119,8 +131,57 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setPublishMode('none');
       setCompletedChecklistIds([]);
       setActiveChecklistId(null);
+      setGpsPosition(null);
+      setGpsError(null);
+      setGpsLoading(false);
+      setPilotName('');
     }
   }, [open]);
+
+  // Fetch pilot name and GPS when live_uav is selected
+  useEffect(() => {
+    if (publishMode !== 'live_uav' || !open) return;
+
+    // Fetch pilot's name
+    const fetchPilotName = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+      if (data?.full_name) {
+        setPilotName(data.full_name);
+      }
+    };
+    fetchPilotName();
+
+    // Get GPS position
+    setGpsLoading(true);
+    setGpsError(null);
+    
+    if (!navigator.geolocation) {
+      setGpsError(t('flight.gpsNotSupported'));
+      setGpsLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGpsPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setGpsLoading(false);
+      },
+      (error) => {
+        console.error('GPS error:', error);
+        setGpsError(t('flight.gpsError'));
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [publishMode, open, user, t]);
 
   const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
     ? missions.find(m => m.id === selectedMissionId) 
@@ -192,7 +253,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     setShowChecklistWarning(false);
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
-      await onStartFlight(missionId, publishMode, completedChecklistIds);
+      
+      // Pass GPS position and pilot name for live_uav mode
+      const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
+      const pilot = publishMode === 'live_uav' && pilotName ? pilotName : undefined;
+      
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -399,11 +465,26 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
 
             {publishMode === 'live_uav' && (
-              <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
-                <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
-                <p className="text-muted-foreground">
-                  {t('flight.safeskyLiveInfo')}
-                </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
+                  <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground">
+                      {t('flight.safeskyLiveInfo')}
+                    </p>
+                    {gpsLoading && (
+                      <p className="text-xs text-muted-foreground">{t('flight.gpsAcquiring')}</p>
+                    )}
+                    {gpsError && (
+                      <p className="text-xs text-destructive">{gpsError}</p>
+                    )}
+                    {gpsPosition && pilotName && (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        ✓ {pilotName} @ {gpsPosition.lat.toFixed(4)}, {gpsPosition.lng.toFixed(4)}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -424,10 +505,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading}
+              disabled={loading || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
               className="bg-green-600 hover:bg-green-700"
             >
-              {loading ? t('flight.starting') : t('flight.startFlight')}
+              {loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight'))}
             </Button>
           </DialogFooter>
         </DialogContent>
