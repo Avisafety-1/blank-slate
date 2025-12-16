@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
 
 // User-specific localStorage keys to prevent cross-user state sharing
 const getStorageKey = (userId: string) => `active_flight_start_time_${userId}`;
@@ -393,10 +394,74 @@ export const useFlightTimer = () => {
     return true;
   }, [user, companyId, publishAdvisory, publishLiveUav, publishPointAdvisory, startGpsWatch]);
 
-  const endFlight = useCallback(async (): Promise<number | null> => {
+  // Fetch flight track from DroneTag positions
+  const fetchFlightTrack = useCallback(async (
+    dronetagDeviceId: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<Array<{ lat: number; lng: number; alt: number; timestamp: string }>> => {
+    try {
+      // Fetch dronetag device to get the device_id (text identifier)
+      const { data: device } = await supabase
+        .from('dronetag_devices')
+        .select('device_id')
+        .eq('id', dronetagDeviceId)
+        .single();
+
+      if (!device) return [];
+
+      const { data: positions } = await supabase
+        .from('dronetag_positions')
+        .select('lat, lng, alt_agl, timestamp')
+        .eq('device_id', device.device_id)
+        .gte('timestamp', startTime.toISOString())
+        .lte('timestamp', endTime.toISOString())
+        .order('timestamp', { ascending: true });
+
+      if (!positions || positions.length === 0) return [];
+
+      return positions
+        .filter(p => p.lat && p.lng)
+        .map(p => ({
+          lat: p.lat!,
+          lng: p.lng!,
+          alt: p.alt_agl || 0,
+          timestamp: p.timestamp
+        }));
+    } catch (error) {
+      console.error('Error fetching flight track:', error);
+      return [];
+    }
+  }, []);
+
+  // Reverse geocode coordinates to address
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://ws.geonorge.no/adresser/v1/punktsok?lat=${lat}&lon=${lng}&radius=100&treffPerSide=1`
+      );
+      const data = await response.json();
+      if (data.adresser && data.adresser.length > 0) {
+        const addr = data.adresser[0];
+        return `${addr.adressetekst}, ${addr.postnummer} ${addr.poststed}`;
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }, []);
+
+  const endFlight = useCallback(async (): Promise<{
+    elapsedMinutes: number;
+    missionId: string | null;
+    flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }>;
+    dronetagDeviceId: string | null;
+  } | null> => {
     if (!state.isActive || !state.startTime) {
       return null;
     }
+
+    const endTime = new Date();
 
     // Stop refresh interval
     if (refreshIntervalRef.current) {
@@ -411,10 +476,63 @@ export const useFlightTimer = () => {
     if (state.publishMode === 'advisory' && state.missionId) {
       await endAdvisory(state.missionId);
     }
-    // Note: live_uav beacons expire automatically after 60s, no explicit delete needed
 
-    const elapsedSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
+    const elapsedSeconds = Math.floor((endTime.getTime() - state.startTime.getTime()) / 1000);
     const elapsedMinutes = Math.ceil(elapsedSeconds / 60);
+
+    // Fetch active flight to get dronetag_device_id
+    let dronetagDeviceId: string | null = null;
+    let flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }> = [];
+    let missionIdToUse = state.missionId;
+
+    if (user) {
+      const { data: activeFlight } = await supabase
+        .from('active_flights')
+        .select('dronetag_device_id, start_lat, start_lng, pilot_name')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+
+      if (activeFlight?.dronetag_device_id) {
+        dronetagDeviceId = activeFlight.dronetag_device_id;
+        // Fetch flight track from DroneTag positions
+        flightTrack = await fetchFlightTrack(dronetagDeviceId, state.startTime, endTime);
+      }
+
+      // If no mission was selected, create one automatically
+      if (!missionIdToUse && companyId) {
+        // Determine location from track or start position
+        let lat = activeFlight?.start_lat || flightTrack[0]?.lat;
+        let lng = activeFlight?.start_lng || flightTrack[0]?.lng;
+        let lokasjon = 'Ukjent lokasjon';
+
+        if (lat && lng) {
+          lokasjon = await reverseGeocode(lat, lng);
+        }
+
+        // Create auto-generated mission
+        const { data: newMission, error: missionError } = await supabase
+          .from('missions')
+          .insert({
+            tittel: `Flytur ${format(state.startTime, 'dd.MM.yyyy HH:mm')}`,
+            lokasjon,
+            latitude: lat || null,
+            longitude: lng || null,
+            tidspunkt: state.startTime.toISOString(),
+            slutt_tidspunkt: endTime.toISOString(),
+            status: 'Fullført',
+            risk_nivå: 'Lav',
+            beskrivelse: `Automatisk generert fra flytur uten valgt oppdrag.\nPilot: ${activeFlight?.pilot_name || 'Ukjent'}`,
+            company_id: companyId,
+            user_id: user.id,
+          })
+          .select('id')
+          .single();
+
+        if (!missionError && newMission) {
+          missionIdToUse = newMission.id;
+        }
+      }
+    }
 
     // Clear user-specific localStorage
     if (user) {
@@ -441,8 +559,13 @@ export const useFlightTimer = () => {
       completedChecklistIds: [],
     });
 
-    return elapsedMinutes;
-  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch]);
+    return {
+      elapsedMinutes,
+      missionId: missionIdToUse,
+      flightTrack,
+      dronetagDeviceId,
+    };
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, companyId, endAdvisory, stopGpsWatch, fetchFlightTrack, reverseGeocode]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

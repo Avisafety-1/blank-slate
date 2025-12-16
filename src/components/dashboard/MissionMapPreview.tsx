@@ -12,13 +12,27 @@ interface RouteData {
   totalDistance: number;
 }
 
+interface FlightTrackPosition {
+  lat: number;
+  lng: number;
+  alt?: number;
+  timestamp?: string;
+}
+
+interface FlightTrack {
+  positions: FlightTrackPosition[];
+  flightLogId?: string;
+  flightDate?: string;
+}
+
 interface MissionMapPreviewProps {
   latitude: number;
   longitude: number;
   route?: RouteData | null;
+  flightTracks?: FlightTrack[] | null;
 }
 
-export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPreviewProps) => {
+export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: MissionMapPreviewProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
 
@@ -62,7 +76,10 @@ export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPrev
       .addTo(map)
       .bindPopup("Oppdragsposisjon");
 
-    // Display route if provided
+    // Collect all points for bounds calculation
+    const allPoints: [number, number][] = [[latitude, longitude]];
+
+    // Display planned route if provided (blue dashed line)
     if (route && route.coordinates.length > 0) {
       const routeLayer = L.layerGroup().addTo(map);
       
@@ -75,6 +92,8 @@ export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPrev
           opacity: 0.8,
           dashArray: '10, 5'
         }).addTo(routeLayer);
+        
+        latLngs.forEach(ll => allPoints.push(ll));
       }
 
       // Add numbered markers for route points
@@ -109,12 +128,50 @@ export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPrev
         });
         marker.addTo(routeLayer);
       });
+    }
 
-      // Fit bounds to show entire route
-      const allPoints = [
-        [latitude, longitude] as [number, number],
-        ...route.coordinates.map(p => [p.lat, p.lng] as [number, number])
-      ];
+    // Display flight tracks if provided (green solid line)
+    if (flightTracks && flightTracks.length > 0) {
+      const tracksLayer = L.layerGroup().addTo(map);
+      
+      flightTracks.forEach((track, trackIndex) => {
+        if (!track.positions || track.positions.length < 2) return;
+        
+        const latLngs = track.positions.map(p => [p.lat, p.lng] as [number, number]);
+        
+        // Draw solid green polyline for actual flight track
+        L.polyline(latLngs, {
+          color: '#22c55e',
+          weight: 3,
+          opacity: 0.9,
+        }).addTo(tracksLayer);
+        
+        latLngs.forEach(ll => allPoints.push(ll));
+
+        // Add start marker (green circle)
+        const startPos = track.positions[0];
+        L.circleMarker([startPos.lat, startPos.lng], {
+          radius: 8,
+          fillColor: '#22c55e',
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 1,
+        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
+
+        // Add end marker (orange circle)
+        const endPos = track.positions[track.positions.length - 1];
+        L.circleMarker([endPos.lat, endPos.lng], {
+          radius: 8,
+          fillColor: '#f97316',
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 1,
+        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
+      });
+    }
+
+    // Fit bounds to show everything
+    if (allPoints.length > 1) {
       const bounds = L.latLngBounds(allPoints);
       map.fitBounds(bounds, { padding: [30, 30] });
     }
@@ -194,7 +251,7 @@ export const MissionMapPreview = ({ latitude, longitude, route }: MissionMapPrev
     return () => {
       map.remove();
     };
-  }, [latitude, longitude, route]);
+  }, [latitude, longitude, route, flightTracks]);
 
   return (
     <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
