@@ -36,6 +36,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
@@ -117,6 +118,7 @@ const Oppdrag = () => {
   const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [expandedMapMission, setExpandedMapMission] = useState<Mission | null>(null);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -1154,7 +1156,10 @@ const Oppdrag = () => {
                         />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
-                          <div className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg">
+                          <div 
+                            className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                            onClick={() => setExpandedMapMission(mission)}
+                          >
                             <MissionMapPreview
                               latitude={mission.latitude}
                               longitude={mission.longitude}
@@ -1169,6 +1174,9 @@ const Oppdrag = () => {
                                   })) || null
                               }
                             />
+                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                              <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1413,6 +1421,27 @@ const Oppdrag = () => {
           onOpenChange={setIncidentDialogOpen}
           incident={selectedIncident}
         />
+
+        {/* Expanded Map Dialog */}
+        {expandedMapMission && (
+          <ExpandedMapDialog
+            open={!!expandedMapMission}
+            onOpenChange={(open) => !open && setExpandedMapMission(null)}
+            latitude={expandedMapMission.latitude}
+            longitude={expandedMapMission.longitude}
+            route={expandedMapMission.route as any}
+            flightTracks={
+              expandedMapMission.flightLogs
+                ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+                .map((log: any) => ({
+                  positions: log.flight_track.positions,
+                  flightLogId: log.id,
+                  flightDate: log.flight_date,
+                })) || null
+            }
+            missionTitle={expandedMapMission.tittel}
+          />
+        )}
       </div>
     </div>
   );
