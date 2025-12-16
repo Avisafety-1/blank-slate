@@ -160,7 +160,13 @@
     "notes": "Notes",
     "notesPlaceholder": "Optional notes...",
     "createSuccess": "DroneTag device created",
-    "createError": "Could not create DroneTag device"
+    "createError": "Could not create DroneTag device",
+    "updateSuccess": "DroneTag device updated",
+    "updateError": "Could not update DroneTag device",
+    "deleteSuccess": "DroneTag device deleted",
+    "deleteError": "Could not delete DroneTag device",
+    "deleteConfirmTitle": "Delete DroneTag",
+    "deleteConfirmDesc": "Are you sure you want to delete this DroneTag device? This cannot be undone."
   },
   "header": {
     "superAdmin": "Super Administrator",

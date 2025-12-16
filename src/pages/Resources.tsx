@@ -20,6 +20,7 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
+import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
@@ -31,6 +32,7 @@ const Resources = () => {
   const terminology = useTerminology();
   const [drones, setDrones] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
+  const [dronetags, setDronetags] = useState<any[]>([]);
   const [personnel, setPersonnel] = useState<any[]>([]);
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
@@ -42,6 +44,8 @@ const Resources = () => {
   const [droneDetailOpen, setDroneDetailOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
   const [equipmentDetailOpen, setEquipmentDetailOpen] = useState(false);
+  const [selectedDronetag, setSelectedDronetag] = useState<any>(null);
+  const [dronetagDetailOpen, setDronetagDetailOpen] = useState(false);
   const [personnelSearch, setPersonnelSearch] = useState("");
   const [droneSearch, setDroneSearch] = useState("");
   const [equipmentSearch, setEquipmentSearch] = useState("");
@@ -56,6 +60,7 @@ const Resources = () => {
     if (user) {
       fetchDrones();
       fetchEquipment();
+      fetchDronetags();
       fetchPersonnel();
     }
 
@@ -68,6 +73,11 @@ const Resources = () => {
     const equipmentChannel = supabase
       .channel('equipment-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, fetchEquipment)
+      .subscribe();
+
+    const dronetagChannel = supabase
+      .channel('dronetag-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, fetchDronetags)
       .subscribe();
 
     const profilesChannel = supabase
@@ -83,6 +93,7 @@ const Resources = () => {
     return () => {
       supabase.removeChannel(dronesChannel);
       supabase.removeChannel(equipmentChannel);
+      supabase.removeChannel(dronetagChannel);
       supabase.removeChannel(profilesChannel);
       supabase.removeChannel(competenciesChannel);
     };
@@ -135,6 +146,19 @@ const Resources = () => {
       toast.error(t('resources.couldNotLoadEquipment'));
     } else {
       setEquipment(data || []);
+    }
+  };
+
+  const fetchDronetags = async () => {
+    const { data, error } = await supabase
+      .from("dronetag_devices")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching dronetags:", error);
+    } else {
+      setDronetags(data || []);
     }
   };
 
@@ -339,16 +363,61 @@ const Resources = () => {
                     item.serienummer?.toLowerCase().includes(searchLower) ||
                     item.merknader?.toLowerCase().includes(searchLower)
                   );
-                }).length === 0 && equipmentSearch && (
+                }).length === 0 && equipmentSearch && dronetags.filter((item) => {
+                  if (!equipmentSearch) return true;
+                  const searchLower = equipmentSearch.toLowerCase();
+                  return (
+                    item.name?.toLowerCase().includes(searchLower) ||
+                    item.callsign?.toLowerCase().includes(searchLower) ||
+                    item.device_id?.toLowerCase().includes(searchLower)
+                  );
+                }).length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     {t('common.noResults')} "{equipmentSearch}"
                   </p>
                 )}
-                {equipment.length === 0 && (
+                {equipment.length === 0 && dronetags.length === 0 && !equipmentSearch && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     {t('resources.noEquipment')}
                   </p>
                 )}
+
+                {/* DroneTag devices */}
+                {dronetags
+                  .filter((item) => {
+                    if (!equipmentSearch) return true;
+                    const searchLower = equipmentSearch.toLowerCase();
+                    return (
+                      item.name?.toLowerCase().includes(searchLower) ||
+                      item.callsign?.toLowerCase().includes(searchLower) ||
+                      item.device_id?.toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .map((item) => (
+                  <div 
+                    key={`dronetag-${item.id}`}
+                    className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 hover:bg-background/70"
+                    onClick={() => {
+                      setSelectedDronetag(item);
+                      setDronetagDetailOpen(true);
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-2">
+                          {item.name || item.device_id}
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">DroneTag</span>
+                        </h3>
+                        {item.callsign && (
+                          <p className="text-sm text-muted-foreground">Callsign: {item.callsign}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-sm space-y-1">
+                      <p>SN: {item.device_id}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </GlassCard>
 
@@ -527,6 +596,13 @@ const Resources = () => {
       <AddDronetagDialog
         open={dronetagDialogOpen}
         onOpenChange={setDronetagDialogOpen}
+      />
+
+      <DronetagDetailDialog
+        open={dronetagDetailOpen}
+        onOpenChange={setDronetagDetailOpen}
+        dronetag={selectedDronetag}
+        onDronetagUpdated={fetchDronetags}
       />
     </div>
   );

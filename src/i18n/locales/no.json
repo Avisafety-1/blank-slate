@@ -160,7 +160,13 @@
     "notes": "Merknader",
     "notesPlaceholder": "Valgfrie merknader...",
     "createSuccess": "DroneTag-enhet opprettet",
-    "createError": "Kunne ikke opprette DroneTag-enhet"
+    "createError": "Kunne ikke opprette DroneTag-enhet",
+    "updateSuccess": "DroneTag-enhet oppdatert",
+    "updateError": "Kunne ikke oppdatere DroneTag-enhet",
+    "deleteSuccess": "DroneTag-enhet slettet",
+    "deleteError": "Kunne ikke slette DroneTag-enhet",
+    "deleteConfirmTitle": "Slett DroneTag",
+    "deleteConfirmDesc": "Er du sikker på at du vil slette denne DroneTag-enheten? Dette kan ikke angres."
   },
   "header": {
     "superAdmin": "Super Administrator",
