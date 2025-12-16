@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
@@ -66,6 +66,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
+  const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
@@ -122,6 +123,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
       setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
       fetchLinkedEquipment();
       fetchLinkedPersonnel();
+      fetchLinkedDronetags();
       fetchAccessories();
     }
   }, [drone]);
@@ -215,7 +217,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     }
   };
 
-  const logEquipmentHistory = async (action: 'added' | 'removed', itemType: 'equipment' | 'accessory', itemId: string | null, itemName: string) => {
+  const fetchLinkedDronetags = async () => {
+    if (!drone) return;
+
+    const { data, error } = await supabase
+      .from("dronetag_devices")
+      .select("id, name, device_id, callsign, description")
+      .eq("drone_id", drone.id)
+      .order("name");
+
+    if (error) {
+      console.error("Error fetching linked dronetags:", error);
+    } else {
+      setLinkedDronetags(data || []);
+    }
+  };
+
+  const logEquipmentHistory = async (action: 'added' | 'removed', itemType: 'equipment' | 'accessory' | 'dronetag', itemId: string | null, itemName: string) => {
     if (!user || !companyId || !drone) return;
     try {
       await supabase.from("drone_equipment_history").insert({
@@ -368,6 +386,26 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
     } catch (error: any) {
       console.error("Error removing equipment:", error);
       toast.error(`Kunne ikke fjerne utstyr: ${error.message}`);
+    }
+  };
+
+  const handleRemoveDronetag = async (dronetagId: string, dronetagName: string) => {
+    try {
+      const { error } = await supabase
+        .from("dronetag_devices")
+        .update({ drone_id: null })
+        .eq("id", dronetagId);
+
+      if (error) throw error;
+
+      // Log to equipment history
+      await logEquipmentHistory('removed', 'dronetag', dronetagId, dronetagName);
+
+      toast.success(`${dronetagName} fjernet`);
+      fetchLinkedDronetags();
+    } catch (error: any) {
+      console.error("Error removing dronetag:", error);
+      toast.error(`Kunne ikke fjerne DroneTag: ${error.message}`);
     }
   };
 
@@ -697,7 +735,59 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                 )}
               </div>
 
-              {/* Linked Personnel Section */}
+              {/* Linked DroneTag Section */}
+              <div className="border-t border-border pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Radio className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Tilknyttet DroneTag</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setAddEquipmentDialogOpen(true)}
+                    className="gap-2 w-full sm:w-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                  </Button>
+                </div>
+                
+                {linkedDronetags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen DroneTag tilknyttet
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedDronetags.map((dt: any) => (
+                      <div
+                        key={dt.id}
+                        className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Radio className="w-4 h-4 text-primary" />
+                            <p className="text-sm font-medium">{dt.name || dt.device_id}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Device: {dt.device_id}
+                            {dt.callsign && ` • Callsign: ${dt.callsign}`}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveDronetag(dt.id, dt.name || dt.device_id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="border-t border-border pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
@@ -1113,7 +1203,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
         onOpenChange={setAddEquipmentDialogOpen}
         droneId={drone?.id || ""}
         existingEquipmentIds={linkedEquipment.map((link) => link.equipment?.id).filter(Boolean)}
-        onEquipmentAdded={fetchLinkedEquipment}
+        existingDronetagIds={linkedDronetags.map((dt) => dt.id)}
+        onEquipmentAdded={() => {
+          fetchLinkedEquipment();
+          fetchLinkedDronetags();
+        }}
         dronePayload={drone?.payload ?? null}
         currentEquipmentWeight={linkedEquipment.reduce((sum, link) => sum + (link.equipment?.vekt || 0), 0)}
       />

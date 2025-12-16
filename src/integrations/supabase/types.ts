@@ -731,6 +731,7 @@ export type Database = {
           created_at: string
           description: string | null
           device_id: string
+          drone_id: string | null
           id: string
           kjopsdato: string | null
           name: string | null
@@ -743,6 +744,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_id: string
+          drone_id?: string | null
           id?: string
           kjopsdato?: string | null
           name?: string | null
@@ -755,6 +757,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_id?: string
+          drone_id?: string | null
           id?: string
           kjopsdato?: string | null
           name?: string | null
@@ -767,6 +770,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dronetag_devices_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
             referencedColumns: ["id"]
           },
         ]
