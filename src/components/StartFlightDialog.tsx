@@ -47,6 +47,12 @@ interface Mission {
   route: unknown;
 }
 
+interface DronetagDevice {
+  id: string;
+  name: string | null;
+  callsign: string | null;
+}
+
 interface StartFlightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,7 +61,8 @@ interface StartFlightDialogProps {
     publishMode?: PublishMode, 
     completedChecklistIds?: string[],
     startPosition?: { lat: number; lng: number },
-    pilotName?: string
+    pilotName?: string,
+    dronetagDeviceId?: string
   ) => void;
 }
 
@@ -82,6 +89,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [pilotName, setPilotName] = useState<string>('');
+  
+  // DroneTag device selection for telemetry tracking
+  const [dronetagDevices, setDronetagDevices] = useState<DronetagDevice[]>([]);
+  const [selectedDronetagId, setSelectedDronetagId] = useState<string>('');
 
   // Fetch company-level checklist settings
   useEffect(() => {
@@ -124,6 +135,25 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchMissions();
   }, [companyId, open]);
 
+  // Fetch DroneTag devices for live_uav mode
+  useEffect(() => {
+    const fetchDronetagDevices = async () => {
+      if (!companyId || !open) return;
+
+      const { data } = await supabase
+        .from('dronetag_devices')
+        .select('id, name, callsign')
+        .eq('company_id', companyId)
+        .not('callsign', 'is', null);
+
+      if (data) {
+        setDronetagDevices(data);
+      }
+    };
+
+    fetchDronetagDevices();
+  }, [companyId, open]);
+
   // Reset session state when dialog closes
   useEffect(() => {
     if (!open) {
@@ -135,6 +165,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setGpsError(null);
       setGpsLoading(false);
       setPilotName('');
+      setSelectedDronetagId('');
     }
   }, [open]);
 
@@ -254,11 +285,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
       
-      // Pass GPS position and pilot name for live_uav mode
+      // Pass GPS position, pilot name, and DroneTag device for live_uav mode
       const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
       const pilot = publishMode === 'live_uav' && pilotName ? pilotName : undefined;
+      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
+        ? selectedDronetagId 
+        : undefined;
       
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot);
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -465,7 +499,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
 
             {publishMode === 'live_uav' && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
                   <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
                   <div className="space-y-1">
@@ -485,6 +519,29 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     )}
                   </div>
                 </div>
+                
+                {/* DroneTag device selector */}
+                {dronetagDevices.length > 0 && (
+                  <div className="space-y-2 pl-1">
+                    <Label className="text-sm">{t('flight.dronetagDevice')} ({t('common.optional')})</Label>
+                    <Select value={selectedDronetagId} onValueChange={setSelectedDronetagId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('flight.selectDronetag')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('flight.noDronetag')}</SelectItem>
+                        {dronetagDevices.map((device) => (
+                          <SelectItem key={device.id} value={device.id}>
+                            {device.name || device.callsign} {device.callsign && `(${device.callsign})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t('flight.dronetagInfo')}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

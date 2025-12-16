@@ -313,7 +313,8 @@ export const useFlightTimer = () => {
     publishMode: PublishMode = 'none', 
     completedChecklistIds: string[] = [],
     startPosition?: { lat: number; lng: number },
-    pilotName?: string
+    pilotName?: string,
+    dronetagDeviceId?: string
   ) => {
     if (!user || !companyId) return false;
 
@@ -373,6 +374,7 @@ export const useFlightTimer = () => {
       start_lat: startPosition?.lat || null,
       start_lng: startPosition?.lng || null,
       pilot_name: pilotName || null,
+      dronetag_device_id: dronetagDeviceId || null,
     }]);
 
     if (error) {

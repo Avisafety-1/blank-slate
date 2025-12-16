@@ -65,10 +65,11 @@ const Index = () => {
     selectedPublishMode?: 'none' | 'advisory' | 'live_uav', 
     checklistIds?: string[],
     startPosition?: { lat: number; lng: number },
-    pilotName?: string
+    pilotName?: string,
+    dronetagDeviceId?: string
   ) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName);
+    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName, dronetagDeviceId);
     if (success) {
       const modeMessages = {
         none: t('flight.flightStarted'),

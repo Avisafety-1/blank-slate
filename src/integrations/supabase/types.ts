@@ -19,6 +19,7 @@ export type Database = {
           company_id: string
           created_at: string
           drone_id: string | null
+          dronetag_device_id: string | null
           id: string
           mission_id: string | null
           pilot_name: string | null
@@ -34,6 +35,7 @@ export type Database = {
           company_id: string
           created_at?: string
           drone_id?: string | null
+          dronetag_device_id?: string | null
           id?: string
           mission_id?: string | null
           pilot_name?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           drone_id?: string | null
+          dronetag_device_id?: string | null
           id?: string
           mission_id?: string | null
           pilot_name?: string | null
@@ -73,6 +76,13 @@ export type Database = {
             columns: ["drone_id"]
             isOneToOne: false
             referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_flights_dronetag_device_id_fkey"
+            columns: ["dronetag_device_id"]
+            isOneToOne: false
+            referencedRelation: "dronetag_devices"
             referencedColumns: ["id"]
           },
           {
@@ -713,6 +723,7 @@ export type Database = {
       }
       dronetag_devices: {
         Row: {
+          callsign: string | null
           company_id: string | null
           created_at: string
           description: string | null
@@ -722,6 +733,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          callsign?: string | null
           company_id?: string | null
           created_at?: string
           description?: string | null
@@ -731,6 +743,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          callsign?: string | null
           company_id?: string | null
           created_at?: string
           description?: string | null
