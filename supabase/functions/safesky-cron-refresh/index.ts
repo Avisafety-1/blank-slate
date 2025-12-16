@@ -285,8 +285,15 @@ Deno.serve(async (req) => {
         let queryLat: number | null = null;
         let queryLng: number | null = null;
 
-        if (flight.mission_id) {
-          // Get mission coordinates
+        // For live_uav flights: ALWAYS prioritize actual GPS position (start_lat/start_lng)
+        // This is where the DroneTag is actually operating
+        if (flight.publish_mode === 'live_uav' && flight.start_lat && flight.start_lng) {
+          queryLat = flight.start_lat;
+          queryLng = flight.start_lng;
+          console.log(`Flight ${flight.id}: Using GPS position for live_uav beacon fetch`);
+        }
+        // For advisory flights: Use mission route/location coordinates
+        else if (flight.mission_id) {
           const { data: mission } = await supabase
             .from('missions')
             .select('latitude, longitude, route')
@@ -296,22 +303,20 @@ Deno.serve(async (req) => {
           if (mission) {
             const route = mission.route as MissionRoute | null;
             if (route && route.coordinates && route.coordinates.length > 0) {
-              // Use first route point
               queryLat = route.coordinates[0].lat;
               queryLng = route.coordinates[0].lng;
             } else if (mission.latitude && mission.longitude) {
-              // Use mission location
               queryLat = mission.latitude;
               queryLng = mission.longitude;
             }
           }
         }
 
-        // Fallback: For live_uav flights without mission, use start coordinates
+        // Fallback to start coordinates if still no coordinates found
         if ((queryLat === null || queryLng === null) && flight.start_lat && flight.start_lng) {
           queryLat = flight.start_lat;
           queryLng = flight.start_lng;
-          console.log(`Flight ${flight.id}: Using start coordinates for beacon fetch`);
+          console.log(`Flight ${flight.id}: Fallback to start coordinates`);
         }
 
         if (queryLat === null || queryLng === null) {
