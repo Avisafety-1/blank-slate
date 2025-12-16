@@ -152,7 +152,7 @@
     "namePlaceholder": "F.eks. Min DroneTag",
     "callsign": "Callsign",
     "callsignPlaceholder": "F.eks. DT123ABC",
-    "callsignHelp": "Callsign brukes for å matche telemetri fra SafeSky",
+    "callsignHelp": "Må matche callsign satt i DroneTag-appen",
     "serialNumber": "Serienummer",
     "serialNumberPlaceholder": "Enhetens serienummer",
     "serialNumberRequired": "Serienummer er påkrevd",
