@@ -8,7 +8,7 @@ import { MissionsSection } from "@/components/dashboard/MissionsSection";
 import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
-import { Shield, Clock, Play, Square, Radio } from "lucide-react";
+import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { Header } from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -59,7 +59,59 @@ const Index = () => {
     dronetagDeviceId: string | null;
   } | null>(null);
   
-  const { isActive, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, startTime, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, dronetagDeviceId: activeFlightDronetagId, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  
+  // Track if DroneTag positions are being recorded
+  const [trackingStatus, setTrackingStatus] = useState<'checking' | 'recording' | 'not_recording'>('checking');
+  
+  // Check for recent DroneTag positions when flight is active
+  useEffect(() => {
+    if (!isActive || !activeFlightDronetagId || !startTime) {
+      setTrackingStatus('checking');
+      return;
+    }
+
+    const checkTrackingStatus = async () => {
+      try {
+        // Get the device_id from dronetag_devices
+        const { data: device } = await supabase
+          .from('dronetag_devices')
+          .select('device_id')
+          .eq('id', activeFlightDronetagId)
+          .single();
+
+        if (!device) {
+          setTrackingStatus('not_recording');
+          return;
+        }
+
+        // Check for positions since flight start
+        const { data: positions, error } = await supabase
+          .from('dronetag_positions')
+          .select('id')
+          .eq('device_id', device.device_id)
+          .gte('timestamp', startTime.toISOString())
+          .limit(1);
+
+        if (error) {
+          console.error('Error checking tracking status:', error);
+          setTrackingStatus('not_recording');
+          return;
+        }
+
+        setTrackingStatus(positions && positions.length > 0 ? 'recording' : 'not_recording');
+      } catch (err) {
+        console.error('Error checking tracking status:', err);
+        setTrackingStatus('not_recording');
+      }
+    };
+
+    // Check immediately and then every 10 seconds
+    checkTrackingStatus();
+    const interval = setInterval(checkTrackingStatus, 10000);
+
+    return () => clearInterval(interval);
+  }, [isActive, activeFlightDronetagId, startTime]);
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
@@ -263,13 +315,39 @@ const Index = () => {
             
             {/* Active flight timer indicator */}
             {isActive && (
-              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center flex items-center justify-center gap-2">
-                <Clock className="w-4 h-4 text-foreground" />
-                <span className="text-foreground font-mono text-sm">
-                  {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
-                </span>
-                {publishMode !== 'none' && (
-                  <Radio className="w-4 h-4 text-primary animate-pulse" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 text-center flex flex-col gap-1">
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="w-4 h-4 text-foreground" />
+                  <span className="text-foreground font-mono text-sm">
+                    {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
+                  </span>
+                  {publishMode !== 'none' && (
+                    <Radio className="w-4 h-4 text-primary animate-pulse" />
+                  )}
+                </div>
+                {/* DroneTag tracking status */}
+                {activeFlightDronetagId && (
+                  <div className={`flex items-center justify-center gap-1 text-xs ${
+                    trackingStatus === 'recording' 
+                      ? 'text-green-700 dark:text-green-400' 
+                      : trackingStatus === 'not_recording'
+                      ? 'text-yellow-700 dark:text-yellow-400'
+                      : 'text-muted-foreground'
+                  }`}>
+                    {trackingStatus === 'recording' ? (
+                      <>
+                        <MapPin className="w-3 h-3" />
+                        <span>{t('flight.trackRecording', 'Spor registreres')}</span>
+                      </>
+                    ) : trackingStatus === 'not_recording' ? (
+                      <>
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>{t('flight.trackNotRecording', 'Ingen DroneTag-data')}</span>
+                      </>
+                    ) : (
+                      <span>{t('common.checking', 'Sjekker...')}</span>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -347,13 +425,39 @@ const Index = () => {
                       
                       {/* Active flight timer indicator - Desktop */}
                       {isActive && (
-                        <div className="hidden lg:flex p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 items-center justify-center gap-2">
-                          <Clock className="w-4 h-4 text-foreground" />
-                          <span className="text-foreground font-mono text-sm">
-                            {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
-                          </span>
-                          {publishMode !== 'none' && (
-                            <Radio className="w-4 h-4 text-primary animate-pulse" />
+                        <div className="hidden lg:flex flex-col p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-300 dark:border-green-700 gap-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="w-4 h-4 text-foreground" />
+                            <span className="text-foreground font-mono text-sm">
+                              {t('flight.activeFlight')}: {formatElapsedTime(elapsedSeconds)}
+                            </span>
+                            {publishMode !== 'none' && (
+                              <Radio className="w-4 h-4 text-primary animate-pulse" />
+                            )}
+                          </div>
+                          {/* DroneTag tracking status */}
+                          {activeFlightDronetagId && (
+                            <div className={`flex items-center justify-center gap-1 text-xs ${
+                              trackingStatus === 'recording' 
+                                ? 'text-green-700 dark:text-green-400' 
+                                : trackingStatus === 'not_recording'
+                                ? 'text-yellow-700 dark:text-yellow-400'
+                                : 'text-muted-foreground'
+                            }`}>
+                              {trackingStatus === 'recording' ? (
+                                <>
+                                  <MapPin className="w-3 h-3" />
+                                  <span>{t('flight.trackRecording', 'Spor registreres')}</span>
+                                </>
+                              ) : trackingStatus === 'not_recording' ? (
+                                <>
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span>{t('flight.trackNotRecording', 'Ingen DroneTag-data')}</span>
+                                </>
+                              ) : (
+                                <span>{t('common.checking', 'Sjekker...')}</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}

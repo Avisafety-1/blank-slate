@@ -21,6 +21,7 @@ interface FlightTimerState {
   missionId: string | null;
   publishMode: PublishMode;
   completedChecklistIds: string[];
+  dronetagDeviceId: string | null;
 }
 
 export const useFlightTimer = () => {
@@ -32,6 +33,7 @@ export const useFlightTimer = () => {
     missionId: null,
     publishMode: 'none',
     completedChecklistIds: [],
+    dronetagDeviceId: null,
   });
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -192,12 +194,14 @@ export const useFlightTimer = () => {
       let missionId: string | null = null;
       let publishMode: PublishMode = 'none';
       let completedChecklistIds: string[] = [];
+      let dronetagDeviceId: string | null = null;
 
       if (dbFlight) {
         startTime = new Date(dbFlight.start_time);
         missionId = dbFlight.mission_id || null;
         publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
         completedChecklistIds = localChecklists; // Get from localStorage (not stored in DB)
+        dronetagDeviceId = dbFlight.dronetag_device_id || null;
         // Sync to user-specific localStorage
         localStorage.setItem(userStorageKey, startTime.toISOString());
         if (missionId) localStorage.setItem(userMissionKey, missionId);
@@ -228,6 +232,7 @@ export const useFlightTimer = () => {
           missionId,
           publishMode,
           completedChecklistIds,
+          dronetagDeviceId,
         });
 
         // Restart GPS watch if in live_uav mode
@@ -389,6 +394,7 @@ export const useFlightTimer = () => {
       missionId: missionId || null,
       publishMode,
       completedChecklistIds,
+      dronetagDeviceId: dronetagDeviceId || null,
     });
 
     return true;
@@ -557,6 +563,7 @@ export const useFlightTimer = () => {
       missionId: null,
       publishMode: 'none',
       completedChecklistIds: [],
+      dronetagDeviceId: null,
     });
 
     return {
@@ -582,10 +589,12 @@ export const useFlightTimer = () => {
 
   return {
     isActive: state.isActive,
+    startTime: state.startTime,
     elapsedSeconds: state.elapsedSeconds,
     missionId: state.missionId,
     publishMode: state.publishMode,
     completedChecklistIds: state.completedChecklistIds,
+    dronetagDeviceId: state.dronetagDeviceId,
     startFlight,
     endFlight,
     formatElapsedTime,
