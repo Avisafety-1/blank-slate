@@ -140,7 +140,11 @@
     "noChecklistsLinked": "Ingen sjekklister er knyttet. Kontakt en administrator for å sette opp sjekklister.",
     "gpsAcquiring": "Henter GPS-posisjon...",
     "gpsNotSupported": "GPS støttes ikke på denne enheten",
-    "gpsError": "Kunne ikke hente GPS-posisjon"
+    "gpsError": "Kunne ikke hente GPS-posisjon",
+    "dronetagDevice": "DroneTag enhet",
+    "selectDronetag": "Velg DroneTag for telemetri...",
+    "noDronetag": "Ingen DroneTag",
+    "dronetagInfo": "Telemetri fra valgt DroneTag lagres automatisk i databasen."
   },
   "header": {
     "superAdmin": "Super Administrator",

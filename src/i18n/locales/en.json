@@ -140,7 +140,11 @@
     "noChecklistsLinked": "No checklists linked. Contact an administrator to set up before takeoff checklists.",
     "gpsAcquiring": "Acquiring GPS position...",
     "gpsNotSupported": "GPS not supported on this device",
-    "gpsError": "Could not acquire GPS position"
+    "gpsError": "Could not acquire GPS position",
+    "dronetagDevice": "DroneTag device",
+    "selectDronetag": "Select DroneTag for telemetry...",
+    "noDronetag": "No DroneTag",
+    "dronetagInfo": "Telemetry from selected DroneTag is stored automatically in the database."
   },
   "header": {
     "superAdmin": "Super Administrator",

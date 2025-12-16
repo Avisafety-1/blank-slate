@@ -384,6 +384,67 @@ Deno.serve(async (req) => {
       }
     }
 
+    // === PART 3: Store DroneTag telemetry for active flights ===
+    let telemetryStored = 0;
+    if (allActiveFlights && allActiveFlights.length > 0 && allBeacons.length > 0) {
+      console.log('Checking for DroneTag telemetry matches...');
+      
+      // Fetch active flights with dronetag_device_id
+      const { data: flightsWithDronetag } = await supabase
+        .from('active_flights')
+        .select('id, dronetag_device_id')
+        .not('dronetag_device_id', 'is', null);
+
+      if (flightsWithDronetag && flightsWithDronetag.length > 0) {
+        for (const flight of flightsWithDronetag) {
+          // Get the dronetag device to find callsign
+          const { data: device } = await supabase
+            .from('dronetag_devices')
+            .select('callsign, company_id, device_id')
+            .eq('id', flight.dronetag_device_id)
+            .single();
+
+          if (!device?.callsign) {
+            console.log(`Flight ${flight.id}: DroneTag device has no callsign`);
+            continue;
+          }
+
+          // Find matching beacon by callsign (case-insensitive)
+          const matchingBeacon = allBeacons.find(
+            b => b.callsign?.toLowerCase() === device.callsign?.toLowerCase()
+          );
+
+          if (matchingBeacon) {
+            console.log(`Found beacon match for DroneTag ${device.callsign}: lat=${matchingBeacon.latitude}, lng=${matchingBeacon.longitude}`);
+            
+            // Insert into dronetag_positions
+            const { error: insertError } = await supabase
+              .from('dronetag_positions')
+              .insert({
+                device_id: device.device_id,
+                timestamp: new Date().toISOString(),
+                lat: matchingBeacon.latitude,
+                lng: matchingBeacon.longitude,
+                alt_msl: matchingBeacon.altitude || null,
+                speed: matchingBeacon.ground_speed || null,
+                heading: matchingBeacon.course || null,
+                vert_speed: matchingBeacon.vertical_speed || null,
+                company_id: device.company_id
+              });
+
+            if (insertError) {
+              console.error(`Error inserting dronetag position for ${device.callsign}:`, insertError);
+            } else {
+              telemetryStored++;
+              console.log(`Stored telemetry for DroneTag ${device.callsign}`);
+            }
+          } else {
+            console.log(`No beacon match found for DroneTag callsign: ${device.callsign}`);
+          }
+        }
+      }
+    }
+
     // Delete old beacons (older than 60 seconds)
     const cutoffTime = new Date(Date.now() - 60000).toISOString();
     const { data: deletedData, error: deleteError } = await supabase
@@ -398,9 +459,11 @@ Deno.serve(async (req) => {
       beaconsDeleted = deletedData?.length || 0;
       console.log(`Deleted ${beaconsDeleted} old beacons`);
     }
+    
+    console.log(`Telemetry stored: ${telemetryStored} positions`);
 
     const advisorySuccessCount = advisoryResults.filter(r => r.success).length;
-    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${beaconsUpserted} beacons cached`);
+    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${beaconsUpserted} beacons cached, ${telemetryStored} telemetry stored`);
 
     return new Response(
       JSON.stringify({ 
@@ -413,6 +476,9 @@ Deno.serve(async (req) => {
         beacons: {
           upserted: beaconsUpserted,
           deleted: beaconsDeleted
+        },
+        telemetry: {
+          stored: telemetryStored
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
