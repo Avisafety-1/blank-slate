@@ -146,6 +146,22 @@
     "noDronetag": "No DroneTag",
     "dronetagInfo": "Telemetry from selected DroneTag is stored automatically in the database."
   },
+  "dronetag": {
+    "addTitle": "Add DroneTag",
+    "name": "Name",
+    "namePlaceholder": "E.g. My DroneTag",
+    "callsign": "Callsign",
+    "callsignPlaceholder": "E.g. DT123ABC",
+    "callsignHelp": "Callsign is used to match telemetry from SafeSky",
+    "serialNumber": "Serial number",
+    "serialNumberPlaceholder": "Device serial number",
+    "serialNumberRequired": "Serial number is required",
+    "purchaseDate": "Purchase date",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional notes...",
+    "createSuccess": "DroneTag device created",
+    "createError": "Could not create DroneTag device"
+  },
   "header": {
     "superAdmin": "Super Administrator",
     "switchedTo": "Switched to {{company}}",

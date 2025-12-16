@@ -729,8 +729,10 @@ export type Database = {
           description: string | null
           device_id: string
           id: string
+          kjopsdato: string | null
           name: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           callsign?: string | null
@@ -739,8 +741,10 @@ export type Database = {
           description?: string | null
           device_id: string
           id?: string
+          kjopsdato?: string | null
           name?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           callsign?: string | null
@@ -749,8 +753,10 @@ export type Database = {
           description?: string | null
           device_id?: string
           id?: string
+          kjopsdato?: string | null
           name?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {

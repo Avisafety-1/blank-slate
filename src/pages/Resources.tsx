@@ -1,5 +1,5 @@
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
@@ -19,6 +19,7 @@ import { AddCompetencyDialog } from "@/components/resources/AddCompetencyDialog"
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
@@ -33,6 +34,7 @@ const Resources = () => {
   const [personnel, setPersonnel] = useState<any[]>([]);
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
+  const [dronetagDialogOpen, setDronetagDialogOpen] = useState(false);
   const [personnelDialogOpen, setPersonnelDialogOpen] = useState(false);
   const [personCompetencyDialogOpen, setPersonCompetencyDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<typeof personnel[0] | null>(null);
@@ -269,10 +271,16 @@ const Resources = () => {
                   <Gauge className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{t('resources.equipment')}</h2>
                 </div>
-                <Button onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  {t('actions.add')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    {t('actions.add')}
+                  </Button>
+                  <Button onClick={() => setDronetagDialogOpen(true)} size="sm" variant="outline" className="gap-1">
+                    <Radio className="w-4 h-4" />
+                    DroneTag
+                  </Button>
+                </div>
               </div>
               
               {/* Search field */}
@@ -514,6 +522,11 @@ const Resources = () => {
         onOpenChange={setEquipmentDetailOpen}
         equipment={selectedEquipment}
         onEquipmentUpdated={fetchEquipment}
+      />
+
+      <AddDronetagDialog
+        open={dronetagDialogOpen}
+        onOpenChange={setDronetagDialogOpen}
       />
     </div>
   );
