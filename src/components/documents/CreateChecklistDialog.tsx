@@ -2,11 +2,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Globe } from "lucide-react";
 
 interface ChecklistItem {
   id: string;
@@ -20,9 +21,10 @@ interface CreateChecklistDialogProps {
 }
 
 export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateChecklistDialogProps) => {
-  const { user, companyId } = useAuth();
+  const { user, companyId, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
+  const [globalVisibility, setGlobalVisibility] = useState(false);
   const [items, setItems] = useState<ChecklistItem[]>([
     { id: crypto.randomUUID(), text: "" }
   ]);
@@ -78,12 +80,14 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
         company_id: companyId,
         user_id: user.id,
         opprettet_av: user.email || "Ukjent",
+        global_visibility: isSuperAdmin ? globalVisibility : false,
       });
 
       if (error) throw error;
 
       toast.success("Sjekkliste opprettet");
       setTitle("");
+      setGlobalVisibility(false);
       setItems([{ id: crypto.randomUUID(), text: "" }]);
       onSuccess();
       onOpenChange(false);
@@ -97,6 +101,7 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
 
   const handleClose = () => {
     setTitle("");
+    setGlobalVisibility(false);
     setItems([{ id: crypto.randomUUID(), text: "" }]);
     onOpenChange(false);
   };
@@ -158,6 +163,28 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
               Legg til punkt
             </Button>
           </div>
+
+          {/* Superadmin-only: Global visibility toggle */}
+          {isSuperAdmin && (
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-primary" />
+                <div>
+                  <Label htmlFor="global-visibility" className="text-sm font-medium">
+                    Synlig for alle selskaper
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Gjør sjekklisten tilgjengelig for alle selskaper i systemet
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="global-visibility"
+                checked={globalVisibility}
+                onCheckedChange={setGlobalVisibility}
+              />
+            </div>
+          )}
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>

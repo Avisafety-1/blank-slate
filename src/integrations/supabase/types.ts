@@ -264,6 +264,7 @@ export type Database = {
           fil_navn: string | null
           fil_storrelse: number | null
           fil_url: string | null
+          global_visibility: boolean | null
           gyldig_til: string | null
           id: string
           kategori: string
@@ -282,6 +283,7 @@ export type Database = {
           fil_navn?: string | null
           fil_storrelse?: number | null
           fil_url?: string | null
+          global_visibility?: boolean | null
           gyldig_til?: string | null
           id?: string
           kategori: string
@@ -300,6 +302,7 @@ export type Database = {
           fil_navn?: string | null
           fil_storrelse?: number | null
           fil_url?: string | null
+          global_visibility?: boolean | null
           gyldig_til?: string | null
           id?: string
           kategori?: string
