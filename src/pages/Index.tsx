@@ -64,12 +64,14 @@ const Index = () => {
   // Track if DroneTag positions are being recorded
   const [trackingStatus, setTrackingStatus] = useState<'checking' | 'recording' | 'not_recording'>('checking');
   
-  // Check for recent DroneTag positions when flight is active
+  // Check for recent DroneTag positions when flight is active with real-time updates
   useEffect(() => {
     if (!isActive || !activeFlightDronetagId || !startTime) {
       setTrackingStatus('checking');
       return;
     }
+
+    let deviceId: string | null = null;
 
     const checkTrackingStatus = async () => {
       try {
@@ -82,8 +84,10 @@ const Index = () => {
 
         if (!device) {
           setTrackingStatus('not_recording');
-          return;
+          return null;
         }
+
+        deviceId = device.device_id;
 
         // Check for positions since flight start
         const { data: positions, error } = await supabase
@@ -96,21 +100,50 @@ const Index = () => {
         if (error) {
           console.error('Error checking tracking status:', error);
           setTrackingStatus('not_recording');
-          return;
+          return device.device_id;
         }
 
         setTrackingStatus(positions && positions.length > 0 ? 'recording' : 'not_recording');
+        return device.device_id;
       } catch (err) {
         console.error('Error checking tracking status:', err);
         setTrackingStatus('not_recording');
+        return null;
       }
     };
 
-    // Check immediately and then every 10 seconds
-    checkTrackingStatus();
-    const interval = setInterval(checkTrackingStatus, 10000);
+    // Check immediately, then set up real-time subscription
+    checkTrackingStatus().then((resolvedDeviceId) => {
+      if (resolvedDeviceId) {
+        // Subscribe to real-time updates for this device
+        const channel = supabase
+          .channel(`dronetag-tracking-${resolvedDeviceId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'dronetag_positions',
+              filter: `device_id=eq.${resolvedDeviceId}`
+            },
+            () => {
+              setTrackingStatus('recording');
+            }
+          )
+          .subscribe();
 
-    return () => clearInterval(interval);
+        // Store channel reference for cleanup
+        (window as any).__dronetagTrackingChannel = channel;
+      }
+    });
+
+    return () => {
+      const channel = (window as any).__dronetagTrackingChannel;
+      if (channel) {
+        supabase.removeChannel(channel);
+        delete (window as any).__dronetagTrackingChannel;
+      }
+    };
   }, [isActive, activeFlightDronetagId, startTime]);
 
   const handleStartFlight = () => {
