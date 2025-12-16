@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
     // Fetch ALL active flights (both advisory and live_uav)
     const { data: allActiveFlights, error: allFlightsError } = await supabase
       .from('active_flights')
-      .select('id, mission_id, publish_mode')
+      .select('id, mission_id, publish_mode, start_lat, start_lng')
       .in('publish_mode', ['advisory', 'live_uav']);
 
     if (allFlightsError) {
@@ -305,6 +305,13 @@ Deno.serve(async (req) => {
               queryLng = mission.longitude;
             }
           }
+        }
+
+        // Fallback: For live_uav flights without mission, use start coordinates
+        if ((queryLat === null || queryLng === null) && flight.start_lat && flight.start_lng) {
+          queryLat = flight.start_lat;
+          queryLng = flight.start_lng;
+          console.log(`Flight ${flight.id}: Using start coordinates for beacon fetch`);
         }
 
         if (queryLat === null || queryLng === null) {
