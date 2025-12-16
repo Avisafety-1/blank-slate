@@ -146,6 +146,22 @@
     "noDronetag": "Ingen DroneTag",
     "dronetagInfo": "Telemetri fra valgt DroneTag lagres automatisk i databasen."
   },
+  "dronetag": {
+    "addTitle": "Legg til DroneTag",
+    "name": "Navn",
+    "namePlaceholder": "F.eks. Min DroneTag",
+    "callsign": "Callsign",
+    "callsignPlaceholder": "F.eks. DT123ABC",
+    "callsignHelp": "Callsign brukes for å matche telemetri fra SafeSky",
+    "serialNumber": "Serienummer",
+    "serialNumberPlaceholder": "Enhetens serienummer",
+    "serialNumberRequired": "Serienummer er påkrevd",
+    "purchaseDate": "Kjøpsdato",
+    "notes": "Merknader",
+    "notesPlaceholder": "Valgfrie merknader...",
+    "createSuccess": "DroneTag-enhet opprettet",
+    "createError": "Kunne ikke opprette DroneTag-enhet"
+  },
   "header": {
     "superAdmin": "Super Administrator",
     "switchedTo": "Byttet til {{company}}",
