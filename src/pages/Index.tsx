@@ -53,6 +53,11 @@ const Index = () => {
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
+  const [pendingFlightData, setPendingFlightData] = useState<{
+    missionId: string | null;
+    flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }>;
+    dronetagDeviceId: string | null;
+  } | null>(null);
   
   const { isActive, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
 
@@ -80,27 +85,37 @@ const Index = () => {
     }
   };
 
-  const handleEndFlight = () => {
+  const handleEndFlight = async () => {
     if (!isActive) {
       toast.error(t('flight.noActiveFlightError'));
       return;
     }
-    // Calculate current elapsed minutes (round up)
-    const minutes = Math.ceil(elapsedSeconds / 60);
-    setPrefilledDuration(minutes);
-    setLogFlightDialogOpen(true);
+    
+    // End flight and get track data
+    const result = await endFlight();
+    if (result) {
+      setPrefilledDuration(result.elapsedMinutes);
+      setPendingFlightData({
+        missionId: result.missionId,
+        flightTrack: result.flightTrack,
+        dronetagDeviceId: result.dronetagDeviceId,
+      });
+      setLogFlightDialogOpen(true);
+    }
   };
 
   const handleFlightLogged = async () => {
-    // Stop the timer only when flight is successfully logged
-    await endFlight();
+    // Flight already ended, just clean up state
     setPrefilledDuration(undefined);
+    setPendingFlightData(null);
   };
 
   const handleLogFlightDialogClose = (open: boolean) => {
     setLogFlightDialogOpen(open);
-    if (!open && prefilledDuration === undefined) {
-      // Only clear if not from timer (timer clears via handleFlightLogged)
+    if (!open) {
+      // Clear pending data when dialog closes
+      setPrefilledDuration(undefined);
+      setPendingFlightData(null);
     }
   };
 
@@ -408,11 +423,14 @@ const Index = () => {
         prefilledDuration={prefilledDuration}
         safeskyMode={publishMode}
         completedChecklistIds={completedChecklistIds}
-        prefilledMissionId={activeMissionId || undefined}
+        prefilledMissionId={pendingFlightData?.missionId || activeMissionId || undefined}
+        flightTrack={pendingFlightData?.flightTrack}
+        dronetagDeviceId={pendingFlightData?.dronetagDeviceId || undefined}
         onFlightLogged={handleFlightLogged}
         onStopTimer={() => {
-          endFlight();
+          // Timer already stopped via endFlight, just clear state
           setPrefilledDuration(undefined);
+          setPendingFlightData(null);
         }}
       />
 

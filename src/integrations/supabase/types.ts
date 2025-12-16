@@ -1133,8 +1133,10 @@ export type Database = {
           created_at: string | null
           departure_location: string
           drone_id: string
+          dronetag_device_id: string | null
           flight_date: string
           flight_duration_minutes: number
+          flight_track: Json | null
           id: string
           landing_location: string
           mission_id: string | null
@@ -1149,8 +1151,10 @@ export type Database = {
           created_at?: string | null
           departure_location: string
           drone_id: string
+          dronetag_device_id?: string | null
           flight_date?: string
           flight_duration_minutes: number
+          flight_track?: Json | null
           id?: string
           landing_location: string
           mission_id?: string | null
@@ -1165,8 +1169,10 @@ export type Database = {
           created_at?: string | null
           departure_location?: string
           drone_id?: string
+          dronetag_device_id?: string | null
           flight_date?: string
           flight_duration_minutes?: number
+          flight_track?: Json | null
           id?: string
           landing_location?: string
           mission_id?: string | null
@@ -1188,6 +1194,13 @@ export type Database = {
             columns: ["drone_id"]
             isOneToOne: false
             referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_logs_dronetag_device_id_fkey"
+            columns: ["dronetag_device_id"]
+            isOneToOne: false
+            referencedRelation: "dronetag_devices"
             referencedColumns: ["id"]
           },
           {

@@ -270,6 +270,7 @@ const Oppdrag = () => {
               landing_location,
               safesky_mode,
               completed_checklists,
+              flight_track,
               user_id,
               drone_id,
               drones(id, modell)
@@ -1158,6 +1159,15 @@ const Oppdrag = () => {
                               latitude={mission.latitude}
                               longitude={mission.longitude}
                               route={mission.route as any}
+                              flightTracks={
+                                mission.flightLogs
+                                  ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+                                  .map((log: any) => ({
+                                    positions: log.flight_track.positions,
+                                    flightLogId: log.id,
+                                    flightDate: log.flight_date,
+                                  })) || null
+                              }
                             />
                           </div>
                         </div>

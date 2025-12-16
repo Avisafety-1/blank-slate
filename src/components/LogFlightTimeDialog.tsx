@@ -25,6 +25,13 @@ import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Packag
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 
+interface FlightTrackPosition {
+  lat: number;
+  lng: number;
+  alt: number;
+  timestamp: string;
+}
+
 interface LogFlightTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +41,8 @@ interface LogFlightTimeDialogProps {
   safeskyMode?: string;
   completedChecklistIds?: string[];
   prefilledMissionId?: string;
+  flightTrack?: FlightTrackPosition[];
+  dronetagDeviceId?: string;
 }
 
 interface Drone {
@@ -60,7 +69,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId, flightTrack, dronetagDeviceId }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -308,6 +317,10 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     
     try {
       // 1. Create flight log entry
+      const flightTrackData = flightTrack && flightTrack.length > 0 
+        ? { positions: flightTrack } 
+        : null;
+
       const { data: flightLog, error: flightLogError } = await (supabase as any)
         .from("flight_logs")
         .insert({
@@ -323,6 +336,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           notes: formData.notes || null,
           safesky_mode: safeskyMode || null,
           completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
+          flight_track: flightTrackData,
+          dronetag_device_id: dronetagDeviceId || null,
         })
         .select()
         .single();
