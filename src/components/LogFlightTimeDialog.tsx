@@ -158,7 +158,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         movements: 1,
         flightDate: new Date().toISOString().split('T')[0],
         notes: "",
-        markMissionCompleted: false,
+        // Default to checked when no mission is selected (will auto-create a new mission)
+        markMissionCompleted: !prefilledMissionId,
       });
       setSelectedEquipment([]);
       setLinkedPersonnel([]);
