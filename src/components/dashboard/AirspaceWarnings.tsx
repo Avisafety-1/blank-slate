@@ -98,24 +98,24 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
     return (
       <Alert
         key={index}
-        variant={isWarning ? "destructive" : "default"}
+        variant="default"
         className={
           isWarning
-            ? "border-destructive bg-destructive/10"
+            ? "border-destructive bg-destructive/20 text-foreground [&>svg]:text-foreground"
             : isCaution
-            ? "border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100"
-            : "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100"
+            ? "border-amber-500 bg-amber-500/20 text-foreground [&>svg]:text-foreground"
+            : "border-blue-500 bg-blue-500/20 text-foreground [&>svg]:text-foreground"
         }
       >
-        {isWarning && <AlertTriangle className="h-5 w-5 text-destructive" />}
-        {isCaution && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-        {isNote && <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-        <AlertTitle className="font-semibold">
+        {isWarning && <AlertTriangle className="h-5 w-5" />}
+        {isCaution && <AlertCircle className="h-5 w-5" />}
+        {isNote && <Info className="h-5 w-5" />}
+        <AlertTitle className="font-semibold text-foreground">
           {isWarning && "ADVARSEL"}
           {isCaution && "FORSIKTIGHET"}
           {isNote && "INFORMASJON"}
         </AlertTitle>
-        <AlertDescription className="text-sm mt-1">{warning.message}</AlertDescription>
+        <AlertDescription className="text-sm mt-1 text-foreground">{warning.message}</AlertDescription>
       </Alert>
     );
   };
