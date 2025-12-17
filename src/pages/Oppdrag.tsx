@@ -26,7 +26,8 @@ import {
   Navigation,
   Clock,
   Radio,
-  ClipboardCheck
+  ClipboardCheck,
+  Trash2
 } from "lucide-react";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
@@ -41,6 +42,8 @@ import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { toast } from "sonner";
 
 type Mission = any;
@@ -105,6 +108,7 @@ const ChecklistBadges = ({ checklistIds }: { checklistIds: string[] }) => {
 
 const Oppdrag = () => {
   const { user, loading, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const navigate = useNavigate();
   const location = useLocation();
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -119,6 +123,7 @@ const Oppdrag = () => {
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [expandedMapMission, setExpandedMapMission] = useState<Mission | null>(null);
+  const [deletingMission, setDeletingMission] = useState<Mission | null>(null);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -351,6 +356,34 @@ const Oppdrag = () => {
     fetchMissions();
     setSoraDialogOpen(false);
     setSoraEditingMissionId(null);
+  };
+
+  const handleDeleteMission = async () => {
+    if (!deletingMission) return;
+    
+    try {
+      // Delete related records first
+      await supabase.from('mission_personnel').delete().eq('mission_id', deletingMission.id);
+      await supabase.from('mission_equipment').delete().eq('mission_id', deletingMission.id);
+      await supabase.from('mission_drones').delete().eq('mission_id', deletingMission.id);
+      await supabase.from('mission_sora').delete().eq('mission_id', deletingMission.id);
+      
+      // Delete the mission
+      const { error } = await supabase
+        .from('missions')
+        .delete()
+        .eq('id', deletingMission.id);
+      
+      if (error) throw error;
+      
+      toast.success('Oppdraget ble slettet');
+      fetchMissions();
+    } catch (error) {
+      console.error('Error deleting mission:', error);
+      toast.error('Kunne ikke slette oppdraget');
+    } finally {
+      setDeletingMission(null);
+    }
   };
 
   const exportToKMZ = async (mission: Mission) => {
@@ -1006,6 +1039,17 @@ const Oppdrag = () => {
                             Eksporter KMZ
                           </Button>
                         )}
+                        {isAdmin && (
+                          <Button 
+                            onClick={() => setDeletingMission(mission)} 
+                            size="sm" 
+                            variant="outline" 
+                            className="w-full sm:w-auto justify-start sm:justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Slett
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -1456,6 +1500,24 @@ const Oppdrag = () => {
             missionTitle={expandedMapMission.tittel}
           />
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deletingMission} onOpenChange={(open) => !open && setDeletingMission(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Er du sikker på at du vil slette gjeldende oppdrag?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Denne handlingen kan ikke angres. Oppdraget "{deletingMission?.tittel}" og alle tilknyttede data vil bli permanent slettet.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Avbryt</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteMission} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Slett oppdrag
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
