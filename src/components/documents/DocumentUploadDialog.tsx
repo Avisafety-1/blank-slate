@@ -103,6 +103,7 @@ export const DocumentUploadDialog = ({
         fil_storrelse: fileSize,
         nettside_url: uploadType === "url" ? formData.websiteUrl : null,
         company_id: companyId,
+        user_id: user.id,
       });
 
       if (insertError) throw insertError;
