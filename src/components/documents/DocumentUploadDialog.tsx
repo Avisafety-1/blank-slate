@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +28,8 @@ export const DocumentUploadDialog = ({
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [globalVisibility, setGlobalVisibility] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     category: "annet",
@@ -34,6 +37,23 @@ export const DocumentUploadDialog = ({
     notificationDays: "30",
     websiteUrl: "",
   });
+
+  useEffect(() => {
+    const checkSuperadmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'superadmin')
+        .maybeSingle();
+      
+      setIsSuperadmin(!!data);
+    };
+    checkSuperadmin();
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,6 +124,7 @@ export const DocumentUploadDialog = ({
         nettside_url: uploadType === "url" ? formData.websiteUrl : null,
         company_id: companyId,
         user_id: user.id,
+        global_visibility: isSuperadmin ? globalVisibility : false,
       });
 
       if (insertError) throw insertError;
@@ -114,6 +135,7 @@ export const DocumentUploadDialog = ({
 
       // Reset form
       setSelectedFile(null);
+      setGlobalVisibility(false);
       setFormData({
         title: "",
         category: "annet",
@@ -255,6 +277,22 @@ export const DocumentUploadDialog = ({
               min="1"
             />
           </div>
+
+          {isSuperadmin && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+              <div className="space-y-0.5">
+                <Label htmlFor="global-visibility">Synlig for alle selskaper</Label>
+                <p className="text-xs text-muted-foreground">
+                  Gjør dokumentet tilgjengelig for alle selskaper i systemet
+                </p>
+              </div>
+              <Switch
+                id="global-visibility"
+                checked={globalVisibility}
+                onCheckedChange={setGlobalVisibility}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button
