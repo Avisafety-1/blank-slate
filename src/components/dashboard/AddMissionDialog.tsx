@@ -607,7 +607,8 @@ export const AddMissionDialog = ({
             
             <AirspaceWarnings 
               latitude={formData.latitude} 
-              longitude={formData.longitude} 
+              longitude={formData.longitude}
+              routePoints={routeData?.coordinates}
             />
             
             <DroneWeatherPanel 

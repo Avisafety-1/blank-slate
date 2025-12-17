@@ -86,7 +86,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <>
                 <AirspaceWarnings 
                   latitude={mission.latitude} 
-                  longitude={mission.longitude} 
+                  longitude={mission.longitude}
+                  routePoints={(mission.route as any)?.coordinates}
                 />
                 <DroneWeatherPanel 
                   latitude={mission.latitude} 

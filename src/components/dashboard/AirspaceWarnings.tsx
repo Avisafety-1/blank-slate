@@ -13,12 +13,18 @@ interface AirspaceWarning {
   message: string;
 }
 
+interface RoutePoint {
+  lat: number;
+  lng: number;
+}
+
 interface AirspaceWarningsProps {
   latitude: number | null;
   longitude: number | null;
+  routePoints?: RoutePoint[];
 }
 
-export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps) => {
+export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceWarningsProps) => {
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -35,6 +41,7 @@ export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps)
         const { data, error } = await supabase.rpc("check_mission_airspace", {
           p_lat: latitude,
           p_lon: longitude,
+          p_route_points: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
         });
 
         if (error) {
@@ -60,7 +67,7 @@ export const AirspaceWarnings = ({ latitude, longitude }: AirspaceWarningsProps)
     // Debounce to avoid too many calls
     const timeoutId = setTimeout(checkAirspace, 500);
     return () => clearTimeout(timeoutId);
-  }, [latitude, longitude]);
+  }, [latitude, longitude, routePoints]);
 
   if (!latitude || !longitude) {
     return null;
