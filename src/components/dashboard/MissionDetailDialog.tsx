@@ -82,19 +82,27 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               </div>
             </div>
 
-            {mission.latitude && mission.longitude && (
-              <>
-                <AirspaceWarnings 
-                  latitude={mission.latitude} 
-                  longitude={mission.longitude}
-                  routePoints={(mission.route as any)?.coordinates}
-                />
-                <DroneWeatherPanel 
-                  latitude={mission.latitude} 
-                  longitude={mission.longitude} 
-                />
-              </>
-            )}
+            {(() => {
+              const routeCoords = (mission.route as any)?.coordinates;
+              const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
+              const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
+              
+              if (!effectiveLat || !effectiveLng) return null;
+              
+              return (
+                <>
+                  <AirspaceWarnings 
+                    latitude={effectiveLat} 
+                    longitude={effectiveLng}
+                    routePoints={routeCoords}
+                  />
+                  <DroneWeatherPanel 
+                    latitude={effectiveLat} 
+                    longitude={effectiveLng} 
+                  />
+                </>
+              );
+            })()}
 
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
