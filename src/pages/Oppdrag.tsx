@@ -272,7 +272,9 @@ const Oppdrag = () => {
           // Fetch documents linked to this mission
           const { data: documents } = await supabase
             .from("mission_documents")
-            .select("document_id, documents(id, tittel, beskrivelse, kategori, nettside_url, fil_url, gyldig_til, varsel_dager_for_utløp, versjon, merknader, oppdatert_dato)")
+            .select(
+              "document_id, documents(id, tittel, beskrivelse, kategori, nettside_url, fil_url, gyldig_til, varsel_dager_for_utløp, versjon, oppdatert_dato)"
+            )
             .eq("mission_id", mission.id);
 
           // Fetch flight logs linked to this mission
