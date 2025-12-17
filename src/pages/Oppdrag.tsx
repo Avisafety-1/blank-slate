@@ -417,11 +417,14 @@ const Oppdrag = () => {
       
       // Fetch airspace warnings if coordinates exist
       let airspaceWarnings: any[] = [];
-      if (mission.latitude && mission.longitude) {
-        const routeCoords = (mission.route as any)?.coordinates || null;
+      const routeCoords = (mission.route as any)?.coordinates || null;
+      const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
+      const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
+      
+      if (effectiveLat && effectiveLng) {
         const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
-          p_lat: mission.latitude,
-          p_lon: mission.longitude,
+          p_lat: effectiveLat,
+          p_lon: effectiveLng,
           p_route_points: routeCoords,
         });
         if (airspaceData) {
@@ -1145,45 +1148,53 @@ const Oppdrag = () => {
                     )}
 
                     {/* Weather and Map Data */}
-                    {mission.latitude && mission.longitude && (
-                      <div className="pt-2 border-t border-border/50 space-y-3 sm:space-y-4">
-                        <DroneWeatherPanel
-                          latitude={mission.latitude}
-                          longitude={mission.longitude}
-                          compact
-                        />
-                        <AirspaceWarnings
-                          latitude={mission.latitude}
-                          longitude={mission.longitude}
-                          routePoints={(mission.route as any)?.coordinates}
-                        />
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
-                          <div 
-                            className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                            onClick={() => setExpandedMapMission(mission)}
-                          >
-                            <MissionMapPreview
-                              latitude={mission.latitude}
-                              longitude={mission.longitude}
-                              route={mission.route as any}
-                              flightTracks={
-                                mission.flightLogs
-                                  ?.filter((log: any) => log.flight_track?.positions?.length > 0)
-                                  .map((log: any) => ({
-                                    positions: log.flight_track.positions,
-                                    flightLogId: log.id,
-                                    flightDate: log.flight_date,
-                                  })) || null
-                              }
-                            />
-                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                              <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
+                    {(() => {
+                      const routeCoords = (mission.route as any)?.coordinates;
+                      const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
+                      const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
+                      
+                      if (!effectiveLat || !effectiveLng) return null;
+                      
+                      return (
+                        <div className="pt-2 border-t border-border/50 space-y-3 sm:space-y-4">
+                          <DroneWeatherPanel
+                            latitude={effectiveLat}
+                            longitude={effectiveLng}
+                            compact
+                          />
+                          <AirspaceWarnings
+                            latitude={effectiveLat}
+                            longitude={effectiveLng}
+                            routePoints={routeCoords}
+                          />
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
+                            <div 
+                              className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                              onClick={() => setExpandedMapMission(mission)}
+                            >
+                              <MissionMapPreview
+                                latitude={effectiveLat}
+                                longitude={effectiveLng}
+                                route={mission.route as any}
+                                flightTracks={
+                                  mission.flightLogs
+                                    ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+                                    .map((log: any) => ({
+                                      positions: log.flight_track.positions,
+                                      flightLogId: log.id,
+                                      flightDate: log.flight_date,
+                                    })) || null
+                                }
+                              />
+                              <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                                <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* SORA Analysis */}
                     {mission.sora && (
