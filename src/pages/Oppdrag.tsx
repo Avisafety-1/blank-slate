@@ -266,6 +266,12 @@ const Oppdrag = () => {
             .select("*")
             .eq("mission_id", mission.id);
 
+          // Fetch documents linked to this mission
+          const { data: documents } = await supabase
+            .from("mission_documents")
+            .select("document_id, documents(id, tittel, kategori, nettside_url, fil_url)")
+            .eq("mission_id", mission.id);
+
           // Fetch flight logs linked to this mission
           const { data: flightLogs } = await supabase
             .from("flight_logs")
@@ -306,6 +312,7 @@ const Oppdrag = () => {
             personnel: personnel || [],
             drones: drones || [],
             equipment: equipment || [],
+            documents: documents || [],
             sora: sora || null,
             incidents: incidents || [],
             flightLogs: flightLogsWithPilot || []
@@ -1162,6 +1169,40 @@ const Oppdrag = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Documents */}
+                    {mission.documents?.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs font-semibold text-muted-foreground">DOKUMENTER</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {mission.documents.map((d: any) => (
+                            <button
+                              key={d.document_id}
+                              onClick={async () => {
+                                const doc = d.documents;
+                                if (doc?.nettside_url) {
+                                  window.open(doc.nettside_url, '_blank');
+                                } else if (doc?.fil_url) {
+                                  const { data } = await supabase.storage
+                                    .from('documents')
+                                    .createSignedUrl(doc.fil_url, 3600);
+                                  if (data?.signedUrl) {
+                                    window.open(data.signedUrl, '_blank');
+                                  }
+                                }
+                              }}
+                              className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              {d.documents?.tittel}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Route Info */}
                     {mission.route && (mission.route as any).coordinates?.length > 0 && (
