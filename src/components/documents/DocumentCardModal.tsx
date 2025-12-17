@@ -395,8 +395,10 @@ const DocumentCardModal = ({
                             </Button>
                           )}
                         </div>
+                      ) : readOnly && field.value ? (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap p-3 rounded-md border bg-muted/50">{field.value}</p>
                       ) : (
-                        <Textarea {...field} rows={4} disabled={readOnly} />
+                        <Textarea {...field} rows={4} disabled={readOnly} placeholder="Legg til beskrivelse..." />
                       )}
                     </FormControl>
                     <FormMessage />
