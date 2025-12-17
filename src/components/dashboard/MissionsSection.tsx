@@ -38,6 +38,7 @@ export const MissionsSection = () => {
   const [selectedSoraMissionId, setSelectedSoraMissionId] = useState<string | undefined>(undefined);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
+  const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
@@ -85,8 +86,27 @@ export const MissionsSection = () => {
     } else {
       setMissions(data || []);
       if (data && data.length > 0) {
-        fetchMissionSoras(data.map((m: any) => m.id));
+        const missionIds = data.map((m: any) => m.id);
+        fetchMissionSoras(missionIds);
+        fetchMissionDocumentCounts(missionIds);
       }
+    }
+  };
+
+  const fetchMissionDocumentCounts = async (missionIds: string[]) => {
+    const { data, error } = await supabase
+      .from("mission_documents")
+      .select("mission_id")
+      .in("mission_id", missionIds);
+
+    if (error) {
+      console.error("Error fetching mission documents:", error);
+    } else if (data) {
+      const counts: Record<string, number> = {};
+      data.forEach((doc: any) => {
+        counts[doc.mission_id] = (counts[doc.mission_id] || 0) + 1;
+      });
+      setMissionDocumentCounts(counts);
     }
   };
 
@@ -200,6 +220,12 @@ export const MissionsSection = () => {
                   <Badge className={`${riskColors[mission.risk_nivå] || ""} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>
                     {mission.risk_nivå}
                   </Badge>
+                  {missionDocumentCounts[mission.id] > 0 && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
+                      <FileText className="w-3 h-3 mr-1" />
+                      {missionDocumentCounts[mission.id]}
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))

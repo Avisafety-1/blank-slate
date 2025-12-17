@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -35,7 +35,14 @@ interface AddMissionDialogProps {
   initialSelectedEquipment?: string[];
   initialSelectedDrones?: string[];
   initialSelectedCustomer?: string;
+  initialSelectedDocuments?: string[];
 }
+
+type Document = {
+  id: string;
+  tittel: string;
+  kategori: string;
+};
 
 type Profile = Tables<"profiles">;
 type Equipment = any;
@@ -52,7 +59,8 @@ export const AddMissionDialog = ({
   initialSelectedPersonnel,
   initialSelectedEquipment,
   initialSelectedDrones,
-  initialSelectedCustomer
+  initialSelectedCustomer,
+  initialSelectedDocuments
 }: AddMissionDialogProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -61,14 +69,17 @@ export const AddMissionDialog = ({
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedPersonnel, setSelectedPersonnel] = useState<string[]>(initialSelectedPersonnel || []);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>(initialSelectedEquipment || []);
   const [selectedDrones, setSelectedDrones] = useState<string[]>(initialSelectedDrones || []);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>(initialSelectedDocuments || []);
   const [selectedCustomer, setSelectedCustomer] = useState<string>(initialSelectedCustomer || "");
   const [openPersonnelPopover, setOpenPersonnelPopover] = useState(false);
   const [openEquipmentPopover, setOpenEquipmentPopover] = useState(false);
   const [openDronePopover, setOpenDronePopover] = useState(false);
   const [openCustomerPopover, setOpenCustomerPopover] = useState(false);
+  const [openDocumentPopover, setOpenDocumentPopover] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(initialRouteData || null);
@@ -92,6 +103,7 @@ export const AddMissionDialog = ({
       fetchEquipment();
       fetchDrones();
       fetchCustomers();
+      fetchDocuments();
       
       // Pre-fylle skjemaet hvis vi redigerer
       if (mission) {
@@ -118,6 +130,7 @@ export const AddMissionDialog = ({
         fetchMissionPersonnel(mission.id);
         fetchMissionEquipment(mission.id);
         fetchMissionDrones(mission.id);
+        fetchMissionDocuments(mission.id);
       } else if (initialFormData || initialRouteData) {
         // Restore form data from navigation state (returning from route planner)
         setFormData({
@@ -136,6 +149,7 @@ export const AddMissionDialog = ({
         if (initialSelectedEquipment) setSelectedEquipment(initialSelectedEquipment);
         if (initialSelectedDrones) setSelectedDrones(initialSelectedDrones);
         if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
+        if (initialSelectedDocuments) setSelectedDocuments(initialSelectedDocuments);
       } else {
         // Reset form når vi oppretter nytt oppdrag
         setFormData({
@@ -152,6 +166,7 @@ export const AddMissionDialog = ({
         setSelectedPersonnel([]);
         setSelectedEquipment([]);
         setSelectedDrones([]);
+        setSelectedDocuments([]);
         setSelectedCustomer("");
         setRouteData(null);
       }
@@ -212,6 +227,32 @@ export const AddMissionDialog = ({
       console.error(error);
     } else {
       setCustomers(data || []);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    const { data, error } = await supabase
+      .from("documents")
+      .select("id, tittel, kategori")
+      .order("tittel");
+    
+    if (error) {
+      console.error("Error fetching documents:", error);
+    } else {
+      setDocuments(data || []);
+    }
+  };
+
+  const fetchMissionDocuments = async (missionId: string) => {
+    const { data, error } = await supabase
+      .from("mission_documents")
+      .select("document_id")
+      .eq("mission_id", missionId);
+    
+    if (error) {
+      console.error("Error fetching mission documents:", error);
+    } else {
+      setSelectedDocuments(data?.map(d => d.document_id) || []);
     }
   };
 
@@ -340,10 +381,11 @@ export const AddMissionDialog = ({
 
         if (missionError) throw missionError;
 
-        // Delete existing personnel, equipment, and drones
+        // Delete existing personnel, equipment, drones, and documents
         await supabase.from("mission_personnel").delete().eq("mission_id", mission.id);
         await supabase.from("mission_equipment").delete().eq("mission_id", mission.id);
         await supabase.from("mission_drones").delete().eq("mission_id", mission.id);
+        await supabase.from("mission_documents").delete().eq("mission_id", mission.id);
 
         // Insert new personnel
         if (selectedPersonnel.length > 0) {
@@ -385,6 +427,20 @@ export const AddMissionDialog = ({
             .insert(dronesData);
           
         if (dronesError) throw dronesError;
+        }
+
+        // Insert new documents
+        if (selectedDocuments.length > 0) {
+          const documentsData = selectedDocuments.map(documentId => ({
+            mission_id: mission.id,
+            document_id: documentId,
+          }));
+          
+          const { error: documentsError } = await supabase
+            .from("mission_documents")
+            .insert(documentsData);
+          
+          if (documentsError) throw documentsError;
         }
 
         toast.success(t('missions.missionUpdated'));
@@ -454,6 +510,20 @@ export const AddMissionDialog = ({
           if (dronesError) throw dronesError;
         }
 
+        // Insert mission documents
+        if (selectedDocuments.length > 0) {
+          const documentsData = selectedDocuments.map(documentId => ({
+            mission_id: newMission.id,
+            document_id: documentId,
+          }));
+          
+          const { error: documentsError } = await supabase
+            .from("mission_documents")
+            .insert(documentsData);
+          
+          if (documentsError) throw documentsError;
+        }
+
         // Send email notification for new mission
         try {
           // Gather names for notification
@@ -521,6 +591,7 @@ export const AddMissionDialog = ({
       setSelectedPersonnel([]);
       setSelectedEquipment([]);
       setSelectedDrones([]);
+      setSelectedDocuments([]);
       setSelectedCustomer("");
       setNewCustomerName("");
       setShowNewCustomerInput(false);
@@ -569,6 +640,19 @@ export const AddMissionDialog = ({
 
   const removeDrone = (droneId: string) => {
     setSelectedDrones(prev => prev.filter(id => id !== droneId));
+  };
+
+  const toggleDocument = (documentId: string) => {
+    setSelectedDocuments(prev =>
+      prev.includes(documentId)
+        ? prev.filter(id => id !== documentId)
+        : [...prev, documentId]
+    );
+    setOpenDocumentPopover(false);
+  };
+
+  const removeDocument = (documentId: string) => {
+    setSelectedDocuments(prev => prev.filter(id => id !== documentId));
   };
 
   return (
@@ -1072,6 +1156,76 @@ export const AddMissionDialog = ({
                       <button
                         type="button"
                         onClick={() => removeDrone(id)}
+                        className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Documents */}
+          <div>
+            <Label>Dokumenter</Label>
+            <Popover open={openDocumentPopover} onOpenChange={setOpenDocumentPopover}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openDocumentPopover}
+                  className="w-full justify-between"
+                >
+                  Knytt dokument...
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                  <CommandInput placeholder="Søk dokumenter..." />
+                  <CommandList>
+                    <CommandEmpty>Ingen dokumenter funnet.</CommandEmpty>
+                    <CommandGroup>
+                      {documents.map((doc) => (
+                        <CommandItem
+                          key={doc.id}
+                          value={`${doc.tittel} ${doc.kategori}`}
+                          onSelect={() => toggleDocument(doc.id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedDocuments.includes(doc.id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{doc.tittel}</span>
+                            <span className="text-xs text-muted-foreground">{doc.kategori}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            
+            {selectedDocuments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedDocuments.map((id) => {
+                  const doc = documents.find((d) => d.id === id);
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>{doc?.tittel}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(id)}
                         className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
                       >
                         <X className="h-3 w-3" />
