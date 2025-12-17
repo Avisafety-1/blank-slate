@@ -14,6 +14,7 @@ export interface Document {
   utsteder?: string;
   gyldig_til?: Date;
   varsel_dager_for_utløp: number;
+  beskrivelse?: string | null;
   merknader?: string;
   synlighet: DocumentVisibility;
   sist_endret: Date;
