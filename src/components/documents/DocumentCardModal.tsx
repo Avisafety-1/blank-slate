@@ -42,11 +42,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Upload, Trash2 } from "lucide-react";
+import { CalendarIcon, Upload, Trash2, Plus, GripVertical } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+}
 
 interface DocumentCardModalProps {
   document: Document | null;
@@ -95,6 +100,38 @@ const DocumentCardModal = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+
+  // Parse checklist JSON when document loads
+  useEffect(() => {
+    if (document && isOpen && document.kategori === "sjekklister" && document.beskrivelse) {
+      try {
+        const parsed = JSON.parse(document.beskrivelse);
+        if (Array.isArray(parsed)) {
+          setChecklistItems(parsed);
+        }
+      } catch {
+        // Not valid JSON, keep empty
+        setChecklistItems([]);
+      }
+    } else if (isOpen) {
+      setChecklistItems([]);
+    }
+  }, [document, isOpen]);
+
+  const handleAddChecklistItem = () => {
+    setChecklistItems(prev => [...prev, { id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleRemoveChecklistItem = (id: string) => {
+    setChecklistItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleChecklistItemChange = (id: string, text: string) => {
+    setChecklistItems(prev => prev.map(item => 
+      item.id === id ? { ...item, text } : item
+    ));
+  };
 
   const openUrl = (url: string) => {
     let finalUrl = url;
@@ -192,9 +229,16 @@ const DocumentCardModal = ({
         fileUrl = await uploadFile(selectedFile);
       }
 
+      // For checklists, convert items array back to JSON
+      let beskrivelse = data.beskrivelse || null;
+      if (data.kategori === "sjekklister") {
+        const validItems = checklistItems.filter(item => item.text.trim() !== "");
+        beskrivelse = validItems.length > 0 ? JSON.stringify(validItems) : null;
+      }
+
       const documentData = {
         tittel: data.tittel,
-        beskrivelse: data.beskrivelse || null,
+        beskrivelse,
         kategori: data.kategori,
         gyldig_til: data.gyldig_til ? data.gyldig_til.toISOString() : null,
         varsel_dager_for_utløp: data.varsel_dager_for_utløp || null,
@@ -303,9 +347,57 @@ const DocumentCardModal = ({
                 name="beskrivelse"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Beskrivelse</FormLabel>
+                    <FormLabel>
+                      {form.watch("kategori") === "sjekklister" ? "Sjekkliste-punkter" : "Beskrivelse"}
+                    </FormLabel>
                     <FormControl>
-                      <Textarea {...field} rows={4} disabled={readOnly} />
+                      {form.watch("kategori") === "sjekklister" ? (
+                        <div className="space-y-2">
+                          {checklistItems.map((item, index) => (
+                            <div key={item.id} className="flex items-center gap-2">
+                              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+                              <Input
+                                value={item.text}
+                                onChange={(e) => handleChecklistItemChange(item.id, e.target.value)}
+                                placeholder="Skriv inn sjekkpunkt..."
+                                disabled={readOnly}
+                                className="flex-1"
+                              />
+                              {!readOnly && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveChecklistItem(item.id)}
+                                  className="flex-shrink-0 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {checklistItems.length === 0 && (
+                            <p className="text-sm text-muted-foreground py-2">
+                              Ingen sjekkpunkter lagt til ennå.
+                            </p>
+                          )}
+                          {!readOnly && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddChecklistItem}
+                              className="mt-2"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Legg til punkt
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Textarea {...field} rows={4} disabled={readOnly} />
+                      )}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
