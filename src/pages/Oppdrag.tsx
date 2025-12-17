@@ -418,9 +418,11 @@ const Oppdrag = () => {
       // Fetch airspace warnings if coordinates exist
       let airspaceWarnings: any[] = [];
       if (mission.latitude && mission.longitude) {
+        const routeCoords = (mission.route as any)?.coordinates || null;
         const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
           p_lat: mission.latitude,
           p_lon: mission.longitude,
+          p_route_points: routeCoords,
         });
         if (airspaceData) {
           const severityOrder: Record<string, number> = { warning: 0, caution: 1, note: 2 };
@@ -1153,6 +1155,7 @@ const Oppdrag = () => {
                         <AirspaceWarnings
                           latitude={mission.latitude}
                           longitude={mission.longitude}
+                          routePoints={(mission.route as any)?.coordinates}
                         />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
