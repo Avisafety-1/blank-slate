@@ -42,6 +42,7 @@ import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { toast } from "sonner";
@@ -124,6 +125,8 @@ const Oppdrag = () => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [expandedMapMission, setExpandedMapMission] = useState<Mission | null>(null);
   const [deletingMission, setDeletingMission] = useState<Mission | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -1178,28 +1181,22 @@ const Oppdrag = () => {
                           <p className="text-xs font-semibold text-muted-foreground">DOKUMENTER</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {mission.documents.map((d: any) => (
-                            <button
-                              key={d.document_id}
-                              onClick={async () => {
-                                const doc = d.documents;
-                                if (doc?.nettside_url) {
-                                  window.open(doc.nettside_url, '_blank');
-                                } else if (doc?.fil_url) {
-                                  const { data } = await supabase.storage
-                                    .from('documents')
-                                    .createSignedUrl(doc.fil_url, 3600);
-                                  if (data?.signedUrl) {
-                                    window.open(data.signedUrl, '_blank');
-                                  }
-                                }
-                              }}
-                              className="flex items-center gap-1.5 text-sm text-primary hover:underline"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              {d.documents?.tittel}
-                            </button>
-                          ))}
+                          {mission.documents.map((d: any) => {
+                            const doc = d.documents;
+                            return (
+                              <button
+                                key={d.document_id}
+                                onClick={() => {
+                                  setSelectedDocument(doc);
+                                  setDocumentDialogOpen(true);
+                                }}
+                                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                {doc?.tittel}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1559,6 +1556,20 @@ const Oppdrag = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Document Detail Dialog */}
+        <DocumentDetailDialog
+          open={documentDialogOpen}
+          onOpenChange={setDocumentDialogOpen}
+          document={selectedDocument}
+          status={(() => {
+            if (!selectedDocument?.gyldig_til) return "Grønn";
+            const daysUntil = Math.ceil((new Date(selectedDocument.gyldig_til).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (daysUntil < 0) return "Rød";
+            if (daysUntil <= (selectedDocument.varsel_dager_for_utløp || 30)) return "Gul";
+            return "Grønn";
+          })()}
+        />
       </div>
     </div>
   );
