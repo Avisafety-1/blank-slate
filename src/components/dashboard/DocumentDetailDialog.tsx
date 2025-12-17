@@ -344,6 +344,13 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
             )}
           </div>
 
+          {(document as any).beskrivelse && (
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Beskrivelse</p>
+              <p className="text-base leading-relaxed whitespace-pre-wrap">{(document as any).beskrivelse}</p>
+            </div>
+          )}
+
           {document.merknader && (
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">Merknader</p>
