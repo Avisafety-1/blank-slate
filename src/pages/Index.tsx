@@ -429,6 +429,17 @@ const Index = () => {
                   </div>
                 </div>
 
+                {/* Mobile/Tablet: Missions right after Status */}
+                <div className="lg:hidden">
+                  {layout
+                    .filter((item) => item.component === "missions")
+                    .map((item) => (
+                      <DraggableSection key={`mobile-${item.id}`} id={item.id}>
+                        {renderSection(item.component)}
+                      </DraggableSection>
+                    ))}
+                </div>
+
                 {/* Main Row - Sidebars with center content */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
                   {/* Left Column */}
@@ -515,8 +526,8 @@ const Index = () => {
                       </div>
                     </div>
 
-                    {/* Missions - pushed to bottom with mt-auto */}
-                    <div className="mt-auto">
+                    {/* Missions - Desktop only (mobile shows after status) */}
+                    <div className="mt-auto hidden lg:block">
                       {layout &&
                         layout.length > 0 &&
                         layout
