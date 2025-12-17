@@ -21,11 +21,12 @@ export const useChecklists = () => {
       }
 
       try {
+        // Fetch checklists from own company OR globally visible checklists
         const { data, error } = await supabase
           .from("documents")
-          .select("id, tittel")
+          .select("id, tittel, global_visibility")
           .eq("kategori", "sjekklister")
-          .eq("company_id", companyId)
+          .or(`company_id.eq.${companyId},global_visibility.eq.true`)
           .order("tittel");
 
         if (error) throw error;
