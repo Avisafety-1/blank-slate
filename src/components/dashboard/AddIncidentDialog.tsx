@@ -447,7 +447,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="oppfolgingsansvarlig">
                 <SelectValue placeholder="Velg ansvarlig..." />
               </SelectTrigger>
-              <SelectContent className="bg-background z-50">
+              <SelectContent className="bg-background">
                 {users.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.full_name || 'Ukjent bruker'}
