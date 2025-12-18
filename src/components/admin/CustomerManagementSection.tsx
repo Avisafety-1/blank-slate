@@ -221,15 +221,102 @@ export const CustomerManagementSection = () => {
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen kunder matcher søket "{searchQuery}"
           </div>
+        ) : isMobile ? (
+          /* Mobile: Clickable cards */
+          <div className="space-y-3">
+            {filteredCustomers.map((customer) => (
+              <div
+                key={customer.id}
+                className="bg-card border border-border rounded-lg p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => handleViewCustomer(customer)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm truncate">{customer.navn}</h3>
+                    {customer.kontaktperson && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <User className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{customer.kontaktperson}</span>
+                      </p>
+                    )}
+                  </div>
+                  <Badge 
+                    variant={customer.aktiv ? "default" : "secondary"} 
+                    className="text-xs ml-2 flex-shrink-0"
+                  >
+                    {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                  </Badge>
+                </div>
+
+                {/* Contact info */}
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {customer.epost && (
+                    <div className="flex items-center gap-1">
+                      <Mail className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{customer.epost}</span>
+                    </div>
+                  )}
+                  {customer.telefon && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="h-3 w-3 flex-shrink-0" />
+                      <span>{customer.telefon}</span>
+                    </div>
+                  )}
+                  {customer.adresse && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{customer.adresse}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div 
+                  className="flex justify-between items-center mt-3 pt-3 border-t border-border"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={customer.aktiv}
+                      onCheckedChange={() => handleToggleActive(customer)}
+                      className="scale-75"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleEditCustomer(customer)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="h-8 px-2 text-xs"
+                      onClick={() => handleDeleteClick(customer)}
+                    >
+                      Slett
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          /* Desktop: Table view */
           <ScrollArea className="w-full">
             <div className="min-w-[700px]">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Navn</TableHead>
-                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktperson</TableHead>
-                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Kontaktperson</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
@@ -238,23 +325,23 @@ export const CustomerManagementSection = () => {
                   {filteredCustomers.map((customer) => (
                     <TableRow key={customer.id}>
                       <TableCell className="font-medium text-xs sm:text-sm">
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate max-w-[120px] sm:max-w-none">{customer.navn}</span>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{customer.navn}</span>
                         </div>
                       </TableCell>
-                      <TableCell className={isMobile ? 'hidden' : ''}>
+                      <TableCell>
                         {customer.kontaktperson ? (
-                          <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <User className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">{customer.kontaktperson}</span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-xs sm:text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
-                      <TableCell className={isMobile ? 'hidden' : ''}>
-                        <div className="space-y-1 text-xs sm:text-sm">
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
                           {customer.epost && (
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Mail className="h-3 w-3 flex-shrink-0" />
@@ -273,21 +360,16 @@ export const CustomerManagementSection = () => {
                               <span className="truncate max-w-[150px]">{customer.adresse}</span>
                             </div>
                           )}
-                          {!customer.epost &&
-                            !customer.telefon &&
-                            !customer.adresse && (
-                              <span className="text-muted-foreground text-xs">
-                                Ingen kontaktinfo
-                              </span>
-                            )}
+                          {!customer.epost && !customer.telefon && !customer.adresse && (
+                            <span className="text-muted-foreground text-xs">Ingen kontaktinfo</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-2">
                           <Switch
                             checked={customer.aktiv}
                             onCheckedChange={() => handleToggleActive(customer)}
-                            className={isMobile ? 'scale-75' : ''}
                           />
                           <Label className="cursor-pointer">
                             <Badge
@@ -300,33 +382,30 @@ export const CustomerManagementSection = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1 sm:gap-2">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewCustomer(customer)}
                             title="Vis historikk"
-                            className={isMobile ? 'h-8 w-8 p-0' : ''}
                           >
-                            <Eye className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                            <Eye className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditCustomer(customer)}
                             title="Rediger"
-                            className={isMobile ? 'h-8 w-8 p-0' : ''}
                           >
-                            <Pencil className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteClick(customer)}
                             title="Slett"
-                            className={isMobile ? 'h-8 px-2 text-xs' : ''}
                           >
-                            {isMobile ? <span>X</span> : "Slett"}
+                            Slett
                           </Button>
                         </div>
                       </TableCell>
