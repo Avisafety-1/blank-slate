@@ -132,6 +132,7 @@ export const useFlightTimer = () => {
   }, []);
 
   // Check for active flight on mount
+  // DATABASE IS SOURCE OF TRUTH - localStorage is only for performance optimization
   useEffect(() => {
     const checkActiveFlight = async () => {
       if (!user) return;
@@ -139,79 +140,76 @@ export const useFlightTimer = () => {
       // Clean up legacy non-user-specific keys
       LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
 
-      // Use user-specific localStorage keys
+      // User-specific localStorage keys
       const userStorageKey = getStorageKey(user.id);
       const userMissionKey = getMissionKey(user.id);
       const userPublishModeKey = getPublishModeKey(user.id);
       const userChecklistsKey = getChecklistsKey(user.id);
 
-      // First check localStorage for offline support
-      const localStartTime = localStorage.getItem(userStorageKey);
-      const localMissionId = localStorage.getItem(userMissionKey);
-      const localPublishMode = (localStorage.getItem(userPublishModeKey) as PublishMode) || 'none';
-      const localChecklists = JSON.parse(localStorage.getItem(userChecklistsKey) || '[]') as string[];
-      
-      // Then check database for cross-device sync
-      const { data: dbFlight } = await supabase
+      // DATABASE IS SOURCE OF TRUTH - check database first
+      const { data: dbFlight, error } = await supabase
         .from('active_flights')
         .select('*')
         .eq('profile_id', user.id)
         .maybeSingle();
 
-      let startTime: Date | null = null;
-      let missionId: string | null = null;
-      let publishMode: PublishMode = 'none';
-      let completedChecklistIds: string[] = [];
-      let dronetagDeviceId: string | null = null;
-
-      if (dbFlight) {
-        startTime = new Date(dbFlight.start_time);
-        missionId = dbFlight.mission_id || null;
-        publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
-        completedChecklistIds = localChecklists; // Get from localStorage (not stored in DB)
-        dronetagDeviceId = dbFlight.dronetag_device_id || null;
-        // Sync to user-specific localStorage
-        localStorage.setItem(userStorageKey, startTime.toISOString());
-        if (missionId) localStorage.setItem(userMissionKey, missionId);
-        localStorage.setItem(userPublishModeKey, publishMode);
-      } else if (localStartTime) {
-        startTime = new Date(localStartTime);
-        missionId = localMissionId || null;
-        publishMode = localPublishMode;
-        completedChecklistIds = localChecklists;
-        // Sync to database if not there
-        if (companyId) {
-          await supabase.from('active_flights').insert({
-            profile_id: user.id,
-            company_id: companyId,
-            start_time: startTime.toISOString(),
-            mission_id: missionId,
-            publish_mode: publishMode,
-          });
-        }
+      if (error) {
+        console.error('Error checking active flight:', error);
+        return;
       }
 
-      if (startTime) {
+      if (dbFlight) {
+        // Active flight exists in database - sync to localStorage and use it
+        const startTime = new Date(dbFlight.start_time);
+        const publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
+        const localChecklists = JSON.parse(localStorage.getItem(userChecklistsKey) || '[]') as string[];
+
+        // Sync database state to localStorage
+        localStorage.setItem(userStorageKey, startTime.toISOString());
+        if (dbFlight.mission_id) {
+          localStorage.setItem(userMissionKey, dbFlight.mission_id);
+        } else {
+          localStorage.removeItem(userMissionKey);
+        }
+        localStorage.setItem(userPublishModeKey, publishMode);
+
         const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
         setState({
           isActive: true,
           startTime,
           elapsedSeconds: elapsed,
-          missionId,
+          missionId: dbFlight.mission_id || null,
           publishMode,
-          completedChecklistIds,
-          dronetagDeviceId,
+          completedChecklistIds: localChecklists,
+          dronetagDeviceId: dbFlight.dronetag_device_id || null,
         });
 
         // Restart GPS watch if in live_uav mode
         if (publishMode === 'live_uav') {
           startGpsWatch();
         }
+      } else {
+        // NO active flight in database - clear any stale localStorage data
+        localStorage.removeItem(userStorageKey);
+        localStorage.removeItem(userMissionKey);
+        localStorage.removeItem(userPublishModeKey);
+        localStorage.removeItem(userChecklistsKey);
+
+        // Ensure state is reset
+        setState({
+          isActive: false,
+          startTime: null,
+          elapsedSeconds: 0,
+          missionId: null,
+          publishMode: 'none',
+          completedChecklistIds: [],
+          dronetagDeviceId: null,
+        });
       }
     };
 
     checkActiveFlight();
-  }, [user, companyId, startGpsWatch]);
+  }, [user, startGpsWatch]);
 
   // NOTE: Live UAV refresh interval removed - no longer publishing to SafeSky for live_uav mode
   // Backend cron job handles beacon fetching for DroneTag telemetry
