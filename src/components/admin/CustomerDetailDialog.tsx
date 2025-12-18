@@ -169,7 +169,7 @@ export const CustomerDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${isMobile ? 'w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] p-3 mx-3' : 'max-w-5xl'} max-h-[90vh] overflow-y-auto overflow-x-hidden`}>
+      <DialogContent className={`${isMobile ? 'w-[92vw] max-w-[92vw] p-3 left-[50%] translate-x-[-50%]' : 'max-w-5xl'} max-h-[90vh] overflow-y-auto overflow-x-hidden`}>
         <DialogHeader className={isMobile ? 'pb-2 pr-6' : ''}>
           <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : ''}`}>
             <User className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} flex-shrink-0`} />
