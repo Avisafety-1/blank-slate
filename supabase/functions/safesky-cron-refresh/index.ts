@@ -74,13 +74,65 @@ interface SafeSkyBeacon {
   callsign?: string;
 }
 
-// Convert route coordinates to a closed polygon
+// Compute cross product of vectors OA and OB where O is origin
+function cross(O: number[], A: number[], B: number[]): number {
+  return (A[0] - O[0]) * (B[1] - O[1]) - (A[1] - O[1]) * (B[0] - O[0]);
+}
+
+// Compute convex hull using Andrew's monotone chain algorithm
+// Returns a closed polygon (first point = last point) in counter-clockwise order
+function computeConvexHull(points: number[][]): number[][] {
+  if (points.length < 3) {
+    // If less than 3 points, just close the polygon
+    const result = [...points];
+    if (result.length > 0) {
+      result.push([...result[0]]);
+    }
+    return result;
+  }
+
+  // Sort points lexicographically (by x, then by y)
+  const sorted = [...points].sort((a, b) => a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]);
+
+  // Build lower hull
+  const lower: number[][] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+
+  // Build upper hull
+  const upper: number[][] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+
+  // Remove last point of each half because it's repeated
+  lower.pop();
+  upper.pop();
+
+  // Concatenate to form full hull
+  const hull = [...lower, ...upper];
+  
+  // Close the polygon
+  if (hull.length > 0) {
+    hull.push([...hull[0]]);
+  }
+
+  return hull;
+}
+
+// Convert route coordinates to a valid convex polygon using convex hull
+// This prevents self-intersecting polygons that SafeSky rejects
 function routeToPolygon(route: MissionRoute): number[][] {
   const coordinates = route.coordinates.map(p => [p.lng, p.lat]);
-  if (coordinates.length > 0) {
-    coordinates.push([...coordinates[0]]);
-  }
-  return coordinates;
+  return computeConvexHull(coordinates);
 }
 
 Deno.serve(async (req) => {
