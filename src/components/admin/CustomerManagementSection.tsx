@@ -223,73 +223,70 @@ export const CustomerManagementSection = () => {
           </div>
         ) : isMobile ? (
           /* Mobile: Clickable cards */
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredCustomers.map((customer) => (
               <div
                 key={customer.id}
-                className="bg-card border border-border rounded-lg p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                className="bg-card border border-border rounded-lg p-3 cursor-pointer active:bg-accent/50 transition-colors"
                 onClick={() => handleViewCustomer(customer)}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm truncate">{customer.navn}</h3>
-                    {customer.kontaktperson && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                        <User className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{customer.kontaktperson}</span>
-                      </p>
-                    )}
-                  </div>
+                {/* Header row */}
+                <div className="flex justify-between items-start gap-2 mb-1.5">
+                  <h3 className="font-medium text-sm leading-tight break-words flex-1 min-w-0">
+                    {customer.navn}
+                  </h3>
                   <Badge 
                     variant={customer.aktiv ? "default" : "secondary"} 
-                    className="text-xs ml-2 flex-shrink-0"
+                    className="text-[10px] px-1.5 py-0.5 flex-shrink-0"
                   >
                     {customer.aktiv ? "Aktiv" : "Inaktiv"}
                   </Badge>
                 </div>
 
-                {/* Contact info */}
-                <div className="space-y-1 text-xs text-muted-foreground">
+                {/* Contact person */}
+                {customer.kontaktperson && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                    <User className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{customer.kontaktperson}</span>
+                  </p>
+                )}
+
+                {/* Contact info - inline */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                   {customer.epost && (
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{customer.epost}</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Mail className="h-2.5 w-2.5 flex-shrink-0" />
+                      <span className="truncate max-w-[140px]">{customer.epost}</span>
                     </div>
                   )}
                   {customer.telefon && (
                     <div className="flex items-center gap-1">
-                      <Phone className="h-3 w-3 flex-shrink-0" />
+                      <Phone className="h-2.5 w-2.5 flex-shrink-0" />
                       <span>{customer.telefon}</span>
-                    </div>
-                  )}
-                  {customer.adresse && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{customer.adresse}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Actions */}
+                {/* Actions - compact row */}
                 <div 
-                  className="flex justify-between items-center mt-3 pt-3 border-t border-border"
+                  className="flex justify-between items-center mt-2 pt-2 border-t border-border/50"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Switch
                       checked={customer.aktiv}
                       onCheckedChange={() => handleToggleActive(customer)}
-                      className="scale-75"
+                      className="scale-[0.65]"
                     />
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       {customer.aktiv ? "Aktiv" : "Inaktiv"}
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       onClick={() => handleEditCustomer(customer)}
                     >
                       <Pencil className="h-3 w-3" />
@@ -297,7 +294,7 @@ export const CustomerManagementSection = () => {
                     <Button 
                       variant="destructive" 
                       size="sm" 
-                      className="h-8 px-2 text-xs"
+                      className="h-7 px-2 text-[10px]"
                       onClick={() => handleDeleteClick(customer)}
                     >
                       Slett
