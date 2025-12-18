@@ -101,7 +101,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0 z-50 bg-popover" align="start">
+              <PopoverContent className="w-[400px] p-0 z-[9999] bg-popover" align="start">
                 <Command className="bg-popover">
                   <CommandInput placeholder="Søk etter person..." className="h-9" />
                   <CommandList>
