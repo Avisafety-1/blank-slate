@@ -1037,8 +1037,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.flyvetimer}
-                    onChange={(e) => setFormData({ ...formData, flyvetimer: parseFloat(e.target.value) || 0 })}
+                    value={formData.flyvetimer === 0 ? '' : formData.flyvetimer}
+                    onChange={(e) => setFormData({ ...formData, flyvetimer: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   />
                 </div>
                 <div>
