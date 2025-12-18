@@ -366,6 +366,8 @@ export const useFlightTimer = () => {
     startPosition: { lat: number; lng: number } | null;
     pilotName: string | null;
     startTime: Date;
+    publishMode: PublishMode;
+    completedChecklistIds: string[];
   } | null> => {
     if (!state.isActive || !state.startTime) {
       return null;
@@ -451,8 +453,10 @@ export const useFlightTimer = () => {
       startPosition,
       pilotName,
       startTime: flightStartTime,
+      publishMode: state.publishMode,
+      completedChecklistIds: state.completedChecklistIds,
     };
-  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch, fetchFlightTrack]);
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, state.completedChecklistIds, user, endAdvisory, stopGpsWatch, fetchFlightTrack]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

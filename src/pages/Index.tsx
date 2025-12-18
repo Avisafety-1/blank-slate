@@ -60,6 +60,8 @@ const Index = () => {
     startPosition: { lat: number; lng: number } | null;
     pilotName: string | null;
     startTime: Date | null;
+    publishMode: 'none' | 'advisory' | 'live_uav';
+    completedChecklistIds: string[];
   } | null>(null);
   
   const { isActive, startTime, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, dronetagDeviceId: activeFlightDronetagId, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
@@ -190,6 +192,8 @@ const Index = () => {
         startPosition: result.startPosition,
         pilotName: result.pilotName,
         startTime: result.startTime,
+        publishMode: result.publishMode,
+        completedChecklistIds: result.completedChecklistIds,
       });
       setLogFlightDialogOpen(true);
     }
@@ -575,8 +579,8 @@ const Index = () => {
         open={logFlightDialogOpen} 
         onOpenChange={handleLogFlightDialogClose}
         prefilledDuration={prefilledDuration}
-        safeskyMode={publishMode}
-        completedChecklistIds={completedChecklistIds}
+        safeskyMode={pendingFlightData?.publishMode || publishMode}
+        completedChecklistIds={pendingFlightData?.completedChecklistIds || completedChecklistIds}
         prefilledMissionId={pendingFlightData?.missionId || activeMissionId || undefined}
         flightTrack={pendingFlightData?.flightTrack}
         dronetagDeviceId={pendingFlightData?.dronetagDeviceId || undefined}
