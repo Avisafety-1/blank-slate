@@ -779,8 +779,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               id="movements"
               type="number"
               min="1"
-              value={formData.movements}
-              onChange={(e) => setFormData({ ...formData, movements: parseInt(e.target.value) || 1 })}
+              value={formData.movements === 0 ? '' : formData.movements}
+              onChange={(e) => setFormData({ ...formData, movements: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             />
             <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
           </div>
