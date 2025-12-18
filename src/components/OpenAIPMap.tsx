@@ -415,6 +415,9 @@ export function OpenAIPMap({
     // Active advisory areas layer - always visible when active flights exist (not toggleable)
     const activeAdvisoryLayer = L.layerGroup().addTo(map);
 
+    // Pilot positions layer - shows live_uav pilot positions internally
+    const pilotPositionsLayer = L.layerGroup().addTo(map);
+
     setLayers(layerConfigs);
 
     // Fetch drone telemetry from database
@@ -628,6 +631,76 @@ export function OpenAIPMap({
         }
       } catch (err) {
         console.error('Error fetching active advisories:', err);
+      }
+    }
+
+    // Fetch and display pilot positions from active_flights with publish_mode='live_uav'
+    // These are internal positions (not published to SafeSky) for tracking pilots
+    async function fetchPilotPositions() {
+      try {
+        const { data: liveFlights, error } = await supabase
+          .from('active_flights')
+          .select('id, start_lat, start_lng, pilot_name, start_time')
+          .eq('publish_mode', 'live_uav')
+          .not('start_lat', 'is', null)
+          .not('start_lng', 'is', null);
+        
+        if (error) {
+          console.error('Error fetching pilot positions:', error);
+          return;
+        }
+        
+        pilotPositionsLayer.clearLayers();
+        
+        for (const flight of liveFlights || []) {
+          if (!flight.start_lat || !flight.start_lng) continue;
+          
+          // Create pilot marker with person icon
+          const pilotIcon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width: 32px;
+              height: 32px;
+              background: #0ea5e9;
+              border: 3px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+                <circle cx="12" cy="7" r="4"/>
+                <path d="M5.5 21a9.5 9.5 0 0 1 13 0"/>
+              </svg>
+            </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16],
+          });
+          
+          const marker = L.marker([flight.start_lat, flight.start_lng], { 
+            icon: pilotIcon, 
+            interactive: mode !== 'routePlanning' 
+          });
+          
+          const startTime = flight.start_time ? new Date(flight.start_time).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }) : 'Ukjent';
+          const pilotName = flight.pilot_name || 'Ukjent pilot';
+          
+          marker.bindPopup(`
+            <div>
+              <strong>👤 ${pilotName}</strong><br/>
+              <span style="font-size: 11px; color: #666;">Pilot (live posisjon)</span><br/>
+              <span style="font-size: 11px;">Startet: ${startTime}</span>
+            </div>
+          `);
+          
+          marker.addTo(pilotPositionsLayer);
+        }
+        
+        console.log(`Rendered ${liveFlights?.length || 0} pilot positions`);
+      } catch (err) {
+        console.error('Error fetching pilot positions:', err);
       }
     }
 
@@ -990,6 +1063,7 @@ export function OpenAIPMap({
     fetchDroneTelemetry();
     fetchAndDisplayMissions();
     fetchActiveAdvisories();
+    fetchPilotPositions();
 
     // Display existing route if provided
     if (existingRoute && existingRoute.coordinates.length > 0) {
@@ -1054,13 +1128,16 @@ export function OpenAIPMap({
       )
       .subscribe();
 
-    // Real-time subscription for active flights (advisory areas)
+    // Real-time subscription for active flights (advisory areas and pilot positions)
     const activeFlightsChannel = supabase
       .channel('active-flights-advisories')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'active_flights' },
-        () => fetchActiveAdvisories()
+        () => {
+          fetchActiveAdvisories();
+          fetchPilotPositions();
+        }
       )
       .subscribe();
 

@@ -244,73 +244,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === PART 1B: Refresh Point Advisory flights (live_uav mode with fixed start position) ===
-    const { data: pointFlights, error: pointFlightsError } = await supabase
-      .from('active_flights')
-      .select('id, start_lat, start_lng, pilot_name')
-      .eq('publish_mode', 'live_uav')
-      .not('start_lat', 'is', null)
-      .not('start_lng', 'is', null);
-
-    if (pointFlightsError) {
-      console.error('Error fetching point advisory flights:', pointFlightsError);
-    }
-
-    if (pointFlights && pointFlights.length > 0) {
-      console.log(`Found ${pointFlights.length} active live_uav flights to refresh Point advisories`);
-
-      for (const flight of pointFlights) {
-        if (!flight.start_lat || !flight.start_lng) continue;
-
-        try {
-          const callSign = 'Pilot posisjon';
-          const advisoryId = `AVS_LIVE_${flight.id.substring(0, 8)}`;
-
-          const payload: GeoJSONFeatureCollection = {
-            type: "FeatureCollection",
-            features: [{
-              type: "Feature",
-              properties: {
-                id: advisoryId,
-                call_sign: callSign,
-                last_update: Math.floor(Date.now() / 1000),
-                max_altitude: 0,
-                max_distance: 100, // 100m radius
-                remarks: "Live drone operation"
-              },
-              geometry: {
-                type: "Point",
-                coordinates: [flight.start_lng, flight.start_lat] // GeoJSON [lng, lat]
-              }
-            }]
-          };
-
-          console.log(`Refreshing Point advisory for flight ${flight.id} (${callSign})`);
-
-          const response = await fetch(SAFESKY_ADVISORY_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': SAFESKY_API_KEY,
-            },
-            body: JSON.stringify(payload)
-          });
-
-          const responseText = await response.text();
-          console.log(`SafeSky Point advisory response for ${flight.id}: ${response.status} - ${responseText}`);
-
-          if (!response.ok) {
-            advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
-          } else {
-            advisoryResults.push({ flightId: flight.id, success: true });
-          }
-
-        } catch (err) {
-          console.error(`Error refreshing Point advisory for ${flight.id}:`, err);
-          advisoryResults.push({ flightId: flight.id, success: false, error: String(err) });
-        }
-      }
-    }
+    // NOTE: Part 1B (Point Advisory publishing for live_uav) has been removed.
+    // live_uav mode now only fetches beacons around pilot position for DroneTag tracking,
+    // and displays pilot position internally on /kart - no SafeSky advisory publishing.
 
     // === PART 2: Fetch and cache SafeSky beacons around active flights ===
     console.log('Fetching SafeSky beacons around active flights...');

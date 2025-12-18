@@ -64,40 +64,8 @@ export const useFlightTimer = () => {
     }
   }, []);
 
-  // Function to publish live UAV position with flight dynamics
-  const publishLiveUav = useCallback(async (
-    lat: number, 
-    lon: number, 
-    alt: number,
-    speed: number,
-    heading: number,
-    altitudeDelta: number,
-    verticalSpeed: number
-  ) => {
-    console.log('Publishing live UAV:', { lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed });
-    try {
-      const { error } = await supabase.functions.invoke('safesky-advisory', {
-        body: { 
-          action: 'publish_live_uav', 
-          lat, 
-          lon, 
-          alt,
-          speed,
-          heading,
-          altitudeDelta,
-          verticalSpeed
-        },
-      });
-      if (error) {
-        console.error('Error publishing live UAV position:', error);
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('Failed to publish live UAV position:', err);
-      return false;
-    }
-  }, []);
+  // NOTE: publishLiveUav removed - live_uav mode no longer publishes to SafeSky
+  // Live position is now only displayed internally on /kart
 
   // Function to end SafeSky advisory
   const endAdvisory = useCallback(async (missionId: string) => {
@@ -245,40 +213,8 @@ export const useFlightTimer = () => {
     checkActiveFlight();
   }, [user, companyId, startGpsWatch]);
 
-  // Setup refresh interval for live_uav mode only
-  // Advisory mode is now handled by backend cron job (safesky-cron-refresh)
-  useEffect(() => {
-    // Only run interval for live_uav mode - advisory is handled by backend cron
-    if (!state.isActive || state.publishMode !== 'live_uav') {
-      return;
-    }
-
-    // Refresh every 10 seconds for live UAV position
-    refreshIntervalRef.current = setInterval(() => {
-      if (lastPositionRef.current) {
-        const { lat, lon, alt, speed, heading } = lastPositionRef.current;
-        const altitudeDelta = startAltitudeRef.current !== null ? alt - startAltitudeRef.current : 0;
-        
-        // Calculate vertical speed from previous position
-        let verticalSpeed = 0;
-        if (prevPositionRef.current) {
-          const timeDiff = (Date.now() - prevPositionRef.current.timestamp) / 1000;
-          if (timeDiff > 0 && timeDiff < 30) {
-            verticalSpeed = (alt - prevPositionRef.current.alt) / timeDiff;
-          }
-        }
-        
-        publishLiveUav(lat, lon, alt, speed, heading, altitudeDelta, verticalSpeed);
-      }
-    }, 10000);
-
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-    };
-  }, [state.isActive, state.publishMode, publishLiveUav]);
+  // NOTE: Live UAV refresh interval removed - no longer publishing to SafeSky for live_uav mode
+  // Backend cron job handles beacon fetching for DroneTag telemetry
 
   // Update elapsed time every second when active
   useEffect(() => {
@@ -292,27 +228,8 @@ export const useFlightTimer = () => {
     return () => clearInterval(interval);
   }, [state.isActive, state.startTime]);
 
-  // Function to publish Point advisory for live_uav mode (100m radius around start position)
-  const publishPointAdvisory = useCallback(async (lat: number, lng: number, pilotName: string) => {
-    try {
-      const { error } = await supabase.functions.invoke('safesky-advisory', {
-        body: { 
-          action: 'publish_point_advisory', 
-          lat, 
-          lng, 
-          pilotName 
-        },
-      });
-      if (error) {
-        console.error('Error publishing Point advisory:', error);
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('Failed to publish Point advisory:', err);
-      return false;
-    }
-  }, []);
+  // NOTE: publishPointAdvisory removed - live_uav mode no longer publishes Point advisories
+  // Pilot position is now displayed internally on /kart map
 
   const startFlight = useCallback(async (
     missionId?: string, 
@@ -344,23 +261,9 @@ export const useFlightTimer = () => {
         console.warn('Failed to publish advisory, continuing without');
       }
     } else if (publishMode === 'live_uav') {
+      // Start GPS watch for local tracking (position stored in active_flights)
+      // No SafeSky publishing - only internal pilot position display and beacon fetching
       startGpsWatch();
-      
-      // Publish Point advisory with start position (100m radius)
-      if (startPosition && pilotName) {
-        const published = await publishPointAdvisory(startPosition.lat, startPosition.lng, pilotName);
-        if (!published) {
-          console.warn('Failed to publish Point advisory, continuing without');
-        }
-      }
-      
-      // Initial UAV beacon publish after brief delay for GPS to acquire
-      setTimeout(async () => {
-        if (lastPositionRef.current) {
-          const { lat, lon, alt, speed, heading } = lastPositionRef.current;
-          await publishLiveUav(lat, lon, alt, speed, heading, 0, 0);
-        }
-      }, 2000);
     }
 
     // Save to user-specific localStorage for offline support
@@ -398,7 +301,7 @@ export const useFlightTimer = () => {
     });
 
     return true;
-  }, [user, companyId, publishAdvisory, publishLiveUav, publishPointAdvisory, startGpsWatch]);
+  }, [user, companyId, publishAdvisory, startGpsWatch]);
 
   // Fetch flight track from DroneTag positions
   const fetchFlightTrack = useCallback(async (
