@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
         if (!flight.start_lat || !flight.start_lng) continue;
 
         try {
-          const callSign = flight.pilot_name || 'Drone Pilot';
+          const callSign = 'Pilot posisjon';
           const advisoryId = `AVS_LIVE_${flight.id.substring(0, 8)}`;
 
           const payload: GeoJSONFeatureCollection = {
@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
                 id: advisoryId,
                 call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
-                max_altitude: 120,
+                max_altitude: 0,
                 max_distance: 100, // 100m radius
                 remarks: "Live drone operation"
               },
