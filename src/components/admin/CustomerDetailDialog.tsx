@@ -169,21 +169,21 @@ export const CustomerDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${isMobile ? 'w-[95vw] max-w-[95vw] p-3' : 'max-w-5xl'} max-h-[90vh] overflow-y-auto`}>
-        <DialogHeader className={isMobile ? 'pb-2' : ''}>
+      <DialogContent className={`${isMobile ? 'w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] p-3 mx-3' : 'max-w-5xl'} max-h-[90vh] overflow-y-auto overflow-x-hidden`}>
+        <DialogHeader className={isMobile ? 'pb-2 pr-6' : ''}>
           <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : ''}`}>
-            <User className={isMobile ? 'h-4 w-4' : 'h-5 w-5'} />
-            <span className="break-words">{customer.navn}</span>
+            <User className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} flex-shrink-0`} />
+            <span className="break-words min-w-0">{customer.navn}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className={isMobile ? 'space-y-3' : 'space-y-6'}>
+        <div className={`${isMobile ? 'space-y-3' : 'space-y-6'} overflow-x-hidden`}>
           {/* Customer Information */}
-          <Card className={isMobile ? 'shadow-none border' : ''}>
+          <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
             <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
               <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Kundeinformasjon</CardTitle>
             </CardHeader>
-            <CardContent className={`space-y-2 ${isMobile ? 'p-3 pt-0' : ''}`}>
+            <CardContent className={`space-y-2 ${isMobile ? 'p-3 pt-0 overflow-hidden' : ''}`}>
               <div className={`grid grid-cols-1 gap-2 ${isMobile ? '' : 'md:grid-cols-2 gap-4'}`}>
                 {customer.kontaktperson && (
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
@@ -241,7 +241,7 @@ export const CustomerDetailDialog = ({
           </Card>
 
           {/* History Tabs */}
-          <Tabs defaultValue="missions" className="w-full">
+          <Tabs defaultValue="missions" className="w-full overflow-hidden">
             <TabsList className={`grid w-full grid-cols-2 ${isMobile ? 'h-9' : ''}`}>
               <TabsTrigger value="missions" className={`flex items-center gap-1 ${isMobile ? 'text-xs px-2' : 'gap-2'}`}>
                 <Briefcase className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
@@ -254,7 +254,7 @@ export const CustomerDetailDialog = ({
             </TabsList>
 
             <TabsContent value="missions" className={isMobile ? 'mt-2' : 'mt-4'}>
-              <Card className={isMobile ? 'shadow-none border' : ''}>
+              <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
                 <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
                   <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Oppdragshistorikk</CardTitle>
                   {!isMobile && (
@@ -337,7 +337,7 @@ export const CustomerDetailDialog = ({
             </TabsContent>
 
             <TabsContent value="incidents" className={isMobile ? 'mt-2' : 'mt-4'}>
-              <Card className={isMobile ? 'shadow-none border' : ''}>
+              <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
                 <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
                   <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Hendelseshistorikk</CardTitle>
                   {!isMobile && (
