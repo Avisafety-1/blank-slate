@@ -492,29 +492,22 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <DialogTitle className="flex items-center gap-2">
-              <Plane className="w-5 h-5 text-primary" />
-              {isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}
-            </DialogTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              {!isEditing && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setLogbookOpen(true)}
-                    className="text-xs sm:text-sm"
-                  >
-                    <Book className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Loggbok</span>
-                    <span className="sm:hidden">Logg</span>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <span className="truncate">{isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}</span>
+          </DialogTitle>
+          {!isEditing && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setLogbookOpen(true)}
+              className="w-full mt-2"
+            >
+              <Book className="w-4 h-4 mr-2" />
+              Loggbok
+            </Button>
+          )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
               ⚠️ Status påvirket av: {affectedItems.join(", ")}
