@@ -57,6 +57,9 @@ const Index = () => {
     missionId: string | null;
     flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }>;
     dronetagDeviceId: string | null;
+    startPosition: { lat: number; lng: number } | null;
+    pilotName: string | null;
+    startTime: Date | null;
   } | null>(null);
   
   const { isActive, startTime, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, dronetagDeviceId: activeFlightDronetagId, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
@@ -184,6 +187,9 @@ const Index = () => {
         missionId: result.missionId,
         flightTrack: result.flightTrack,
         dronetagDeviceId: result.dronetagDeviceId,
+        startPosition: result.startPosition,
+        pilotName: result.pilotName,
+        startTime: result.startTime,
       });
       setLogFlightDialogOpen(true);
     }
@@ -574,6 +580,9 @@ const Index = () => {
         prefilledMissionId={pendingFlightData?.missionId || activeMissionId || undefined}
         flightTrack={pendingFlightData?.flightTrack}
         dronetagDeviceId={pendingFlightData?.dronetagDeviceId || undefined}
+        startPosition={pendingFlightData?.startPosition || undefined}
+        pilotName={pendingFlightData?.pilotName || undefined}
+        flightStartTime={pendingFlightData?.startTime || undefined}
         onFlightLogged={handleFlightLogged}
         onStopTimer={() => {
           // Timer already stopped via endFlight, just clear state

@@ -363,12 +363,16 @@ export const useFlightTimer = () => {
     missionId: string | null;
     flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }>;
     dronetagDeviceId: string | null;
+    startPosition: { lat: number; lng: number } | null;
+    pilotName: string | null;
+    startTime: Date;
   } | null> => {
     if (!state.isActive || !state.startTime) {
       return null;
     }
 
     const endTime = new Date();
+    const flightStartTime = state.startTime;
 
     // Stop refresh interval
     if (refreshIntervalRef.current) {
@@ -387,10 +391,11 @@ export const useFlightTimer = () => {
     const elapsedSeconds = Math.floor((endTime.getTime() - state.startTime.getTime()) / 1000);
     const elapsedMinutes = Math.ceil(elapsedSeconds / 60);
 
-    // Fetch active flight to get dronetag_device_id
+    // Fetch active flight to get dronetag_device_id and start position
     let dronetagDeviceId: string | null = null;
     let flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }> = [];
-    let missionIdToUse = state.missionId;
+    let startPosition: { lat: number; lng: number } | null = null;
+    let pilotName: string | null = null;
 
     if (user) {
       const { data: activeFlight } = await supabase
@@ -405,40 +410,11 @@ export const useFlightTimer = () => {
         flightTrack = await fetchFlightTrack(dronetagDeviceId, state.startTime, endTime);
       }
 
-      // If no mission was selected, create one automatically
-      if (!missionIdToUse && companyId) {
-        // Determine location from track or start position
-        let lat = activeFlight?.start_lat || flightTrack[0]?.lat;
-        let lng = activeFlight?.start_lng || flightTrack[0]?.lng;
-        let lokasjon = 'Ukjent lokasjon';
-
-        if (lat && lng) {
-          lokasjon = await reverseGeocode(lat, lng);
-        }
-
-        // Create auto-generated mission
-        const { data: newMission, error: missionError } = await supabase
-          .from('missions')
-          .insert({
-            tittel: `Flytur ${format(state.startTime, 'dd.MM.yyyy HH:mm')}`,
-            lokasjon,
-            latitude: lat || null,
-            longitude: lng || null,
-            tidspunkt: state.startTime.toISOString(),
-            slutt_tidspunkt: endTime.toISOString(),
-            status: 'Fullført',
-            risk_nivå: 'Lav',
-            beskrivelse: `Automatisk generert fra flytur uten valgt oppdrag.\nPilot: ${activeFlight?.pilot_name || 'Ukjent'}`,
-            company_id: companyId,
-            user_id: user.id,
-          })
-          .select('id')
-          .single();
-
-        if (!missionError && newMission) {
-          missionIdToUse = newMission.id;
-        }
+      // Store start position and pilot name for LogFlightTimeDialog to use
+      if (activeFlight?.start_lat && activeFlight?.start_lng) {
+        startPosition = { lat: activeFlight.start_lat, lng: activeFlight.start_lng };
       }
+      pilotName = activeFlight?.pilot_name || null;
     }
 
     // Clear user-specific localStorage
@@ -469,11 +445,14 @@ export const useFlightTimer = () => {
 
     return {
       elapsedMinutes,
-      missionId: missionIdToUse,
+      missionId: state.missionId,
       flightTrack,
       dronetagDeviceId,
+      startPosition,
+      pilotName,
+      startTime: flightStartTime,
     };
-  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, companyId, endAdvisory, stopGpsWatch, fetchFlightTrack, reverseGeocode]);
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch, fetchFlightTrack]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

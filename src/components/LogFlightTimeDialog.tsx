@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown, AlertTriangle } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
+import { format } from "date-fns";
 
 interface FlightTrackPosition {
   lat: number;
@@ -43,6 +44,9 @@ interface LogFlightTimeDialogProps {
   prefilledMissionId?: string;
   flightTrack?: FlightTrackPosition[];
   dronetagDeviceId?: string;
+  startPosition?: { lat: number; lng: number };
+  pilotName?: string;
+  flightStartTime?: Date;
 }
 
 interface Drone {
@@ -69,7 +73,7 @@ interface Equipment {
   serienummer: string;
 }
 
-export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId, flightTrack, dronetagDeviceId }: LogFlightTimeDialogProps) => {
+export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId, flightTrack, dronetagDeviceId, startPosition, pilotName, flightStartTime }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -317,6 +321,41 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     setIsSubmitting(true);
     
     try {
+      let missionIdToUse = formData.missionId;
+
+      // If no mission was selected, create one automatically
+      if (!missionIdToUse && formData.markMissionCompleted) {
+        // Determine location from flight track or start position
+        let lat = startPosition?.lat || (flightTrack && flightTrack[0]?.lat);
+        let lng = startPosition?.lng || (flightTrack && flightTrack[0]?.lng);
+        let lokasjon = formData.departureLocation || 'Ukjent lokasjon';
+
+        const flightDate = flightStartTime || new Date();
+
+        // Create auto-generated mission
+        const { data: newMission, error: missionError } = await supabase
+          .from('missions')
+          .insert({
+            tittel: `Flytur ${format(flightDate, 'dd.MM.yyyy HH:mm')}`,
+            lokasjon,
+            latitude: lat || null,
+            longitude: lng || null,
+            tidspunkt: flightDate.toISOString(),
+            slutt_tidspunkt: new Date().toISOString(),
+            status: 'Fullført',
+            risk_nivå: 'Lav',
+            beskrivelse: `Automatisk generert fra flytur.\nPilot: ${pilotName || personnel.find(p => p.id === formData.pilotId)?.full_name || 'Ukjent'}`,
+            company_id: companyId,
+            user_id: user.id,
+          })
+          .select('id')
+          .single();
+
+        if (!missionError && newMission) {
+          missionIdToUse = newMission.id;
+        }
+      }
+
       // 1. Create flight log entry
       const flightTrackData = flightTrack && flightTrack.length > 0 
         ? { positions: flightTrack } 
@@ -328,7 +367,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           company_id: companyId,
           user_id: user.id,
           drone_id: formData.droneId,
-          mission_id: formData.missionId || null,
+          mission_id: missionIdToUse || null,
           departure_location: formData.departureLocation,
           landing_location: formData.landingLocation,
           flight_duration_minutes: formData.flightDurationMinutes,
@@ -396,12 +435,13 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           });
       }
 
-      // 6. Update mission status to "Fullført" if checkbox is checked
-      if (formData.missionId && formData.markMissionCompleted) {
+      // 6. Update mission status to "Fullført" if checkbox is checked and mission exists
+      if (missionIdToUse && formData.markMissionCompleted && formData.missionId) {
+        // Only update if it was an existing mission (not auto-created, which is already "Fullført")
         const { error: missionUpdateError } = await supabase
           .from("missions")
           .update({ status: "Fullført" })
-          .eq("id", formData.missionId);
+          .eq("id", missionIdToUse);
         
         if (missionUpdateError) {
           console.error("Error updating mission status:", missionUpdateError);
