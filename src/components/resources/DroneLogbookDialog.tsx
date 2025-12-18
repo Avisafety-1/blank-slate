@@ -480,50 +480,52 @@ export const DroneLogbookDialog = ({
                   {filteredLogs.map((log) => (
                     <div 
                       key={log.id} 
-                      className="border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors"
+                      className="border rounded-lg p-2 sm:p-3 bg-card hover:bg-accent/50 transition-colors overflow-hidden"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="text-muted-foreground mt-0.5">
-                            {log.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm truncate">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <div className="text-muted-foreground mt-0.5 shrink-0">
+                          {log.icon}
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge className={`${log.badgeColor} text-[10px] sm:text-xs shrink-0`}>
+                                  {log.badgeText}
+                                </Badge>
+                              </div>
+                              <p className="font-medium text-xs sm:text-sm mt-1 break-words">
                                 {log.title}
-                              </span>
-                              <Badge className={`${log.badgeColor} text-xs`}>
-                                {log.badgeText}
-                              </Badge>
-                            </div>
-                            {log.description && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {log.description}
                               </p>
-                            )}
-                            <div className="flex items-center gap-2 sm:gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                <span className="sm:hidden">{format(log.date, 'dd.MM.yy', { locale: nb })}</span>
-                                <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy HH:mm', { locale: nb })}</span>
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                <span className="truncate max-w-[80px] sm:max-w-none">{log.userName}</span>
-                              </span>
                             </div>
+                            {log.type === 'manual' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                onClick={() => handleDeleteEntry(log.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </Button>
+                            )}
+                          </div>
+                          {log.description && (
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2 break-words">
+                              {log.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1 shrink-0">
+                              <Calendar className="w-3 h-3" />
+                              <span className="sm:hidden">{format(log.date, 'dd.MM.yy', { locale: nb })}</span>
+                              <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy HH:mm', { locale: nb })}</span>
+                            </span>
+                            <span className="flex items-center gap-1 min-w-0">
+                              <User className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{log.userName}</span>
+                            </span>
                           </div>
                         </div>
-                        {log.type === 'manual' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteEntry(log.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}
