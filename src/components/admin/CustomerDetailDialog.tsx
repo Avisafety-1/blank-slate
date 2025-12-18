@@ -8,17 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   User, 
   Mail, 
@@ -77,6 +70,7 @@ export const CustomerDetailDialog = ({
   onOpenChange,
   customer,
 }: CustomerDetailDialogProps) => {
+  const isMobile = useIsMobile();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,7 +86,6 @@ export const CustomerDetailDialog = ({
 
     setLoading(true);
     try {
-      // Fetch missions for this customer
       const { data: missionsData, error: missionsError } = await supabase
         .from("missions")
         .select("*")
@@ -102,7 +95,6 @@ export const CustomerDetailDialog = ({
       if (missionsError) throw missionsError;
       setMissions(missionsData || []);
 
-      // Fetch incidents related to these missions
       if (missionsData && missionsData.length > 0) {
         const missionIds = missionsData.map(m => m.id);
         const { data: incidentsData, error: incidentsError } = await supabase
@@ -177,64 +169,72 @@ export const CustomerDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {customer.navn}
+      <DialogContent className={`${isMobile ? 'w-[95vw] max-w-[95vw] p-3' : 'max-w-5xl'} max-h-[90vh] overflow-y-auto`}>
+        <DialogHeader className={isMobile ? 'pb-2' : ''}>
+          <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : ''}`}>
+            <User className={isMobile ? 'h-4 w-4' : 'h-5 w-5'} />
+            <span className="break-words">{customer.navn}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className={isMobile ? 'space-y-3' : 'space-y-6'}>
           {/* Customer Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Kundeinformasjon</CardTitle>
+          <Card className={isMobile ? 'shadow-none border' : ''}>
+            <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
+              <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Kundeinformasjon</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className={`space-y-2 ${isMobile ? 'p-3 pt-0' : ''}`}>
+              <div className={`grid grid-cols-1 gap-2 ${isMobile ? '' : 'md:grid-cols-2 gap-4'}`}>
                 {customer.kontaktperson && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Kontaktperson:</span>
-                    <span>{customer.kontaktperson}</span>
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
+                    <div className="min-w-0">
+                      <span className="font-medium">Kontaktperson: </span>
+                      <span className="break-words">{customer.kontaktperson}</span>
+                    </div>
                   </div>
                 )}
                 {customer.epost && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">E-post:</span>
-                    <span>{customer.epost}</span>
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <Mail className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
+                    <div className="min-w-0">
+                      <span className="font-medium">E-post: </span>
+                      <span className="break-all">{customer.epost}</span>
+                    </div>
                   </div>
                 )}
                 {customer.telefon && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Telefon:</span>
-                    <span>{customer.telefon}</span>
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <Phone className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
+                    <div className="min-w-0">
+                      <span className="font-medium">Telefon: </span>
+                      <span>{customer.telefon}</span>
+                    </div>
                   </div>
                 )}
                 {customer.adresse && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Adresse:</span>
-                    <span>{customer.adresse}</span>
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <MapPin className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
+                    <div className="min-w-0">
+                      <span className="font-medium">Adresse: </span>
+                      <span className="break-words">{customer.adresse}</span>
+                    </div>
                   </div>
                 )}
               </div>
               {customer.merknader && (
-                <div className="pt-3 border-t">
-                  <div className="flex items-start gap-2 text-sm">
-                    <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
+                <div className={`pt-2 border-t ${isMobile ? 'mt-2' : 'pt-3'}`}>
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <FileText className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground mt-0.5 flex-shrink-0`} />
+                    <div className="min-w-0">
                       <span className="font-medium">Merknader:</span>
-                      <p className="text-muted-foreground mt-1">{customer.merknader}</p>
+                      <p className="text-muted-foreground mt-1 break-words">{customer.merknader}</p>
                     </div>
                   </div>
                 </div>
               )}
-              <div className="pt-3 border-t flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+              <div className={`pt-2 border-t flex items-center gap-2 text-muted-foreground ${isMobile ? 'text-[10px]' : 'text-sm pt-3'}`}>
+                <Calendar className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
                 <span>Opprettet: {format(new Date(customer.opprettet_dato), "d. MMMM yyyy", { locale: nb })}</span>
               </div>
             </CardContent>
@@ -242,143 +242,185 @@ export const CustomerDetailDialog = ({
 
           {/* History Tabs */}
           <Tabs defaultValue="missions" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="missions" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
+            <TabsList className={`grid w-full grid-cols-2 ${isMobile ? 'h-9' : ''}`}>
+              <TabsTrigger value="missions" className={`flex items-center gap-1 ${isMobile ? 'text-xs px-2' : 'gap-2'}`}>
+                <Briefcase className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
                 Oppdrag ({missions.length})
               </TabsTrigger>
-              <TabsTrigger value="incidents" className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
+              <TabsTrigger value="incidents" className={`flex items-center gap-1 ${isMobile ? 'text-xs px-2' : 'gap-2'}`}>
+                <AlertTriangle className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
                 Hendelser ({incidents.length})
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="missions" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Oppdragshistorikk</CardTitle>
-                  <CardDescription>
-                    Alle oppdrag for denne kunden
-                  </CardDescription>
+            <TabsContent value="missions" className={isMobile ? 'mt-2' : 'mt-4'}>
+              <Card className={isMobile ? 'shadow-none border' : ''}>
+                <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
+                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Oppdragshistorikk</CardTitle>
+                  {!isMobile && (
+                    <CardDescription>Alle oppdrag for denne kunden</CardDescription>
+                  )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className={isMobile ? 'p-3 pt-0' : ''}>
                   {loading ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
                       Laster...
                     </div>
                   ) : missions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Ingen oppdrag registrert for denne kunden
+                    <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
+                      Ingen oppdrag registrert
+                    </div>
+                  ) : isMobile ? (
+                    <div className="space-y-2">
+                      {missions.map((mission) => (
+                        <div key={mission.id} className="p-2.5 bg-muted/30 rounded-lg border">
+                          <div className="flex justify-between items-start gap-2 mb-1.5">
+                            <span className="font-medium text-xs break-words flex-1">{mission.tittel}</span>
+                            <Badge className={`${getStatusColor(mission.status)} text-[10px] px-1.5 py-0`}>
+                              {mission.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                            <LocationIcon className="h-2.5 w-2.5 flex-shrink-0" />
+                            <span className="truncate">{mission.lokasjon}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">
+                              {format(new Date(mission.tidspunkt), "d. MMM yyyy", { locale: nb })}
+                            </span>
+                            <Badge className={`${getRiskColor(mission.risk_nivå)} text-[10px] px-1.5 py-0`}>
+                              {mission.risk_nivå}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tittel</TableHead>
-                            <TableHead>Lokasjon</TableHead>
-                            <TableHead>Tidspunkt</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Risikonivå</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 font-medium">Tittel</th>
+                            <th className="text-left py-2 font-medium">Lokasjon</th>
+                            <th className="text-left py-2 font-medium">Tidspunkt</th>
+                            <th className="text-left py-2 font-medium">Status</th>
+                            <th className="text-left py-2 font-medium">Risikonivå</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {missions.map((mission) => (
-                            <TableRow key={mission.id}>
-                              <TableCell className="font-medium">
-                                {mission.tittel}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1 text-sm">
+                            <tr key={mission.id} className="border-b last:border-0">
+                              <td className="py-2 font-medium">{mission.tittel}</td>
+                              <td className="py-2">
+                                <div className="flex items-center gap-1">
                                   <LocationIcon className="h-3 w-3 text-muted-foreground" />
                                   {mission.lokasjon}
                                 </div>
-                              </TableCell>
-                              <TableCell>
+                              </td>
+                              <td className="py-2">
                                 {format(new Date(mission.tidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getStatusColor(mission.status)}>
-                                  {mission.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getRiskColor(mission.risk_nivå)}>
-                                  {mission.risk_nivå}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                              <td className="py-2">
+                                <Badge className={getStatusColor(mission.status)}>{mission.status}</Badge>
+                              </td>
+                              <td className="py-2">
+                                <Badge className={getRiskColor(mission.risk_nivå)}>{mission.risk_nivå}</Badge>
+                              </td>
+                            </tr>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="incidents" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Hendelseshistorikk</CardTitle>
-                  <CardDescription>
-                    Alle hendelser knyttet til kundens oppdrag
-                  </CardDescription>
+            <TabsContent value="incidents" className={isMobile ? 'mt-2' : 'mt-4'}>
+              <Card className={isMobile ? 'shadow-none border' : ''}>
+                <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
+                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Hendelseshistorikk</CardTitle>
+                  {!isMobile && (
+                    <CardDescription>Alle hendelser knyttet til kundens oppdrag</CardDescription>
+                  )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className={isMobile ? 'p-3 pt-0' : ''}>
                   {loading ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
                       Laster...
                     </div>
                   ) : incidents.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Ingen hendelser registrert for denne kundens oppdrag
+                    <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
+                      Ingen hendelser registrert
+                    </div>
+                  ) : isMobile ? (
+                    <div className="space-y-2">
+                      {incidents.map((incident) => (
+                        <div key={incident.id} className="p-2.5 bg-muted/30 rounded-lg border">
+                          <div className="flex justify-between items-start gap-2 mb-1.5">
+                            <span className="font-medium text-xs break-words flex-1">{incident.tittel}</span>
+                            <Badge className={`${getSeverityColor(incident.alvorlighetsgrad)} text-[10px] px-1.5 py-0`}>
+                              {incident.alvorlighetsgrad}
+                            </Badge>
+                          </div>
+                          {incident.lokasjon && (
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                              <LocationIcon className="h-2.5 w-2.5 flex-shrink-0" />
+                              <span className="truncate">{incident.lokasjon}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">
+                              {format(new Date(incident.hendelsestidspunkt), "d. MMM yyyy", { locale: nb })}
+                            </span>
+                            <Badge className={`${getStatusColor(incident.status)} text-[10px] px-1.5 py-0`}>
+                              {incident.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tittel</TableHead>
-                            <TableHead>Tidspunkt</TableHead>
-                            <TableHead>Alvorlighetsgrad</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Lokasjon</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 font-medium">Tittel</th>
+                            <th className="text-left py-2 font-medium">Tidspunkt</th>
+                            <th className="text-left py-2 font-medium">Alvorlighetsgrad</th>
+                            <th className="text-left py-2 font-medium">Status</th>
+                            <th className="text-left py-2 font-medium">Lokasjon</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {incidents.map((incident) => (
-                            <TableRow key={incident.id}>
-                              <TableCell className="font-medium">
-                                {incident.tittel}
-                              </TableCell>
-                              <TableCell>
+                            <tr key={incident.id} className="border-b last:border-0">
+                              <td className="py-2 font-medium">{incident.tittel}</td>
+                              <td className="py-2">
                                 {format(new Date(incident.hendelsestidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
-                              </TableCell>
-                              <TableCell>
+                              </td>
+                              <td className="py-2">
                                 <Badge className={getSeverityColor(incident.alvorlighetsgrad)}>
                                   {incident.alvorlighetsgrad}
                                 </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getStatusColor(incident.status)}>
-                                  {incident.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
+                              </td>
+                              <td className="py-2">
+                                <Badge className={getStatusColor(incident.status)}>{incident.status}</Badge>
+                              </td>
+                              <td className="py-2">
                                 {incident.lokasjon ? (
-                                  <div className="flex items-center gap-1 text-sm">
+                                  <div className="flex items-center gap-1">
                                     <LocationIcon className="h-3 w-3 text-muted-foreground" />
                                     {incident.lokasjon}
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
                                 )}
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                            </tr>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
@@ -387,7 +429,7 @@ export const CustomerDetailDialog = ({
           </Tabs>
 
           <div className="flex justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} size={isMobile ? 'sm' : 'default'}>
               Lukk
             </Button>
           </div>
