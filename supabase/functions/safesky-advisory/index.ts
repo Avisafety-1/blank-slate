@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const callSign = pilotName || 'Drone Pilot';
+      const callSign = 'Pilot posisjon';
       const advisoryId = `AVS_LIVE_${Date.now().toString(36)}`;
 
       // Build Point GeoJSON FeatureCollection payload
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: 120,
+            max_altitude: 0,
             max_distance: 100, // 100m radius
             remarks: "Live drone operation"
           },
@@ -173,20 +173,11 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Determine AIRBORNE vs ON_GROUND status based on flight dynamics
-      // AIRBORNE if: speed > 2 m/s, OR altitude delta > 5m, OR vertical speed > 0.5 m/s
+      // Always GROUNDED status for live UAV pilot position
       const groundSpeed = speed || 0;
-      const altDelta = altitudeDelta || 0;
-      const vSpeed = verticalSpeed || 0;
+      const status = "GROUNDED";
       
-      const isAirborne = 
-        groundSpeed > 2 ||              // Moving faster than 2 m/s (walking speed)
-        altDelta > 5 ||                 // More than 5m above start altitude
-        Math.abs(vSpeed) > 0.5;         // Climbing or descending > 0.5 m/s
-      
-      const status = isAirborne ? "AIRBORNE" : "GROUNDED";
-      
-      console.log(`Flight status: ${status} (speed=${Math.round(groundSpeed)} m/s, altDelta=${altDelta.toFixed(1)}m, vSpeed=${vSpeed.toFixed(2)} m/s)`);
+      console.log(`Flight status: ${status} (speed=${Math.round(groundSpeed)} m/s)`);
 
       // Create UAV beacon payload with status and dynamics (all numeric values must be integers)
       const beaconId = `AVS_LIVE_${Date.now().toString(36)}`;
@@ -235,7 +226,7 @@ Deno.serve(async (req) => {
           beaconId,
           status,
           position: { lat, lon, alt: alt || 50 },
-          dynamics: { speed: groundSpeed, altitudeDelta: altDelta, verticalSpeed: vSpeed },
+          dynamics: { speed: groundSpeed },
           message: `Live UAV position published as ${status}`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
