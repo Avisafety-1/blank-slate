@@ -9,7 +9,6 @@ import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import droneBackground from "@/assets/drone-background.png";
-import { Header } from "@/components/Header";
 import { format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -709,8 +708,6 @@ export default function Kalender() {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-        <Header />
-
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="flex flex-col lg:flex-row gap-6">

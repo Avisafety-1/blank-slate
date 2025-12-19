@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/Header";
 import { GlassCard } from "@/components/GlassCard";
 import droneBackground from "@/assets/drone-background.png";
 import {
@@ -352,7 +351,6 @@ const Status = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
-        <Header />
         <main className="container mx-auto px-4 py-8">
           <div className="text-center">Laster statistikk...</div>
         </main>
@@ -955,7 +953,6 @@ const Status = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-      <Header />
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Statistikk</h1>

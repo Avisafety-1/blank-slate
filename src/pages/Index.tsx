@@ -10,7 +10,6 @@ import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
 import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
-import { Header } from "@/components/Header";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -313,7 +312,6 @@ const Index = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-        <Header />
 
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">

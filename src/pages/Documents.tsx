@@ -13,7 +13,7 @@ import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialo
 import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDialog";
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
-import { Header } from "@/components/Header";
+
 export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "annet";
 export interface Document {
   id: string;
@@ -141,8 +141,6 @@ const Documents = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-        <Header />
-
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-6">
