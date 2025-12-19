@@ -319,6 +319,7 @@
     "saveChanges": "Save changes",
     "createMission": "Create mission",
     "unknown": "Unknown",
+    "locationRequired": "Location is required",
     "riskLevels": {
       "low": "Low",
       "medium": "Medium",
