@@ -1,4 +1,5 @@
-import { Shield, LogOut, Settings, Menu, Building2, Globe } from "lucide-react";
+import { LogOut, Settings, Menu, Building2, Globe } from "lucide-react";
+import avisafeLogo from "@/assets/avisafe-logo-text.png";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -105,16 +106,14 @@ export const Header = () => {
         <div className="flex items-center justify-between gap-1 sm:gap-2">
           <Button 
             variant="ghost" 
-            className="flex items-center gap-1 sm:gap-2 lg:gap-3 hover:bg-transparent p-0 flex-shrink-0"
+            className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
             onClick={() => navigate("/")}
           >
-            <Shield className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-primary" />
-            <div className="text-left">
-              <h1 className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold whitespace-nowrap">SMS</h1>
-              <p className="text-xs lg:text-sm text-foreground/80 hidden lg:block">
-                {isSuperAdmin ? t('header.superAdmin') : companyName || "Drone Operations"}
-              </p>
-            </div>
+            <img 
+              src={avisafeLogo} 
+              alt="AviSafe" 
+              className="h-8 sm:h-10 lg:h-12 w-auto dark:invert"
+            />
           </Button>
           
           {/* Mobile company selector and menu */}
