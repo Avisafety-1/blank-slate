@@ -399,6 +399,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                     <SelectItem value="Åpen">Åpen</SelectItem>
                     <SelectItem value="Under behandling">Under behandling</SelectItem>
                     <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
+                    <SelectItem value="Lukket">Lukket</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
