@@ -24,12 +24,15 @@ import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialo
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
+import { usePresence } from "@/hooks/usePresence";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 const Resources = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, loading, companyId } = useAuth();
   const terminology = useTerminology();
+  const { isOnline } = usePresence();
   const [drones, setDrones] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [dronetags, setDronetags] = useState<any[]>([]);
@@ -471,12 +474,18 @@ const Resources = () => {
                     }}
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={person.avatar_url || ""} />
-                        <AvatarFallback>
-                          {person.full_name?.charAt(0) || person.email?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarImage src={person.avatar_url || ""} />
+                          <AvatarFallback>
+                            {person.full_name?.charAt(0) || person.email?.charAt(0).toUpperCase() || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <OnlineIndicator 
+                          isOnline={isOnline(person.id)} 
+                          className="absolute -bottom-0.5 -right-0.5"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">
                           {person.full_name || t('common.unknownName')}
