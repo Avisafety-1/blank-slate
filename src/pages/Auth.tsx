@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from "sonner";
 import { Chrome, CheckCircle2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
-import avisafeLogo from "@/assets/avisafe-logo.png";
+import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 const Auth = () => {
   const { t } = useTranslation();
