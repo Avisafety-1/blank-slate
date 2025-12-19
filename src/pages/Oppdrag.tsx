@@ -221,6 +221,10 @@ const Oppdrag = () => {
             kontaktperson,
             telefon,
             epost
+          ),
+          created_by:profiles!missions_user_id_fkey (
+            id,
+            full_name
           )
         `)
         .order("tidspunkt", { ascending: filterTab === "active" });
@@ -1094,6 +1098,14 @@ const Oppdrag = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Created By */}
+                    {mission.created_by && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Opprettet av: </span>
+                        <span className="text-foreground">{mission.created_by.full_name || "Ukjent"}</span>
+                      </div>
+                    )}
 
                     {/* Customer Info */}
                     {mission.customers && (
