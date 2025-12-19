@@ -1145,7 +1145,7 @@ export type Database = {
           completed_checklists: string[] | null
           created_at: string | null
           departure_location: string
-          drone_id: string
+          drone_id: string | null
           dronetag_device_id: string | null
           flight_date: string
           flight_duration_minutes: number
@@ -1163,7 +1163,7 @@ export type Database = {
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location: string
-          drone_id: string
+          drone_id?: string | null
           dronetag_device_id?: string | null
           flight_date?: string
           flight_duration_minutes: number
@@ -1181,7 +1181,7 @@ export type Database = {
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location?: string
-          drone_id?: string
+          drone_id?: string | null
           dronetag_device_id?: string | null
           flight_date?: string
           flight_duration_minutes?: number
