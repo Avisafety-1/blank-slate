@@ -175,12 +175,12 @@ export const ProfileDialog = () => {
         setCompetencies(competenciesData);
       }
 
-      // Fetch follow-up incidents
+      // Fetch follow-up incidents (exclude only "Lukket" status)
       const { data: followUpIncidentsData } = await supabase
         .from("incidents")
         .select("*")
         .eq("oppfolgingsansvarlig_id", user.id)
-        .neq("status", "Ferdigbehandlet")
+        .neq("status", "Lukket")
         .order("hendelsestidspunkt", { ascending: false });
 
       if (followUpIncidentsData) {
