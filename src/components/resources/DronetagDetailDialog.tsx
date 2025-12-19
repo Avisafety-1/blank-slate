@@ -89,7 +89,7 @@ export function DronetagDetailDialog({ open, onOpenChange, dronetag, onDronetagU
 
     if (error) {
       console.error("Error deleting dronetag device:", error);
-      toast.error(t('dronetag.deleteError'));
+      toast.error(`${t('dronetag.deleteError')}: ${error.message}`);
     } else {
       toast.success(t('dronetag.deleteSuccess'));
       onOpenChange(false);

@@ -12,9 +12,10 @@ import { toast } from "sonner";
 interface AddDronetagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDronetagCreated?: () => void;
 }
 
-export function AddDronetagDialog({ open, onOpenChange }: AddDronetagDialogProps) {
+export function AddDronetagDialog({ open, onOpenChange, onDronetagCreated }: AddDronetagDialogProps) {
   const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -58,7 +59,7 @@ export function AddDronetagDialog({ open, onOpenChange }: AddDronetagDialogProps
 
     if (error) {
       console.error("Error creating dronetag device:", error);
-      toast.error(t('dronetag.createError'));
+      toast.error(`${t('dronetag.createError')}: ${error.message}`);
     } else {
       toast.success(t('dronetag.createSuccess'));
       setFormData({
@@ -68,6 +69,7 @@ export function AddDronetagDialog({ open, onOpenChange }: AddDronetagDialogProps
         kjopsdato: "",
         description: "",
       });
+      onDronetagCreated?.();
       onOpenChange(false);
     }
   };
