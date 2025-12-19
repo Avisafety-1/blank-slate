@@ -5,6 +5,8 @@ import { nb } from "date-fns/locale";
 import { useState, useMemo } from "react";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
+import { usePresence } from "@/hooks/usePresence";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 interface PersonnelListDialogProps {
   open: boolean;
@@ -16,6 +18,7 @@ interface PersonnelListDialogProps {
 export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnelUpdated }: PersonnelListDialogProps) => {
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { isOnline } = usePresence();
 
   // Calculate status for each person based on their competencies
   const personnelWithStatus = useMemo(() => {
@@ -53,13 +56,16 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
               className="border border-border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">{person.full_name || "Ukjent navn"}</h3>
-                  {person.created_at && (
-                    <p className="text-sm text-muted-foreground">
-                      Opprettet: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: nb })}
-                    </p>
-                  )}
+                <div className="flex items-center gap-2">
+                  <OnlineIndicator isOnline={isOnline(person.id)} />
+                  <div>
+                    <h3 className="font-semibold text-lg">{person.full_name || "Ukjent navn"}</h3>
+                    {person.created_at && (
+                      <p className="text-sm text-muted-foreground">
+                        Opprettet: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: nb })}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <StatusBadge status={person.calculatedStatus} />
               </div>
