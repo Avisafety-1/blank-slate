@@ -596,6 +596,7 @@ const Resources = () => {
       <AddDronetagDialog
         open={dronetagDialogOpen}
         onOpenChange={setDronetagDialogOpen}
+        onDronetagCreated={fetchDronetags}
       />
 
       <DronetagDetailDialog
