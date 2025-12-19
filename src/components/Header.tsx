@@ -23,36 +23,15 @@ interface Company {
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin, companyId, refetchUserInfo, user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
-
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    }
-  }, [user]);
 
   useEffect(() => {
     if (isSuperAdmin) {
       fetchCompanies();
     }
   }, [isSuperAdmin]);
-
-  const checkAdminStatus = async () => {
-    try {
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: user?.id,
-        _role: 'admin'
-      });
-
-      if (error) throw error;
-      setIsAdmin(data || false);
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-    }
-  };
 
   const fetchCompanies = async () => {
     try {

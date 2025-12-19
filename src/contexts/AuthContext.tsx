@@ -13,6 +13,8 @@ interface AuthContextType {
   companyName: string | null;
   companyType: CompanyType;
   isSuperAdmin: boolean;
+  isAdmin: boolean;
+  isApproved: boolean;
   userRole: string | null;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
@@ -26,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   companyName: null,
   companyType: null,
   isSuperAdmin: false,
+  isAdmin: false,
+  isApproved: false,
   userRole: null,
   signOut: async () => {},
   refetchUserInfo: async () => {},
@@ -47,6 +51,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,28 +63,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Check approval for Google sign-in users
         if (event === 'SIGNED_IN' && session?.user) {
-          setTimeout(async () => {
-            const { data: profileData } = await supabase
-              .from("profiles")
-              .select("approved")
-              .eq("id", session.user.id)
-              .maybeSingle();
-
-            if (profileData && !profileData.approved) {
-              await supabase.auth.signOut();
-              toast.error("Din konto venter på godkjenning fra administrator");
-            } else {
-              // Fetch company info after approval check
-              fetchUserInfo(session.user.id);
-            }
+          // Defer Supabase calls with setTimeout to prevent deadlock
+          setTimeout(() => {
+            fetchUserInfo(session.user.id);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
           setCompanyId(null);
           setCompanyName(null);
           setCompanyType(null);
           setIsSuperAdmin(false);
+          setIsAdmin(false);
+          setIsApproved(false);
           setUserRole(null);
         }
       }
@@ -100,37 +96,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserInfo = async (userId: string) => {
     try {
-      // Fetch company info including type
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select(`
-          company_id,
-          companies (
-            id,
-            navn,
-            selskapstype
-          )
-        `)
-        .eq('id', userId)
-        .single();
+      // Parallel queries for profile+company and role
+      const [profileResult, roleResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(`
+            company_id,
+            approved,
+            companies (
+              id,
+              navn,
+              selskapstype
+            )
+          `)
+          .eq('id', userId)
+          .single(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
       
-      if (profile) {
+      if (profileResult.data) {
+        const profile = profileResult.data;
         setCompanyId(profile.company_id);
+        setIsApproved(profile.approved ?? false);
+        
         const company = profile.companies as any;
         setCompanyName(company?.navn || null);
         setCompanyType(company?.selskapstype || 'droneoperator');
+
+        // If not approved, sign out
+        if (!profile.approved) {
+          await supabase.auth.signOut();
+          toast.error("Din konto venter på godkjenning fra administrator");
+          return;
+        }
       }
 
-      // Fetch user's single role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (roleData) {
-        setUserRole(roleData.role);
-        setIsSuperAdmin(roleData.role === 'superadmin');
+      if (roleResult.data) {
+        setUserRole(roleResult.data.role);
+        setIsSuperAdmin(roleResult.data.role === 'superadmin');
+        setIsAdmin(roleResult.data.role === 'admin' || roleResult.data.role === 'superadmin');
       }
     } catch (error) {
       console.error('Error fetching user info:', error);
@@ -148,7 +156,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, companyId, companyName, companyType, isSuperAdmin, userRole, signOut, refetchUserInfo }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      companyId, 
+      companyName, 
+      companyType, 
+      isSuperAdmin, 
+      isAdmin,
+      isApproved,
+      userRole, 
+      signOut, 
+      refetchUserInfo 
+    }}>
       {children}
     </AuthContext.Provider>
   );

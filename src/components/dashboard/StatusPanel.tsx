@@ -1,28 +1,20 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Plane, Gauge, Users } from "lucide-react";
 import { Status } from "@/types";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DroneListDialog } from "./DroneListDialog";
 import { EquipmentListDialog } from "./EquipmentListDialog";
 import { PersonnelListDialog } from "./PersonnelListDialog";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
-import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
+import { useStatusData } from "@/hooks/useStatusData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StatusCounts {
   Grønn: number;
   Gul: number;
   Rød: number;
 }
-
-const countByStatus = (items: { status: Status }[]): StatusCounts => {
-  return items.reduce((acc, item) => {
-    acc[item.status]++;
-    return acc;
-  }, { Grønn: 0, Gul: 0, Rød: 0 });
-};
 
 const StatusCard = ({
   title,
@@ -77,123 +69,59 @@ const StatusCard = ({
   );
 };
 
+const StatusCardSkeleton = () => (
+  <div className="bg-muted/30 border-2 border-muted rounded p-2 sm:p-3">
+    <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+      <Skeleton className="w-4 h-4 sm:w-5 sm:h-5 rounded" />
+      <Skeleton className="h-4 w-16" />
+    </div>
+    <Skeleton className="h-8 w-12 mb-1 sm:mb-2" />
+    <div className="flex gap-2">
+      <Skeleton className="h-3 w-8" />
+      <Skeleton className="h-3 w-8" />
+      <Skeleton className="h-3 w-8" />
+    </div>
+  </div>
+);
+
 export const StatusPanel = () => {
   const { t } = useTranslation();
-  const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
   const [personnelDialogOpen, setPersonnelDialogOpen] = useState(false);
-  const [drones, setDrones] = useState<any[]>([]);
-  const [equipment, setEquipment] = useState<any[]>([]);
-  const [personnel, setPersonnel] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      fetchDrones();
-      fetchEquipment();
-      fetchPersonnel();
-    }
-  }, [user, companyId]);
-
-  const fetchDrones = async () => {
-    // Fetch drones with their accessories and linked equipment
-    const { data: dronesData, error } = await supabase
-      .from("drones")
-      .select("*")
-      .eq("aktiv", true);
-    
-    if (error || !dronesData) {
-      console.error("Error fetching drones:", error);
-      return;
-    }
-
-    // Fetch accessories and linked equipment for each drone
-    const dronesWithAggregatedStatus = await Promise.all(
-      dronesData.map(async (drone) => {
-        // Fetch accessories
-        const { data: accessories } = await supabase
-          .from("drone_accessories")
-          .select("*")
-          .eq("drone_id", drone.id);
-
-        // Fetch linked equipment
-        const { data: linkedEquipmentData } = await supabase
-          .from("drone_equipment")
-          .select(`
-            equipment:equipment_id (
-              id,
-              neste_vedlikehold,
-              varsel_dager
-            )
-          `)
-          .eq("drone_id", drone.id);
-
-        const linkedEquipment = (linkedEquipmentData || [])
-          .map((link: any) => link.equipment)
-          .filter(Boolean);
-
-        // Calculate aggregated status
-        const { status } = calculateDroneAggregatedStatus(
-          { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
-          accessories || [],
-          linkedEquipment
-        );
-
-        return { ...drone, status };
-      })
-    );
-
-    setDrones(dronesWithAggregatedStatus);
-  };
-
-  const fetchEquipment = async () => {
-    const { data, error } = await supabase
-      .from("equipment")
-      .select("*")
-      .eq("aktiv", true);
-    
-    if (!error && data) {
-      // Calculate dynamic status based on neste_vedlikehold with varsel_dager
-      const equipmentWithDynamicStatus = data.map(item => ({
-        ...item,
-        status: calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status
-      }));
-      setEquipment(equipmentWithDynamicStatus);
-    }
-  };
-
-  const fetchPersonnel = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*, personnel_competencies(*)")
-      .eq("approved", true);
-    
-    if (!error && data) {
-      // Map profiles to include a status field based on competency expiry
-      const personnelWithStatus = data.map(profile => ({
-        ...profile,
-        status: calculatePersonnelAggregatedStatus(
-          profile.personnel_competencies || [],
-          30 // Warning 30 days before expiry
-        )
-      }));
-      setPersonnel(personnelWithStatus);
-    }
-  };
-
-  const droneStatus = countByStatus(drones);
-  const equipmentStatus = countByStatus(equipment);
-  const personnelStatus = countByStatus(personnel);
+  const {
+    isLoading,
+    drones,
+    equipment,
+    personnel,
+    droneStatus,
+    equipmentStatus,
+    personnelStatus,
+    refetchDrones,
+    refetchEquipment,
+    refetchPersonnel,
+  } = useStatusData();
 
   return (
     <>
       <GlassCard className="overflow-hidden">
         <h2 className="text-sm sm:text-base font-semibold mb-3">{t('dashboard.status.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
-          <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onClick={() => setDroneDialogOpen(true)} />
-          <StatusCard title={t('dashboard.status.equipment')} icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
-          <StatusCard title={t('dashboard.status.personnel')} icon={Users} counts={personnelStatus} onClick={() => setPersonnelDialogOpen(true)} />
+          {isLoading ? (
+            <>
+              <StatusCardSkeleton />
+              <StatusCardSkeleton />
+              <StatusCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onClick={() => setDroneDialogOpen(true)} />
+              <StatusCard title={t('dashboard.status.equipment')} icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
+              <StatusCard title={t('dashboard.status.personnel')} icon={Users} counts={personnelStatus} onClick={() => setPersonnelDialogOpen(true)} />
+            </>
+          )}
         </div>
       </GlassCard>
       
@@ -201,19 +129,19 @@ export const StatusPanel = () => {
         open={droneDialogOpen} 
         onOpenChange={setDroneDialogOpen} 
         drones={drones}
-        onDronesUpdated={fetchDrones}
+        onDronesUpdated={refetchDrones}
       />
       <EquipmentListDialog 
         open={equipmentDialogOpen} 
         onOpenChange={setEquipmentDialogOpen} 
         equipment={equipment}
-        onEquipmentUpdated={fetchEquipment}
+        onEquipmentUpdated={refetchEquipment}
       />
       <PersonnelListDialog 
         open={personnelDialogOpen} 
         onOpenChange={setPersonnelDialogOpen} 
         personnel={personnel}
-        onPersonnelUpdated={fetchPersonnel}
+        onPersonnelUpdated={refetchPersonnel}
       />
     </>
   );
