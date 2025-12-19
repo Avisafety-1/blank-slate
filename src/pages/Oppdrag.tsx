@@ -221,10 +221,6 @@ const Oppdrag = () => {
             kontaktperson,
             telefon,
             epost
-          ),
-          created_by:profiles!missions_user_id_fkey (
-            id,
-            full_name
           )
         `)
         .order("tidspunkt", { ascending: filterTab === "active" });
@@ -316,6 +312,17 @@ const Oppdrag = () => {
             })
           );
 
+          // Fetch created by user name
+          let createdByName = null;
+          if (mission.user_id) {
+            const { data: createdByProfile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", mission.user_id)
+              .maybeSingle();
+            createdByName = createdByProfile?.full_name || null;
+          }
+
           return {
             ...mission,
             personnel: personnel || [],
@@ -324,7 +331,8 @@ const Oppdrag = () => {
             documents: documents || [],
             sora: sora || null,
             incidents: incidents || [],
-            flightLogs: flightLogsWithPilot || []
+            flightLogs: flightLogsWithPilot || [],
+            created_by_name: createdByName
           };
         })
       );
@@ -1100,10 +1108,10 @@ const Oppdrag = () => {
                     </div>
 
                     {/* Created By */}
-                    {mission.created_by && (
+                    {mission.created_by_name && (
                       <div className="text-sm">
                         <span className="text-muted-foreground">Opprettet av: </span>
-                        <span className="text-foreground">{mission.created_by.full_name || "Ukjent"}</span>
+                        <span className="text-foreground">{mission.created_by_name}</span>
                       </div>
                     )}
 
