@@ -45,11 +45,9 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, isApproved } = useAuth();
   const navigate = useNavigate();
   const [layout, setLayout] = useState(defaultLayout);
-  const [isApproved, setIsApproved] = useState(false);
-  const [checkingApproval, setCheckingApproval] = useState(true);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
@@ -220,32 +218,6 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      checkUserApproval();
-    }
-  }, [user]);
-
-  const checkUserApproval = async () => {
-    setCheckingApproval(true);
-    try {
-      const { data: profileData } = await supabase.from("profiles").select("approved").eq("id", user?.id).maybeSingle();
-
-      if (profileData) {
-        setIsApproved((profileData as any).approved);
-
-        if (!(profileData as any).approved) {
-          // User is not approved, sign them out
-          await signOut();
-        }
-      }
-    } catch (error) {
-      console.error("Error checking approval:", error);
-    } finally {
-      setCheckingApproval(false);
-    }
-  };
-
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
   useEffect(() => {
@@ -279,7 +251,7 @@ const Index = () => {
     }
   };
 
-  if (loading || checkingApproval) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
