@@ -342,6 +342,13 @@ export const AddMissionDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.lokasjon?.trim()) {
+      toast.error(t('missions.locationRequired'));
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -687,6 +694,7 @@ export const AddMissionDialog = ({
                 });
               }}
               placeholder={t('missions.searchAddress')}
+              required={true}
             />
             
             <AirspaceWarnings 

@@ -319,6 +319,7 @@
     "saveChanges": "Lagre endringer",
     "createMission": "Opprett oppdrag",
     "unknown": "Ukjent",
+    "locationRequired": "Lokasjon er påkrevd",
     "riskLevels": {
       "low": "Lav",
       "medium": "Middels",

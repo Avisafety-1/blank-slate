@@ -10,6 +10,7 @@ interface AddressAutocompleteProps {
   onChange: (value: string) => void;
   onSelectLocation?: (location: { address: string; lat: number; lon: number }) => void;
   placeholder?: string;
+  required?: boolean;
 }
 
 interface KartverketResult {
@@ -33,6 +34,7 @@ export function AddressAutocomplete({
   onChange,
   onSelectLocation,
   placeholder = "Søk etter adresse...",
+  required = false,
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<KartverketResult[]>([]);
@@ -135,6 +137,7 @@ export function AddressAutocomplete({
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder={placeholder}
           className="pr-8"
+          required={required}
         />
         {isLoading && (
           <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
