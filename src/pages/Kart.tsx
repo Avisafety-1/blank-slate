@@ -1,6 +1,5 @@
 import { OpenAIPMap, RouteData } from "@/components/OpenAIPMap";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
-import { Header } from "@/components/Header";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -146,9 +145,6 @@ export default function KartPage() {
 
   return (
     <div className="h-screen flex flex-col w-full">
-      {/* Always show Header for navigation access */}
-      <Header />
-      
       {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
         <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0">

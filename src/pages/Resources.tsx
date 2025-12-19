@@ -2,7 +2,6 @@ import droneBackground from "@/assets/drone-background.png";
 import { Plane, Plus, Gauge, Users, Search, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Header } from "@/components/Header";
 import { GlassCard } from "@/components/GlassCard";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -206,8 +205,6 @@ const Resources = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-        <Header />
-
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-4 sm:py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">

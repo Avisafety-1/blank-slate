@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Header } from "@/components/Header";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -982,8 +981,6 @@ const Oppdrag = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full">
-        <Header />
-
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
