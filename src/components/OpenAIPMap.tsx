@@ -874,8 +874,9 @@ export function OpenAIPMap({
               props.OBJECTID ||
               'Ukjent område';
 
+            const excludeKeys = ['globalid', 'shape_area', 'shape_length', 'objectid'];
             const details = Object.entries(props)
-              .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+              .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== '' && !excludeKeys.includes(k.toLowerCase()))
               .slice(0, 8)
               .map(([k, v]) => `<div style="font-size: 11px;"><span style="color:#666;">${k}:</span> ${String(v)}</div>`)
               .join('');
