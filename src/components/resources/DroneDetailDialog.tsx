@@ -878,6 +878,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                         <Input
                           id="acc-sist"
                           type="date"
+                          className="w-full"
                           value={newAccessory.sist_vedlikehold}
                           onChange={(e) => setNewAccessory({ ...newAccessory, sist_vedlikehold: e.target.value })}
                         />
