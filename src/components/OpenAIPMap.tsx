@@ -297,6 +297,17 @@ export function OpenAIPMap({
   // Sync mode ref and update route display when mode changes
   useEffect(() => {
     modeRef.current = mode;
+    
+    // Disable pointer events on overlay panes when in route planning mode
+    // This allows clicks to pass through to the map for adding route points
+    if (leafletMapRef.current) {
+      const map = leafletMapRef.current;
+      const overlayPane = map.getPane('overlayPane');
+      if (overlayPane) {
+        overlayPane.style.pointerEvents = mode === 'routePlanning' ? 'none' : 'auto';
+      }
+    }
+    
     // Update route display when mode changes (to update draggable status on markers)
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
