@@ -1310,31 +1310,87 @@ export function OpenAIPMap({
               caution: '#f59e0b',
               warning: '#dc2626',
             };
+            const recTexts: Record<string, string> = {
+              ok: 'Gode flyforhold',
+              caution: 'Fly med forsiktighet',
+              warning: 'Anbefales ikke å fly',
+            };
+            
+            // Genererer årsak til anbefaling
+            const getReasons = (h: any) => {
+              const reasons: string[] = [];
+              const windSpeed = h.wind_speed || 0;
+              const windGust = h.wind_gust || 0;
+              const precipitation = h.precipitation || 0;
+              const temperature = h.temperature || 0;
+              const symbol = h.symbol || '';
+              
+              if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
+              if (windGust > 15) reasons.push(`Kraftige vindkast (${windGust.toFixed(1)} m/s)`);
+              if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
+              if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
+              if (symbol.includes('fog')) reasons.push('Tåke');
+              
+              if (reasons.length === 0) {
+                if (windSpeed > 7) reasons.push(`Mye vind (${windSpeed.toFixed(1)} m/s)`);
+                if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
+                if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
+                if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
+              }
+              return reasons;
+            };
+            
+            const popupId = `forecast-popup-${Date.now()}`;
             
             html += `
               <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                  <div style="font-size: 11px; font-weight: 600; color: #6b7280;">Prognose neste 12 timer</div>
-                  <div style="display: flex; gap: 8px; font-size: 9px; color: #9ca3af;">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
+                  <div style="font-size: 11px; font-weight: 600; color: #6b7280; line-height: 1.3;">Prognose neste<br/>12 timer</div>
+                  <div style="display: flex; gap: 6px; font-size: 9px; color: #9ca3af;">
                     <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span>OK</span>
                     <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #f59e0b; border-radius: 2px;"></span>Forsiktig</span>
                     <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>Ikke fly</span>
                   </div>
                 </div>
-                <div style="display: flex; gap: 2px;">
+                <div style="display: flex; gap: 2px; position: relative;">
                   ${forecast.map((h: any, i: number) => {
                     const hour = new Date(h.time).getHours().toString().padStart(2, '0');
                     const color = recColors[h.recommendation] || '#9ca3af';
-                    const temp = h.temperature?.toFixed(0) || '-';
-                    const wind = h.wind_speed?.toFixed(0) || '-';
+                    const temp = h.temperature?.toFixed(1) || '-';
+                    const wind = h.wind_speed?.toFixed(1) || '-';
+                    const windGust = h.wind_gust?.toFixed(1) || null;
+                    const precip = h.precipitation?.toFixed(1) || '0';
+                    const reasons = getReasons(h);
+                    const reasonsHtml = h.recommendation !== 'ok' && reasons.length > 0 
+                      ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; color: ${color}; font-size: 10px;">${recTexts[h.recommendation]}<ul style="margin: 2px 0 0 12px; padding: 0;">${reasons.map(r => `<li>${r}</li>`).join('')}</ul></div>`
+                      : h.recommendation === 'ok' ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">Gode flyforhold</div>` : '';
+                    
                     return `
-                      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;" title="${hour}:00 - ${temp}°C, ${wind} m/s">
-                        <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px;"></div>
+                      <div 
+                        class="forecast-block" 
+                        data-index="${i}"
+                        style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;"
+                        onclick="
+                          const popup = document.getElementById('${popupId}');
+                          const existingContent = popup.innerHTML;
+                          const newContent = '<div style=\\'padding: 8px; background: white; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 11px; min-width: 140px;\\'><div style=\\'font-weight: 600; margin-bottom: 6px;\\'>${hour}:00</div><div style=\\'display: flex; align-items: center; gap: 4px; margin-bottom: 3px;\\'><span>🌡️</span><span>${temp}°C</span></div><div style=\\'display: flex; align-items: center; gap: 4px; margin-bottom: 3px;\\'><span>💨</span><span>${wind} m/s${windGust ? ` (kast ${windGust})` : ''}</span></div><div style=\\'display: flex; align-items: center; gap: 4px;\\'><span>💧</span><span>${precip} mm</span></div>${reasonsHtml.replace(/'/g, "\\'")}</div>';
+                          if (popup.style.display === 'block' && popup.dataset.index === '${i}') {
+                            popup.style.display = 'none';
+                          } else {
+                            popup.innerHTML = newContent;
+                            popup.dataset.index = '${i}';
+                            popup.style.display = 'block';
+                            popup.style.left = (this.offsetLeft + this.offsetWidth/2 - popup.offsetWidth/2) + 'px';
+                          }
+                        "
+                      >
+                        <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px; transition: transform 0.1s;" onmouseover="this.style.transform='scaleY(1.2)'" onmouseout="this.style.transform='scaleY(1)'"></div>
                         <span style="font-size: 8px; color: #9ca3af;">${hour}</span>
                       </div>
                     `;
                   }).join('')}
                 </div>
+                <div id="${popupId}" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 4px; z-index: 10;"></div>
               </div>
             `;
             
@@ -1343,8 +1399,8 @@ export function OpenAIPMap({
               const startTime = new Date(data.best_flight_window.start_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
               const endTime = new Date(data.best_flight_window.end_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
               html += `
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #10b981; font-weight: 500;">
-                  <span>✨</span>
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500;">
+                  <span style="color: #10b981;">✨</span>
                   <span>Beste flyvindu: ${startTime} - ${endTime} (${data.best_flight_window.duration_hours}t)</span>
                 </div>
               `;
