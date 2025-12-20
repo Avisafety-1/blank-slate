@@ -19,20 +19,19 @@ function getCacheKey(lat: number, lon: number): string {
   return `${truncateCoord(lat)},${truncateCoord(lon)}`;
 }
 
-// Evaluerer drone-advarsler basert på værforhold
-function evaluateWeatherForDrone(data: any) {
+// Evaluerer drone-advarsler basert på værforhold for ett tidspunkt
+function evaluateWeatherConditions(current: any, next1h: any) {
   const warnings: any[] = [];
-  const current = data.properties?.timeseries?.[0]?.data?.instant?.details;
-  
+
   if (!current) {
-    return { warnings, recommendation: 'unknown' };
+    return { warnings, recommendation: 'unknown' as const };
   }
 
   const windSpeed = current.wind_speed || 0;
   const windGust = current.wind_speed_of_gust || 0;
-  const precipitation = data.properties?.timeseries?.[0]?.data?.next_1_hours?.details?.precipitation_amount || 0;
+  const precipitation = next1h?.details?.precipitation_amount || 0;
   const temperature = current.air_temperature || 0;
-  const symbolCode = data.properties?.timeseries?.[0]?.data?.next_1_hours?.summary?.symbol_code || '';
+  const symbolCode = next1h?.summary?.symbol_code || '';
 
   // Vind advarsler
   if (windSpeed > 10) {
@@ -138,7 +137,7 @@ function evaluateWeatherForDrone(data: any) {
   }
 
   // Beregn samlet anbefaling
-  let recommendation = 'ok';
+  let recommendation: 'ok' | 'caution' | 'warning' = 'ok';
   if (warnings.some(w => w.level === 'warning')) {
     recommendation = 'warning';
   } else if (warnings.some(w => w.level === 'caution')) {
@@ -146,6 +145,80 @@ function evaluateWeatherForDrone(data: any) {
   }
 
   return { warnings, recommendation };
+}
+
+// Wrapper for bakoverkompatibilitet
+function evaluateWeatherForDrone(data: any) {
+  const current = data.properties?.timeseries?.[0]?.data?.instant?.details;
+  const next1h = data.properties?.timeseries?.[0]?.data?.next_1_hours;
+  return evaluateWeatherConditions(current, next1h);
+}
+
+// Generer timeprognose for de neste 24 timene
+function generateHourlyForecast(timeseries: any[]) {
+  const hourlyForecast: any[] = [];
+  
+  // Ta de neste 24 timene (eller så mange som er tilgjengelige)
+  const hoursToForecast = Math.min(24, timeseries.length);
+  
+  for (let i = 0; i < hoursToForecast; i++) {
+    const entry = timeseries[i];
+    if (!entry) continue;
+    
+    const current = entry.data?.instant?.details;
+    const next1h = entry.data?.next_1_hours;
+    
+    const { recommendation } = evaluateWeatherConditions(current, next1h);
+    
+    hourlyForecast.push({
+      time: entry.time,
+      temperature: current?.air_temperature || null,
+      wind_speed: current?.wind_speed || null,
+      wind_gust: current?.wind_speed_of_gust || null,
+      precipitation: next1h?.details?.precipitation_amount || 0,
+      symbol: next1h?.summary?.symbol_code || 'unknown',
+      recommendation,
+    });
+  }
+  
+  return hourlyForecast;
+}
+
+// Finn beste flyvindu (lengste sammenhengende periode med "ok")
+function findBestFlightWindow(hourlyForecast: any[]) {
+  let bestStart = -1;
+  let bestLength = 0;
+  let currentStart = -1;
+  let currentLength = 0;
+
+  for (let i = 0; i < hourlyForecast.length; i++) {
+    if (hourlyForecast[i].recommendation === 'ok') {
+      if (currentStart === -1) {
+        currentStart = i;
+        currentLength = 1;
+      } else {
+        currentLength++;
+      }
+      
+      if (currentLength > bestLength) {
+        bestLength = currentLength;
+        bestStart = currentStart;
+      }
+    } else {
+      currentStart = -1;
+      currentLength = 0;
+    }
+  }
+
+  if (bestStart === -1 || bestLength === 0) {
+    return null;
+  }
+
+  return {
+    start_time: hourlyForecast[bestStart].time,
+    end_time: hourlyForecast[bestStart + bestLength - 1].time,
+    duration_hours: bestLength,
+  };
 }
 
 serve(async (req) => {
@@ -200,6 +273,11 @@ serve(async (req) => {
     // Evaluer værforhold for drone
     const { warnings, recommendation } = evaluateWeatherForDrone(metData);
     
+    // Generer timeprognose
+    const timeseries = metData.properties?.timeseries || [];
+    const hourlyForecast = generateHourlyForecast(timeseries);
+    const bestFlightWindow = findBestFlightWindow(hourlyForecast);
+    
     // Bygg response
     const current = metData.properties?.timeseries?.[0]?.data?.instant?.details;
     const next1h = metData.properties?.timeseries?.[0]?.data?.next_1_hours;
@@ -218,6 +296,8 @@ serve(async (req) => {
         symbol: next1h?.summary?.symbol_code || 'unknown',
       },
       warnings,
+      hourly_forecast: hourlyForecast,
+      best_flight_window: bestFlightWindow,
       forecast_6h: forecast6h ? {
         temperature: forecast6h.air_temperature || null,
         wind_speed: forecast6h.wind_speed || null,
