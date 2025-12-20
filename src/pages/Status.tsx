@@ -19,9 +19,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, AlertTriangle, Clock, Package, Download } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth, startOfYear, parseISO, isValid } from "date-fns";
 import { nb } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -71,7 +75,9 @@ const Status = () => {
   const navigate = useNavigate();
   const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [timePeriod, setTimePeriod] = useState<"month" | "quarter" | "year">("year");
+  const [timePeriod, setTimePeriod] = useState<"month" | "quarter" | "year" | "custom">("year");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
   const [kpiData, setKpiData] = useState<KPIData>({
     totalMissions: 0,
     completedMissions: 0,
@@ -102,8 +108,13 @@ const Status = () => {
       return;
     }
 
+    // Don't fetch if custom period is selected but dates are incomplete
+    if (timePeriod === "custom" && (!customDateFrom || !customDateTo)) {
+      return;
+    }
+
     fetchAllStatistics();
-  }, [user, navigate, timePeriod, companyId]);
+  }, [user, navigate, timePeriod, companyId, customDateFrom, customDateTo]);
 
   const fetchAllStatistics = async () => {
     setLoading(true);
@@ -122,33 +133,48 @@ const Status = () => {
     }
   };
 
-  const getDateFilter = () => {
+  const getDateFilter = (): { startDate: Date; endDate: Date } => {
     const now = new Date();
+    
+    if (timePeriod === "custom" && customDateFrom && customDateTo) {
+      return { startDate: customDateFrom, endDate: customDateTo };
+    }
+    
     switch (timePeriod) {
       case "month":
-        return subMonths(now, 1);
+        return { startDate: subMonths(now, 1), endDate: now };
       case "quarter":
-        return subMonths(now, 3);
+        return { startDate: subMonths(now, 3), endDate: now };
       case "year":
-        return subMonths(now, 12);
       default:
-        return subMonths(now, 12);
+        return { startDate: subMonths(now, 12), endDate: now };
     }
   };
 
+  const getMonthsToShow = (): number => {
+    if (timePeriod === "custom" && customDateFrom && customDateTo) {
+      const diffTime = Math.abs(customDateTo.getTime() - customDateFrom.getTime());
+      const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+      return Math.max(1, diffMonths);
+    }
+    return timePeriod === "month" ? 1 : timePeriod === "quarter" ? 3 : 12;
+  };
+
   const fetchKPIData = async () => {
-    const startDate = getDateFilter().toISOString();
+    const { startDate, endDate } = getDateFilter();
     
     const { data: missions } = await supabase
       .from("missions")
       .select("status, tidspunkt")
-      .gte("tidspunkt", startDate);
+      .gte("tidspunkt", startDate.toISOString())
+      .lte("tidspunkt", endDate.toISOString());
     const { data: drones } = await supabase.from("drones").select("flyvetimer, aktiv");
     const { data: equipment } = await supabase.from("equipment").select("aktiv");
     const { data: incidents } = await supabase
       .from("incidents")
       .select("*")
-      .gte("hendelsestidspunkt", startDate);
+      .gte("hendelsestidspunkt", startDate.toISOString())
+      .lte("hendelsestidspunkt", endDate.toISOString());
 
     const totalMissions = missions?.length || 0;
     const completedMissions = missions?.filter((m) => m.status === "Fullført").length || 0;
@@ -167,20 +193,21 @@ const Status = () => {
   };
 
   const fetchMissionStatistics = async () => {
-    const startDate = getDateFilter().toISOString();
+    const { startDate, endDate } = getDateFilter();
     
     const { data: missions } = await supabase
       .from("missions")
       .select("tidspunkt, status, risk_nivå")
-      .gte("tidspunkt", startDate) as any;
+      .gte("tidspunkt", startDate.toISOString())
+      .lte("tidspunkt", endDate.toISOString()) as any;
 
     if (!missions) return;
 
     // Missions by month (based on selected period)
-    const monthsToShow = timePeriod === "month" ? 1 : timePeriod === "quarter" ? 3 : 12;
+    const monthsToShow = getMonthsToShow();
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      const monthDate = subMonths(new Date(), i);
+      const monthDate = subMonths(endDate, i);
       const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
       monthlyData[monthKey] = 0;
     }
@@ -217,21 +244,22 @@ const Status = () => {
   };
 
   const fetchIncidentStatistics = async () => {
-    const startDate = getDateFilter().toISOString();
+    const { startDate, endDate } = getDateFilter();
     
     const { data: incidents } = await supabase
       .from("incidents")
       .select("hendelsestidspunkt, hovedaarsak, medvirkende_aarsak, alvorlighetsgrad")
-      .gte("hendelsestidspunkt", startDate)
+      .gte("hendelsestidspunkt", startDate.toISOString())
+      .lte("hendelsestidspunkt", endDate.toISOString())
       .order("hendelsestidspunkt", { ascending: false });
 
     if (!incidents) return;
 
     // Incidents by month (based on selected period)
-    const monthsToShow = timePeriod === "month" ? 1 : timePeriod === "quarter" ? 3 : 12;
+    const monthsToShow = getMonthsToShow();
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      const monthDate = subMonths(new Date(), i);
+      const monthDate = subMonths(endDate, i);
       const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
       monthlyData[monthKey] = 0;
     }
@@ -956,39 +984,102 @@ const Status = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Statistikk</h1>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Tidsperiode:</span>
-              <Select value={timePeriod} onValueChange={(value: "month" | "quarter" | "year") => setTimePeriod(value)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Periode:</span>
+              <Select value={timePeriod} onValueChange={(value: "month" | "quarter" | "year" | "custom") => setTimePeriod(value)}>
+                <SelectTrigger className="w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="month">Siste måned</SelectItem>
                   <SelectItem value="quarter">Siste kvartal</SelectItem>
                   <SelectItem value="year">Siste år</SelectItem>
+                  <SelectItem value="custom">Egendefinert</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="default" size="default" className="gap-2 w-full sm:w-auto">
-                  <Download className="w-4 h-4" />
-                  Eksporter
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem onClick={handleExportExcel}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Eksporter til Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Eksporter til PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {timePeriod === "custom" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Fra:</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[140px] justify-start text-left font-normal",
+                          !customDateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "Velg dato"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customDateFrom}
+                        onSelect={setCustomDateFrom}
+                        disabled={(date) => customDateTo ? date > customDateTo : false}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Til:</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[140px] justify-start text-left font-normal",
+                          !customDateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "Velg dato"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customDateTo}
+                        onSelect={setCustomDateTo}
+                        disabled={(date) => customDateFrom ? date < customDateFrom : false}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            )}
+            
+            <div className="lg:ml-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="default" size="default" className="gap-2 w-full sm:w-auto">
+                    <Download className="w-4 h-4" />
+                    Eksporter
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuItem onClick={handleExportExcel}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Eksporter til Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Eksporter til PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
 
