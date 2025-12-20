@@ -6,11 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Calendar, AlertCircle, FileText, User, Download, ExternalLink, Edit, Trash2 } from "lucide-react";
+import { Calendar, AlertCircle, FileText, User, Download, ExternalLink, Edit, Trash2, CheckSquare, Square } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -344,7 +349,37 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
             )}
           </div>
 
-          {(document as any).beskrivelse && (
+          {document.kategori?.toLowerCase() === "sjekklister" && (document as any).beskrivelse && (() => {
+            // Try to parse checklist items from beskrivelse
+            let checklistItems: ChecklistItem[] = [];
+            try {
+              const parsed = JSON.parse((document as any).beskrivelse);
+              if (Array.isArray(parsed)) {
+                checklistItems = parsed.filter((item: any) => item && typeof item === 'object' && item.text);
+              }
+            } catch {
+              // Not valid JSON, will show as regular description below
+            }
+            
+            if (checklistItems.length > 0) {
+              return (
+                <div className="border-t border-border pt-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Sjekkpunkter ({checklistItems.length})</p>
+                  <div className="space-y-2">
+                    {checklistItems.map((item, index) => (
+                      <div key={item.id || index} className="flex items-start gap-3 p-2 rounded-md bg-muted/50">
+                        <Square className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{item.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          {document.kategori?.toLowerCase() !== "sjekklister" && (document as any).beskrivelse && (
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">Beskrivelse</p>
               <p className="text-base leading-relaxed whitespace-pre-wrap">{(document as any).beskrivelse}</p>
