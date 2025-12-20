@@ -5,10 +5,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Download, ArrowUpDown } from "lucide-react";
+import { ExternalLink, Download, ArrowUpDown, FileText, FileImage, FileSpreadsheet, File } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const openUrl = (url: string) => {
   let finalUrl = url;
@@ -17,6 +18,40 @@ const openUrl = (url: string) => {
   }
   window.open(finalUrl, "_blank");
 };
+
+// Helper to determine if file can be opened in browser
+const canOpenInBrowser = (fileName?: string | null): boolean => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'txt'].includes(ext || '');
+};
+
+// Get appropriate icon for file type
+const getFileIcon = (fileName?: string | null) => {
+  if (!fileName) return File;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  
+  switch (ext) {
+    case 'pdf':
+    case 'doc':
+    case 'docx':
+    case 'txt':
+      return FileText;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'webp':
+    case 'svg':
+      return FileImage;
+    case 'xls':
+    case 'xlsx':
+      return FileSpreadsheet;
+    default:
+      return File;
+  }
+};
+
 interface DocumentsListProps {
   documents: Document[];
   isLoading: boolean;
@@ -24,6 +59,7 @@ interface DocumentsListProps {
   sortByExpiry: boolean;
   onToggleSortByExpiry: () => void;
 }
+
 const CATEGORY_LABELS: Record<string, string> = {
   regelverk: "Regelverk",
   prosedyrer: "Prosedyrer",
@@ -32,6 +68,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   nettsider: "Nettsider",
   annet: "Annet"
 };
+
 const DocumentsList = ({
   documents,
   isLoading,
@@ -40,15 +77,35 @@ const DocumentsList = ({
   onToggleSortByExpiry
 }: DocumentsListProps) => {
 
-  const handleDownloadFile = async (filUrl: string, originalFileName?: string) => {
+  const handleOpenFile = async (filUrl: string) => {
     try {
       if (filUrl.startsWith('http://') || filUrl.startsWith('https://')) {
-        // External URL - just open it
         window.open(filUrl, '_blank');
         return;
       }
       
-      // Storage path - download with original filename
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(filUrl, 3600);
+
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error opening file:', error);
+      toast.error('Kunne ikke åpne dokumentet');
+    }
+  };
+
+  const handleDownloadFile = async (filUrl: string, originalFileName?: string) => {
+    try {
+      if (filUrl.startsWith('http://') || filUrl.startsWith('https://')) {
+        window.open(filUrl, '_blank');
+        toast.info('Åpner ekstern lenke');
+        return;
+      }
+      
       const { data, error } = await supabase.storage
         .from('documents')
         .download(filUrl);
@@ -64,6 +121,7 @@ const DocumentsList = ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        toast.success('Dokumentet ble lastet ned');
       }
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -125,28 +183,56 @@ const DocumentsList = ({
             })}
               </TableCell>
               <TableCell className="bg-slate-200/50 text-slate-950 text-right pl-1 md:pl-4">
-                <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                  {doc.nettside_url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openUrl(doc.nettside_url!)}
-                      title="Åpne nettside"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {doc.fil_url && !doc.nettside_url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadFile(doc.fil_url!, doc.fil_navn || undefined)}
-                      title="Last ned dokument"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                <TooltipProvider>
+                  <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+                    {doc.nettside_url && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openUrl(doc.nettside_url!)}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Åpne nettside</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {doc.fil_url && !doc.nettside_url && (
+                      <>
+                        {/* Open button for viewable files */}
+                        {canOpenInBrowser(doc.fil_navn) && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenFile(doc.fil_url!)}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Åpne i nettleser</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {/* Download button */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadFile(doc.fil_url!, doc.fil_navn || undefined)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Last ned</TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
+                  </div>
+                </TooltipProvider>
               </TableCell>
             </TableRow>)}
         </TableBody>
