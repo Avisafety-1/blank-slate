@@ -82,10 +82,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               </div>
             </div>
 
-            {(() => {
+          {(() => {
               const routeCoords = (mission.route as any)?.coordinates;
               const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
               const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
+              const isCompleted = mission.status === "Fullført";
+              const hasWeatherSnapshot = mission.weather_data_snapshot;
               
               if (!effectiveLat || !effectiveLng) return null;
               
@@ -98,7 +100,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                   />
                   <DroneWeatherPanel 
                     latitude={effectiveLat} 
-                    longitude={effectiveLng} 
+                    longitude={effectiveLng}
+                    savedWeatherData={isCompleted && hasWeatherSnapshot ? hasWeatherSnapshot : undefined}
                   />
                 </>
               );

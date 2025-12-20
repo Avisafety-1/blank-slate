@@ -368,22 +368,58 @@ export const AddMissionDialog = ({
 
       if (mission) {
         // UPDATE mode
+        // Sjekk om status endres til Fullført - da henter vi og lagrer værdata
+        let weatherSnapshot = null;
+        const statusChangingToFullført = formData.status === "Fullført" && mission.status !== "Fullført";
+        
+        if (statusChangingToFullført && (formData.latitude || formData.longitude)) {
+          const lat = formData.latitude || (routeData?.coordinates?.[0]?.lat);
+          const lng = formData.longitude || (routeData?.coordinates?.[0]?.lng);
+          
+          if (lat && lng) {
+            try {
+              const { data: weatherData } = await supabase.functions.invoke('drone-weather', {
+                body: { lat, lon: lng }
+              });
+              
+              if (weatherData) {
+                weatherSnapshot = {
+                  captured_at: new Date().toISOString(),
+                  current: weatherData.current,
+                  warnings: weatherData.warnings || [],
+                  drone_flight_recommendation: weatherData.drone_flight_recommendation
+                };
+              }
+            } catch (weatherErr) {
+              console.error('Could not fetch weather for snapshot:', weatherErr);
+              // Fortsett selv om værdatahenting feiler
+            }
+          }
+        }
+
+        const updateData: any = {
+          tittel: formData.tittel,
+          lokasjon: formData.lokasjon,
+          tidspunkt: formData.tidspunkt,
+          beskrivelse: formData.beskrivelse,
+          merknader: formData.merknader,
+          status: formData.status,
+          risk_nivå: formData.risk_nivå,
+          customer_id: selectedCustomer || null,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          route: routeData,
+          oppdatert_dato: new Date().toISOString(),
+        };
+
+        // Legg til værdata-snapshot hvis vi nettopp fullførte oppdraget
+        if (weatherSnapshot) {
+          updateData.weather_data_snapshot = weatherSnapshot;
+        }
+
         const { error: missionError } = await (supabase as any)
           .from("missions")
-          .update({
-            tittel: formData.tittel,
-            lokasjon: formData.lokasjon,
-            tidspunkt: formData.tidspunkt,
-            beskrivelse: formData.beskrivelse,
-            merknader: formData.merknader,
-            status: formData.status,
-            risk_nivå: formData.risk_nivå,
-            customer_id: selectedCustomer || null,
-            latitude: formData.latitude,
-            longitude: formData.longitude,
-            route: routeData,
-            oppdatert_dato: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", mission.id);
 
         if (missionError) throw missionError;
