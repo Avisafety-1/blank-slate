@@ -1076,6 +1076,11 @@ export function OpenAIPMap({
 
     // Map click handler - different behavior for route planning vs view mode
     const handleMapClick = async (e: any) => {
+      // Don't handle clicks that originated from markers or popups
+      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper')) {
+        return;
+      }
+      
       const { lat, lng } = e.latlng;
       
       if (modeRef.current === "routePlanning") {
