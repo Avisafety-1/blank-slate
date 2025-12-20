@@ -1368,8 +1368,8 @@ export function OpenAIPMap({
   }, [updateRouteDisplay, onRouteChange]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <div ref={mapRef} className="w-full h-full" />
+    <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
+      <div ref={mapRef} className="w-full h-full touch-manipulation" />
       
       {/* Map controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
