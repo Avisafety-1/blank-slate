@@ -237,89 +237,6 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
   }, [useTimeRange, startTime, endTime]);
 
-  // Auto-fill departure and landing locations when dialog opens from active flight
-  useEffect(() => {
-    if (!open || !isFromActiveTimer) return;
-    
-    const autoFillLocations = async () => {
-      setIsLoadingLocations(true);
-      
-      let departureLocation = "";
-      let landingLocation = "";
-      
-      try {
-        // === DEPARTURE LOCATION ===
-        // Priority 1: First position from DroneTag flight track
-        if (flightTrack && flightTrack.length > 0) {
-          const firstPos = flightTrack[0];
-          // Check for nearby airport (within 1km)
-          const icao = await findNearestAirport(firstPos.lat, firstPos.lng);
-          if (icao) {
-            departureLocation = icao;
-          } else {
-            departureLocation = await reverseGeocode(firstPos.lat, firstPos.lng);
-          }
-        }
-        // Priority 2: Phone GPS at start
-        else if (startPosition) {
-          const icao = await findNearestAirport(startPosition.lat, startPosition.lng);
-          if (icao) {
-            departureLocation = icao;
-          } else {
-            departureLocation = await reverseGeocode(startPosition.lat, startPosition.lng);
-          }
-        }
-        // Priority 3: Mission location (if linked)
-        else if (prefilledMissionId) {
-          const { data: mission } = await supabase
-            .from('missions')
-            .select('lokasjon')
-            .eq('id', prefilledMissionId)
-            .single();
-          if (mission?.lokasjon) {
-            departureLocation = mission.lokasjon;
-          }
-        }
-        
-        // === LANDING LOCATION ===
-        // Priority 1: Last position from DroneTag flight track
-        if (flightTrack && flightTrack.length > 0) {
-          const lastPos = flightTrack[flightTrack.length - 1];
-          const icao = await findNearestAirport(lastPos.lat, lastPos.lng);
-          if (icao) {
-            landingLocation = icao;
-          } else {
-            landingLocation = await reverseGeocode(lastPos.lat, lastPos.lng);
-          }
-        }
-        // Priority 2: Current phone GPS position
-        else {
-          const currentPos = await getCurrentPosition();
-          if (currentPos) {
-            const icao = await findNearestAirport(currentPos.lat, currentPos.lng);
-            if (icao) {
-              landingLocation = icao;
-            } else {
-              landingLocation = await reverseGeocode(currentPos.lat, currentPos.lng);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error auto-filling locations:', error);
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        departureLocation: departureLocation || prev.departureLocation,
-        landingLocation: landingLocation || prev.landingLocation,
-      }));
-      
-      setIsLoadingLocations(false);
-    };
-    
-    autoFillLocations();
-  }, [open, isFromActiveTimer, flightTrack, startPosition, prefilledMissionId]);
-
   useEffect(() => {
     if (open && companyId) {
       fetchDrones();
@@ -348,6 +265,124 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       setEndTime("");
     }
   }, [open, companyId, user, prefilledDuration]);
+
+  // Auto-fill departure and landing locations when dialog opens from active flight
+  // This runs AFTER the form reset effect above
+  useEffect(() => {
+    if (!open || !isFromActiveTimer) return;
+    
+    // Small delay to ensure form reset has completed
+    const timer = setTimeout(() => {
+      const autoFillLocations = async () => {
+        setIsLoadingLocations(true);
+        
+        let departureLocation = "";
+        let landingLocation = "";
+        
+        console.log('Auto-fill locations starting...', { 
+          hasFlightTrack: !!flightTrack, 
+          trackLength: flightTrack?.length,
+          hasStartPosition: !!startPosition,
+          startPosition,
+          prefilledMissionId 
+        });
+        
+        try {
+          // === DEPARTURE LOCATION ===
+          // Priority 1: First position from DroneTag flight track
+          if (flightTrack && flightTrack.length > 0) {
+            const firstPos = flightTrack[0];
+            console.log('Using flightTrack first position for departure:', firstPos);
+            // Check for nearby airport (within 1km)
+            const icao = await findNearestAirport(firstPos.lat, firstPos.lng);
+            if (icao) {
+              departureLocation = icao;
+              console.log('Found ICAO for departure:', icao);
+            } else {
+              departureLocation = await reverseGeocode(firstPos.lat, firstPos.lng);
+              console.log('Reverse geocoded departure:', departureLocation);
+            }
+          }
+          // Priority 2: Phone GPS at start
+          else if (startPosition) {
+            console.log('Using startPosition for departure:', startPosition);
+            const icao = await findNearestAirport(startPosition.lat, startPosition.lng);
+            if (icao) {
+              departureLocation = icao;
+              console.log('Found ICAO for departure:', icao);
+            } else {
+              departureLocation = await reverseGeocode(startPosition.lat, startPosition.lng);
+              console.log('Reverse geocoded departure:', departureLocation);
+            }
+          }
+          // Priority 3: Mission location (if linked)
+          else if (prefilledMissionId) {
+            console.log('Fetching mission location for departure');
+            const { data: mission } = await supabase
+              .from('missions')
+              .select('lokasjon')
+              .eq('id', prefilledMissionId)
+              .single();
+            if (mission?.lokasjon) {
+              departureLocation = mission.lokasjon;
+              console.log('Using mission location for departure:', departureLocation);
+            }
+          } else {
+            console.log('No departure location source available');
+          }
+          
+          // === LANDING LOCATION ===
+          // Priority 1: Last position from DroneTag flight track
+          if (flightTrack && flightTrack.length > 0) {
+            const lastPos = flightTrack[flightTrack.length - 1];
+            console.log('Using flightTrack last position for landing:', lastPos);
+            const icao = await findNearestAirport(lastPos.lat, lastPos.lng);
+            if (icao) {
+              landingLocation = icao;
+              console.log('Found ICAO for landing:', icao);
+            } else {
+              landingLocation = await reverseGeocode(lastPos.lat, lastPos.lng);
+              console.log('Reverse geocoded landing:', landingLocation);
+            }
+          }
+          // Priority 2: Current phone GPS position
+          else {
+            console.log('Getting current phone GPS for landing');
+            const currentPos = await getCurrentPosition();
+            if (currentPos) {
+              console.log('Current phone position:', currentPos);
+              const icao = await findNearestAirport(currentPos.lat, currentPos.lng);
+              if (icao) {
+                landingLocation = icao;
+                console.log('Found ICAO for landing:', icao);
+              } else {
+                landingLocation = await reverseGeocode(currentPos.lat, currentPos.lng);
+                console.log('Reverse geocoded landing:', landingLocation);
+              }
+            } else {
+              console.log('Could not get current phone position');
+            }
+          }
+        } catch (error) {
+          console.error('Error auto-filling locations:', error);
+        }
+        
+        console.log('Final locations:', { departureLocation, landingLocation });
+        
+        setFormData(prev => ({
+          ...prev,
+          departureLocation: departureLocation || prev.departureLocation,
+          landingLocation: landingLocation || prev.landingLocation,
+        }));
+        
+        setIsLoadingLocations(false);
+      };
+      
+      autoFillLocations();
+    }, 100); // Small delay to ensure form reset completed
+    
+    return () => clearTimeout(timer);
+  }, [open, isFromActiveTimer, flightTrack, startPosition, prefilledMissionId]);
 
   // Fetch mission details when a mission is selected
   useEffect(() => {
