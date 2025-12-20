@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTerminology } from "@/hooks/useTerminology";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DroneWeatherPanelProps {
   latitude: number | null;
@@ -270,35 +271,49 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
             </div>
             
             {/* Timeline */}
-            <TooltipProvider>
-              <div className="flex gap-1 py-1">
-                {displayForecast.map((hour, index) => (
-                  <Tooltip key={index}>
-                    <TooltipTrigger asChild>
-                      <div className="flex-1 flex flex-col items-center gap-0.5">
-                        <div
-                          className={cn(
-                            "w-full h-5 rounded cursor-pointer transition-all hover:scale-y-110",
-                            getTimelineBlockColor(hour.recommendation)
-                          )}
-                        />
-                        <span className="text-[9px] text-muted-foreground">{formatHour(hour.time)}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      <div className="font-medium">{formatTime(hour.time)}</div>
-                      <div>{hour.temperature?.toFixed(0)}°C • {hour.wind_speed?.toFixed(0)} m/s • {hour.precipitation?.toFixed(1)} mm</div>
-                      <div className={cn(
-                        "font-medium",
-                        hour.recommendation === 'ok' && "text-success",
-                        hour.recommendation === 'caution' && "text-warning",
-                        hour.recommendation === 'warning' && "text-destructive"
-                      )}>{getRecommendationText(hour.recommendation)}</div>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-            </TooltipProvider>
+            <div className="flex gap-1 py-1">
+              {displayForecast.map((hour, index) => (
+                <Popover key={index}>
+                  <PopoverTrigger asChild>
+                    <div className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer">
+                      <div
+                        className={cn(
+                          "w-full h-5 rounded transition-all hover:scale-y-110 active:scale-95",
+                          getTimelineBlockColor(hour.recommendation)
+                        )}
+                      />
+                      <span className="text-[9px] text-muted-foreground">{formatHour(hour.time)}</span>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="w-auto p-3 text-xs space-y-1.5">
+                    <div className="font-semibold text-sm">{formatTime(hour.time)}</div>
+                    <div className="flex items-center gap-2">
+                      <Thermometer className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>{hour.temperature?.toFixed(1)}°C</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Wind className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>{hour.wind_speed?.toFixed(1)} m/s</span>
+                      {hour.wind_gust && hour.wind_gust > 0 && (
+                        <span className="text-muted-foreground">(kast {hour.wind_gust.toFixed(1)})</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Droplets className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>{hour.precipitation?.toFixed(1)} mm</span>
+                    </div>
+                    <div className={cn(
+                      "font-medium pt-1.5 border-t",
+                      hour.recommendation === 'ok' && "text-success",
+                      hour.recommendation === 'caution' && "text-warning",
+                      hour.recommendation === 'warning' && "text-destructive"
+                    )}>
+                      {getRecommendationText(hour.recommendation)}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ))}
+            </div>
 
             {/* Best flight window */}
             {weatherData.best_flight_window && (
