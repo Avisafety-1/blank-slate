@@ -14,6 +14,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent Leaflet container from causing browser scroll */
+.leaflet-container {
+  touch-action: none;
+}
+
+/* Allow zoom gestures on the map panes */
+.leaflet-container .leaflet-pane {
+  touch-action: pinch-zoom pan-x pan-y;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
