@@ -18,6 +18,7 @@ import Kalender from "./pages/Kalender";
 import Hendelser from "./pages/Hendelser";
 import Status from "./pages/Status";
 import Oppdrag from "./pages/Oppdrag";
+import Installer from "./pages/Installer";
 import NotFound from "./pages/NotFound";
 
 // Initialize i18n - must be imported after React setup
@@ -74,6 +75,7 @@ const App = () => {
                 {/* Public routes - login domain */}
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                 <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
+                <Route path="/installer" element={<Installer />} />
                 
                 {/* Protected routes with shared Header - app domain */}
                 <Route element={<AuthenticatedLayout />}>
