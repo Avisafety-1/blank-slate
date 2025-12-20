@@ -393,16 +393,6 @@ export function OpenAIPMap({
       });
     }
 
-    // NSM Forbudsområder
-    const nsmLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "nsm",
-      name: "NSM Forbudsområder",
-      layer: nsmLayer,
-      enabled: true,
-      icon: "ban",
-    });
-
     // NRL - Luftfartshindre
     const nrlLayer = L.tileLayer.wms(
       "https://wms.geonorge.no/skwms1/wms.nrl5?",
@@ -459,6 +449,16 @@ export function OpenAIPMap({
       layer: rpasCtрLayer,
       enabled: true,
       icon: "shield",
+    });
+
+    // NSM Forbudsområder - added last so it's on top and clickable
+    const nsmLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "nsm",
+      name: "NSM Forbudsområder",
+      layer: nsmLayer,
+      enabled: true,
+      icon: "ban",
     });
 
     // Airports
