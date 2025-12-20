@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from "sonner";
 import { Chrome, CheckCircle2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
-import avisafeLogo from "@/assets/avisafe-logo-text.png";
+
 
 const Auth = () => {
   const { t } = useTranslation();
@@ -243,7 +243,7 @@ const Auth = () => {
           <CardHeader className="space-y-4">
             <div className="flex items-center justify-center">
               <img 
-                src={avisafeLogo} 
+                src="/avisafe-logo-text.png" 
                 alt="AviSafe" 
                 className="h-24 w-auto" 
                 width={301}

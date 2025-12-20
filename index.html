@@ -20,9 +20,8 @@
     <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     
-    <!-- Preload critical assets for faster FCP -->
-    <link rel="preload" href="/src/assets/avisafe-logo-text.png" as="image" type="image/png" />
-    <link rel="preload" href="/src/assets/drone-background.webp" as="image" type="image/webp" />
+    <!-- Preload critical LCP image for faster rendering -->
+    <link rel="preload" href="/avisafe-logo-text.png" as="image" type="image/png" fetchpriority="high" />
 
     <meta property="og:title" content="AviSafe - Sikkerhetsstyringssystem" />
     <meta property="og:description" content="Profesjonelt sikkerhetsstyringssystem for droneoperasjoner" />
