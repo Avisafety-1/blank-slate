@@ -138,6 +138,8 @@ export function OpenAIPMap({
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
+  const rpasCtrGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
@@ -146,6 +148,27 @@ export function OpenAIPMap({
 
   const onMissionClickRef = useRef<typeof onMissionClick>(onMissionClick);
   const onRouteChangeRef = useRef<typeof onRouteChange>(onRouteChange);
+
+  const setGeoJsonInteractivity = useCallback(
+    (geoJson: L.GeoJSON<any> | null, enabled: boolean) => {
+      if (!geoJson) return;
+
+      (geoJson as any).options = { ...(geoJson as any).options, interactive: enabled };
+
+      geoJson.eachLayer((layer: any) => {
+        if (layer?.options) {
+          layer.options.interactive = enabled;
+          layer.options.bubblingMouseEvents = true;
+        }
+
+        const el = typeof layer.getElement === "function" ? layer.getElement() : layer?._path;
+        if (el) {
+          (el as HTMLElement).style.pointerEvents = enabled ? "auto" : "none";
+        }
+      });
+    },
+    []
+  );
 
   // Sync refs with state/props for use in event handlers
   useEffect(() => {
@@ -299,22 +322,27 @@ export function OpenAIPMap({
   // Sync mode ref and update route display when mode changes
   useEffect(() => {
     modeRef.current = mode;
-    
+
+    // Ensure RPAS vector layers don't block map clicks when in route planning mode
+    const vectorsInteractive = mode !== "routePlanning";
+    setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
+    setGeoJsonInteractivity(rpasCtrGeoJsonRef.current, vectorsInteractive);
+
     // Disable pointer events on overlay panes when in route planning mode
     // This allows clicks to pass through to the map for adding route points
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
-      const overlayPane = map.getPane('overlayPane');
+      const overlayPane = map.getPane("overlayPane");
       if (overlayPane) {
-        overlayPane.style.pointerEvents = mode === 'routePlanning' ? 'none' : 'auto';
+        overlayPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
       }
     }
-    
+
     // Update route display when mode changes (to update draggable status on markers)
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [mode, updateRouteDisplay]);
+  }, [mode, updateRouteDisplay, setGeoJsonInteractivity]);
 
   // Sync with controlled route from parent (for clear/undo operations)
   useEffect(() => {
@@ -854,6 +882,10 @@ export function OpenAIPMap({
             }
           } : undefined
         });
+
+        // Make sure the layer doesn't block adding route points when switching mode
+        rpasGeoJsonRef.current = geoJsonLayer;
+        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
         
         rpasLayer.clearLayers();
         rpasLayer.addLayer(geoJsonLayer);
@@ -884,6 +916,10 @@ export function OpenAIPMap({
             }
           } : undefined
         });
+
+        // Make sure the layer doesn't block adding route points when switching mode
+        rpasCtrGeoJsonRef.current = geoJsonLayer;
+        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
         
         rpasCtрLayer.clearLayers();
         rpasCtрLayer.addLayer(geoJsonLayer);
