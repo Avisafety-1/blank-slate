@@ -126,11 +126,11 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
       case 'warning':
-        return 'bg-destructive/10 border-destructive text-destructive';
+        return 'bg-destructive/15 border-destructive text-foreground';
       case 'caution':
-        return 'bg-warning/10 border-warning text-warning';
+        return 'bg-warning/15 border-warning text-foreground';
       case 'ok':
-        return 'bg-success/10 border-success text-success';
+        return 'bg-success/15 border-success text-foreground';
       default:
         return 'bg-muted border-border text-muted-foreground';
     }
@@ -247,20 +247,23 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Prognose neste 12 timer</span>
+                <div className="flex flex-col leading-tight">
+                  <span>Prognose neste</span>
+                  <span>12 timer</span>
+                </div>
               </div>
               {/* Legend */}
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-sm bg-success" />
+              <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-success" />
                   <span>OK</span>
                 </div>
-                <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-sm bg-warning" />
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-warning" />
                   <span>Forsiktig</span>
                 </div>
-                <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-sm bg-destructive" />
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-destructive" />
                   <span>Ikke fly</span>
                 </div>
               </div>
@@ -299,8 +302,8 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
 
             {/* Best flight window */}
             {weatherData.best_flight_window && (
-              <div className="flex items-center gap-1.5 text-xs text-success font-medium">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                <Sparkles className="w-3.5 h-3.5 text-success" />
                 <span>Beste flyvindu: {formatTime(weatherData.best_flight_window.start_time)} - {formatTime(weatherData.best_flight_window.end_time)} ({weatherData.best_flight_window.duration_hours}t)</span>
               </div>
             )}
