@@ -356,7 +356,9 @@ export const useFlightTimer = () => {
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }, []);
 
-  const endFlight = useCallback(async (): Promise<{
+  // Prepare data for ending flight WITHOUT actually ending it
+  // Used to show LogFlightTimeDialog while flight continues running
+  const prepareEndFlight = useCallback(async (): Promise<{
     elapsedMinutes: number;
     missionId: string | null;
     flightTrack: Array<{ lat: number; lng: number; alt: number; timestamp: string }>;
@@ -372,22 +374,6 @@ export const useFlightTimer = () => {
     }
 
     const endTime = new Date();
-    const flightStartTime = state.startTime;
-
-    // Stop refresh interval
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
-    }
-
-    // Stop GPS watch if active
-    stopGpsWatch();
-
-    // End SafeSky advisory if it was published
-    if (state.publishMode === 'advisory' && state.missionId) {
-      await endAdvisory(state.missionId);
-    }
-
     const elapsedSeconds = Math.floor((endTime.getTime() - state.startTime.getTime()) / 1000);
     const elapsedMinutes = Math.ceil(elapsedSeconds / 60);
 
@@ -417,6 +403,39 @@ export const useFlightTimer = () => {
       pilotName = activeFlight?.pilot_name || null;
     }
 
+    return {
+      elapsedMinutes,
+      missionId: state.missionId,
+      flightTrack,
+      dronetagDeviceId,
+      startPosition,
+      pilotName,
+      startTime: state.startTime,
+      publishMode: state.publishMode,
+      completedChecklistIds: state.completedChecklistIds,
+    };
+  }, [state.isActive, state.startTime, state.missionId, state.publishMode, state.completedChecklistIds, user, fetchFlightTrack]);
+
+  // Actually end the flight - clear all state, stop GPS, end advisory
+  const endFlight = useCallback(async (): Promise<void> => {
+    if (!state.isActive || !state.startTime) {
+      return;
+    }
+
+    // Stop refresh interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+
+    // Stop GPS watch if active
+    stopGpsWatch();
+
+    // End SafeSky advisory if it was published
+    if (state.publishMode === 'advisory' && state.missionId) {
+      await endAdvisory(state.missionId);
+    }
+
     // Clear user-specific localStorage
     if (user) {
       localStorage.removeItem(getStorageKey(user.id));
@@ -442,19 +461,7 @@ export const useFlightTimer = () => {
       completedChecklistIds: [],
       dronetagDeviceId: null,
     });
-
-    return {
-      elapsedMinutes,
-      missionId: state.missionId,
-      flightTrack,
-      dronetagDeviceId,
-      startPosition,
-      pilotName,
-      startTime: flightStartTime,
-      publishMode: state.publishMode,
-      completedChecklistIds: state.completedChecklistIds,
-    };
-  }, [state.isActive, state.startTime, state.publishMode, state.missionId, state.completedChecklistIds, user, endAdvisory, stopGpsWatch, fetchFlightTrack]);
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -478,6 +485,7 @@ export const useFlightTimer = () => {
     completedChecklistIds: state.completedChecklistIds,
     dronetagDeviceId: state.dronetagDeviceId,
     startFlight,
+    prepareEndFlight,
     endFlight,
     formatElapsedTime,
   };
