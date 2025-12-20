@@ -184,6 +184,33 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
     return new Date(isoString).getHours().toString().padStart(2, '0');
   };
 
+  // Forklarer hvorfor en time har en bestemt anbefaling
+  const getReasonForRecommendation = (hour: HourlyForecast) => {
+    const reasons: string[] = [];
+    const windSpeed = hour.wind_speed || 0;
+    const windGust = hour.wind_gust || 0;
+    const precipitation = hour.precipitation || 0;
+    const temperature = hour.temperature || 0;
+    const symbol = hour.symbol || '';
+
+    // Warning-nivå årsaker
+    if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
+    if (windGust > 15) reasons.push(`Kraftige vindkast (${windGust.toFixed(1)} m/s)`);
+    if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
+    if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
+    if (symbol.includes('fog')) reasons.push('Tåke');
+
+    // Caution-nivå årsaker (hvis ingen warning)
+    if (reasons.length === 0) {
+      if (windSpeed > 7) reasons.push(`Mye vind (${windSpeed.toFixed(1)} m/s)`);
+      if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
+      if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
+      if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
+    }
+
+    return reasons;
+  };
+
   // Get only 12 hours for compact timeline
   const displayForecast = weatherData.hourly_forecast?.slice(0, 12) || [];
 
@@ -285,7 +312,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
                       <span className="text-[9px] text-muted-foreground">{formatHour(hour.time)}</span>
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent side="top" className="w-auto p-3 text-xs space-y-1.5">
+                  <PopoverContent side="top" className="w-auto p-3 text-xs space-y-1.5 max-w-[200px]">
                     <div className="font-semibold text-sm">{formatTime(hour.time)}</div>
                     <div className="flex items-center gap-2">
                       <Thermometer className="w-3.5 h-3.5 text-muted-foreground" />
@@ -302,14 +329,28 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
                       <Droplets className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{hour.precipitation?.toFixed(1)} mm</span>
                     </div>
-                    <div className={cn(
-                      "font-medium pt-1.5 border-t",
-                      hour.recommendation === 'ok' && "text-success",
-                      hour.recommendation === 'caution' && "text-warning",
-                      hour.recommendation === 'warning' && "text-destructive"
-                    )}>
-                      {getRecommendationText(hour.recommendation)}
-                    </div>
+                    
+                    {/* Årsak til anbefaling */}
+                    {hour.recommendation !== 'ok' && (
+                      <div className={cn(
+                        "pt-1.5 border-t space-y-0.5",
+                        hour.recommendation === 'caution' && "text-warning",
+                        hour.recommendation === 'warning' && "text-destructive"
+                      )}>
+                        <div className="font-medium">{getRecommendationText(hour.recommendation)}</div>
+                        <ul className="text-[11px] space-y-0.5">
+                          {getReasonForRecommendation(hour).map((reason, i) => (
+                            <li key={i}>• {reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {hour.recommendation === 'ok' && (
+                      <div className="font-medium pt-1.5 border-t text-success">
+                        {getRecommendationText(hour.recommendation)}
+                      </div>
+                    )}
                   </PopoverContent>
                 </Popover>
               ))}
