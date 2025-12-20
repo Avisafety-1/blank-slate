@@ -166,3 +166,13 @@ All colors MUST be HSL.
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@layer base {
+  /* Ensure native date inputs never overflow their containers on mobile browsers */
+  input[type="date"] {
+    @apply block w-full max-w-full min-w-0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
