@@ -147,9 +147,6 @@ export function OpenAIPMap({
     weatherEnabledRef.current = weatherEnabled;
   }, [weatherEnabled]);
   
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -206,16 +203,16 @@ export function OpenAIPMap({
             font-weight: bold;
             font-size: 12px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            cursor: ${mode === 'routePlanning' ? 'move' : 'default'};
+            cursor: ${modeRef.current === 'routePlanning' ? 'move' : 'default'};
           ">${index + 1}</div>`,
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         }),
-        draggable: mode === 'routePlanning',
+        draggable: modeRef.current === 'routePlanning',
         pane: 'routePane'
       });
 
-      if (mode === 'routePlanning') {
+      if (modeRef.current === 'routePlanning') {
         // Drag to move point
         marker.on('dragend', (e: any) => {
           const { lat, lng } = e.target.getLatLng();
@@ -256,7 +253,7 @@ export function OpenAIPMap({
         );
         popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
       }
-      if (mode === 'routePlanning') {
+      if (modeRef.current === 'routePlanning') {
         popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
       }
       marker.bindPopup(popupContent);
@@ -287,7 +284,16 @@ export function OpenAIPMap({
         pane: 'routePane'
       }).addTo(routeLayerRef.current);
     }
-  }, [mode, onRouteChange]);
+  }, [onRouteChange]);
+
+  // Sync mode ref and update route display when mode changes
+  useEffect(() => {
+    modeRef.current = mode;
+    // Update route display when mode changes (to update draggable status on markers)
+    if (routeLayerRef.current && leafletMapRef.current) {
+      updateRouteDisplay();
+    }
+  }, [mode, updateRouteDisplay]);
 
   // Sync with controlled route from parent (for clear/undo operations)
   useEffect(() => {
