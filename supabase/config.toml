@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.safesky-cron-refresh]
 verify_jwt = false
+
+[functions.check-document-expiry]
+verify_jwt = false
+
+[functions.check-maintenance-expiry]
+verify_jwt = false
