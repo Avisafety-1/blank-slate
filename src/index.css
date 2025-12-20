@@ -63,6 +63,13 @@ All colors MUST be HSL.
     --status-green: 142 71% 45%;
     --status-yellow: 38 92% 50%;
     --status-red: 0 84% 60%;
+    
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --info: 210 80% 50%;
+    --info-foreground: 0 0% 100%;
 
     --glass-bg: 210 20% 98% / 0.4;
     --glass-border: 210 20% 90% / 0.3;
@@ -113,6 +120,13 @@ All colors MUST be HSL.
     --status-green: 142 71% 45%;
     --status-yellow: 38 92% 50%;
     --status-red: 0 84% 60%;
+    
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 210 80% 50%;
+    --info-foreground: 0 0% 100%;
 
     --glass-bg: 210 24% 70% / 0.6;
     --glass-border: 210 20% 25% / 0.3;
