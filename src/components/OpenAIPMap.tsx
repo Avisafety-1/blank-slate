@@ -141,40 +141,41 @@ export function OpenAIPMap({
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const weatherEnabledRef = useRef(false);
   const modeRef = useRef(mode);
-  
+
+  const onMissionClickRef = useRef<typeof onMissionClick>(onMissionClick);
+  const onRouteChangeRef = useRef<typeof onRouteChange>(onRouteChange);
+
   // Sync refs with state/props for use in event handlers
   useEffect(() => {
     weatherEnabledRef.current = weatherEnabled;
   }, [weatherEnabled]);
-  
+
+  useEffect(() => {
+    onMissionClickRef.current = onMissionClick;
+  }, [onMissionClick]);
+
+  useEffect(() => {
+    onRouteChangeRef.current = onRouteChange;
+  }, [onRouteChange]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
-    console.log('updateRouteDisplay called, points:', routePointsRef.current.length);
-    console.log('routeLayerRef.current:', !!routeLayerRef.current);
-    console.log('leafletMapRef.current:', !!leafletMapRef.current);
-    
-    if (!routeLayerRef.current || !leafletMapRef.current) {
-      console.log('Early return - refs not ready');
-      return;
-    }
-    
+    if (!routeLayerRef.current || !leafletMapRef.current) return;
+
     routeLayerRef.current.clearLayers();
     const points = routePointsRef.current;
-    
-    console.log('Drawing route with points:', points);
-    
+
     if (points.length === 0) return;
 
     // Draw polyline
     if (points.length > 1) {
-      const latLngs = points.map(p => [p.lat, p.lng] as [number, number]);
+      const latLngs = points.map((p) => [p.lat, p.lng] as [number, number]);
       L.polyline(latLngs, {
         color: '#3b82f6',
         weight: 3,
         opacity: 0.8,
         dashArray: '10, 5',
-        pane: 'routePane'
+        pane: 'routePane',
       }).addTo(routeLayerRef.current);
     }
 
@@ -182,7 +183,7 @@ export function OpenAIPMap({
     points.forEach((point, index) => {
       const isFirst = index === 0;
       const isLast = index === points.length - 1 && points.length > 1;
-      
+
       let bgColor = '#3b82f6'; // blue default
       if (isFirst) bgColor = '#22c55e'; // green for start
       else if (isLast) bgColor = '#ef4444'; // red for end
@@ -209,7 +210,7 @@ export function OpenAIPMap({
           iconAnchor: [14, 14],
         }),
         draggable: modeRef.current === 'routePlanning',
-        pane: 'routePane'
+        pane: 'routePane',
       });
 
       if (modeRef.current === 'routePlanning') {
@@ -218,12 +219,14 @@ export function OpenAIPMap({
           const { lat, lng } = e.target.getLatLng();
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
-          if (onRouteChange) {
+
+          const cb = onRouteChangeRef.current;
+          if (cb) {
             const coords = [...routePointsRef.current];
-            onRouteChange({
+            cb({
               coordinates: coords,
               totalDistance: calculateTotalDistance(coords),
-              areaKm2: calculatePolygonAreaKm2(coords)
+              areaKm2: calculatePolygonAreaKm2(coords),
             });
           }
         });
@@ -233,12 +236,14 @@ export function OpenAIPMap({
           L.DomEvent.stopPropagation(e);
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
-          if (onRouteChange) {
+
+          const cb = onRouteChangeRef.current;
+          if (cb) {
             const coords = [...routePointsRef.current];
-            onRouteChange({
+            cb({
               coordinates: coords,
               totalDistance: calculateTotalDistance(coords),
-              areaKm2: calculatePolygonAreaKm2(coords)
+              areaKm2: calculatePolygonAreaKm2(coords),
             });
           }
         });
@@ -248,16 +253,19 @@ export function OpenAIPMap({
       let popupContent = `<strong>Punkt ${index + 1}</strong>`;
       if (index > 0) {
         const dist = calculateDistance(
-          points[index - 1].lat, points[index - 1].lng,
-          point.lat, point.lng
+          points[index - 1].lat,
+          points[index - 1].lng,
+          point.lat,
+          point.lng
         );
         popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
       }
       if (modeRef.current === 'routePlanning') {
-        popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
+        popupContent +=
+          '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
       }
       marker.bindPopup(popupContent);
-      
+
       marker.addTo(routeLayerRef.current!);
     });
 
@@ -281,10 +289,10 @@ export function OpenAIPMap({
           iconAnchor: [50, -10],
         }),
         interactive: false,
-        pane: 'routePane'
+        pane: 'routePane',
       }).addTo(routeLayerRef.current);
     }
-  }, [onRouteChange]);
+  }, []);
 
   // Sync mode ref and update route display when mode changes
   useEffect(() => {
@@ -468,7 +476,7 @@ export function OpenAIPMap({
 
     // Missions layer - only in view mode
     const missionsLayer = L.layerGroup();
-    if (mode === "view") {
+    if (modeRef.current === "view") {
       missionsLayer.addTo(map);
     }
     missionsLayerRef.current = missionsLayer;
@@ -476,7 +484,7 @@ export function OpenAIPMap({
       id: "missions",
       name: "Oppdrag",
       layer: missionsLayer,
-      enabled: mode === "view",
+      enabled: modeRef.current === "view",
       icon: "mapPin",
     });
 
@@ -534,7 +542,7 @@ export function OpenAIPMap({
             popupAnchor: [0, -35],
           });
           
-          const marker = L.marker([t.lat, t.lon], { icon, interactive: mode !== 'routePlanning' });
+          const marker = L.marker([t.lat, t.lon], { icon, interactive: modeRef.current !== 'routePlanning' });
           const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
           marker.bindPopup(`
             <div>
@@ -948,7 +956,7 @@ export function OpenAIPMap({
             iconSize: [32, 32],
           });
 
-          const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
+          const marker = L.marker([lat, lon], { icon, interactive: modeRef.current !== 'routePlanning' });
           marker.bindPopup(`
             <div>
               <strong>${ac.call || "Ukjent callsign"}</strong><br/>
@@ -967,7 +975,7 @@ export function OpenAIPMap({
     }
 
     async function fetchAndDisplayMissions() {
-      if (mode !== "view") return;
+      if (modeRef.current !== "view") return;
       
       try {
         const { data: missions, error } = await supabase
@@ -1008,9 +1016,7 @@ export function OpenAIPMap({
 
           const marker = L.marker([mission.latitude, mission.longitude], { icon });
           marker.on('click', () => {
-            if (onMissionClick) {
-              onMissionClick(mission);
-            }
+            onMissionClickRef.current?.(mission);
           });
           marker.addTo(missionsLayerRef.current!);
         });
@@ -1027,12 +1033,14 @@ export function OpenAIPMap({
         // Add point to route
         routePointsRef.current.push({ lat, lng });
         updateRouteDisplay();
-        if (onRouteChange) {
+
+        const cb = onRouteChangeRef.current;
+        if (cb) {
           const coords = [...routePointsRef.current];
-          onRouteChange({
+          cb({
             coordinates: coords,
             totalDistance: calculateTotalDistance(coords),
-            areaKm2: calculatePolygonAreaKm2(coords)
+            areaKm2: calculatePolygonAreaKm2(coords),
           });
         }
       } else if (weatherEnabledRef.current) {
@@ -1149,11 +1157,6 @@ export function OpenAIPMap({
     fetchActiveAdvisories();
     fetchPilotPositions();
 
-    // Display existing route if provided
-    if (existingRoute && existingRoute.coordinates.length > 0) {
-      routePointsRef.current = [...existingRoute.coordinates];
-      updateRouteDisplay();
-    }
 
     const interval = setInterval(fetchAircraft, 10000);
     const droneInterval = setInterval(fetchDroneTelemetry, 5000);
@@ -1242,7 +1245,22 @@ export function OpenAIPMap({
       activeFlightsChannel.unsubscribe();
       map.remove();
     };
-  }, [onMissionClick, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
+  }, []);
+
+  // Recenter map when initialCenter changes (without re-creating the map instance)
+  useEffect(() => {
+    if (initialCenter && leafletMapRef.current) {
+      leafletMapRef.current.setView(initialCenter, 13);
+    }
+  }, [initialCenter]);
+
+  // Display existing route when provided (without re-creating the map instance)
+  useEffect(() => {
+    if (existingRoute && existingRoute.coordinates.length > 0) {
+      routePointsRef.current = [...existingRoute.coordinates];
+      updateRouteDisplay();
+    }
+  }, [existingRoute, updateRouteDisplay]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;
