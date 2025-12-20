@@ -22,6 +22,9 @@ export interface RouteData {
   coordinates: RoutePoint[];
   totalDistance: number;
   areaKm2?: number;
+  pilotPosition?: RoutePoint;
+  maxDistanceFromPilot?: number;
+  pointsOutsideVLOS?: number;
 }
 
 interface OpenAIPMapProps {
@@ -32,6 +35,9 @@ interface OpenAIPMapProps {
   initialCenter?: [number, number];
   controlledRoute?: RouteData | null;
   onStartRoutePlanning?: () => void;
+  onPilotPositionChange?: (position: RoutePoint | undefined) => void;
+  pilotPosition?: RoutePoint;
+  isPlacingPilot?: boolean;
 }
 
 // Calculate distance between two points using Haversine formula
@@ -131,7 +137,10 @@ export function OpenAIPMap({
   onRouteChange,
   initialCenter,
   controlledRoute,
-  onStartRoutePlanning
+  onStartRoutePlanning,
+  onPilotPositionChange,
+  pilotPosition,
+  isPlacingPilot
 }: OpenAIPMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -142,10 +151,15 @@ export function OpenAIPMap({
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasCtrGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
+  const pilotMarkerRef = useRef<L.Marker | null>(null);
+  const pilotCircleRef = useRef<L.Circle | null>(null);
+  const pilotLayerRef = useRef<L.LayerGroup | null>(null);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
   const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const isPlacingPilotRef = useRef(isPlacingPilot);
+  const onPilotPositionChangeRef = useRef(onPilotPositionChange);
   const weatherEnabledRef = useRef(false);
   const modeRef = useRef(mode);
 
@@ -217,6 +231,14 @@ export function OpenAIPMap({
   useEffect(() => {
     onRouteChangeRef.current = onRouteChange;
   }, [onRouteChange]);
+
+  useEffect(() => {
+    isPlacingPilotRef.current = isPlacingPilot;
+  }, [isPlacingPilot]);
+
+  useEffect(() => {
+    onPilotPositionChangeRef.current = onPilotPositionChange;
+  }, [onPilotPositionChange]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -476,6 +498,25 @@ export function OpenAIPMap({
       icon: "treePine",
     });
 
+    // Befolkningstetthet (SSB)
+    const populationLayer = L.tileLayer.wms(
+      "https://ogc.ssb.no/kart_ssr/ows?",
+      {
+        layers: "bef_rut_1km",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.5,
+        attribution: 'SSB Befolkningsdata',
+      }
+    );
+    layerConfigs.push({
+      id: "population",
+      name: "Befolkningstetthet (SSB)",
+      layer: populationLayer,
+      enabled: false,
+      icon: "users",
+    });
+
     // RPAS 5km soner
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
@@ -587,6 +628,10 @@ export function OpenAIPMap({
     // Route layer for route planning
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
+
+    // Pilot VLOS layer for route planning mode
+    const pilotLayer = L.layerGroup().addTo(map);
+    pilotLayerRef.current = pilotLayer;
 
     // Active advisory areas layer - always visible when active flights exist (not toggleable)
     const activeAdvisoryLayer = L.layerGroup().addTo(map);
@@ -1164,6 +1209,15 @@ export function OpenAIPMap({
       
       const { lat, lng } = e.latlng;
       
+      // Check if we're placing pilot position
+      if (isPlacingPilotRef.current) {
+        const cb = onPilotPositionChangeRef.current;
+        if (cb) {
+          cb({ lat, lng });
+        }
+        return;
+      }
+      
       if (modeRef.current === "routePlanning") {
         // Add point to route
         routePointsRef.current.push({ lat, lng });
@@ -1395,6 +1449,84 @@ export function OpenAIPMap({
       updateRouteDisplay();
     }
   }, [existingRoute, updateRouteDisplay]);
+
+  // Update pilot position marker and VLOS circle
+  useEffect(() => {
+    if (!pilotLayerRef.current || !leafletMapRef.current) return;
+    
+    pilotLayerRef.current.clearLayers();
+    pilotMarkerRef.current = null;
+    pilotCircleRef.current = null;
+    
+    if (!pilotPosition) return;
+    
+    const VLOS_RADIUS = 500; // 500 meters
+    
+    // Create pilot marker with controller icon
+    const pilotIcon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width: 36px;
+        height: 36px;
+        background: #8b5cf6;
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="5"/>
+          <path d="M20 21a8 8 0 0 0-16 0"/>
+        </svg>
+      </div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -18],
+    });
+    
+    const marker = L.marker([pilotPosition.lat, pilotPosition.lng], { 
+      icon: pilotIcon, 
+      draggable: mode === 'routePlanning',
+      pane: 'routePane',
+    });
+    
+    marker.bindPopup(`
+      <div>
+        <strong>👤 Pilotposisjon</strong><br/>
+        <span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/>
+        <span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span>
+      </div>
+    `);
+    
+    if (mode === 'routePlanning') {
+      marker.on('dragend', (e: any) => {
+        const { lat, lng } = e.target.getLatLng();
+        const cb = onPilotPositionChangeRef.current;
+        if (cb) {
+          cb({ lat, lng });
+        }
+      });
+    }
+    
+    marker.addTo(pilotLayerRef.current);
+    pilotMarkerRef.current = marker;
+    
+    // Create VLOS circle
+    const circle = L.circle([pilotPosition.lat, pilotPosition.lng], {
+      radius: VLOS_RADIUS,
+      color: '#8b5cf6',
+      weight: 2,
+      fillColor: '#8b5cf6',
+      fillOpacity: 0.1,
+      dashArray: '5, 5',
+      pane: 'routePane',
+    });
+    circle.addTo(pilotLayerRef.current);
+    pilotCircleRef.current = circle;
+    
+  }, [pilotPosition, mode]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;

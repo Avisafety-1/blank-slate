@@ -10,7 +10,8 @@ import {
   MapPin,
   Shield,
   Navigation,
-  Radar
+  Radar,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   shield: Shield,
   navigation: Navigation,
   radar: Radar,
+  users: Users,
 };
 
 export interface LayerConfig {
