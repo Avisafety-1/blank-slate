@@ -21,6 +21,7 @@ export interface RoutePoint {
 export interface RouteData {
   coordinates: RoutePoint[];
   totalDistance: number;
+  areaKm2?: number;
 }
 
 interface OpenAIPMapProps {
@@ -54,6 +55,72 @@ function calculateTotalDistance(points: RoutePoint[]): number {
     );
   }
   return total;
+}
+
+// Compute convex hull using Graham scan algorithm (same as edge function)
+function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
+  if (points.length < 3) return points;
+  
+  // Find the point with lowest lat (and leftmost if tie)
+  let start = points[0];
+  for (const p of points) {
+    if (p.lat < start.lat || (p.lat === start.lat && p.lng < start.lng)) {
+      start = p;
+    }
+  }
+  
+  // Sort by polar angle from start
+  const sorted = points.slice().sort((a, b) => {
+    if (a === start) return -1;
+    if (b === start) return 1;
+    const angleA = Math.atan2(a.lng - start.lng, a.lat - start.lat);
+    const angleB = Math.atan2(b.lng - start.lng, b.lat - start.lat);
+    return angleA - angleB;
+  });
+  
+  // Build hull
+  const hull: RoutePoint[] = [];
+  for (const p of sorted) {
+    while (hull.length >= 2) {
+      const a = hull[hull.length - 2];
+      const b = hull[hull.length - 1];
+      const cross = (b.lat - a.lat) * (p.lng - b.lng) - (b.lng - a.lng) * (p.lat - b.lat);
+      if (cross <= 0) {
+        hull.pop();
+      } else {
+        break;
+      }
+    }
+    hull.push(p);
+  }
+  
+  return hull;
+}
+
+// Calculate polygon area using Shoelace formula (returns km²)
+function calculatePolygonAreaKm2(points: RoutePoint[]): number {
+  if (points.length < 3) return 0;
+  
+  const hull = computeConvexHull(points);
+  if (hull.length < 3) return 0;
+  
+  // Convert to meters using approximate scale at average latitude
+  const avgLat = hull.reduce((sum, p) => sum + p.lat, 0) / hull.length;
+  const latScale = 111320; // meters per degree latitude
+  const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180); // meters per degree longitude
+  
+  // Apply Shoelace formula
+  let area = 0;
+  for (let i = 0; i < hull.length; i++) {
+    const j = (i + 1) % hull.length;
+    const xi = hull[i].lng * lngScale;
+    const yi = hull[i].lat * latScale;
+    const xj = hull[j].lng * lngScale;
+    const yj = hull[j].lat * latScale;
+    area += xi * yj - xj * yi;
+  }
+  
+  return Math.abs(area) / 2 / 1_000_000; // Convert m² to km²
 }
 
 export function OpenAIPMap({ 
@@ -150,9 +217,11 @@ export function OpenAIPMap({
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
           if (onRouteChange) {
+            const coords = [...routePointsRef.current];
             onRouteChange({
-              coordinates: [...routePointsRef.current],
-              totalDistance: calculateTotalDistance(routePointsRef.current)
+              coordinates: coords,
+              totalDistance: calculateTotalDistance(coords),
+              areaKm2: calculatePolygonAreaKm2(coords)
             });
           }
         });
@@ -163,9 +232,11 @@ export function OpenAIPMap({
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
           if (onRouteChange) {
+            const coords = [...routePointsRef.current];
             onRouteChange({
-              coordinates: [...routePointsRef.current],
-              totalDistance: calculateTotalDistance(routePointsRef.current)
+              coordinates: coords,
+              totalDistance: calculateTotalDistance(coords),
+              areaKm2: calculatePolygonAreaKm2(coords)
             });
           }
         });
@@ -946,9 +1017,11 @@ export function OpenAIPMap({
         routePointsRef.current.push({ lat, lng });
         updateRouteDisplay();
         if (onRouteChange) {
+          const coords = [...routePointsRef.current];
           onRouteChange({
-            coordinates: [...routePointsRef.current],
-            totalDistance: calculateTotalDistance(routePointsRef.current)
+            coordinates: coords,
+            totalDistance: calculateTotalDistance(coords),
+            areaKm2: calculatePolygonAreaKm2(coords)
           });
         }
       } else if (weatherEnabledRef.current) {
@@ -1206,9 +1279,11 @@ export function OpenAIPMap({
       routePointsRef.current.pop();
       updateRouteDisplay();
       if (onRouteChange) {
+        const coords = [...routePointsRef.current];
         onRouteChange({
-          coordinates: [...routePointsRef.current],
-          totalDistance: calculateTotalDistance(routePointsRef.current)
+          coordinates: coords,
+          totalDistance: calculateTotalDistance(coords),
+          areaKm2: calculatePolygonAreaKm2(coords)
         });
       }
     }
