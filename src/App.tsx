@@ -35,10 +35,12 @@ const AuthenticatedLayout = () => {
   }
   
   return (
-    <>
+    <div className="h-screen flex flex-col overflow-hidden">
       <Header />
-      <Outlet />
-    </>
+      <div className="flex-1 min-h-0 overflow-auto">
+        <Outlet />
+      </div>
+    </div>
   );
 };
 
