@@ -144,7 +144,13 @@
     "dronetagDevice": "DroneTag device",
     "selectDronetag": "Select DroneTag for telemetry...",
     "noDronetag": "No DroneTag",
-    "dronetagInfo": "Telemetry from selected DroneTag is stored automatically in the database."
+    "dronetagInfo": "Telemetry from selected DroneTag is stored automatically in the database.",
+    "largeAdvisoryTitle": "Large advisory",
+    "largeAdvisoryDesc": "The advisory covers a large area ({{area}} km²). Large advisories may be impractical for other airspace users.",
+    "largeAdvisoryHint": "Are you sure you want to publish this advisory?",
+    "publishAnyway": "Publish anyway",
+    "advisoryTooLarge": "Advisory area is too large",
+    "advisoryPublishError": "Could not publish advisory"
   },
   "dronetag": {
     "addTitle": "Add DroneTag",

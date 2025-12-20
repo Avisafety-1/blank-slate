@@ -243,6 +243,8 @@ export const useFlightTimer = () => {
     let routeData = null;
 
     // Fetch route data from mission if advisory mode is selected
+    // Note: Advisory publishing is now handled in StartFlightDialog (with size validation)
+    // so we only fetch route for storing in active_flights
     if (publishMode === 'advisory' && missionId) {
       const { data: mission } = await supabase
         .from('missions')
@@ -253,11 +255,7 @@ export const useFlightTimer = () => {
       if (mission?.route) {
         routeData = mission.route;
       }
-
-      const published = await publishAdvisory(missionId);
-      if (!published) {
-        console.warn('Failed to publish advisory, continuing without');
-      }
+      // Advisory was already published by StartFlightDialog with size validation
     } else if (publishMode === 'live_uav') {
       // Start GPS watch for local tracking (position stored in active_flights)
       // No SafeSky publishing - only internal pilot position display and beacon fetching
@@ -299,7 +297,7 @@ export const useFlightTimer = () => {
     });
 
     return true;
-  }, [user, companyId, publishAdvisory, startGpsWatch]);
+  }, [user, companyId, startGpsWatch]);
 
   // Fetch flight track from DroneTag positions
   const fetchFlightTrack = useCallback(async (

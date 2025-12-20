@@ -144,7 +144,13 @@
     "dronetagDevice": "DroneTag enhet",
     "selectDronetag": "Velg DroneTag for telemetri...",
     "noDronetag": "Ingen DroneTag",
-    "dronetagInfo": "Telemetri fra valgt DroneTag lagres automatisk i databasen."
+    "dronetagInfo": "Telemetri fra valgt DroneTag lagres automatisk i databasen.",
+    "largeAdvisoryTitle": "Stor advisory",
+    "largeAdvisoryDesc": "Advisoryen dekker et stort område ({{area}} km²). Store advisorys kan være upraktiske for andre luftromsbrukere.",
+    "largeAdvisoryHint": "Er du sikker på at du vil publisere denne advisoryen?",
+    "publishAnyway": "Publiser likevel",
+    "advisoryTooLarge": "Advisory-område er for stort",
+    "advisoryPublishError": "Kunne ikke publisere advisory"
   },
   "dronetag": {
     "addTitle": "Legg til DroneTag",

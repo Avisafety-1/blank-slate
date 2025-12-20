@@ -54,9 +54,62 @@ interface GeoJSONFeatureCollection {
   features: (GeoJSONPolygonFeature | GeoJSONPointFeature)[];
 }
 
+// Advisory size limits
+const MAX_ADVISORY_AREA_KM2 = 5; // Hard limit: 5 km²
+const LARGE_ADVISORY_THRESHOLD_KM2 = 2; // Warning threshold: 2 km²
+
 // Compute cross product of vectors OA and OB where O is origin
 function cross(O: number[], A: number[], B: number[]): number {
   return (A[0] - O[0]) * (B[1] - O[1]) - (A[1] - O[1]) * (B[0] - O[0]);
+}
+
+// Haversine formula to calculate distance between two points in km
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Calculate polygon area using Shoelace formula (in km²)
+// Coordinates are in [lng, lat] format (GeoJSON order)
+function calculatePolygonAreaKm2(coordinates: number[][]): number {
+  if (coordinates.length < 3) return 0;
+
+  // Get centroid for local projection
+  let centroidLat = 0, centroidLng = 0;
+  const n = coordinates.length - 1; // Exclude closing point
+  for (let i = 0; i < n; i++) {
+    centroidLng += coordinates[i][0];
+    centroidLat += coordinates[i][1];
+  }
+  centroidLat /= n;
+  centroidLng /= n;
+
+  // Convert to local Cartesian coordinates (km) centered on centroid
+  const cosLat = Math.cos(centroidLat * Math.PI / 180);
+  const points: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const lng = coordinates[i][0];
+    const lat = coordinates[i][1];
+    // Approximate conversion to km
+    const x = (lng - centroidLng) * 111.32 * cosLat;
+    const y = (lat - centroidLat) * 111.32;
+    points.push([x, y]);
+  }
+
+  // Shoelace formula
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    area += points[i][0] * points[j][1];
+    area -= points[j][0] * points[i][1];
+  }
+  return Math.abs(area) / 2;
 }
 
 // Compute convex hull using Andrew's monotone chain algorithm
@@ -319,6 +372,43 @@ Deno.serve(async (req) => {
       const advisoryId = `AVS_${missionId.substring(0, 8)}`;
       const polygonCoordinates = routeToPolygon(route);
 
+      // Calculate and validate polygon area
+      const areaKm2 = calculatePolygonAreaKm2(polygonCoordinates);
+      console.log(`Advisory area: ${areaKm2.toFixed(3)} km²`);
+
+      // Check for max size limit
+      if (areaKm2 > MAX_ADVISORY_AREA_KM2) {
+        console.warn(`Advisory too large: ${areaKm2.toFixed(2)} km² exceeds max ${MAX_ADVISORY_AREA_KM2} km²`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'advisory_too_large',
+            areaKm2,
+            maxAreaKm2: MAX_ADVISORY_AREA_KM2,
+            message: `Advisory area (${areaKm2.toFixed(2)} km²) exceeds maximum allowed (${MAX_ADVISORY_AREA_KM2} km²)`
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check for large advisory warning (requires confirmation from client)
+      const isLargeAdvisory = areaKm2 > LARGE_ADVISORY_THRESHOLD_KM2;
+      const forcePublish = body.forcePublish === true;
+      
+      if (isLargeAdvisory && !forcePublish) {
+        console.log(`Large advisory detected: ${areaKm2.toFixed(2)} km², requires confirmation`);
+        return new Response(
+          JSON.stringify({ 
+            warning: 'large_advisory',
+            areaKm2,
+            thresholdKm2: LARGE_ADVISORY_THRESHOLD_KM2,
+            maxAreaKm2: MAX_ADVISORY_AREA_KM2,
+            message: `Advisory area is ${areaKm2.toFixed(2)} km². Areas over ${LARGE_ADVISORY_THRESHOLD_KM2} km² may be impractical for other airspace users. Confirm to proceed.`,
+            requiresConfirmation: true
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Build GeoJSON FeatureCollection payload
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
@@ -372,6 +462,7 @@ Deno.serve(async (req) => {
           success: true, 
           action,
           advisoryId,
+          areaKm2,
           message: `Advisory ${action === 'publish_advisory' ? 'published' : 'refreshed'} successfully`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
