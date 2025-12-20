@@ -57,11 +57,12 @@ interface DroneDetailDialogProps {
   onDroneUpdated: () => void;
 }
 
-export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }: DroneDetailDialogProps) => {
+export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+  const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
@@ -97,6 +98,37 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
   });
 
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+
+  // Update local drone state when prop changes
+  useEffect(() => {
+    setDrone(initialDrone);
+  }, [initialDrone]);
+
+  // Real-time subscription for drone updates
+  useEffect(() => {
+    if (!drone?.id || !open) return;
+
+    const channel = supabase
+      .channel(`drone-detail-${drone.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'drones',
+          filter: `id=eq.${drone.id}`,
+        },
+        (payload) => {
+          console.log('Drone updated via realtime:', payload.new);
+          setDrone(payload.new as Drone);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [drone?.id, open]);
 
   useEffect(() => {
     if (drone) {
