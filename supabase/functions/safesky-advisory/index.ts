@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
       const areaKm2 = calculatePolygonAreaKm2(polygonCoordinates);
       console.log(`Advisory area: ${areaKm2.toFixed(3)} km²`);
 
-      // Check for max size limit
+      // Check for max size limit - return 200 with error info so client can handle gracefully
       if (areaKm2 > MAX_ADVISORY_AREA_KM2) {
         console.warn(`Advisory too large: ${areaKm2.toFixed(2)} km² exceeds max ${MAX_ADVISORY_AREA_KM2} km²`);
         return new Response(
@@ -386,7 +386,7 @@ Deno.serve(async (req) => {
             maxAreaKm2: MAX_ADVISORY_AREA_KM2,
             message: `Advisory area (${areaKm2.toFixed(2)} km²) exceeds maximum allowed (${MAX_ADVISORY_AREA_KM2} km²)`
           }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 

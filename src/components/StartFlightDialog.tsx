@@ -301,33 +301,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           body: { action: 'publish_advisory', missionId, forcePublish: false },
         });
         
-        // Handle error responses - the error context may contain our structured response
+        // Handle error responses
         if (error) {
-          // Try to parse error context for our structured error responses
-          const errorContext = error.context;
-          let errorData = null;
-          
-          if (errorContext?.body) {
-            try {
-              // Edge function errors often have the response body in context
-              errorData = typeof errorContext.body === 'string' 
-                ? JSON.parse(errorContext.body) 
-                : errorContext.body;
-            } catch {
-              // Could not parse, will use generic error
-            }
-          }
-          
-          // Check for our structured "too large" error
-          if (errorData?.error === 'advisory_too_large') {
-            toast.error(`${t('flight.advisoryTooLarge')}: ${errorData.areaKm2?.toFixed(2) || '?'} km² (max ${errorData.maxAreaKm2 || 5} km²)`);
-            setLoading(false);
-            return;
-          }
-          
-          // Generic error
-          console.error('Advisory pre-check error:', error);
+          console.log('Advisory pre-check error:', error.message);
           toast.error(t('flight.advisoryPublishError'));
+          setLoading(false);
+          return;
+        }
+        
+        // Check for advisory_too_large (returned as 200 with error info)
+        if (data?.error === 'advisory_too_large') {
+          toast.info(`${t('flight.advisoryTooLarge')}: ${data.areaKm2?.toFixed(2) || '?'} km² (max ${data.maxAreaKm2 || 5} km²)`);
           setLoading(false);
           return;
         }
@@ -337,13 +321,6 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           setAdvisoryAreaKm2(data.areaKm2);
           setShowLargeAdvisoryWarning(true);
           setPendingFlightStart(true);
-          setLoading(false);
-          return;
-        }
-        
-        // Check for hard limit exceeded (shouldn't happen with 400 status but just in case)
-        if (data?.error === 'advisory_too_large') {
-          toast.error(`${t('flight.advisoryTooLarge')}: ${data.areaKm2?.toFixed(2) || '?'} km² (max ${data.maxAreaKm2 || 5} km²)`);
           setLoading(false);
           return;
         }
