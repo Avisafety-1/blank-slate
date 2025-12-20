@@ -84,8 +84,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
   
-  // Large advisory warning
+  // Large advisory warning (50-150 km²)
   const [showLargeAdvisoryWarning, setShowLargeAdvisoryWarning] = useState(false);
+  // Too large advisory error (>150 km²)
+  const [showAdvisoryTooLarge, setShowAdvisoryTooLarge] = useState(false);
   const [advisoryAreaKm2, setAdvisoryAreaKm2] = useState<number | null>(null);
   const [pendingFlightStart, setPendingFlightStart] = useState(false);
   
@@ -172,6 +174,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setPilotName('');
       setSelectedDronetagId('');
       setShowLargeAdvisoryWarning(false);
+      setShowAdvisoryTooLarge(false);
       setAdvisoryAreaKm2(null);
       setPendingFlightStart(false);
     }
@@ -291,6 +294,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     setLoading(true);
     setShowChecklistWarning(false);
     setShowLargeAdvisoryWarning(false);
+    setShowAdvisoryTooLarge(false);
     
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
@@ -309,14 +313,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           return;
         }
         
-        // Check for advisory_too_large (returned as 200 with error info)
+        // Check for advisory_too_large (>150 km²) - show info dialog
         if (data?.error === 'advisory_too_large') {
-          toast.info(`${t('flight.advisoryTooLarge')}: ${data.areaKm2?.toFixed(2) || '?'} km² (max ${data.maxAreaKm2 || 5} km²)`);
+          setAdvisoryAreaKm2(data.areaKm2);
+          setShowAdvisoryTooLarge(true);
           setLoading(false);
           return;
         }
         
-        // Check if advisory requires confirmation (large area) - 200 response with warning
+        // Check if advisory requires confirmation (50-150 km²) - show confirmation dialog
         if (data?.requiresConfirmation && data?.warning === 'large_advisory') {
           setAdvisoryAreaKm2(data.areaKm2);
           setShowLargeAdvisoryWarning(true);
@@ -697,6 +702,31 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               className="bg-amber-600 hover:bg-amber-700"
             >
               {t('flight.publishAnyway')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Advisory Too Large Dialog (>150 km²) */}
+      <AlertDialog open={showAdvisoryTooLarge} onOpenChange={setShowAdvisoryTooLarge}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              {t('flight.advisoryTooLargeTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                {t('flight.advisoryTooLargeDesc', { area: advisoryAreaKm2?.toFixed(2) || '?' })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t('flight.advisoryTooLargeHint')}
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowAdvisoryTooLarge(false)}>
+              OK
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
