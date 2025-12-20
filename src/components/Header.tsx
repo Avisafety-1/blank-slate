@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Building2, Globe } from "lucide-react";
+import { LogOut, Settings, Menu, Building2, Globe, Download } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,6 +133,10 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/installer")}>
+                  <Download className="w-4 h-4 mr-2" />
+                  {t('nav.installApp', 'Installer app')}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -180,6 +184,9 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/installer")} title={t('nav.installApp', 'Installer app')}>
+              <Download className="w-4 h-4" />
+            </Button>
           </nav>
           
           <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
