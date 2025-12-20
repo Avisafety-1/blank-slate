@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { toast } from "sonner";
 import { openAipConfig } from "@/lib/openaip";
 import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
@@ -499,35 +498,6 @@ export function OpenAIPMap({
       icon: "treePine",
     });
 
-    // Befolkede områder (proxy): Matrikkel (Kartverket)
-    // NB: Forrige Geonorge-tjeneste for "Tettsteder" feiler (mapfile utilgjengelig),
-    // så vi bruker Matrikkel WMS som gir tydelig visuell indikasjon på bebygde/"befolkede" områder.
-    let populationErrorNotified = false;
-    const populationLayer = L.tileLayer.wms(
-      "https://wms.geonorge.no/skwms1/wms.matrikkel?",
-      {
-        layers: "eiendomskart",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.55,
-        attribution: "Kartverket Matrikkel WMS",
-      }
-    );
-
-    populationLayer.on("tileerror", (e) => {
-      if (populationErrorNotified) return;
-      populationErrorNotified = true;
-      console.warn("Population layer tile error", e);
-      toast.error("Kunne ikke laste bebyggelse/befolkning-laget (Matrikkel). Prøv igjen senere.");
-    });
-
-    layerConfigs.push({
-      id: "population",
-      name: "Bebyggelse (Matrikkel)",
-      layer: populationLayer,
-      enabled: false,
-      icon: "users",
-    });
 
     // RPAS 5km soner
     const rpasLayer = L.layerGroup().addTo(map);
