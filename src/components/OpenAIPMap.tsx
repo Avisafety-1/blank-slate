@@ -1380,15 +1380,15 @@ export function OpenAIPMap({
                         data-index="${i}"
                         data-forecast-id="${forecastDataId}"
                         data-popup-id="${popupId}"
-                        style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;"
+                        style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; position: relative;"
                       >
                         <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px; transition: transform 0.1s;" onmouseover="this.style.transform='scaleY(1.2)'" onmouseout="this.style.transform='scaleY(1)'"></div>
                         <span style="font-size: 8px; color: #9ca3af;">${hour}</span>
                       </div>
                     `;
                   }).join('')}
+                  <div id="${popupId}" style="display: none; position: absolute; z-index: 9999; pointer-events: auto;"></div>
                 </div>
-                <div id="${popupId}" style="display: none; position: absolute; z-index: 9999; pointer-events: auto;"></div>
               </div>
             `;
             
@@ -1449,15 +1449,21 @@ export function OpenAIPMap({
                   popupEl.dataset.activeIndex = String(idx);
                   popupEl.style.display = 'block';
                   
-                  // Posisjonering
+                  // Posisjonering - plasser rett over den klikkede boksen
+                  const blockRect = this.getBoundingClientRect();
                   const container = document.getElementById(`${popId}-container`);
                   if (container) {
-                    const blockRect = this.getBoundingClientRect();
                     const containerRect = container.getBoundingClientRect();
-                    popupEl.style.position = 'absolute';
-                    popupEl.style.bottom = '100%';
-                    popupEl.style.left = `${blockRect.left - containerRect.left + blockRect.width / 2 - 80}px`;
-                    popupEl.style.marginBottom = '8px';
+                    const popupWidth = 160;
+                    let leftPos = blockRect.left - containerRect.left + blockRect.width / 2 - popupWidth / 2;
+                    
+                    // Sørg for at popup ikke går utenfor containeren
+                    if (leftPos < 0) leftPos = 0;
+                    if (leftPos + popupWidth > containerRect.width) leftPos = containerRect.width - popupWidth;
+                    
+                    popupEl.style.left = `${leftPos}px`;
+                    popupEl.style.bottom = `calc(100% + 4px)`;
+                    popupEl.style.transform = 'none';
                   }
                 });
               });
