@@ -1457,65 +1457,83 @@ export function OpenAIPMap({
       <div ref={mapRef} className="w-full h-full touch-manipulation" />
       
       {/* Map controls */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
         {/* Weather toggle button */}
-        {mode === "view" && (
-          <Button
-            variant={weatherEnabled ? "default" : "secondary"}
-            size="icon"
-            className={`shadow-lg ${weatherEnabled ? '' : 'bg-card hover:bg-accent'}`}
-            onClick={() => setWeatherEnabled(!weatherEnabled)}
-            title={weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
-          >
-            <CloudSun className="h-5 w-5" />
-          </Button>
-        )}
-        
+        <Button
+          variant={weatherEnabled ? "default" : "secondary"}
+          size="icon"
+          className={`shadow-lg ${weatherEnabled ? "" : "bg-card hover:bg-accent"}`}
+          onClick={() => {
+            if (mode !== "view") return;
+            setWeatherEnabled(!weatherEnabled);
+          }}
+          disabled={mode !== "view"}
+          title={
+            mode !== "view"
+              ? "Værvisning er ikke tilgjengelig under ruteplanlegging"
+              : weatherEnabled
+                ? "Slå av værvisning"
+                : "Slå på værvisning (klikk i kartet)"
+          }
+        >
+          <CloudSun className="h-5 w-5" />
+        </Button>
+
         {/* Base layer toggle button */}
         <Button
           variant="secondary"
           size="icon"
           className="shadow-lg bg-card hover:bg-accent"
           onClick={() => {
-            const next = baseLayerType === 'osm' ? 'satellite' 
-                       : baseLayerType === 'satellite' ? 'topo' 
-                       : 'osm';
+            const next =
+              baseLayerType === "osm"
+                ? "satellite"
+                : baseLayerType === "satellite"
+                  ? "topo"
+                  : "osm";
             switchBaseLayer(next);
           }}
           title={
-            baseLayerType === 'osm' ? 'Bytt til satellittkart' 
-            : baseLayerType === 'satellite' ? 'Bytt til topografisk kart'
-            : 'Bytt til standard kart'
+            baseLayerType === "osm"
+              ? "Bytt til satellittkart"
+              : baseLayerType === "satellite"
+                ? "Bytt til topografisk kart"
+                : "Bytt til standard kart"
           }
         >
-          {baseLayerType === 'osm' ? <Satellite className="h-5 w-5" /> 
-           : baseLayerType === 'satellite' ? <Mountain className="h-5 w-5" />
-           : <MapIcon className="h-5 w-5" />}
+          {baseLayerType === "osm" ? (
+            <Satellite className="h-5 w-5" />
+          ) : baseLayerType === "satellite" ? (
+            <Mountain className="h-5 w-5" />
+          ) : (
+            <MapIcon className="h-5 w-5" />
+          )}
         </Button>
+
+        {/* Layers / filters */}
+        <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
+
+        {/* Route planning button */}
+        {mode === "view" && onStartRoutePlanning && (
+          <Button
+            onClick={onStartRoutePlanning}
+            variant="default"
+            size="icon"
+            className="shadow-lg"
+            title="Planlegg ny rute"
+          >
+            <Route className="h-5 w-5" />
+          </Button>
+        )}
       </div>
-      
-      {/* Route planning button - positioned below layers */}
-      {mode === "view" && onStartRoutePlanning && (
-        <Button
-          onClick={onStartRoutePlanning}
-          variant="default"
-          size="icon"
-          className="absolute top-40 right-4 z-[1000] shadow-lg"
-          title="Planlegg ny rute"
-        >
-          <Route className="h-5 w-5" />
-        </Button>
-      )}
-      
-      <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
-      
+
       {/* Weather enabled hint */}
       {mode === "view" && weatherEnabled && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
         </div>
       )}
-      
+
       {/* Route planning instructions */}
       {mode === "routePlanning" && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
