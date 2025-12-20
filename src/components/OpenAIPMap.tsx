@@ -1349,20 +1349,20 @@ export function OpenAIPMap({
             <CloudSun className="h-5 w-5" />
           </Button>
         )}
-        
-        {/* Route planning button */}
-        {mode === "view" && onStartRoutePlanning && (
-          <Button
-            onClick={onStartRoutePlanning}
-            className="shadow-lg"
-            size="sm"
-          >
-            <Route className="h-4 w-4 mr-1.5" />
-            <span className="hidden sm:inline">Planlegg rute</span>
-            <span className="sm:hidden">Ny rute</span>
-          </Button>
-        )}
       </div>
+      
+      {/* Route planning button - positioned below layers */}
+      {mode === "view" && onStartRoutePlanning && (
+        <Button
+          onClick={onStartRoutePlanning}
+          variant="secondary"
+          size="icon"
+          className="absolute top-28 sm:top-32 right-4 z-[1000] shadow-lg bg-card hover:bg-accent"
+          title="Planlegg ny rute"
+        >
+          <Route className="h-5 w-5" />
+        </Button>
+      )}
       
       <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
       
