@@ -32,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleCheck } from '@/hooks/useRoleCheck';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -83,6 +83,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
+  
+  // Large advisory warning
+  const [showLargeAdvisoryWarning, setShowLargeAdvisoryWarning] = useState(false);
+  const [advisoryAreaKm2, setAdvisoryAreaKm2] = useState<number | null>(null);
+  const [pendingFlightStart, setPendingFlightStart] = useState(false);
   
   // GPS position for live_uav mode
   const [gpsPosition, setGpsPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -166,6 +171,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setGpsLoading(false);
       setPilotName('');
       setSelectedDronetagId('');
+      setShowLargeAdvisoryWarning(false);
+      setAdvisoryAreaKm2(null);
+      setPendingFlightStart(false);
     }
   }, [open]);
 
@@ -279,11 +287,43 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     handleStartFlight();
   };
 
-  const handleStartFlight = async () => {
+  const handleStartFlight = async (forcePublish = false) => {
     setLoading(true);
     setShowChecklistWarning(false);
+    setShowLargeAdvisoryWarning(false);
+    
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
+      
+      // For advisory mode, check for large advisory warning first
+      if (publishMode === 'advisory' && missionId && !forcePublish) {
+        const { data, error } = await supabase.functions.invoke('safesky-advisory', {
+          body: { action: 'publish_advisory', missionId, forcePublish: false },
+        });
+        
+        if (error) {
+          console.error('Advisory pre-check error:', error);
+          toast.error(t('flight.advisoryPublishError'));
+          setLoading(false);
+          return;
+        }
+        
+        // Check if advisory requires confirmation (large area)
+        if (data?.requiresConfirmation && data?.warning === 'large_advisory') {
+          setAdvisoryAreaKm2(data.areaKm2);
+          setShowLargeAdvisoryWarning(true);
+          setPendingFlightStart(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Check for hard limit exceeded
+        if (data?.error === 'advisory_too_large') {
+          toast.error(`${t('flight.advisoryTooLarge')}: ${data.areaKm2.toFixed(2)} km² (max ${data.maxAreaKm2} km²)`);
+          setLoading(false);
+          return;
+        }
+      }
       
       // Pass GPS position, pilot name, and DroneTag device for live_uav mode
       const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
@@ -296,6 +336,43 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       onOpenChange(false);
     } finally {
       setLoading(false);
+      setPendingFlightStart(false);
+    }
+  };
+
+  const handleConfirmLargeAdvisory = async () => {
+    // Re-call onStartFlight with forcePublish flag
+    setShowLargeAdvisoryWarning(false);
+    setLoading(true);
+    
+    try {
+      const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
+      
+      // Force publish the advisory
+      if (missionId) {
+        const { error } = await supabase.functions.invoke('safesky-advisory', {
+          body: { action: 'publish_advisory', missionId, forcePublish: true },
+        });
+        
+        if (error) {
+          console.error('Advisory publish error:', error);
+          toast.error(t('flight.advisoryPublishError'));
+          setLoading(false);
+          return;
+        }
+      }
+      
+      const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
+      const pilot = publishMode === 'live_uav' && pilotName ? pilotName : undefined;
+      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
+        ? selectedDronetagId 
+        : undefined;
+      
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId);
+      onOpenChange(false);
+    } finally {
+      setLoading(false);
+      setPendingFlightStart(false);
     }
   };
 
@@ -586,10 +663,39 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           <AlertDialogFooter>
             <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleStartFlight}
+              onClick={() => handleStartFlight()}
               className="bg-amber-600 hover:bg-amber-700"
             >
               {t('flight.startAnyway')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Large Advisory Warning Dialog */}
+      <AlertDialog open={showLargeAdvisoryWarning} onOpenChange={setShowLargeAdvisoryWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Ruler className="h-5 w-5 text-amber-500" />
+              {t('flight.largeAdvisoryTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                {t('flight.largeAdvisoryDesc', { area: advisoryAreaKm2?.toFixed(2) || '?' })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t('flight.largeAdvisoryHint')}
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmLargeAdvisory}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {t('flight.publishAnyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
