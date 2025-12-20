@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle, Wind, Droplets, Thermometer, CloudRain, Loader2, AlertTriangle, Info, Clock, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -9,18 +10,34 @@ import { useTerminology } from "@/hooks/useTerminology";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-interface DroneWeatherPanelProps {
-  latitude: number | null;
-  longitude: number | null;
-  compact?: boolean;
-}
-
 interface WeatherWarning {
   level: 'warning' | 'caution' | 'note';
   type: string;
   message: string;
   value: number;
   unit: string;
+}
+
+interface SavedWeatherData {
+  captured_at: string;
+  current: {
+    temperature: number | null;
+    wind_speed: number | null;
+    wind_gust: number | null;
+    wind_direction: number | null;
+    humidity: number | null;
+    precipitation: number;
+    symbol: string;
+  };
+  warnings: WeatherWarning[];
+  drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
+}
+
+interface DroneWeatherPanelProps {
+  latitude: number | null;
+  longitude: number | null;
+  compact?: boolean;
+  savedWeatherData?: SavedWeatherData | null;
 }
 
 interface HourlyForecast {
@@ -62,68 +79,16 @@ interface WeatherData {
   drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
 }
 
-export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: DroneWeatherPanelProps) => {
+export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedWeatherData }: DroneWeatherPanelProps) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const terminology = useTerminology();
 
-  useEffect(() => {
-    if (latitude && longitude) {
-      fetchWeather();
-    } else {
-      setWeatherData(null);
-    }
-  }, [latitude, longitude]);
+  // Hvis vi har lagrede værdata (historisk), vis disse i stedet for å hente nye
+  const isHistorical = !!savedWeatherData;
 
-  const fetchWeather = async () => {
-    if (!latitude || !longitude) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: functionError } = await supabase.functions.invoke('drone-weather', {
-        body: { lat: latitude, lon: longitude }
-      });
-
-      if (functionError) throw functionError;
-      
-      setWeatherData(data);
-    } catch (err: any) {
-      console.error('Error fetching drone weather:', err);
-      setError(err.message || 'Kunne ikke hente værdata');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!latitude || !longitude) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Henter {terminology.vehicleWeather.toLowerCase()}...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive" className="mt-2">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (!weatherData) {
-    return null;
-  }
-
+  // Helper functions - definert først for å kunne brukes i hele komponenten
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
       case 'warning':
@@ -210,6 +175,146 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
 
     return reasons;
   };
+
+  useEffect(() => {
+    // Ikke hent nye data hvis vi har lagrede historiske data
+    if (savedWeatherData) {
+      setWeatherData(null);
+      return;
+    }
+    
+    if (latitude && longitude) {
+      fetchWeather();
+    } else {
+      setWeatherData(null);
+    }
+  }, [latitude, longitude, savedWeatherData]);
+
+  const fetchWeather = async () => {
+    if (!latitude || !longitude) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke('drone-weather', {
+        body: { lat: latitude, lon: longitude }
+      });
+
+      if (functionError) throw functionError;
+      
+      setWeatherData(data);
+    } catch (err: any) {
+      console.error('Error fetching drone weather:', err);
+      setError(err.message || 'Kunne ikke hente værdata');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!latitude || !longitude) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>Henter {terminology.vehicleWeather.toLowerCase()}...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="mt-2">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Hvis vi har historiske data, vis disse
+  if (isHistorical && savedWeatherData) {
+    return (
+      <Card className="mt-3 p-3 space-y-3 bg-card/50 border">
+        {/* Historisk data-header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Clock className="w-3 h-3" />
+              Faktisk vær
+            </Badge>
+          </div>
+          <div className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium",
+            getRecommendationColor(savedWeatherData.drone_flight_recommendation)
+          )}>
+            {getRecommendationIcon(savedWeatherData.drone_flight_recommendation)}
+            <span>{getRecommendationText(savedWeatherData.drone_flight_recommendation)}</span>
+          </div>
+        </div>
+
+        {/* Info om at dette er historiske data */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Værdata registrert ved fullføring: {new Date(savedWeatherData.captured_at).toLocaleDateString('nb-NO', { 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </span>
+        </div>
+
+        {/* Advarsler */}
+        {savedWeatherData.warnings && savedWeatherData.warnings.length > 0 && (
+          <div className="space-y-1">
+            {savedWeatherData.warnings.map((warning, index) => (
+              <Alert
+                key={index}
+                variant={warning.level === 'warning' ? 'destructive' : 'default'}
+                className={cn(
+                  "py-1.5",
+                  warning.level === 'caution' && "bg-warning/10 border-warning text-warning",
+                  warning.level === 'note' && "bg-muted border-border text-muted-foreground"
+                )}
+              >
+                <AlertDescription className="text-xs">{warning.message}</AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        )}
+
+        {/* Værforhold under flygningen */}
+        <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
+          <div className="flex items-center gap-1.5 text-sm">
+            <Wind className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{savedWeatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Thermometer className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{savedWeatherData.current.temperature?.toFixed(1) || '-'}°C</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Droplets className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{savedWeatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+          </div>
+        </div>
+
+        <div className="text-xs text-muted-foreground pt-2 border-t">
+          Faktiske værforhold under flygningen
+        </div>
+      </Card>
+    );
+  }
+
+  if (!weatherData) {
+    return null;
+  }
 
   // Get only 12 hours for compact timeline
   const displayForecast = weatherData.hourly_forecast?.slice(0, 12) || [];

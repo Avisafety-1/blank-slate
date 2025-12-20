@@ -1646,6 +1646,7 @@ export type Database = {
           tidspunkt: string
           tittel: string
           user_id: string
+          weather_data_snapshot: Json | null
         }
         Insert: {
           beskrivelse?: string | null
@@ -1665,6 +1666,7 @@ export type Database = {
           tidspunkt: string
           tittel: string
           user_id: string
+          weather_data_snapshot?: Json | null
         }
         Update: {
           beskrivelse?: string | null
@@ -1684,6 +1686,7 @@ export type Database = {
           tidspunkt?: string
           tittel?: string
           user_id?: string
+          weather_data_snapshot?: Json | null
         }
         Relationships: [
           {
