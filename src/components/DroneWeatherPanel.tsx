@@ -293,15 +293,15 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
           <div className="flex items-center gap-1.5 text-sm">
             <Wind className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{savedWeatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
+            <span className="font-medium text-foreground">{savedWeatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Thermometer className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{savedWeatherData.current.temperature?.toFixed(1) || '-'}°C</span>
+            <span className="font-medium text-foreground">{savedWeatherData.current.temperature?.toFixed(1) || '-'}°C</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Droplets className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{savedWeatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+            <span className="font-medium text-foreground">{savedWeatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
           </div>
         </div>
 
@@ -362,15 +362,15 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
           <div className="flex items-center gap-1.5 text-sm">
             <Wind className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
+            <span className="font-medium text-foreground">{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Thermometer className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{weatherData.current.temperature?.toFixed(1) || '-'}°C</span>
+            <span className="font-medium text-foreground">{weatherData.current.temperature?.toFixed(1) || '-'}°C</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Droplets className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+            <span className="font-medium text-foreground">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
           </div>
         </div>
 
