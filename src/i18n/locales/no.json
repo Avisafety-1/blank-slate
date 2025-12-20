@@ -150,6 +150,9 @@
     "largeAdvisoryHint": "Er du sikker på at du vil publisere denne advisoryen?",
     "publishAnyway": "Publiser likevel",
     "advisoryTooLarge": "Advisory-område er for stort",
+    "advisoryTooLargeTitle": "Området er for stort",
+    "advisoryTooLargeDesc": "Advisoryen dekker {{area}} km², som er over grensen på 150 km² for SafeSky.",
+    "advisoryTooLargeHint": "Du må redusere rutens størrelse for å kunne publisere en advisory.",
     "advisoryPublishError": "Kunne ikke publisere advisory"
   },
   "dronetag": {

@@ -150,6 +150,9 @@
     "largeAdvisoryHint": "Are you sure you want to publish this advisory?",
     "publishAnyway": "Publish anyway",
     "advisoryTooLarge": "Advisory area is too large",
+    "advisoryTooLargeTitle": "Area is too large",
+    "advisoryTooLargeDesc": "The advisory covers {{area}} km², which exceeds the 150 km² limit for SafeSky.",
+    "advisoryTooLargeHint": "You need to reduce the route size to publish an advisory.",
     "advisoryPublishError": "Could not publish advisory"
   },
   "dronetag": {
