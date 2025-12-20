@@ -1253,6 +1253,8 @@ const Oppdrag = () => {
                       const routeCoords = (mission.route as any)?.coordinates;
                       const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
                       const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
+                      const isCompleted = mission.status === "Fullført";
+                      const hasWeatherSnapshot = mission.weather_data_snapshot;
                       
                       if (!effectiveLat || !effectiveLng) return null;
                       
@@ -1262,6 +1264,7 @@ const Oppdrag = () => {
                             latitude={effectiveLat}
                             longitude={effectiveLng}
                             compact
+                            savedWeatherData={isCompleted && hasWeatherSnapshot ? hasWeatherSnapshot : undefined}
                           />
                           <AirspaceWarnings
                             latitude={effectiveLat}
