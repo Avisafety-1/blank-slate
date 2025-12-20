@@ -165,7 +165,7 @@ export default function KartPage() {
               {/* SafeSky advisory area indicator */}
               {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                 <div className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
+                  "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium",
                   currentRoute.areaKm2 <= 50 
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     : currentRoute.areaKm2 <= 150
@@ -173,15 +173,21 @@ export default function KartPage() {
                       : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                 )}>
                   {currentRoute.areaKm2 <= 50 ? (
-                    <CheckCircle2 className="h-3 w-3" />
+                    <CheckCircle2 className="h-3 w-3 shrink-0" />
                   ) : currentRoute.areaKm2 <= 150 ? (
-                    <AlertTriangle className="h-3 w-3" />
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
                   ) : (
-                    <XCircle className="h-3 w-3" />
+                    <XCircle className="h-3 w-3 shrink-0" />
                   )}
-                  <span>
+                  <span className="leading-tight">
                     {currentRoute.areaKm2.toFixed(2)} km²
-                    {currentRoute.areaKm2 > 150 && " (for stort for SafeSky advisory)"}
+                    {currentRoute.areaKm2 > 150 && (
+                      <>
+                        <br className="sm:hidden" />
+                        <span className="hidden sm:inline"> – </span>
+                        <span>for stort for SafeSky</span>
+                      </>
+                    )}
                     {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
                   </span>
                 </div>
