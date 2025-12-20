@@ -1103,9 +1103,9 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Fortsett logging</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setCancelConfirmOpen(false)}>Fortsett logging</AlertDialogCancel>
             <AlertDialogAction onClick={confirmCancel} className="bg-destructive hover:bg-destructive/90">
-              Lukk uten å lagre
+              Avslutt flytur
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
