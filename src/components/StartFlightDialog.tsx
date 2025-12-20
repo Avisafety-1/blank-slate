@@ -180,13 +180,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [open]);
 
-  // Fetch pilot name and GPS when live_uav is selected
+  // Fetch pilot name when dialog opens
   useEffect(() => {
-    if (publishMode !== 'live_uav' || !open) return;
+    if (!open || !user) return;
 
-    // Fetch pilot's name
     const fetchPilotName = async () => {
-      if (!user) return;
       const { data } = await supabase
         .from('profiles')
         .select('full_name')
@@ -197,8 +195,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
     };
     fetchPilotName();
+  }, [open, user]);
 
-    // Get GPS position
+  // Always fetch GPS position when dialog opens (for all modes, to auto-fill departure)
+  useEffect(() => {
+    if (!open) return;
+
     setGpsLoading(true);
     setGpsError(null);
     
@@ -223,7 +225,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [publishMode, open, user, t]);
+  }, [open, t]);
 
   const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
     ? missions.find(m => m.id === selectedMissionId) 
@@ -331,9 +333,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         }
       }
       
-      // Pass GPS position, pilot name, and DroneTag device for live_uav mode
-      const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
-      const pilot = publishMode === 'live_uav' && pilotName ? pilotName : undefined;
+      // Always pass GPS position for departure auto-fill, pilot name and DroneTag for live_uav
+      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const pilot = pilotName ? pilotName : undefined;
       const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
         ? selectedDronetagId 
         : undefined;
@@ -368,9 +370,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         }
       }
       
-      const startPosition = publishMode === 'live_uav' && gpsPosition ? gpsPosition : undefined;
-      const pilot = publishMode === 'live_uav' && pilotName ? pilotName : undefined;
-      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
+      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const pilot = pilotName ? pilotName : undefined;
+      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none'
         ? selectedDronetagId 
         : undefined;
       
