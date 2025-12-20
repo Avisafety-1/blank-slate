@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, Plus } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -160,6 +161,31 @@ export default function KartPage() {
                   {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                 </p>
               </div>
+              
+              {/* SafeSky advisory area indicator */}
+              {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
+                  currentRoute.areaKm2 <= 2 
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : currentRoute.areaKm2 <= 5
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                )}>
+                  {currentRoute.areaKm2 <= 2 ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : currentRoute.areaKm2 <= 5 ? (
+                    <AlertTriangle className="h-3 w-3" />
+                  ) : (
+                    <XCircle className="h-3 w-3" />
+                  )}
+                  <span>
+                    {currentRoute.areaKm2.toFixed(2)} km²
+                    {currentRoute.areaKm2 > 5 && " (for stort)"}
+                    {currentRoute.areaKm2 > 2 && currentRoute.areaKm2 <= 5 && " (stort)"}
+                  </span>
+                </div>
+              )}
             </div>
             
             {/* Actions - responsive grid on mobile */}
