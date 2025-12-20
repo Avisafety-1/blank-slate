@@ -353,7 +353,12 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="space-y-3">
-          <DialogTitle className="text-lg sm:text-xl pr-8">{incident.tittel}</DialogTitle>
+          <div className="space-y-1">
+            {incident.incident_number && (
+              <p className="text-sm font-mono text-muted-foreground">ID: {incident.incident_number}</p>
+            )}
+            <DialogTitle className="text-lg sm:text-xl pr-8">{incident.tittel}</DialogTitle>
+          </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {onEditRequest && (
               <Button

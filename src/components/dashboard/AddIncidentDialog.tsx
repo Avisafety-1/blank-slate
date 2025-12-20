@@ -222,6 +222,23 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         toast.success("Hendelse oppdatert!");
       } else {
+        // Generer incident_number basert på dato
+        const eventDate = new Date(formData.hendelsestidspunkt);
+        const dateStr = `${eventDate.getFullYear()}${String(eventDate.getMonth() + 1).padStart(2, '0')}${String(eventDate.getDate()).padStart(2, '0')}`;
+        
+        // Finn antall hendelser med samme dato-prefiks
+        const { count, error: countError } = await supabase
+          .from('incidents')
+          .select('id', { count: 'exact', head: true })
+          .like('incident_number', `${dateStr}%`);
+        
+        if (countError) {
+          console.error('Error counting incidents:', countError);
+        }
+        
+        const nextNumber = String((count || 0) + 1).padStart(2, '0');
+        const incidentNumber = `${dateStr}${nextNumber}`;
+
         // INSERT ny hendelse
         const { error } = await supabase
           .from('incidents')
@@ -230,6 +247,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             company_id: companyId,
             user_id: user.id,
             rapportert_av: user.email || 'Ukjent',
+            incident_number: incidentNumber,
           });
 
         if (error) throw error;
