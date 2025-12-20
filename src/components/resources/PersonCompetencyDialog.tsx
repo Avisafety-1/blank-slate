@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,9 +41,10 @@ interface PersonCompetencyDialogProps {
 export function PersonCompetencyDialog({
   open,
   onOpenChange,
-  person,
+  person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
+  const [person, setPerson] = useState<Person | null>(initialPerson);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
@@ -64,6 +65,46 @@ export function PersonCompetencyDialog({
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editExpiryDate, setEditExpiryDate] = useState("");
   const [editAffectsStatus, setEditAffectsStatus] = useState(true);
+
+  // Update local person state when prop changes
+  useEffect(() => {
+    setPerson(initialPerson);
+  }, [initialPerson]);
+
+  // Real-time subscription for competency updates
+  useEffect(() => {
+    if (!person?.id || !open) return;
+
+    const channel = supabase
+      .channel(`person-competencies-${person.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'personnel_competencies',
+          filter: `profile_id=eq.${person.id}`,
+        },
+        async () => {
+          // Refetch person with competencies when changes occur
+          const { data } = await supabase
+            .from('profiles')
+            .select('id, full_name, personnel_competencies(*)')
+            .eq('id', person.id)
+            .single();
+          
+          if (data) {
+            console.log('Person competencies updated via realtime:', data);
+            setPerson(data as Person);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [person?.id, open]);
 
   const handleAddCompetency = async (e: React.FormEvent) => {
     e.preventDefault();

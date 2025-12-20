@@ -40,10 +40,11 @@ interface EquipmentDetailDialogProps {
   onEquipmentUpdated: () => void;
 }
 
-export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
+export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEquipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
   const { checklists } = useChecklists();
+  const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
@@ -61,6 +62,37 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment, onEquipme
     vedlikeholdsintervall_dager: "",
     sjekkliste_id: "",
   });
+
+  // Update local equipment state when prop changes
+  useEffect(() => {
+    setEquipment(initialEquipment);
+  }, [initialEquipment]);
+
+  // Real-time subscription for equipment updates
+  useEffect(() => {
+    if (!equipment?.id || !open) return;
+
+    const channel = supabase
+      .channel(`equipment-detail-${equipment.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'equipment',
+          filter: `id=eq.${equipment.id}`,
+        },
+        (payload) => {
+          console.log('Equipment updated via realtime:', payload.new);
+          setEquipment(payload.new as Equipment);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [equipment?.id, open]);
 
   useEffect(() => {
     if (equipment) {
