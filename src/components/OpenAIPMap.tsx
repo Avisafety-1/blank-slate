@@ -1342,6 +1342,24 @@ export function OpenAIPMap({
             
             const popupId = `forecast-popup-${Date.now()}`;
             
+            // Lagre forecast-data i window for tilgang fra onclick
+            const forecastDataId = `forecastData_${Date.now()}`;
+            (window as any)[forecastDataId] = forecast.map((h: any, i: number) => {
+              const hour = new Date(h.time).getHours().toString().padStart(2, '0');
+              const reasons = getReasons(h);
+              return {
+                hour,
+                temp: h.temperature?.toFixed(1) || '-',
+                wind: h.wind_speed?.toFixed(1) || '-',
+                windGust: h.wind_gust?.toFixed(1) || null,
+                precip: h.precipitation?.toFixed(1) || '0',
+                recommendation: h.recommendation,
+                recText: recTexts[h.recommendation] || '',
+                color: recColors[h.recommendation] || '#9ca3af',
+                reasons,
+              };
+            });
+            
             html += `
               <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
@@ -1352,37 +1370,17 @@ export function OpenAIPMap({
                     <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>Ikke fly</span>
                   </div>
                 </div>
-                <div style="display: flex; gap: 2px; position: relative;">
+                <div id="${popupId}-container" style="display: flex; gap: 2px; position: relative;">
                   ${forecast.map((h: any, i: number) => {
                     const hour = new Date(h.time).getHours().toString().padStart(2, '0');
                     const color = recColors[h.recommendation] || '#9ca3af';
-                    const temp = h.temperature?.toFixed(1) || '-';
-                    const wind = h.wind_speed?.toFixed(1) || '-';
-                    const windGust = h.wind_gust?.toFixed(1) || null;
-                    const precip = h.precipitation?.toFixed(1) || '0';
-                    const reasons = getReasons(h);
-                    const reasonsHtml = h.recommendation !== 'ok' && reasons.length > 0 
-                      ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; color: ${color}; font-size: 10px;">${recTexts[h.recommendation]}<ul style="margin: 2px 0 0 12px; padding: 0;">${reasons.map(r => `<li>${r}</li>`).join('')}</ul></div>`
-                      : h.recommendation === 'ok' ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">Gode flyforhold</div>` : '';
-                    
                     return `
                       <div 
-                        class="forecast-block" 
+                        class="forecast-block-${popupId}" 
                         data-index="${i}"
+                        data-forecast-id="${forecastDataId}"
+                        data-popup-id="${popupId}"
                         style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;"
-                        onclick="
-                          const popup = document.getElementById('${popupId}');
-                          const existingContent = popup.innerHTML;
-                          const newContent = '<div style=\\'padding: 8px; background: white; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 11px; min-width: 140px;\\'><div style=\\'font-weight: 600; margin-bottom: 6px;\\'>${hour}:00</div><div style=\\'display: flex; align-items: center; gap: 4px; margin-bottom: 3px;\\'><span>🌡️</span><span>${temp}°C</span></div><div style=\\'display: flex; align-items: center; gap: 4px; margin-bottom: 3px;\\'><span>💨</span><span>${wind} m/s${windGust ? ` (kast ${windGust})` : ''}</span></div><div style=\\'display: flex; align-items: center; gap: 4px;\\'><span>💧</span><span>${precip} mm</span></div>${reasonsHtml.replace(/'/g, "\\'")}</div>';
-                          if (popup.style.display === 'block' && popup.dataset.index === '${i}') {
-                            popup.style.display = 'none';
-                          } else {
-                            popup.innerHTML = newContent;
-                            popup.dataset.index = '${i}';
-                            popup.style.display = 'block';
-                            popup.style.left = (this.offsetLeft + this.offsetWidth/2 - popup.offsetWidth/2) + 'px';
-                          }
-                        "
                       >
                         <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px; transition: transform 0.1s;" onmouseover="this.style.transform='scaleY(1.2)'" onmouseout="this.style.transform='scaleY(1)'"></div>
                         <span style="font-size: 8px; color: #9ca3af;">${hour}</span>
@@ -1390,7 +1388,7 @@ export function OpenAIPMap({
                     `;
                   }).join('')}
                 </div>
-                <div id="${popupId}" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 4px; z-index: 10;"></div>
+                <div id="${popupId}" style="display: none; position: absolute; z-index: 9999; pointer-events: auto;"></div>
               </div>
             `;
             
@@ -1405,6 +1403,65 @@ export function OpenAIPMap({
                 </div>
               `;
             }
+            
+            // Legg til event listeners etter HTML er satt
+            setTimeout(() => {
+              const blocks = document.querySelectorAll(`.forecast-block-${popupId}`);
+              blocks.forEach((block) => {
+                block.addEventListener('click', function(this: HTMLElement) {
+                  const idx = parseInt(this.dataset.index || '0');
+                  const dataId = this.dataset.forecastId || '';
+                  const popId = this.dataset.popupId || '';
+                  const forecastArr = (window as any)[dataId];
+                  if (!forecastArr) return;
+                  
+                  const h = forecastArr[idx];
+                  const popupEl = document.getElementById(popId);
+                  if (!popupEl) return;
+                  
+                  if (popupEl.style.display === 'block' && popupEl.dataset.activeIndex === String(idx)) {
+                    popupEl.style.display = 'none';
+                    return;
+                  }
+                  
+                  let reasonsHtml = '';
+                  if (h.recommendation !== 'ok' && h.reasons.length > 0) {
+                    reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: ${h.color}; font-size: 10px; font-weight: 500;">${h.recText}<ul style="margin: 4px 0 0 14px; padding: 0; font-weight: 400;">${h.reasons.map((r: string) => `<li style="margin-bottom: 2px;">${r}</li>`).join('')}</ul></div>`;
+                  } else if (h.recommendation === 'ok') {
+                    reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">Gode flyforhold</div>`;
+                  }
+                  
+                  popupEl.innerHTML = `
+                    <div style="padding: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 12px; min-width: 160px; border: 1px solid #e5e7eb;">
+                      <div style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">${h.hour}:00</div>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span>🌡️</span><span>${h.temp}°C</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span>💨</span><span>${h.wind} m/s${h.windGust ? ` (kast ${h.windGust})` : ''}</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>💧</span><span>${h.precip} mm</span>
+                      </div>
+                      ${reasonsHtml}
+                    </div>
+                  `;
+                  popupEl.dataset.activeIndex = String(idx);
+                  popupEl.style.display = 'block';
+                  
+                  // Posisjonering
+                  const container = document.getElementById(`${popId}-container`);
+                  if (container) {
+                    const blockRect = this.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    popupEl.style.position = 'absolute';
+                    popupEl.style.bottom = '100%';
+                    popupEl.style.left = `${blockRect.left - containerRect.left + blockRect.width / 2 - 80}px`;
+                    popupEl.style.marginBottom = '8px';
+                  }
+                });
+              });
+            }, 100);
           }
           
           html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
