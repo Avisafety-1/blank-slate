@@ -54,9 +54,9 @@ interface GeoJSONFeatureCollection {
   features: (GeoJSONPolygonFeature | GeoJSONPointFeature)[];
 }
 
-// Advisory size limits
-const MAX_ADVISORY_AREA_KM2 = 5; // Hard limit: 5 km²
-const LARGE_ADVISORY_THRESHOLD_KM2 = 2; // Warning threshold: 2 km²
+// Advisory size limits (matching frontend display in Kart.tsx)
+const MAX_ADVISORY_AREA_KM2 = 150; // Hard limit: 150 km² - too large for SafeSky
+const LARGE_ADVISORY_THRESHOLD_KM2 = 50; // Warning threshold: 50 km² - large but allowed
 
 // Compute cross product of vectors OA and OB where O is origin
 function cross(O: number[], A: number[], B: number[]): number {
