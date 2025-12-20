@@ -400,12 +400,23 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           <div className="space-y-2">
             <Label htmlFor="kategori">Kategori (valgfritt)</Label>
-            <Input
-              id="kategori"
+            <Select
               value={formData.kategori}
-              onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-              placeholder="F.eks. Teknisk, Operasjonell, etc."
-            />
+              onValueChange={(value) => setFormData({ ...formData, kategori: value })}
+            >
+              <SelectTrigger id="kategori">
+                <SelectValue placeholder="Velg kategori..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Luft">Luft</SelectItem>
+                <SelectItem value="Bakke">Bakke</SelectItem>
+                <SelectItem value="Luftrom">Luftrom</SelectItem>
+                <SelectItem value="Teknisk">Teknisk</SelectItem>
+                <SelectItem value="Operativ">Operativ</SelectItem>
+                <SelectItem value="Miljø">Miljø</SelectItem>
+                <SelectItem value="Sikkerhet">Sikkerhet</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
