@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DomainGuard } from "@/components/DomainGuard";
@@ -28,16 +28,32 @@ const queryClient = new QueryClient();
 // Layout wrapper that renders Header once for all authenticated routes
 const AuthenticatedLayout = () => {
   const { user, loading, isApproved } = useAuth();
+  const location = useLocation();
   
   // Don't render Header until we know user is authenticated and approved
   if (loading || !user || !isApproved) {
     return <Outlet />;
   }
   
+  // Map page needs fixed layout for proper rendering
+  const isMapPage = location.pathname === '/kart';
+  
+  if (isMapPage) {
+    return (
+      <div className="fixed inset-0 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+  
+  // Other pages use scrollable layout
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 flex flex-col overflow-auto">
+      <main className="flex-1 flex flex-col">
         <Outlet />
       </main>
     </div>
