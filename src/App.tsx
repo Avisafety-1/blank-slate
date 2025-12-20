@@ -35,9 +35,9 @@ const AuthenticatedLayout = () => {
   }
   
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-auto">
         <Outlet />
       </main>
     </div>
