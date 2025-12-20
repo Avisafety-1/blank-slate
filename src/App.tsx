@@ -37,9 +37,9 @@ const AuthenticatedLayout = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Header />
-      <div className="flex-1 min-h-0 overflow-auto">
+      <main className="flex-1 min-h-0 flex flex-col">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 };
