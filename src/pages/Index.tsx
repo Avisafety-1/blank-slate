@@ -561,10 +561,12 @@ const Index = () => {
         pilotName={pendingFlightData?.pilotName || undefined}
         flightStartTime={pendingFlightData?.startTime || undefined}
         onFlightLogged={handleFlightLogged}
-        onStopTimer={() => {
-          // Timer already stopped via endFlight, just clear state
+        onStopTimer={async () => {
+          // End flight without logging - user cancelled
+          await endFlight();
           setPrefilledDuration(undefined);
           setPendingFlightData(null);
+          toast.info(t('flight.flightEndedWithoutLog', 'Flytur avsluttet uten logging'));
         }}
       />
 
