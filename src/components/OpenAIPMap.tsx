@@ -6,7 +6,7 @@ import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
-import { CloudSun } from "lucide-react";
+import { CloudSun, Route } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import airportIcon from "@/assets/airport-icon.png";
@@ -31,6 +31,7 @@ interface OpenAIPMapProps {
   onRouteChange?: (route: RouteData) => void;
   initialCenter?: [number, number];
   controlledRoute?: RouteData | null;
+  onStartRoutePlanning?: () => void;
 }
 
 // Calculate distance between two points using Haversine formula
@@ -129,7 +130,8 @@ export function OpenAIPMap({
   existingRoute,
   onRouteChange,
   initialCenter,
-  controlledRoute
+  controlledRoute,
+  onStartRoutePlanning
 }: OpenAIPMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -1345,6 +1347,19 @@ export function OpenAIPMap({
             title={weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
           >
             <CloudSun className="h-5 w-5" />
+          </Button>
+        )}
+        
+        {/* Route planning button */}
+        {mode === "view" && onStartRoutePlanning && (
+          <Button
+            onClick={onStartRoutePlanning}
+            className="shadow-lg"
+            size="sm"
+          >
+            <Route className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Planlegg rute</span>
+            <span className="sm:hidden">Ny rute</span>
           </Button>
         )}
       </div>
