@@ -40,11 +40,21 @@ const DialogContent = React.forwardRef<
         className,
       )}
       onInteractOutside={(e) => {
-        // Prevent dialog from closing when interacting with Select portals
-        const target = e.target as HTMLElement;
-        if (target?.closest('[data-radix-select-content]') || target?.closest('[role="listbox"]')) {
+        // Prevent dialog from closing when any Radix Select is open.
+        // On touch devices, tapping outside a scrolled Select list can otherwise close the parent dialog.
+        const target = e.target as HTMLElement | null;
+        const hasOpenSelect = !!document.querySelector(
+          '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
+        );
+
+        if (
+          hasOpenSelect ||
+          target?.closest('[data-radix-select-content]') ||
+          target?.closest('[role="listbox"]')
+        ) {
           e.preventDefault();
         }
+
         onInteractOutside?.(e);
       }}
       {...props}
