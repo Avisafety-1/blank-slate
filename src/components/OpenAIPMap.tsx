@@ -140,11 +140,16 @@ export function OpenAIPMap({
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const weatherEnabledRef = useRef(false);
+  const modeRef = useRef(mode);
   
-  // Sync ref with state for use in event handlers
+  // Sync refs with state/props for use in event handlers
   useEffect(() => {
     weatherEnabledRef.current = weatherEnabled;
   }, [weatherEnabled]);
+  
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -1012,7 +1017,7 @@ export function OpenAIPMap({
     const handleMapClick = async (e: any) => {
       const { lat, lng } = e.latlng;
       
-      if (mode === "routePlanning") {
+      if (modeRef.current === "routePlanning") {
         // Add point to route
         routePointsRef.current.push({ lat, lng });
         updateRouteDisplay();
@@ -1231,7 +1236,7 @@ export function OpenAIPMap({
       activeFlightsChannel.unsubscribe();
       map.remove();
     };
-  }, [onMissionClick, mode, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
+  }, [onMissionClick, existingRoute, initialCenter, updateRouteDisplay, onRouteChange]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;
