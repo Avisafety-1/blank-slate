@@ -188,15 +188,25 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
 
   if (compact) {
     return (
-      <div className="mt-2 space-y-2">
-        <div className={cn(
-          "flex items-center gap-2 p-2 rounded-lg border text-sm font-medium",
-          getRecommendationColor(weatherData.drone_flight_recommendation)
-        )}>
-          {getRecommendationIcon(weatherData.drone_flight_recommendation)}
-          <span>{terminology.vehicleWeather}: {getRecommendationText(weatherData.drone_flight_recommendation)}</span>
+      <Card className="mt-3 p-3 space-y-3 bg-card/50 border">
+        {/* Header with status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
+            <span className="text-xs text-muted-foreground">
+              • {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <div className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium",
+            getRecommendationColor(weatherData.drone_flight_recommendation)
+          )}>
+            {getRecommendationIcon(weatherData.drone_flight_recommendation)}
+            <span>{getRecommendationText(weatherData.drone_flight_recommendation)}</span>
+          </div>
         </div>
 
+        {/* Warnings */}
         {weatherData.warnings.length > 0 && (
           <div className="space-y-1">
             {weatherData.warnings.map((warning, index) => (
@@ -204,9 +214,9 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
                 key={index}
                 variant={warning.level === 'warning' ? 'destructive' : 'default'}
                 className={cn(
-                  "py-2",
+                  "py-1.5",
                   warning.level === 'caution' && "bg-warning/10 border-warning text-warning",
-                  warning.level === 'note' && "bg-info/10 border-info text-info"
+                  warning.level === 'note' && "bg-muted border-border text-muted-foreground"
                 )}
               >
                 <AlertDescription className="text-xs">{warning.message}</AlertDescription>
@@ -215,58 +225,88 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false }: Dron
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="flex items-center gap-1">
-            <Wind className="w-3 h-3 text-muted-foreground" />
-            <span>{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
+        {/* Current conditions */}
+        <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
+          <div className="flex items-center gap-1.5 text-sm">
+            <Wind className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Thermometer className="w-3 h-3 text-muted-foreground" />
-            <span>{weatherData.current.temperature?.toFixed(1) || '-'}°C</span>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Thermometer className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{weatherData.current.temperature?.toFixed(1) || '-'}°C</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Droplets className="w-3 h-3 text-muted-foreground" />
-            <span>{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Droplets className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
           </div>
         </div>
 
-        {/* Compact forecast timeline */}
+        {/* Forecast section */}
         {displayForecast.length > 0 && (
-          <div className="pt-2 border-t">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-              <Clock className="w-3 h-3" />
-              <span>Neste 12 timer</span>
+          <div className="pt-2 border-t space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Prognose neste 12 timer</span>
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-sm bg-success" />
+                  <span>OK</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-sm bg-warning" />
+                  <span>Forsiktig</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-sm bg-destructive" />
+                  <span>Ikke fly</span>
+                </div>
+              </div>
             </div>
+            
+            {/* Timeline */}
             <TooltipProvider>
-              <div className="flex gap-0.5">
+              <div className="flex gap-1 py-1">
                 {displayForecast.map((hour, index) => (
                   <Tooltip key={index}>
                     <TooltipTrigger asChild>
-                      <div
-                        className={cn(
-                          "flex-1 h-3 rounded-sm cursor-pointer transition-all hover:scale-y-125",
-                          getTimelineBlockColor(hour.recommendation)
-                        )}
-                      />
+                      <div className="flex-1 flex flex-col items-center gap-0.5">
+                        <div
+                          className={cn(
+                            "w-full h-5 rounded cursor-pointer transition-all hover:scale-y-110",
+                            getTimelineBlockColor(hour.recommendation)
+                          )}
+                        />
+                        <span className="text-[9px] text-muted-foreground">{formatHour(hour.time)}</span>
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
                       <div className="font-medium">{formatTime(hour.time)}</div>
-                      <div>{hour.temperature?.toFixed(0)}°C • {hour.wind_speed?.toFixed(0)} m/s</div>
-                      <div>{getRecommendationText(hour.recommendation)}</div>
+                      <div>{hour.temperature?.toFixed(0)}°C • {hour.wind_speed?.toFixed(0)} m/s • {hour.precipitation?.toFixed(1)} mm</div>
+                      <div className={cn(
+                        "font-medium",
+                        hour.recommendation === 'ok' && "text-success",
+                        hour.recommendation === 'caution' && "text-warning",
+                        hour.recommendation === 'warning' && "text-destructive"
+                      )}>{getRecommendationText(hour.recommendation)}</div>
                     </TooltipContent>
                   </Tooltip>
                 ))}
               </div>
             </TooltipProvider>
+
+            {/* Best flight window */}
             {weatherData.best_flight_window && (
-              <div className="flex items-center gap-1 text-xs text-success mt-1">
-                <Sparkles className="w-3 h-3" />
+              <div className="flex items-center gap-1.5 text-xs text-success font-medium">
+                <Sparkles className="w-3.5 h-3.5" />
                 <span>Beste flyvindu: {formatTime(weatherData.best_flight_window.start_time)} - {formatTime(weatherData.best_flight_window.end_time)} ({weatherData.best_flight_window.duration_hours}t)</span>
               </div>
             )}
           </div>
         )}
-      </div>
+      </Card>
     );
   }
 
