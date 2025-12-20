@@ -35,6 +35,7 @@ type Incident = {
   company_id: string;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
+  incident_number: string | null;
 };
 
 type IncidentComment = {
@@ -264,7 +265,8 @@ const Hendelser = () => {
         incident.beskrivelse?.toLowerCase().includes(query) || 
         incident.kategori?.toLowerCase().includes(query) || 
         incident.rapportert_av?.toLowerCase().includes(query) || 
-        incident.lokasjon?.toLowerCase().includes(query)
+        incident.lokasjon?.toLowerCase().includes(query) ||
+        incident.incident_number?.toLowerCase().includes(query)
       );
     }
     setFilteredIncidents(filtered);
@@ -389,7 +391,12 @@ const Hendelser = () => {
                   {/* Header with title and action buttons */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
-                      <h3 className="font-semibold text-lg sm:text-xl">{incident.tittel}</h3>
+                      <div className="flex items-center gap-3">
+                        {incident.incident_number && (
+                          <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{incident.incident_number}</span>
+                        )}
+                        <h3 className="font-semibold text-lg sm:text-xl">{incident.tittel}</h3>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <Badge className={statusColors[incident.status] || ""}>
                           {incident.status}

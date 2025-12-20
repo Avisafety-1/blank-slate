@@ -65,6 +65,7 @@ interface Incident {
   company_id: string;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
+  incident_number: string | null;
 }
 
 interface NotificationPreferences {

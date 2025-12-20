@@ -1322,6 +1322,7 @@ export type Database = {
           hendelsestidspunkt: string
           hovedaarsak: string | null
           id: string
+          incident_number: string | null
           kategori: string | null
           lokasjon: string | null
           medvirkende_aarsak: string | null
@@ -1341,6 +1342,7 @@ export type Database = {
           hendelsestidspunkt: string
           hovedaarsak?: string | null
           id?: string
+          incident_number?: string | null
           kategori?: string | null
           lokasjon?: string | null
           medvirkende_aarsak?: string | null
@@ -1360,6 +1362,7 @@ export type Database = {
           hendelsestidspunkt?: string
           hovedaarsak?: string | null
           id?: string
+          incident_number?: string | null
           kategori?: string | null
           lokasjon?: string | null
           medvirkende_aarsak?: string | null

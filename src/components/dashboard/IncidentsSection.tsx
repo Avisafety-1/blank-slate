@@ -299,7 +299,12 @@ export const IncidentsSection = () => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-xs sm:text-sm mb-1">{incident.tittel}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        {incident.incident_number && (
+                          <span className="text-[10px] sm:text-xs font-mono text-muted-foreground">{incident.incident_number}</span>
+                        )}
+                        <h3 className="font-medium text-xs sm:text-sm">{incident.tittel}</h3>
+                      </div>
                       <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                         <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>
                           {incident.alvorlighetsgrad}
@@ -350,7 +355,12 @@ export const IncidentsSection = () => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-xs sm:text-sm mb-1">{incident.tittel}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        {incident.incident_number && (
+                          <span className="text-[10px] sm:text-xs font-mono text-muted-foreground">{incident.incident_number}</span>
+                        )}
+                        <h3 className="font-medium text-xs sm:text-sm">{incident.tittel}</h3>
+                      </div>
                       {incident.beskrivelse && (
                         <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mb-1 sm:mb-1.5">
                           {incident.beskrivelse}
