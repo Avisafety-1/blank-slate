@@ -283,7 +283,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                   warning.level === 'note' && "bg-muted border-border text-muted-foreground"
                 )}
               >
-                <AlertDescription className="text-xs">{warning.message}</AlertDescription>
+                <AlertDescription className="text-xs text-foreground">{warning.message}</AlertDescription>
               </Alert>
             ))}
           </div>
