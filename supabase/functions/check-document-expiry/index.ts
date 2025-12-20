@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { getEmailConfig } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,23 +74,31 @@ serve(async (req) => {
       return acc;
     }, {} as Record<string, typeof documentsToNotify>);
 
-    const emailClient = new SMTPClient({
-      connection: {
-        hostname: Deno.env.get('EMAIL_HOST') || '',
-        port: parseInt(Deno.env.get('EMAIL_PORT') || '465'),
-        tls: Deno.env.get('EMAIL_SECURE') === 'true',
-        auth: {
-          username: Deno.env.get('EMAIL_USER') || '',
-          password: Deno.env.get('EMAIL_PASS') || '',
-        },
-      },
-    });
-
     let totalEmailsSent = 0;
 
     // Process each company's documents
     for (const [companyId, docs] of Object.entries(documentsByCompany) as [string, typeof documentsToNotify][]) {
       console.log(`Processing ${docs.length} documents for company ${companyId}`);
+
+      // Get company-specific email configuration
+      const emailConfig = await getEmailConfig(companyId);
+      console.log(`Using email config for company ${companyId}: host=${emailConfig.host}, from=${emailConfig.fromEmail}`);
+
+      const emailClient = new SMTPClient({
+        connection: {
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
+        },
+      });
+
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
 
       // Find users in this company with document expiry notifications enabled
       const { data: eligibleUsers, error: usersError } = await supabase
@@ -100,11 +109,13 @@ serve(async (req) => {
 
       if (usersError) {
         console.error('Error fetching users:', usersError);
+        await emailClient.close();
         continue;
       }
 
       if (!eligibleUsers || eligibleUsers.length === 0) {
         console.log(`No approved users found in company ${companyId}`);
+        await emailClient.close();
         continue;
       }
 
@@ -118,6 +129,7 @@ serve(async (req) => {
 
       if (prefsError) {
         console.error('Error fetching notification preferences:', prefsError);
+        await emailClient.close();
         continue;
       }
 
@@ -125,12 +137,14 @@ serve(async (req) => {
 
       if (usersToNotify.length === 0) {
         console.log(`No users with document expiry notifications enabled in company ${companyId}`);
+        await emailClient.close();
         continue;
       }
 
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       if (authError) {
         console.error('Error fetching auth users:', authError);
+        await emailClient.close();
         continue;
       }
 
@@ -179,7 +193,7 @@ serve(async (req) => {
 
             try {
               await emailClient.send({
-                from: Deno.env.get('EMAIL_USER') || '',
+                from: senderAddress,
                 to: authUser.email,
                 subject: emailSubject,
                 content: "auto",
@@ -226,7 +240,7 @@ serve(async (req) => {
 
           try {
             await emailClient.send({
-              from: Deno.env.get('EMAIL_USER') || '',
+              from: senderAddress,
               to: authUser.email,
               subject: `Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`,
               content: emailHtml,
@@ -239,6 +253,9 @@ serve(async (req) => {
           }
         }
       }
+
+      // Close the email client for this company
+      await emailClient.close();
     }
 
     console.log(`Document expiry check complete. Sent ${totalEmailsSent} emails.`);
