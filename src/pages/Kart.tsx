@@ -257,7 +257,7 @@ export default function KartPage() {
         
         {/* Route Planning Button - visible when not in route planning mode */}
         {!isRoutePlanning && (
-          <div className="absolute bottom-0 left-0 right-0 pb-4 sm:pb-6 flex justify-center pointer-events-none z-[1001]">
+          <div className="absolute bottom-0 left-0 right-0 pb-24 md:pb-8 flex justify-center pointer-events-none z-[1001]">
             <Button
               onClick={handleStartRoutePlanning}
               className="shadow-lg pointer-events-auto"
