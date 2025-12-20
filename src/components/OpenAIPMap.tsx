@@ -1302,6 +1302,55 @@ export function OpenAIPMap({
             html += '</div>';
           }
           
+          // Timeprognose for de neste 12 timene
+          if (data.hourly_forecast && data.hourly_forecast.length > 0) {
+            const forecast = data.hourly_forecast.slice(0, 12);
+            const recColors: Record<string, string> = {
+              ok: '#10b981',
+              caution: '#f59e0b',
+              warning: '#dc2626',
+            };
+            
+            html += `
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <div style="font-size: 11px; font-weight: 600; color: #6b7280;">Prognose neste 12 timer</div>
+                  <div style="display: flex; gap: 8px; font-size: 9px; color: #9ca3af;">
+                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span>OK</span>
+                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #f59e0b; border-radius: 2px;"></span>Forsiktig</span>
+                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>Ikke fly</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 2px;">
+                  ${forecast.map((h: any, i: number) => {
+                    const hour = new Date(h.time).getHours().toString().padStart(2, '0');
+                    const color = recColors[h.recommendation] || '#9ca3af';
+                    const temp = h.temperature?.toFixed(0) || '-';
+                    const wind = h.wind_speed?.toFixed(0) || '-';
+                    return `
+                      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;" title="${hour}:00 - ${temp}°C, ${wind} m/s">
+                        <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px;"></div>
+                        <span style="font-size: 8px; color: #9ca3af;">${hour}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+            
+            // Beste flyvindu
+            if (data.best_flight_window) {
+              const startTime = new Date(data.best_flight_window.start_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+              const endTime = new Date(data.best_flight_window.end_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+              html += `
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #10b981; font-weight: 500;">
+                  <span>✨</span>
+                  <span>Beste flyvindu: ${startTime} - ${endTime} (${data.best_flight_window.duration_hours}t)</span>
+                </div>
+              `;
+            }
+          }
+          
           html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
           
           contentEl.innerHTML = html;
