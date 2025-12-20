@@ -1,11 +1,12 @@
-import { OpenAIPMap, RouteData } from "@/components/OpenAIPMap";
+import { OpenAIPMap, RouteData, RoutePoint } from "@/components/OpenAIPMap";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -31,6 +32,10 @@ export default function KartPage() {
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
+  
+  // Pilot position state for VLOS measurement
+  const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
+  const [isPlacingPilot, setIsPlacingPilot] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -115,6 +120,7 @@ export default function KartPage() {
 
   const handleClearRoute = () => {
     setCurrentRoute({ coordinates: [], totalDistance: 0 });
+    setPilotPosition(undefined);
   };
 
   const handleUndoPoint = () => {
@@ -135,6 +141,64 @@ export default function KartPage() {
       setCurrentRoute({ coordinates: newCoords, totalDistance });
     }
   };
+
+  const handleTogglePilotPlacement = () => {
+    if (isPlacingPilot) {
+      setIsPlacingPilot(false);
+    } else {
+      setIsPlacingPilot(true);
+      toast.info("Klikk på kartet for å plassere pilotposisjon");
+    }
+  };
+
+  const handlePilotPositionChange = useCallback((position: RoutePoint | undefined) => {
+    setPilotPosition(position);
+    setIsPlacingPilot(false);
+    if (position) {
+      toast.success("Pilotposisjon satt");
+    }
+  }, []);
+
+  const handleRemovePilot = () => {
+    setPilotPosition(undefined);
+  };
+
+  const handleOpenNotam = () => {
+    window.open('https://www.ippc.no/ippc/index.jsp', '_blank');
+  };
+
+  // Calculate VLOS distances
+  const vlisInfo = useMemo(() => {
+    if (!pilotPosition || currentRoute.coordinates.length === 0) {
+      return null;
+    }
+    
+    const VLOS_LIMIT = 0.5; // 500m in km
+    let maxDistance = 0;
+    let pointsOutside = 0;
+    
+    for (const point of currentRoute.coordinates) {
+      const R = 6371; // Earth's radius in km
+      const dLat = (point.lat - pilotPosition.lat) * Math.PI / 180;
+      const dLng = (point.lng - pilotPosition.lng) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(pilotPosition.lat * Math.PI / 180) * Math.cos(point.lat * Math.PI / 180) *
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const dist = R * c;
+      
+      if (dist > maxDistance) maxDistance = dist;
+      if (dist > VLOS_LIMIT) pointsOutside++;
+    }
+    
+    return {
+      maxDistance,
+      maxDistanceMeters: Math.round(maxDistance * 1000),
+      pointsOutside,
+      isWithinVLOS: pointsOutside === 0,
+    };
+  }, [pilotPosition, currentRoute.coordinates]);
 
   if (loading) {
     return (
@@ -192,10 +256,61 @@ export default function KartPage() {
                   </span>
                 </div>
               )}
+
+              {/* VLOS indicator */}
+              {vlisInfo && (
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium",
+                  vlisInfo.isWithinVLOS
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                )}>
+                  {vlisInfo.isWithinVLOS ? (
+                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="leading-tight">
+                    {vlisInfo.maxDistanceMeters}m
+                    {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                  </span>
+                </div>
+              )}
             </div>
             
             {/* Actions - responsive grid on mobile */}
             <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2">
+              {/* Pilot position button */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
+                  className={cn(
+                    "h-8 px-2 sm:px-3",
+                    isPlacingPilot && "animate-pulse"
+                  )}
+                  title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
+                >
+                  <MapPin className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">
+                    {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
+                  </span>
+                </Button>
+
+                {/* NOTAM link */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenNotam}
+                  className="h-8 px-2 sm:px-3"
+                  title="Sjekk NOTAM (åpner ippc.no)"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">NOTAM</span>
+                </Button>
+              </div>
+
               {/* Undo & Clear grouped together */}
               <div className="flex items-center gap-1.5">
                 <Button
@@ -260,6 +375,9 @@ export default function KartPage() {
           initialCenter={routePlanningState?.initialCenter}
           controlledRoute={currentRoute}
           onStartRoutePlanning={handleStartRoutePlanning}
+          onPilotPositionChange={handlePilotPositionChange}
+          pilotPosition={pilotPosition}
+          isPlacingPilot={isPlacingPilot}
         />
       </div>
 
