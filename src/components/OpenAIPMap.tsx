@@ -359,18 +359,6 @@ export function OpenAIPMap({
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
     leafletMapRef.current = map;
 
-    // Global scroll reset helper
-    const forceScrollToTop = () => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-
-    // Always keep page scrolled to top during map interactions
-    map.on('movestart', forceScrollToTop);
-    map.on('zoomstart', forceScrollToTop);
-    map.on('zoomend', forceScrollToTop);
-
     // Create custom pane for route elements with higher z-index
     map.createPane('routePane');
     const routePane = map.getPane('routePane');
@@ -1100,11 +1088,6 @@ export function OpenAIPMap({
         routePointsRef.current.push({ lat, lng });
         updateRouteDisplay();
 
-        // Force scroll to top to prevent header from disappearing
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-
         const cb = onRouteChangeRef.current;
         if (cb) {
           const coords = [...routePointsRef.current];
@@ -1216,24 +1199,6 @@ export function OpenAIPMap({
     };
 
     map.on('click', handleMapClick);
-
-    // Prevent zoom controls from causing page scroll
-    const zoomControl = map.zoomControl?.getContainer();
-    if (zoomControl) {
-      const scrollToTop = () => {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, 0);
-          document.documentElement.scrollTop = 0;
-          document.body.scrollTop = 0;
-        });
-      };
-      
-      // For mouse clicks - scroll to top after
-      zoomControl.addEventListener('click', scrollToTop, true);
-      
-      // For touch - use touchend to allow zoom to work, then scroll to top
-      zoomControl.addEventListener('touchend', scrollToTop, { passive: true });
-    }
 
     fetchNsmData();
     fetchRpasData();
