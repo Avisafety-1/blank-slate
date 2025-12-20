@@ -6,7 +6,7 @@ import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route } from "lucide-react";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import airportIcon from "@/assets/airport-icon.png";
@@ -144,6 +144,8 @@ export function OpenAIPMap({
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
   const weatherEnabledRef = useRef(false);
   const modeRef = useRef(mode);
 
@@ -170,6 +172,38 @@ export function OpenAIPMap({
     },
     []
   );
+
+  // Switch between base map layers
+  const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo') => {
+    if (!leafletMapRef.current || !baseLayerRef.current) return;
+    
+    const map = leafletMapRef.current;
+    map.removeLayer(baseLayerRef.current);
+    
+    let url: string;
+    let attribution: string;
+    let subdomains: string | string[] = 'abc';
+    
+    switch (newType) {
+      case 'satellite':
+        url = openAipConfig.tiles.satellite;
+        attribution = openAipConfig.attribution.satellite;
+        subdomains = [];
+        break;
+      case 'topo':
+        url = openAipConfig.tiles.topo;
+        attribution = openAipConfig.attribution.topo;
+        break;
+      default:
+        url = openAipConfig.tiles.base;
+        attribution = openAipConfig.attribution.osm;
+    }
+    
+    const newLayer = L.tileLayer(url, { attribution, subdomains }).addTo(map);
+    newLayer.bringToBack();
+    baseLayerRef.current = newLayer;
+    setBaseLayerType(newType);
+  }, []);
 
   // Sync refs with state/props for use in event handlers
   useEffect(() => {
@@ -380,9 +414,10 @@ export function OpenAIPMap({
 
     // OSM background
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
-      attribution: openAipConfig.attribution,
+      attribution: openAipConfig.attribution.osm,
       subdomains: "abc",
     }).addTo(map);
+    baseLayerRef.current = osmLayer;
 
     const layerConfigs: LayerConfig[] = [];
 
@@ -1435,6 +1470,28 @@ export function OpenAIPMap({
             <CloudSun className="h-5 w-5" />
           </Button>
         )}
+        
+        {/* Base layer toggle button */}
+        <Button
+          variant="secondary"
+          size="icon"
+          className="shadow-lg bg-card hover:bg-accent"
+          onClick={() => {
+            const next = baseLayerType === 'osm' ? 'satellite' 
+                       : baseLayerType === 'satellite' ? 'topo' 
+                       : 'osm';
+            switchBaseLayer(next);
+          }}
+          title={
+            baseLayerType === 'osm' ? 'Bytt til satellittkart' 
+            : baseLayerType === 'satellite' ? 'Bytt til topografisk kart'
+            : 'Bytt til standard kart'
+          }
+        >
+          {baseLayerType === 'osm' ? <Satellite className="h-5 w-5" /> 
+           : baseLayerType === 'satellite' ? <Mountain className="h-5 w-5" />
+           : <MapIcon className="h-5 w-5" />}
+        </Button>
       </div>
       
       {/* Route planning button - positioned below layers */}
