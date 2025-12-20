@@ -1195,7 +1195,24 @@ export function OpenAIPMap({
 
     map.on('click', handleMapClick);
 
-    // Initialize data
+    // Prevent zoom controls from causing page scroll
+    const zoomControl = map.zoomControl?.getContainer();
+    if (zoomControl) {
+      const preventScroll = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Force scroll to top after any zoom interaction
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
+      };
+      zoomControl.addEventListener('click', preventScroll, true);
+      zoomControl.addEventListener('mousedown', preventScroll, true);
+      zoomControl.addEventListener('touchstart', preventScroll, { passive: false });
+    }
+
     fetchNsmData();
     fetchRpasData();
     fetchRpasCtрData();
