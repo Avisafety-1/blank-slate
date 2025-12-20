@@ -868,6 +868,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                         <Input
                           id="acc-interval"
                           type="number"
+                          className="block w-full"
                           placeholder="f.eks. 90"
                           value={newAccessory.vedlikeholdsintervall_dager}
                           onChange={(e) => setNewAccessory({ ...newAccessory, vedlikeholdsintervall_dager: e.target.value })}
@@ -878,6 +879,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                         <Input
                           id="acc-sist"
                           type="date"
+                          className="block w-full"
                           value={newAccessory.sist_vedlikehold}
                           onChange={(e) => setNewAccessory({ ...newAccessory, sist_vedlikehold: e.target.value })}
                         />
