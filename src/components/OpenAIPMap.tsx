@@ -1500,7 +1500,7 @@ export function OpenAIPMap({
           onClick={onStartRoutePlanning}
           variant="default"
           size="icon"
-          className="absolute top-28 sm:top-32 right-4 z-[1000] shadow-lg"
+          className="absolute top-40 right-4 z-[1000] shadow-lg"
           title="Planlegg ny rute"
         >
           <Route className="h-5 w-5" />
