@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Calendar, AlertCircle, FileText, User, Download, ExternalLink, Edit, Trash2, CheckSquare, Square } from "lucide-react";
+import { Calendar, AlertCircle, FileText, User, Download, ExternalLink, Edit, Trash2, Square, FileImage, FileSpreadsheet, FileIcon, File } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -68,6 +68,43 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
 
     setIsAdmin(data || false);
   };
+
+  // Helper to determine if file can be opened in browser
+  const canOpenInBrowser = (fileName?: string | null): boolean => {
+    if (!fileName) return false;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'txt'].includes(ext || '');
+  };
+
+  // Helper to get file type info
+  const getFileTypeInfo = (fileName?: string | null): { icon: typeof FileIcon; label: string; canPreview: boolean } => {
+    if (!fileName) return { icon: File, label: 'Fil', canPreview: false };
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    
+    switch (ext) {
+      case 'pdf':
+        return { icon: FileText, label: 'PDF', canPreview: true };
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+      case 'svg':
+        return { icon: FileImage, label: 'Bilde', canPreview: true };
+      case 'doc':
+      case 'docx':
+        return { icon: FileText, label: 'Word', canPreview: false };
+      case 'xls':
+      case 'xlsx':
+        return { icon: FileSpreadsheet, label: 'Excel', canPreview: false };
+      case 'txt':
+        return { icon: FileText, label: 'Tekst', canPreview: true };
+      default:
+        return { icon: File, label: ext?.toUpperCase() || 'Fil', canPreview: false };
+    }
+  };
+
+  const fileTypeInfo = getFileTypeInfo(document?.fil_navn);
   
   if (!document) return null;
 
@@ -424,11 +461,22 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
           )}
 
           {(document.fil_url || document.nettside_url) && (
-            <div className="space-y-2 pt-4 border-t border-border">
+            <div className="space-y-3 pt-4 border-t border-border">
+              {/* File type indicator */}
+              {document.fil_url && !document.nettside_url && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <fileTypeInfo.icon className="w-4 h-4" />
+                  <span>{fileTypeInfo.label}</span>
+                  {document.fil_navn && (
+                    <span className="text-xs truncate max-w-[200px]">({document.fil_navn})</span>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 {document.nettside_url && (
                   <Button
-                    variant="outline"
+                    variant="default"
                     className="w-full"
                     onClick={handleOpenDocument}
                   >
@@ -437,15 +485,29 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
                   </Button>
                 )}
                 {document.fil_url && !document.nettside_url && (
-                  <Button
-                    variant="default"
-                    className="w-full"
-                    onClick={handleDownloadDocument}
-                    disabled={downloading}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {downloading ? "Laster ned..." : "Last ned dokument"}
-                  </Button>
+                  <>
+                    {/* Show "Open in browser" for viewable files */}
+                    {canOpenInBrowser(document.fil_navn) && (
+                      <Button
+                        variant="default"
+                        className="flex-1"
+                        onClick={handleOpenDocument}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Åpne
+                      </Button>
+                    )}
+                    {/* Download button */}
+                    <Button
+                      variant={canOpenInBrowser(document.fil_navn) ? "outline" : "default"}
+                      className="flex-1"
+                      onClick={handleDownloadDocument}
+                      disabled={downloading}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {downloading ? "Laster ned..." : "Last ned"}
+                    </Button>
+                  </>
                 )}
               </div>
               

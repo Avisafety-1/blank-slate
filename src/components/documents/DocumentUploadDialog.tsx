@@ -189,6 +189,7 @@ export const DocumentUploadDialog = ({
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileSelect}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg"
                   className="flex-1"
                 />
                 {selectedFile && (
@@ -197,6 +198,9 @@ export const DocumentUploadDialog = ({
                   </span>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Støttede formater: PDF, Word, Excel, PowerPoint, bilder, tekstfiler
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
