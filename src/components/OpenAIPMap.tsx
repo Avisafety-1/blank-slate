@@ -498,20 +498,20 @@ export function OpenAIPMap({
       icon: "treePine",
     });
 
-    // Befolkningstetthet (SSB)
+    // Tettsteder/befolkede områder (SSB via Geonorge)
     const populationLayer = L.tileLayer.wms(
-      "https://ogc.ssb.no/kart_ssr/ows?",
+      "https://wms.geonorge.no/skwms1/wms.tettsteder?",
       {
-        layers: "bef_rut_1km",
+        layers: "Tettsted",
         format: "image/png",
         transparent: true,
         opacity: 0.5,
-        attribution: 'SSB Befolkningsdata',
+        attribution: 'SSB Tettsteder via Geonorge',
       }
     );
     layerConfigs.push({
       id: "population",
-      name: "Befolkningstetthet (SSB)",
+      name: "Tettsteder (befolket)",
       layer: populationLayer,
       enabled: false,
       icon: "users",
