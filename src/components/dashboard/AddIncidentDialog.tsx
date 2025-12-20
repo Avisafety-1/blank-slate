@@ -321,7 +321,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="mission">
                 <SelectValue placeholder="Velg oppdrag..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 {missions.map((mission) => (
                   <SelectItem key={mission.id} value={mission.id}>
                     {mission.tittel} ({mission.status})
@@ -371,7 +371,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="alvorlighetsgrad">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 <SelectItem value="Lav">Lav</SelectItem>
                 <SelectItem value="Middels">Middels</SelectItem>
                 <SelectItem value="Høy">Høy</SelectItem>
@@ -389,7 +389,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="status">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 <SelectItem value="Åpen">Åpen</SelectItem>
                 <SelectItem value="Under behandling">Under behandling</SelectItem>
                 <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
@@ -407,7 +407,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="kategori">
                 <SelectValue placeholder="Velg kategori..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 <SelectItem value="Luft">Luft</SelectItem>
                 <SelectItem value="Bakke">Bakke</SelectItem>
                 <SelectItem value="Luftrom">Luftrom</SelectItem>
@@ -428,7 +428,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="hovedaarsak">
                 <SelectValue placeholder="Velg hovedårsak..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 {causeTypes.map((cause) => (
                   <SelectItem key={cause.id} value={cause.navn}>
                     {cause.navn}
@@ -447,7 +447,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="medvirkende_aarsak">
                 <SelectValue placeholder="Velg medvirkende årsak..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.preventDefault()}>
                 {contributingCauses.map((cause) => (
                   <SelectItem key={cause.id} value={cause.navn}>
                     {cause.navn}
@@ -476,7 +476,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <SelectTrigger id="oppfolgingsansvarlig">
                 <SelectValue placeholder="Velg ansvarlig..." />
               </SelectTrigger>
-              <SelectContent className="bg-background">
+              <SelectContent className="bg-background" onPointerDownOutside={(e) => e.preventDefault()}>
                 {users.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.full_name || 'Ukjent bruker'}
