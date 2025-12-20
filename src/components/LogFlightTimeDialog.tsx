@@ -73,6 +73,99 @@ interface Equipment {
   serienummer: string;
 }
 
+// Cache for airport data
+let airportCache: Array<{ icao: string; name: string; lat: number; lng: number }> | null = null;
+
+// Calculate distance between two points in meters (Haversine formula)
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// Fetch airports from ArcGIS API
+const fetchAirports = async (): Promise<Array<{ icao: string; name: string; lat: number; lng: number }>> => {
+  if (airportCache) return airportCache;
+  
+  try {
+    const response = await fetch(
+      'https://services.arcgis.com/2JyTvMWQSnM2Vi8q/arcgis/rest/services/Flyplasser_i_Norge/FeatureServer/0/query?where=1%3D1&outFields=ICAO,lufthavnnavn&outSR=4326&f=geojson'
+    );
+    const data = await response.json();
+    
+    if (data.features) {
+      airportCache = data.features
+        .filter((f: any) => f.properties?.ICAO && f.geometry?.coordinates)
+        .map((f: any) => ({
+          icao: f.properties.ICAO,
+          name: f.properties.lufthavnnavn || f.properties.ICAO,
+          lng: f.geometry.coordinates[0],
+          lat: f.geometry.coordinates[1],
+        }));
+      return airportCache;
+    }
+  } catch (error) {
+    console.error('Error fetching airports:', error);
+  }
+  return [];
+};
+
+// Find nearest airport within 1km
+const findNearestAirport = async (lat: number, lng: number): Promise<string | null> => {
+  const airports = await fetchAirports();
+  
+  for (const airport of airports) {
+    const distance = calculateDistance(lat, lng, airport.lat, airport.lng);
+    if (distance <= 1000) { // 1 km
+      return `${airport.icao} - ${airport.name}`;
+    }
+  }
+  return null;
+};
+
+// Reverse geocode coordinates to address using Geonorge API
+const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+  try {
+    const response = await fetch(
+      `https://api.kartverket.no/kommuneinfo/v1/punkt?nord=${lat}&ost=${lng}&koordsys=4326`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      if (data.kommunenavn) {
+        return data.kommunenavn;
+      }
+    }
+  } catch (error) {
+    console.error('Reverse geocoding failed:', error);
+  }
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+};
+
+// Get current GPS position from phone
+const getCurrentPosition = (): Promise<{ lat: number; lng: number } | null> => {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => resolve(null),
+      { timeout: 5000, enableHighAccuracy: true }
+    );
+  });
+};
+
 export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId, flightTrack, dronetagDeviceId, startPosition, pilotName, flightStartTime }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
@@ -83,6 +176,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<string[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   
   const [formData, setFormData] = useState({
     droneId: "",
@@ -142,6 +236,89 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       }
     }
   }, [useTimeRange, startTime, endTime]);
+
+  // Auto-fill departure and landing locations when dialog opens from active flight
+  useEffect(() => {
+    if (!open || !isFromActiveTimer) return;
+    
+    const autoFillLocations = async () => {
+      setIsLoadingLocations(true);
+      
+      let departureLocation = "";
+      let landingLocation = "";
+      
+      try {
+        // === DEPARTURE LOCATION ===
+        // Priority 1: First position from DroneTag flight track
+        if (flightTrack && flightTrack.length > 0) {
+          const firstPos = flightTrack[0];
+          // Check for nearby airport (within 1km)
+          const icao = await findNearestAirport(firstPos.lat, firstPos.lng);
+          if (icao) {
+            departureLocation = icao;
+          } else {
+            departureLocation = await reverseGeocode(firstPos.lat, firstPos.lng);
+          }
+        }
+        // Priority 2: Phone GPS at start
+        else if (startPosition) {
+          const icao = await findNearestAirport(startPosition.lat, startPosition.lng);
+          if (icao) {
+            departureLocation = icao;
+          } else {
+            departureLocation = await reverseGeocode(startPosition.lat, startPosition.lng);
+          }
+        }
+        // Priority 3: Mission location (if linked)
+        else if (prefilledMissionId) {
+          const { data: mission } = await supabase
+            .from('missions')
+            .select('lokasjon')
+            .eq('id', prefilledMissionId)
+            .single();
+          if (mission?.lokasjon) {
+            departureLocation = mission.lokasjon;
+          }
+        }
+        
+        // === LANDING LOCATION ===
+        // Priority 1: Last position from DroneTag flight track
+        if (flightTrack && flightTrack.length > 0) {
+          const lastPos = flightTrack[flightTrack.length - 1];
+          const icao = await findNearestAirport(lastPos.lat, lastPos.lng);
+          if (icao) {
+            landingLocation = icao;
+          } else {
+            landingLocation = await reverseGeocode(lastPos.lat, lastPos.lng);
+          }
+        }
+        // Priority 2: Current phone GPS position
+        else {
+          const currentPos = await getCurrentPosition();
+          if (currentPos) {
+            const icao = await findNearestAirport(currentPos.lat, currentPos.lng);
+            if (icao) {
+              landingLocation = icao;
+            } else {
+              landingLocation = await reverseGeocode(currentPos.lat, currentPos.lng);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error auto-filling locations:', error);
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        departureLocation: departureLocation || prev.departureLocation,
+        landingLocation: landingLocation || prev.landingLocation,
+      }));
+      
+      setIsLoadingLocations(false);
+    };
+    
+    autoFillLocations();
+  }, [open, isFromActiveTimer, flightTrack, startPosition, prefilledMissionId]);
 
   useEffect(() => {
     if (open && companyId) {
@@ -695,15 +872,17 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               <Label htmlFor="departure" className="flex items-center gap-1">
                 <Navigation className="w-3 h-3" />
                 Avgangssted *
+                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">(henter...)</span>}
               </Label>
               <div className="flex gap-2">
                 <Input
                   id="departure"
                   value={formData.departureLocation}
                   onChange={(e) => setFormData({ ...formData, departureLocation: e.target.value })}
-                  placeholder="F.eks. Oslo"
+                  placeholder={isLoadingLocations ? "Henter posisjon..." : "F.eks. Oslo"}
                   required
                   className="flex-1"
+                  disabled={isLoadingLocations}
                 />
                 <Button
                   type="button"
@@ -711,6 +890,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   size="icon"
                   onClick={() => setDeparturePickerOpen(true)}
                   title="Velg på kart"
+                  disabled={isLoadingLocations}
                 >
                   <Map className="w-4 h-4" />
                 </Button>
@@ -720,15 +900,17 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               <Label htmlFor="landing" className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 Landingssted *
+                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">(henter...)</span>}
               </Label>
               <div className="flex gap-2">
                 <Input
                   id="landing"
                   value={formData.landingLocation}
                   onChange={(e) => setFormData({ ...formData, landingLocation: e.target.value })}
-                  placeholder="F.eks. Bergen"
+                  placeholder={isLoadingLocations ? "Henter posisjon..." : "F.eks. Bergen"}
                   required
                   className="flex-1"
+                  disabled={isLoadingLocations}
                 />
                 <Button
                   type="button"
@@ -736,6 +918,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   size="icon"
                   onClick={() => setLandingPickerOpen(true)}
                   title="Velg på kart"
+                  disabled={isLoadingLocations}
                 >
                   <Map className="w-4 h-4" />
                 </Button>
