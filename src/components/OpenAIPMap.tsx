@@ -138,6 +138,7 @@ export function OpenAIPMap({
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasCtrGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
@@ -323,8 +324,9 @@ export function OpenAIPMap({
   useEffect(() => {
     modeRef.current = mode;
 
-    // Ensure RPAS vector layers don't block map clicks when in route planning mode
+    // Ensure vector layers don't block map clicks when in route planning mode
     const vectorsInteractive = mode !== "routePlanning";
+    setGeoJsonInteractivity(nsmGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasCtrGeoJsonRef.current, vectorsInteractive);
 
@@ -365,6 +367,14 @@ export function OpenAIPMap({
     if (routePane) {
       routePane.style.zIndex = '650'; // Above markers (600), below popups (700)
       routePane.style.pointerEvents = 'auto';
+    }
+
+    // NSM pane - make sure NSM areas are above RPAS/CTR and clickable
+    map.createPane('nsmPane');
+    const nsmPane = map.getPane('nsmPane');
+    if (nsmPane) {
+      nsmPane.style.zIndex = '640';
+      nsmPane.style.pointerEvents = 'auto';
     }
     console.log('routePane created:', !!routePane);
 
@@ -841,18 +851,53 @@ export function OpenAIPMap({
         const url = "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
         const response = await fetch(url);
         if (!response.ok) return;
-        
+
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
+          pane: 'nsmPane',
           interactive: mode !== 'routePlanning',
           style: {
             color: '#ff0000',
             weight: 2,
             fillColor: '#ff0000',
             fillOpacity: 0.25,
-          }
+          },
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+            const props = feature?.properties || {};
+            const name =
+              props.navn ||
+              props.NAVN ||
+              props.name ||
+              props.Name ||
+              props.OMR_NAVN ||
+              props.OMRNAVN ||
+              props.OBJECTID ||
+              'Ukjent område';
+
+            const details = Object.entries(props)
+              .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+              .slice(0, 8)
+              .map(([k, v]) => `<div style="font-size: 11px;"><span style="color:#666;">${k}:</span> ${String(v)}</div>`)
+              .join('');
+
+            layer.bindPopup(
+              `<div>
+                <strong>NSM Forbudsområde</strong><br/>
+                <span>${String(name)}</span>
+                ${details ? `<div style="margin-top:6px;">${details}</div>` : ''}
+              </div>`
+            );
+          } : undefined,
         });
-        
+
+        // Keep a ref so we can toggle interactivity when switching to route planning
+        nsmGeoJsonRef.current = geoJsonLayer;
+        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
+
+        // Ensure NSM stays above other vector overlays
+        (geoJsonLayer as any).bringToFront?.();
+        geoJsonLayer.eachLayer((l: any) => l?.bringToFront?.());
+
         nsmLayer.clearLayers();
         nsmLayer.addLayer(geoJsonLayer);
       } catch (err) {
