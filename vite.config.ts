@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "script-defer",
+      injectRegister: "inline",
       includeAssets: ["favicon.png", "robots.txt"],
       manifest: {
         name: "AviSafe - Sikkerhetsstyringssystem",
