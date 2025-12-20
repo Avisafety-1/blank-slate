@@ -130,22 +130,17 @@ All colors MUST be HSL.
     height: 100%;
   }
 
+  html,
+  body,
   #root {
-    @apply w-full overflow-x-hidden;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    @apply w-full h-full overflow-hidden;
   }
 }
 
-/* ---break---
-*/
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
 
 /* Hide scrollbar for horizontal tab scrolling */
 .no-scrollbar::-webkit-scrollbar {
