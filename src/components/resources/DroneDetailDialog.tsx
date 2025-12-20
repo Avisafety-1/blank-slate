@@ -862,8 +862,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                         onChange={(e) => setNewAccessory({ ...newAccessory, navn: e.target.value })}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="min-w-0">
                         <Label htmlFor="acc-interval" className="text-xs">Vedlikeholdsintervall (dager)</Label>
                         <Input
                           id="acc-interval"
@@ -873,7 +873,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone, onDroneUpdated }:
                           onChange={(e) => setNewAccessory({ ...newAccessory, vedlikeholdsintervall_dager: e.target.value })}
                         />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <Label htmlFor="acc-sist" className="text-xs">Sist vedlikehold</Label>
                         <Input
                           id="acc-sist"
