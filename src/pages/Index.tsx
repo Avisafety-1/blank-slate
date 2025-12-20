@@ -61,7 +61,7 @@ const Index = () => {
     completedChecklistIds: string[];
   } | null>(null);
   
-  const { isActive, startTime, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, dronetagDeviceId: activeFlightDronetagId, startFlight, endFlight, formatElapsedTime } = useFlightTimer();
+  const { isActive, startTime, elapsedSeconds, missionId: activeMissionId, publishMode, completedChecklistIds, dronetagDeviceId: activeFlightDronetagId, startFlight, prepareEndFlight, endFlight, formatElapsedTime } = useFlightTimer();
   
   // Track if DroneTag positions are being recorded
   const [trackingStatus, setTrackingStatus] = useState<'checking' | 'recording' | 'not_recording'>('checking');
@@ -178,8 +178,8 @@ const Index = () => {
       return;
     }
     
-    // End flight and get track data
-    const result = await endFlight();
+    // Prepare data WITHOUT ending the flight - flight continues running
+    const result = await prepareEndFlight();
     if (result) {
       setPrefilledDuration(result.elapsedMinutes);
       setPendingFlightData({
@@ -197,18 +197,21 @@ const Index = () => {
   };
 
   const handleFlightLogged = async () => {
-    // Flight already ended, just clean up state
+    // NOW actually end the flight when user confirms logging
+    await endFlight();
     setPrefilledDuration(undefined);
     setPendingFlightData(null);
+    toast.success(t('flight.flightEnded'));
   };
 
   const handleLogFlightDialogClose = (open: boolean) => {
     setLogFlightDialogOpen(open);
-    if (!open) {
-      // Clear pending data when dialog closes
+    if (!open && !isActive) {
+      // Only clear pending data if flight has been ended (user confirmed logging)
       setPrefilledDuration(undefined);
       setPendingFlightData(null);
     }
+    // If flight is still active (user cancelled dialog), keep pending data for next attempt
   };
 
   useEffect(() => {
