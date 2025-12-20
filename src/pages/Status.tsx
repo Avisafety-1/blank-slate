@@ -984,11 +984,11 @@ const Status = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Statistikk</h1>
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 w-full">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Periode:</span>
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">Periode:</span>
               <Select value={timePeriod} onValueChange={(value: "month" | "quarter" | "year" | "custom") => setTimePeriod(value)}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1001,20 +1001,20 @@ const Status = () => {
             </div>
             
             {timePeriod === "custom" && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Fra:</Label>
+                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">Fra:</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[140px] justify-start text-left font-normal",
+                          "w-full sm:w-[140px] justify-start text-left font-normal text-xs sm:text-sm",
                           !customDateFrom && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "Velg dato"}
+                        <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <span className="truncate">{customDateFrom ? format(customDateFrom, "dd.MM.yy") : "Velg"}</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1031,18 +1031,18 @@ const Status = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Til:</Label>
+                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">Til:</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[140px] justify-start text-left font-normal",
+                          "w-full sm:w-[140px] justify-start text-left font-normal text-xs sm:text-sm",
                           !customDateTo && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "Velg dato"}
+                        <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <span className="truncate">{customDateTo ? format(customDateTo, "dd.MM.yy") : "Velg"}</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
