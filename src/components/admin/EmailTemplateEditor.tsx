@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings } from "lucide-react";
+import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,16 +26,113 @@ interface EmailTemplate {
   updated_at: string;
 }
 
+interface Company {
+  id: string;
+  navn: string;
+}
+
 const templateTypes = [
   {
     value: "user_approved",
     label: "Bruker godkjent",
     variables: ["{{user_name}}", "{{company_name}}"],
+    defaultSubject: "Din konto er godkjent",
+    previewData: {
+      user_name: "Kari Nordmann",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "user_welcome",
+    label: "Velkommen ny bruker",
+    variables: ["{{user_name}}", "{{company_name}}"],
+    defaultSubject: "Velkommen til {{company_name}}",
+    previewData: {
+      user_name: "Kari Nordmann",
+      company_name: "Ditt Selskap AS",
+    },
   },
   {
     value: "customer_welcome",
     label: "Ny kunde",
     variables: ["{{customer_name}}", "{{company_name}}"],
+    defaultSubject: "Velkommen som kunde hos {{company_name}}",
+    previewData: {
+      customer_name: "Ola Nordmann",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "password_reset",
+    label: "Passord tilbakestilling",
+    variables: ["{{user_name}}", "{{reset_link}}", "{{company_name}}"],
+    defaultSubject: "Tilbakestill passord - AviSafe",
+    previewData: {
+      user_name: "Kari Nordmann",
+      reset_link: "https://login.avisafe.no/reset-password?token=xxx",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "admin_new_user",
+    label: "Ny bruker venter (til admin)",
+    variables: ["{{new_user_name}}", "{{new_user_email}}", "{{company_name}}"],
+    defaultSubject: "Ny bruker venter på godkjenning",
+    previewData: {
+      new_user_name: "Ole Hansen",
+      new_user_email: "ole.hansen@eksempel.no",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "incident_notification",
+    label: "Ny hendelse",
+    variables: ["{{incident_title}}", "{{incident_severity}}", "{{incident_location}}", "{{incident_description}}", "{{company_name}}"],
+    defaultSubject: "Ny hendelse: {{incident_title}}",
+    previewData: {
+      incident_title: "Nødlanding ved testing",
+      incident_severity: "Middels",
+      incident_location: "Oslo Lufthavn",
+      incident_description: "Dronen måtte nødlande grunnet lavt batteri under testflyging.",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "mission_notification",
+    label: "Nytt oppdrag",
+    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{company_name}}"],
+    defaultSubject: "Nytt oppdrag: {{mission_title}}",
+    previewData: {
+      mission_title: "Inspeksjon av vindmøller",
+      mission_location: "Fosen, Trøndelag",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_status: "Planlagt",
+      mission_description: "Visuell inspeksjon av vindturbiner i vindparken.",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "maintenance_reminder",
+    label: "Vedlikeholdspåminnelse",
+    variables: ["{{user_name}}", "{{items_list}}", "{{item_count}}", "{{company_name}}"],
+    defaultSubject: "Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet",
+    previewData: {
+      user_name: "Kari Nordmann",
+      items_list: "Drone: DJI Mavic 3 - 20. januar 2025 (om 5 dager)\nUtstyr: Termisk kamera - 22. januar 2025 (om 7 dager)",
+      item_count: "2",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "document_reminder",
+    label: "Dokumentpåminnelse",
+    variables: ["{{document_title}}", "{{expiry_date}}", "{{company_name}}"],
+    defaultSubject: "Dokument utløper snart: {{document_title}}",
+    previewData: {
+      document_title: "Droneoperatørsertifikat A2",
+      expiry_date: "31. desember 2025",
+      company_name: "Ditt Selskap AS",
+    },
   },
   {
     value: "mission_confirmation",
@@ -46,11 +144,14 @@ const templateTypes = [
       "{{mission_status}}",
       "{{company_name}}",
     ],
-  },
-  {
-    value: "document_reminder",
-    label: "Dokumentpåminnelse",
-    variables: ["{{document_title}}", "{{expiry_date}}", "{{company_name}}"],
+    defaultSubject: "Oppdragsbekreftelse: {{mission_title}}",
+    previewData: {
+      mission_title: "Drone inspeksjon av vindmøller",
+      mission_location: "Oslo, Norge",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_status: "Planlagt",
+      company_name: "Ditt Selskap AS",
+    },
   },
 ];
 
@@ -60,6 +161,7 @@ interface EmailTemplateEditorProps {
 
 export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditorProps) => {
   const { companyId } = useAuth();
+  const { isSuperAdmin } = useRoleCheck();
   const isMobile = useIsMobile();
   const [selectedTemplateType, setSelectedTemplateType] = useState("user_approved");
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
@@ -70,6 +172,50 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
   const quillRef = useRef<ReactQuill>(null);
+  
+  // Superadmin company selection
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  // Fetch companies for superadmin
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (!isSuperAdmin) return;
+      
+      setLoadingCompanies(true);
+      try {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("id, navn")
+          .eq("aktiv", true)
+          .order("navn");
+
+        if (error) throw error;
+        setCompanies(data || []);
+        
+        // Set initial company
+        if (data && data.length > 0 && !selectedCompanyId) {
+          setSelectedCompanyId(companyId || data[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching companies:", error);
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
+  }, [isSuperAdmin, companyId]);
+
+  // Set initial selected company when not superadmin
+  useEffect(() => {
+    if (!isSuperAdmin && companyId) {
+      setSelectedCompanyId(companyId);
+    }
+  }, [isSuperAdmin, companyId]);
+
+  const activeCompanyId = isSuperAdmin ? selectedCompanyId : companyId;
 
   // Handle image upload to Supabase Storage
   const handleImageUpload = async () => {
@@ -83,24 +229,20 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
       if (!file) return;
 
       try {
-        // Upload image to Supabase Storage
         const fileExt = file.name.split(".").pop();
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-        const filePath = `${companyId}/${fileName}`;
+        const filePath = `${activeCompanyId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage.from("email-images").upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const {
           data: { publicUrl },
         } = supabase.storage.from("email-images").getPublicUrl(filePath);
 
-        // Read image dimensions
         const img = new Image();
         img.onload = () => {
-          // Calculate scaled dimensions (max 560px width for email compatibility)
           const maxWidth = 560;
           let width = img.width;
           let height = img.height;
@@ -110,7 +252,6 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             width = maxWidth;
           }
 
-          // Insert image with inline styles for email compatibility
           const quill = quillRef.current?.getEditor();
           if (quill) {
             const range = quill.getSelection(true);
@@ -134,7 +275,6 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     };
   };
 
-  // Quill modules configuration
   const modules = useMemo(
     () => ({
       toolbar: {
@@ -152,7 +292,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         },
       },
     }),
-    [companyId],
+    [activeCompanyId],
   );
 
   const formats = [
@@ -172,17 +312,17 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
   useEffect(() => {
     fetchTemplate();
-  }, [companyId, selectedTemplateType]);
+  }, [activeCompanyId, selectedTemplateType]);
 
   const fetchTemplate = async () => {
-    if (!companyId) return;
+    if (!activeCompanyId) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("email_templates")
         .select("*")
-        .eq("company_id", companyId)
+        .eq("company_id", activeCompanyId)
         .eq("template_type", selectedTemplateType)
         .maybeSingle();
 
@@ -193,7 +333,6 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         setSubject(data.subject);
         setContent(data.content);
       } else {
-        // No template found, reset to defaults
         setTemplate(null);
         setSubject("");
         setContent("");
@@ -207,15 +346,14 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   };
 
   const handleSave = async () => {
-    if (!companyId) {
-      toast.error("Du må være logget inn");
+    if (!activeCompanyId) {
+      toast.error("Velg en bedrift først");
       return;
     }
 
     setSaving(true);
     try {
       if (template) {
-        // Update existing template
         const { error } = await supabase
           .from("email_templates")
           .update({
@@ -226,9 +364,8 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
         if (error) throw error;
       } else {
-        // Create new template
         const { error } = await supabase.from("email_templates").insert({
-          company_id: companyId,
+          company_id: activeCompanyId,
           template_type: selectedTemplateType,
           subject,
           content,
@@ -258,26 +395,21 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   const getPreviewContent = () => {
     const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
     let previewContent = content;
+    let previewSubject = subject;
 
-    // Replace variables with sample data
-    if (currentTemplateType) {
-      previewContent = previewContent
-        .replace(/\{\{customer_name\}\}/g, "Ola Nordmann")
-        .replace(/\{\{user_name\}\}/g, "Kari Nordmann")
-        .replace(/\{\{company_name\}\}/g, "Ditt Selskap")
-        .replace(/\{\{mission_title\}\}/g, "Drone inspeksjon av vindmøller")
-        .replace(/\{\{mission_location\}\}/g, "Oslo, Norge")
-        .replace(/\{\{mission_date\}\}/g, "15. januar 2025 kl. 10:00")
-        .replace(/\{\{mission_status\}\}/g, "Planlagt")
-        .replace(/\{\{document_title\}\}/g, "Droneoperatørsertifikat")
-        .replace(/\{\{expiry_date\}\}/g, "31. desember 2025");
+    if (currentTemplateType?.previewData) {
+      const data = currentTemplateType.previewData;
+      Object.entries(data).forEach(([key, value]) => {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+        previewContent = previewContent.replace(regex, value);
+        previewSubject = previewSubject.replace(regex, value);
+      });
     }
 
-    return previewContent;
+    return { content: previewContent, subject: previewSubject };
   };
 
   const wrapContentInEmailTemplate = (htmlContent: string) => {
-    // Wrap the Quill editor content in a proper email template structure
     return `<!DOCTYPE html>
 <html>
   <head>
@@ -327,13 +459,11 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   };
 
   const handleVisualEditorChange = (value: string) => {
-    // When using visual editor, wrap content in email template
     const wrappedContent = wrapContentInEmailTemplate(value);
     setContent(wrappedContent);
   };
 
   const getVisualEditorContent = () => {
-    // Extract content from between <div class="content"> tags for visual editor
     const match = content.match(/<div class="content">([\s\S]*?)<\/div>/);
     if (match && match[1]) {
       return match[1].trim();
@@ -342,8 +472,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   };
 
   const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+  const preview = getPreviewContent();
 
-  if (loading) {
+  if (loading && !loadingCompanies) {
     return (
       <GlassCard className="p-3 sm:p-6">
         <div className="flex items-center justify-center py-6 sm:py-8">
@@ -403,6 +534,28 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         </div>
 
         <div className="space-y-4 sm:space-y-6">
+          {/* Superadmin company selector */}
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="company-select" className="text-xs sm:text-sm flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Velg bedrift
+              </Label>
+              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                <SelectTrigger className={isMobile ? "h-9 text-sm" : ""}>
+                  <SelectValue placeholder="Velg bedrift" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id} className="text-xs sm:text-sm">
+                      {company.navn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="template-type" className="text-xs sm:text-sm">
               Maltype
@@ -423,15 +576,22 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
             <h3 className="font-semibold text-xs sm:text-sm mb-2">Tilgjengelige variabler:</h3>
-            <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {currentTemplateType?.variables.map((variable) => (
-                <p key={variable}>
-                  <code className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs">
-                    {variable}
-                  </code>
-                </p>
+                <code
+                  key={variable}
+                  className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                  onClick={() => {
+                    navigator.clipboard.writeText(variable);
+                    toast.success("Variabel kopiert");
+                  }}
+                  title="Klikk for å kopiere"
+                >
+                  {variable}
+                </code>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">Klikk på en variabel for å kopiere den</p>
           </div>
 
           <div className="space-y-2">
@@ -442,7 +602,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Skriv inn e-post emne..."
+              placeholder={currentTemplateType?.defaultSubject || "Skriv inn e-post emne..."}
               className={isMobile ? "h-9 text-sm" : ""}
             />
           </div>
@@ -526,11 +686,11 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             </div>
             <div>
               <Label className="text-xs sm:text-sm text-muted-foreground">Emne:</Label>
-              <p className="font-semibold text-sm sm:text-base">{subject || "Ingen emne"}</p>
+              <p className="font-semibold text-sm sm:text-base">{preview.subject || "Ingen emne"}</p>
             </div>
             <div className="border rounded-lg overflow-hidden">
               <div
-                dangerouslySetInnerHTML={{ __html: getPreviewContent() }}
+                dangerouslySetInnerHTML={{ __html: preview.content }}
                 className={`bg-white ${isMobile ? "text-sm" : ""}`}
               />
             </div>
