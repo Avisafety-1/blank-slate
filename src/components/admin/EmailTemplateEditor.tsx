@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe } from "lucide-react";
+import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -814,6 +814,16 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     }
   };
 
+  const handleResetToDefault = () => {
+    const defaultContent = defaultTemplateContent[selectedTemplateType] || "";
+    const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+    const defaultSubject = currentTemplateType?.defaultSubject || "";
+    
+    setSubject(defaultSubject);
+    setContent(defaultContent);
+    toast.info("Tilbakestilt til standardmal");
+  };
+
   const getPreviewContent = () => {
     const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
     let previewContent = content;
@@ -924,6 +934,16 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleResetToDefault}
+              size={isMobile ? "sm" : "default"}
+              className={isMobile ? "flex-1" : ""}
+              title="Tilbakestill til standardmal"
+            >
+              <RotateCcw className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
+              {isMobile ? "Standard" : "Standardmal"}
+            </Button>
             <Button
               variant="outline"
               onClick={handleReset}
