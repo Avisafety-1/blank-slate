@@ -80,7 +80,7 @@ export const Header = () => {
   const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
 
   return (
-    <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 z-[1100] w-full">
+    <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 z-[1100] w-full pt-[env(safe-area-inset-top)]">
       <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center justify-between gap-1 sm:gap-2">
           <Button 
