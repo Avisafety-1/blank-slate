@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.check-maintenance-expiry]
 verify_jwt = false
+
+[functions.count-all-users]
+verify_jwt = false

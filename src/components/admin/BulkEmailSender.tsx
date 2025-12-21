@@ -75,16 +75,19 @@ export const BulkEmailSender = () => {
       if (customersError) throw customersError;
       setCustomerCount(customers || 0);
 
-      // Fetch all users count for superadmin
+      // Fetch all users count for superadmin via edge function (bypasses RLS)
       if (isSuperAdmin) {
-        const { count: allUsers, error: allUsersError } = await supabase
-          .from("profiles")
-          .select("*", { count: "exact", head: true })
-          .eq("approved", true)
-          .not("email", "is", null);
-
-        if (allUsersError) throw allUsersError;
-        setAllUsersCount(allUsers || 0);
+        try {
+          const { data, error: allUsersError } = await supabase.functions.invoke("count-all-users");
+          
+          if (allUsersError) {
+            console.error("Error fetching all users count:", allUsersError);
+          } else {
+            setAllUsersCount(data?.count || 0);
+          }
+        } catch (err) {
+          console.error("Error calling count-all-users:", err);
+        }
       }
     } catch (error) {
       console.error("Error fetching counts:", error);
