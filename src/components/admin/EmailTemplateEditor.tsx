@@ -64,44 +64,6 @@ const basicTemplateTypes = [
     },
   },
   {
-    value: "admin_new_user",
-    label: "Ny bruker venter (til admin)",
-    variables: ["{{new_user_name}}", "{{new_user_email}}", "{{company_name}}"],
-    defaultSubject: "Ny bruker venter på godkjenning",
-    previewData: {
-      new_user_name: "Ole Hansen",
-      new_user_email: "ole.hansen@eksempel.no",
-      company_name: "Ditt Selskap AS",
-    },
-  },
-  {
-    value: "incident_notification",
-    label: "Ny hendelse",
-    variables: ["{{incident_title}}", "{{incident_severity}}", "{{incident_location}}", "{{incident_description}}", "{{company_name}}"],
-    defaultSubject: "Ny hendelse: {{incident_title}}",
-    previewData: {
-      incident_title: "Nødlanding ved testing",
-      incident_severity: "Middels",
-      incident_location: "Oslo Lufthavn",
-      incident_description: "Dronen måtte nødlande grunnet lavt batteri under testflyging.",
-      company_name: "Ditt Selskap AS",
-    },
-  },
-  {
-    value: "mission_notification",
-    label: "Nytt oppdrag",
-    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{company_name}}"],
-    defaultSubject: "Nytt oppdrag: {{mission_title}}",
-    previewData: {
-      mission_title: "Inspeksjon av vindmøller",
-      mission_location: "Fosen, Trøndelag",
-      mission_date: "15. januar 2025 kl. 10:00",
-      mission_status: "Planlagt",
-      mission_description: "Visuell inspeksjon av vindturbiner i vindparken.",
-      company_name: "Ditt Selskap AS",
-    },
-  },
-  {
     value: "mission_confirmation",
     label: "Oppdragsbekreftelse",
     variables: [
@@ -122,8 +84,58 @@ const basicTemplateTypes = [
   },
 ];
 
-// Advanced templates only for superadmins
+// Advanced templates only for superadmins (notification emails from profile settings)
 const superadminTemplateTypes = [
+  {
+    value: "admin_new_user",
+    label: "Ny bruker venter (Superadmin)",
+    variables: ["{{new_user_name}}", "{{new_user_email}}", "{{company_name}}"],
+    defaultSubject: "Ny bruker venter på godkjenning",
+    previewData: {
+      new_user_name: "Ole Hansen",
+      new_user_email: "ole.hansen@eksempel.no",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "incident_notification",
+    label: "Ny hendelse (Superadmin)",
+    variables: ["{{incident_title}}", "{{incident_severity}}", "{{incident_location}}", "{{incident_description}}", "{{company_name}}"],
+    defaultSubject: "Ny hendelse: {{incident_title}}",
+    previewData: {
+      incident_title: "Nødlanding ved testing",
+      incident_severity: "Middels",
+      incident_location: "Oslo Lufthavn",
+      incident_description: "Dronen måtte nødlande grunnet lavt batteri under testflyging.",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "mission_notification",
+    label: "Nytt oppdrag (Superadmin)",
+    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{company_name}}"],
+    defaultSubject: "Nytt oppdrag: {{mission_title}}",
+    previewData: {
+      mission_title: "Inspeksjon av vindmøller",
+      mission_location: "Fosen, Trøndelag",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_status: "Planlagt",
+      mission_description: "Visuell inspeksjon av vindturbiner i vindparken.",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "followup_assigned",
+    label: "Oppfølgingsansvarlig tildelt (Superadmin)",
+    variables: ["{{user_name}}", "{{incident_title}}", "{{incident_severity}}", "{{company_name}}"],
+    defaultSubject: "Du er tildelt som oppfølgingsansvarlig: {{incident_title}}",
+    previewData: {
+      user_name: "Kari Nordmann",
+      incident_title: "Nødlanding ved testing",
+      incident_severity: "Middels",
+      company_name: "Ditt Selskap AS",
+    },
+  },
   {
     value: "password_reset",
     label: "Passord tilbakestilling (Superadmin)",
