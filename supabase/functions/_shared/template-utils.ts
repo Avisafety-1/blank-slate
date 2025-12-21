@@ -252,6 +252,205 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </div>
 </body>
 </html>`
+  },
+  
+  user_approved: {
+    subject: 'Din konto er godkjent - {{company_name}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.success-icon { font-size: 48px; margin-bottom: 15px; }
+.button { display: inline-block; background: #059669; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+.footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="success-icon">✓</div>
+<h1 style="margin: 0;">Velkommen til {{company_name}}!</h1>
+</div>
+<div class="content">
+<h2>Hei {{user_name}}!</h2>
+<p>Vi er glade for å informere deg om at brukerkontoen din hos <strong>{{company_name}}</strong> nå er godkjent.</p>
+<p>Du har nå full tilgang til systemet og kan begynne å bruke alle funksjonene som er tilgjengelige for deg.</p>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Logg inn nå</a>
+</p>
+<p>Hvis du har spørsmål eller trenger hjelp med å komme i gang, ikke nøl med å kontakte oss.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<div class="footer">
+<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+</div>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
+  customer_welcome: {
+    subject: 'Velkommen som kunde hos {{company_name}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.welcome-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+.footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Velkommen som kunde!</h1>
+</div>
+<div class="content">
+<h2>Hei {{customer_name}}!</h2>
+<p>Vi er glade for å ønske deg velkommen som kunde hos <strong>{{company_name}}</strong>.</p>
+<div class="welcome-box">
+<p style="margin: 0;">Du er nå registrert i vårt system. Vi ser frem til et godt samarbeid og vil gjøre vårt beste for å levere tjenester av høy kvalitet.</p>
+</div>
+<p>Hvis du har spørsmål eller trenger mer informasjon, er du hjertelig velkommen til å ta kontakt med oss.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<div class="footer">
+<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+</div>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
+  mission_confirmation: {
+    subject: 'Oppdragsbekreftelse: {{mission_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.mission-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; }
+.detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+.detail-row:last-child { border-bottom: none; }
+.label { color: #666; font-weight: bold; }
+.status { display: inline-block; padding: 4px 12px; border-radius: 4px; background: #dbeafe; color: #1e40af; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Oppdragsbekreftelse</h1>
+</div>
+<div class="content">
+<p>Dette bekrefter følgende oppdrag:</p>
+<div class="mission-box">
+<h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
+<div class="detail-row">
+<span class="label">Status:</span> <span class="status">{{mission_status}}</span>
+</div>
+<div class="detail-row">
+<span class="label">Lokasjon:</span> {{mission_location}}
+</div>
+<div class="detail-row">
+<span class="label">Tidspunkt:</span> {{mission_date}}
+</div>
+</div>
+<p>Logg inn i AviSafe for mer informasjon og detaljer om oppdraget.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
+  document_reminder: {
+    subject: 'Dokument utløper snart: {{document_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.warning-icon { font-size: 48px; margin-bottom: 15px; }
+.document-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
+.expiry-date { color: #dc2626; font-weight: bold; font-size: 18px; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="warning-icon">⚠️</div>
+<h1 style="margin: 0;">Dokument utløper snart</h1>
+</div>
+<div class="content">
+<p>Dette er en påminnelse om at følgende dokument snart utløper:</p>
+<div class="document-box">
+<h2 style="margin-top: 0;">{{document_title}}</h2>
+<p><strong>Utløpsdato:</strong> <span class="expiry-date">{{expiry_date}}</span></p>
+</div>
+<p>Vi anbefaler at du fornyer eller oppdaterer dette dokumentet så snart som mulig for å unngå avbrudd i driften.</p>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Gå til dokumenter</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
+  maintenance_reminder: {
+    subject: 'Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.tool-icon { font-size: 48px; margin-bottom: 15px; }
+.items-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+.items-list { white-space: pre-line; font-family: monospace; background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 15px 0; }
+.count-badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="tool-icon">🔧</div>
+<h1 style="margin: 0;">Vedlikeholdspåminnelse</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>
+<div class="items-box">
+<p><span class="count-badge">{{item_count}} ressurser</span></p>
+<div class="items-list">{{items_list}}</div>
+</div>
+<p>Vi anbefaler at du planlegger nødvendig vedlikehold for å sikre at utstyret er i optimal stand.</p>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Gå til ressurser</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`
   }
 };
 
