@@ -348,55 +348,12 @@ serve(async (req) => {
 
           const urgencyColor = item.daysUntilExpiry <= 3 ? '#ef4444' : item.daysUntilExpiry <= 7 ? '#f59e0b' : '#3b82f6';
 
-          return `
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${urgencyColor};">
-              <h3 style="color: #333; font-size: 16px; margin: 0 0 8px 0;">${item.name}</h3>
-              <div style="margin-bottom: 5px;">
-                <strong style="color: #666;">Type:</strong>
-                <span style="color: #333; margin-left: 8px;">${typeLabels[item.type]}</span>
-              </div>
-              <div>
-                <strong style="color: #666;">Vedlikehold/inspeksjon:</strong>
-                <span style="color: ${urgencyColor}; margin-left: 8px;">${dateStr} (om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'})</span>
-              </div>
-            </div>
-          `;
+          return `<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid ${urgencyColor};"><h3 style="color:#333;font-size:16px;margin:0 0 8px 0;">${item.name}</h3><div style="margin-bottom:5px;"><strong style="color:#666;">Type:</strong><span style="color:#333;margin-left:8px;">${typeLabels[item.type]}</span></div><div><strong style="color:#666;">Vedlikehold/inspeksjon:</strong><span style="color:${urgencyColor};margin-left:8px;">${dateStr} (om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'})</span></div></div>`;
         }).join('');
 
         emailSubject = `Vedlikeholdspåminnelse: ${itemsNeedingAttention.length} ${itemsNeedingAttention.length === 1 ? 'ressurs' : 'ressurser'} krever oppmerksomhet`;
 
-        emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 12px 12px 0 0; text-align: center; }
-              .content { background: #ffffff; padding: 30px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; }
-              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1 style="margin: 0; font-size: 24px;">Vedlikeholdspåminnelse</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">${companyName}</p>
-              </div>
-              <div class="content">
-                <p style="color: #666; margin-bottom: 20px;">Hei${profile.full_name ? ' ' + profile.full_name : ''},</p>
-                <p style="color: #666; margin-bottom: 20px;">Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>
-                ${itemsListHtml}
-                <p style="color: #666; margin-top: 25px;">Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p>
-              </div>
-              <div class="footer">
-                <p>Denne e-posten er sendt automatisk fra AviSafe.<br>Du kan justere varslingsinnstillingene i din profil.</p>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0;"><div style="max-width:600px;margin:0 auto;padding:20px;"><div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:white;padding:30px 20px;border-radius:12px 12px 0 0;text-align:center;"><h1 style="margin:0;font-size:24px;">Vedlikeholdspåminnelse</h1><p style="margin:10px 0 0 0;opacity:0.9;">${companyName}</p></div><div style="background:#ffffff;padding:30px 20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;"><p style="color:#666;margin-bottom:20px;">Hei${profile.full_name ? ' ' + profile.full_name : ''},</p><p style="color:#666;margin-bottom:20px;">Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>${itemsListHtml}<p style="color:#666;margin-top:25px;">Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p></div><div style="text-align:center;padding:20px;color:#666;font-size:12px;"><p>Denne e-posten er sendt automatisk fra AviSafe.<br>Du kan justere varslingsinnstillingene i din profil.</p></div></div></body></html>`;
       }
 
       try {
