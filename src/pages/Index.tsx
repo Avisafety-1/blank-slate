@@ -257,7 +257,11 @@ const Index = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Shield className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
+          <img 
+            src="/avisafe-logo-text.png" 
+            alt="AviSafe" 
+            className="h-20 w-auto mx-auto mb-4 animate-pulse" 
+          />
           <p className="text-lg">{t('common.loading')}</p>
         </div>
       </div>
@@ -268,7 +272,11 @@ const Index = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
-          <Shield className="w-16 h-16 text-primary mx-auto mb-4" />
+          <img 
+            src="/avisafe-logo-text.png" 
+            alt="AviSafe" 
+            className="h-20 w-auto mx-auto mb-4" 
+          />
           <h2 className="text-2xl font-bold mb-2">{t('auth.pendingApproval')}</h2>
           <p className="text-muted-foreground mb-6">
             {t('auth.pendingDescription')}
