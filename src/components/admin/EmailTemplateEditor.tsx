@@ -31,13 +31,355 @@ interface Company {
   navn: string;
 }
 
+// Default template content for each template type
+const defaultTemplateContent: Record<string, string> = {
+  user_approved: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.success-icon { font-size: 48px; margin-bottom: 15px; }
+.button { display: inline-block; background: #059669; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="success-icon">✓</div>
+<h1 style="margin: 0;">Velkommen til {{company_name}}!</h1>
+</div>
+<div class="content">
+<h2>Hei {{user_name}}!</h2>
+<p>Vi er glade for å informere deg om at brukerkontoen din hos <strong>{{company_name}}</strong> nå er godkjent.</p>
+<p>Du har nå full tilgang til systemet og kan begynne å bruke alle funksjonene som er tilgjengelige for deg.</p>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Logg inn nå</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  user_welcome: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Velkommen til {{company_name}}!</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Velkommen som bruker hos {{company_name}}. Din konto er nå opprettet og venter på godkjenning av en administrator.</p>
+<p>Du vil motta en e-post når kontoen din er godkjent.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  customer_welcome: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.welcome-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Velkommen som kunde!</h1>
+</div>
+<div class="content">
+<h2>Hei {{customer_name}}!</h2>
+<p>Vi er glade for å ønske deg velkommen som kunde hos <strong>{{company_name}}</strong>.</p>
+<div class="welcome-box">
+<p style="margin: 0;">Du er nå registrert i vårt system. Vi ser frem til et godt samarbeid.</p>
+</div>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  mission_confirmation: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.mission-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; }
+.detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+.status { display: inline-block; padding: 4px 12px; border-radius: 4px; background: #dbeafe; color: #1e40af; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Oppdragsbekreftelse</h1>
+</div>
+<div class="content">
+<p>Dette bekrefter følgende oppdrag:</p>
+<div class="mission-box">
+<h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
+<div class="detail-row"><strong>Status:</strong> <span class="status">{{mission_status}}</span></div>
+<div class="detail-row"><strong>Lokasjon:</strong> {{mission_location}}</div>
+<div class="detail-row"><strong>Tidspunkt:</strong> {{mission_date}}</div>
+</div>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  admin_new_user: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.user-info { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #1e40af; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Ny bruker venter på godkjenning</h1>
+</div>
+<div class="content">
+<p>En ny bruker har registrert seg og venter på godkjenning.</p>
+<div class="user-info">
+<p><strong>Navn:</strong> {{new_user_name}}</p>
+<p><strong>E-post:</strong> {{new_user_email}}</p>
+<p><strong>Selskap:</strong> {{company_name}}</p>
+</div>
+<p>Logg inn i AviSafe for å godkjenne eller avslå denne brukeren.</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  incident_notification: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.incident-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; }
+.severity { display: inline-block; padding: 4px 12px; border-radius: 4px; color: white; background: #f59e0b; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Ny hendelse rapportert</h1>
+</div>
+<div class="content">
+<div class="incident-box">
+<h2 style="margin-top: 0;">{{incident_title}}</h2>
+<p><strong>Alvorlighetsgrad:</strong> <span class="severity">{{incident_severity}}</span></p>
+<p><strong>Lokasjon:</strong> {{incident_location}}</p>
+<p><strong>Beskrivelse:</strong></p>
+<p>{{incident_description}}</p>
+</div>
+<p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  mission_notification: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.mission-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Nytt oppdrag planlagt</h1>
+</div>
+<div class="content">
+<div class="mission-box">
+<h2 style="margin-top: 0;">{{mission_title}}</h2>
+<table style="width: 100%;">
+<tr><td style="padding: 8px 0; color: #666;"><strong>Status:</strong></td><td>{{mission_status}}</td></tr>
+<tr><td style="padding: 8px 0; color: #666;"><strong>Lokasjon:</strong></td><td>{{mission_location}}</td></tr>
+<tr><td style="padding: 8px 0; color: #666;"><strong>Tidspunkt:</strong></td><td>{{mission_date}}</td></tr>
+</table>
+<p style="margin-top: 15px;"><strong>Beskrivelse:</strong></p>
+<p>{{mission_description}}</p>
+</div>
+<p>Logg inn i AviSafe for mer informasjon.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  followup_assigned: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.incident-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+.severity { display: inline-block; padding: 4px 12px; border-radius: 4px; color: white; background: #f59e0b; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Oppfølgingsansvarlig tildelt</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Du har blitt tildelt som oppfølgingsansvarlig for følgende hendelse:</p>
+<div class="incident-box">
+<h2 style="margin-top: 0;">{{incident_title}}</h2>
+<p><strong>Alvorlighetsgrad:</strong> <span class="severity">{{incident_severity}}</span></p>
+</div>
+<p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  password_reset: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+.warning { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Tilbakestill passord</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Vi har mottatt en forespørsel om å tilbakestille passordet ditt. Klikk på knappen nedenfor for å fortsette:</p>
+<a href="{{reset_link}}" class="button">Tilbakestill passord</a>
+<div class="warning">
+<p><strong>Viktig:</strong> Denne lenken utløper om 1 time av sikkerhetsgrunner.</p>
+</div>
+<p>Hvis du ikke har bedt om å tilbakestille passordet ditt, kan du ignorere denne e-posten.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  maintenance_reminder: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.items-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+.items-list { white-space: pre-line; font-family: monospace; background: #f3f4f6; padding: 15px; border-radius: 6px; }
+.count-badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">🔧 Vedlikeholdspåminnelse</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>
+<div class="items-box">
+<p><span class="count-badge">{{item_count}} ressurser</span></p>
+<div class="items-list">{{items_list}}</div>
+</div>
+<p>Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
+  document_reminder: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.document-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
+.expiry-date { color: #dc2626; font-weight: bold; font-size: 18px; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">⚠️ Dokument utløper snart</h1>
+</div>
+<div class="content">
+<p>Dette er en påminnelse om at følgende dokument snart utløper:</p>
+<div class="document-box">
+<h2 style="margin-top: 0;">{{document_title}}</h2>
+<p><strong>Utløpsdato:</strong> <span class="expiry-date">{{expiry_date}}</span></p>
+</div>
+<p>Vi anbefaler at du fornyer eller oppdaterer dette dokumentet så snart som mulig.</p>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Gå til dokumenter</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+};
+
 // Basic templates available to all admins
 const basicTemplateTypes = [
   {
     value: "user_approved",
     label: "Bruker godkjent",
     variables: ["{{user_name}}", "{{company_name}}"],
-    defaultSubject: "Din konto er godkjent",
+    defaultSubject: "Din konto er godkjent - {{company_name}}",
     previewData: {
       user_name: "Kari Nordmann",
       company_name: "Ditt Selskap AS",
@@ -361,9 +703,13 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         setSubject(data.subject);
         setContent(data.content);
       } else {
+        // Use default template if no custom template exists
         setTemplate(null);
-        setSubject("");
-        setContent("");
+        const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+        const defaultContent = defaultTemplateContent[selectedTemplateType] || "";
+        const defaultSubject = currentTemplateType?.defaultSubject || "";
+        setSubject(defaultSubject);
+        setContent(defaultContent);
       }
     } catch (error: any) {
       console.error("Error fetching template:", error);
