@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon } from "lucide-react";
+import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -24,16 +25,18 @@ import {
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-type RecipientType = "users" | "customers";
+type RecipientType = "users" | "customers" | "all_users";
 
 export const BulkEmailSender = () => {
   const { companyId } = useAuth();
+  const { isSuperAdmin } = useRoleCheck();
   const isMobile = useIsMobile();
   const [recipientType, setRecipientType] = useState<RecipientType>("users");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [userCount, setUserCount] = useState(0);
   const [customerCount, setCustomerCount] = useState(0);
+  const [allUsersCount, setAllUsersCount] = useState(0);
   const [sending, setSending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -44,13 +47,13 @@ export const BulkEmailSender = () => {
     if (companyId) {
       fetchCounts();
     }
-  }, [companyId]);
+  }, [companyId, isSuperAdmin]);
 
   const fetchCounts = async () => {
     if (!companyId) return;
 
     try {
-      // Fetch user count (approved users with email)
+      // Fetch user count (approved users with email in current company)
       const { count: users, error: usersError } = await supabase
         .from("profiles")
         .select("*", { count: "exact", head: true })
@@ -71,6 +74,18 @@ export const BulkEmailSender = () => {
 
       if (customersError) throw customersError;
       setCustomerCount(customers || 0);
+
+      // Fetch all users count for superadmin
+      if (isSuperAdmin) {
+        const { count: allUsers, error: allUsersError } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("approved", true)
+          .not("email", "is", null);
+
+        if (allUsersError) throw allUsersError;
+        setAllUsersCount(allUsers || 0);
+      }
     } catch (error) {
       console.error("Error fetching counts:", error);
     }
@@ -177,7 +192,7 @@ export const BulkEmailSender = () => {
       toast.error("Vennligst skriv inn innhold");
       return;
     }
-    const count = recipientType === "users" ? userCount : customerCount;
+    const count = recipientType === "users" ? userCount : recipientType === "customers" ? customerCount : allUsersCount;
     if (count === 0) {
       toast.error("Ingen mottakere å sende til");
       return;
@@ -193,9 +208,15 @@ export const BulkEmailSender = () => {
 
     setSending(true);
     try {
+      const emailType = recipientType === "users" 
+        ? "bulk_email_users" 
+        : recipientType === "customers" 
+          ? "bulk_email_customers" 
+          : "bulk_email_all_users";
+      
       const { data, error } = await supabase.functions.invoke("send-notification-email", {
         body: {
-          type: recipientType === "users" ? "bulk_email_users" : "bulk_email_customers",
+          type: emailType,
           companyId,
           subject,
           htmlContent: content,
@@ -219,7 +240,7 @@ export const BulkEmailSender = () => {
     }
   };
 
-  const recipientCount = recipientType === "users" ? userCount : customerCount;
+  const recipientCount = recipientType === "users" ? userCount : recipientType === "customers" ? customerCount : allUsersCount;
 
   return (
     <>
@@ -281,6 +302,16 @@ export const BulkEmailSender = () => {
                   <span className="ml-auto text-sm text-muted-foreground">{customerCount} mottakere</span>
                 </Label>
               </div>
+              {isSuperAdmin && (
+                <div className="flex items-center space-x-3 p-3 rounded-lg border border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer">
+                  <RadioGroupItem value="all_users" id="all_users" />
+                  <Label htmlFor="all_users" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <Globe className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm sm:text-base font-medium">Alle brukere (alle selskaper)</span>
+                    <span className="ml-auto text-sm text-amber-600 font-medium">{allUsersCount} mottakere</span>
+                  </Label>
+                </div>
+              )}
             </RadioGroup>
           </div>
 
@@ -382,7 +413,12 @@ export const BulkEmailSender = () => {
             <AlertDialogTitle>Bekreft sending</AlertDialogTitle>
             <AlertDialogDescription>
               Er du sikker på at du vil sende denne e-posten til{" "}
-              <strong>{recipientCount} {recipientType === "users" ? "brukere" : "kunder"}</strong>?
+              <strong>{recipientCount} {recipientType === "users" ? "brukere" : recipientType === "customers" ? "kunder" : "brukere i alle selskaper"}</strong>?
+              {recipientType === "all_users" && (
+                <span className="block mt-2 text-amber-600 font-medium">
+                  Advarsel: Dette sender e-post til ALLE brukere i systemet!
+                </span>
+              )}
               <br /><br />
               <strong>Emne:</strong> {subject}
             </AlertDialogDescription>
