@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,23 +14,19 @@ interface EmailRequest {
   notificationType?: 'email_new_incident' | 'email_new_mission' | 'email_document_expiry' | 'email_new_user_pending' | 'email_followup_assigned';
   subject?: string;
   htmlContent?: string;
-  // Different notification modes
   type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'bulk_email_users' | 'bulk_email_customers';
   companyId?: string;
-  // For new user notifications
   newUser?: {
     fullName: string;
     email: string;
     companyName: string;
   };
-  // For new incident notifications
   incident?: {
     tittel: string;
     beskrivelse?: string;
     alvorlighetsgrad: string;
     lokasjon?: string;
   };
-  // For new mission notifications
   mission?: {
     tittel: string;
     lokasjon: string;
@@ -105,25 +102,29 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      const severityColors: Record<string, string> = {
-        'Lav': '#22c55e',
-        'Middels': '#eab308',
-        'Høy': '#f97316',
-        'Kritisk': '#ef4444'
-      };
+      // Get company name
+      const { data: company } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', companyId)
+        .single();
 
-      const incidentHtml = `
-        <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Ny hendelse rapportert</h1>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h2 style="color: #333; font-size: 18px; margin-bottom: 15px;">${incident.tittel}</h2>
-          <div style="margin-bottom: 10px;">
-            <strong style="color: #666;">Alvorlighetsgrad:</strong>
-            <span style="display: inline-block; background: ${severityColors[incident.alvorlighetsgrad] || '#666'}; color: white; padding: 4px 12px; border-radius: 4px; margin-left: 8px;">${incident.alvorlighetsgrad}</span>
-          </div>
-          ${incident.lokasjon ? `<div style="margin-bottom: 10px;"><strong style="color: #666;">Lokasjon:</strong> <span style="color: #333;">${incident.lokasjon}</span></div>` : ''}
-          ${incident.beskrivelse ? `<div style="margin-top: 15px;"><strong style="color: #666;">Beskrivelse:</strong><p style="color: #333; margin-top: 5px;">${incident.beskrivelse}</p></div>` : ''}
-        </div>
-      `;
+      const companyName = company?.navn || 'Selskapet';
+
+      // Get email template with fallback
+      const templateResult = await getEmailTemplateWithFallback(
+        companyId,
+        'incident_notification',
+        {
+          incident_title: incident.tittel,
+          incident_severity: incident.alvorlighetsgrad,
+          incident_location: incident.lokasjon || 'Ikke oppgitt',
+          incident_description: incident.beskrivelse || 'Ingen beskrivelse',
+          company_name: companyName
+        }
+      );
+
+      console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} incident notification template`);
 
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
@@ -152,8 +153,8 @@ serve(async (req: Request): Promise<Response> => {
         await client.send({
           from: senderAddress,
           to: user.email,
-          subject: `Ny hendelse: ${incident.tittel}`,
-          html: incidentHtml,
+          subject: templateResult.subject,
+          html: templateResult.content,
         });
 
         emailsSent++;
@@ -214,6 +215,15 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      // Get company name
+      const { data: company } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', companyId)
+        .single();
+
+      const companyName = company?.navn || 'Selskapet';
+
       const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', {
         day: 'numeric',
         month: 'long',
@@ -222,126 +232,21 @@ serve(async (req: Request): Promise<Response> => {
         minute: '2-digit'
       });
 
-      const riskColors: Record<string, string> = {
-        'Lav': '#22c55e',
-        'Middels': '#eab308',
-        'Høy': '#f97316',
-        'Kritisk': '#ef4444'
-      };
+      // Get email template with fallback
+      const templateResult = await getEmailTemplateWithFallback(
+        companyId,
+        'mission_notification',
+        {
+          mission_title: mission.tittel,
+          mission_location: mission.lokasjon,
+          mission_date: missionDate,
+          mission_status: mission.status || 'Planlagt',
+          mission_description: mission.beskrivelse || 'Ingen beskrivelse',
+          company_name: companyName
+        }
+      );
 
-      const formatDistance = (meters?: number) => {
-        if (!meters) return null;
-        return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
-      };
-
-      // Build HTML with short lines to avoid quoted-printable encoding
-      let missionHtml = '';
-      missionHtml += '<h1 style="color:#333;font-size:24px;margin-bottom:20px;">';
-      missionHtml += 'Nytt oppdrag planlagt</h1>';
-      missionHtml += '<div style="background:#f8f9fa;padding:20px;';
-      missionHtml += 'border-radius:8px;margin-bottom:20px;">';
-      missionHtml += '<h2 style="color:#333;font-size:18px;margin-bottom:15px;">';
-      missionHtml += mission.tittel + '</h2>';
-      missionHtml += '<table style="width:100%;border-collapse:collapse;">';
-      
-      if (mission.status) {
-        missionHtml += '<tr><td style="padding:8px 0;color:#666;width:120px;">';
-        missionHtml += '<strong>Status:</strong></td>';
-        missionHtml += '<td style="padding:8px 0;">';
-        missionHtml += '<span style="background:#3b82f6;color:white;';
-        missionHtml += 'padding:4px 12px;border-radius:4px;">';
-        missionHtml += mission.status + '</span></td></tr>';
-      }
-      
-      if (mission.riskNiva) {
-        const riskColor = riskColors[mission.riskNiva] || '#666';
-        missionHtml += '<tr><td style="padding:8px 0;color:#666;">';
-        missionHtml += '<strong>Risikoniå:</strong></td>';
-        missionHtml += '<td style="padding:8px 0;">';
-        missionHtml += '<span style="background:' + riskColor + ';color:white;';
-        missionHtml += 'padding:4px 12px;border-radius:4px;">';
-        missionHtml += mission.riskNiva + '</span></td></tr>';
-      }
-      
-      missionHtml += '<tr><td style="padding:8px 0;color:#666;">';
-      missionHtml += '<strong>Lokasjon:</strong></td>';
-      missionHtml += '<td style="padding:8px 0;color:#333;">';
-      missionHtml += mission.lokasjon + '</td></tr>';
-      
-      missionHtml += '<tr><td style="padding:8px 0;color:#666;">';
-      missionHtml += '<strong>Tidspunkt:</strong></td>';
-      missionHtml += '<td style="padding:8px 0;color:#333;">';
-      missionHtml += missionDate + '</td></tr>';
-      
-      if (mission.kunde) {
-        missionHtml += '<tr><td style="padding:8px 0;color:#666;">';
-        missionHtml += '<strong>Kunde:</strong></td>';
-        missionHtml += '<td style="padding:8px 0;color:#333;">';
-        missionHtml += mission.kunde + '</td></tr>';
-      }
-      
-      if (mission.ruteLengde) {
-        missionHtml += '<tr><td style="padding:8px 0;color:#666;">';
-        missionHtml += '<strong>Rutelengde:</strong></td>';
-        missionHtml += '<td style="padding:8px 0;color:#333;">';
-        missionHtml += formatDistance(mission.ruteLengde) + '</td></tr>';
-      }
-      
-      missionHtml += '</table>';
-      
-      if (mission.beskrivelse) {
-        missionHtml += '<div style="margin-top:15px;">';
-        missionHtml += '<strong style="color:#666;">Beskrivelse:</strong>';
-        missionHtml += '<p style="color:#333;margin-top:5px;">';
-        missionHtml += mission.beskrivelse + '</p></div>';
-      }
-      
-      if (mission.merknader) {
-        missionHtml += '<div style="margin-top:15px;">';
-        missionHtml += '<strong style="color:#666;">Merknader:</strong>';
-        missionHtml += '<p style="color:#333;margin-top:5px;">';
-        missionHtml += mission.merknader + '</p></div>';
-      }
-      
-      missionHtml += '</div>';
-      
-      // Resources section
-      const hasResources = (mission.personell?.length || 0) > 0 || 
-                          (mission.droner?.length || 0) > 0 || 
-                          (mission.utstyr?.length || 0) > 0;
-      
-      if (hasResources) {
-        missionHtml += '<div style="background:#f8f9fa;padding:20px;';
-        missionHtml += 'border-radius:8px;">';
-        missionHtml += '<h3 style="color:#333;font-size:16px;';
-        missionHtml += 'margin-bottom:15px;">Ressurser</h3>';
-        
-        if (mission.personell && mission.personell.length > 0) {
-          missionHtml += '<div style="margin-bottom:10px;">';
-          missionHtml += '<strong style="color:#666;">Personell:</strong> ';
-          missionHtml += '<span style="color:#333;">';
-          missionHtml += mission.personell.join(', ') + '</span></div>';
-        }
-        
-        if (mission.droner && mission.droner.length > 0) {
-          missionHtml += '<div style="margin-bottom:10px;">';
-          missionHtml += '<strong style="color:#666;">Droner:</strong> ';
-          missionHtml += '<span style="color:#333;">';
-          missionHtml += mission.droner.join(', ') + '</span></div>';
-        }
-        
-        if (mission.utstyr && mission.utstyr.length > 0) {
-          missionHtml += '<div style="margin-bottom:10px;">';
-          missionHtml += '<strong style="color:#666;">Utstyr:</strong> ';
-          missionHtml += '<span style="color:#333;">';
-          missionHtml += mission.utstyr.join(', ') + '</span></div>';
-        }
-        
-        missionHtml += '</div>';
-      }
-      
-      missionHtml += '<p style="margin-top:20px;color:#666;">';
-      missionHtml += 'Logg inn i Avisafe for mer informasjon.</p>';
+      console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} mission notification template`);
 
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
@@ -370,8 +275,8 @@ serve(async (req: Request): Promise<Response> => {
         await client.send({
           from: senderAddress,
           to: user.email,
-          subject: `Nytt oppdrag: ${mission.tittel}`,
-          html: missionHtml,
+          subject: templateResult.subject,
+          html: templateResult.content,
         });
 
         emailsSent++;
@@ -390,7 +295,6 @@ serve(async (req: Request): Promise<Response> => {
     if (type === 'notify_admins_new_user' && companyId && newUser) {
       console.log(`Finding admins for new user notification in company ${companyId}`);
 
-      // Find all admins and superadmins in the company with notifications enabled
       const { data: adminRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -407,7 +311,6 @@ serve(async (req: Request): Promise<Response> => {
 
       const adminUserIds = adminRoles.map(role => role.user_id);
 
-      // Get profiles for admins in the same company
       const { data: adminProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id')
@@ -425,7 +328,6 @@ serve(async (req: Request): Promise<Response> => {
 
       const companyAdminIds = adminProfiles.map(profile => profile.id);
 
-      // Get notification preferences
       const { data: preferences, error: prefsError } = await supabase
         .from('notification_preferences')
         .select('user_id')
@@ -441,35 +343,18 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Generate HTML content
-      const html = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-.user-info { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #1e40af; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header">
-<h1>Ny bruker venter på godkjenning</h1>
-</div>
-<div class="content">
-<p>En ny bruker har registrert seg og venter på godkjenning.</p>
-<div class="user-info">
-<p><strong>Navn:</strong> ${newUser.fullName}</p>
-<p><strong>E-post:</strong> ${newUser.email}</p>
-<p><strong>Selskap:</strong> ${newUser.companyName}</p>
-</div>
-<p style="margin-top: 20px;">Logg inn i Avisafe for å godkjenne eller avslå denne brukeren.</p>
-</div>
-</div>
-</body>
-</html>`;
+      // Get email template with fallback
+      const templateResult = await getEmailTemplateWithFallback(
+        companyId,
+        'admin_new_user',
+        {
+          new_user_name: newUser.fullName,
+          new_user_email: newUser.email,
+          company_name: newUser.companyName
+        }
+      );
+
+      console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} admin new user template`);
 
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
@@ -488,7 +373,6 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         },
       });
 
-      // Send email to each admin
       let sentCount = 0;
       for (const pref of preferences) {
         const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(pref.user_id);
@@ -503,8 +387,8 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         await client.send({
           from: senderAddress,
           to: user.email,
-          subject: 'Ny bruker venter på godkjenning',
-          html: html,
+          subject: templateResult.subject,
+          html: templateResult.content,
         });
         sentCount++;
       }
@@ -664,7 +548,6 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 
     console.log(`Processing notification for user ${recipientId}, type: ${notificationType}`);
 
-    // 1. Check notification preferences
     const { data: prefs, error: prefsError } = await supabase
       .from("notification_preferences")
       .select("*")
@@ -684,7 +567,6 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       );
     }
 
-    // 2. Get user's email address
     const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(recipientId);
     
     if (userError || !user?.email) {
@@ -694,7 +576,6 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 
     console.log(`Sending email to ${user.email}`);
 
-    // 3. Send email via SMTP
     const emailConfig = await getEmailConfig(companyId);
     const senderAddress = emailConfig.fromName 
       ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`

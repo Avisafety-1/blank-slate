@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +60,15 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Kunne ikke hente brukerinfo");
     }
 
+    // Get company name
+    const { data: company } = await supabase
+      .from('companies')
+      .select('navn')
+      .eq('id', profile.company_id)
+      .single();
+
+    const companyName = company?.navn || 'AviSafe';
+
     // Generate password reset link - use login domain
     const redirectUrl = 'https://login.avisafe.no/reset-password';
     
@@ -79,37 +89,18 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`Generated reset link for user ${user.id}`);
 
-    // Create email HTML
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-.button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-.warning { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #f59e0b; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header">
-<h1>Tilbakestill passord</h1>
-</div>
-<div class="content">
-<p>Hei${profile.full_name ? ' ' + profile.full_name : ''},</p>
-<p>Vi har mottatt en forespørsel om å tilbakestille passordet ditt. Klikk på knappen nedenfor for å fortsette:</p>
-<a href="${data.properties.action_link}" class="button">Tilbakestill passord</a>
-<div class="warning">
-<p><strong>Viktig:</strong> Denne lenken utløper om 1 time av sikkerhetsgrunner.</p>
-</div>
-<p>Hvis du ikke har bedt om å tilbakestille passordet ditt, kan du ignorere denne e-posten. Passordet ditt vil forbli uendret.</p>
-<p>Med vennlig hilsen,<br>AviSafe</p>
-</div>
-</div>
-</body>
-</html>`;
+    // Get email template with fallback
+    const templateResult = await getEmailTemplateWithFallback(
+      profile.company_id,
+      'password_reset',
+      {
+        user_name: profile.full_name || '',
+        reset_link: data.properties.action_link,
+        company_name: companyName
+      }
+    );
+
+    console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} password reset template`);
 
     // Get email configuration for the user's company
     const emailConfig = await getEmailConfig(profile.company_id);
@@ -134,8 +125,8 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     await client.send({
       from: senderAddress,
       to: email,
-      subject: 'Tilbakestill passord - AviSafe',
-      html: html,
+      subject: templateResult.subject,
+      html: templateResult.content,
     });
 
     await client.close();
