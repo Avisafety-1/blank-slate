@@ -267,6 +267,9 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="incident-box">
 <h2 style="margin-top: 0;">{{incident_title}}</h2>
 <p><strong>Alvorlighetsgrad:</strong> <span class="severity">{{incident_severity}}</span></p>
+<p><strong>Lokasjon:</strong> {{incident_location}}</p>
+<p><strong>Beskrivelse:</strong></p>
+<p>{{incident_description}}</p>
 </div>
 <p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
 <p>Med vennlig hilsen,<br>{{company_name}}</p>
@@ -413,6 +416,7 @@ const basicTemplateTypes = [
       "{{mission_location}}",
       "{{mission_date}}",
       "{{mission_status}}",
+      "{{mission_description}}",
       "{{company_name}}",
     ],
     defaultSubject: "Oppdragsbekreftelse: {{mission_title}}",
@@ -421,6 +425,7 @@ const basicTemplateTypes = [
       mission_location: "Oslo, Norge",
       mission_date: "15. januar 2025 kl. 10:00",
       mission_status: "Planlagt",
+      mission_description: "Visuell inspeksjon av vindturbiner.",
       company_name: "Ditt Selskap AS",
     },
   },
@@ -469,12 +474,14 @@ const superadminTemplateTypes = [
   {
     value: "followup_assigned",
     label: "Oppfølgingsansvarlig tildelt (Superadmin)",
-    variables: ["{{user_name}}", "{{incident_title}}", "{{incident_severity}}", "{{company_name}}"],
+    variables: ["{{user_name}}", "{{incident_title}}", "{{incident_severity}}", "{{incident_location}}", "{{incident_description}}", "{{company_name}}"],
     defaultSubject: "Du er tildelt som oppfølgingsansvarlig: {{incident_title}}",
     previewData: {
       user_name: "Kari Nordmann",
       incident_title: "Nødlanding ved testing",
       incident_severity: "Middels",
+      incident_location: "Oslo Lufthavn",
+      incident_description: "Dronen måtte nødlande grunnet lavt batteri under testflyging.",
       company_name: "Ditt Selskap AS",
     },
   },
