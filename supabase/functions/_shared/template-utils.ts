@@ -215,6 +215,43 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </div>
 </body>
 </html>`
+  },
+  
+  followup_assigned: {
+    subject: 'Du er tildelt som oppfølgingsansvarlig: {{incident_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.incident-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+.severity { display: inline-block; padding: 4px 12px; border-radius: 4px; color: white; background: #f59e0b; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Oppfølgingsansvarlig tildelt</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p>Du har blitt tildelt som oppfølgingsansvarlig for følgende hendelse:</p>
+<div class="incident-box">
+<h2 style="margin-top: 0;">{{incident_title}}</h2>
+<p><strong>Alvorlighetsgrad:</strong> <span class="severity">{{incident_severity}}</span></p>
+<p><strong>Lokasjon:</strong> {{incident_location}}</p>
+<p><strong>Beskrivelse:</strong></p>
+<p>{{incident_description}}</p>
+</div>
+<p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`
   }
 };
 

@@ -14,7 +14,7 @@ interface EmailRequest {
   notificationType?: 'email_new_incident' | 'email_new_mission' | 'email_document_expiry' | 'email_new_user_pending' | 'email_followup_assigned';
   subject?: string;
   htmlContent?: string;
-  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'bulk_email_users' | 'bulk_email_customers' | 'bulk_email_all_users';
+  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'notify_followup_assigned' | 'bulk_email_users' | 'bulk_email_customers' | 'bulk_email_all_users';
   companyId?: string;
   newUser?: {
     fullName: string;
@@ -41,6 +41,14 @@ interface EmailRequest {
     utstyr?: string[];
     ruteLengde?: number;
   };
+  followupAssigned?: {
+    recipientId: string;
+    recipientName: string;
+    incidentTitle: string;
+    incidentSeverity: string;
+    incidentLocation?: string;
+    incidentDescription?: string;
+  };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -54,7 +62,7 @@ serve(async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, newUser, incident, mission }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, newUser, incident, mission, followupAssigned }: EmailRequest = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -400,6 +408,96 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ message: `Sent ${sentCount} notifications` }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle followup assigned notification
+    if (type === 'notify_followup_assigned' && companyId && followupAssigned) {
+      console.log(`Sending followup assigned notification to ${followupAssigned.recipientId}`);
+
+      // Check notification preferences
+      const { data: prefs, error: prefsError } = await supabase
+        .from("notification_preferences")
+        .select("email_followup_assigned")
+        .eq("user_id", followupAssigned.recipientId)
+        .maybeSingle();
+
+      if (prefsError) {
+        console.error("Error fetching preferences:", prefsError);
+        throw prefsError;
+      }
+
+      if (!prefs || !prefs.email_followup_assigned) {
+        console.log(`User has disabled followup assigned notifications`);
+        return new Response(
+          JSON.stringify({ success: true, message: 'User has disabled this notification type' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      // Get recipient email
+      const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(followupAssigned.recipientId);
+      
+      if (userError || !user?.email) {
+        console.error("Error fetching user or email not found:", userError);
+        throw new Error("User email not found");
+      }
+
+      // Get company name
+      const { data: company } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', companyId)
+        .single();
+
+      const companyName = company?.navn || 'Selskapet';
+
+      // Get email template with fallback
+      const templateResult = await getEmailTemplateWithFallback(
+        companyId,
+        'followup_assigned',
+        {
+          user_name: followupAssigned.recipientName,
+          incident_title: followupAssigned.incidentTitle,
+          incident_severity: followupAssigned.incidentSeverity,
+          incident_location: followupAssigned.incidentLocation || 'Ikke oppgitt',
+          incident_description: followupAssigned.incidentDescription || 'Ingen beskrivelse',
+          company_name: companyName
+        }
+      );
+
+      console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} followup assigned template`);
+
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
+      const client = new SMTPClient({
+        connection: {
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
+        },
+      });
+
+      await client.send({
+        from: senderAddress,
+        to: user.email,
+        subject: templateResult.subject,
+        html: templateResult.content,
+      });
+
+      await client.close();
+      console.log(`Sent followup assigned notification to ${user.email}`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email sent successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
