@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { sendNotificationEmail, generateIncidentNotificationHTML } from "@/lib/notifications";
+
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -272,17 +272,21 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         // Send email notification to follow-up responsible (kun ved ny hendelse)
         if (formData.oppfolgingsansvarlig_id) {
-          await sendNotificationEmail({
-            recipientId: formData.oppfolgingsansvarlig_id,
-            notificationType: 'email_followup_assigned',
-            subject: `Du er satt som oppfølgingsansvarlig: ${formData.tittel}`,
-            htmlContent: generateIncidentNotificationHTML({
-              tittel: formData.tittel,
-              beskrivelse: formData.beskrivelse,
-              alvorlighetsgrad: formData.alvorlighetsgrad,
-              lokasjon: formData.lokasjon,
-            }),
-            companyId: companyId,
+          const recipientUser = users.find(u => u.id === formData.oppfolgingsansvarlig_id);
+          
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              type: 'notify_followup_assigned',
+              companyId: companyId,
+              followupAssigned: {
+                recipientId: formData.oppfolgingsansvarlig_id,
+                recipientName: recipientUser?.full_name || 'Bruker',
+                incidentTitle: formData.tittel,
+                incidentSeverity: formData.alvorlighetsgrad,
+                incidentLocation: formData.lokasjon,
+                incidentDescription: formData.beskrivelse
+              }
+            }
           });
         }
 
