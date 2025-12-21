@@ -14,7 +14,7 @@ interface EmailRequest {
   notificationType?: 'email_new_incident' | 'email_new_mission' | 'email_document_expiry' | 'email_new_user_pending' | 'email_followup_assigned';
   subject?: string;
   htmlContent?: string;
-  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'bulk_email_users' | 'bulk_email_customers';
+  type?: 'notify_admins_new_user' | 'notify_new_incident' | 'notify_new_mission' | 'bulk_email_users' | 'bulk_email_customers' | 'bulk_email_all_users';
   companyId?: string;
   newUser?: {
     fullName: string;
@@ -534,6 +534,76 @@ serve(async (req: Request): Promise<Response> => {
 
       await client.close();
       console.log(`Sent ${emailsSent} bulk customer emails`);
+
+      return new Response(
+        JSON.stringify({ success: true, emailsSent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Handle bulk email to all users across all companies (superadmin only)
+    if (type === 'bulk_email_all_users' && subject && htmlContent) {
+      console.log(`Sending bulk email to ALL users across all companies`);
+      
+      // Fetch all approved users with email from all companies
+      const { data: allUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, company_id')
+        .eq('approved', true)
+        .not('email', 'is', null);
+
+      if (usersError) {
+        console.error('Error fetching all users:', usersError);
+        throw usersError;
+      }
+
+      if (!allUsers || allUsers.length === 0) {
+        console.log('No approved users with email found');
+        return new Response(
+          JSON.stringify({ success: true, emailsSent: 0, message: 'No eligible users to email' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      // Use default email config (from the caller's company or global)
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = emailConfig.fromName 
+        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
+        : emailConfig.fromEmail;
+
+      const client = new SMTPClient({
+        connection: {
+          hostname: emailConfig.host,
+          port: emailConfig.port,
+          tls: emailConfig.secure,
+          auth: {
+            username: emailConfig.user,
+            password: emailConfig.pass,
+          },
+        },
+      });
+
+      let emailsSent = 0;
+      for (const user of allUsers) {
+        if (!user.email) continue;
+
+        console.log(`Sending bulk email to user ${user.email}`);
+
+        try {
+          await client.send({
+            from: senderAddress,
+            to: user.email,
+            subject: subject,
+            html: htmlContent,
+          });
+          emailsSent++;
+        } catch (sendError) {
+          console.error(`Failed to send to ${user.email}:`, sendError);
+        }
+      }
+
+      await client.close();
+      console.log(`Sent ${emailsSent} bulk emails to all users`);
 
       return new Response(
         JSON.stringify({ success: true, emailsSent }),
