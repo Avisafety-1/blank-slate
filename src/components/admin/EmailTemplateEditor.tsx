@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2 } from "lucide-react";
+import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,22 +31,13 @@ interface Company {
   navn: string;
 }
 
-const templateTypes = [
+// Basic templates available to all admins
+const basicTemplateTypes = [
   {
     value: "user_approved",
     label: "Bruker godkjent",
     variables: ["{{user_name}}", "{{company_name}}"],
     defaultSubject: "Din konto er godkjent",
-    previewData: {
-      user_name: "Kari Nordmann",
-      company_name: "Ditt Selskap AS",
-    },
-  },
-  {
-    value: "user_welcome",
-    label: "Velkommen ny bruker",
-    variables: ["{{user_name}}", "{{company_name}}"],
-    defaultSubject: "Velkommen til {{company_name}}",
     previewData: {
       user_name: "Kari Nordmann",
       company_name: "Ditt Selskap AS",
@@ -59,6 +50,50 @@ const templateTypes = [
     defaultSubject: "Velkommen som kunde hos {{company_name}}",
     previewData: {
       customer_name: "Ola Nordmann",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "document_reminder",
+    label: "Dokumentpåminnelse",
+    variables: ["{{document_title}}", "{{expiry_date}}", "{{company_name}}"],
+    defaultSubject: "Dokument utløper snart: {{document_title}}",
+    previewData: {
+      document_title: "Droneoperatørsertifikat A2",
+      expiry_date: "31. desember 2025",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "mission_confirmation",
+    label: "Oppdragsbekreftelse",
+    variables: [
+      "{{mission_title}}",
+      "{{mission_location}}",
+      "{{mission_date}}",
+      "{{mission_status}}",
+      "{{company_name}}",
+    ],
+    defaultSubject: "Oppdragsbekreftelse: {{mission_title}}",
+    previewData: {
+      mission_title: "Drone inspeksjon av vindmøller",
+      mission_location: "Oslo, Norge",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_status: "Planlagt",
+      company_name: "Ditt Selskap AS",
+    },
+  },
+];
+
+// Advanced templates only for superadmins
+const superadminTemplateTypes = [
+  {
+    value: "user_welcome",
+    label: "Velkommen ny bruker",
+    variables: ["{{user_name}}", "{{company_name}}"],
+    defaultSubject: "Velkommen til {{company_name}}",
+    previewData: {
+      user_name: "Kari Nordmann",
       company_name: "Ditt Selskap AS",
     },
   },
@@ -123,41 +158,13 @@ const templateTypes = [
       company_name: "Ditt Selskap AS",
     },
   },
-  {
-    value: "document_reminder",
-    label: "Dokumentpåminnelse",
-    variables: ["{{document_title}}", "{{expiry_date}}", "{{company_name}}"],
-    defaultSubject: "Dokument utløper snart: {{document_title}}",
-    previewData: {
-      document_title: "Droneoperatørsertifikat A2",
-      expiry_date: "31. desember 2025",
-      company_name: "Ditt Selskap AS",
-    },
-  },
-  {
-    value: "mission_confirmation",
-    label: "Oppdragsbekreftelse",
-    variables: [
-      "{{mission_title}}",
-      "{{mission_location}}",
-      "{{mission_date}}",
-      "{{mission_status}}",
-      "{{company_name}}",
-    ],
-    defaultSubject: "Oppdragsbekreftelse: {{mission_title}}",
-    previewData: {
-      mission_title: "Drone inspeksjon av vindmøller",
-      mission_location: "Oslo, Norge",
-      mission_date: "15. januar 2025 kl. 10:00",
-      mission_status: "Planlagt",
-      company_name: "Ditt Selskap AS",
-    },
-  },
 ];
 
 interface EmailTemplateEditorProps {
   onOpenEmailSettings: () => void;
 }
+
+const ALL_COMPANIES_ID = "__ALL_COMPANIES__";
 
 export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditorProps) => {
   const { companyId } = useAuth();
@@ -177,6 +184,14 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+  
+  // Get available template types based on role
+  const templateTypes = useMemo(() => {
+    if (isSuperAdmin) {
+      return [...basicTemplateTypes, ...superadminTemplateTypes];
+    }
+    return basicTemplateTypes;
+  }, [isSuperAdmin]);
 
   // Fetch companies for superadmin
   useEffect(() => {
@@ -215,7 +230,8 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     }
   }, [isSuperAdmin, companyId]);
 
-  const activeCompanyId = isSuperAdmin ? selectedCompanyId : companyId;
+  const isAllCompaniesMode = selectedCompanyId === ALL_COMPANIES_ID;
+  const activeCompanyId = isSuperAdmin ? (isAllCompaniesMode ? companyId : selectedCompanyId) : companyId;
 
   // Handle image upload to Supabase Storage
   const handleImageUpload = async () => {
@@ -346,36 +362,84 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   };
 
   const handleSave = async () => {
-    if (!activeCompanyId) {
+    if (!activeCompanyId && !isAllCompaniesMode) {
       toast.error("Velg en bedrift først");
       return;
     }
 
     setSaving(true);
     try {
-      if (template) {
-        const { error } = await supabase
-          .from("email_templates")
-          .update({
+      if (isAllCompaniesMode) {
+        // Save template to all companies
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const company of companies) {
+          try {
+            // Check if template exists for this company
+            const { data: existingTemplate } = await supabase
+              .from("email_templates")
+              .select("id")
+              .eq("company_id", company.id)
+              .eq("template_type", selectedTemplateType)
+              .maybeSingle();
+            
+            if (existingTemplate) {
+              // Update existing
+              const { error } = await supabase
+                .from("email_templates")
+                .update({ subject, content })
+                .eq("id", existingTemplate.id);
+              
+              if (error) throw error;
+            } else {
+              // Insert new
+              const { error } = await supabase.from("email_templates").insert({
+                company_id: company.id,
+                template_type: selectedTemplateType,
+                subject,
+                content,
+              });
+              
+              if (error) throw error;
+            }
+            successCount++;
+          } catch (err) {
+            console.error(`Error saving template for ${company.navn}:`, err);
+            errorCount++;
+          }
+        }
+        
+        if (errorCount === 0) {
+          toast.success(`Mal lagret til alle ${successCount} selskaper`);
+        } else {
+          toast.warning(`Lagret til ${successCount} selskaper, ${errorCount} feilet`);
+        }
+      } else {
+        // Save to single company
+        if (template) {
+          const { error } = await supabase
+            .from("email_templates")
+            .update({
+              subject,
+              content,
+            })
+            .eq("id", template.id);
+
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("email_templates").insert({
+            company_id: activeCompanyId,
+            template_type: selectedTemplateType,
             subject,
             content,
-          })
-          .eq("id", template.id);
+          });
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("email_templates").insert({
-          company_id: activeCompanyId,
-          template_type: selectedTemplateType,
-          subject,
-          content,
-        });
-
-        if (error) throw error;
+          if (error) throw error;
+        }
+        toast.success("Mal lagret");
+        fetchTemplate();
       }
-
-      toast.success("Mal lagret");
-      fetchTemplate();
     } catch (error: any) {
       console.error("Error saving template:", error);
       toast.error("Kunne ikke lagre mal: " + error.message);
@@ -546,6 +610,12 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                   <SelectValue placeholder="Velg bedrift" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={ALL_COMPANIES_ID} className="text-xs sm:text-sm font-semibold">
+                    <span className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Alle selskaper
+                    </span>
+                  </SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id} className="text-xs sm:text-sm">
                       {company.navn}
@@ -553,6 +623,11 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                   ))}
                 </SelectContent>
               </Select>
+              {isAllCompaniesMode && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Malen vil bli lagret til alle {companies.length} selskaper når du klikker "Lagre".
+                </p>
+              )}
             </div>
           )}
 
