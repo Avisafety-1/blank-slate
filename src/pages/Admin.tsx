@@ -333,7 +333,11 @@ const Admin = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Shield className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
+          <img 
+            src="/avisafe-logo-text.png" 
+            alt="AviSafe" 
+            className="h-20 w-auto mx-auto mb-4 animate-pulse" 
+          />
           <p className="text-lg">{t('common.loading')}</p>
         </div>
       </div>
