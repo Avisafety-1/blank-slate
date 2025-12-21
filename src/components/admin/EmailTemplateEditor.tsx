@@ -89,7 +89,7 @@ const basicTemplateTypes = [
 const superadminTemplateTypes = [
   {
     value: "user_welcome",
-    label: "Velkommen ny bruker",
+    label: "Velkommen ny bruker (Superadmin)",
     variables: ["{{user_name}}", "{{company_name}}"],
     defaultSubject: "Velkommen til {{company_name}}",
     previewData: {
@@ -99,7 +99,7 @@ const superadminTemplateTypes = [
   },
   {
     value: "password_reset",
-    label: "Passord tilbakestilling",
+    label: "Passord tilbakestilling (Superadmin)",
     variables: ["{{user_name}}", "{{reset_link}}", "{{company_name}}"],
     defaultSubject: "Tilbakestill passord - AviSafe",
     previewData: {
@@ -110,7 +110,7 @@ const superadminTemplateTypes = [
   },
   {
     value: "admin_new_user",
-    label: "Ny bruker venter (til admin)",
+    label: "Ny bruker venter (Superadmin)",
     variables: ["{{new_user_name}}", "{{new_user_email}}", "{{company_name}}"],
     defaultSubject: "Ny bruker venter på godkjenning",
     previewData: {
@@ -121,7 +121,7 @@ const superadminTemplateTypes = [
   },
   {
     value: "incident_notification",
-    label: "Ny hendelse",
+    label: "Ny hendelse (Superadmin)",
     variables: ["{{incident_title}}", "{{incident_severity}}", "{{incident_location}}", "{{incident_description}}", "{{company_name}}"],
     defaultSubject: "Ny hendelse: {{incident_title}}",
     previewData: {
@@ -134,7 +134,7 @@ const superadminTemplateTypes = [
   },
   {
     value: "mission_notification",
-    label: "Nytt oppdrag",
+    label: "Nytt oppdrag (Superadmin)",
     variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{company_name}}"],
     defaultSubject: "Nytt oppdrag: {{mission_title}}",
     previewData: {
@@ -148,7 +148,7 @@ const superadminTemplateTypes = [
   },
   {
     value: "maintenance_reminder",
-    label: "Vedlikeholdspåminnelse",
+    label: "Vedlikeholdspåminnelse (Superadmin)",
     variables: ["{{user_name}}", "{{items_list}}", "{{item_count}}", "{{company_name}}"],
     defaultSubject: "Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet",
     previewData: {
