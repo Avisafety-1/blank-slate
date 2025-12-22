@@ -305,12 +305,24 @@ const Admin = () => {
     }
 
     try {
-      const { error } = await supabase
+      // First delete user roles
+      const { error: rolesError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
+
+      if (rolesError) {
+        console.error("Error deleting user roles:", rolesError);
+        // Continue with profile deletion even if roles deletion fails
+      }
+
+      // Then delete the profile
+      const { error: profileError } = await supabase
         .from("profiles")
         .delete()
         .eq("id", userId);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       toast.success(t('admin.userDeleted'));
       fetchData();
