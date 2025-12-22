@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +69,9 @@ const Admin = () => {
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
+
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletingByEmail, setDeletingByEmail] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -305,24 +309,12 @@ const Admin = () => {
     }
 
     try {
-      // First delete user roles
-      const { error: rolesError } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId);
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { user_id: userId },
+      });
 
-      if (rolesError) {
-        console.error("Error deleting user roles:", rolesError);
-        // Continue with profile deletion even if roles deletion fails
-      }
-
-      // Then delete the profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (profileError) throw profileError;
+      if (error) throw error;
+      if (!data?.success) throw new Error("Delete failed");
 
       toast.success(t('admin.userDeleted'));
       fetchData();
@@ -472,6 +464,58 @@ const Admin = () => {
                       <Button variant="outline" size="sm" onClick={copyRegistrationCode}>
                         <Copy className="w-4 h-4 mr-2" />
                         {t('admin.copy')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Superadmin: delete by email (works even if user isn't in current company filter) */}
+              {isSuperAdmin && (
+                <Card>
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-base sm:text-lg">Slett bruker via e-post</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Dette sletter brukeren fra autentisering og rydder opp tilhørende data.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 sm:px-6">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                      <Input
+                        value={deleteEmail}
+                        onChange={(e) => setDeleteEmail(e.target.value)}
+                        placeholder="contact@hh-vr.com"
+                        inputMode="email"
+                        className="sm:max-w-sm"
+                      />
+                      <Button
+                        variant="destructive"
+                        disabled={deletingByEmail || !deleteEmail.trim()}
+                        onClick={async () => {
+                          const email = deleteEmail.trim();
+                          if (!email) return;
+                          if (!confirm(`Er du sikker på at du vil slette brukeren ${email}?`)) return;
+
+                          try {
+                            setDeletingByEmail(true);
+                            const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+                              body: { email },
+                            });
+                            if (error) throw error;
+                            if (!data?.success) throw new Error("Delete failed");
+
+                            toast.success("Bruker slettet");
+                            setDeleteEmail("");
+                            fetchData();
+                          } catch (err) {
+                            console.error("Error deleting user by email:", err);
+                            toast.error("Kunne ikke slette bruker");
+                          } finally {
+                            setDeletingByEmail(false);
+                          }
+                        }}
+                      >
+                        {deletingByEmail ? "Sletter..." : "Slett"}
                       </Button>
                     </div>
                   </CardContent>
