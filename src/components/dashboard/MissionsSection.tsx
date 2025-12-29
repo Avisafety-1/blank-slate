@@ -156,7 +156,12 @@ export const MissionsSection = () => {
   };
 
   const handleMissionClick = (mission: Mission) => {
-    setSelectedMission(mission);
+    // Include AI risk data in the mission object
+    const missionWithRisk = {
+      ...mission,
+      aiRisk: missionAIRisks[mission.id] || null
+    };
+    setSelectedMission(missionWithRisk);
     setDialogOpen(true);
   };
 
