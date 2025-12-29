@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, AlertTriangle, History } from "lucide-react";
 import { RiskScoreCard } from "./RiskScoreCard";
@@ -19,7 +20,7 @@ import { nb } from "date-fns/locale";
 interface RiskAssessmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mission: any;
+  mission?: any;
   droneId?: string;
 }
 
@@ -46,11 +47,17 @@ interface Assessment {
 
 export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: RiskAssessmentDialogProps) => {
   const { t } = useTranslation();
+  const { companyId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('input');
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
   const [previousAssessments, setPreviousAssessments] = useState<Assessment[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Mission selector states
+  const [missions, setMissions] = useState<any[]>([]);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
+  const [loadingMissions, setLoadingMissions] = useState(false);
 
   const [pilotInputs, setPilotInputs] = useState<PilotInputs>({
     flightHeight: 120,
@@ -65,20 +72,59 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
     rthProgrammed: true,
   });
 
+  // Determine current mission ID (from prop or selected)
+  const currentMissionId = mission?.id || selectedMissionId;
+
   useEffect(() => {
-    if (open && mission?.id) {
-      loadPreviousAssessments();
+    if (open) {
+      // If no mission prop, fetch available missions
+      if (!mission && companyId) {
+        fetchMissions();
+      }
+      if (currentMissionId) {
+        loadPreviousAssessments();
+      }
     }
-  }, [open, mission?.id]);
+  }, [open, mission?.id, companyId, currentMissionId]);
+
+  // Update selectedMissionId when mission prop changes
+  useEffect(() => {
+    if (mission?.id) {
+      setSelectedMissionId(mission.id);
+    }
+  }, [mission?.id]);
+
+  const fetchMissions = async () => {
+    setLoadingMissions(true);
+    try {
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+      const { data, error } = await supabase
+        .from("missions")
+        .select("id, tittel, lokasjon, tidspunkt")
+        .neq("status", "Fullført")
+        .neq("status", "Avlyst")
+        .gte("tidspunkt", oneDayAgo.toISOString())
+        .order("tidspunkt", { ascending: true });
+
+      if (error) throw error;
+      setMissions(data || []);
+    } catch (error) {
+      console.error("Error fetching missions:", error);
+    } finally {
+      setLoadingMissions(false);
+    }
+  };
 
   const loadPreviousAssessments = async () => {
-    if (!mission?.id) return;
+    if (!currentMissionId) return;
     setLoadingHistory(true);
     try {
       const { data, error } = await supabase
         .from('mission_risk_assessments')
         .select('id, created_at, overall_score, recommendation, ai_analysis')
-        .eq('mission_id', mission.id)
+        .eq('mission_id', currentMissionId)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -92,7 +138,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
   };
 
   const runAssessment = async () => {
-    if (!mission?.id) return;
+    if (!currentMissionId) {
+      toast.error(t('riskAssessment.selectMissionFirst', 'Velg et oppdrag først'));
+      return;
+    }
 
     setLoading(true);
     try {
@@ -111,7 +160,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
             'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            missionId: mission.id,
+            missionId: currentMissionId,
             pilotInputs,
             droneId,
           }),
@@ -176,12 +225,43 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
             <TabsContent value="input" className="h-full m-0">
               <ScrollArea className="h-[calc(90vh-220px)]">
                 <div className="space-y-6 pr-4">
+                  {/* Mission Selector - only show when no mission prop */}
+                  {!mission && (
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-medium text-muted-foreground">
+                        {t('riskAssessment.selectMission', 'Velg oppdrag')}
+                      </h3>
+                      <Select
+                        value={selectedMissionId || ""}
+                        onValueChange={(v) => {
+                          setSelectedMissionId(v);
+                          setPreviousAssessments([]);
+                          setCurrentAssessment(null);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            loadingMissions 
+                              ? t('common.loading', 'Laster...') 
+                              : t('riskAssessment.selectMissionPlaceholder', 'Velg et oppdrag')
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {missions.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.tittel} - {m.lokasjon}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   {/* Flight Parameters */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-muted-foreground">
                       {t('riskAssessment.flightParameters', 'Flygeparametere')}
                     </h3>
-                    
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>{t('riskAssessment.flightHeight', 'Flyhøyde (m AGL)')}</Label>

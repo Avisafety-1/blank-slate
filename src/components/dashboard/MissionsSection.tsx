@@ -1,13 +1,15 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
+import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
+import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +17,7 @@ import { useTranslation } from "react-i18next";
 
 type Mission = any;
 type MissionSora = any;
+type MissionAIRisk = { overall_score: number; recommendation: string };
 
 const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -39,6 +42,11 @@ export const MissionsSection = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
+  const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
+  
+  // New states for risk assessment type dialog
+  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
+  const [aiRiskDialogOpen, setAIRiskDialogOpen] = useState(false);
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
@@ -89,6 +97,7 @@ export const MissionsSection = () => {
         const missionIds = data.map((m: any) => m.id);
         fetchMissionSoras(missionIds);
         fetchMissionDocumentCounts(missionIds);
+        fetchMissionAIRisks(missionIds);
       }
     }
   };
@@ -127,6 +136,30 @@ export const MissionsSection = () => {
     }
   };
 
+  const fetchMissionAIRisks = async (missionIds: string[]) => {
+    const { data, error } = await supabase
+      .from("mission_risk_assessments")
+      .select("mission_id, overall_score, recommendation")
+      .in("mission_id", missionIds)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching mission AI risks:", error);
+    } else if (data) {
+      // Get the latest assessment for each mission
+      const riskMap: Record<string, MissionAIRisk> = {};
+      data.forEach((risk: any) => {
+        if (!riskMap[risk.mission_id]) {
+          riskMap[risk.mission_id] = {
+            overall_score: risk.overall_score,
+            recommendation: risk.recommendation,
+          };
+        }
+      });
+      setMissionAIRisks(riskMap);
+    }
+  };
+
   const handleMissionClick = (mission: Mission) => {
     setSelectedMission(mission);
     setDialogOpen(true);
@@ -138,13 +171,38 @@ export const MissionsSection = () => {
     setSoraDialogOpen(true);
   };
 
-  const handleNewSora = () => {
+  const handleNewRiskAssessment = () => {
+    setRiskTypeDialogOpen(true);
+  };
+
+  const handleSelectAI = () => {
+    setAIRiskDialogOpen(true);
+  };
+
+  const handleSelectSORA = () => {
     setSelectedSoraMissionId(undefined);
     setSoraDialogOpen(true);
   };
 
+  const handleRiskAssessmentSaved = () => {
+    fetchMissions();
+  };
+
   const handleSoraSaved = () => {
     fetchMissions();
+  };
+
+  const getAIRiskBadgeColor = (recommendation: string) => {
+    switch (recommendation) {
+      case "go":
+        return "bg-status-green/20 text-green-700 dark:text-green-300";
+      case "caution":
+        return "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300";
+      case "no-go":
+        return "bg-status-red/20 text-red-700 dark:text-red-300";
+      default:
+        return "bg-gray-500/20 text-gray-700 dark:text-gray-300";
+    }
   };
 
   const getSoraBadgeColor = (status: string) => {
@@ -170,7 +228,7 @@ export const MissionsSection = () => {
             <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.missions.title')}</h2>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" onClick={handleNewSora} title={t('dashboard.missions.newSoraAnalysis')}>
+            <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
               <FileText className="w-4 h-4" />
             </Button>
             <Button size="sm" onClick={() => setAddDialogOpen(true)}>
@@ -205,6 +263,14 @@ export const MissionsSection = () => {
                         ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
                         : t('dashboard.missions.soraNoStatus')}
                     </Badge>
+                    {missionAIRisks[mission.id] && (
+                      <Badge 
+                        className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}
+                      >
+                        <Brain className="w-3 h-3 mr-1" />
+                        {missionAIRisks[mission.id].overall_score.toFixed(1)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
@@ -251,6 +317,21 @@ export const MissionsSection = () => {
         onOpenChange={setSoraDialogOpen}
         missionId={selectedSoraMissionId}
         onSaved={handleSoraSaved}
+      />
+      
+      <RiskAssessmentTypeDialog
+        open={riskTypeDialogOpen}
+        onOpenChange={setRiskTypeDialogOpen}
+        onSelectAI={handleSelectAI}
+        onSelectSORA={handleSelectSORA}
+      />
+      
+      <RiskAssessmentDialog
+        open={aiRiskDialogOpen}
+        onOpenChange={(open) => {
+          setAIRiskDialogOpen(open);
+          if (!open) handleRiskAssessmentSaved();
+        }}
       />
     </>
   );

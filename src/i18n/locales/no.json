@@ -198,6 +198,7 @@
       "soraStatus": "SORA: {{status}}",
       "soraNoStatus": "SORA: Ingen",
       "newSoraAnalysis": "Ny SORA-analyse",
+      "newRiskAssessment": "Ny risikovurdering",
       "statusPlanned": "Planlagt",
       "statusOngoing": "Pågående",
       "statusCompleted": "Fullført"
@@ -559,6 +560,16 @@
       "none": "Ingen",
       "few": "Få",
       "many": "Mange"
-    }
+    },
+    "selectMission": "Velg oppdrag",
+    "selectMissionPlaceholder": "Velg et oppdrag",
+    "selectMissionFirst": "Velg et oppdrag først"
+  },
+  "riskAssessmentType": {
+    "title": "Velg type risikovurdering",
+    "aiBasedTitle": "AI-basert risikovurdering",
+    "aiBasedDescription": "Automatisk analyse basert på vær, luftrom, piloterfaring og utstyr",
+    "soraTitle": "Manuell SORA-analyse",
+    "soraDescription": "Strukturert risikovurdering etter SORA-metodikken"
   }
 }
