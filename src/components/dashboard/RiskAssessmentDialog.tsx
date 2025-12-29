@@ -22,6 +22,7 @@ interface RiskAssessmentDialogProps {
   onOpenChange: (open: boolean) => void;
   mission?: any;
   droneId?: string;
+  initialTab?: 'input' | 'result' | 'history';
 }
 
 interface PilotInputs {
@@ -44,11 +45,11 @@ interface Assessment {
   ai_analysis: any;
 }
 
-export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: RiskAssessmentDialogProps) => {
+export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input' }: RiskAssessmentDialogProps) => {
   const { t } = useTranslation();
   const { companyId } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('input');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
   const [previousAssessments, setPreviousAssessments] = useState<Assessment[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -75,6 +76,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
 
   useEffect(() => {
     if (open) {
+      // Set active tab based on initialTab prop
+      setActiveTab(initialTab);
       // If no mission prop, fetch available missions
       if (!mission && companyId) {
         fetchMissions();
@@ -83,7 +86,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
         loadPreviousAssessments();
       }
     }
-  }, [open, mission?.id, companyId, currentMissionId]);
+  }, [open, mission?.id, companyId, currentMissionId, initialTab]);
 
   // Update selectedMissionId when mission prop changes
   useEffect(() => {
@@ -205,7 +208,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'input' | 'result' | 'history')} className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="input">
               {t('riskAssessment.inputTab', 'Input')}
