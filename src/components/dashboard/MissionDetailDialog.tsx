@@ -11,6 +11,8 @@ import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
+import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
+import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 
 type Mission = any;
 
@@ -35,7 +37,9 @@ const riskColors: Record<string, string> = {
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated }: MissionDetailDialogProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -65,7 +69,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={() => setRiskDialogOpen(true)}
+              onClick={() => setRiskTypeDialogOpen(true)}
               className="w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
@@ -166,10 +170,29 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       mission={mission}
     />
 
+    <RiskAssessmentTypeDialog
+      open={riskTypeDialogOpen}
+      onOpenChange={setRiskTypeDialogOpen}
+      onSelectAI={() => {
+        setRiskTypeDialogOpen(false);
+        setRiskDialogOpen(true);
+      }}
+      onSelectSORA={() => {
+        setRiskTypeDialogOpen(false);
+        setSoraDialogOpen(true);
+      }}
+    />
+
     <RiskAssessmentDialog
       open={riskDialogOpen}
       onOpenChange={setRiskDialogOpen}
       mission={mission}
+    />
+
+    <SoraAnalysisDialog
+      open={soraDialogOpen}
+      onOpenChange={setSoraDialogOpen}
+      missionId={mission.id}
     />
     </>
   );
