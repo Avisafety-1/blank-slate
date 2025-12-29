@@ -8,6 +8,90 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function sendPushNotifications(supabase: any, companyId: string, title: string, body: string) {
+  try {
+    // Find users in this company with push document expiry enabled
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('approved', true);
+
+    if (!profiles || profiles.length === 0) return;
+
+    const userIds = profiles.map((p: any) => p.id);
+
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('user_id')
+      .in('user_id', userIds)
+      .eq('push_enabled', true)
+      .eq('push_document_expiry', true);
+
+    if (!prefs || prefs.length === 0) return;
+
+    const pushUserIds = prefs.map((p: any) => p.user_id);
+
+    // Get push subscriptions for these users
+    const { data: subscriptions } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .in('user_id', pushUserIds);
+
+    if (!subscriptions || subscriptions.length === 0) return;
+
+    console.log(`Sending push notifications to ${subscriptions.length} subscriptions`);
+
+    // Send push notifications
+    const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
+    const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+    const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT');
+
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_SUBJECT) {
+      console.error('VAPID keys not configured');
+      return;
+    }
+
+    // Import web-push functionality
+    const webPush = await import("https://esm.sh/web-push@3.6.7");
+    
+    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: '/pwa-192x192.png',
+      badge: '/favicon.png',
+      data: { url: '/documents' }
+    });
+
+    for (const sub of subscriptions) {
+      try {
+        await webPush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          },
+          payload
+        );
+        console.log(`Push sent to user ${sub.user_id}`);
+      } catch (pushError: any) {
+        console.error(`Push error for user ${sub.user_id}:`, pushError);
+        // Remove invalid subscription
+        if (pushError.statusCode === 410 || pushError.statusCode === 404) {
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+          console.log(`Removed invalid subscription ${sub.id}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error sending push notifications:', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -75,10 +159,20 @@ serve(async (req) => {
     }, {} as Record<string, typeof documentsToNotify>);
 
     let totalEmailsSent = 0;
+    let totalPushSent = 0;
 
     // Process each company's documents
     for (const [companyId, docs] of Object.entries(documentsByCompany) as [string, typeof documentsToNotify][]) {
       console.log(`Processing ${docs.length} documents for company ${companyId}`);
+
+      // Send push notifications for this company
+      const pushTitle = 'Dokumenter utløper snart';
+      const pushBody = docs.length === 1 
+        ? `${docs[0].tittel} utløper snart`
+        : `${docs.length} dokumenter utløper snart`;
+      
+      await sendPushNotifications(supabase, companyId, pushTitle, pushBody);
+      totalPushSent++;
 
       // Get company-specific email configuration
       const emailConfig = await getEmailConfig(companyId);
@@ -258,13 +352,14 @@ serve(async (req) => {
       await emailClient.close();
     }
 
-    console.log(`Document expiry check complete. Sent ${totalEmailsSent} emails.`);
+    console.log(`Document expiry check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push batches.`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         documentsChecked: documentsToNotify.length,
-        emailsSent: totalEmailsSent 
+        emailsSent: totalEmailsSent,
+        pushBatchesSent: totalPushSent
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
