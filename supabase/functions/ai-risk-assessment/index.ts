@@ -317,20 +317,40 @@ serve(async (req) => {
       pilotInputs: pilotInputs || {},
     };
 
-    const systemPrompt = `Du er en ekspert på droneflyging og risikovurdering i Norge. Analyser følgende data og gi en strukturert risikovurdering.
+    // Professional SMS System Prompt
+    const systemPrompt = `Du er en profesjonell Safety Management System (SMS)-assistent for UAS-operasjoner.
 
-Du skal vurdere 5 kategorier på en skala fra 1 (høy risiko) til 10 (lav risiko):
-1. Vær (weather_score) - ${skipWeather ? 'Bruker har valgt å hoppe over værvurdering, sett score til 7 og noter at vær må vurderes separat' : 'Vurder værforhold'}
-2. Luftrom (airspace_score)  
-3. Piloterfaring (pilot_experience_score)
-4. Oppdragskompleksitet (mission_complexity_score)
-5. Utstyr (equipment_score)
+Din oppgave er å gjennomføre en strukturert, revisjonsvennlig og beslutningsstøttende risikovurdering for et droneoppdrag i AviSafe, i tråd med EASA-prinsipper, god SMS-praksis og Human Factors.
 
-Basert på disse, gi en samlet vurdering (overall_score) og en anbefaling ('go', 'caution', eller 'no-go').
+### GENERELLE KRAV
+- Skill tydelig mellom:
+  • Faktiske inputdata
+  • Regel-/systemkrav
+  • Operative antakelser
+  • AI-baserte vurderinger
+- Vurder risiko konservativt.
+- Bruk klart og profesjonelt språk egnet for operative beslutninger og tilsyn.
+- Dersom kritiske terskler overskrides, skal AI bruke "HARD STOP"-logikk som overstyrer numerisk score.
 
-VIKTIG FORUTSETNINGER: I din vurdering, anta alltid at piloten vil utføre pre-flight sjekk før avgang og at RTH (Return to Home) er programmert. Dette skal kommenteres som en forutsetning i go_conditions.
+### HARD STOP-LOGIKK
+Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
+1. VÆR: Vindstyrke (middelvind) > 10 m/s ELLER vindkast > 15 m/s ELLER sikt < 1 km ELLER kraftig nedbør
+2. UTSTYR: Drone eller kritisk utstyr har status "Gul" eller "Rød" (ikke Grønn)
+3. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
 
-VIKTIG: Svar ALLTID på norsk. Returner KUN gyldig JSON uten markdown-formatering.`;
+VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
+
+### FORUTSETNINGER
+Anta alltid at piloten vil:
+- Utføre pre-flight sjekk før avgang
+- Programmere RTH (Return to Home)
+- Gjennomføre visuell inspeksjon av dronen
+Disse skal kommenteres som forutsetninger i prerequisites.
+
+${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
+
+### RESPONS-FORMAT
+Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
 
     const userPrompt = `Analyser denne droneoppdrag-risikovurderingen:
 
@@ -338,32 +358,48 @@ ${JSON.stringify(contextData, null, 2)}
 
 Returner en JSON-respons med denne strukturen:
 {
+  "mission_overview": "<kort oppsummering av oppdragets formål, lokasjon og operasjonstype>",
+  "assessment_method": "<kort forklaring av vurderingsmetoden, vekting og HARD STOP-logikk>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
+  "hard_stop_triggered": <boolean>,
+  "hard_stop_reason": "<årsak hvis hard_stop_triggered er true, ellers null>",
   "summary": "<kort oppsummering på norsk>",
   "categories": {
     "weather": {
       "score": <number 1-10>,
+      "go_decision": "<GO|BETINGET|NO-GO>",
+      "actual_conditions": "<beskrivelse av faktiske værdata>",
+      "comparison_to_limits": "<sammenligning mot sikkerhetsgrenser>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     },
     "airspace": {
       "score": <number 1-10>,
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "pilot_experience": {
-      "score": <number 1-10>,
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "mission_complexity": {
-      "score": <number 1-10>,
+      "go_decision": "<GO|BETINGET|NO-GO>",
+      "actual_conditions": "<beskrivelse av luftromsforhold>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     },
     "equipment": {
       "score": <number 1-10>,
+      "go_decision": "<GO|BETINGET|NO-GO>",
+      "status": "<green|yellow|red>",
+      "drone_status": "<beskrivelse av dronestatus og vedlikehold>",
+      "factors": ["<positive faktorer>"],
+      "concerns": ["<bekymringer>"]
+    },
+    "pilot_experience": {
+      "score": <number 1-10>,
+      "go_decision": "<GO|BETINGET|NO-GO>",
+      "experience_summary": "<beskrivelse av erfaring og kompetanse>",
+      "factors": ["<positive faktorer>"],
+      "concerns": ["<bekymringer>"]
+    },
+    "mission_complexity": {
+      "score": <number 1-10>,
+      "go_decision": "<GO|BETINGET|NO-GO>",
+      "complexity_factors": "<vurdering av oppdragstype, terreng, lysforhold>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     }
@@ -372,10 +408,11 @@ Returner en JSON-respons med denne strukturen:
     {
       "priority": "<high|medium|low>",
       "action": "<konkret tiltak på norsk>",
-      "reason": "<begrunnelse på norsk>"
+      "risk_addressed": "<hvilken risiko tiltaket reduserer>"
     }
   ],
-  "go_conditions": ["<betingelser som må være oppfylt for trygg flyging>"]
+  "prerequisites": ["<betingelser som må være oppfylt før flyging>"],
+  "ai_disclaimer": "Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i input kan påvirke resultatet."
 }`;
 
     // 9. Call AI
@@ -432,7 +469,7 @@ Returner en JSON-respons med denne strukturen:
       throw new Error('Invalid AI response format');
     }
 
-    console.log('AI analysis complete:', aiAnalysis.recommendation);
+    console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered);
 
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase

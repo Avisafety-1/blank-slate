@@ -1,10 +1,18 @@
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { AlertOctagon, CheckCircle, AlertTriangle, Info } from "lucide-react";
 
 interface CategoryScore {
   score: number;
+  go_decision?: 'GO' | 'BETINGET' | 'NO-GO';
   factors: string[];
   concerns: string[];
+  actual_conditions?: string;
+  comparison_to_limits?: string;
+  status?: 'green' | 'yellow' | 'red';
+  drone_status?: string;
+  experience_summary?: string;
+  complexity_factors?: string;
 }
 
 interface RiskScoreCardProps {
@@ -17,9 +25,21 @@ interface RiskScoreCardProps {
     mission_complexity?: CategoryScore;
     equipment?: CategoryScore;
   };
+  hardStopTriggered?: boolean;
+  hardStopReason?: string;
+  missionOverview?: string;
+  assessmentMethod?: string;
 }
 
-export const RiskScoreCard = ({ overallScore, recommendation, categories }: RiskScoreCardProps) => {
+export const RiskScoreCard = ({ 
+  overallScore, 
+  recommendation, 
+  categories,
+  hardStopTriggered,
+  hardStopReason,
+  missionOverview,
+  assessmentMethod
+}: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
   const getScoreColor = (score: number) => {
@@ -46,12 +66,28 @@ export const RiskScoreCard = ({ overallScore, recommendation, categories }: Risk
       case 'go':
         return t('riskAssessment.goRecommendation', 'Anbefalt å fly');
       case 'caution':
-        return t('riskAssessment.cautionRecommendation', 'Fly med forholdsregler');
+        return t('riskAssessment.cautionRecommendation', 'Betinget anbefalt');
       case 'no-go':
         return t('riskAssessment.noGoRecommendation', 'Ikke anbefalt');
       default:
         return rec;
     }
+  };
+
+  const getGoDecisionBadge = (decision?: string) => {
+    if (!decision) return null;
+    
+    const styles: Record<string, string> = {
+      'GO': 'bg-green-500/20 text-green-700 dark:text-green-300',
+      'BETINGET': 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
+      'NO-GO': 'bg-red-500/20 text-red-700 dark:text-red-300',
+    };
+
+    return (
+      <span className={cn("px-2 py-0.5 rounded text-xs font-semibold uppercase", styles[decision] || 'bg-muted')}>
+        {decision}
+      </span>
+    );
   };
 
   const categoryLabels: Record<string, string> = {
@@ -64,6 +100,48 @@ export const RiskScoreCard = ({ overallScore, recommendation, categories }: Risk
 
   return (
     <div className="space-y-4">
+      {/* HARD STOP Warning */}
+      {hardStopTriggered && (
+        <div className="p-4 rounded-lg border-2 border-red-500 bg-red-500/10">
+          <div className="flex items-start gap-3">
+            <AlertOctagon className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-red-700 dark:text-red-300">
+                {t('riskAssessment.hardStop', 'HARD STOP - Flyging ikke anbefalt')}
+              </h3>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                {hardStopReason || t('riskAssessment.hardStopGeneric', 'Kritiske terskler er overskredet')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mission Overview */}
+      {missionOverview && (
+        <div className="p-3 rounded-lg bg-muted/50 border">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            {t('riskAssessment.missionOverview', 'Oppdragsoversikt')}
+          </h4>
+          <p className="text-sm">{missionOverview}</p>
+        </div>
+      )}
+
+      {/* Assessment Method */}
+      {assessmentMethod && (
+        <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+          <div className="flex items-start gap-2">
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
+                {t('riskAssessment.assessmentMethod', 'Vurderingsmetode')}
+              </h4>
+              <p className="text-xs text-muted-foreground">{assessmentMethod}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Overall Score */}
       <div className="flex items-center justify-between p-4 rounded-lg bg-card border">
         <div>
@@ -88,7 +166,10 @@ export const RiskScoreCard = ({ overallScore, recommendation, categories }: Risk
           return (
             <div key={key} className="p-3 rounded-lg bg-card border">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{categoryLabels[key] || key}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{categoryLabels[key] || key}</span>
+                  {getGoDecisionBadge(category.go_decision)}
+                </div>
                 <span className="text-sm font-medium">{category.score.toFixed(1)}/10</span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -97,16 +178,26 @@ export const RiskScoreCard = ({ overallScore, recommendation, categories }: Risk
                   style={{ width: `${(category.score / 10) * 100}%` }}
                 />
               </div>
+              
+              {/* Category details */}
+              {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
+                <p className="text-xs text-muted-foreground mt-2 italic">
+                  {category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors}
+                </p>
+              )}
+              
               {(category.factors.length > 0 || category.concerns.length > 0) && (
                 <div className="mt-2 space-y-1">
                   {category.factors.map((factor, i) => (
-                    <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400">
-                      ✓ {factor}
+                    <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
+                      <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{factor}</span>
                     </p>
                   ))}
                   {category.concerns.map((concern, i) => (
-                    <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400">
-                      ⚠ {concern}
+                    <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{concern}</span>
                     </p>
                   ))}
                 </div>
