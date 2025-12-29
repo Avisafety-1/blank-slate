@@ -28,8 +28,10 @@ import {
   ClipboardCheck,
   Trash2,
   ShieldCheck,
-  Brain
+  Brain,
+  MoreVertical
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -1118,37 +1120,47 @@ const Oppdrag = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                        <Button onClick={() => handleEditMission(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Rediger
-                        </Button>
-                        <Button onClick={() => handleNewRiskAssessment(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
-                          <ShieldCheck className="h-4 w-4 mr-2" />
-                          Ny risikovurdering
-                        </Button>
-                        <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
-                          <Download className="h-4 w-4 mr-2" />
-                          Eksporter PDF
-                        </Button>
-                        {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
-                          <Button onClick={() => exportToKMZ(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
-                            <Navigation className="h-4 w-4 mr-2" />
-                            Eksporter KMZ
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                            <MoreVertical className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Handlinger</span>
                           </Button>
-                        )}
-                        {isAdmin && (
-                          <Button 
-                            onClick={() => setDeletingMission(mission)} 
-                            size="sm" 
-                            variant="outline" 
-                            className="w-full sm:w-auto justify-start sm:justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Slett
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+                          <DropdownMenuItem onClick={() => handleEditMission(mission)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Rediger
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleNewRiskAssessment(mission)}>
+                            <ShieldCheck className="h-4 w-4 mr-2" />
+                            Ny risikovurdering
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => exportToPDF(mission)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Eksporter PDF
+                          </DropdownMenuItem>
+                          {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
+                            <DropdownMenuItem onClick={() => exportToKMZ(mission)}>
+                              <Navigation className="h-4 w-4 mr-2" />
+                              Eksporter KMZ
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => setDeletingMission(mission)}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Slett
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {/* Basic Info */}
