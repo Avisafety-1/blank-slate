@@ -160,6 +160,8 @@ serve(async (req) => {
     const lat = mission.latitude ?? routeCoords?.[0]?.lat;
     const lng = mission.longitude ?? routeCoords?.[0]?.lng;
 
+    console.log(`Fetching weather for coordinates: lat=${lat}, lon=${lng}`);
+
     if (lat && lng) {
       try {
         const weatherResponse = await fetch(`${supabaseUrl}/functions/v1/drone-weather`, {
@@ -168,14 +170,19 @@ serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseKey}`,
           },
-          body: JSON.stringify({ latitude: lat, longitude: lng }),
+          body: JSON.stringify({ lat, lon: lng }),
         });
         if (weatherResponse.ok) {
           weatherData = await weatherResponse.json();
+          console.log(`Weather data fetched successfully: ${weatherData?.current?.temperature}°C, wind ${weatherData?.current?.wind_speed} m/s`);
+        } else {
+          console.error('Weather fetch failed:', weatherResponse.status, await weatherResponse.text());
         }
       } catch (e) {
         console.error('Weather fetch error:', e);
       }
+    } else {
+      console.log('No coordinates available for weather fetch');
     }
 
     // 9. Fetch airspace warnings
