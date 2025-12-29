@@ -1766,6 +1766,12 @@ export type Database = {
           email_new_user_pending: boolean
           id: string
           inspection_reminder_days: number
+          mission_reminder_hours: number | null
+          push_competency_expiry: boolean | null
+          push_document_expiry: boolean | null
+          push_enabled: boolean | null
+          push_maintenance_reminder: boolean | null
+          push_mission_reminder: boolean | null
           updated_at: string
           user_id: string
         }
@@ -1779,6 +1785,12 @@ export type Database = {
           email_new_user_pending?: boolean
           id?: string
           inspection_reminder_days?: number
+          mission_reminder_hours?: number | null
+          push_competency_expiry?: boolean | null
+          push_document_expiry?: boolean | null
+          push_enabled?: boolean | null
+          push_maintenance_reminder?: boolean | null
+          push_mission_reminder?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -1792,6 +1804,12 @@ export type Database = {
           email_new_user_pending?: boolean
           id?: string
           inspection_reminder_days?: number
+          mission_reminder_hours?: number | null
+          push_competency_expiry?: boolean | null
+          push_document_expiry?: boolean | null
+          push_enabled?: boolean | null
+          push_maintenance_reminder?: boolean | null
+          push_mission_reminder?: boolean | null
           updated_at?: string
           user_id?: string
         }
@@ -1938,6 +1956,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          company_id: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          company_id: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          company_id?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

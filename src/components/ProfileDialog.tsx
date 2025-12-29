@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -78,6 +79,12 @@ interface NotificationPreferences {
   email_followup_assigned: boolean;
   email_inspection_reminder: boolean;
   inspection_reminder_days: number;
+  push_enabled: boolean;
+  push_document_expiry: boolean;
+  push_maintenance_reminder: boolean;
+  push_competency_expiry: boolean;
+  push_mission_reminder: boolean;
+  mission_reminder_hours: number;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +99,7 @@ const severityColors = {
 export const ProfileDialog = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -103,6 +111,7 @@ export const ProfileDialog = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
   const [inspectionReminderDaysDraft, setInspectionReminderDaysDraft] = useState<string>("14");
+  const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -122,6 +131,11 @@ export const ProfileDialog = () => {
     if (notificationPrefs?.inspection_reminder_days === undefined || notificationPrefs?.inspection_reminder_days === null) return;
     setInspectionReminderDaysDraft(String(notificationPrefs.inspection_reminder_days));
   }, [notificationPrefs?.inspection_reminder_days]);
+
+  useEffect(() => {
+    if (notificationPrefs?.mission_reminder_hours === undefined || notificationPrefs?.mission_reminder_hours === null) return;
+    setMissionReminderHoursDraft(String(notificationPrefs.mission_reminder_hours));
+  }, [notificationPrefs?.mission_reminder_hours]);
 
   const fetchUserData = async () => {
     if (!user) return;
@@ -938,6 +952,150 @@ export const ProfileDialog = () => {
                               }}
                               className="w-20 h-8"
                             />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Push Notifications Section */}
+                      <Separator className="my-6" />
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-5 w-5" />
+                          <h4 className="font-medium">{t('profile.pushNotifications')}</h4>
+                        </div>
+                        
+                        {!pushSupported ? (
+                          <p className="text-sm text-muted-foreground">{t('profile.pushNotSupported')}</p>
+                        ) : pushPermission === 'denied' ? (
+                          <p className="text-sm text-destructive">{t('profile.pushDenied')}</p>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">
+                                  {t('profile.enablePush')}
+                                </label>
+                                <p className="text-xs text-muted-foreground">
+                                  {t('profile.enablePushDesc')}
+                                </p>
+                              </div>
+                              <Switch
+                                checked={pushSubscribed}
+                                onCheckedChange={(checked) => checked ? subscribePush() : unsubscribePush()}
+                                disabled={pushLoading}
+                              />
+                            </div>
+                            
+                            {pushSubscribed && (
+                              <>
+                                <Separator />
+                                
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5 flex-1">
+                                    <label className="text-sm font-medium">
+                                      {t('profile.pushDocumentExpiry')}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {t('profile.pushDocumentExpiryDesc')}
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    checked={notificationPrefs?.push_document_expiry ?? true}
+                                    onCheckedChange={(checked) => updateNotificationPref('push_document_expiry', checked)}
+                                  />
+                                </div>
+                                
+                                <Separator />
+                                
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5 flex-1">
+                                    <label className="text-sm font-medium">
+                                      {t('profile.pushMaintenanceReminder')}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {t('profile.pushMaintenanceReminderDesc')}
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    checked={notificationPrefs?.push_maintenance_reminder ?? true}
+                                    onCheckedChange={(checked) => updateNotificationPref('push_maintenance_reminder', checked)}
+                                  />
+                                </div>
+                                
+                                <Separator />
+                                
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5 flex-1">
+                                    <label className="text-sm font-medium">
+                                      {t('profile.pushCompetencyExpiry')}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {t('profile.pushCompetencyExpiryDesc')}
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    checked={notificationPrefs?.push_competency_expiry ?? true}
+                                    onCheckedChange={(checked) => updateNotificationPref('push_competency_expiry', checked)}
+                                  />
+                                </div>
+                                
+                                <Separator />
+                                
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5 flex-1">
+                                      <label className="text-sm font-medium">
+                                        {t('profile.pushMissionReminder')}
+                                      </label>
+                                      <p className="text-xs text-muted-foreground">
+                                        {t('profile.pushMissionReminderDesc')}
+                                      </p>
+                                    </div>
+                                    <Switch
+                                      checked={notificationPrefs?.push_mission_reminder ?? true}
+                                      onCheckedChange={(checked) => updateNotificationPref('push_mission_reminder', checked)}
+                                    />
+                                  </div>
+                                  {notificationPrefs?.push_mission_reminder && (
+                                    <div className="flex items-center gap-2 pl-4">
+                                      <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                                        {t('profile.hoursBeforeMission')}:
+                                      </Label>
+                                      <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        value={missionReminderHoursDraft}
+                                        onChange={(e) => {
+                                          const raw = e.target.value;
+                                          if (raw === '' || /^\d+$/.test(raw)) {
+                                            setMissionReminderHoursDraft(raw);
+                                          }
+                                        }}
+                                        onBlur={() => {
+                                          const parsed = Math.max(1, Math.min(72, parseInt(missionReminderHoursDraft || '24', 10) || 24));
+                                          setMissionReminderHoursDraft(String(parsed));
+                                          updateNotificationPref('mission_reminder_hours', parsed);
+                                        }}
+                                        className="w-20 h-8"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <Separator />
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={sendTestNotification}
+                                  disabled={pushLoading}
+                                >
+                                  {t('profile.testPushNotification')}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
