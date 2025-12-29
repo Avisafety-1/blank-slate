@@ -29,7 +29,7 @@ import {
   Trash2,
   ShieldCheck,
   Brain,
-  MoreVertical
+  ChevronDown
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
@@ -1123,8 +1123,8 @@ const Oppdrag = () => {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" variant="outline" className="w-full sm:w-auto">
-                            <MoreVertical className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Handlinger</span>
+                            <span>Flere valg</span>
+                            <ChevronDown className="h-4 w-4 ml-2" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
