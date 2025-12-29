@@ -15,8 +15,7 @@ interface PilotInput {
   proximityToPeople: string;
   criticalInfrastructure: boolean;
   backupLandingAvailable: boolean;
-  preflightCheckDone: boolean;
-  rthProgrammed: boolean;
+  skipWeatherEvaluation: boolean;
 }
 
 serve(async (req) => {
@@ -160,35 +159,41 @@ serve(async (req) => {
       };
     });
 
-    // 8. Fetch weather data if coordinates available
+    // 8. Fetch weather data if coordinates available and not skipped
     let weatherData = null;
     const routeCoords = (mission.route as any)?.coordinates;
     const lat = mission.latitude ?? routeCoords?.[0]?.lat;
     const lng = mission.longitude ?? routeCoords?.[0]?.lng;
+    
+    const skipWeather = pilotInputs?.skipWeatherEvaluation === true;
 
-    console.log(`Fetching weather for coordinates: lat=${lat}, lon=${lng}`);
-
-    if (lat && lng) {
-      try {
-        const weatherResponse = await fetch(`${supabaseUrl}/functions/v1/drone-weather`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ lat, lon: lng }),
-        });
-        if (weatherResponse.ok) {
-          weatherData = await weatherResponse.json();
-          console.log(`Weather data fetched successfully: ${weatherData?.current?.temperature}°C, wind ${weatherData?.current?.wind_speed} m/s`);
-        } else {
-          console.error('Weather fetch failed:', weatherResponse.status, await weatherResponse.text());
-        }
-      } catch (e) {
-        console.error('Weather fetch error:', e);
-      }
+    if (skipWeather) {
+      console.log('Weather evaluation skipped by user request');
     } else {
-      console.log('No coordinates available for weather fetch');
+      console.log(`Fetching weather for coordinates: lat=${lat}, lon=${lng}`);
+
+      if (lat && lng) {
+        try {
+          const weatherResponse = await fetch(`${supabaseUrl}/functions/v1/drone-weather`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ lat, lon: lng }),
+          });
+          if (weatherResponse.ok) {
+            weatherData = await weatherResponse.json();
+            console.log(`Weather data fetched successfully: ${weatherData?.current?.temperature}°C, wind ${weatherData?.current?.wind_speed} m/s`);
+          } else {
+            console.error('Weather fetch failed:', weatherResponse.status, await weatherResponse.text());
+          }
+        } catch (e) {
+          console.error('Weather fetch error:', e);
+        }
+      } else {
+        console.log('No coordinates available for weather fetch');
+      }
     }
 
     // 9. Fetch airspace warnings
@@ -247,12 +252,15 @@ serve(async (req) => {
         sora: mission.mission_sora?.[0],
         customer: mission.customers?.navn,
       },
-      weather: weatherData ? {
+      weather: skipWeather ? { 
+        skipped: true, 
+        note: 'Værvurdering hoppet over etter brukerønske' 
+      } : (weatherData ? {
         current: weatherData.current,
         warnings: weatherData.warnings,
         recommendation: weatherData.droneFlightRecommendation,
         bestWindow: weatherData.bestFlightWindow,
-      } : null,
+      } : null),
       airspace: {
         warnings: airspaceWarnings.map((w: any) => ({
           type: w.type,
@@ -312,13 +320,15 @@ serve(async (req) => {
     const systemPrompt = `Du er en ekspert på droneflyging og risikovurdering i Norge. Analyser følgende data og gi en strukturert risikovurdering.
 
 Du skal vurdere 5 kategorier på en skala fra 1 (høy risiko) til 10 (lav risiko):
-1. Vær (weather_score)
+1. Vær (weather_score) - ${skipWeather ? 'Bruker har valgt å hoppe over værvurdering, sett score til 7 og noter at vær må vurderes separat' : 'Vurder værforhold'}
 2. Luftrom (airspace_score)  
 3. Piloterfaring (pilot_experience_score)
 4. Oppdragskompleksitet (mission_complexity_score)
 5. Utstyr (equipment_score)
 
 Basert på disse, gi en samlet vurdering (overall_score) og en anbefaling ('go', 'caution', eller 'no-go').
+
+VIKTIG FORUTSETNINGER: I din vurdering, anta alltid at piloten vil utføre pre-flight sjekk før avgang og at RTH (Return to Home) er programmert. Dette skal kommenteres som en forutsetning i go_conditions.
 
 VIKTIG: Svar ALLTID på norsk. Returner KUN gyldig JSON uten markdown-formatering.`;
 
