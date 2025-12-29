@@ -198,6 +198,7 @@
       "soraStatus": "SORA: {{status}}",
       "soraNoStatus": "SORA: None",
       "newSoraAnalysis": "New SORA analysis",
+      "newRiskAssessment": "New risk assessment",
       "statusPlanned": "Planned",
       "statusOngoing": "Ongoing",
       "statusCompleted": "Completed"
@@ -559,6 +560,16 @@
       "none": "None",
       "few": "Few",
       "many": "Many"
-    }
+    },
+    "selectMission": "Select mission",
+    "selectMissionPlaceholder": "Select a mission",
+    "selectMissionFirst": "Select a mission first"
+  },
+  "riskAssessmentType": {
+    "title": "Select risk assessment type",
+    "aiBasedTitle": "AI-based risk assessment",
+    "aiBasedDescription": "Automatic analysis based on weather, airspace, pilot experience, and equipment",
+    "soraTitle": "Manual SORA analysis",
+    "soraDescription": "Structured risk assessment following the SORA methodology"
   }
 }
