@@ -94,7 +94,10 @@
     "enterEmailAddress": "Please enter your email address",
     "resetEmailSent": "If the email exists in the system, you will receive a reset link!",
     "sendEmail": "Send email",
-    "sending": "Sending..."
+    "sending": "Sending...",
+    "completeRegistration": "Complete registration",
+    "enterRegistrationCodeToComplete": "Enter the registration code from your administrator to complete registration.",
+    "registrationCancelled": "Registration cancelled"
   },
   "flight": {
     "activeFlight": "Active flight",
