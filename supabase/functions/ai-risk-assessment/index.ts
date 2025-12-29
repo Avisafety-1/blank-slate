@@ -351,7 +351,7 @@ LAV SCORE = DÅRLIG (høy risiko, farlig)
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > 10 m/s ELLER vindkast > 15 m/s ELLER sikt < 1 km ELLER kraftig nedbør
-2. UTSTYR: Drone eller kritisk utstyr har status "Gul" eller "Rød" (ikke Grønn)
+2. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet)
 3. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
