@@ -59,6 +59,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
   const [soraDialogOpen, setSoraDialogOpen] = useState(false);
   if (!mission) return null;
 
@@ -103,7 +104,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               {mission.status}
             </Badge>
             {mission.aiRisk ? (
-              <Badge className={`${getAIRiskBadgeColor(mission.aiRisk.recommendation)} border`}>
+              <Badge 
+                className={`${getAIRiskBadgeColor(mission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
+                onClick={() => {
+                  setRiskDialogShowHistory(true);
+                  setRiskDialogOpen(true);
+                }}
+              >
                 <Brain className="w-3 h-3 mr-1" />
                 AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
               </Badge>
@@ -213,8 +220,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
     <RiskAssessmentDialog
       open={riskDialogOpen}
-      onOpenChange={setRiskDialogOpen}
+      onOpenChange={(open) => {
+        setRiskDialogOpen(open);
+        if (!open) setRiskDialogShowHistory(false);
+      }}
       mission={mission}
+      initialTab={riskDialogShowHistory ? 'history' : 'input'}
     />
 
     <SoraAnalysisDialog
