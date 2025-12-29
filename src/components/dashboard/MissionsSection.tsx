@@ -25,11 +25,6 @@ const statusColors: Record<string, string> = {
   Fullført: "bg-gray-500/20 text-gray-700 dark:text-gray-300",
 };
 
-const riskColors: Record<string, string> = {
-  Lav: "bg-status-green/20 text-green-700 dark:text-green-300",
-  Middels: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300",
-  Høy: "bg-status-red/20 text-red-700 dark:text-red-300",
-};
 
 export const MissionsSection = () => {
   const { t, i18n } = useTranslation();
@@ -282,9 +277,6 @@ export const MissionsSection = () => {
                 <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                   <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
                     {format(new Date(mission.tidspunkt), "dd. MMM HH:mm", { locale: dateLocale })}
-                  </Badge>
-                  <Badge className={`${riskColors[mission.risk_nivå] || ""} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>
-                    {mission.risk_nivå}
                   </Badge>
                   {missionDocumentCounts[mission.id] > 0 && (
                     <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
