@@ -54,20 +54,23 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-4 pr-8">
+          <DialogHeader className="space-y-3">
+            <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{mission.tittel}</DialogTitle>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setRiskDialogOpen(true)}>
-                  <ShieldCheck className="w-4 h-4 mr-2" />
-                  Risikovurdering
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleEditClick}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Rediger
-                </Button>
-              </div>
+              <Button size="sm" variant="outline" onClick={handleEditClick} className="flex-shrink-0">
+                <Pencil className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Rediger</span>
+              </Button>
             </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setRiskDialogOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Risikovurdering
+            </Button>
           </DialogHeader>
         
         <div className="space-y-4">
