@@ -912,19 +912,6 @@ export const AddMissionDialog = ({
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="risk">{t('missions.risk')}</Label>
-              <Select value={formData.risk_nivå} onValueChange={(value) => setFormData({ ...formData, risk_nivå: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Lav">{t('missions.riskLevels.low')}</SelectItem>
-                  <SelectItem value="Middels">{t('missions.riskLevels.medium')}</SelectItem>
-                  <SelectItem value="Høy">{t('missions.riskLevels.high')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div>
