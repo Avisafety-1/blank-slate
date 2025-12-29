@@ -102,9 +102,12 @@ const Auth = () => {
         if (profile && profile.company_id) {
           // User has a profile with company_id
           if (profile.approved) {
-            // Approved user - redirect to app
-            console.log('Google user approved, redirecting to app');
-            redirectToApp('/');
+            // Approved user - redirect to app with small delay for session stability (especially mobile)
+            console.log('Google user approved, preparing redirect to app');
+            setTimeout(() => {
+              console.log('Google user approved, executing redirect to app');
+              redirectToApp('/');
+            }, 150);
           } else {
             // Not approved - show message and sign out
             toast.error(t('auth.accountPendingApproval'));
