@@ -1537,6 +1537,85 @@ export type Database = {
           },
         ]
       }
+      mission_risk_assessments: {
+        Row: {
+          ai_analysis: Json
+          airspace_score: number | null
+          airspace_warnings: Json | null
+          company_id: string
+          created_at: string
+          equipment_score: number | null
+          id: string
+          mission_complexity_score: number | null
+          mission_id: string
+          overall_score: number | null
+          pilot_experience_score: number | null
+          pilot_id: string
+          pilot_inputs: Json | null
+          recommendation: string
+          weather_data: Json | null
+          weather_score: number | null
+        }
+        Insert: {
+          ai_analysis: Json
+          airspace_score?: number | null
+          airspace_warnings?: Json | null
+          company_id: string
+          created_at?: string
+          equipment_score?: number | null
+          id?: string
+          mission_complexity_score?: number | null
+          mission_id: string
+          overall_score?: number | null
+          pilot_experience_score?: number | null
+          pilot_id: string
+          pilot_inputs?: Json | null
+          recommendation: string
+          weather_data?: Json | null
+          weather_score?: number | null
+        }
+        Update: {
+          ai_analysis?: Json
+          airspace_score?: number | null
+          airspace_warnings?: Json | null
+          company_id?: string
+          created_at?: string
+          equipment_score?: number | null
+          id?: string
+          mission_complexity_score?: number | null
+          mission_id?: string
+          overall_score?: number | null
+          pilot_experience_score?: number | null
+          pilot_id?: string
+          pilot_inputs?: Json | null
+          recommendation?: string
+          weather_data?: Json | null
+          weather_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_risk_assessments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_risk_assessments_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_risk_assessments_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_sora: {
         Row: {
           airspace_mitigations: string | null
