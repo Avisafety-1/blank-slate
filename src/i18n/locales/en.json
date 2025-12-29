@@ -515,7 +515,7 @@
     "operationType": "Operation type",
     "isVlos": "VLOS operation",
     "observers": "Number of observers",
-    "proximity": "Proximity to people",
+    "proximityLabel": "Proximity to people",
     "atcRequired": "ATC contact required",
     "criticalInfrastructure": "Critical infrastructure nearby",
     "backupLanding": "Backup landing available",
