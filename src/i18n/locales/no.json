@@ -94,7 +94,10 @@
     "enterEmailAddress": "Vennligst skriv inn e-postadressen din",
     "resetEmailSent": "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke!",
     "sendEmail": "Send e-post",
-    "sending": "Sender..."
+    "sending": "Sender...",
+    "completeRegistration": "Fullfør registrering",
+    "enterRegistrationCodeToComplete": "Skriv inn registreringskoden fra din administrator for å fullføre registreringen.",
+    "registrationCancelled": "Registrering avbrutt"
   },
   "flight": {
     "activeFlight": "Pågående flytur",
