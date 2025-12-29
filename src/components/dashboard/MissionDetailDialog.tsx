@@ -4,12 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
+import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 
 type Mission = any;
 
@@ -34,7 +35,7 @@ const riskColors: Record<string, string> = {
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated }: MissionDetailDialogProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-
+  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -56,10 +57,16 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           <DialogHeader>
             <div className="flex items-center justify-between gap-4 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{mission.tittel}</DialogTitle>
-              <Button size="sm" variant="outline" onClick={handleEditClick}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Rediger
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setRiskDialogOpen(true)}>
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Risikovurdering
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleEditClick}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Rediger
+                </Button>
+              </div>
             </div>
           </DialogHeader>
         
@@ -153,6 +160,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       open={editDialogOpen}
       onOpenChange={setEditDialogOpen}
       onMissionAdded={handleMissionUpdated}
+      mission={mission}
+    />
+
+    <RiskAssessmentDialog
+      open={riskDialogOpen}
+      onOpenChange={setRiskDialogOpen}
       mission={mission}
     />
     </>

@@ -504,5 +504,62 @@
     "errorRemovingRole": "Feil ved fjerning av rolle",
     "errorDeletingUser": "Feil ved sletting av bruker",
     "cannotAssignSuperadminToSelf": "Du kan ikke sette deg selv som superadmin"
+  },
+  "riskAssessment": {
+    "title": "AI Risikovurdering",
+    "inputTab": "Input",
+    "resultTab": "Resultat",
+    "historyTab": "Historikk",
+    "flightParameters": "Flygeparametere",
+    "flightHeight": "Flyhøyde (m AGL)",
+    "operationType": "Operasjonstype",
+    "isVlos": "VLOS-operasjon",
+    "observers": "Antall observatører",
+    "proximity": "Nærhet til mennesker",
+    "atcRequired": "ATC-kontakt nødvendig",
+    "criticalInfrastructure": "Kritisk infrastruktur i nærheten",
+    "backupLanding": "Backup-landingsplass tilgjengelig",
+    "preparations": "Forberedelser",
+    "preflightCheck": "Pre-flight sjekk utført",
+    "backupBatteries": "Backup-batterier tilgjengelig",
+    "emergencyProcedures": "Nødprosedyrer gjennomgått",
+    "runAssessment": "Kjør risikovurdering",
+    "analyzing": "Analyserer...",
+    "completed": "Risikovurdering fullført",
+    "error": "Kunne ikke utføre risikovurdering",
+    "rateLimitError": "For mange forespørsler, prøv igjen senere",
+    "creditsError": "AI-kreditter oppbrukt",
+    "noHistory": "Ingen tidligere vurderinger",
+    "score": "Score",
+    "overallScore": "Samlet score",
+    "goRecommendation": "Anbefalt å fly",
+    "cautionRecommendation": "Fly med forholdsregler",
+    "noGoRecommendation": "Ikke anbefalt",
+    "recommendations": "Anbefalte tiltak",
+    "goConditions": "Betingelser for flyging",
+    "priority": {
+      "high": "Høy prioritet",
+      "medium": "Medium prioritet",
+      "low": "Lav prioritet"
+    },
+    "categories": {
+      "weather": "Vær",
+      "airspace": "Luftrom",
+      "pilotExperience": "Piloterfaring",
+      "missionComplexity": "Oppdragskompleksitet",
+      "equipment": "Utstyr"
+    },
+    "types": {
+      "inspection": "Inspeksjon",
+      "mapping": "Kartlegging",
+      "filming": "Filming",
+      "photography": "Fotografering",
+      "delivery": "Levering"
+    },
+    "proximity": {
+      "none": "Ingen",
+      "few": "Få",
+      "many": "Mange"
+    }
   }
 }

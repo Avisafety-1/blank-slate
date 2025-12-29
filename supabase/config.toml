@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.check-mission-reminders]
 verify_jwt = false
+
+[functions.ai-risk-assessment]
+verify_jwt = true

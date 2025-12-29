@@ -504,5 +504,62 @@
     "errorRemovingRole": "Error removing role",
     "errorDeletingUser": "Error deleting user",
     "cannotAssignSuperadminToSelf": "You cannot assign yourself as superadmin"
+  },
+  "riskAssessment": {
+    "title": "AI Risk Assessment",
+    "inputTab": "Input",
+    "resultTab": "Result",
+    "historyTab": "History",
+    "flightParameters": "Flight Parameters",
+    "flightHeight": "Flight height (m AGL)",
+    "operationType": "Operation type",
+    "isVlos": "VLOS operation",
+    "observers": "Number of observers",
+    "proximity": "Proximity to people",
+    "atcRequired": "ATC contact required",
+    "criticalInfrastructure": "Critical infrastructure nearby",
+    "backupLanding": "Backup landing available",
+    "preparations": "Preparations",
+    "preflightCheck": "Pre-flight check done",
+    "backupBatteries": "Backup batteries available",
+    "emergencyProcedures": "Emergency procedures reviewed",
+    "runAssessment": "Run risk assessment",
+    "analyzing": "Analyzing...",
+    "completed": "Risk assessment completed",
+    "error": "Could not perform risk assessment",
+    "rateLimitError": "Too many requests, try again later",
+    "creditsError": "AI credits exhausted",
+    "noHistory": "No previous assessments",
+    "score": "Score",
+    "overallScore": "Overall score",
+    "goRecommendation": "Recommended to fly",
+    "cautionRecommendation": "Fly with precautions",
+    "noGoRecommendation": "Not recommended",
+    "recommendations": "Recommended actions",
+    "goConditions": "Conditions for flight",
+    "priority": {
+      "high": "High priority",
+      "medium": "Medium priority",
+      "low": "Low priority"
+    },
+    "categories": {
+      "weather": "Weather",
+      "airspace": "Airspace",
+      "pilotExperience": "Pilot experience",
+      "missionComplexity": "Mission complexity",
+      "equipment": "Equipment"
+    },
+    "types": {
+      "inspection": "Inspection",
+      "mapping": "Mapping",
+      "filming": "Filming",
+      "photography": "Photography",
+      "delivery": "Delivery"
+    },
+    "proximity": {
+      "none": "None",
+      "few": "Few",
+      "many": "Many"
+    }
   }
 }
