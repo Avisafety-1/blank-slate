@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, AlertTriangle, History } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon } from "lucide-react";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
@@ -404,17 +404,23 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
                       <p className="text-sm">{currentAssessment.summary}</p>
                     </div>
 
-                    {/* Score Card */}
+                    {/* Score Card with new SMS fields */}
                     <RiskScoreCard
                       overallScore={currentAssessment.overall_score}
                       recommendation={currentAssessment.recommendation}
                       categories={currentAssessment.categories}
+                      hardStopTriggered={currentAssessment.hard_stop_triggered}
+                      hardStopReason={currentAssessment.hard_stop_reason}
+                      missionOverview={currentAssessment.mission_overview}
+                      assessmentMethod={currentAssessment.assessment_method}
                     />
 
-                    {/* Recommendations */}
+                    {/* Recommendations with new SMS fields */}
                     <RiskRecommendations
                       recommendations={currentAssessment.recommendations || []}
                       goConditions={currentAssessment.go_conditions || []}
+                      prerequisites={currentAssessment.prerequisites || []}
+                      aiDisclaimer={currentAssessment.ai_disclaimer}
                     />
                   </div>
                 )}
@@ -440,13 +446,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
                         className="w-full p-4 rounded-lg border bg-card hover:bg-accent transition-colors text-left"
                       >
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">
-                              {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: nb })}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {t('riskAssessment.score', 'Score')}: {assessment.overall_score.toFixed(1)}/10
-                            </p>
+                          <div className="flex items-center gap-2">
+                            {assessment.ai_analysis?.hard_stop_triggered && (
+                              <AlertOctagon className="w-4 h-4 text-red-500" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium">
+                                {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: nb })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {t('riskAssessment.score', 'Score')}: {assessment.overall_score.toFixed(1)}/10
+                              </p>
+                            </div>
                           </div>
                           <div className={`px-2 py-1 rounded text-xs font-medium ${
                             assessment.recommendation === 'go' 
