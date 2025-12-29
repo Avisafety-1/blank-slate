@@ -200,12 +200,18 @@ serve(async (req) => {
     let airspaceWarnings: any[] = [];
     if (lat && lng) {
       try {
-        const { data: warnings } = await supabase.rpc('check_mission_airspace', {
-          mission_lat: lat,
-          mission_lng: lng,
-          route_coords: routeCoords || null,
+        console.log(`Checking airspace for coordinates: lat=${lat}, lon=${lng}`);
+        const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
+          p_lat: lat,
+          p_lon: lng,
+          p_route_points: routeCoords || null,
         });
-        airspaceWarnings = warnings || [];
+        if (airspaceError) {
+          console.error('Airspace check RPC error:', airspaceError);
+        } else {
+          airspaceWarnings = warnings || [];
+          console.log(`Airspace warnings found: ${airspaceWarnings.length}`, JSON.stringify(airspaceWarnings));
+        }
       } catch (e) {
         console.error('Airspace check error:', e);
       }
