@@ -47,16 +47,25 @@ const Auth = () => {
       const params = new URLSearchParams(hash.substring(1));
       const error = params.get('error');
       const errorDescription = params.get('error_description');
+      const type = params.get('type');
+      
+      // Check if this is an OAuth callback (has provider tokens)
+      const isOAuthCallback = params.has('provider_token') || params.has('provider_refresh_token');
       
       if (error === 'access_denied' || errorDescription?.includes('already been consumed')) {
         toast.error(t('auth.linkExpired'));
-      } else if (!error && hash.includes('access_token')) {
-        // Successful email verification
-        toast.success(t('auth.emailConfirmed'));
+      } else if (!error && hash.includes('access_token') && !isOAuthCallback) {
+        // Only show email confirmed message for actual email confirmations (signup, invite, recovery, magiclink)
+        // NOT for OAuth callbacks
+        if (type === 'signup' || type === 'invite' || type === 'recovery' || type === 'magiclink') {
+          toast.success(t('auth.emailConfirmed'));
+        }
       }
       
-      // Clean up URL hash
-      window.history.replaceState(null, '', window.location.pathname);
+      // Clean up URL hash after a short delay to ensure Supabase has processed it
+      setTimeout(() => {
+        window.history.replaceState(null, '', window.location.pathname);
+      }, 0);
     }
   }, [t]);
 

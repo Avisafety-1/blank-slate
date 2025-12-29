@@ -85,7 +85,7 @@
     "accountCreated": "Konto opprettet! Venter på godkjenning fra administrator.",
     "accountPendingApproval": "Din konto venter på godkjenning fra administrator",
     "linkExpired": "Denne lenken er allerede brukt eller utløpt.",
-    "emailConfirmed": "E-posten din er bekreftet! Din konto venter nå på godkjenning fra administrator.",
+    "emailConfirmed": "E-posten din er bekreftet!",
     "noAccount": "Har du ikke konto? Opprett en her",
     "hasAccount": "Har du allerede konto? Logg inn her",
     "signInWithGoogle": "Logg inn med Google",
