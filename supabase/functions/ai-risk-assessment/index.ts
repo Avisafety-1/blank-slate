@@ -322,6 +322,16 @@ serve(async (req) => {
 
 Din oppgave er å gjennomføre en strukturert, revisjonsvennlig og beslutningsstøttende risikovurdering for et droneoppdrag i AviSafe, i tråd med EASA-prinsipper, god SMS-praksis og Human Factors.
 
+### SCORE-SKALA (VIKTIG!)
+Du skal vurdere 5 kategorier på en skala fra 1 til 10:
+- 10 = LAV RISIKO (trygt, anbefalt å fly) - GRØNN
+- 7-9 = MODERAT RISIKO (akseptabelt med forholdsregler) - GRØNN/GUL
+- 5-6 = FORHØYET RISIKO (krever tiltak) - GUL
+- 1-4 = HØY RISIKO (farlig, ikke anbefalt) - RØD
+
+HØY SCORE = BRA (lav risiko, trygt)
+LAV SCORE = DÅRLIG (høy risiko, farlig)
+
 ### GENERELLE KRAV
 - Skill tydelig mellom:
   • Faktiske inputdata
@@ -337,7 +347,6 @@ Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > 10 m/s ELLER vindkast > 15 m/s ELLER sikt < 1 km ELLER kraftig nedbør
 2. UTSTYR: Drone eller kritisk utstyr har status "Gul" eller "Rød" (ikke Grønn)
 3. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
-
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
 ### FORUTSETNINGER
