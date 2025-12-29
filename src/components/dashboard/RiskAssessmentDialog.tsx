@@ -241,7 +241,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
                       </div>
 
                       <div>
-                        <Label>{t('riskAssessment.proximity', 'Nærhet til mennesker')}</Label>
+                        <Label>{t('riskAssessment.proximityLabel', 'Nærhet til mennesker')}</Label>
                         <Select
                           value={pilotInputs.proximityToPeople}
                           onValueChange={(v) => setPilotInputs(prev => ({ ...prev, proximityToPeople: v }))}

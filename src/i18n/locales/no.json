@@ -515,7 +515,7 @@
     "operationType": "Operasjonstype",
     "isVlos": "VLOS-operasjon",
     "observers": "Antall observatører",
-    "proximity": "Nærhet til mennesker",
+    "proximityLabel": "Nærhet til mennesker",
     "atcRequired": "ATC-kontakt nødvendig",
     "criticalInfrastructure": "Kritisk infrastruktur i nærheten",
     "backupLanding": "Backup-landingsplass tilgjengelig",
