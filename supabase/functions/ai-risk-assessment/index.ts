@@ -79,14 +79,20 @@ serve(async (req) => {
     }
 
     // 2. Fetch assigned personnel for the mission
-    const { data: missionPersonnel } = await supabase
+    const { data: missionPersonnel, error: missionPersonnelError } = await supabase
       .from('mission_personnel')
-      .select('profile_id, profiles(id, full_name, flyvetimer, rolle, epost, telefon)')
+      .select('profile_id, profiles(id, full_name, flyvetimer, tittel, email, telefon)')
       .eq('mission_id', missionId);
 
-    const assignedPilots = missionPersonnel?.map(mp => mp.profiles).filter(Boolean) || [];
-    console.log(`Found ${assignedPilots.length} assigned personnel for mission`);
+    if (missionPersonnelError) {
+      console.error('Mission personnel fetch error:', missionPersonnelError);
+    }
 
+    const assignedPilots = missionPersonnel?.map((mp: any) => mp.profiles).filter(Boolean) || [];
+    console.log(`Found ${assignedPilots.length} assigned personnel for mission`);
+    if ((missionPersonnel?.length || 0) > 0 && assignedPilots.length === 0) {
+      console.log('mission_personnel rows exist, but joined profiles were empty. Sample row:', missionPersonnel?.[0]);
+    }
     // 3. Fetch assigned drones for the mission
     const { data: missionDrones } = await supabase
       .from('mission_drones')
