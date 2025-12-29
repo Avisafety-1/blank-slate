@@ -16,8 +16,7 @@ interface PilotInput {
   criticalInfrastructure: boolean;
   backupLandingAvailable: boolean;
   preflightCheckDone: boolean;
-  backupBatteries: boolean;
-  emergencyProceduresReviewed: boolean;
+  rthProgrammed: boolean;
 }
 
 serve(async (req) => {
