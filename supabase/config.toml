@@ -32,3 +32,15 @@ verify_jwt = false
 
 [functions.count-all-users]
 verify_jwt = false
+
+[functions.push-subscribe]
+verify_jwt = true
+
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.check-competency-expiry]
+verify_jwt = false
+
+[functions.check-mission-reminders]
+verify_jwt = false
