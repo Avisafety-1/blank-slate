@@ -33,8 +33,7 @@ interface PilotInputs {
   criticalInfrastructure: boolean;
   backupLandingAvailable: boolean;
   preflightCheckDone: boolean;
-  backupBatteries: boolean;
-  emergencyProceduresReviewed: boolean;
+  rthProgrammed: boolean;
 }
 
 interface Assessment {
@@ -63,8 +62,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
     criticalInfrastructure: false,
     backupLandingAvailable: true,
     preflightCheckDone: false,
-    backupBatteries: true,
-    emergencyProceduresReviewed: false,
+    rthProgrammed: true,
   });
 
   useEffect(() => {
@@ -298,18 +296,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.backupBatteries', 'Backup-batterier tilgjengelig')}</Label>
+                      <Label>{t('riskAssessment.rthProgrammed', 'RTH (Return to Home) programmert')}</Label>
                       <Switch
-                        checked={pilotInputs.backupBatteries}
-                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, backupBatteries: v }))}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.emergencyProcedures', 'Nødprosedyrer gjennomgått')}</Label>
-                      <Switch
-                        checked={pilotInputs.emergencyProceduresReviewed}
-                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, emergencyProceduresReviewed: v }))}
+                        checked={pilotInputs.rthProgrammed}
+                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, rthProgrammed: v }))}
                       />
                     </div>
                   </div>
