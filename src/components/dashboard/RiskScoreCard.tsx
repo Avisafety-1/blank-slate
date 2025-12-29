@@ -119,11 +119,11 @@ export const RiskScoreCard = ({
 
       {/* Mission Overview */}
       {missionOverview && (
-        <div className="p-3 rounded-lg bg-muted/50 border">
+        <div className="p-3 rounded-lg bg-muted/50 border overflow-hidden">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             {t('riskAssessment.missionOverview', 'Oppdragsoversikt')}
           </h4>
-          <p className="text-sm">{missionOverview}</p>
+          <p className="text-sm break-words">{missionOverview}</p>
         </div>
       )}
 
@@ -143,16 +143,16 @@ export const RiskScoreCard = ({
       )}
 
       {/* Overall Score */}
-      <div className="flex items-center justify-between p-4 rounded-lg bg-card border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-lg bg-card border">
         <div>
           <p className="text-sm text-muted-foreground">{t('riskAssessment.overallScore', 'Samlet score')}</p>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-3xl font-bold">{overallScore.toFixed(1)}</span>
-            <span className="text-xl text-muted-foreground">/ 10</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-2xl sm:text-3xl font-bold">{overallScore.toFixed(1)}</span>
+            <span className="text-lg sm:text-xl text-muted-foreground">/ 10</span>
           </div>
         </div>
         <div className={cn(
-          "px-4 py-2 rounded-lg border font-medium",
+          "px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border font-medium text-sm sm:text-base whitespace-nowrap",
           getRecommendationStyle(recommendation)
         )}>
           {getRecommendationText(recommendation)}
@@ -164,13 +164,13 @@ export const RiskScoreCard = ({
         {Object.entries(categories).map(([key, category]) => {
           if (!category) return null;
           return (
-            <div key={key} className="p-3 rounded-lg bg-card border">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{categoryLabels[key] || key}</span>
+            <div key={key} className="p-3 rounded-lg bg-card border overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  <span className="font-medium text-sm sm:text-base">{categoryLabels[key] || key}</span>
                   {getGoDecisionBadge(category.go_decision)}
                 </div>
-                <span className="text-sm font-medium">{category.score.toFixed(1)}/10</span>
+                <span className="text-xs sm:text-sm font-medium flex-shrink-0">{category.score.toFixed(1)}/10</span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
@@ -181,7 +181,7 @@ export const RiskScoreCard = ({
               
               {/* Category details */}
               {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
-                <p className="text-xs text-muted-foreground mt-2 italic">
+                <p className="text-xs text-muted-foreground mt-2 italic break-words">
                   {category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors}
                 </p>
               )}
@@ -191,13 +191,13 @@ export const RiskScoreCard = ({
                   {category.factors.map((factor, i) => (
                     <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
                       <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <span>{factor}</span>
+                      <span className="break-words">{factor}</span>
                     </p>
                   ))}
                   {category.concerns.map((concern, i) => (
                     <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
                       <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <span>{concern}</span>
+                      <span className="break-words">{concern}</span>
                     </p>
                   ))}
                 </div>

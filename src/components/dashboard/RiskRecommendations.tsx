@@ -76,19 +76,19 @@ export const RiskRecommendations = ({
         {items.map((rec, index) => (
           <div 
             key={index}
-            className={cn("p-3 rounded-lg border", getPriorityStyle(rec.priority))}
+            className={cn("p-3 rounded-lg border overflow-hidden", getPriorityStyle(rec.priority))}
           >
             <div className="flex items-start gap-2">
               {getPriorityIcon(rec.priority)}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium uppercase opacity-70">
                     {getPriorityLabel(rec.priority)}
                   </span>
                 </div>
-                <p className="text-sm font-medium">{rec.action}</p>
+                <p className="text-sm font-medium break-words">{rec.action}</p>
                 {(rec.reason || rec.risk_addressed) && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 break-words">
                     {rec.risk_addressed || rec.reason}
                   </p>
                 )}
@@ -141,15 +141,15 @@ export const RiskRecommendations = ({
       {(prerequisites && prerequisites.length > 0) && (
         <div>
           <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            {t('riskAssessment.prerequisites', 'Forutsetninger for flyging')}
+            <Shield className="w-4 h-4 flex-shrink-0" />
+            <span>{t('riskAssessment.prerequisites', 'Forutsetninger for flyging')}</span>
           </h4>
-          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 overflow-hidden">
             <ul className="space-y-1">
               {prerequisites.map((prereq, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <span>{prereq}</span>
+                  <span className="break-words">{prereq}</span>
                 </li>
               ))}
             </ul>
@@ -163,12 +163,12 @@ export const RiskRecommendations = ({
           <h4 className="text-sm font-medium mb-2">
             {t('riskAssessment.goConditions', 'Betingelser for flyging')}
           </h4>
-          <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/10">
+          <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/10 overflow-hidden">
             <ul className="space-y-1">
               {goConditions.map((condition, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>{condition}</span>
+                  <span className="break-words">{condition}</span>
                 </li>
               ))}
             </ul>
@@ -178,14 +178,14 @@ export const RiskRecommendations = ({
 
       {/* AI Disclaimer */}
       {aiDisclaimer && (
-        <div className="p-3 rounded-lg border border-muted bg-muted/30">
+        <div className="p-3 rounded-lg border border-muted bg-muted/30 overflow-hidden">
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <div>
+            <div className="min-w-0 flex-1">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                 {t('riskAssessment.aiDisclaimer', 'AI-forbehold')}
               </h4>
-              <p className="text-xs text-muted-foreground">{aiDisclaimer}</p>
+              <p className="text-xs text-muted-foreground break-words">{aiDisclaimer}</p>
             </div>
           </div>
         </div>
