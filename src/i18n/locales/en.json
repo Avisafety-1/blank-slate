@@ -85,7 +85,7 @@
     "accountCreated": "Account created! Waiting for administrator approval.",
     "accountPendingApproval": "Your account is waiting for administrator approval",
     "linkExpired": "This link has already been used or has expired.",
-    "emailConfirmed": "Your email is confirmed! Your account is now waiting for administrator approval.",
+    "emailConfirmed": "Your email is confirmed!",
     "noAccount": "Don't have an account? Create one here",
     "hasAccount": "Already have an account? Sign in here",
     "signInWithGoogle": "Sign in with Google",
