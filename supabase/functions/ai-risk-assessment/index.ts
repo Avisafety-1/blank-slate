@@ -63,7 +63,7 @@ serve(async (req) => {
 
     console.log(`Starting risk assessment for mission ${missionId}`);
 
-    // 1. Fetch mission data
+    // 1. Fetch mission data with related entities
     const { data: mission, error: missionError } = await supabase
       .from('missions')
       .select('*, mission_sora(*), customers(*)')
@@ -78,7 +78,34 @@ serve(async (req) => {
       });
     }
 
-    // 2. Fetch pilot profile and company
+    // 2. Fetch assigned personnel for the mission
+    const { data: missionPersonnel } = await supabase
+      .from('mission_personnel')
+      .select('profile_id, profiles(id, full_name, flyvetimer, rolle, epost, telefon)')
+      .eq('mission_id', missionId);
+
+    const assignedPilots = missionPersonnel?.map(mp => mp.profiles).filter(Boolean) || [];
+    console.log(`Found ${assignedPilots.length} assigned personnel for mission`);
+
+    // 3. Fetch assigned drones for the mission
+    const { data: missionDrones } = await supabase
+      .from('mission_drones')
+      .select('drone_id, drones(*)')
+      .eq('mission_id', missionId);
+
+    const assignedDrones = missionDrones?.map(md => md.drones).filter(Boolean) || [];
+    console.log(`Found ${assignedDrones.length} assigned drones for mission`);
+
+    // 4. Fetch assigned equipment for the mission
+    const { data: missionEquipment } = await supabase
+      .from('mission_equipment')
+      .select('equipment_id, equipment(*)')
+      .eq('mission_id', missionId);
+
+    const assignedEquipment = missionEquipment?.map(me => me.equipment).filter(Boolean) || [];
+    console.log(`Found ${assignedEquipment.length} assigned equipment for mission`);
+
+    // 5. Get current user's profile and company
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -87,34 +114,47 @@ serve(async (req) => {
 
     const companyId = profile?.company_id;
 
-    // 3. Fetch pilot competencies
-    const { data: competencies } = await supabase
-      .from('personnel_competencies')
-      .select('*')
-      .eq('profile_id', user.id);
+    // 6. Fetch competencies for all assigned pilots
+    const pilotIds = assignedPilots.map((p: any) => p.id);
+    let allCompetencies: any[] = [];
+    if (pilotIds.length > 0) {
+      const { data: competencies } = await supabase
+        .from('personnel_competencies')
+        .select('*')
+        .in('profile_id', pilotIds);
+      allCompetencies = competencies || [];
+    }
 
-    // 4. Fetch pilot flight logs (statistics)
+    // 7. Fetch flight logs for assigned pilots
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const { data: flightLogs } = await supabase
-      .from('flight_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('flight_date', { ascending: false });
+    let allFlightLogs: any[] = [];
+    if (pilotIds.length > 0) {
+      const { data: flightLogs } = await supabase
+        .from('flight_logs')
+        .select('*')
+        .in('user_id', pilotIds)
+        .order('flight_date', { ascending: false });
+      allFlightLogs = flightLogs || [];
+    }
 
-    const flightStats = {
-      totalFlights: flightLogs?.length || 0,
-      totalMinutes: flightLogs?.reduce((sum, log) => sum + (log.flight_duration_minutes || 0), 0) || 0,
-      last30Days: flightLogs?.filter(log => new Date(log.flight_date) >= thirtyDaysAgo).length || 0,
-      last90Days: flightLogs?.filter(log => new Date(log.flight_date) >= ninetyDaysAgo).length || 0,
-      lastFlightDate: flightLogs?.[0]?.flight_date || null,
-      flightsWithDrone: droneId ? flightLogs?.filter(log => log.drone_id === droneId).length || 0 : 0,
-    };
+    // Build flight stats per pilot
+    const pilotFlightStats = pilotIds.map((pilotId: string) => {
+      const pilotLogs = allFlightLogs.filter(log => log.user_id === pilotId);
+      return {
+        pilotId,
+        totalFlights: pilotLogs.length,
+        totalMinutes: pilotLogs.reduce((sum, log) => sum + (log.flight_duration_minutes || 0), 0),
+        last30Days: pilotLogs.filter(log => new Date(log.flight_date) >= thirtyDaysAgo).length,
+        last90Days: pilotLogs.filter(log => new Date(log.flight_date) >= ninetyDaysAgo).length,
+        lastFlightDate: pilotLogs[0]?.flight_date || null,
+      };
+    });
 
-    // 5. Fetch weather data if coordinates available
+    // 8. Fetch weather data if coordinates available
     let weatherData = null;
     const routeCoords = (mission.route as any)?.coordinates;
     const lat = mission.latitude ?? routeCoords?.[0]?.lat;
@@ -138,7 +178,7 @@ serve(async (req) => {
       }
     }
 
-    // 6. Fetch airspace warnings
+    // 9. Fetch airspace warnings
     let airspaceWarnings: any[] = [];
     if (lat && lng) {
       try {
@@ -153,28 +193,33 @@ serve(async (req) => {
       }
     }
 
-    // 7. Fetch drone data if provided
-    let droneData = null;
-    if (droneId) {
-      const { data: drone } = await supabase
-        .from('drones')
-        .select('*')
-        .eq('id', droneId)
-        .single();
-      droneData = drone;
-    }
+    // Use provided droneId or first assigned drone
+    const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
+    const droneData: any = effectiveDroneId 
+      ? assignedDrones.find((d: any) => d.id === effectiveDroneId) || assignedDrones[0]
+      : null;
 
-    // 8. Build AI prompt
+    // 10. Build AI prompt
     const today = new Date();
-    const validCompetencies = competencies?.filter(c => 
+    const validCompetencies = allCompetencies.filter((c: any) => 
       !c.utloper_dato || new Date(c.utloper_dato) > today
-    ) || [];
-    const expiredCompetencies = competencies?.filter(c => 
+    );
+    const expiredCompetencies = allCompetencies.filter((c: any) => 
       c.utloper_dato && new Date(c.utloper_dato) <= today
-    ) || [];
+    );
 
-    const daysSinceLastFlight = flightStats.lastFlightDate 
-      ? Math.floor((today.getTime() - new Date(flightStats.lastFlightDate).getTime()) / (1000 * 60 * 60 * 24))
+    // Aggregate flight stats for all assigned pilots
+    const aggregatedFlightStats = {
+      totalFlights: pilotFlightStats.reduce((sum, s) => sum + s.totalFlights, 0),
+      totalMinutes: pilotFlightStats.reduce((sum, s) => sum + s.totalMinutes, 0),
+      last30Days: pilotFlightStats.reduce((sum, s) => sum + s.last30Days, 0),
+      last90Days: pilotFlightStats.reduce((sum, s) => sum + s.last90Days, 0),
+      lastFlightDate: pilotFlightStats.map(s => s.lastFlightDate).filter(Boolean).sort().reverse()[0] || null,
+      flightsWithDrone: effectiveDroneId ? allFlightLogs.filter(log => log.drone_id === effectiveDroneId).length : 0,
+    };
+
+    const daysSinceLastFlight = aggregatedFlightStats.lastFlightDate 
+      ? Math.floor((today.getTime() - new Date(aggregatedFlightStats.lastFlightDate).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
     const contextData = {
@@ -187,6 +232,7 @@ serve(async (req) => {
         riskLevel: mission.risk_nivå,
         route: mission.route,
         sora: mission.mission_sora?.[0],
+        customer: mission.customers?.navn,
       },
       weather: weatherData ? {
         current: weatherData.current,
@@ -204,24 +250,48 @@ serve(async (req) => {
           message: w.message,
         })),
       },
-      pilot: {
-        name: profile?.full_name,
-        totalFlightHours: profile?.flyvetimer || 0,
-        totalFlights: flightStats.totalFlights,
-        flightsLast30Days: flightStats.last30Days,
-        flightsLast90Days: flightStats.last90Days,
+      assignedPilots: assignedPilots.map((p: any) => ({
+        name: p.full_name,
+        role: p.rolle,
+        totalFlightHours: p.flyvetimer || 0,
+      })),
+      pilotStats: {
+        totalAssignedPilots: assignedPilots.length,
+        totalFlights: aggregatedFlightStats.totalFlights,
+        flightsLast30Days: aggregatedFlightStats.last30Days,
+        flightsLast90Days: aggregatedFlightStats.last90Days,
         daysSinceLastFlight,
-        flightsWithThisDrone: flightStats.flightsWithDrone,
-        validCompetencies: validCompetencies.map(c => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
-        expiredCompetencies: expiredCompetencies.map(c => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
+        flightsWithThisDrone: aggregatedFlightStats.flightsWithDrone,
+        validCompetencies: validCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
+        expiredCompetencies: expiredCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
       },
-      equipment: droneData ? {
+      assignedDrones: assignedDrones.map((d: any) => ({
+        model: d.modell,
+        serialNumber: d.serienummer,
+        status: d.status,
+        flightHours: d.flyvetimer,
+        lastInspection: d.sist_inspeksjon,
+        nextInspection: d.neste_inspeksjon,
+        available: d.tilgjengelig,
+        class: d.klasse,
+      })),
+      assignedEquipment: assignedEquipment.map((e: any) => ({
+        name: e.navn,
+        type: e.type,
+        status: e.status,
+        serialNumber: e.serienummer,
+        lastMaintenance: e.sist_vedlikeholdt,
+        nextMaintenance: e.neste_vedlikehold,
+        available: e.tilgjengelig,
+      })),
+      primaryDrone: droneData ? {
         model: droneData.modell,
         status: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
         nextInspection: droneData.neste_inspeksjon,
         available: droneData.tilgjengelig,
+        class: droneData.klasse,
       } : null,
       pilotInputs: pilotInputs || {},
     };
