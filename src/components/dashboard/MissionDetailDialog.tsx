@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
@@ -29,10 +29,30 @@ const statusColors: Record<string, string> = {
   Fullført: "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30",
 };
 
-const riskColors: Record<string, string> = {
-  Lav: "bg-status-green/20 text-green-700 dark:text-green-300 border-status-green/30",
-  Middels: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300 border-status-yellow/30",
-  Høy: "bg-status-red/20 text-red-700 dark:text-red-300 border-status-red/30",
+const getAIRiskBadgeColor = (recommendation: string) => {
+  switch (recommendation?.toLowerCase()) {
+    case 'proceed':
+      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
+    case 'proceed_with_caution':
+      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
+    case 'not_recommended':
+      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
+    default:
+      return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30';
+  }
+};
+
+const getAIRiskLabel = (recommendation: string) => {
+  switch (recommendation?.toLowerCase()) {
+    case 'proceed':
+      return 'Anbefalt';
+    case 'proceed_with_caution':
+      return 'Forsiktighet';
+    case 'not_recommended':
+      return 'Ikke anbefalt';
+    default:
+      return recommendation || 'Ukjent';
+  }
 };
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated }: MissionDetailDialogProps) => {
@@ -82,9 +102,17 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <Badge className={`${statusColors[mission.status] || ""} border`}>
               {mission.status}
             </Badge>
-            <Badge className={`${riskColors[mission.risk_nivå] || ""} border`}>
-              Risiko: {mission.risk_nivå}
-            </Badge>
+            {mission.aiRisk ? (
+              <Badge className={`${getAIRiskBadgeColor(mission.aiRisk.recommendation)} border`}>
+                <Brain className="w-3 h-3 mr-1" />
+                AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
+              </Badge>
+            ) : (
+              <Badge className="bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 border">
+                <Brain className="w-3 h-3 mr-1" />
+                Risiko: Ikke vurdert
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3">
