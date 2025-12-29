@@ -42,6 +42,7 @@ export const MissionsSection = () => {
   // New states for risk assessment type dialog
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [aiRiskDialogOpen, setAIRiskDialogOpen] = useState(false);
+  const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
@@ -265,7 +266,12 @@ export const MissionsSection = () => {
                     </Badge>
                     {missionAIRisks[mission.id] && (
                       <Badge 
-                        className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}
+                        className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAIRiskMission(mission);
+                          setAIRiskDialogOpen(true);
+                        }}
                       >
                         <Brain className="w-3 h-3 mr-1" />
                         {missionAIRisks[mission.id].overall_score.toFixed(1)}
@@ -327,8 +333,13 @@ export const MissionsSection = () => {
         open={aiRiskDialogOpen}
         onOpenChange={(open) => {
           setAIRiskDialogOpen(open);
-          if (!open) handleRiskAssessmentSaved();
+          if (!open) {
+            setSelectedAIRiskMission(null);
+            handleRiskAssessmentSaved();
+          }
         }}
+        mission={selectedAIRiskMission}
+        initialTab="history"
       />
     </>
   );
