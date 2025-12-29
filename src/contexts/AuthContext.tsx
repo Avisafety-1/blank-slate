@@ -126,13 +126,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const company = profile.companies as any;
         setCompanyName(company?.navn || null);
         setCompanyType(company?.selskapstype || 'droneoperator');
-
-        // If not approved, sign out
-        if (!profile.approved) {
-          await supabase.auth.signOut();
-          toast.error("Din konto venter på godkjenning fra administrator");
-          return;
-        }
       }
 
       if (roleResult.data) {
