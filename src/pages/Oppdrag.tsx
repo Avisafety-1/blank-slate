@@ -61,12 +61,6 @@ const statusColors: Record<string, string> = {
   Avbrutt: "bg-red-500/20 text-red-900 border-red-500/30"
 };
 
-const riskColors: Record<string, string> = {
-  Lav: "bg-green-500/20 text-green-900 border-green-500/30",
-  Middels: "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
-  Høy: "bg-red-500/20 text-red-900 border-red-500/30"
-};
-
 const incidentSeverityColors: Record<string, string> = {
   Lav: "bg-blue-500/20 text-blue-900 border-blue-500/30",
   Middels: "bg-yellow-500/20 text-yellow-900 border-yellow-500/30",
@@ -1105,7 +1099,6 @@ const Oppdrag = () => {
                         <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
                         <div className="flex flex-wrap gap-2">
                           <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
-                          <Badge className={`text-xs ${riskColors[mission.risk_nivå] || ""}`}>{mission.risk_nivå} risiko</Badge>
                           {mission.aiRisk && (
                             <Badge variant="outline" className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)}`}>
                               <Brain className="h-3 w-3 mr-1" />
