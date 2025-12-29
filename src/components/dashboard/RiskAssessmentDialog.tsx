@@ -33,8 +33,7 @@ interface PilotInputs {
   proximityToPeople: string;
   criticalInfrastructure: boolean;
   backupLandingAvailable: boolean;
-  preflightCheckDone: boolean;
-  rthProgrammed: boolean;
+  skipWeatherEvaluation: boolean;
 }
 
 interface Assessment {
@@ -68,8 +67,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
     proximityToPeople: 'none',
     criticalInfrastructure: false,
     backupLandingAvailable: true,
-    preflightCheckDone: false,
-    rthProgrammed: true,
+    skipWeatherEvaluation: false,
   });
 
   // Determine current mission ID (from prop or selected)
@@ -361,25 +359,17 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId }: R
                     </div>
                   </div>
 
-                  {/* Preparations */}
+                  {/* Weather Options */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('riskAssessment.preparations', 'Forberedelser')}
+                      {t('riskAssessment.weatherOptions', 'Væralternativer')}
                     </h3>
 
                     <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.preflightCheck', 'Pre-flight sjekk utført')}</Label>
+                      <Label>{t('riskAssessment.skipWeather', 'Ikke vurder vær')}</Label>
                       <Switch
-                        checked={pilotInputs.preflightCheckDone}
-                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, preflightCheckDone: v }))}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.rthProgrammed', 'RTH (Return to Home) programmert')}</Label>
-                      <Switch
-                        checked={pilotInputs.rthProgrammed}
-                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, rthProgrammed: v }))}
+                        checked={pilotInputs.skipWeatherEvaluation}
+                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, skipWeatherEvaluation: v }))}
                       />
                     </div>
                   </div>
