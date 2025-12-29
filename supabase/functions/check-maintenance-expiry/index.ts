@@ -91,6 +91,82 @@ interface MaintenanceItem {
   companyId: string;
 }
 
+async function sendPushNotifications(supabase: any, userId: string, title: string, body: string) {
+  try {
+    // Check if user has push enabled for maintenance reminders
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('push_enabled, push_maintenance_reminder')
+      .eq('user_id', userId)
+      .single();
+
+    if (!prefs?.push_enabled || !prefs?.push_maintenance_reminder) {
+      console.log(`Push not enabled for maintenance reminders for user ${userId}`);
+      return false;
+    }
+
+    // Get push subscriptions for this user
+    const { data: subscriptions } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (!subscriptions || subscriptions.length === 0) {
+      console.log(`No push subscriptions for user ${userId}`);
+      return false;
+    }
+
+    console.log(`Sending push to ${subscriptions.length} subscriptions for user ${userId}`);
+
+    const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
+    const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+    const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT');
+
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_SUBJECT) {
+      console.error('VAPID keys not configured');
+      return false;
+    }
+
+    const webPush = await import("https://esm.sh/web-push@3.6.7");
+    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: '/pwa-192x192.png',
+      badge: '/favicon.png',
+      data: { url: '/resources' }
+    });
+
+    for (const sub of subscriptions) {
+      try {
+        await webPush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          },
+          payload
+        );
+        console.log(`Push sent to subscription ${sub.id}`);
+      } catch (pushError: any) {
+        console.error(`Push error for subscription ${sub.id}:`, pushError);
+        if (pushError.statusCode === 410 || pushError.statusCode === 404) {
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+          console.log(`Removed invalid subscription ${sub.id}`);
+        }
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending push notifications:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -144,11 +220,11 @@ serve(async (req) => {
 
     console.log(`Found ${drones?.length || 0} drones, ${equipment?.length || 0} equipment, ${accessories?.length || 0} accessories with dates`);
 
-    // Fetch all users with inspection reminder enabled
+    // Fetch all users with inspection reminder enabled (email OR push)
     const { data: notificationPrefs, error: prefsError } = await supabase
       .from('notification_preferences')
-      .select('user_id, inspection_reminder_days')
-      .eq('email_inspection_reminder', true);
+      .select('user_id, inspection_reminder_days, email_inspection_reminder, push_enabled, push_maintenance_reminder')
+      .or('email_inspection_reminder.eq.true,and(push_enabled.eq.true,push_maintenance_reminder.eq.true)');
 
     if (prefsError) {
       console.error('Error fetching notification preferences:', prefsError);
@@ -186,6 +262,7 @@ serve(async (req) => {
     }
 
     let totalEmailsSent = 0;
+    let totalPushSent = 0;
 
     // Process each user
     for (const pref of notificationPrefs) {
@@ -273,6 +350,23 @@ serve(async (req) => {
 
       // Sort by days until expiry
       itemsNeedingAttention.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+
+      // Send push notification if enabled
+      if (pref.push_enabled && pref.push_maintenance_reminder) {
+        const pushTitle = 'Vedlikeholdspåminnelse';
+        const pushBody = itemsNeedingAttention.length === 1
+          ? `${itemsNeedingAttention[0].name} krever vedlikehold om ${itemsNeedingAttention[0].daysUntilExpiry} dager`
+          : `${itemsNeedingAttention.length} ressurser krever vedlikehold snart`;
+
+        const pushSent = await sendPushNotifications(supabase, pref.user_id, pushTitle, pushBody);
+        if (pushSent) totalPushSent++;
+      }
+
+      // Send email if enabled
+      if (!pref.email_inspection_reminder) {
+        console.log(`Email not enabled for user ${authUser.email}, skipping email`);
+        continue;
+      }
 
       // Fetch company name
       const { data: companyData } = await supabase
@@ -378,12 +472,13 @@ serve(async (req) => {
       await emailClient.close();
     }
 
-    console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails.`);
+    console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push notifications.`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         emailsSent: totalEmailsSent,
+        pushSent: totalPushSent,
         usersChecked: notificationPrefs.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
