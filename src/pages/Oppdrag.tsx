@@ -26,7 +26,9 @@ import {
   Clock,
   Radio,
   ClipboardCheck,
-  Trash2
+  Trash2,
+  ShieldCheck,
+  Brain
 } from "lucide-react";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
@@ -42,6 +44,8 @@ import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDi
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
+import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentTypeDialog";
+import { RiskAssessmentDialog } from "@/components/dashboard/RiskAssessmentDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { toast } from "sonner";
@@ -126,6 +130,9 @@ const Oppdrag = () => {
   const [deletingMission, setDeletingMission] = useState<Mission | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
+  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [riskAssessmentMission, setRiskAssessmentMission] = useState<Mission | null>(null);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -268,6 +275,15 @@ const Oppdrag = () => {
             .select("*")
             .eq("mission_id", mission.id);
 
+          // Fetch AI risk assessment (latest)
+          const { data: aiRisk } = await supabase
+            .from("mission_risk_assessments")
+            .select("*")
+            .eq("mission_id", mission.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
           // Fetch documents linked to this mission
           const { data: documents } = await supabase
             .from("mission_documents")
@@ -331,7 +347,8 @@ const Oppdrag = () => {
             sora: sora || null,
             incidents: incidents || [],
             flightLogs: flightLogsWithPilot || [],
-            created_by_name: createdByName
+            created_by_name: createdByName,
+            aiRisk: aiRisk || null
           };
         })
       );
@@ -379,6 +396,56 @@ const Oppdrag = () => {
     fetchMissions();
     setSoraDialogOpen(false);
     setSoraEditingMissionId(null);
+  };
+
+  const handleNewRiskAssessment = (mission: Mission) => {
+    setRiskAssessmentMission(mission);
+    setRiskTypeDialogOpen(true);
+  };
+
+  const handleSelectAI = () => {
+    setRiskTypeDialogOpen(false);
+    setRiskDialogOpen(true);
+  };
+
+  const handleSelectSORA = () => {
+    setRiskTypeDialogOpen(false);
+    if (riskAssessmentMission) {
+      setSoraEditingMissionId(riskAssessmentMission.id);
+      setSoraDialogOpen(true);
+    }
+  };
+
+  const handleRiskAssessmentSaved = () => {
+    fetchMissions();
+    setRiskDialogOpen(false);
+    setRiskAssessmentMission(null);
+  };
+
+  const getAIRiskBadgeColor = (recommendation: string) => {
+    switch (recommendation?.toLowerCase()) {
+      case 'proceed':
+        return 'bg-green-500/20 text-green-900 border-green-500/30';
+      case 'proceed_with_caution':
+        return 'bg-yellow-500/20 text-yellow-900 border-yellow-500/30';
+      case 'not_recommended':
+        return 'bg-red-500/20 text-red-900 border-red-500/30';
+      default:
+        return 'bg-gray-500/20 text-gray-900 border-gray-500/30';
+    }
+  };
+
+  const getAIRiskLabel = (recommendation: string) => {
+    switch (recommendation?.toLowerCase()) {
+      case 'proceed':
+        return 'Anbefalt';
+      case 'proceed_with_caution':
+        return 'Forsiktighet';
+      case 'not_recommended':
+        return 'Ikke anbefalt';
+      default:
+        return recommendation || 'Ukjent';
+    }
   };
 
   const handleDeleteMission = async () => {
@@ -1037,6 +1104,12 @@ const Oppdrag = () => {
                         <div className="flex flex-wrap gap-2">
                           <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
                           <Badge className={`text-xs ${riskColors[mission.risk_nivå] || ""}`}>{mission.risk_nivå} risiko</Badge>
+                          {mission.aiRisk && (
+                            <Badge variant="outline" className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)}`}>
+                              <Brain className="h-3 w-3 mr-1" />
+                              AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
+                            </Badge>
+                          )}
                           {mission.sora && (
                             <Badge variant="outline" className="text-xs">
                               <FileText className="h-3 w-3 mr-1" />
@@ -1049,6 +1122,10 @@ const Oppdrag = () => {
                         <Button onClick={() => handleEditMission(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
                           <Edit className="h-4 w-4 mr-2" />
                           Rediger
+                        </Button>
+                        <Button onClick={() => handleNewRiskAssessment(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
+                          <ShieldCheck className="h-4 w-4 mr-2" />
+                          Ny risikovurdering
                         </Button>
                         <Button onClick={() => exportToPDF(mission)} size="sm" variant="outline" className="w-full sm:w-auto justify-start sm:justify-center">
                           <Download className="h-4 w-4 mr-2" />
@@ -1592,6 +1669,29 @@ const Oppdrag = () => {
             return "Grønn";
           })()}
         />
+
+        {/* Risk Assessment Type Dialog */}
+        <RiskAssessmentTypeDialog
+          open={riskTypeDialogOpen}
+          onOpenChange={setRiskTypeDialogOpen}
+          onSelectAI={handleSelectAI}
+          onSelectSORA={handleSelectSORA}
+        />
+
+        {/* AI Risk Assessment Dialog */}
+        {riskAssessmentMission && (
+          <RiskAssessmentDialog
+            open={riskDialogOpen}
+            onOpenChange={(open) => {
+              setRiskDialogOpen(open);
+              if (!open) {
+                setRiskAssessmentMission(null);
+                fetchMissions(); // Refresh to show new assessment
+              }
+            }}
+            mission={riskAssessmentMission}
+          />
+        )}
       </div>
     </div>
   );
