@@ -310,13 +310,18 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const {
-        error
-      } = await supabase.auth.signInWithOAuth({
+      // IMPORTANT: For split-domain setup (login.avisafe.no -> app.avisafe.no),
+      // the OAuth callback must land on the APP domain so the session is stored
+      // in the correct origin (localStorage is per-domain).
+      const redirectTo = window.location.hostname.includes('lovableproject.com') || window.location.hostname === 'localhost'
+        ? `${window.location.origin}/auth`
+        : 'https://app.avisafe.no/auth';
+
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://login.avisafe.no/auth'
-        }
+          redirectTo,
+        },
       });
       if (error) throw error;
     } catch (error: any) {
