@@ -49,23 +49,29 @@ const Auth = () => {
       const errorDescription = params.get('error_description');
       const type = params.get('type');
       
-      // Check if this is an OAuth callback (has provider tokens)
-      const isOAuthCallback = params.has('provider_token') || params.has('provider_refresh_token');
+      // Check if this is an OAuth callback (has access_token with provider tokens)
+      const isOAuthCallback = hash.includes('access_token') && 
+        (params.has('provider_token') || params.has('provider_refresh_token'));
       
       if (error === 'access_denied' || errorDescription?.includes('already been consumed')) {
         toast.error(t('auth.linkExpired'));
+        // Clean up URL for error cases immediately
+        window.history.replaceState(null, '', window.location.pathname);
       } else if (!error && hash.includes('access_token') && !isOAuthCallback) {
         // Only show email confirmed message for actual email confirmations (signup, invite, recovery, magiclink)
         // NOT for OAuth callbacks
         if (type === 'signup' || type === 'invite' || type === 'recovery' || type === 'magiclink') {
           toast.success(t('auth.emailConfirmed'));
         }
+        // Clean up URL for non-OAuth callbacks
+        window.history.replaceState(null, '', window.location.pathname);
       }
       
-      // Clean up URL hash after a short delay to ensure Supabase has processed it
-      setTimeout(() => {
-        window.history.replaceState(null, '', window.location.pathname);
-      }, 0);
+      // IMPORTANT: For OAuth callbacks, do NOT clean up the URL hash immediately!
+      // Supabase needs time to read the access_token from the URL.
+      // The URL will be cleaned up after the session is established via onAuthStateChange.
+      // This fixes the "blinking screen" issue on mobile devices where the hash was
+      // being removed before Supabase could process the OAuth tokens.
     }
   }, [t]);
 
@@ -102,12 +108,21 @@ const Auth = () => {
         if (profile && profile.company_id) {
           // User has a profile with company_id
           if (profile.approved) {
-            // Approved user - redirect to app with small delay for session stability (especially mobile)
-            console.log('Google user approved, preparing redirect to app');
+            // Approved user - redirect to app with delay for session stability
+            // Use longer delay for mobile devices which process OAuth tokens slower
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const redirectDelay = isMobile ? 600 : 300;
+            console.log(`Google user approved, preparing redirect to app (delay: ${redirectDelay}ms, mobile: ${isMobile})`);
+            
+            // Clean up URL hash before redirect
+            if (window.location.hash) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+            
             setTimeout(() => {
               console.log('Google user approved, executing redirect to app');
               redirectToApp('/');
-            }, 150);
+            }, redirectDelay);
           } else {
             // Not approved - show message and sign out
             toast.error(t('auth.accountPendingApproval'));
