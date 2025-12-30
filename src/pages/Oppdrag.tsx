@@ -129,6 +129,7 @@ const Oppdrag = () => {
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskAssessmentMission, setRiskAssessmentMission] = useState<Mission | null>(null);
+  const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -1100,7 +1101,16 @@ const Oppdrag = () => {
                         <div className="flex flex-wrap gap-2">
                           <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
                           {mission.aiRisk && (
-                            <Badge variant="outline" className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)}`}>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)} cursor-pointer hover:opacity-80 transition-opacity`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRiskAssessmentMission(mission);
+                                setRiskDialogShowHistory(true);
+                                setRiskDialogOpen(true);
+                              }}
+                            >
                               <Brain className="h-3 w-3 mr-1" />
                               AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
                             </Badge>
@@ -1691,10 +1701,12 @@ const Oppdrag = () => {
               setRiskDialogOpen(open);
               if (!open) {
                 setRiskAssessmentMission(null);
+                setRiskDialogShowHistory(false);
                 fetchMissions(); // Refresh to show new assessment
               }
             }}
             mission={riskAssessmentMission}
+            initialTab={riskDialogShowHistory ? 'history' : 'input'}
           />
         )}
       </div>
