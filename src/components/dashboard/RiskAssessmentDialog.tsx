@@ -268,10 +268,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         <Label>{t('riskAssessment.flightHeight', 'Flyhøyde (m AGL)')}</Label>
                         <Input
                           type="number"
-                          value={pilotInputs.flightHeight}
+                          value={pilotInputs.flightHeight === 0 ? '' : pilotInputs.flightHeight}
                           onChange={(e) => setPilotInputs(prev => ({ 
                             ...prev, 
-                            flightHeight: parseInt(e.target.value) || 0 
+                            flightHeight: e.target.value === '' ? 0 : parseInt(e.target.value) 
                           }))}
                         />
                       </div>
@@ -311,10 +311,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         <Input
                           type="number"
                           min="0"
-                          value={pilotInputs.observerCount}
+                          value={pilotInputs.observerCount === 0 ? '' : pilotInputs.observerCount}
                           onChange={(e) => setPilotInputs(prev => ({ 
                             ...prev, 
-                            observerCount: parseInt(e.target.value) || 0 
+                            observerCount: e.target.value === '' ? 0 : parseInt(e.target.value) 
                           }))}
                         />
                       </div>
