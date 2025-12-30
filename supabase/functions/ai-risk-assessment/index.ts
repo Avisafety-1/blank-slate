@@ -78,9 +78,10 @@ serve(async (req) => {
     }
 
     // 2. Fetch assigned personnel for the mission
+    // GDPR: Only fetch non-personal data needed for risk assessment (no names, email, phone)
     const { data: missionPersonnel, error: missionPersonnelError } = await supabase
       .from('mission_personnel')
-      .select('profile_id, profiles(id, full_name, flyvetimer, tittel, email, telefon)')
+      .select('profile_id, profiles(id, flyvetimer, tittel)')
       .eq('mission_id', missionId);
 
     if (missionPersonnelError) {
@@ -277,9 +278,10 @@ serve(async (req) => {
           message: w.message,
         })),
       },
-      assignedPilots: assignedPilots.map((p: any) => ({
-        name: p.full_name,
-        role: p.rolle,
+      // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
+      assignedPilots: assignedPilots.map((p: any, index: number) => ({
+        identifier: `Pilot ${index + 1}`,
+        role: p.tittel || 'Pilot',
         totalFlightHours: p.flyvetimer || 0,
       })),
       pilotStats: {
