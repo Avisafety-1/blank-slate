@@ -357,7 +357,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
-      <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-0 z-50 w-full">
+      <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-[env(safe-area-inset-top)] z-50 w-full">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-1 sm:gap-2">
             <Button 
