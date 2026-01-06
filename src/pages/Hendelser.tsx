@@ -62,8 +62,16 @@ const statusColors: Record<string, string> = {
   Lukket: "bg-gray-100 text-gray-900 border-gray-300 dark:bg-gray-700/30 dark:text-gray-100 dark:border-gray-600"
 };
 
-const ECCAIRS_ENV: 'sandbox' | 'prod' = 'sandbox';
-const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL as string;
+// ---- ECCAIRS config ----
+const ECCAIRS_GATEWAY = (import.meta as any)?.env?.VITE_ECCAIRS_GATEWAY_URL || "";
+const ECCAIRS_ENV: "sandbox" | "prod" = ((import.meta as any)?.env?.VITE_ECCAIRS_ENV as any) || "sandbox";
+const ECCAIRS_GATEWAY_KEY = (import.meta as any)?.env?.VITE_ECCAIRS_GATEWAY_KEY || "";
+
+// Helper: get Supabase access token
+async function getAccessToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 type EccairsExportStatus = 'pending' | 'draft_created' | 'submitted' | 'failed';
 
@@ -429,8 +437,20 @@ const Hendelser = () => {
   };
 
   const exportToEccairs = async (incidentId: string) => {
+    if (!ECCAIRS_GATEWAY) {
+      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      console.error("Missing VITE_ECCAIRS_GATEWAY_URL");
+      return;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
     if (!companyId) {
-      toast.error('Ingen bedrift tilknyttet');
+      toast.error("Ingen bedrift tilknyttet");
       return;
     }
     
@@ -468,13 +488,17 @@ const Hendelser = () => {
 
       const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
+        },
         body: JSON.stringify({ incident_id: incidentId, environment: ECCAIRS_ENV }),
       });
 
       const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
+      if (!res.ok || !json?.ok) {
         const msg = json?.error || json?.message || `Gateway error (${res.status})`;
         throw new Error(msg);
       }
@@ -497,7 +521,7 @@ const Hendelser = () => {
       if (updErr) throw updErr;
 
       setEccairsExports(prev => ({ ...prev, [incidentId]: updated as EccairsExport }));
-      toast.success('ECCAIRS-utkast opprettet');
+      toast.success(`ECCAIRS utkast opprettet: ${json.e2_id}`);
 
     } catch (err: any) {
       console.error('ECCAIRS export failed', err);
@@ -527,16 +551,37 @@ const Hendelser = () => {
   };
 
   const openInEccairs = async (e2Id: string) => {
+    if (!ECCAIRS_GATEWAY) {
+      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      return;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
     try {
-      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/get-url?e2_id=${encodeURIComponent(e2Id)}`);
+      const url = new URL(`${ECCAIRS_GATEWAY}/api/eccairs/get-url`);
+      url.searchParams.set("e2_id", e2Id);
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
+        },
+      });
+
       const json = await res.json().catch(() => ({}));
-      const url = json?.url || json?.data?.url;
-      
-      if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } else {
-        toast.error('Kunne ikke hente ECCAIRS-URL');
+
+      if (!res.ok || !json?.ok || !json?.url) {
+        toast.error(json?.error || "Kunne ikke hente ECCAIRS URL");
+        console.error("ECCAIRS get-url error:", json);
+        return;
       }
+
+      window.open(json.url, "_blank", "noopener,noreferrer");
     } catch (err) {
       console.error('Failed to get ECCAIRS URL', err);
       toast.error('Kunne ikke hente ECCAIRS-URL');
