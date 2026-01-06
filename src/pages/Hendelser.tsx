@@ -8,7 +8,7 @@ import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialo
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -63,18 +63,22 @@ const statusColors: Record<string, string> = {
 };
 
 const ECCAIRS_ENV: 'sandbox' | 'prod' = 'sandbox';
+const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL as string;
 
 type EccairsExportStatus = 'pending' | 'draft_created' | 'submitted' | 'failed';
 
 type EccairsExport = {
   id: string;
   incident_id: string;
+  company_id: string;
   status: EccairsExportStatus;
   e2_id: string | null;
+  e2_version: string | null;
   last_attempt_at: string | null;
   last_error: string | null;
   environment: 'sandbox' | 'prod';
   attempts: number;
+  response: any;
 };
 
 const getEccairsStatusLabel = (status?: string): string => {
@@ -122,6 +126,7 @@ const Hendelser = () => {
   const [loading, setLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [eccairsExports, setEccairsExports] = useState<Record<string, EccairsExport>>({});
+  const [eccairsExportingId, setEccairsExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -423,6 +428,121 @@ const Hendelser = () => {
     setExportingId(null);
   };
 
+  const exportToEccairs = async (incidentId: string) => {
+    if (!companyId) {
+      toast.error('Ingen bedrift tilknyttet');
+      return;
+    }
+    
+    setEccairsExportingId(incidentId);
+    
+    try {
+      const { data: incidentRow, error: incidentErr } = await supabase
+        .from('incidents')
+        .select('id, company_id')
+        .eq('id', incidentId)
+        .single();
+
+      if (incidentErr) throw incidentErr;
+
+      const nowIso = new Date().toISOString();
+      const currentExport = eccairsExports[incidentId];
+
+      const { data: upserted, error: upsertErr } = await supabase
+        .from('eccairs_exports')
+        .upsert({
+          incident_id: incidentId,
+          company_id: incidentRow.company_id,
+          environment: ECCAIRS_ENV,
+          status: 'pending',
+          last_attempt_at: nowIso,
+          attempts: (currentExport?.attempts ?? 0) + 1,
+          last_error: null,
+        }, { onConflict: 'incident_id,environment' })
+        .select('*')
+        .single();
+
+      if (upsertErr) throw upsertErr;
+
+      setEccairsExports(prev => ({ ...prev, [incidentId]: upserted as EccairsExport }));
+
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incident_id: incidentId, environment: ECCAIRS_ENV }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = json?.error || json?.message || `Gateway error (${res.status})`;
+        throw new Error(msg);
+      }
+
+      const { data: updated, error: updErr } = await supabase
+        .from('eccairs_exports')
+        .update({
+          status: 'draft_created',
+          e2_id: json.e2_id ?? json.data?.e2Id ?? null,
+          e2_version: json.e2_version ?? json.data?.version ?? null,
+          response: json,
+          last_error: null,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('incident_id', incidentId)
+        .eq('environment', ECCAIRS_ENV)
+        .select('*')
+        .single();
+
+      if (updErr) throw updErr;
+
+      setEccairsExports(prev => ({ ...prev, [incidentId]: updated as EccairsExport }));
+      toast.success('ECCAIRS-utkast opprettet');
+
+    } catch (err: any) {
+      console.error('ECCAIRS export failed', err);
+      
+      const msg = err?.message ?? 'Ukjent feil ved eksport til ECCAIRS';
+      
+      const { data: failedRow } = await supabase
+        .from('eccairs_exports')
+        .update({
+          status: 'failed',
+          last_error: msg,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('incident_id', incidentId)
+        .eq('environment', ECCAIRS_ENV)
+        .select('*')
+        .single();
+
+      if (failedRow) {
+        setEccairsExports(prev => ({ ...prev, [incidentId]: failedRow as EccairsExport }));
+      }
+      
+      toast.error(`ECCAIRS-eksport feilet: ${msg}`);
+    } finally {
+      setEccairsExportingId(null);
+    }
+  };
+
+  const openInEccairs = async (e2Id: string) => {
+    try {
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/get-url?e2_id=${encodeURIComponent(e2Id)}`);
+      const json = await res.json().catch(() => ({}));
+      const url = json?.url || json?.data?.url;
+      
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error('Kunne ikke hente ECCAIRS-URL');
+      }
+    } catch (err) {
+      console.error('Failed to get ECCAIRS URL', err);
+      toast.error('Kunne ikke hente ECCAIRS-URL');
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -648,6 +768,42 @@ const Hendelser = () => {
                               <span className="text-xs">{exp.last_error}</span>
                             </div>
                           )}
+                          {/* Action buttons */}
+                          <div className="col-span-2 mt-2 flex flex-wrap gap-2">
+                            {(!exp || exp.status === 'failed' || exp.status === 'pending') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={eccairsExportingId === incident.id}
+                                onClick={(e) => { 
+                                  e.preventDefault(); 
+                                  exportToEccairs(incident.id); 
+                                }}
+                              >
+                                {eccairsExportingId === incident.id ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Eksporterer...
+                                  </>
+                                ) : (
+                                  <>Eksporter til ECCAIRS</>
+                                )}
+                              </Button>
+                            )}
+                            {exp?.e2_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => { 
+                                  e.preventDefault(); 
+                                  openInEccairs(exp.e2_id!); 
+                                }}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Åpne i ECCAIRS
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}
