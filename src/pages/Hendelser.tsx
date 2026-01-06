@@ -567,26 +567,44 @@ const Hendelser = () => {
       url.searchParams.set("e2_id", e2Id);
       url.searchParams.set("environment", ECCAIRS_ENV);
 
-      const res = await fetch(url.toString(), {
+      const r = await fetch(url.toString(), {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
           ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
         },
       });
 
-      const json = await res.json().catch(() => ({}));
+      const j = await r.json().catch(() => ({}));
 
-      if (!res.ok || !json?.ok || !json?.url) {
-        const errorMsg = json?.details?.errorDetails || json?.error || "Kunne ikke hente ECCAIRS URL";
-        toast.error(errorMsg);
-        console.error("ECCAIRS get-url error:", json);
+      // Happy path - direktelenke funnet
+      if (r.ok && j?.ok && j?.url) {
+        window.open(j.url, "_blank", "noopener,noreferrer");
         return;
       }
 
-      window.open(json.url, "_blank", "noopener,noreferrer");
+      // Fallback for OR drafts (E2 get-URL ikke tilgjengelig)
+      const returnCode = j?.details?.returnCode;
+      const errText = (j?.details?.errorDetails || j?.error || "").toString().toLowerCase();
+      const isNotFound = r.status === 404 || returnCode === 2 || errText.includes("not found");
+
+      if (isNotFound && typeof e2Id === "string" && e2Id.startsWith("OR-")) {
+        toast.message("E2 kan ikke gi direktelenke for OR-utkast. Åpner portal – søk på E2 ID.");
+
+        // Best effort: kopier E2 ID til clipboard
+        try { 
+          await navigator.clipboard.writeText(e2Id); 
+        } catch {}
+
+        window.open("https://aviationreporting.eu/", "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      toast.error("Kunne ikke åpne i ECCAIRS");
+      console.error("openInEccairs failed:", { status: r.status, body: j });
     } catch (err) {
       console.error('Failed to get ECCAIRS URL', err);
-      toast.error('Kunne ikke hente ECCAIRS-URL');
+      toast.error('Kunne ikke åpne i ECCAIRS');
     }
   };
 
