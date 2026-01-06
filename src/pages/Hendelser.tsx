@@ -135,12 +135,27 @@ const Hendelser = () => {
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [eccairsExports, setEccairsExports] = useState<Record<string, EccairsExport>>({});
   const [eccairsExportingId, setEccairsExportingId] = useState<string | null>(null);
+  const [eccairsEnabled, setEccairsEnabled] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Fetch ECCAIRS enabled setting for company
+  useEffect(() => {
+    const fetchCompanySettings = async () => {
+      if (!companyId) return;
+      const { data } = await supabase
+        .from('companies')
+        .select('eccairs_enabled')
+        .eq('id', companyId)
+        .single();
+      setEccairsEnabled(data?.eccairs_enabled ?? false);
+    };
+    fetchCompanySettings();
+  }, [companyId]);
 
   useEffect(() => {
     fetchIncidents();
@@ -841,96 +856,98 @@ const Hendelser = () => {
                     </div>
                   )}
 
-                  {/* ECCAIRS Export Status */}
-                  <div className="pt-3 border-t border-border/50">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      ECCAIRS Rapportering
-                    </p>
-                    {(() => {
-                      const exp = eccairsExports[incident.id];
-                      return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">Status:</span>
-                            <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
-                              {getEccairsStatusLabel(exp?.status)}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">E2 ID:</span>
-                            <span>{exp?.e2_id || '-'}</span>
-                          </div>
-                          {exp?.last_attempt_at && (
+                  {/* ECCAIRS Export Status - only show if enabled for company */}
+                  {eccairsEnabled && (
+                    <div className="pt-3 border-t border-border/50">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        ECCAIRS Rapportering
+                      </p>
+                      {(() => {
+                        const exp = eccairsExports[incident.id];
+                        return (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                             <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">Sist forsøk:</span>
-                              <span>
-                                {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
-                              </span>
+                              <span className="text-muted-foreground">Status:</span>
+                              <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
+                                {getEccairsStatusLabel(exp?.status)}
+                              </Badge>
                             </div>
-                          )}
-                          {typeof exp?.attempts === 'number' && exp.attempts > 0 && (
                             <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">Forsøk:</span>
-                              <span>{exp.attempts}</span>
+                              <span className="text-muted-foreground">E2 ID:</span>
+                              <span>{exp?.e2_id || '-'}</span>
                             </div>
-                          )}
-                          {exp?.last_error && (
-                            <div className="col-span-2 flex items-start gap-2 text-red-600 dark:text-red-400">
-                              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                              <span className="text-xs">{exp.last_error}</span>
+                            {exp?.last_attempt_at && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">Sist forsøk:</span>
+                                <span>
+                                  {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
+                                </span>
+                              </div>
+                            )}
+                            {typeof exp?.attempts === 'number' && exp.attempts > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">Forsøk:</span>
+                                <span>{exp.attempts}</span>
+                              </div>
+                            )}
+                            {exp?.last_error && (
+                              <div className="col-span-2 flex items-start gap-2 text-red-600 dark:text-red-400">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <span className="text-xs">{exp.last_error}</span>
+                              </div>
+                            )}
+                            {/* Action buttons */}
+                            <div className="col-span-2 mt-2 flex flex-wrap gap-2">
+                              {(!exp || exp.status === 'failed' || exp.status === 'pending') && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={eccairsExportingId === incident.id}
+                                  onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    exportToEccairs(incident.id); 
+                                  }}
+                                >
+                                  {eccairsExportingId === incident.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      Eksporterer...
+                                    </>
+                                  ) : (
+                                    <>Eksporter til ECCAIRS</>
+                                  )}
+                                </Button>
+                              )}
+                              {exp?.e2_id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    openInEccairs(exp.e2_id!); 
+                                  }}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Åpne i ECCAIRS
+                                </Button>
+                              )}
+                              {exp?.status === 'draft_created' && exp?.e2_id && (
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    submitToEccairs(incident.id); 
+                                  }}
+                                >
+                                  Send inn til ECCAIRS
+                                </Button>
+                              )}
                             </div>
-                          )}
-                          {/* Action buttons */}
-                          <div className="col-span-2 mt-2 flex flex-wrap gap-2">
-                            {(!exp || exp.status === 'failed' || exp.status === 'pending') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={eccairsExportingId === incident.id}
-                                onClick={(e) => { 
-                                  e.preventDefault(); 
-                                  exportToEccairs(incident.id); 
-                                }}
-                              >
-                                {eccairsExportingId === incident.id ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Eksporterer...
-                                  </>
-                                ) : (
-                                  <>Eksporter til ECCAIRS</>
-                                )}
-                              </Button>
-                            )}
-                            {exp?.e2_id && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => { 
-                                  e.preventDefault(); 
-                                  openInEccairs(exp.e2_id!); 
-                                }}
-                              >
-                                <ExternalLink className="w-4 h-4 mr-2" />
-                                Åpne i ECCAIRS
-                              </Button>
-                            )}
-                            {exp?.status === 'draft_created' && exp?.e2_id && (
-                              <Button
-                                size="sm"
-                                onClick={(e) => { 
-                                  e.preventDefault(); 
-                                  submitToEccairs(incident.id); 
-                                }}
-                              >
-                                Send inn til ECCAIRS
-                              </Button>
-                            )}
                           </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Comments - Collapsible */}
                   <div className="pt-3 border-t border-border/50">
