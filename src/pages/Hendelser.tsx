@@ -608,6 +608,53 @@ const Hendelser = () => {
     }
   };
 
+  const submitToEccairs = async (incidentId: string) => {
+    if (!ECCAIRS_GATEWAY) {
+      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+          ...(ECCAIRS_GATEWAY_KEY ? { "x-api-key": ECCAIRS_GATEWAY_KEY } : {}),
+        },
+        body: JSON.stringify({ incident_id: incidentId, environment: ECCAIRS_ENV }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        toast.error(json?.error || "Kunne ikke sende til ECCAIRS");
+        console.error("ECCAIRS submit failed:", json);
+        return;
+      }
+
+      toast.success("Sendt til ECCAIRS");
+      // Update local state to reflect submitted status
+      setEccairsExports(prev => ({
+        ...prev,
+        [incidentId]: {
+          ...prev[incidentId],
+          status: "submitted"
+        }
+      }));
+    } catch (e) {
+      toast.error("Nettverksfeil ved sending til ECCAIRS");
+      console.error(e);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -866,6 +913,17 @@ const Hendelser = () => {
                               >
                                 <ExternalLink className="w-4 h-4 mr-2" />
                                 Åpne i ECCAIRS
+                              </Button>
+                            )}
+                            {exp?.status === 'draft_created' && exp?.e2_id && (
+                              <Button
+                                size="sm"
+                                onClick={(e) => { 
+                                  e.preventDefault(); 
+                                  submitToEccairs(incident.id); 
+                                }}
+                              >
+                                Send inn til ECCAIRS
                               </Button>
                             )}
                           </div>
