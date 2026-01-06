@@ -23,8 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -50,6 +55,131 @@ interface Company {
   updated_at: string;
   eccairs_enabled: boolean | null;
 }
+
+// Mobile expandable company card component
+const MobileCompanyCard = ({
+  company,
+  onToggleActive,
+  onToggleEccairs,
+  onEdit,
+  onDelete,
+}: {
+  company: Company;
+  onToggleActive: (company: Company) => void;
+  onToggleEccairs: (company: Company) => void;
+  onEdit: (company: Company) => void;
+  onDelete: (company: Company) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="border rounded-lg bg-card">
+        <CollapsibleTrigger className="w-full p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium text-sm truncate">{company.navn}</span>
+            <div className="flex gap-1 flex-shrink-0">
+              <Badge variant={company.aktiv ? "default" : "secondary"} className="text-xs">
+                {company.aktiv ? "Aktiv" : "Inaktiv"}
+              </Badge>
+              {company.eccairs_enabled && (
+                <Badge variant="outline" className="text-xs">ECCAIRS</Badge>
+              )}
+            </div>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <div className="px-3 pb-3 space-y-3 border-t pt-3">
+            {/* Type */}
+            <div className="flex items-center gap-2 text-sm">
+              {company.selskapstype === 'flyselskap' ? (
+                <>
+                  <Plane className="h-3 w-3 text-muted-foreground" />
+                  <span>Flyselskap</span>
+                </>
+              ) : (
+                <>
+                  <Radio className="h-3 w-3 text-muted-foreground" />
+                  <span>Droneoperatør</span>
+                </>
+              )}
+            </div>
+
+            {/* Contact info */}
+            <div className="space-y-1 text-sm">
+              {company.org_nummer && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Hash className="h-3 w-3" />
+                  <span>{company.org_nummer}</span>
+                </div>
+              )}
+              {company.kontakt_epost && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-3 w-3" />
+                  <span className="truncate">{company.kontakt_epost}</span>
+                </div>
+              )}
+              {company.kontakt_telefon && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="h-3 w-3" />
+                  <span>{company.kontakt_telefon}</span>
+                </div>
+              )}
+              {company.adresse && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span className="truncate">{company.adresse}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Toggles */}
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={company.aktiv}
+                  onCheckedChange={() => onToggleActive(company)}
+                />
+                <Label className="text-sm">Status</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={company.eccairs_enabled ?? false}
+                  onCheckedChange={() => onToggleEccairs(company)}
+                />
+                <Label className="text-sm">ECCAIRS</Label>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(company)}
+                className="flex-1"
+              >
+                <Pencil className="h-3 w-3 mr-1" />
+                Rediger
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => onDelete(company)}
+                className="flex-1"
+              >
+                Slett
+              </Button>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+};
 
 export const CompanyManagementSection = () => {
   const { companyId, isSuperAdmin, refetchUserInfo, user } = useAuth();
@@ -223,7 +353,22 @@ export const CompanyManagementSection = () => {
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen selskaper funnet. Opprett ditt første selskap.
           </div>
+        ) : isMobile ? (
+          // Mobile: Expandable cards
+          <div className="space-y-2">
+            {companies.map((company) => (
+              <MobileCompanyCard
+                key={company.id}
+                company={company}
+                onToggleActive={handleToggleActive}
+                onToggleEccairs={handleToggleEccairs}
+                onEdit={handleEditCompany}
+                onDelete={handleDeleteClick}
+              />
+            ))}
+          </div>
         ) : (
+          // Desktop: Table view
           <ScrollArea className="w-full">
             <div className="min-w-[700px]">
               <Table>
@@ -231,8 +376,8 @@ export const CompanyManagementSection = () => {
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Navn</TableHead>
                     <TableHead className="text-xs sm:text-sm">Type</TableHead>
-                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Org.nr</TableHead>
-                    <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Org.nr</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
@@ -241,39 +386,39 @@ export const CompanyManagementSection = () => {
                 <TableBody>
                   {companies.map((company) => (
                     <TableRow key={company.id}>
-                      <TableCell className="font-medium text-xs sm:text-sm">
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate max-w-[120px] sm:max-w-none">{company.navn}</span>
+                      <TableCell className="font-medium text-sm">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span>{company.navn}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs sm:text-sm">
+                      <TableCell className="text-sm">
                         <div className="flex items-center gap-1">
                           {company.selskapstype === 'flyselskap' ? (
                             <>
                               <Plane className="h-3 w-3 text-muted-foreground" />
-                              <span className={isMobile ? 'hidden' : ''}>Flyselskap</span>
+                              <span>Flyselskap</span>
                             </>
                           ) : (
                             <>
                               <Radio className="h-3 w-3 text-muted-foreground" />
-                              <span className={isMobile ? 'hidden' : ''}>Droneoperatør</span>
+                              <span>Droneoperatør</span>
                             </>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className={isMobile ? 'hidden' : ''}>
+                      <TableCell>
                         {company.org_nummer ? (
-                          <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Hash className="h-3 w-3 flex-shrink-0" />
                             {company.org_nummer}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-xs sm:text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
-                      <TableCell className={isMobile ? 'hidden' : ''}>
-                        <div className="space-y-1 text-xs sm:text-sm">
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
                           {company.kontakt_epost && (
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Mail className="h-3 w-3 flex-shrink-0" />
@@ -302,11 +447,10 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-2">
                           <Switch
                             checked={company.aktiv}
                             onCheckedChange={() => handleToggleActive(company)}
-                            className={isMobile ? 'scale-75' : ''}
                           />
                           <Label className="cursor-pointer">
                             <Badge
@@ -319,11 +463,10 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-2">
                           <Switch
                             checked={company.eccairs_enabled ?? false}
                             onCheckedChange={() => handleToggleEccairs(company)}
-                            className={isMobile ? 'scale-75' : ''}
                           />
                           <Label className="cursor-pointer">
                             <Badge
@@ -336,22 +479,20 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1 sm:gap-2">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditCompany(company)}
-                            className={isMobile ? 'h-8 w-8 p-0' : ''}
                           >
-                            <Pencil className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteClick(company)}
-                            className={isMobile ? 'h-8 px-2 text-xs' : ''}
                           >
-                            {isMobile ? <span>X</span> : "Slett"}
+                            Slett
                           </Button>
                         </div>
                       </TableCell>
