@@ -17,11 +17,11 @@ export function useEccairsTaxonomy(valueListKey: string, enabled: boolean = true
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_id`,
         {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Accept-Profile': 'eccairs',
-          }
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Accept-Profile': 'eccairs',
+        }
         }
       );
       
