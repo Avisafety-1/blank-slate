@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
+import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -136,6 +137,8 @@ const Hendelser = () => {
   const [eccairsExports, setEccairsExports] = useState<Record<string, EccairsExport>>({});
   const [eccairsExportingId, setEccairsExportingId] = useState<string | null>(null);
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
+  const [eccairsMappingDialogOpen, setEccairsMappingDialogOpen] = useState(false);
+  const [eccairsMappingIncident, setEccairsMappingIncident] = useState<Incident | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -898,6 +901,18 @@ const Hendelser = () => {
                             )}
                             {/* Action buttons */}
                             <div className="col-span-2 mt-2 flex flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => { 
+                                  e.preventDefault();
+                                  setEccairsMappingIncident(incident);
+                                  setEccairsMappingDialogOpen(true);
+                                }}
+                              >
+                                <Tags className="w-4 h-4 mr-2" />
+                                Klassifiser
+                              </Button>
                               {(!exp || exp.status === 'failed' || exp.status === 'pending') && (
                                 <Button
                                   variant="outline"
@@ -1016,6 +1031,17 @@ const Hendelser = () => {
         onOpenChange={setMissionDialogOpen}
         mission={selectedMission}
       />
+
+      {eccairsMappingIncident && (
+        <EccairsMappingDialog
+          incident={eccairsMappingIncident}
+          open={eccairsMappingDialogOpen}
+          onOpenChange={(open) => {
+            setEccairsMappingDialogOpen(open);
+            if (!open) setEccairsMappingIncident(null);
+          }}
+        />
+      )}
     </div>
   );
 };

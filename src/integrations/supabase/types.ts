@@ -1427,6 +1427,68 @@ export type Database = {
         }
         Relationships: []
       }
+      incident_eccairs_mappings: {
+        Row: {
+          aircraft_category: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          event_types: string[] | null
+          headline: string | null
+          id: string
+          incident_id: string
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          narrative: string | null
+          occurrence_class: string | null
+          phase_of_flight: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aircraft_category?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          event_types?: string[] | null
+          headline?: string | null
+          id?: string
+          incident_id: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          narrative?: string | null
+          occurrence_class?: string | null
+          phase_of_flight?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aircraft_category?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          event_types?: string[] | null
+          headline?: string | null
+          id?: string
+          incident_id?: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          narrative?: string | null
+          occurrence_class?: string | null
+          phase_of_flight?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_eccairs_mappings_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: true
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incidents: {
         Row: {
           alvorlighetsgrad: string
