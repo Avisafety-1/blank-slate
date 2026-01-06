@@ -847,6 +847,72 @@ export type Database = {
           },
         ]
       }
+      eccairs_exports: {
+        Row: {
+          attempts: number
+          company_id: string
+          created_at: string
+          e2_id: string | null
+          e2_version: string | null
+          environment: string
+          id: string
+          incident_id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          payload: Json | null
+          response: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          created_at?: string
+          e2_id?: string | null
+          e2_version?: string | null
+          environment?: string
+          id?: string
+          incident_id: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          e2_id?: string | null
+          e2_version?: string | null
+          environment?: string
+          id?: string
+          incident_id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eccairs_exports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eccairs_exports_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eccairs_integrations: {
         Row: {
           company_id: string
