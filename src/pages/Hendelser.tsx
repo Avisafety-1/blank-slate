@@ -565,6 +565,7 @@ const Hendelser = () => {
     try {
       const url = new URL(`${ECCAIRS_GATEWAY}/api/eccairs/get-url`);
       url.searchParams.set("e2_id", e2Id);
+      url.searchParams.set("environment", ECCAIRS_ENV);
 
       const res = await fetch(url.toString(), {
         headers: {
@@ -576,7 +577,8 @@ const Hendelser = () => {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok || !json?.url) {
-        toast.error(json?.error || "Kunne ikke hente ECCAIRS URL");
+        const errorMsg = json?.details?.errorDetails || json?.error || "Kunne ikke hente ECCAIRS URL";
+        toast.error(errorMsg);
         console.error("ECCAIRS get-url error:", json);
         return;
       }
