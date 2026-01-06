@@ -63,9 +63,9 @@ const statusColors: Record<string, string> = {
 };
 
 // ---- ECCAIRS config ----
-const ECCAIRS_GATEWAY = (import.meta as any)?.env?.VITE_ECCAIRS_GATEWAY_URL || "";
-const ECCAIRS_ENV: "sandbox" | "prod" = ((import.meta as any)?.env?.VITE_ECCAIRS_ENV as any) || "sandbox";
-const ECCAIRS_GATEWAY_KEY = (import.meta as any)?.env?.VITE_ECCAIRS_GATEWAY_KEY || "";
+const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
+const ECCAIRS_ENV: "sandbox" | "prod" = (import.meta.env.VITE_ECCAIRS_ENV as "sandbox" | "prod") || "sandbox";
+const ECCAIRS_GATEWAY_KEY = import.meta.env.VITE_ECCAIRS_GATEWAY_KEY || "";
 
 // Helper: get Supabase access token
 async function getAccessToken() {
