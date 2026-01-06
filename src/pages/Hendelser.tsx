@@ -8,7 +8,8 @@ import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialo
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -61,6 +62,46 @@ const statusColors: Record<string, string> = {
   Lukket: "bg-gray-100 text-gray-900 border-gray-300 dark:bg-gray-700/30 dark:text-gray-100 dark:border-gray-600"
 };
 
+const ECCAIRS_ENV: 'sandbox' | 'prod' = 'sandbox';
+
+type EccairsExportStatus = 'pending' | 'draft_created' | 'submitted' | 'failed';
+
+type EccairsExport = {
+  id: string;
+  incident_id: string;
+  status: EccairsExportStatus;
+  e2_id: string | null;
+  last_attempt_at: string | null;
+  last_error: string | null;
+  environment: 'sandbox' | 'prod';
+  attempts: number;
+};
+
+const getEccairsStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'pending': return 'Venter';
+    case 'draft_created': return 'Utkast opprettet';
+    case 'submitted': return 'Sendt';
+    case 'failed': return 'Feilet';
+    default: return 'Ikke eksportert';
+  }
+};
+
+const getEccairsStatusClass = (status?: string): string => {
+  switch (status) {
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+    case 'draft_created':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'submitted':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    case 'failed':
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300';
+  }
+};
+
 const Hendelser = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, companyId } = useAuth();
@@ -80,6 +121,7 @@ const Hendelser = () => {
   const [incidentToEdit, setIncidentToEdit] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [eccairsExports, setEccairsExports] = useState<Record<string, EccairsExport>>({});
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -169,6 +211,75 @@ const Hendelser = () => {
 
     fetchMissions();
   }, [incidents]);
+
+  // Fetch ECCAIRS exports when incidents change
+  useEffect(() => {
+    const fetchEccairsExports = async () => {
+      if (!incidents || incidents.length === 0) {
+        setEccairsExports({});
+        return;
+      }
+
+      try {
+        const incidentIds = incidents.map(i => i.id);
+
+        const { data, error } = await supabase
+          .from('eccairs_exports')
+          .select('*')
+          .eq('environment', ECCAIRS_ENV)
+          .in('incident_id', incidentIds);
+
+        if (error) throw error;
+
+        const exportsMap: Record<string, EccairsExport> = {};
+        (data || []).forEach(exp => {
+          exportsMap[exp.incident_id] = exp as EccairsExport;
+        });
+
+        setEccairsExports(exportsMap);
+      } catch (err) {
+        console.error('Error fetching ECCAIRS exports:', err);
+      }
+    };
+
+    fetchEccairsExports();
+  }, [incidents]);
+
+  // Real-time subscription for ECCAIRS exports
+  useEffect(() => {
+    const channel = supabase
+      .channel(`eccairs-exports-${ECCAIRS_ENV}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'eccairs_exports',
+          filter: `environment=eq.${ECCAIRS_ENV}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const exportData = payload.new as unknown as EccairsExport;
+            setEccairsExports(prev => ({
+              ...prev,
+              [exportData.incident_id]: exportData,
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as { incident_id: string };
+            setEccairsExports(prev => {
+              const updated = { ...prev };
+              delete updated[deleted.incident_id];
+              return updated;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Real-time subscription for comment changes
   useEffect(() => {
@@ -497,6 +608,50 @@ const Hendelser = () => {
                       </button>
                     </div>
                   )}
+
+                  {/* ECCAIRS Export Status */}
+                  <div className="pt-3 border-t border-border/50">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      ECCAIRS Rapportering
+                    </p>
+                    {(() => {
+                      const exp = eccairsExports[incident.id];
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">Status:</span>
+                            <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
+                              {getEccairsStatusLabel(exp?.status)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">E2 ID:</span>
+                            <span>{exp?.e2_id || '-'}</span>
+                          </div>
+                          {exp?.last_attempt_at && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">Sist forsøk:</span>
+                              <span>
+                                {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
+                              </span>
+                            </div>
+                          )}
+                          {typeof exp?.attempts === 'number' && exp.attempts > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">Forsøk:</span>
+                              <span>{exp.attempts}</span>
+                            </div>
+                          )}
+                          {exp?.last_error && (
+                            <div className="col-span-2 flex items-start gap-2 text-red-600 dark:text-red-400">
+                              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                              <span className="text-xs">{exp.last_error}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
 
                   {/* Comments - Collapsible */}
                   <div className="pt-3 border-t border-border/50">
