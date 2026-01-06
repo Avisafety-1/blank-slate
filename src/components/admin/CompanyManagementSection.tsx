@@ -48,6 +48,7 @@ interface Company {
   selskapstype: string | null;
   created_at: string;
   updated_at: string;
+  eccairs_enabled: boolean | null;
 }
 
 export const CompanyManagementSection = () => {
@@ -126,6 +127,25 @@ export const CompanyManagementSection = () => {
     } catch (error: any) {
       console.error("Error toggling company status:", error);
       toast.error("Kunne ikke oppdatere status");
+    }
+  };
+
+  const handleToggleEccairs = async (company: Company) => {
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ eccairs_enabled: !company.eccairs_enabled })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(
+        company.eccairs_enabled
+          ? "ECCAIRS deaktivert"
+          : "ECCAIRS aktivert"
+      );
+    } catch (error: any) {
+      console.error("Error toggling ECCAIRS status:", error);
+      toast.error("Kunne ikke oppdatere ECCAIRS-status");
     }
   };
 
@@ -210,6 +230,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Org.nr</TableHead>
                     <TableHead className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                    <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -289,6 +310,23 @@ export const CompanyManagementSection = () => {
                               className="text-xs"
                             >
                               {company.aktiv ? "Aktiv" : "Inaktiv"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Switch
+                            checked={company.eccairs_enabled ?? false}
+                            onCheckedChange={() => handleToggleEccairs(company)}
+                            className={isMobile ? 'scale-75' : ''}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={company.eccairs_enabled ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {company.eccairs_enabled ? "På" : "Av"}
                             </Badge>
                           </Label>
                         </div>
