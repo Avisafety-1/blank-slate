@@ -847,6 +847,50 @@ export type Database = {
           },
         ]
       }
+      eccairs_integrations: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean
+          environment: string
+          id: string
+          reporting_entity_id: number | null
+          responsible_entity_id: number | null
+          taxonomy_version_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          reporting_entity_id?: number | null
+          responsible_entity_id?: number | null
+          taxonomy_version_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          reporting_entity_id?: number | null
+          responsible_entity_id?: number | null
+          taxonomy_version_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eccairs_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_settings: {
         Row: {
           company_id: string
