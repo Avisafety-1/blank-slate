@@ -112,38 +112,42 @@ export const CompanyManagementSection = () => {
   };
 
   const handleToggleActive = async (company: Company) => {
+    const newValue = !company.aktiv;
+    // Optimistic update
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, aktiv: newValue } : c));
+    
     try {
       const { error } = await supabase
         .from("companies")
-        .update({ aktiv: !company.aktiv })
+        .update({ aktiv: newValue })
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(
-        company.aktiv
-          ? "Selskap deaktivert"
-          : "Selskap aktivert"
-      );
+      toast.success(newValue ? "Selskap aktivert" : "Selskap deaktivert");
     } catch (error: any) {
+      // Revert on error
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, aktiv: !newValue } : c));
       console.error("Error toggling company status:", error);
       toast.error("Kunne ikke oppdatere status");
     }
   };
 
   const handleToggleEccairs = async (company: Company) => {
+    const newValue = !company.eccairs_enabled;
+    // Optimistic update
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, eccairs_enabled: newValue } : c));
+    
     try {
       const { error } = await supabase
         .from("companies")
-        .update({ eccairs_enabled: !company.eccairs_enabled })
+        .update({ eccairs_enabled: newValue })
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(
-        company.eccairs_enabled
-          ? "ECCAIRS deaktivert"
-          : "ECCAIRS aktivert"
-      );
+      toast.success(newValue ? "ECCAIRS aktivert" : "ECCAIRS deaktivert");
     } catch (error: any) {
+      // Revert on error
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, eccairs_enabled: !newValue } : c));
       console.error("Error toggling ECCAIRS status:", error);
       toast.error("Kunne ikke oppdatere ECCAIRS-status");
     }
