@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
+import { getAttributeLabel } from "@/config/eccairsFields";
 
 type Incident = {
   id: string;
@@ -516,7 +517,38 @@ const Hendelser = () => {
 
       const json = await res.json().catch(() => ({}));
 
+      // Handle structured validation errors from gateway
       if (!res.ok || !json?.ok) {
+        const errorDetails = json?.details;
+        
+        if (Array.isArray(errorDetails) && errorDetails.length > 0) {
+          // Structured validation errors - show each one
+          const errorMessages = errorDetails.map((d: { attribute_code?: number; taxonomy_code?: string; message?: string }) => {
+            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : 'Ukjent';
+            const taxonomyInfo = d.taxonomy_code && d.taxonomy_code !== '24' ? ` (taxonomy ${d.taxonomy_code})` : '';
+            return `${attrLabel}${taxonomyInfo}: ${d.message || 'Ukjent feil'}`;
+          });
+          
+          console.error('ECCAIRS structured validation errors:', errorDetails);
+          
+          // Show each error in separate toast
+          errorMessages.forEach((msg: string) => toast.error(msg));
+          
+          // Save detailed error in database
+          await supabase
+            .from('eccairs_exports')
+            .update({
+              status: 'failed',
+              last_error: JSON.stringify(errorDetails),
+              response: json,
+              last_attempt_at: new Date().toISOString(),
+            })
+            .eq('incident_id', incidentId)
+            .eq('environment', ECCAIRS_ENV);
+          
+          return; // Exit early
+        }
+        
         const msg = json?.error || json?.message || `Gateway error (${res.status})`;
         throw new Error(msg);
       }

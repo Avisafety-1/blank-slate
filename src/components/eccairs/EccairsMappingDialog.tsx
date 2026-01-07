@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
-import { useIncidentEccairsMapping } from "@/hooks/useIncidentEccairsMapping";
+import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
+import { ECCAIRS_FIELDS, EccairsFieldConfig } from "@/config/eccairsFields";
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -40,62 +41,104 @@ export function EccairsMappingDialog({
   onOpenChange,
   onSaved,
 }: EccairsMappingDialogProps) {
-  const { mapping, isLoading, saveMapping, isSaving } = useIncidentEccairsMapping(incident.id, open);
+  const { attributes, getAttribute, isLoading, saveAllAttributes, isSaving } = 
+    useIncidentEccairsAttributes(incident.id, open);
   
-  const [occurrenceClass, setOccurrenceClass] = useState<string | null>(null);
-  const [phaseOfFlight, setPhaseOfFlight] = useState<string | null>(null);
-  const [aircraftCategory, setAircraftCategory] = useState<string>("104"); // Default UAS
-  const [headline, setHeadline] = useState("");
-  const [narrative, setNarrative] = useState("");
-  const [locationName, setLocationName] = useState("");
+  // Generic state: Record<`${code}_${taxonomyCode}`, value>
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
 
-  // Load existing mapping or apply auto-suggestions
+  const makeFieldKey = (field: EccairsFieldConfig) => `${field.code}_${field.taxonomyCode}`;
+
+  const setFieldValue = (field: EccairsFieldConfig, value: string | null) => {
+    const key = makeFieldKey(field);
+    setFieldValues(prev => ({ ...prev, [key]: value ?? '' }));
+  };
+
+  const getFieldValue = (field: EccairsFieldConfig): string => {
+    const key = makeFieldKey(field);
+    return fieldValues[key] ?? field.defaultValue ?? '';
+  };
+
+  // Get occurrence class for display (code 431)
+  const occurrenceClassValue = getFieldValue(ECCAIRS_FIELDS.find(f => f.code === 431)!);
+
+  // Load existing attributes or apply auto-suggestions
   useEffect(() => {
     if (!open) return;
 
-    if (mapping) {
-      setOccurrenceClass(mapping.occurrence_class);
-      setPhaseOfFlight(mapping.phase_of_flight);
-      setAircraftCategory(mapping.aircraft_category || "104");
-      setHeadline(mapping.headline || "");
-      setNarrative(mapping.narrative || "");
-      setLocationName(mapping.location_name || "");
+    const hasExistingData = Object.keys(attributes).length > 0;
+    
+    if (hasExistingData) {
+      // Load from database
+      const newValues: Record<string, string> = {};
+      ECCAIRS_FIELDS.forEach(field => {
+        const attr = getAttribute(field.code, field.taxonomyCode);
+        if (attr) {
+          const value = field.type === 'select' ? attr.value_id : attr.text_value;
+          if (value) {
+            newValues[makeFieldKey(field)] = value;
+          }
+        }
+      });
+      setFieldValues(newValues);
     } else if (!isLoading) {
       // Apply auto-suggestions for new mappings
-      const suggestions = suggestEccairsMapping(incident);
-      setOccurrenceClass(suggestions.occurrence_class);
-      setAircraftCategory(suggestions.aircraft_category);
-      setHeadline(suggestions.headline || "");
-      setNarrative(suggestions.narrative || "");
-      setLocationName(suggestions.location_name || "");
+      applyAutoSuggestions();
     }
-  }, [mapping, isLoading, open, incident]);
+  }, [attributes, isLoading, open, incident]);
+
+  const applyAutoSuggestions = () => {
+    const suggestions = suggestEccairsMapping(incident);
+    const newValues: Record<string, string> = {};
+    
+    // Map suggestions to field values
+    ECCAIRS_FIELDS.forEach(field => {
+      if (field.code === 431 && suggestions.occurrence_class) {
+        newValues[makeFieldKey(field)] = suggestions.occurrence_class;
+      } else if (field.code === 17 && suggestions.aircraft_category) {
+        newValues[makeFieldKey(field)] = suggestions.aircraft_category;
+      } else if (field.code === 390 && suggestions.headline) {
+        newValues[makeFieldKey(field)] = suggestions.headline;
+      } else if (field.code === 391 && suggestions.narrative) {
+        newValues[makeFieldKey(field)] = suggestions.narrative;
+      } else if (field.defaultValue) {
+        newValues[makeFieldKey(field)] = field.defaultValue;
+      }
+    });
+    
+    // Also set location if available
+    if (suggestions.location_name) {
+      // Location is not in ECCAIRS_FIELDS currently, but could be added
+    }
+    
+    setFieldValues(newValues);
+  };
 
   const handleApplySuggestions = () => {
-    const suggestions = suggestEccairsMapping(incident);
-    setOccurrenceClass(suggestions.occurrence_class);
-    setAircraftCategory(suggestions.aircraft_category);
-    setHeadline(suggestions.headline || "");
-    setNarrative(suggestions.narrative || "");
-    setLocationName(suggestions.location_name || "");
+    applyAutoSuggestions();
     toast.success("Forslag anvendt");
   };
 
   const handleSave = async () => {
     try {
-      await saveMapping({
-        incident_id: incident.id,
-        company_id: incident.company_id,
-        occurrence_class: occurrenceClass,
-        phase_of_flight: phaseOfFlight,
-        aircraft_category: aircraftCategory,
-        headline: headline || null,
-        narrative: narrative || null,
-        location_name: locationName || null,
-        event_types: null,
-        latitude: null,
-        longitude: null,
+      const attributesToSave: Array<{ code: number; data: AttributeData }> = [];
+      
+      ECCAIRS_FIELDS.forEach(field => {
+        const value = getFieldValue(field);
+        if (!value) return;
+        
+        attributesToSave.push({
+          code: field.code,
+          data: {
+            taxonomy_code: field.taxonomyCode,
+            format: field.format,
+            value_id: field.type === 'select' ? value : null,
+            text_value: field.type !== 'select' ? value : null,
+          }
+        });
       });
+
+      await saveAllAttributes(attributesToSave);
       toast.success("Klassifisering lagret");
       onSaved?.();
       onOpenChange(false);
@@ -104,6 +147,11 @@ export function EccairsMappingDialog({
       toast.error("Kunne ikke lagre klassifisering");
     }
   };
+
+  // Check if required fields are filled
+  const requiredFieldsFilled = ECCAIRS_FIELDS
+    .filter(f => f.required)
+    .every(f => !!getFieldValue(f));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -129,9 +177,9 @@ export function EccairsMappingDialog({
                 <div>
                   <span className="text-muted-foreground">Alvorlighet: </span>
                   <Badge variant="outline">{incident.alvorlighetsgrad}</Badge>
-                  {occurrenceClass && (
+                  {occurrenceClassValue && (
                     <span className="ml-2 text-xs text-muted-foreground">
-                      → {OCCURRENCE_CLASS_LABELS[occurrenceClass] || occurrenceClass}
+                      → {OCCURRENCE_CLASS_LABELS[occurrenceClassValue] || occurrenceClassValue}
                     </span>
                   )}
                 </div>
@@ -159,80 +207,77 @@ export function EccairsMappingDialog({
               </Button>
             </div>
 
-            {/* ECCAIRS classification fields */}
+            {/* ECCAIRS classification fields - dynamically rendered */}
             <div className="space-y-4">
               <h4 className="font-medium text-sm text-muted-foreground">ECCAIRS-klassifisering</h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="occurrence_class">Hendelsesklasse (VL431) *</Label>
-                  <EccairsTaxonomySelect
-                    valueListKey="VL431"
-                    value={occurrenceClass}
-                    onChange={setOccurrenceClass}
-                    placeholder="Velg hendelsesklasse..."
+                {ECCAIRS_FIELDS.filter(f => f.type === 'select').map(field => (
+                  <div key={makeFieldKey(field)} className="space-y-2">
+                    <Label>
+                      {field.label} (VL{field.code})
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {field.helpText && (
+                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                    )}
+                    <EccairsTaxonomySelect
+                      valueListKey={`VL${field.code}`}
+                      value={getFieldValue(field) || null}
+                      onChange={(val) => setFieldValue(field, val)}
+                      placeholder={`Velg ${field.label.toLowerCase()}...`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Text fields */}
+              {ECCAIRS_FIELDS.filter(f => f.type === 'text').map(field => (
+                <div key={makeFieldKey(field)} className="space-y-2">
+                  <Label>
+                    {field.label}
+                    {field.maxLength && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        {getFieldValue(field).length}/{field.maxLength}
+                      </span>
+                    )}
+                    {field.required && <span className="text-destructive ml-1">*</span>}
+                  </Label>
+                  {field.helpText && (
+                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                  )}
+                  <Input
+                    value={getFieldValue(field)}
+                    onChange={(e) => setFieldValue(field, field.maxLength 
+                      ? e.target.value.slice(0, field.maxLength) 
+                      : e.target.value
+                    )}
+                    placeholder={`Skriv ${field.label.toLowerCase()}...`}
                   />
                 </div>
+              ))}
 
-                <div className="space-y-2">
-                  <Label htmlFor="phase_of_flight">Flyets fase (VL1072)</Label>
-                  <EccairsTaxonomySelect
-                    valueListKey="VL1072"
-                    value={phaseOfFlight}
-                    onChange={setPhaseOfFlight}
-                    placeholder="Velg fase..."
+              {/* Textarea fields */}
+              {ECCAIRS_FIELDS.filter(f => f.type === 'textarea').map(field => (
+                <div key={makeFieldKey(field)} className="space-y-2">
+                  <Label>
+                    {field.label}
+                    {field.required && <span className="text-destructive ml-1">*</span>}
+                  </Label>
+                  {field.helpText && (
+                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                  )}
+                  <Textarea
+                    value={getFieldValue(field)}
+                    onChange={(e) => setFieldValue(field, e.target.value)}
+                    placeholder={`Skriv ${field.label.toLowerCase()}...`}
+                    rows={4}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="aircraft_category">Luftfartøykategori (VL17)</Label>
-                  <EccairsTaxonomySelect
-                    valueListKey="VL17"
-                    value={aircraftCategory}
-                    onChange={setAircraftCategory}
-                    placeholder="Velg kategori..."
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="headline">
-                  Overskrift (maks 500 tegn) 
-                  <span className="text-muted-foreground ml-2 text-xs">
-                    {headline.length}/500
-                  </span>
-                </Label>
-                <Input
-                  id="headline"
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value.slice(0, 500))}
-                  placeholder="Kort beskrivelse av hendelsen..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="narrative">Narrativ (detaljert beskrivelse)</Label>
-                <Textarea
-                  id="narrative"
-                  value={narrative}
-                  onChange={(e) => setNarrative(e.target.value)}
-                  placeholder="Detaljert beskrivelse av hva som skjedde..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location_name">Lokasjon</Label>
-                <Input
-                  id="location_name"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="Stedsangivelse..."
-                />
-              </div>
+              ))}
             </div>
 
-            {!occurrenceClass && (
+            {!requiredFieldsFilled && (
               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">
                 <AlertTriangle className="w-4 h-4" />
                 <span>Hendelsesklasse er påkrevd for ECCAIRS-eksport</span>
@@ -245,7 +290,7 @@ export function EccairsMappingDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Avbryt
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || !occurrenceClass}>
+          <Button onClick={handleSave} disabled={isSaving || !requiredFieldsFilled}>
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Lagre klassifisering
           </Button>
