@@ -1427,6 +1427,47 @@ export type Database = {
         }
         Relationships: []
       }
+      incident_eccairs_attributes: {
+        Row: {
+          attribute_code: number
+          created_at: string
+          id: string
+          incident_id: string
+          source: string | null
+          text_value: string | null
+          updated_at: string
+          value_id: string | null
+        }
+        Insert: {
+          attribute_code: number
+          created_at?: string
+          id?: string
+          incident_id: string
+          source?: string | null
+          text_value?: string | null
+          updated_at?: string
+          value_id?: string | null
+        }
+        Update: {
+          attribute_code?: number
+          created_at?: string
+          id?: string
+          incident_id?: string
+          source?: string | null
+          text_value?: string | null
+          updated_at?: string
+          value_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_eccairs_attributes_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_eccairs_mappings: {
         Row: {
           aircraft_category: string | null
