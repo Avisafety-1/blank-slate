@@ -69,8 +69,17 @@ export function EccairsMappingDialog({
     const hasExistingData = Object.keys(attributes).length > 0;
     
     if (hasExistingData) {
-      // Load from database
+      // Load from database, then merge in defaults for missing fields
       const newValues: Record<string, string> = {};
+      
+      // First, apply defaults for all fields
+      ECCAIRS_FIELDS.forEach(field => {
+        if (field.defaultValue) {
+          newValues[makeFieldKey(field)] = field.defaultValue;
+        }
+      });
+      
+      // Then override with saved values
       ECCAIRS_FIELDS.forEach(field => {
         const attr = getAttribute(field.code, field.taxonomyCode);
         if (attr) {

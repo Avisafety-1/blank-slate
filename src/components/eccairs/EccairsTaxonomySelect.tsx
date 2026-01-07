@@ -15,6 +15,8 @@ interface EccairsTaxonomySelectProps {
   disabled?: boolean;
 }
 
+const MAX_VISIBLE_ITEMS = 100;
+
 export function EccairsTaxonomySelect({
   valueListKey,
   value,
@@ -23,6 +25,7 @@ export function EccairsTaxonomySelect({
   disabled = false,
 }: EccairsTaxonomySelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const { data: items, isLoading, error } = useEccairsTaxonomy(valueListKey);
 
   // Filter out items without description
@@ -33,12 +36,34 @@ export function EccairsTaxonomySelect({
     [items]
   );
 
-  // Find selected item label
-  const selectedLabel = useMemo(() => {
+  // Find selected item
+  const selectedItem = useMemo(() => {
     if (!value) return null;
-    const item = validItems.find(i => i.value_id === value);
-    return item?.value_description || null;
+    return validItems.find(i => i.value_id === value) || null;
   }, [value, validItems]);
+
+  // Manual filtering with search
+  const filteredItems = useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    
+    if (!searchLower) {
+      // No search: show first MAX items, but always include selected item at top
+      const result = validItems.slice(0, MAX_VISIBLE_ITEMS);
+      if (selectedItem && !result.find(i => i.value_id === selectedItem.value_id)) {
+        return [selectedItem, ...result];
+      }
+      return result;
+    }
+
+    // With search: filter by description and synonym
+    const matches = validItems.filter(item => {
+      const desc = item.value_description?.toLowerCase() || '';
+      const synonym = item.value_synonym?.toLowerCase() || '';
+      return desc.includes(searchLower) || synonym.includes(searchLower);
+    });
+
+    return matches.slice(0, MAX_VISIBLE_ITEMS);
+  }, [validItems, search, selectedItem]);
 
   if (isLoading) {
     return <Skeleton className="h-10 w-full" />;
@@ -63,24 +88,29 @@ export function EccairsTaxonomySelect({
           disabled={disabled}
         >
           <span className="truncate">
-            {selectedLabel || placeholder}
+            {selectedItem?.value_description || (value ? `ID: ${value}` : placeholder)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Søk..." />
+        <Command shouldFilter={false}>
+          <CommandInput 
+            placeholder="Søk..." 
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList>
             <CommandEmpty>Ingen treff</CommandEmpty>
             <CommandGroup>
-              {validItems.map((item) => (
+              {filteredItems.map((item) => (
                 <CommandItem
                   key={item.value_id}
-                  value={item.value_description}
+                  value={item.value_id}
                   onSelect={() => {
                     onChange(item.value_id);
                     setOpen(false);
+                    setSearch("");
                   }}
                 >
                   <Check
