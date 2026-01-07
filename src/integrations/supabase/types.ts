@@ -925,6 +925,7 @@ export type Database = {
           id: string
           reporting_entity_id: number | null
           responsible_entity_id: number | null
+          responsible_entity_value_id: string | null
           taxonomy_version_id: number | null
           updated_at: string
         }
@@ -936,6 +937,7 @@ export type Database = {
           id?: string
           reporting_entity_id?: number | null
           responsible_entity_id?: number | null
+          responsible_entity_value_id?: string | null
           taxonomy_version_id?: number | null
           updated_at?: string
         }
@@ -947,6 +949,7 @@ export type Database = {
           id?: string
           reporting_entity_id?: number | null
           responsible_entity_id?: number | null
+          responsible_entity_value_id?: string | null
           taxonomy_version_id?: number | null
           updated_at?: string
         }
