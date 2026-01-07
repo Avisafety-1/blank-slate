@@ -1434,9 +1434,12 @@ export type Database = {
         Row: {
           attribute_code: number
           created_at: string
+          format: string | null
           id: string
           incident_id: string
+          payload_json: Json | null
           source: string | null
+          taxonomy_code: string | null
           text_value: string | null
           updated_at: string
           value_id: string | null
@@ -1444,9 +1447,12 @@ export type Database = {
         Insert: {
           attribute_code: number
           created_at?: string
+          format?: string | null
           id?: string
           incident_id: string
+          payload_json?: Json | null
           source?: string | null
+          taxonomy_code?: string | null
           text_value?: string | null
           updated_at?: string
           value_id?: string | null
@@ -1454,9 +1460,12 @@ export type Database = {
         Update: {
           attribute_code?: number
           created_at?: string
+          format?: string | null
           id?: string
           incident_id?: string
+          payload_json?: Json | null
           source?: string | null
+          taxonomy_code?: string | null
           text_value?: string | null
           updated_at?: string
           value_id?: string | null
