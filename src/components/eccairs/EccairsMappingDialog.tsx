@@ -62,6 +62,12 @@ export function EccairsMappingDialog({
   // Get occurrence class for display (code 431)
   const occurrenceClassValue = getFieldValue(ECCAIRS_FIELDS.find(f => f.code === 431)!);
 
+  // Reset local state when opening/changing incident to avoid stale values
+  useEffect(() => {
+    if (!open) return;
+    setFieldValues({});
+  }, [open, incident.id]);
+
   // Load existing attributes or apply auto-suggestions
   useEffect(() => {
     if (!open) return;

@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { useEccairsTaxonomy } from "@/hooks/useEccairsTaxonomy";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EccairsTaxonomySelectProps {
@@ -95,11 +96,15 @@ export function EccairsTaxonomySelect({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder="Søk..." 
-            value={search}
-            onValueChange={setSearch}
-          />
+          <div className="flex items-center border-b px-3" role="search">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Søk..."
+              className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
           <CommandList>
             <CommandEmpty>Ingen treff</CommandEmpty>
             <CommandGroup>
