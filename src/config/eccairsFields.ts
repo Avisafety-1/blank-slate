@@ -43,7 +43,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     taxonomyCode: '24',
     format: 'value_list_int_array',
     type: 'select',
-    helpText: 'F.eks. Luftfartstilsynet Norge'
+    defaultValue: '133', // Norway
+    helpText: 'CAA/stat ansvarlig for rapportering'
   },
   { 
     code: 390, 
