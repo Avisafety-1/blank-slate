@@ -14,14 +14,17 @@ export function useEccairsTaxonomy(valueListKey: string, enabled: boolean = true
     queryKey: ['eccairs-taxonomy', valueListKey],
     queryFn: async () => {
       // Direct fetch using PostgREST with schema header for eccairs schema
+      // Use Range header to get all items (Supabase default limit is 1000)
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_id`,
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description`,
         {
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'Accept-Profile': 'eccairs',
-        }
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Accept-Profile': 'eccairs',
+            'Range': '0-9999',
+            'Prefer': 'count=none',
+          }
         }
       );
       
