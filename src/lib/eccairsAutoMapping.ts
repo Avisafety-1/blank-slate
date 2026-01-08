@@ -31,7 +31,7 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
     narrative: incident.beskrivelse || null,
     location_name: incident.lokasjon || null,
     occurrence_date: incident.hendelsestidspunkt 
-      ? new Date(incident.hendelsestidspunkt).toISOString() 
+      ? new Date(incident.hendelsestidspunkt).toISOString().slice(0, 10)
       : null,
   };
 }
