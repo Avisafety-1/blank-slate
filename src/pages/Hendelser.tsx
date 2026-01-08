@@ -9,7 +9,7 @@ import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog"
 import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -705,6 +705,69 @@ const Hendelser = () => {
     }
   };
 
+  const updateEccairsDraft = async (incidentId: string, e2Id: string) => {
+    if (!ECCAIRS_GATEWAY) {
+      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      return;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
+    setEccairsExportingId(incidentId);
+
+    try {
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
+        },
+        body: JSON.stringify({ 
+          incident_id: incidentId, 
+          e2_id: e2Id,
+          environment: ECCAIRS_ENV 
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        const errorDetails = json?.details;
+        if (Array.isArray(errorDetails) && errorDetails.length > 0) {
+          errorDetails.forEach((d: { attribute_code?: number; message?: string }) => {
+            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : 'Ukjent';
+            toast.error(`${attrLabel}: ${d.message || 'Ukjent feil'}`);
+          });
+          return;
+        }
+        throw new Error(json?.error || 'Kunne ikke oppdatere utkast');
+      }
+
+      await supabase
+        .from('eccairs_exports')
+        .update({
+          e2_version: json.e2_version ?? json.data?.version ?? null,
+          response: json,
+          last_error: null,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('incident_id', incidentId)
+        .eq('environment', ECCAIRS_ENV);
+
+      toast.success("ECCAIRS-utkast oppdatert");
+    } catch (err: any) {
+      console.error('ECCAIRS update failed', err);
+      toast.error(`Kunne ikke oppdatere utkast: ${err?.message}`);
+    } finally {
+      setEccairsExportingId(null);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -979,15 +1042,38 @@ const Hendelser = () => {
                                 </Button>
                               )}
                               {exp?.status === 'draft_created' && exp?.e2_id && (
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    submitToEccairs(incident.id); 
-                                  }}
-                                >
-                                  Send inn til ECCAIRS
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={eccairsExportingId === incident.id}
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      updateEccairsDraft(incident.id, exp.e2_id!); 
+                                    }}
+                                  >
+                                    {eccairsExportingId === incident.id ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Oppdaterer...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        Oppdater utkast
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      submitToEccairs(incident.id); 
+                                    }}
+                                  >
+                                    Send inn til ECCAIRS
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
