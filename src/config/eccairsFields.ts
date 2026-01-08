@@ -1,11 +1,11 @@
-export type EccairsFormat = 'value_list_int_array' | 'text_content_array' | 'raw_json' | 'timestamp_utc';
+export type EccairsFormat = 'value_list_int_array' | 'text_content_array' | 'raw_json' | 'local_date';
 
 export interface EccairsFieldConfig {
   code: number;
   label: string;
   taxonomyCode: string;
   format: EccairsFormat;
-  type: 'select' | 'text' | 'textarea' | 'datetime';
+  type: 'select' | 'text' | 'textarea' | 'date';
   required?: boolean;
   defaultValue?: string;
   maxLength?: number;
@@ -16,12 +16,12 @@ export interface EccairsFieldConfig {
 export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   { 
     code: 433, 
-    label: 'Hendelsesdato (UTC)', 
+    label: 'Lokal dato', 
     taxonomyCode: '24',
-    format: 'timestamp_utc',
-    type: 'datetime',
+    format: 'local_date',
+    type: 'date',
     required: true,
-    helpText: 'Dato og tid for hendelsen i UTC',
+    helpText: 'Lokal dato for hendelsen (YYYY-MM-DD)',
     autoFromField: 'hendelsestidspunkt',
   },
   { 

@@ -249,37 +249,24 @@ export function EccairsMappingDialog({
                 ))}
               </div>
 
-              {/* Datetime fields */}
-              {ECCAIRS_FIELDS.filter(f => f.type === 'datetime').map(field => {
-                const isoValue = getFieldValue(field);
-                // Convert ISO to datetime-local format (YYYY-MM-DDTHH:mm)
-                const localValue = isoValue ? isoValue.slice(0, 16) : '';
-                return (
-                  <div key={makeFieldKey(field)} className="space-y-2">
-                    <Label>
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    {field.helpText && (
-                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                    )}
-                    <Input
-                      type="datetime-local"
-                      value={localValue}
-                      onChange={(e) => {
-                        // Convert datetime-local back to ISO UTC
-                        const dateVal = e.target.value;
-                        if (dateVal) {
-                          setFieldValue(field, new Date(dateVal).toISOString());
-                        } else {
-                          setFieldValue(field, null);
-                        }
-                      }}
-                      className="max-w-xs"
-                    />
-                  </div>
-                );
-              })}
+              {/* Date fields (local date only) */}
+              {ECCAIRS_FIELDS.filter(f => f.type === 'date').map(field => (
+                <div key={makeFieldKey(field)} className="space-y-2">
+                  <Label>
+                    {field.label}
+                    {field.required && <span className="text-destructive ml-1">*</span>}
+                  </Label>
+                  {field.helpText && (
+                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                  )}
+                  <Input
+                    type="date"
+                    value={getFieldValue(field)}
+                    onChange={(e) => setFieldValue(field, e.target.value || null)}
+                    className="max-w-xs"
+                  />
+                </div>
+              ))}
 
               {/* Text fields */}
               {ECCAIRS_FIELDS.filter(f => f.type === 'text').map(field => (
