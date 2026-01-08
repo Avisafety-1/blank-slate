@@ -11,6 +11,7 @@ interface Incident {
   beskrivelse: string | null;
   alvorlighetsgrad: string;
   lokasjon: string | null;
+  hendelsestidspunkt?: string;
 }
 
 export interface SuggestedMapping {
@@ -19,6 +20,7 @@ export interface SuggestedMapping {
   headline: string | null;
   narrative: string | null;
   location_name: string | null;
+  occurrence_date: string | null;
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
@@ -28,6 +30,9 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
     headline: incident.tittel?.slice(0, 500) || null,
     narrative: incident.beskrivelse || null,
     location_name: incident.lokasjon || null,
+    occurrence_date: incident.hendelsestidspunkt 
+      ? new Date(incident.hendelsestidspunkt).toISOString() 
+      : null,
   };
 }
 

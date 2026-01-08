@@ -1,18 +1,29 @@
-export type EccairsFormat = 'value_list_int_array' | 'text_content_array' | 'raw_json';
+export type EccairsFormat = 'value_list_int_array' | 'text_content_array' | 'raw_json' | 'timestamp_utc';
 
 export interface EccairsFieldConfig {
   code: number;
   label: string;
   taxonomyCode: string;
   format: EccairsFormat;
-  type: 'select' | 'text' | 'textarea';
+  type: 'select' | 'text' | 'textarea' | 'datetime';
   required?: boolean;
   defaultValue?: string;
   maxLength?: number;
   helpText?: string;
+  autoFromField?: string; // Field from incident to auto-populate
 }
 
 export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
+  { 
+    code: 433, 
+    label: 'Hendelsesdato (UTC)', 
+    taxonomyCode: '24',
+    format: 'timestamp_utc',
+    type: 'datetime',
+    required: true,
+    helpText: 'Dato og tid for hendelsen i UTC',
+    autoFromField: 'hendelsestidspunkt',
+  },
   { 
     code: 431, 
     label: 'Hendelsesklasse', 

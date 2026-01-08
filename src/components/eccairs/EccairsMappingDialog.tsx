@@ -26,6 +26,7 @@ interface Incident {
   lokasjon: string | null;
   kategori: string | null;
   company_id: string;
+  hendelsestidspunkt?: string;
 }
 
 interface EccairsMappingDialogProps {
@@ -108,7 +109,9 @@ export function EccairsMappingDialog({
     
     // Map suggestions to field values
     ECCAIRS_FIELDS.forEach(field => {
-      if (field.code === 431 && suggestions.occurrence_class) {
+      if (field.code === 433 && suggestions.occurrence_date) {
+        newValues[makeFieldKey(field)] = suggestions.occurrence_date;
+      } else if (field.code === 431 && suggestions.occurrence_class) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
       } else if (field.code === 17 && suggestions.aircraft_category) {
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
@@ -245,6 +248,38 @@ export function EccairsMappingDialog({
                   </div>
                 ))}
               </div>
+
+              {/* Datetime fields */}
+              {ECCAIRS_FIELDS.filter(f => f.type === 'datetime').map(field => {
+                const isoValue = getFieldValue(field);
+                // Convert ISO to datetime-local format (YYYY-MM-DDTHH:mm)
+                const localValue = isoValue ? isoValue.slice(0, 16) : '';
+                return (
+                  <div key={makeFieldKey(field)} className="space-y-2">
+                    <Label>
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {field.helpText && (
+                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                    )}
+                    <Input
+                      type="datetime-local"
+                      value={localValue}
+                      onChange={(e) => {
+                        // Convert datetime-local back to ISO UTC
+                        const dateVal = e.target.value;
+                        if (dateVal) {
+                          setFieldValue(field, new Date(dateVal).toISOString());
+                        } else {
+                          setFieldValue(field, null);
+                        }
+                      }}
+                      className="max-w-xs"
+                    />
+                  </div>
+                );
+              })}
 
               {/* Text fields */}
               {ECCAIRS_FIELDS.filter(f => f.type === 'text').map(field => (
