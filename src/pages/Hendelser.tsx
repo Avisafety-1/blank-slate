@@ -720,8 +720,8 @@ const Hendelser = () => {
     setEccairsExportingId(incidentId);
 
     try {
-      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts`, {
-        method: 'PUT',
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts/update`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
