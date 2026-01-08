@@ -719,7 +719,7 @@ const Hendelser = () => {
 
     setEccairsExportingId(incidentId);
 
-    const url = `${ECCAIRS_GATEWAY}/api/eccairs/drafts`;
+    const url = `${ECCAIRS_GATEWAY}/api/eccairs/drafts/update`;
     
     try {
       const res = await fetch(url, {
@@ -731,8 +731,7 @@ const Hendelser = () => {
         },
         body: JSON.stringify({ 
           incident_id: incidentId, 
-          environment: ECCAIRS_ENV,
-          mode: 'update'
+          environment: ECCAIRS_ENV
         }),
       });
 
