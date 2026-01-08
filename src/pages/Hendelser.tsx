@@ -705,7 +705,7 @@ const Hendelser = () => {
     }
   };
 
-  const updateEccairsDraft = async (incidentId: string, e2Id: string) => {
+  const updateEccairsDraft = async (incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
       toast.error("ECCAIRS gateway URL er ikke konfigurert");
       return;
@@ -719,8 +719,10 @@ const Hendelser = () => {
 
     setEccairsExportingId(incidentId);
 
+    const url = `${ECCAIRS_GATEWAY}/api/eccairs/drafts`;
+    
     try {
-      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts`, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -729,14 +731,20 @@ const Hendelser = () => {
         },
         body: JSON.stringify({ 
           incident_id: incidentId, 
-          e2_id: e2Id,
-          environment: ECCAIRS_ENV 
+          environment: ECCAIRS_ENV,
+          mode: 'update'
         }),
       });
 
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
+        console.error('ECCAIRS update failed:', {
+          url,
+          status: res.status,
+          response: json
+        });
+        
         const errorDetails = json?.details;
         if (Array.isArray(errorDetails) && errorDetails.length > 0) {
           errorDetails.forEach((d: { attribute_code?: number; message?: string }) => {
@@ -745,7 +753,7 @@ const Hendelser = () => {
           });
           return;
         }
-        throw new Error(json?.error || 'Kunne ikke oppdatere utkast');
+        throw new Error(json?.error || `Feil ${res.status}: Kunne ikke oppdatere utkast`);
       }
 
       await supabase
@@ -1049,7 +1057,7 @@ const Hendelser = () => {
                                     disabled={eccairsExportingId === incident.id}
                                     onClick={(e) => { 
                                       e.preventDefault(); 
-                                      updateEccairsDraft(incident.id, exp.e2_id!); 
+                                      updateEccairsDraft(incident.id); 
                                     }}
                                   >
                                     {eccairsExportingId === incident.id ? (
