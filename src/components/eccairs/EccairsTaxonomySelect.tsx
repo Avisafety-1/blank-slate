@@ -92,12 +92,14 @@ export function EccairsTaxonomySelect({
                   {(items || []).map((item) => (
                     <CommandItem
                       key={item.value_id}
-                      value={item.value_id}
-                      onSelect={() => {
+                      value={`${item.value_id}__${item.value_description}`}
+                      onSelect={(currentValue) => {
+                        // cmdk lowercases value, so we use the original item.value_id
                         onChange(item.value_id);
                         setOpen(false);
                         setSearch("");
                       }}
+                      className="cursor-pointer"
                     >
                       <Check
                         className={cn(
