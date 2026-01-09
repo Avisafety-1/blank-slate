@@ -75,7 +75,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 390, 
     label: 'Overskrift', 
     taxonomyCode: '24',
-    entityPath: null,
+    entityPath: '3', // Events entity
     format: 'value_list_int_array',
     type: 'select',
     required: false,
@@ -83,12 +83,12 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   },
   { 
     code: 391, 
-    label: 'Narrativ', 
+    label: 'Hendelsestype', 
     taxonomyCode: '24',
-    entityPath: null,
+    entityPath: '3', // Events entity
     format: 'value_list_int_array',
     type: 'select',
-    helpText: 'Velg narrativkategori fra ECCAIRS VL391-liste'
+    helpText: 'Velg hendelsestype fra ECCAIRS VL391-liste'
   },
 ];
 
