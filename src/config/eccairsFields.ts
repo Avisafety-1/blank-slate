@@ -73,22 +73,24 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   },
   { 
     code: 390, 
-    label: 'Overskrift', 
-    taxonomyCode: '24',
-    entityPath: '3', // Events entity
-    format: 'value_list_int_array',
-    type: 'select',
-    required: false,
-    helpText: 'Velg overskriftskategori fra ECCAIRS VL390-liste'
-  },
-  { 
-    code: 391, 
     label: 'Hendelsestype', 
     taxonomyCode: '24',
-    entityPath: '3', // Events entity
+    entityPath: null, // Top-level attribute
     format: 'value_list_int_array',
     type: 'select',
-    helpText: 'Velg hendelsestype fra ECCAIRS VL391-liste'
+    helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste'
+  },
+  { 
+    code: 601, 
+    label: 'Overskrift (Headline)', 
+    taxonomyCode: '24',
+    entityPath: null, // Top-level attribute
+    format: 'string_array',
+    type: 'text',
+    required: true,
+    maxLength: 500,
+    helpText: 'Kort beskrivelse av hendelsen på engelsk',
+    autoFromField: 'tittel'
   },
 ];
 
