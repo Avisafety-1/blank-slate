@@ -61,17 +61,18 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 390, 
     label: 'Overskrift', 
     taxonomyCode: '24',
-    format: 'text_content_array',
-    type: 'text',
-    maxLength: 500,
+    format: 'value_list_int_array',
+    type: 'select',
+    required: false,
+    helpText: 'Velg overskriftskategori fra ECCAIRS VL390-liste'
   },
   { 
     code: 391, 
     label: 'Narrativ', 
     taxonomyCode: '24',
-    format: 'text_content_array',
-    type: 'textarea',
-    helpText: 'Detaljert beskrivelse av hendelsen'
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'Velg narrativkategori fra ECCAIRS VL391-liste'
   },
 ];
 
