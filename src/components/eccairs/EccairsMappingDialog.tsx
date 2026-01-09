@@ -45,10 +45,11 @@ export function EccairsMappingDialog({
   const { attributes, getAttribute, isLoading, saveAllAttributes, isSaving } = 
     useIncidentEccairsAttributes(incident.id, open);
   
-  // Generic state: Record<`${code}_${taxonomyCode}`, value>
+  // Generic state: Record<`${code}_${taxonomyCode}_${entityPath}`, value>
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
 
-  const makeFieldKey = (field: EccairsFieldConfig) => `${field.code}_${field.taxonomyCode}`;
+  const makeFieldKey = (field: EccairsFieldConfig) => 
+    `${field.code}_${field.taxonomyCode}_${field.entityPath ?? 'top'}`;
 
   const setFieldValue = (field: EccairsFieldConfig, value: string | null) => {
     const key = makeFieldKey(field);
@@ -88,7 +89,7 @@ export function EccairsMappingDialog({
       
       // Then override with saved values
       ECCAIRS_FIELDS.forEach(field => {
-        const attr = getAttribute(field.code, field.taxonomyCode);
+        const attr = getAttribute(field.code, field.taxonomyCode, field.entityPath ?? null);
         if (attr) {
           const value = field.type === 'select' ? attr.value_id : attr.text_value;
           if (value) {
@@ -113,7 +114,8 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = suggestions.occurrence_date;
       } else if (field.code === 431 && suggestions.occurrence_class) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
-      } else if (field.code === 17 && suggestions.aircraft_category) {
+      } else if (field.code === 32 && suggestions.aircraft_category) {
+        // Changed from 17 to 32
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
       } else if (field.code === 390 && suggestions.headline) {
         newValues[makeFieldKey(field)] = suggestions.headline;
@@ -123,11 +125,6 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
     });
-    
-    // Also set location if available
-    if (suggestions.location_name) {
-      // Location is not in ECCAIRS_FIELDS currently, but could be added
-    }
     
     setFieldValues(newValues);
   };
@@ -149,6 +146,7 @@ export function EccairsMappingDialog({
           code: field.code,
           data: {
             taxonomy_code: field.taxonomyCode,
+            entity_path: field.entityPath ?? null,
             format: field.format,
             value_id: field.type === 'select' ? value : null,
             text_value: field.type !== 'select' ? value : null,
@@ -170,6 +168,11 @@ export function EccairsMappingDialog({
   const requiredFieldsFilled = ECCAIRS_FIELDS
     .filter(f => f.required)
     .every(f => !!getFieldValue(f));
+
+  // Helper to get the VL key for a field
+  const getVLKey = (field: EccairsFieldConfig): string => {
+    return `VL${field.code}`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -233,14 +236,19 @@ export function EccairsMappingDialog({
                 {ECCAIRS_FIELDS.filter(f => f.type === 'select').map(field => (
                   <div key={makeFieldKey(field)} className="space-y-2">
                     <Label>
-                      {field.label} (VL{field.code})
+                      {field.label} ({getVLKey(field)})
+                      {field.entityPath && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          Entity {field.entityPath}
+                        </Badge>
+                      )}
                       {field.required && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {field.helpText && (
                       <p className="text-xs text-muted-foreground">{field.helpText}</p>
                     )}
                     <EccairsTaxonomySelect
-                      valueListKey={`VL${field.code}`}
+                      valueListKey={getVLKey(field)}
                       value={getFieldValue(field) || null}
                       onChange={(val) => setFieldValue(field, val)}
                       placeholder={`Velg ${field.label.toLowerCase()}...`}

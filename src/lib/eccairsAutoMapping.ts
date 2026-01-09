@@ -2,8 +2,11 @@
 const SEVERITY_TO_OCCURRENCE_CLASS: Record<string, string> = {
   'Kritisk': '100',    // Accident
   'Høy': '200',        // Serious incident
+  'Alvorlig': '200',   // Serious incident
   'Middels': '300',    // Incident
+  'Moderat': '300',    // Incident
   'Lav': '400',        // Occurrence without safety effect
+  'Ubetydelig': '500', // Not determined
 };
 
 interface Incident {
@@ -16,7 +19,7 @@ interface Incident {
 
 export interface SuggestedMapping {
   occurrence_class: string | null;
-  aircraft_category: string;
+  aircraft_category: string;  // VL32 value (6 = RPAS)
   headline: string | null;
   narrative: string | null;
   location_name: string | null;
@@ -26,7 +29,7 @@ export interface SuggestedMapping {
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
   return {
     occurrence_class: SEVERITY_TO_OCCURRENCE_CLASS[incident.alvorlighetsgrad] || '500', // Not determined
-    aircraft_category: '104', // UAS / RPAS
+    aircraft_category: '6', // VL32: RPAS (changed from VL17:104)
     headline: incident.tittel?.slice(0, 500) || null,
     narrative: incident.beskrivelse || null,
     location_name: incident.lokasjon || null,

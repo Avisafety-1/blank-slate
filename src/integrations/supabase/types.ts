@@ -1434,6 +1434,7 @@ export type Database = {
         Row: {
           attribute_code: number
           created_at: string
+          entity_path: string | null
           format: string | null
           id: string
           incident_id: string
@@ -1447,6 +1448,7 @@ export type Database = {
         Insert: {
           attribute_code: number
           created_at?: string
+          entity_path?: string | null
           format?: string | null
           id?: string
           incident_id: string
@@ -1460,6 +1462,7 @@ export type Database = {
         Update: {
           attribute_code?: number
           created_at?: string
+          entity_path?: string | null
           format?: string | null
           id?: string
           incident_id?: string

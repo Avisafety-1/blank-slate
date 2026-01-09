@@ -7,6 +7,7 @@ export interface IncidentEccairsAttribute {
   incident_id: string;
   attribute_code: number;
   taxonomy_code: string;
+  entity_path: string | null;
   value_id: string | null;
   text_value: string | null;
   format: EccairsFormat | null;
@@ -17,12 +18,14 @@ export type AttributeData = {
   value_id?: string | null;
   text_value?: string | null;
   taxonomy_code?: string;
+  entity_path?: string | null;
   format?: EccairsFormat;
   payload_json?: any;
 };
 
-type AttributeKey = `${number}_${string}`;
-const makeKey = (code: number, taxonomy: string): AttributeKey => `${code}_${taxonomy}`;
+type AttributeKey = `${number}_${string}_${string}`;
+const makeKey = (code: number, taxonomy: string, entityPath: string | null): AttributeKey => 
+  `${code}_${taxonomy}_${entityPath ?? 'top'}`;
 
 export function useIncidentEccairsAttributes(incidentId: string, enabled = true) {
   const queryClient = useQueryClient();
@@ -39,7 +42,11 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
       
       const attributeMap: Record<AttributeKey, IncidentEccairsAttribute> = {};
       (data || []).forEach(row => {
-        const key = makeKey(row.attribute_code, row.taxonomy_code || '24');
+        const key = makeKey(
+          row.attribute_code, 
+          row.taxonomy_code || '24',
+          (row as any).entity_path ?? null
+        );
         attributeMap[key] = row as IncidentEccairsAttribute;
       });
       return attributeMap;
@@ -47,8 +54,8 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
     enabled,
   });
 
-  const getAttribute = (code: number, taxonomyCode = '24') => {
-    const key = makeKey(code, taxonomyCode);
+  const getAttribute = (code: number, taxonomyCode = '24', entityPath: string | null = null) => {
+    const key = makeKey(code, taxonomyCode, entityPath);
     return query.data?.[key] ?? null;
   };
 
@@ -61,6 +68,7 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
       data: AttributeData 
     }) => {
       const taxonomyCode = data.taxonomy_code ?? '24';
+      const entityPath = data.entity_path ?? null;
       
       const { error } = await supabase
         .from('incident_eccairs_attributes')
@@ -68,6 +76,7 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
           incident_id: incidentId,
           attribute_code: code,
           taxonomy_code: taxonomyCode,
+          entity_path: entityPath,
           value_id: data.value_id ?? null,
           text_value: data.text_value ?? null,
           format: data.format ?? null,
@@ -92,6 +101,7 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
         incident_id: incidentId,
         attribute_code: attr.code,
         taxonomy_code: attr.data.taxonomy_code ?? '24',
+        entity_path: attr.data.entity_path ?? null,
         value_id: attr.data.value_id ?? null,
         text_value: attr.data.text_value ?? null,
         format: attr.data.format ?? null,

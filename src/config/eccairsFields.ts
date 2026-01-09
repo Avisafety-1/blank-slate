@@ -1,4 +1,10 @@
-export type EccairsFormat = 'value_list_int_array' | 'text_content_array' | 'raw_json' | 'local_date';
+export type EccairsFormat = 
+  | 'value_list_int_array' 
+  | 'content_object_array'
+  | 'text_content_array' 
+  | 'string_array'
+  | 'raw_json' 
+  | 'local_date';
 
 export interface EccairsFieldConfig {
   code: number;
@@ -6,6 +12,7 @@ export interface EccairsFieldConfig {
   taxonomyCode: string;
   format: EccairsFormat;
   type: 'select' | 'text' | 'textarea' | 'date';
+  entityPath?: string | null; // null = top-level, "4" = Aircraft entity, etc.
   required?: boolean;
   defaultValue?: string;
   maxLength?: number;
@@ -18,6 +25,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 433, 
     label: 'Lokal dato', 
     taxonomyCode: '24',
+    entityPath: null,
     format: 'local_date',
     type: 'date',
     required: true,
@@ -28,6 +36,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 431, 
     label: 'Hendelsesklasse', 
     taxonomyCode: '24',
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     required: true,
@@ -35,32 +44,38 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   },
   { 
     code: 1072, 
-    label: 'Flyets fase', 
+    label: 'Deteksjonsfase', 
     taxonomyCode: '24',
-    format: 'value_list_int_array',
+    entityPath: null,
+    format: 'content_object_array', // E2 API requires [{"content": [N]}]
     type: 'select',
+    helpText: 'Fase da hendelsen ble oppdaget'
   },
   { 
-    code: 17, 
+    code: 32,  // Changed from 17! VL32 = Aircraft Category under Entity 4
     label: 'Luftfartøykategori', 
     taxonomyCode: '24',
+    entityPath: '4', // Aircraft entity
     format: 'value_list_int_array',
     type: 'select',
-    defaultValue: '104', // UAS/RPAS
+    defaultValue: '6', // RPAS (from VL32)
+    helpText: 'Kategori luftfartøy (VL32)'
   },
   { 
     code: 453, 
     label: 'Ansvarlig enhet', 
     taxonomyCode: '24',
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
-    defaultValue: '133', // Norway
+    defaultValue: '33', // Norway CAA
     helpText: 'CAA/stat ansvarlig for rapportering'
   },
   { 
     code: 390, 
     label: 'Overskrift', 
     taxonomyCode: '24',
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     required: false,
@@ -70,6 +85,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 391, 
     label: 'Narrativ', 
     taxonomyCode: '24',
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     helpText: 'Velg narrativkategori fra ECCAIRS VL391-liste'
