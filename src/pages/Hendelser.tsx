@@ -9,7 +9,7 @@ import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog"
 import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -775,6 +775,73 @@ const Hendelser = () => {
     }
   };
 
+  const deleteEccairsDraft = async (incidentId: string) => {
+    if (!ECCAIRS_GATEWAY) {
+      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      return;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      toast.error("Du må være logget inn");
+      return;
+    }
+
+    const exp = eccairsExports[incidentId];
+    if (!exp?.e2_id) {
+      toast.error("Ingen E2 ID funnet");
+      return;
+    }
+
+    if (!confirm(`Er du sikker på at du vil slette ECCAIRS-utkast ${exp.e2_id}?`)) {
+      return;
+    }
+
+    setEccairsExportingId(incidentId);
+
+    try {
+      const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/drafts/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
+        },
+        body: JSON.stringify({ 
+          e2_id: exp.e2_id,
+          environment: ECCAIRS_ENV 
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `Feil ${res.status}: Kunne ikke slette utkast`);
+      }
+
+      // Oppdater lokal database - marker som slettet
+      await supabase
+        .from('eccairs_exports')
+        .delete()
+        .eq('incident_id', incidentId)
+        .eq('environment', ECCAIRS_ENV);
+
+      // Oppdater state - fjern fra exports
+      setEccairsExports(prev => {
+        const updated = { ...prev };
+        delete updated[incidentId];
+        return updated;
+      });
+
+      toast.success(`ECCAIRS-utkast ${exp.e2_id} slettet`);
+    } catch (err: any) {
+      console.error('ECCAIRS delete failed', err);
+      toast.error(`Kunne ikke slette utkast: ${err?.message}`);
+    } finally {
+      setEccairsExportingId(null);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -1079,6 +1146,22 @@ const Hendelser = () => {
                                     }}
                                   >
                                     Send inn til ECCAIRS
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={eccairsExportingId === incident.id}
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      deleteEccairsDraft(incident.id); 
+                                    }}
+                                  >
+                                    {eccairsExportingId === incident.id ? (
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                    )}
+                                    Slett utkast
                                   </Button>
                                 </>
                               )}
