@@ -33,6 +33,18 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     autoFromField: 'hendelsestidspunkt',
   },
   { 
+    code: 601, 
+    label: 'Overskrift (Headline)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'string_array',
+    type: 'text',
+    required: true,
+    maxLength: 500,
+    helpText: 'Kort beskrivelse av hendelsen på engelsk (fylles automatisk fra tittel)',
+    autoFromField: 'tittel'
+  },
+  { 
     code: 431, 
     label: 'Hendelsesklasse', 
     taxonomyCode: '24',
@@ -47,18 +59,18 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'Deteksjonsfase', 
     taxonomyCode: '24',
     entityPath: null,
-    format: 'content_object_array', // E2 API requires [{"content": [N]}]
+    format: 'content_object_array',
     type: 'select',
     helpText: 'Fase da hendelsen ble oppdaget'
   },
   { 
-    code: 32,  // Changed from 17! VL32 = Aircraft Category under Entity 4
+    code: 32,
     label: 'Luftfartøykategori', 
     taxonomyCode: '24',
-    entityPath: '4', // Aircraft entity
+    entityPath: '4',
     format: 'value_list_int_array',
     type: 'select',
-    defaultValue: '6', // RPAS (from VL32)
+    defaultValue: '6',
     helpText: 'Kategori luftfartøy (VL32)'
   },
   { 
@@ -68,29 +80,17 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
-    defaultValue: '33', // Norway CAA
+    defaultValue: '33',
     helpText: 'CAA/stat ansvarlig for rapportering'
   },
   { 
     code: 390, 
     label: 'Hendelsestype', 
     taxonomyCode: '24',
-    entityPath: null, // Top-level attribute
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste'
-  },
-  { 
-    code: 601, 
-    label: 'Overskrift (Headline)', 
-    taxonomyCode: '24',
-    entityPath: null, // Top-level attribute
-    format: 'string_array',
-    type: 'text',
-    required: true,
-    maxLength: 500,
-    helpText: 'Kort beskrivelse av hendelsen på engelsk',
-    autoFromField: 'tittel'
   },
 ];
 
