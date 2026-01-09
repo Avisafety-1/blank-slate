@@ -112,15 +112,15 @@ export function EccairsMappingDialog({
     ECCAIRS_FIELDS.forEach(field => {
       if (field.code === 433 && suggestions.occurrence_date) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_date;
+      } else if (field.code === 601 && incident.tittel) {
+        // Auto-fill headline from incident title
+        newValues[makeFieldKey(field)] = incident.tittel;
       } else if (field.code === 431 && suggestions.occurrence_class) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
       } else if (field.code === 32 && suggestions.aircraft_category) {
-        // Changed from 17 to 32
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
       } else if (field.code === 390 && suggestions.headline) {
         newValues[makeFieldKey(field)] = suggestions.headline;
-      } else if (field.code === 391 && suggestions.narrative) {
-        newValues[makeFieldKey(field)] = suggestions.narrative;
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
