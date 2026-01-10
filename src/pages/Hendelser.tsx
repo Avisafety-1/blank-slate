@@ -75,7 +75,7 @@ async function getAccessToken() {
   return session?.access_token || null;
 }
 
-type EccairsExportStatus = 'pending' | 'draft_created' | 'submitted' | 'failed';
+type EccairsExportStatus = 'pending' | 'draft_created' | 'draft_updated' | 'submitted' | 'failed';
 
 type EccairsExport = {
   id: string;
@@ -95,6 +95,7 @@ const getEccairsStatusLabel = (status?: string): string => {
   switch (status) {
     case 'pending': return 'Venter';
     case 'draft_created': return 'Utkast opprettet';
+    case 'draft_updated': return 'Utkast oppdatert';
     case 'submitted': return 'Sendt';
     case 'failed': return 'Feilet';
     default: return 'Ikke eksportert';
@@ -106,6 +107,7 @@ const getEccairsStatusClass = (status?: string): string => {
     case 'pending':
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
     case 'draft_created':
+    case 'draft_updated':
       return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
     case 'submitted':
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
