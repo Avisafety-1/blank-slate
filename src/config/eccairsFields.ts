@@ -92,6 +92,15 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'select',
     helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste'
   },
+  { 
+    code: 451, 
+    label: 'Skadegrad (Injury Level)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'Alvorlighetsgrad på personskade (VL451)'
+  },
 ];
 
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {
