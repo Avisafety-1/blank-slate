@@ -150,6 +150,26 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'select',
     helpText: 'Alvorlighetsgrad på personskade (VL451)'
   },
+  { 
+    code: 424, 
+    label: 'Narrativspråk', 
+    taxonomyCode: '24',
+    entityPath: '22',
+    format: 'value_list_int_array',
+    type: 'select',
+    defaultValue: '43',
+    helpText: 'Språket narrativet er skrevet på (VL424) - Norwegian = 43'
+  },
+  { 
+    code: 425, 
+    label: 'Narrativ (beskrivelse)', 
+    taxonomyCode: '24',
+    entityPath: '22',
+    format: 'text_content_array',
+    type: 'textarea',
+    helpText: 'Detaljert beskrivelse av hendelsen',
+    autoFromField: 'beskrivelse'
+  },
 ];
 
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {

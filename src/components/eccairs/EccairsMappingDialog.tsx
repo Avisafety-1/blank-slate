@@ -153,6 +153,12 @@ export function EccairsMappingDialog({
         // Auto-fill state/area based on postcode from lokasjon
         // Store as JSON array string for content_object_array format
         newValues[makeFieldKey(field)] = JSON.stringify(suggestions.state_area);
+      } else if (field.code === 424) {
+        // Default narrative language to Norwegian (43)
+        newValues[makeFieldKey(field)] = '43';
+      } else if (field.code === 425 && incident.beskrivelse) {
+        // Auto-fill narrative text from incident description
+        newValues[makeFieldKey(field)] = incident.beskrivelse;
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
