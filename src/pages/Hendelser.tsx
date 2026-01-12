@@ -1117,7 +1117,7 @@ const Hendelser = () => {
                                   Åpne i ECCAIRS
                                 </Button>
                               )}
-                              {exp?.status === 'draft_created' && exp?.e2_id && (
+                              {(exp?.status === 'draft_created' || exp?.status === 'draft_updated') && exp?.e2_id && (
                                 <>
                                   <Button
                                     variant="outline"
