@@ -136,10 +136,10 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 390, 
     label: 'Hendelsestype', 
     taxonomyCode: '24',
-    entityPath: null,
+    entityPath: '14',
     format: 'value_list_int_array',
     type: 'select',
-    helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste'
+    helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)'
   },
   { 
     code: 451, 
