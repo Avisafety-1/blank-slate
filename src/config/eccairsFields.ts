@@ -154,7 +154,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 438, 
     label: 'Lokalt hendelsesnummer (File Number)', 
     taxonomyCode: '24',
-    entityPath: null,
+    entityPath: '53',
     format: 'string_array',
     type: 'text',
     maxLength: 50,
