@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
+import { EccairsMultiSelect } from "./EccairsMultiSelect";
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { ECCAIRS_FIELDS, EccairsFieldConfig } from "@/config/eccairsFields";
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
@@ -59,6 +60,18 @@ export function EccairsMappingDialog({
   const getFieldValue = (field: EccairsFieldConfig): string => {
     const key = makeFieldKey(field);
     return fieldValues[key] ?? field.defaultValue ?? '';
+  };
+
+  // Parse multi-select value from JSON string to array
+  const parseMultiSelectValue = (value: string): string[] | null => {
+    if (!value) return null;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      // If not valid JSON, treat as single value
+      return value ? [value] : null;
+    }
   };
 
   // Get occurrence class for display (code 431)
@@ -252,28 +265,41 @@ export function EccairsMappingDialog({
               <h4 className="font-medium text-sm text-muted-foreground">ECCAIRS-klassifisering</h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ECCAIRS_FIELDS.filter(f => f.type === 'select').map(field => (
-                  <div key={makeFieldKey(field)} className="space-y-2">
-                    <Label>
-                      {field.label} ({getVLKey(field)})
-                      {field.entityPath && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          Entity {field.entityPath}
-                        </Badge>
+                {ECCAIRS_FIELDS.filter(f => f.type === 'select').map(field => {
+                  const isMultiSelect = field.format === 'content_object_array';
+                  
+                  return (
+                    <div key={makeFieldKey(field)} className="space-y-2">
+                      <Label>
+                        {field.label} ({getVLKey(field)})
+                        {field.entityPath && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Entity {field.entityPath}
+                          </Badge>
+                        )}
+                        {field.required && <span className="text-destructive ml-1">*</span>}
+                      </Label>
+                      {field.helpText && (
+                        <p className="text-xs text-muted-foreground">{field.helpText}</p>
                       )}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    {field.helpText && (
-                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                    )}
-                    <EccairsTaxonomySelect
-                      valueListKey={getVLKey(field)}
-                      value={getFieldValue(field) || null}
-                      onChange={(val) => setFieldValue(field, val)}
-                      placeholder={`Velg ${field.label.toLowerCase()}...`}
-                    />
-                  </div>
-                ))}
+                      {isMultiSelect ? (
+                        <EccairsMultiSelect
+                          valueListKey={getVLKey(field)}
+                          value={parseMultiSelectValue(getFieldValue(field))}
+                          onChange={(vals) => setFieldValue(field, JSON.stringify(vals))}
+                          placeholder={`Velg ${field.label.toLowerCase()}...`}
+                        />
+                      ) : (
+                        <EccairsTaxonomySelect
+                          valueListKey={getVLKey(field)}
+                          value={getFieldValue(field) || null}
+                          onChange={(val) => setFieldValue(field, val)}
+                          placeholder={`Velg ${field.label.toLowerCase()}...`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Date fields (local date only) */}
