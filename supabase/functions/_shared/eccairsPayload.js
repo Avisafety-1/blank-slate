@@ -239,7 +239,13 @@ function selectionToE2Value(sel) {
     return [sel.text];
   }
 
-  // 6. Local time (457) - format HH:MM eller HH:MM:SS
+  // 6. UTC date (477) - same format as local_date
+  if (sel.format === "utc_date") {
+    if (!sel.text) return null;
+    return [sel.text];
+  }
+
+  // 7. Local time (457) - format HH:MM eller HH:MM:SS
   if (sel.format === "local_time" || sel.format === "time_array") {
     if (!sel.text) return null;
     // Sørg for HH:MM:SS format hvis bare HH:MM
@@ -250,7 +256,7 @@ function selectionToE2Value(sel) {
     return [timeValue];
   }
 
-  // 7. String array (440 Location Name, 601 Headline, etc.)
+  // 8. String array (440 Location Name, 601 Headline, etc.)
   if (sel.format === "string_array") {
     if (!sel.text) return null;
     return [sel.text];

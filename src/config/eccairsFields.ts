@@ -5,14 +5,16 @@ export type EccairsFormat =
   | 'string_array'
   | 'raw_json' 
   | 'local_date'
-  | 'local_time';
+  | 'local_time'
+  | 'utc_date';
 
 export interface EccairsFieldConfig {
   code: number;
   label: string;
   taxonomyCode: string;
   format: EccairsFormat;
-  type: 'select' | 'text' | 'textarea' | 'date' | 'time';
+  type: 'select' | 'text' | 'textarea' | 'date' | 'time' | 'hidden';
+  deriveFrom?: number; // Attribute code to derive value from
   entityPath?: string | null; // null = top-level, "4" = Aircraft entity, etc.
   required?: boolean;
   defaultValue?: string;
@@ -32,6 +34,16 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     required: true,
     helpText: 'Lokal dato for hendelsen (YYYY-MM-DD)',
     autoFromField: 'hendelsestidspunkt',
+  },
+  { 
+    code: 477, 
+    label: 'UTC dato', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'utc_date',
+    type: 'hidden',
+    deriveFrom: 433,
+    helpText: 'UTC-dato beregnet fra lokal dato',
   },
   { 
     code: 457, 
