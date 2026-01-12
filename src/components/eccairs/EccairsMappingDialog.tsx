@@ -28,6 +28,7 @@ interface Incident {
   kategori: string | null;
   company_id: string;
   hendelsestidspunkt?: string;
+  incident_number?: string | null;
 }
 
 interface EccairsMappingDialogProps {
@@ -153,6 +154,9 @@ export function EccairsMappingDialog({
         // Auto-fill state/area based on postcode from lokasjon
         // Store as JSON array string for content_object_array format
         newValues[makeFieldKey(field)] = JSON.stringify(suggestions.state_area);
+      } else if (field.code === 438 && incident.incident_number) {
+        // Auto-fill file number from incident_number
+        newValues[makeFieldKey(field)] = incident.incident_number;
       } else if (field.code === 424) {
         // Default narrative language to Norwegian (43)
         newValues[makeFieldKey(field)] = '43';
