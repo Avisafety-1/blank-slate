@@ -112,9 +112,24 @@ export function EccairsMappingDialog({
     ECCAIRS_FIELDS.forEach(field => {
       if (field.code === 433 && suggestions.occurrence_date) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_date;
+      } else if (field.code === 457 && incident.hendelsestidspunkt) {
+        // Auto-fill local time from hendelsestidspunkt
+        try {
+          const time = new Date(incident.hendelsestidspunkt).toLocaleTimeString('no-NO', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          });
+          newValues[makeFieldKey(field)] = time;
+        } catch {
+          // Ignore parse errors
+        }
       } else if (field.code === 601 && incident.tittel) {
         // Auto-fill headline from incident title
         newValues[makeFieldKey(field)] = incident.tittel;
+      } else if (field.code === 440 && incident.lokasjon) {
+        // Auto-fill location name from lokasjon
+        newValues[makeFieldKey(field)] = incident.lokasjon;
       } else if (field.code === 431 && suggestions.occurrence_class) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
       } else if (field.code === 32 && suggestions.aircraft_category) {
@@ -258,23 +273,44 @@ export function EccairsMappingDialog({
               </div>
 
               {/* Date fields (local date only) */}
-              {ECCAIRS_FIELDS.filter(f => f.type === 'date').map(field => (
-                <div key={makeFieldKey(field)} className="space-y-2">
-                  <Label>
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                  {field.helpText && (
-                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                  )}
-                  <Input
-                    type="date"
-                    value={getFieldValue(field)}
-                    onChange={(e) => setFieldValue(field, e.target.value || null)}
-                    className="max-w-xs"
-                  />
-                </div>
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {ECCAIRS_FIELDS.filter(f => f.type === 'date').map(field => (
+                  <div key={makeFieldKey(field)} className="space-y-2">
+                    <Label>
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {field.helpText && (
+                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                    )}
+                    <Input
+                      type="date"
+                      value={getFieldValue(field)}
+                      onChange={(e) => setFieldValue(field, e.target.value || null)}
+                      className="max-w-xs"
+                    />
+                  </div>
+                ))}
+
+                {/* Time fields (local time) */}
+                {ECCAIRS_FIELDS.filter(f => f.type === 'time').map(field => (
+                  <div key={makeFieldKey(field)} className="space-y-2">
+                    <Label>
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {field.helpText && (
+                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                    )}
+                    <Input
+                      type="time"
+                      value={getFieldValue(field)}
+                      onChange={(e) => setFieldValue(field, e.target.value || null)}
+                      className="max-w-xs"
+                    />
+                  </div>
+                ))}
+              </div>
 
               {/* Text fields */}
               {ECCAIRS_FIELDS.filter(f => f.type === 'text').map(field => (

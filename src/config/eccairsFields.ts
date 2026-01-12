@@ -4,14 +4,15 @@ export type EccairsFormat =
   | 'text_content_array' 
   | 'string_array'
   | 'raw_json' 
-  | 'local_date';
+  | 'local_date'
+  | 'local_time';
 
 export interface EccairsFieldConfig {
   code: number;
   label: string;
   taxonomyCode: string;
   format: EccairsFormat;
-  type: 'select' | 'text' | 'textarea' | 'date';
+  type: 'select' | 'text' | 'textarea' | 'date' | 'time';
   entityPath?: string | null; // null = top-level, "4" = Aircraft entity, etc.
   required?: boolean;
   defaultValue?: string;
@@ -33,6 +34,16 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     autoFromField: 'hendelsestidspunkt',
   },
   { 
+    code: 457, 
+    label: 'Lokal tid', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'local_time',
+    type: 'time',
+    helpText: 'Klokkeslett for hendelsen (HH:MM)',
+    autoFromField: 'hendelsestidspunkt',
+  },
+  { 
     code: 601, 
     label: 'Overskrift (Headline)', 
     taxonomyCode: '24',
@@ -45,6 +56,17 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     autoFromField: 'tittel'
   },
   { 
+    code: 440, 
+    label: 'Stedsnavn (Location Name)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'string_array',
+    type: 'text',
+    maxLength: 200,
+    helpText: 'Navn på stedet hvor hendelsen skjedde',
+    autoFromField: 'lokasjon'
+  },
+  { 
     code: 431, 
     label: 'Hendelsesklasse', 
     taxonomyCode: '24',
@@ -53,6 +75,15 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'select',
     required: true,
     helpText: 'Obligatorisk for alle ECCAIRS-rapporter'
+  },
+  { 
+    code: 430, 
+    label: 'Hendelseskategori (CICTT)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'CICTT-kategori som CFIT, LOC-I, MAC, etc. (VL430)'
   },
   { 
     code: 1072, 
@@ -80,8 +111,26 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
-    defaultValue: '33',
-    helpText: 'CAA/stat ansvarlig for rapportering'
+    defaultValue: '133',
+    helpText: 'CAA/stat ansvarlig for rapportering (Norge = 133)'
+  },
+  { 
+    code: 454, 
+    label: 'Stat/område for hendelse', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'Land/region hvor hendelsen skjedde (VL454)'
+  },
+  { 
+    code: 456, 
+    label: 'Tredjepart berørt', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'Om tredjepart ble berørt av hendelsen (VL456)'
   },
   { 
     code: 390, 
