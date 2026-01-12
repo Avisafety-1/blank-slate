@@ -119,7 +119,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'Stat/område for hendelse', 
     taxonomyCode: '24',
     entityPath: null,
-    format: 'value_list_int_array',
+    format: 'content_object_array',
     type: 'select',
     helpText: 'Land/region hvor hendelsen skjedde (VL454)'
   },
