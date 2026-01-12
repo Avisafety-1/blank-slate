@@ -136,6 +136,10 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
       } else if (field.code === 390 && suggestions.headline) {
         newValues[makeFieldKey(field)] = suggestions.headline;
+      } else if (field.code === 454 && suggestions.state_area) {
+        // Auto-fill state/area based on postcode from lokasjon
+        // Store as JSON array string for content_object_array format
+        newValues[makeFieldKey(field)] = JSON.stringify(suggestions.state_area);
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
