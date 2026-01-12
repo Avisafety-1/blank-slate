@@ -178,10 +178,22 @@ export function EccairsMappingDialog({
 
   const handleSave = async () => {
     try {
+      // First, derive hidden fields from their source fields
+      const derivedValues = { ...fieldValues };
+      ECCAIRS_FIELDS.filter(f => f.type === 'hidden' && f.deriveFrom).forEach(field => {
+        const sourceField = ECCAIRS_FIELDS.find(f => f.code === field.deriveFrom);
+        if (sourceField) {
+          const sourceValue = derivedValues[makeFieldKey(sourceField)] ?? sourceField.defaultValue ?? '';
+          if (sourceValue) {
+            derivedValues[makeFieldKey(field)] = sourceValue;
+          }
+        }
+      });
+
       const attributesToSave: Array<{ code: number; data: AttributeData }> = [];
       
       ECCAIRS_FIELDS.forEach(field => {
-        const value = getFieldValue(field);
+        const value = derivedValues[makeFieldKey(field)] ?? field.defaultValue ?? '';
         if (!value) return;
         
         attributesToSave.push({
@@ -275,7 +287,7 @@ export function EccairsMappingDialog({
               <h4 className="font-medium text-sm text-muted-foreground">ECCAIRS-klassifisering</h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ECCAIRS_FIELDS.filter(f => f.type === 'select').map(field => {
+                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'select').map(field => {
                   const isMultiSelect = field.format === 'content_object_array';
                   
                   return (
@@ -314,7 +326,7 @@ export function EccairsMappingDialog({
 
               {/* Date fields (local date only) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ECCAIRS_FIELDS.filter(f => f.type === 'date').map(field => (
+                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'date').map(field => (
                   <div key={makeFieldKey(field)} className="space-y-2">
                     <Label>
                       {field.label}
@@ -333,7 +345,7 @@ export function EccairsMappingDialog({
                 ))}
 
                 {/* Time fields (local time) */}
-                {ECCAIRS_FIELDS.filter(f => f.type === 'time').map(field => (
+                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'time').map(field => (
                   <div key={makeFieldKey(field)} className="space-y-2">
                     <Label>
                       {field.label}
@@ -353,7 +365,7 @@ export function EccairsMappingDialog({
               </div>
 
               {/* Text fields */}
-              {ECCAIRS_FIELDS.filter(f => f.type === 'text').map(field => (
+              {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'text').map(field => (
                 <div key={makeFieldKey(field)} className="space-y-2">
                   <Label>
                     {field.label}
@@ -379,7 +391,7 @@ export function EccairsMappingDialog({
               ))}
 
               {/* Textarea fields */}
-              {ECCAIRS_FIELDS.filter(f => f.type === 'textarea').map(field => (
+              {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'textarea').map(field => (
                 <div key={makeFieldKey(field)} className="space-y-2">
                   <Label>
                     {field.label}
