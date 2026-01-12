@@ -151,6 +151,17 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Alvorlighetsgrad på personskade (VL451)'
   },
   { 
+    code: 438, 
+    label: 'Lokalt hendelsesnummer (File Number)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'string_array',
+    type: 'text',
+    maxLength: 50,
+    helpText: 'Lokalt referansenummer for hendelsen (autogenerert)',
+    autoFromField: 'incident_number'
+  },
+  { 
     code: 424, 
     label: 'Narrativspråk', 
     taxonomyCode: '24',
