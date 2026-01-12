@@ -118,6 +118,14 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 }
 
 // -------------------------
+// Entity path overrides - attributter som alltid må ligge under en spesifikk entitet
+// -------------------------
+const ENTITY_PATH_OVERRIDES = {
+  '390': '14',  // Event_Type -> Events entity (Entity 14)
+  '32': '4',    // Aircraft Category -> Aircraft entity (Entity 4)
+};
+
+// -------------------------
 // Build selections fra incident_eccairs_attributes
 // -------------------------
 async function buildSelections({ supabase, incident_id, company_id }) {
@@ -135,7 +143,7 @@ async function buildSelections({ supabase, incident_id, company_id }) {
         valueId: ensureString(r.value_id),
         text: ensureString(r.text_value),
         raw: r.payload_json || null,
-        entity_path: r.entity_path || null,
+        entity_path: r.entity_path || ENTITY_PATH_OVERRIDES[code] || null,
       });
     }
     return { source: "incident_eccairs_attributes", selections };
