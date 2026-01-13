@@ -23,6 +23,15 @@ export type AttributeData = {
   payload_json?: any;
 };
 
+// Attributes that must always be at top-level (Entity 24)
+const FORCE_TOP_LEVEL_CODES = new Set([432, 448]);
+
+// Helper to coerce entity_path to null for top-level attributes
+const coerceEntityPath = (code: number, entityPath: string | null | undefined): string | null => {
+  if (FORCE_TOP_LEVEL_CODES.has(code)) return null;
+  return entityPath ?? null;
+};
+
 type AttributeKey = `${number}_${string}_${string}`;
 const makeKey = (code: number, taxonomy: string, entityPath: string | null): AttributeKey => 
   `${code}_${taxonomy}_${entityPath ?? 'top'}`;
@@ -68,7 +77,7 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
       data: AttributeData 
     }) => {
       const taxonomyCode = data.taxonomy_code ?? '24';
-      const entityPath = data.entity_path ?? null;
+      const entityPath = coerceEntityPath(code, data.entity_path);
       
       const { error } = await supabase
         .from('incident_eccairs_attributes')
@@ -101,7 +110,7 @@ export function useIncidentEccairsAttributes(incidentId: string, enabled = true)
         incident_id: incidentId,
         attribute_code: attr.code,
         taxonomy_code: attr.data.taxonomy_code ?? '24',
-        entity_path: attr.data.entity_path ?? null,
+        entity_path: coerceEntityPath(attr.code, attr.data.entity_path),
         value_id: attr.data.value_id ?? null,
         text_value: attr.data.text_value ?? null,
         format: attr.data.format ?? null,

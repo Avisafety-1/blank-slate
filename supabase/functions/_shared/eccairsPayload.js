@@ -126,6 +126,11 @@ const ENTITY_PATH_OVERRIDES = {
 };
 
 // -------------------------
+// Attributes that must ALWAYS be at top-level (Entity 24) regardless of DB value
+// -------------------------
+const FORCE_TOP_LEVEL = new Set(['432', '448']);
+
+// -------------------------
 // Build selections fra incident_eccairs_attributes
 // -------------------------
 async function buildSelections({ supabase, incident_id, company_id }) {
@@ -136,6 +141,15 @@ async function buildSelections({ supabase, incident_id, company_id }) {
     for (const r of generic) {
       const code = toAttributeCode(r.attribute_code);
       if (!code) continue;
+      
+      // Force certain attributes to top-level, ignoring any stored entity_path
+      let entityPath;
+      if (FORCE_TOP_LEVEL.has(code)) {
+        entityPath = null;
+      } else {
+        entityPath = r.entity_path || ENTITY_PATH_OVERRIDES[code] || null;
+      }
+      
       selections.push({
         code,
         taxonomy_code: ensureString(r.taxonomy_code) || "24",
@@ -143,7 +157,7 @@ async function buildSelections({ supabase, incident_id, company_id }) {
         valueId: ensureString(r.value_id),
         text: ensureString(r.text_value),
         raw: r.payload_json || null,
-        entity_path: r.entity_path || ENTITY_PATH_OVERRIDES[code] || null,
+        entity_path: entityPath,
       });
     }
     return { source: "incident_eccairs_attributes", selections };
