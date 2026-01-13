@@ -180,7 +180,7 @@ export function EccairsAttachmentUpload({
         const fileName = item.document.fil_navn || 'document';
         formData.append('files', fileData, fileName);
         formData.append('attributePath', '24.ATTRIBUTES.793');
-        formData.append('versionType', 'MINOR');
+        formData.append('versionType', 'DRAFT');
 
         const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/attachments/${encodeURIComponent(e2Id)}`, {
           method: 'POST',
