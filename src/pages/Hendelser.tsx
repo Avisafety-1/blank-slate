@@ -39,6 +39,7 @@ type Incident = {
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
   incident_number: string | null;
+  drone_serial_number?: string | null;
 };
 
 type IncidentComment = {
@@ -1075,9 +1076,25 @@ const Hendelser = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={(e) => { 
+                                onClick={async (e) => { 
                                   e.preventDefault();
-                                  setEccairsMappingIncident(incident);
+                                  // Fetch drone serial number if incident has a mission
+                                  let droneSerialNumber: string | null = null;
+                                  if (incident.mission_id) {
+                                    const { data: missionDrones } = await supabase
+                                      .from('mission_drones')
+                                      .select('drone_id, drones(serienummer)')
+                                      .eq('mission_id', incident.mission_id)
+                                      .limit(1);
+                                    if (missionDrones && missionDrones.length > 0) {
+                                      const drone = missionDrones[0].drones as any;
+                                      droneSerialNumber = drone?.serienummer || null;
+                                    }
+                                  }
+                                  setEccairsMappingIncident({
+                                    ...incident,
+                                    drone_serial_number: droneSerialNumber
+                                  });
                                   setEccairsMappingDialogOpen(true);
                                 }}
                               >

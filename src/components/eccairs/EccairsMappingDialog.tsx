@@ -29,6 +29,8 @@ interface Incident {
   company_id: string;
   hendelsestidspunkt?: string;
   incident_number?: string | null;
+  mission_id?: string | null;
+  drone_serial_number?: string | null;
 }
 
 interface EccairsMappingDialogProps {
@@ -163,6 +165,9 @@ export function EccairsMappingDialog({
       } else if (field.code === 425 && incident.beskrivelse) {
         // Auto-fill narrative text from incident description
         newValues[makeFieldKey(field)] = incident.beskrivelse;
+      } else if (field.code === 244 && incident.drone_serial_number) {
+        // Auto-fill aircraft serial number from drone
+        newValues[makeFieldKey(field)] = incident.drone_serial_number;
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
