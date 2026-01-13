@@ -153,15 +153,26 @@ export function EccairsAttachmentUpload({
           throw new Error('Ingen fil-URL');
         }
 
-        // Extract path from fil_url - it should be the storage path
-        const filePath = item.document.fil_url;
-        
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('documents')
-          .download(filePath);
+        let fileData: Blob;
 
-        if (downloadError) {
-          throw new Error(`Kunne ikke laste ned fil: ${downloadError.message}`);
+        // Check if fil_url is a full URL or relative path
+        if (item.document.fil_url.startsWith('http')) {
+          // Full URL - use fetch directly
+          const response = await fetch(item.document.fil_url);
+          if (!response.ok) {
+            throw new Error(`Kunne ikke laste ned fil: HTTP ${response.status}`);
+          }
+          fileData = await response.blob();
+        } else {
+          // Relative path - use Supabase storage
+          const { data, error: downloadError } = await supabase.storage
+            .from('documents')
+            .download(item.document.fil_url);
+
+          if (downloadError || !data) {
+            throw new Error(`Kunne ikke laste ned fil: ${downloadError?.message || 'Ukjent feil'}`);
+          }
+          fileData = data;
         }
 
         // Create FormData and upload to ECCAIRS
