@@ -117,6 +117,17 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Kategori luftfartøy (VL32)'
   },
   { 
+    code: 244,
+    label: 'Serienummer (Aircraft Serial Number)', 
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'string_array',
+    type: 'text',
+    maxLength: 100,
+    helpText: 'Dronens serienummer (hentes automatisk fra tilknyttet oppdrag)',
+    autoFromField: 'drone_serial_number'
+  },
+  { 
     code: 453, 
     label: 'Ansvarlig enhet', 
     taxonomyCode: '24',
