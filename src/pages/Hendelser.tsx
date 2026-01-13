@@ -7,9 +7,10 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
+import { EccairsAttachmentUpload } from "@/components/eccairs/EccairsAttachmentUpload";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -143,6 +144,8 @@ const Hendelser = () => {
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
   const [eccairsMappingDialogOpen, setEccairsMappingDialogOpen] = useState(false);
   const [eccairsMappingIncident, setEccairsMappingIncident] = useState<Incident | null>(null);
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
+  const [attachmentIncident, setAttachmentIncident] = useState<{ id: string; e2Id: string } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -1122,17 +1125,31 @@ const Hendelser = () => {
                                 </Button>
                               )}
                               {exp?.e2_id && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    openInEccairs(exp.e2_id!); 
-                                  }}
-                                >
-                                  <ExternalLink className="w-4 h-4 mr-2" />
-                                  Åpne i ECCAIRS
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      openInEccairs(exp.e2_id!); 
+                                    }}
+                                  >
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Åpne i ECCAIRS
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      setAttachmentIncident({ id: incident.id, e2Id: exp.e2_id! });
+                                      setAttachmentDialogOpen(true);
+                                    }}
+                                  >
+                                    <Paperclip className="w-4 h-4 mr-2" />
+                                    Vedlegg
+                                  </Button>
+                                </>
                               )}
                               {(exp?.status === 'draft_created' || exp?.status === 'draft_updated') && exp?.e2_id && (
                                 <>
@@ -1266,6 +1283,18 @@ const Hendelser = () => {
           onOpenChange={(open) => {
             setEccairsMappingDialogOpen(open);
             if (!open) setEccairsMappingIncident(null);
+          }}
+        />
+      )}
+
+      {attachmentIncident && (
+        <EccairsAttachmentUpload
+          incidentId={attachmentIncident.id}
+          e2Id={attachmentIncident.e2Id}
+          open={attachmentDialogOpen}
+          onOpenChange={(open) => {
+            setAttachmentDialogOpen(open);
+            if (!open) setAttachmentIncident(null);
           }}
         />
       )}
