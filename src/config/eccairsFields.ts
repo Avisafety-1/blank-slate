@@ -136,6 +136,25 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Land/region hvor hendelsen skjedde (VL454)'
   },
   { 
+    code: 13,
+    label: 'Luftromsklasse (Airspace Class)', 
+    taxonomyCode: '24',
+    entityPath: '3',
+    format: 'value_list_int_array',
+    type: 'select',
+    defaultValue: '7',
+    helpText: 'Luftromsklasse - G (ukontrollert) er standard. Bruk C for hendelser innenfor TIZ/CTR.'
+  },
+  { 
+    code: 15,
+    label: 'Luftromstype (Airspace Type)', 
+    taxonomyCode: '24',
+    entityPath: '3',
+    format: 'value_list_int_array',
+    type: 'select',
+    helpText: 'Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)'
+  },
+  { 
     code: 456, 
     label: 'Tredjepart berørt', 
     taxonomyCode: '24',
