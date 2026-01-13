@@ -166,8 +166,28 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)'
   },
   { 
+    code: 432, 
+    label: 'Skade på luftfartøy (Damage to Aircraft)', 
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    defaultValue: '98',
+    helpText: 'Skadegrad på luftfartøyet (Destroyed, Substantial, Minor, None, Unknown)'
+  },
+  { 
+    code: 448, 
+    label: 'Skade på tredjepart (3rd Party Damage)', 
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    defaultValue: '97',
+    helpText: 'Skade på tredjepart (Substantial, Minor, None)'
+  },
+  { 
     code: 456, 
-    label: 'Tredjepart berørt', 
+    label: 'Tredjepart berørt',
     taxonomyCode: '24',
     entityPath: null,
     format: 'value_list_int_array',
