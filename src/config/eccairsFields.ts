@@ -40,7 +40,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'UTC dato', 
     taxonomyCode: '24',
     entityPath: null,
-    format: 'utc_date',
+    format: 'local_date',
     type: 'hidden',
     deriveFrom: 433,
     helpText: 'UTC-dato beregnet fra lokal dato',
