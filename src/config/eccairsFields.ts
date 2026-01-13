@@ -169,7 +169,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     code: 432, 
     label: 'Skade på luftfartøy (Damage to Aircraft)', 
     taxonomyCode: '24',
-    entityPath: '4',
+    entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     defaultValue: '98',
