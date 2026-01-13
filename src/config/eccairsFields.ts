@@ -147,8 +147,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'value_list_int_array',
     type: 'select',
     group: 'location',
-    defaultValue: '133',
-    helpText: 'CAA/stat ansvarlig for rapportering (Norge = 133)'
+    defaultValue: '6133',
+    helpText: 'CAA/stat ansvarlig for rapportering (Norge = 6133)'
   },
 
   // ===== CLASSIFICATION GROUP =====
