@@ -148,7 +148,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'select',
     group: 'location',
     defaultValue: '6133',
-    helpText: 'CAA/stat ansvarlig for rapportering (Norge = 6133)'
+    helpText: 'Enhet ansvarlig for rapportering (6133 = Aircraft operator)'
   },
 
   // ===== CLASSIFICATION GROUP =====
