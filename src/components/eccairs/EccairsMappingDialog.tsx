@@ -14,7 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
-import { ECCAIRS_FIELDS, EccairsFieldConfig } from "@/config/eccairsFields";
+import { 
+  ECCAIRS_FIELDS, 
+  EccairsFieldConfig, 
+  EccairsFieldGroup,
+  ECCAIRS_FIELD_GROUP_LABELS,
+  ECCAIRS_FIELD_GROUP_ICONS,
+  getOrderedGroups,
+  getFieldsByGroup
+} from "@/config/eccairsFields";
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -233,6 +241,155 @@ export function EccairsMappingDialog({
     return `VL${field.code}`;
   };
 
+  // Render a single field based on its type
+  const renderField = (field: EccairsFieldConfig) => {
+    if (field.type === 'hidden') return null;
+
+    const isMultiSelect = field.format === 'content_object_array';
+    const fieldKey = makeFieldKey(field);
+
+    if (field.type === 'select') {
+      return (
+        <div key={fieldKey} className="space-y-2">
+          <Label>
+            {field.label} ({getVLKey(field)})
+            {field.entityPath && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                Entity {field.entityPath}
+              </Badge>
+            )}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          {isMultiSelect ? (
+            <EccairsMultiSelect
+              valueListKey={getVLKey(field)}
+              value={parseMultiSelectValue(getFieldValue(field))}
+              onChange={(vals) => setFieldValue(field, JSON.stringify(vals))}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          ) : (
+            <EccairsTaxonomySelect
+              valueListKey={getVLKey(field)}
+              value={getFieldValue(field) || null}
+              onChange={(val) => setFieldValue(field, val)}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          )}
+        </div>
+      );
+    }
+
+    if (field.type === 'date') {
+      return (
+        <div key={fieldKey} className="space-y-2">
+          <Label>
+            {field.label}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          <Input
+            type="date"
+            value={getFieldValue(field)}
+            onChange={(e) => setFieldValue(field, e.target.value || null)}
+            className="max-w-xs"
+          />
+        </div>
+      );
+    }
+
+    if (field.type === 'time') {
+      return (
+        <div key={fieldKey} className="space-y-2">
+          <Label>
+            {field.label}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          <Input
+            type="time"
+            value={getFieldValue(field)}
+            onChange={(e) => setFieldValue(field, e.target.value || null)}
+            className="max-w-xs"
+          />
+        </div>
+      );
+    }
+
+    if (field.type === 'text') {
+      return (
+        <div key={fieldKey} className="space-y-2">
+          <Label>
+            {field.label}
+            {field.maxLength && (
+              <span className="text-muted-foreground ml-2 text-xs">
+                {getFieldValue(field).length}/{field.maxLength}
+              </span>
+            )}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          <Input
+            value={getFieldValue(field)}
+            onChange={(e) => setFieldValue(field, field.maxLength 
+              ? e.target.value.slice(0, field.maxLength) 
+              : e.target.value
+            )}
+            placeholder={`Skriv ${field.label.toLowerCase()}...`}
+          />
+        </div>
+      );
+    }
+
+    if (field.type === 'textarea') {
+      return (
+        <div key={fieldKey} className="space-y-2 col-span-full">
+          <Label>
+            {field.label}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          <Textarea
+            value={getFieldValue(field)}
+            onChange={(e) => setFieldValue(field, e.target.value)}
+            placeholder={`Skriv ${field.label.toLowerCase()}...`}
+            rows={4}
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render a group of fields
+  const renderGroup = (group: EccairsFieldGroup) => {
+    const fields = getFieldsByGroup(group).filter(f => f.type !== 'hidden');
+    if (fields.length === 0) return null;
+
+    return (
+      <div key={group} className="space-y-4">
+        <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground border-b pb-2">
+          <span>{ECCAIRS_FIELD_GROUP_ICONS[group]}</span>
+          {ECCAIRS_FIELD_GROUP_LABELS[group]}
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {fields.map(field => renderField(field))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -287,138 +444,15 @@ export function EccairsMappingDialog({
               </Button>
             </div>
 
-            {/* ECCAIRS classification fields - dynamically rendered */}
-            <div className="space-y-4">
-              <h4 className="font-medium text-sm text-muted-foreground">ECCAIRS-klassifisering</h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'select').map(field => {
-                  const isMultiSelect = field.format === 'content_object_array';
-                  
-                  return (
-                    <div key={makeFieldKey(field)} className="space-y-2">
-                      <Label>
-                        {field.label} ({getVLKey(field)})
-                        {field.entityPath && (
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            Entity {field.entityPath}
-                          </Badge>
-                        )}
-                        {field.required && <span className="text-destructive ml-1">*</span>}
-                      </Label>
-                      {field.helpText && (
-                        <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                      )}
-                      {isMultiSelect ? (
-                        <EccairsMultiSelect
-                          valueListKey={getVLKey(field)}
-                          value={parseMultiSelectValue(getFieldValue(field))}
-                          onChange={(vals) => setFieldValue(field, JSON.stringify(vals))}
-                          placeholder={`Velg ${field.label.toLowerCase()}...`}
-                        />
-                      ) : (
-                        <EccairsTaxonomySelect
-                          valueListKey={getVLKey(field)}
-                          value={getFieldValue(field) || null}
-                          onChange={(val) => setFieldValue(field, val)}
-                          placeholder={`Velg ${field.label.toLowerCase()}...`}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Date fields (local date only) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'date').map(field => (
-                  <div key={makeFieldKey(field)} className="space-y-2">
-                    <Label>
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    {field.helpText && (
-                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                    )}
-                    <Input
-                      type="date"
-                      value={getFieldValue(field)}
-                      onChange={(e) => setFieldValue(field, e.target.value || null)}
-                      className="max-w-xs"
-                    />
-                  </div>
-                ))}
-
-                {/* Time fields (local time) */}
-                {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'time').map(field => (
-                  <div key={makeFieldKey(field)} className="space-y-2">
-                    <Label>
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    {field.helpText && (
-                      <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                    )}
-                    <Input
-                      type="time"
-                      value={getFieldValue(field)}
-                      onChange={(e) => setFieldValue(field, e.target.value || null)}
-                      className="max-w-xs"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Text fields */}
-              {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'text').map(field => (
-                <div key={makeFieldKey(field)} className="space-y-2">
-                  <Label>
-                    {field.label}
-                    {field.maxLength && (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        {getFieldValue(field).length}/{field.maxLength}
-                      </span>
-                    )}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                  {field.helpText && (
-                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                  )}
-                  <Input
-                    value={getFieldValue(field)}
-                    onChange={(e) => setFieldValue(field, field.maxLength 
-                      ? e.target.value.slice(0, field.maxLength) 
-                      : e.target.value
-                    )}
-                    placeholder={`Skriv ${field.label.toLowerCase()}...`}
-                  />
-                </div>
-              ))}
-
-              {/* Textarea fields */}
-              {ECCAIRS_FIELDS.filter(f => f.type !== 'hidden' && f.type === 'textarea').map(field => (
-                <div key={makeFieldKey(field)} className="space-y-2">
-                  <Label>
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                  {field.helpText && (
-                    <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                  )}
-                  <Textarea
-                    value={getFieldValue(field)}
-                    onChange={(e) => setFieldValue(field, e.target.value)}
-                    placeholder={`Skriv ${field.label.toLowerCase()}...`}
-                    rows={4}
-                  />
-                </div>
-              ))}
+            {/* ECCAIRS classification fields - grouped logically */}
+            <div className="space-y-6">
+              {getOrderedGroups().map(group => renderGroup(group))}
             </div>
 
             {!requiredFieldsFilled && (
               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">
                 <AlertTriangle className="w-4 h-4" />
-                <span>Hendelsesklasse er påkrevd for ECCAIRS-eksport</span>
+                <span>Hendelsesklasse og Overskrift er påkrevd for ECCAIRS-eksport</span>
               </div>
             )}
           </div>
