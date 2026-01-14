@@ -1057,16 +1057,18 @@ const Hendelser = () => {
                         const exp = eccairsExports[incident.id];
                         return (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
                               <span className="text-muted-foreground">Status:</span>
                               <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
                                 {getEccairsStatusLabel(exp?.status)}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">E2 ID:</span>
-                              <span>{exp?.e2_id || '-'}</span>
-                            </div>
+                            {exp?.e2_id && (
+                              <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+                                <span className="text-muted-foreground">E2 ID:</span>
+                                <span className="text-xs break-all">{exp.e2_id}</span>
+                              </div>
+                            )}
                             {exp?.last_attempt_at && (
                               <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground">Sist forsøk:</span>
