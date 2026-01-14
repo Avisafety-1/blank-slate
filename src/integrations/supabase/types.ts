@@ -920,6 +920,10 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          e2_base_url: string | null
+          e2_client_id: string | null
+          e2_client_secret_encrypted: string | null
+          e2_scope: string | null
           enabled: boolean
           environment: string
           id: string
@@ -932,6 +936,10 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          e2_base_url?: string | null
+          e2_client_id?: string | null
+          e2_client_secret_encrypted?: string | null
+          e2_scope?: string | null
           enabled?: boolean
           environment?: string
           id?: string
@@ -944,6 +952,10 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          e2_base_url?: string | null
+          e2_client_id?: string | null
+          e2_client_secret_encrypted?: string | null
+          e2_scope?: string | null
           enabled?: boolean
           environment?: string
           id?: string
@@ -2472,6 +2484,65 @@ export type Database = {
       }
     }
     Views: {
+      eccairs_integrations_safe: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          e2_base_url: string | null
+          e2_client_id: string | null
+          e2_client_secret: string | null
+          e2_scope: string | null
+          enabled: boolean | null
+          environment: string | null
+          id: string | null
+          reporting_entity_id: number | null
+          responsible_entity_id: number | null
+          responsible_entity_value_id: string | null
+          taxonomy_version_id: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          e2_base_url?: string | null
+          e2_client_id?: string | null
+          e2_client_secret?: never
+          e2_scope?: string | null
+          enabled?: boolean | null
+          environment?: string | null
+          id?: string | null
+          reporting_entity_id?: number | null
+          responsible_entity_id?: number | null
+          responsible_entity_value_id?: string | null
+          taxonomy_version_id?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          e2_base_url?: string | null
+          e2_client_id?: string | null
+          e2_client_secret?: never
+          e2_scope?: string | null
+          enabled?: boolean | null
+          environment?: string | null
+          id?: string | null
+          reporting_entity_id?: number | null
+          responsible_entity_id?: number | null
+          responsible_entity_value_id?: string | null
+          taxonomy_version_id?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eccairs_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_settings_safe: {
         Row: {
           company_id: string | null
@@ -2854,6 +2925,15 @@ export type Database = {
         Returns: {
           company_id: string
           company_name: string
+        }[]
+      }
+      get_eccairs_credentials: {
+        Args: { p_company_id: string; p_environment: string }
+        Returns: {
+          e2_base_url: string
+          e2_client_id: string
+          e2_client_secret: string
+          e2_scope: string
         }[]
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
@@ -3493,6 +3573,17 @@ export type Database = {
         Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_eccairs_credentials: {
+        Args: {
+          p_company_id: string
+          p_e2_base_url?: string
+          p_e2_client_id: string
+          p_e2_client_secret: string
+          p_e2_scope?: string
+          p_environment: string
+        }
+        Returns: undefined
+      }
       update_email_settings: {
         Args: {
           p_company_id: string
