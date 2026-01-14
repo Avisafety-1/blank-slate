@@ -14,6 +14,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -149,6 +159,8 @@ const Hendelser = () => {
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentIncident, setAttachmentIncident] = useState<{ id: string; e2Id: string } | null>(null);
   const [eccairsSettingsOpen, setEccairsSettingsOpen] = useState(false);
+  const [eccairsSubmitConfirmOpen, setEccairsSubmitConfirmOpen] = useState(false);
+  const [eccairsSubmitIncidentId, setEccairsSubmitIncidentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -1238,7 +1250,8 @@ const Hendelser = () => {
                                     size="sm"
                                     onClick={(e) => { 
                                       e.preventDefault(); 
-                                      submitToEccairs(incident.id); 
+                                      setEccairsSubmitIncidentId(incident.id);
+                                      setEccairsSubmitConfirmOpen(true);
                                     }}
                                   >
                                     Send inn til ECCAIRS
@@ -1321,6 +1334,33 @@ const Hendelser = () => {
         open={eccairsSettingsOpen}
         onOpenChange={setEccairsSettingsOpen}
       />
+
+      <AlertDialog open={eccairsSubmitConfirmOpen} onOpenChange={setEccairsSubmitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft innsending til ECCAIRS</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil sende inn denne hendelsen til ECCAIRS? 
+              Dette vil endre status fra utkast til innsendt, og rapporten vil bli sendt til Luftfartstilsynet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEccairsSubmitIncidentId(null)}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (eccairsSubmitIncidentId) {
+                  submitToEccairs(eccairsSubmitIncidentId);
+                }
+                setEccairsSubmitIncidentId(null);
+              }}
+            >
+              Send inn
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
