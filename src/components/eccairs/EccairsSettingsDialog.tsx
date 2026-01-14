@@ -30,20 +30,11 @@ interface EccairsSettingsDialogProps {
 
 type Environment = "sandbox" | "prod";
 
-interface EccairsSettings {
-  e2_client_id: string | null;
-  e2_client_secret: string | null;
-  e2_base_url: string | null;
-  e2_scope: string | null;
-  environment: Environment;
-  enabled: boolean;
-}
-
-const getDefaultBaseUrl = (env: Environment) => {
-  return env === "prod"
-    ? "https://api.aviationreporting.eu"
-    : "https://api.intg-aviationreporting.eu";
-};
+// Base URLs from ECCAIRS E2 API documentation
+const E2_BASE_URLS = {
+  sandbox: "https://api.sandbox.aviationreporting.eu",
+  prod: "https://api.aviationreporting.eu",
+} as const;
 
 export function EccairsSettingsDialog({
   open,
@@ -61,7 +52,6 @@ export function EccairsSettingsDialog({
   const [environment, setEnvironment] = useState<Environment>("sandbox");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
   const [scope, setScope] = useState("openid");
   const [hasExistingSecret, setHasExistingSecret] = useState(false);
 
@@ -72,11 +62,9 @@ export function EccairsSettingsDialog({
 
       setLoading(true);
       try {
-        // Fetch from eccairs_integrations (will be filtered by RLS)
-        // The view eccairs_integrations_safe masks the secret automatically
         const { data, error } = await supabase
           .from("eccairs_integrations")
-          .select("e2_client_id, e2_client_secret_encrypted, e2_base_url, e2_scope")
+          .select("e2_client_id, e2_client_secret_encrypted, e2_scope")
           .eq("company_id", companyId)
           .eq("environment", environment)
           .maybeSingle();
@@ -85,16 +73,12 @@ export function EccairsSettingsDialog({
 
         if (data) {
           setClientId(data.e2_client_id || "");
-          // Don't expose the encrypted secret, just indicate it exists
           setClientSecret("");
-          setBaseUrl(data.e2_base_url || "");
           setScope(data.e2_scope || "openid");
           setHasExistingSecret(!!data.e2_client_secret_encrypted);
         } else {
-          // Reset form for new settings
           setClientId("");
           setClientSecret("");
-          setBaseUrl("");
           setScope("openid");
           setHasExistingSecret(false);
         }
@@ -132,7 +116,7 @@ export function EccairsSettingsDialog({
         p_environment: environment,
         p_e2_client_id: clientId,
         p_e2_client_secret: clientSecret || "********",
-        p_e2_base_url: baseUrl || null,
+        p_e2_base_url: E2_BASE_URLS[environment],
         p_e2_scope: scope || "openid",
       });
 
@@ -278,17 +262,10 @@ export function EccairsSettingsDialog({
               )}
             </div>
 
-            {/* Base URL (optional) */}
-            <div className="space-y-2">
-              <Label htmlFor="baseUrl">Base URL (valgfritt)</Label>
-              <Input
-                id="baseUrl"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder={getDefaultBaseUrl(environment)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Standard: {getDefaultBaseUrl(environment)}
+            {/* Base URL info */}
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm text-muted-foreground">
+                <strong>API URL:</strong> {E2_BASE_URLS[environment]}
               </p>
             </div>
 
