@@ -1038,8 +1038,8 @@ const Hendelser = () => {
 
                   {/* ECCAIRS Export Status - only show if enabled for company */}
                   {eccairsEnabled && (
-                    <div className="pt-3 border-t border-border/50">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="pt-3 border-t border-border/50 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           ECCAIRS Rapportering
                         </p>
@@ -1056,15 +1056,15 @@ const Hendelser = () => {
                       {(() => {
                         const exp = eccairsExports[incident.id];
                         return (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+                          <div className="flex flex-col gap-2 text-sm">
+                            <div className="flex items-center gap-2">
                               <span className="text-muted-foreground">Status:</span>
                               <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
                                 {getEccairsStatusLabel(exp?.status)}
                               </Badge>
                             </div>
                             {exp?.e2_id && (
-                              <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+                              <div className="flex flex-col gap-1">
                                 <span className="text-muted-foreground">E2 ID:</span>
                                 <span className="text-xs break-all">{exp.e2_id}</span>
                               </div>
@@ -1084,13 +1084,13 @@ const Hendelser = () => {
                               </div>
                             )}
                             {exp?.last_error && (
-                              <div className="col-span-2 flex items-start gap-2 text-red-600 dark:text-red-400">
+                              <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
                                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                                 <span className="text-xs">{exp.last_error}</span>
                               </div>
                             )}
                             {/* Action buttons */}
-                            <div className="col-span-2 mt-2 flex flex-wrap gap-2">
+                            <div className="mt-2 flex flex-wrap gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
