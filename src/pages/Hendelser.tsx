@@ -22,6 +22,13 @@ import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
 
+type IncidentComment = {
+  id: string;
+  comment_text: string;
+  created_by_name: string;
+  created_at: string;
+};
+
 type Incident = {
   id: string;
   tittel: string;
@@ -42,13 +49,7 @@ type Incident = {
   medvirkende_aarsak: string | null;
   incident_number: string | null;
   drone_serial_number?: string | null;
-};
-
-type IncidentComment = {
-  id: string;
-  comment_text: string;
-  created_by_name: string;
-  created_at: string;
+  comments?: IncidentComment[];
 };
 
 const statusOptions = ["Alle", "Åpen", "Under behandling", "Ferdigbehandlet", "Lukket"];
@@ -1154,7 +1155,8 @@ const Hendelser = () => {
                                   }
                                   setEccairsMappingIncident({
                                     ...incident,
-                                    drone_serial_number: droneSerialNumber
+                                    drone_serial_number: droneSerialNumber,
+                                    comments: comments[incident.id] || []
                                   });
                                   setEccairsMappingDialogOpen(true);
                                 }}
