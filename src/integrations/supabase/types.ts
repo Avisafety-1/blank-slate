@@ -2928,7 +2928,7 @@ export type Database = {
         }[]
       }
       get_eccairs_credentials: {
-        Args: { p_company_id: string; p_environment: string }
+        Args: { p_company_id: string; p_environment?: string }
         Returns: {
           e2_base_url: string
           e2_client_id: string
