@@ -8,9 +8,10 @@ import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialo
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
 import { EccairsAttachmentUpload } from "@/components/eccairs/EccairsAttachmentUpload";
+import { EccairsSettingsDialog } from "@/components/eccairs/EccairsSettingsDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -146,6 +147,7 @@ const Hendelser = () => {
   const [eccairsMappingIncident, setEccairsMappingIncident] = useState<Incident | null>(null);
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentIncident, setAttachmentIncident] = useState<{ id: string; e2Id: string } | null>(null);
+  const [eccairsSettingsOpen, setEccairsSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -1037,9 +1039,20 @@ const Hendelser = () => {
                   {/* ECCAIRS Export Status - only show if enabled for company */}
                   {eccairsEnabled && (
                     <div className="pt-3 border-t border-border/50">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        ECCAIRS Rapportering
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          ECCAIRS Rapportering
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={() => setEccairsSettingsOpen(true)}
+                        >
+                          <Settings2 className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Innstillinger</span>
+                        </Button>
+                      </div>
                       {(() => {
                         const exp = eccairsExports[incident.id];
                         return (
@@ -1298,6 +1311,11 @@ const Hendelser = () => {
           }}
         />
       )}
+
+      <EccairsSettingsDialog
+        open={eccairsSettingsOpen}
+        onOpenChange={setEccairsSettingsOpen}
+      />
     </div>
   );
 };
