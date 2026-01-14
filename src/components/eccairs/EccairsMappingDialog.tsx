@@ -27,6 +27,13 @@ import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAut
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
+interface IncidentComment {
+  id: string;
+  comment_text: string;
+  created_by_name: string;
+  created_at: string;
+}
+
 interface Incident {
   id: string;
   tittel: string;
@@ -39,6 +46,7 @@ interface Incident {
   incident_number?: string | null;
   mission_id?: string | null;
   drone_serial_number?: string | null;
+  comments?: IncidentComment[];
 }
 
 interface EccairsMappingDialogProps {
@@ -170,9 +178,36 @@ export function EccairsMappingDialog({
       } else if (field.code === 424) {
         // Default narrative language to Norwegian (43)
         newValues[makeFieldKey(field)] = '43';
-      } else if (field.code === 425 && incident.beskrivelse) {
-        // Auto-fill narrative text from incident description
-        newValues[makeFieldKey(field)] = incident.beskrivelse;
+      } else if (field.code === 425) {
+        // Auto-fill narrative text from incident description + comments
+        let narrativeText = incident.beskrivelse || '';
+        
+        // Append comments if available
+        if (incident.comments && incident.comments.length > 0) {
+          const commentsText = incident.comments
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map(c => {
+              const date = new Date(c.created_at).toLocaleDateString('no-NO', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              return `[${date} - ${c.created_by_name}]: ${c.comment_text}`;
+            })
+            .join('\n');
+          
+          if (narrativeText) {
+            narrativeText += '\n\n--- Kommentarer ---\n' + commentsText;
+          } else {
+            narrativeText = commentsText;
+          }
+        }
+        
+        if (narrativeText) {
+          newValues[makeFieldKey(field)] = narrativeText;
+        }
       } else if (field.code === 244 && incident.drone_serial_number) {
         // Auto-fill aircraft serial number from drone
         newValues[makeFieldKey(field)] = incident.drone_serial_number;
