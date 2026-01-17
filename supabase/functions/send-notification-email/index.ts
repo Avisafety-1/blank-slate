@@ -54,8 +54,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
       await client.close();
@@ -85,8 +85,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
       await client.close();
@@ -117,8 +117,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const pref of preferences) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         sentCount++;
       }
       await client.close();
@@ -141,8 +141,8 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-      const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-      await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers });
+      const emailHeaders = getEmailHeaders();
+      await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
       await client.close();
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
@@ -161,8 +161,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const u of users) {
         if (!u.email) continue;
         try {
-          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
+          const emailHeaders = getEmailHeaders();
+          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -183,8 +183,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const c of customers) {
         if (!c.epost) continue;
         try {
-          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-          await client.send({ from: senderAddress, to: c.epost, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
+          const emailHeaders = getEmailHeaders();
+          await client.send({ from: senderAddress, to: c.epost, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${c.epost}`, e); }
       }
@@ -205,8 +205,8 @@ serve(async (req: Request): Promise<Response> => {
       for (const u of allUsers) {
         if (!u.email) continue;
         try {
-          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
+          const emailHeaders = getEmailHeaders();
+          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -230,8 +230,8 @@ serve(async (req: Request): Promise<Response> => {
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
-    await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
+    const emailHeaders = getEmailHeaders();
+    await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
     await client.close();
 
     return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

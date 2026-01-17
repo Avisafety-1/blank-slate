@@ -11,7 +11,13 @@ export interface EmailConfig {
 }
 
 // Encode subject line with UTF-8 for non-ASCII characters (RFC 2047)
+// Prevents double-encoding if already encoded
 export function encodeSubject(subject: string): string {
+  // Check if already RFC2047 encoded - don't double-encode
+  if (/^=\?[^?]+\?[BQ]\?[^?]+\?=$/i.test(subject.trim())) {
+    return subject;
+  }
+  
   // Check if subject contains non-ASCII characters
   const hasNonAscii = /[^\x00-\x7F]/.test(subject);
   
@@ -60,54 +66,16 @@ export function formatSenderAddress(fromName: string | undefined, fromEmail: str
   return `${fromName} <${email}>`;
 }
 
-// Encode display name for denomailer object format
-// Handles RFC 2047 for non-ASCII and quoting for special characters
-export function encodeDisplayName(name: string): string {
-  const hasNonAscii = /[^\x00-\x7F]/.test(name);
-  
-  if (hasNonAscii) {
-    // Base64 encode for non-ASCII (RFC 2047)
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(name);
-    const base64 = btoa(String.fromCharCode(...bytes));
-    return `=?UTF-8?B?${base64}?=`;
-  }
-  
-  // Quote if contains RFC 5322 special characters
-  const hasSpecialChars = /[()<>\[\]:;@\\,."']/.test(name);
-  if (hasSpecialChars) {
-    const escapedName = name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    return `"${escapedName}"`;
-  }
-  
-  return name;
-}
-
-// Return sender as object for denomailer (required format)
-export function getSenderObject(fromName: string | undefined, fromEmail: string): { name: string; mail: string } {
-  const mail = fromEmail.toLowerCase();
-  const name = fromName ? encodeDisplayName(fromName) : "";
-  return { name, mail };
-}
-
-// Generate RFC 5322 compliant email headers to prevent spam blocking
-// Includes From header as backup for Gmail compatibility
-export function getEmailHeaders(fromName?: string, fromEmail?: string, domain: string = 'avisafe.no') {
-  const headers: Record<string, string> = {
-    "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
-    "Date": new Date().toUTCString(),
-    "MIME-Version": "1.0",
-    "X-Mailer": "AviSafe",
-  };
-  
-  // Add From header as backup if provided
-  if (fromEmail) {
-    headers["From"] = formatSenderAddress(fromName, fromEmail);
-  }
-  
+// Generate minimal RFC 5322 compliant extra headers
+// IMPORTANT: Do NOT include From, To, Subject, Date, MIME-Version, Content-Type here
+// These are core headers that denomailer generates itself - duplicates cause Gmail rejection
+export function getEmailHeaders(domain: string = 'avisafe.no') {
   return {
     date: new Date().toUTCString(),
-    headers,
+    headers: {
+      "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
+      "X-Mailer": "AviSafe",
+    },
   };
 }
 

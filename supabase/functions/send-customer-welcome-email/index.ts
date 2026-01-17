@@ -72,7 +72,9 @@ serve(async (req) => {
     }
 
     const emailConfig = await getEmailConfig(company_id);
-    const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+    const fromName = emailConfig.fromName || "AviSafe";
+    const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders();
 
     const client = new SMTPClient({
       connection: {
@@ -83,13 +85,12 @@ serve(async (req) => {
       },
     });
 
-    const emailHeaders = getEmailHeaders();
     await client.send({
       from: senderAddress,
       to: customer_email,
       subject: encodeSubject(emailSubject),
       html: emailContent,
-      date: emailHeaders.date,
+      date: new Date().toUTCString(),
       headers: emailHeaders.headers,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
