@@ -7,14 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe, RotateCcw } from "lucide-react";
+import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe, RotateCcw, Paperclip, X, Plus } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { AttachmentPickerDialog } from "./AttachmentPickerDialog";
+
+interface AttachmentDocument {
+  id: string;
+  tittel: string;
+  fil_url: string | null;
+  fil_navn: string | null;
+}
 
 interface EmailTemplate {
   id: string;
@@ -546,6 +555,10 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   
+  // Attachments
+  const [attachments, setAttachments] = useState<AttachmentDocument[]>([]);
+  const [attachmentPickerOpen, setAttachmentPickerOpen] = useState(false);
+  
   // Get available template types based on role
   const templateTypes = useMemo(() => {
     if (isSuperAdmin) {
@@ -709,6 +722,29 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         setTemplate(data);
         setSubject(data.subject);
         setContent(data.content);
+        
+        // Fetch attachments for this template
+        const { data: attachmentData, error: attachmentError } = await supabase
+          .from("email_template_attachments")
+          .select(`
+            document_id,
+            documents:document_id (
+              id,
+              tittel,
+              fil_url,
+              fil_navn
+            )
+          `)
+          .eq("template_id", data.id);
+        
+        if (!attachmentError && attachmentData) {
+          const docs = attachmentData
+            .map((a: any) => a.documents)
+            .filter((d: any) => d !== null) as AttachmentDocument[];
+          setAttachments(docs);
+        } else {
+          setAttachments([]);
+        }
       } else {
         // Use default template if no custom template exists
         setTemplate(null);
@@ -717,6 +753,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         const defaultSubject = currentTemplateType?.defaultSubject || "";
         setSubject(defaultSubject);
         setContent(defaultContent);
+        setAttachments([]);
       }
     } catch (error: any) {
       console.error("Error fetching template:", error);
@@ -782,6 +819,8 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         }
       } else {
         // Save to single company
+        let templateId = template?.id;
+        
         if (template) {
           const { error } = await supabase
             .from("email_templates")
@@ -793,15 +832,43 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
           if (error) throw error;
         } else {
-          const { error } = await supabase.from("email_templates").insert({
+          const { data: newTemplate, error } = await supabase.from("email_templates").insert({
             company_id: activeCompanyId,
             template_type: selectedTemplateType,
             subject,
             content,
-          });
+          }).select().single();
 
           if (error) throw error;
+          templateId = newTemplate?.id;
         }
+        
+        // Save attachments if we have a template ID
+        if (templateId) {
+          // Delete existing attachments
+          await supabase
+            .from("email_template_attachments")
+            .delete()
+            .eq("template_id", templateId);
+          
+          // Insert new attachments
+          if (attachments.length > 0) {
+            const attachmentInserts = attachments.map((doc) => ({
+              template_id: templateId,
+              document_id: doc.id,
+            }));
+            
+            const { error: attachmentError } = await supabase
+              .from("email_template_attachments")
+              .insert(attachmentInserts);
+            
+            if (attachmentError) {
+              console.error("Error saving attachments:", attachmentError);
+              toast.warning("Mal lagret, men vedlegg kunne ikke lagres");
+            }
+          }
+        }
+        
         toast.success("Mal lagret");
         fetchTemplate();
       }
@@ -811,6 +878,19 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleRemoveAttachment = (docId: string) => {
+    setAttachments((prev) => prev.filter((doc) => doc.id !== docId));
+  };
+
+  const handleAddAttachments = (docs: AttachmentDocument[]) => {
+    // Merge new docs with existing, avoiding duplicates
+    setAttachments((prev) => {
+      const existingIds = new Set(prev.map((d) => d.id));
+      const newDocs = docs.filter((d) => !existingIds.has(d.id));
+      return [...prev, ...newDocs];
+    });
   };
 
   const handleReset = () => {
@@ -1067,6 +1147,41 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             />
           </div>
 
+          {/* Attachments Section */}
+          <div className="space-y-2">
+            <Label className="text-xs sm:text-sm flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Vedlegg
+            </Label>
+            <div className="flex flex-wrap gap-2 items-center">
+              {attachments.map((doc) => (
+                <Badge key={doc.id} variant="secondary" className="gap-1 py-1.5 px-3">
+                  <Paperclip className="h-3 w-3" />
+                  <span className="max-w-[150px] truncate">{doc.tittel}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer hover:text-destructive ml-1"
+                    onClick={() => handleRemoveAttachment(doc.id)}
+                  />
+                </Badge>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAttachmentPickerOpen(true)}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                Legg til vedlegg
+              </Button>
+            </div>
+            {attachments.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {attachments.length} vedlegg valgt. Disse vil bli sendt med alle e-poster som bruker denne malen.
+              </p>
+            )}
+          </div>
+
           <Tabs value={editorMode} onValueChange={(v) => setEditorMode(v as "visual" | "html")}>
             <TabsList className={`grid w-full grid-cols-2 ${isMobile ? "h-8" : "max-w-md"}`}>
               <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
@@ -1157,6 +1272,15 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Attachment Picker Dialog */}
+      <AttachmentPickerDialog
+        open={attachmentPickerOpen}
+        onOpenChange={setAttachmentPickerOpen}
+        selectedDocumentIds={attachments.map((d) => d.id)}
+        onSelect={handleAddAttachments}
+        companyId={activeCompanyId}
+      />
     </>
   );
 };
