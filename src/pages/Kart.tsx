@@ -173,7 +173,7 @@ export default function KartPage() {
       return null;
     }
     
-    const VLOS_LIMIT = 0.5; // 500m in km
+    const VLOS_LIMIT = 0.12; // 120m in km (max altitude VLOS)
     let maxDistance = 0;
     let pointsOutside = 0;
     
