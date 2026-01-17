@@ -181,6 +181,11 @@ All colors MUST be HSL.
   scrollbar-width: none;
 }
 
+/* Vertical writing mode for rotated UI elements */
+.writing-mode-vertical {
+  writing-mode: vertical-rl;
+}
+
 @layer base {
   /* Ensure native date inputs never overflow their containers on mobile browsers */
   input[type="date"] {
