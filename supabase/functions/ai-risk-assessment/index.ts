@@ -486,7 +486,30 @@ Returner en JSON-respons med denne strukturen:
       throw new Error('Invalid AI response format');
     }
 
-    console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered);
+    // Normalize scores to ensure they are on 1-10 scale (fix if AI returns percentages like 0.3 instead of 3)
+    const normalizeScore = (score: number | undefined | null): number | null => {
+      if (score === undefined || score === null) return null;
+      // If score is less than 1, it's likely a decimal (0.3 = 30%) - convert to 1-10 scale
+      if (score > 0 && score < 1) {
+        return Math.round(score * 10);
+      }
+      // Clamp to 1-10 range
+      return Math.max(1, Math.min(10, Math.round(score)));
+    };
+
+    // Normalize all category scores
+    if (aiAnalysis.categories) {
+      for (const key of Object.keys(aiAnalysis.categories)) {
+        if (aiAnalysis.categories[key]?.score !== undefined) {
+          aiAnalysis.categories[key].score = normalizeScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
+        }
+      }
+    }
+    if (aiAnalysis.overall_score !== undefined) {
+      aiAnalysis.overall_score = normalizeScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
+    }
+
+    console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
 
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase
