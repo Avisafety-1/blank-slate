@@ -26,7 +26,7 @@ import {
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -60,6 +60,7 @@ export const EquipmentLogbookDialog = ({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [showAddEntry, setShowAddEntry] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -70,8 +71,19 @@ export const EquipmentLogbookDialog = ({
   useEffect(() => {
     if (open && equipmentId) {
       fetchAllLogs();
+      fetchSignature();
     }
   }, [open, equipmentId]);
+
+  const fetchSignature = async () => {
+    if (!user) return;
+    const { data } = await (supabase as any)
+      .from("profiles")
+      .select("signature_url")
+      .eq("id", user.id)
+      .single();
+    setSignatureUrl(data?.signature_url || null);
+  };
 
   const fetchAllLogs = async () => {
     setIsLoading(true);
@@ -309,6 +321,12 @@ export const EquipmentLogbookDialog = ({
           4: { cellWidth: 30 },
         },
       });
+
+      // Add signature if available
+      if (signatureUrl) {
+        const finalY = (pdf as any).lastAutoTable?.finalY || 150;
+        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, "Signatur:");
+      }
 
       // Convert PDF to blob
       const pdfBlob = pdf.output('blob');
