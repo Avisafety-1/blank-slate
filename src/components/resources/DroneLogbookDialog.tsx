@@ -518,7 +518,7 @@ export const DroneLogbookDialog = ({
                             <span className="flex items-center gap-1 shrink-0">
                               <Calendar className="w-3 h-3" />
                               <span className="sm:hidden">{format(log.date, 'dd.MM.yy', { locale: nb })}</span>
-                              <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy HH:mm', { locale: nb })}</span>
+                              <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy', { locale: nb })}</span>
                             </span>
                             <span className="flex items-center gap-1 min-w-0">
                               <User className="w-3 h-3 shrink-0" />

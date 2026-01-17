@@ -584,7 +584,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           landing_location: formData.landingLocation,
           flight_duration_minutes: formData.flightDurationMinutes,
           movements: formData.movements,
-          flight_date: formData.flightDate,
+          flight_date: flightStartTime?.toISOString() || new Date().toISOString(),
           notes: formData.notes || null,
           safesky_mode: safeskyMode || null,
           completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
