@@ -22,26 +22,53 @@ serve(async (req) => {
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders();
+    const subject = encodeSubject("Test e-post fra ditt system");
+    const date = new Date().toUTCString();
 
-    console.log("Sending test email with From:", senderAddress);
-    console.log("Headers (including backup From):", JSON.stringify(emailHeaders.headers));
+    // Log what we're sending for debugging
+    console.log("=== Email Debug Info ===");
+    console.log("From (string):", senderAddress);
+    console.log("To:", recipient_email);
+    console.log("Subject:", subject);
+    console.log("Date:", date);
+    console.log("Extra headers:", JSON.stringify(emailHeaders.headers));
+    console.log("SMTP Host:", emailConfig.host);
+    console.log("SMTP Port:", emailConfig.port);
+    console.log("========================");
 
     const client = new SMTPClient({
-      connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.port === 465 || emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } },
+      connection: { 
+        hostname: emailConfig.host, 
+        port: emailConfig.port, 
+        tls: emailConfig.port === 465 || emailConfig.secure, 
+        auth: { username: emailConfig.user, password: emailConfig.pass } 
+      },
     });
 
     await client.send({
       from: senderAddress,
       to: recipient_email,
-      subject: encodeSubject("Test e-post fra ditt system"),
-      date: emailHeaders.date,
+      subject: subject,
+      date: date,
       headers: emailHeaders.headers,
-      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>SMTP: ${emailConfig.host}:${emailConfig.port}</p></body></html>`,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>SMTP: ${emailConfig.host}:${emailConfig.port}</p><p>From: ${senderAddress}</p></body></html>`,
     });
 
     await client.close();
-    return new Response(JSON.stringify({ success: true, message: "Test e-post sendt vellykket" }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: "Test e-post sendt vellykket",
+      debug: {
+        from: senderAddress,
+        to: recipient_email,
+        subject: subject,
+        date: date,
+        headers: emailHeaders.headers,
+        smtp: `${emailConfig.host}:${emailConfig.port}`
+      }
+    }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
     console.error("Error:", error);

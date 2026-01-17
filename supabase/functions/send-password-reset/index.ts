@@ -47,7 +47,7 @@ serve(async (req: Request): Promise<Response> => {
     const emailConfig = await getEmailConfig(profile.company_id);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders();
 
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
@@ -56,7 +56,7 @@ serve(async (req: Request): Promise<Response> => {
       to: email, 
       subject: encodeSubject(templateResult.subject), 
       html: templateResult.content, 
-      date: emailHeaders.date, 
+      date: new Date().toUTCString(), 
       headers: emailHeaders.headers, 
       attachments: attachments.length > 0 ? attachments : undefined 
     });

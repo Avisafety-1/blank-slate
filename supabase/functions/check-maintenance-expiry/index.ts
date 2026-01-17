@@ -378,14 +378,14 @@ serve(async (req) => {
 
       try {
         const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+        const emailHeaders = getEmailHeaders();
 
         await emailClient.send({
           from: senderAddress,
           to: authUser.email,
           subject: encodeSubject(emailSubject),
           html: emailHtml,
-          date: emailHeaders.date,
+          date: new Date().toUTCString(),
           headers: emailHeaders.headers,
         });
 

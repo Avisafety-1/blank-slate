@@ -284,14 +284,14 @@ serve(async (req) => {
               .replace(/\{\{expiry_date\}\}/g, expiryDate)
               .replace(/\{\{company_name\}\}/g, companyName);
 
-            const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+            const emailHeaders = getEmailHeaders();
             try {
               await emailClient.send({
                 from: senderAddress,
                 to: authUser.email,
                 subject: encodeSubject(emailSubject),
                 html: emailContent,
-                date: emailHeaders.date,
+                date: new Date().toUTCString(),
                 headers: emailHeaders.headers,
               });
 
@@ -333,14 +333,14 @@ serve(async (req) => {
             <p style="color: #666; margin-top: 20px; font-size: 14px;">Vennligst logg inn for å fornye eller oppdatere disse dokumentene.</p>
           `;
 
-          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+          const emailHeaders = getEmailHeaders();
           try {
             await emailClient.send({
               from: senderAddress,
               to: authUser.email,
               subject: encodeSubject(`Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`),
               html: emailHtml,
-              date: emailHeaders.date,
+              date: new Date().toUTCString(),
               headers: emailHeaders.headers,
             });
 
