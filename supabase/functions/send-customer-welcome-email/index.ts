@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
@@ -76,6 +76,19 @@ serve(async (req) => {
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const emailHeaders = getEmailHeaders();
 
+    // Sanitize subject - do NOT pre-encode, let denomailer handle it
+    const sanitizedSubject = sanitizeSubject(emailSubject);
+
+    // Debug logging
+    console.log("=== Customer Welcome Email Debug ===");
+    console.log("From:", senderAddress);
+    console.log("To:", customer_email);
+    console.log("Raw subject:", emailSubject);
+    console.log("Sanitized subject:", sanitizedSubject);
+    console.log("Message-ID:", emailHeaders.headers["Message-ID"]);
+    console.log("Attachments count:", attachments.length);
+    console.log("====================================");
+
     const client = new SMTPClient({
       connection: {
         hostname: emailConfig.host,
@@ -88,7 +101,7 @@ serve(async (req) => {
     await client.send({
       from: senderAddress,
       to: customer_email,
-      subject: encodeSubject(emailSubject),
+      subject: sanitizedSubject,
       html: emailContent,
       date: new Date().toUTCString(),
       headers: emailHeaders.headers,

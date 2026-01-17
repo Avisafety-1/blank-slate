@@ -10,27 +10,20 @@ export interface EmailConfig {
   fromEmail: string;
 }
 
-// Encode subject line with UTF-8 for non-ASCII characters (RFC 2047)
-// Prevents double-encoding if already encoded
+// Sanitize subject line - remove control characters but let denomailer handle encoding
+// IMPORTANT: Do NOT pre-encode subjects with RFC2047 - denomailer does this automatically
+// Pre-encoding causes double-encoding which Gmail rejects as malformed headers
+export function sanitizeSubject(subject: string): string {
+  // Remove CR/LF to prevent header injection and folding issues
+  // Trim whitespace
+  return subject.replace(/[\r\n]/g, ' ').trim();
+}
+
+// @deprecated - Use sanitizeSubject instead. This function is kept for backward compatibility
+// but should not be used as it causes double-encoding issues with denomailer
 export function encodeSubject(subject: string): string {
-  // Check if already RFC2047 encoded - don't double-encode
-  if (/^=\?[^?]+\?[BQ]\?[^?]+\?=$/i.test(subject.trim())) {
-    return subject;
-  }
-  
-  // Check if subject contains non-ASCII characters
-  const hasNonAscii = /[^\x00-\x7F]/.test(subject);
-  
-  if (!hasNonAscii) {
-    return subject; // No encoding needed
-  }
-  
-  // Encode as Base64 (more reliable than Quoted-Printable for special chars)
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(subject);
-  const base64 = btoa(String.fromCharCode(...bytes));
-  
-  return `=?UTF-8?B?${base64}?=`;
+  console.warn('encodeSubject is deprecated - use sanitizeSubject instead');
+  return sanitizeSubject(subject);
 }
 
 // Format sender address as RFC 5322 compliant string
