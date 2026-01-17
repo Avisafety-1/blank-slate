@@ -66,6 +66,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   sjekklister: "Sjekklister",
   rapporter: "Rapporter",
   nettsider: "Nettsider",
+  oppdrag: "Oppdrag",
+  loggbok: "Loggbok",
+  "kml-kmz": "KML/KMZ",
+  dokumentstyring: "Dokumentstyring",
   annet: "Annet"
 };
 

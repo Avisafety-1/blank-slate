@@ -36,6 +36,9 @@ const CATEGORIES: {
   value: "kml-kmz",
   label: "KML/KMZ"
 }, {
+  value: "dokumentstyring",
+  label: "Dokumentstyring"
+}, {
   value: "annet",
   label: "Annet"
 }];

@@ -264,6 +264,7 @@ export const DocumentUploadDialog = ({
                 <SelectItem value="nettsider">Nettsider</SelectItem>
                 <SelectItem value="oppdrag">Oppdrag</SelectItem>
                 <SelectItem value="loggbok">Loggbok</SelectItem>
+                <SelectItem value="dokumentstyring">Dokumentstyring</SelectItem>
                 <SelectItem value="annet">Annet</SelectItem>
               </SelectContent>
             </Select>
