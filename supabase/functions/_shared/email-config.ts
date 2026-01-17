@@ -30,18 +30,34 @@ export function encodeSubject(subject: string): string {
 // Format sender address as RFC 5322 compliant string
 export function formatSenderAddress(fromName: string | undefined, fromEmail: string): string {
   const email = fromEmail.toLowerCase();
-  if (fromName) {
-    // Encode name if it contains non-ASCII
-    const hasNonAscii = /[^\x00-\x7F]/.test(fromName);
-    if (hasNonAscii) {
-      const encoder = new TextEncoder();
-      const bytes = encoder.encode(fromName);
-      const base64 = btoa(String.fromCharCode(...bytes));
-      return `=?UTF-8?B?${base64}?= <${email}>`;
-    }
-    return `${fromName} <${email}>`;
+  
+  if (!fromName) {
+    return email;
   }
-  return email;
+  
+  // Check if name contains non-ASCII characters (æøå etc.)
+  const hasNonAscii = /[^\x00-\x7F]/.test(fromName);
+  
+  if (hasNonAscii) {
+    // Use RFC 2047 Base64 encoding for non-ASCII
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(fromName);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return `=?UTF-8?B?${base64}?= <${email}>`;
+  }
+  
+  // Check if name contains RFC 5322 special characters that require quoting
+  // These are: ( ) < > [ ] : ; @ \ , . "
+  const hasSpecialChars = /[()<>\[\]:;@\\,."']/.test(fromName);
+  
+  if (hasSpecialChars) {
+    // Escape any existing quotes and backslashes in the name
+    const escapedName = fromName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return `"${escapedName}" <${email}>`;
+  }
+  
+  // Simple ASCII name without special characters
+  return `${fromName} <${email}>`;
 }
 
 // Generate RFC 5322 compliant email headers to prevent spam blocking
