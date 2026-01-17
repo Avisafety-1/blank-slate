@@ -36,7 +36,7 @@ serve(async (req: Request): Promise<Response> => {
     const { data: company } = await supabase.from('companies').select('navn').eq('id', profile.company_id).single();
 
     const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://login.avisafe.no/reset-password' } });
-    if (!data) throw new Error("Kunne ikke generere tilbakestillingslenke");
+    if (!data?.properties?.action_link) throw new Error("Kunne ikke generere tilbakestillingslenke");
 
     const templateResult = await getEmailTemplateWithFallback(profile.company_id, 'password_reset', { user_name: profile.full_name || '', reset_link: data.properties.action_link, company_name: company?.navn || 'AviSafe' });
 
