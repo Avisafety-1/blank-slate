@@ -10,6 +10,16 @@ export interface EmailConfig {
   fromEmail: string;
 }
 
+// Generate RFC 5322 compliant email headers to prevent spam blocking
+export function getEmailHeaders(domain: string = 'avisafe.no') {
+  return {
+    date: new Date().toUTCString(),
+    headers: {
+      "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
+    },
+  };
+}
+
 /**
  * Fetches email configuration from database first, falls back to environment variables
  * @param companyId - The company ID to fetch settings for

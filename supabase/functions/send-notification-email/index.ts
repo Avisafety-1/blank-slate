@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
@@ -164,11 +164,14 @@ serve(async (req: Request): Promise<Response> => {
 
         console.log(`Sending new incident notification to ${user.email}`);
 
+        const emailHeaders = getEmailHeaders();
         await client.send({
           from: senderAddress,
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          date: emailHeaders.date,
+          headers: emailHeaders.headers,
           attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
 
@@ -292,11 +295,14 @@ serve(async (req: Request): Promise<Response> => {
 
         console.log(`Sending new mission notification to ${user.email}`);
 
+        const emailHeaders = getEmailHeaders();
         await client.send({
           from: senderAddress,
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          date: emailHeaders.date,
+          headers: emailHeaders.headers,
           attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
 
@@ -410,11 +416,14 @@ serve(async (req: Request): Promise<Response> => {
 
         console.log(`Sending new user notification to ${user.email}`);
 
+        const emailHeaders = getEmailHeaders();
         await client.send({
           from: senderAddress,
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          date: emailHeaders.date,
+          headers: emailHeaders.headers,
           attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
         sentCount++;
@@ -504,11 +513,14 @@ serve(async (req: Request): Promise<Response> => {
         },
       });
 
+      const emailHeaders = getEmailHeaders();
       await client.send({
         from: senderAddress,
         to: user.email,
         subject: templateResult.subject,
         html: templateResult.content,
+        date: emailHeaders.date,
+        headers: emailHeaders.headers,
       });
 
       await client.close();
@@ -568,11 +580,14 @@ serve(async (req: Request): Promise<Response> => {
         console.log(`Sending bulk email to user ${user.email}`);
 
         try {
+          const emailHeaders = getEmailHeaders();
           await client.send({
             from: senderAddress,
             to: user.email,
             subject: subject,
             html: htmlContent,
+            date: emailHeaders.date,
+            headers: emailHeaders.headers,
           });
           emailsSent++;
         } catch (sendError) {
@@ -637,11 +652,14 @@ serve(async (req: Request): Promise<Response> => {
         console.log(`Sending bulk email to customer ${customer.epost}`);
 
         try {
+          const emailHeaders = getEmailHeaders();
           await client.send({
             from: senderAddress,
             to: customer.epost,
             subject: subject,
             html: htmlContent,
+            date: emailHeaders.date,
+            headers: emailHeaders.headers,
           });
           emailsSent++;
         } catch (sendError) {
@@ -707,11 +725,14 @@ serve(async (req: Request): Promise<Response> => {
         console.log(`Sending bulk email to user ${user.email}`);
 
         try {
+          const emailHeaders = getEmailHeaders();
           await client.send({
             from: senderAddress,
             to: user.email,
             subject: subject,
             html: htmlContent,
+            date: emailHeaders.date,
+            headers: emailHeaders.headers,
           });
           emailsSent++;
         } catch (sendError) {
@@ -780,11 +801,14 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
+    const emailHeaders = getEmailHeaders();
     await client.send({
       from: senderAddress,
       to: user.email,
       subject: subject,
       html: htmlContent,
+      date: emailHeaders.date,
+      headers: emailHeaders.headers,
     });
 
     await client.close();

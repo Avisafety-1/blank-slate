@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
@@ -132,11 +132,14 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`Sending password reset email to ${email} with ${attachments.length} attachments`);
 
+    const emailHeaders = getEmailHeaders();
     await client.send({
       from: senderAddress,
       to: email,
       subject: templateResult.subject,
       html: templateResult.content,
+      date: emailHeaders.date,
+      headers: emailHeaders.headers,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
 

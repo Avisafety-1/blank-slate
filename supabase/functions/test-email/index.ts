@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,12 +63,15 @@ serve(async (req) => {
     console.log("Sending test email to:", recipient_email);
 
     // Send test email
+    const emailHeaders = getEmailHeaders();
     await client.send({
       from: emailConfig.fromName 
         ? `${emailConfig.fromName} <${emailConfig.fromEmail}>` 
         : emailConfig.fromEmail,
       to: recipient_email,
       subject: "Test e-post fra ditt system",
+      date: emailHeaders.date,
+      headers: emailHeaders.headers,
       html: `
         <!DOCTYPE html>
         <html>
