@@ -55,6 +55,12 @@ const getAIRiskLabel = (recommendation: string) => {
   }
 };
 
+const formatAIRiskScore = (score: unknown) => {
+  const n = typeof score === "number" ? score : Number(score);
+  if (!Number.isFinite(n)) return "—/10";
+  return `${n.toFixed(1)}/10`;
+};
+
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated }: MissionDetailDialogProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
@@ -112,7 +118,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 }}
               >
                 <Brain className="w-3 h-3 mr-1" />
-                AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
+                AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({formatAIRiskScore(mission.aiRisk.overall_score)})
               </Badge>
             ) : (
               <Badge className="bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 border">
