@@ -194,7 +194,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-full bg-white rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair"
+          className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}

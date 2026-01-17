@@ -636,10 +636,13 @@ export const ProfileDialog = () => {
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
                         <PenTool className="h-4 w-4" />
-                        {t('profile.signature') || 'Signatur'}
+                        {t("profile.signature", "Signatur")}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        {t('profile.signatureDescription') || 'Signaturen brukes på eksporterte loggbøker og dokumenter.'}
+                        {t(
+                          "profile.signatureDescription",
+                          "Signaturen brukes på eksporterte loggbøker og dokumenter."
+                        )}
                       </p>
                       <SignaturePad 
                         existingSignatureUrl={profile?.signature_url}
