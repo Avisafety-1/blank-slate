@@ -855,91 +855,119 @@ const Oppdrag = () => {
       
       // AI Risk Assessment (if requested and available)
       if (includeRisk && mission.aiRisk) {
-        if (yPos > 200) {
-          pdf.addPage();
-          yPos = 20;
-        }
-        
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("AI Risikovurdering", 15, yPos);
-        yPos += 7;
-        
-        const recommendationLabels: Record<string, string> = {
-          'proceed': 'Anbefalt',
-          'proceed_with_caution': 'Forsiktighet anbefalt',
-          'not_recommended': 'Ikke anbefalt'
-        };
-        
-        const riskInfo = [
-          ["Anbefaling", sanitizeForPdf(recommendationLabels[mission.aiRisk.recommendation?.toLowerCase()] || mission.aiRisk.recommendation)],
-          ["Total score", `${Number(mission.aiRisk.overall_score || 0).toFixed(1)}/10`],
-          ...(mission.aiRisk.weather_score !== null ? [["Vaer-score", `${Number(mission.aiRisk.weather_score).toFixed(1)}/10`]] : []),
-          ...(mission.aiRisk.airspace_score !== null ? [["Luftrom-score", `${Number(mission.aiRisk.airspace_score).toFixed(1)}/10`]] : []),
-          ...(mission.aiRisk.pilot_experience_score !== null ? [["Pilot-score", `${Number(mission.aiRisk.pilot_experience_score).toFixed(1)}/10`]] : []),
-          ...(mission.aiRisk.equipment_score !== null ? [["Utstyr-score", `${Number(mission.aiRisk.equipment_score).toFixed(1)}/10`]] : []),
-          ...(mission.aiRisk.mission_complexity_score !== null ? [["Kompleksitet-score", `${Number(mission.aiRisk.mission_complexity_score).toFixed(1)}/10`]] : []),
-          ["Vurdert", formatDateForPdf(mission.aiRisk.created_at, "dd.MM.yyyy HH:mm")]
-        ];
-        
-        autoTable(pdf, {
-          startY: yPos,
-          head: [],
-          body: riskInfo,
-          theme: "grid",
-          styles: { fontSize: 9 },
-          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
-        });
-        
-        yPos = (pdf as any).lastAutoTable.finalY + 5;
-        
-        // Add AI analysis summary if available
-        const aiAnalysis = mission.aiRisk.ai_analysis as any;
-        if (aiAnalysis?.summary) {
-          pdf.setFontSize(10);
-          pdf.setFont("helvetica", "bold");
-          pdf.text("Oppsummering:", 15, yPos);
-          yPos += 5;
-          
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(9);
-          const sanitizedSummary = sanitizeForPdf(aiAnalysis.summary);
-          const splitSummary = pdf.splitTextToSize(sanitizedSummary, pageWidth - 30);
-          pdf.text(splitSummary, 15, yPos);
-          yPos += splitSummary.length * 4 + 5;
-        }
-        
-        // Add recommendations list if available
-        if (aiAnalysis?.recommendations && aiAnalysis.recommendations.length > 0) {
-          if (yPos > 250) {
+        try {
+          if (yPos > 200) {
             pdf.addPage();
             yPos = 20;
           }
           
-          pdf.setFontSize(10);
+          pdf.setFontSize(12);
           pdf.setFont("helvetica", "bold");
-          pdf.text("Anbefalinger:", 15, yPos);
-          yPos += 5;
+          pdf.text("AI Risikovurdering", 15, yPos);
+          yPos += 7;
           
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(9);
+          const recommendationLabels: Record<string, string> = {
+            'proceed': 'Anbefalt',
+            'proceed_with_caution': 'Forsiktighet anbefalt',
+            'not_recommended': 'Ikke anbefalt'
+          };
           
-          aiAnalysis.recommendations.forEach((rec: string, index: number) => {
-            if (yPos > 270) {
+          const recommendation = mission.aiRisk.recommendation || '';
+          const overallScore = mission.aiRisk.overall_score;
+          const weatherScore = mission.aiRisk.weather_score;
+          const airspaceScore = mission.aiRisk.airspace_score;
+          const pilotScore = mission.aiRisk.pilot_experience_score;
+          const equipmentScore = mission.aiRisk.equipment_score;
+          const complexityScore = mission.aiRisk.mission_complexity_score;
+          
+          const riskInfo: string[][] = [
+            ["Anbefaling", sanitizeForPdf(recommendationLabels[recommendation.toLowerCase()] || recommendation)]
+          ];
+          
+          if (overallScore != null) {
+            riskInfo.push(["Total score", `${Number(overallScore).toFixed(1)}/10`]);
+          }
+          if (weatherScore != null) {
+            riskInfo.push(["Vaer-score", `${Number(weatherScore).toFixed(1)}/10`]);
+          }
+          if (airspaceScore != null) {
+            riskInfo.push(["Luftrom-score", `${Number(airspaceScore).toFixed(1)}/10`]);
+          }
+          if (pilotScore != null) {
+            riskInfo.push(["Pilot-score", `${Number(pilotScore).toFixed(1)}/10`]);
+          }
+          if (equipmentScore != null) {
+            riskInfo.push(["Utstyr-score", `${Number(equipmentScore).toFixed(1)}/10`]);
+          }
+          if (complexityScore != null) {
+            riskInfo.push(["Kompleksitet-score", `${Number(complexityScore).toFixed(1)}/10`]);
+          }
+          if (mission.aiRisk.created_at) {
+            riskInfo.push(["Vurdert", formatDateForPdf(mission.aiRisk.created_at, "dd.MM.yyyy HH:mm")]);
+          }
+          
+          autoTable(pdf, {
+            startY: yPos,
+            head: [],
+            body: riskInfo,
+            theme: "grid",
+            styles: { fontSize: 9 },
+            columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+          });
+          
+          yPos = (pdf as any).lastAutoTable.finalY + 5;
+          
+          // Add AI analysis summary if available
+          const aiAnalysis = mission.aiRisk.ai_analysis as any;
+          if (aiAnalysis?.summary) {
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Oppsummering:", 15, yPos);
+            yPos += 5;
+            
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9);
+            const sanitizedSummary = sanitizeForPdf(aiAnalysis.summary);
+            const splitSummary = pdf.splitTextToSize(sanitizedSummary, pageWidth - 30);
+            pdf.text(splitSummary, 15, yPos);
+            yPos += splitSummary.length * 4 + 5;
+          }
+          
+          // Add recommendations list if available
+          if (aiAnalysis?.recommendations && Array.isArray(aiAnalysis.recommendations) && aiAnalysis.recommendations.length > 0) {
+            if (yPos > 250) {
               pdf.addPage();
               yPos = 20;
             }
-            const sanitizedRec = sanitizeForPdf(rec);
-            const bulletText = `${index + 1}. ${sanitizedRec}`;
-            const splitRec = pdf.splitTextToSize(bulletText, pageWidth - 35);
-            pdf.text(splitRec, 18, yPos);
-            yPos += splitRec.length * 4 + 2;
-          });
+            
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Anbefalinger:", 15, yPos);
+            yPos += 5;
+            
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9);
+            
+            aiAnalysis.recommendations.forEach((rec: string, index: number) => {
+              if (yPos > 270) {
+                pdf.addPage();
+                yPos = 20;
+              }
+              const sanitizedRec = sanitizeForPdf(String(rec || ''));
+              const bulletText = `${index + 1}. ${sanitizedRec}`;
+              const splitRec = pdf.splitTextToSize(bulletText, pageWidth - 35);
+              pdf.text(splitRec, 18, yPos);
+              yPos += splitRec.length * 4 + 2;
+            });
+            
+            yPos += 5;
+          }
           
           yPos += 5;
+        } catch (riskError) {
+          console.error("Error adding risk assessment to PDF:", riskError);
+          // Continue with PDF generation even if risk assessment fails
         }
-        
-        yPos += 5;
       }
       
       // Incidents
