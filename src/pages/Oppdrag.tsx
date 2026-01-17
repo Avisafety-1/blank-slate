@@ -445,6 +445,12 @@ const Oppdrag = () => {
     }
   };
 
+  const formatAIRiskScore = (score: unknown) => {
+    const n = typeof score === "number" ? score : Number(score);
+    if (!Number.isFinite(n)) return "—/10";
+    return `${n.toFixed(1)}/10`;
+  };
+
   const handleDeleteMission = async () => {
     if (!deletingMission) return;
     
@@ -1112,7 +1118,7 @@ const Oppdrag = () => {
                               }}
                             >
                               <Brain className="h-3 w-3 mr-1" />
-                              AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({mission.aiRisk.overall_score}%)
+                              AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({formatAIRiskScore(mission.aiRisk.overall_score)})
                             </Badge>
                           )}
                           {mission.sora && (
