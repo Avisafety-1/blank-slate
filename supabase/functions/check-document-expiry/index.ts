@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -190,9 +190,7 @@ serve(async (req) => {
         },
       });
 
-      const senderAddress = emailConfig.fromName 
-        ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
-        : emailConfig.fromEmail;
+      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
 
       // Find users in this company with document expiry notifications enabled
       const { data: eligibleUsers, error: usersError } = await supabase
@@ -285,13 +283,15 @@ serve(async (req) => {
               .replace(/\{\{expiry_date\}\}/g, expiryDate)
               .replace(/\{\{company_name\}\}/g, companyName);
 
+            const emailHeaders = getEmailHeaders();
             try {
               await emailClient.send({
                 from: senderAddress,
                 to: authUser.email,
-                subject: emailSubject,
-                content: "auto",
+                subject: encodeSubject(emailSubject),
                 html: emailContent,
+                date: emailHeaders.date,
+                headers: emailHeaders.headers,
               });
 
               totalEmailsSent++;
@@ -332,13 +332,15 @@ serve(async (req) => {
             <p style="color: #666; margin-top: 20px; font-size: 14px;">Vennligst logg inn for å fornye eller oppdatere disse dokumentene.</p>
           `;
 
+          const emailHeaders = getEmailHeaders();
           try {
             await emailClient.send({
               from: senderAddress,
               to: authUser.email,
-              subject: `Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`,
-              content: emailHtml,
+              subject: encodeSubject(`Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`),
               html: emailHtml,
+              date: emailHeaders.date,
+              headers: emailHeaders.headers,
             });
 
             totalEmailsSent++;

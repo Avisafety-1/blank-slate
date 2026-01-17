@@ -1,86 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-interface EmailConfig {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  secure: boolean;
-  fromName?: string;
-  fromEmail: string;
-}
-
-async function getEmailConfig(supabase: any, companyId?: string): Promise<EmailConfig> {
-  let emailHost: string | undefined;
-  let emailPort: number = 587;
-  let emailUser: string | undefined;
-  let emailPass: string | undefined;
-  let emailSecure: boolean = false;
-  let fromName: string | undefined;
-  let fromEmail: string | undefined;
-
-  if (companyId) {
-    const { data: emailSettings, error: settingsError } = await supabase
-      .from('email_settings')
-      .select('*')
-      .eq('company_id', companyId)
-      .eq('enabled', true)
-      .maybeSingle();
-
-    if (settingsError) {
-      console.error("Error fetching email settings:", settingsError);
-    }
-
-    if (emailSettings) {
-      console.log("Using email settings from database for company:", companyId);
-      emailHost = emailSettings.smtp_host?.toLowerCase();
-      emailPort = emailSettings.smtp_port;
-      emailUser = emailSettings.smtp_user;
-      emailPass = emailSettings.smtp_pass;
-      emailSecure = emailSettings.smtp_secure;
-      fromName = emailSettings.from_name;
-      fromEmail = emailSettings.from_email || emailSettings.smtp_user;
-    }
-  }
-
-  if (!emailHost || !emailUser || !emailPass) {
-    console.log("Using email settings from environment variables");
-    emailHost = Deno.env.get('EMAIL_HOST');
-    emailPort = parseInt(Deno.env.get('EMAIL_PORT') || '587');
-    emailUser = Deno.env.get('EMAIL_USER');
-    emailPass = Deno.env.get('EMAIL_PASS');
-    emailSecure = Deno.env.get('EMAIL_SECURE') === 'true';
-    fromEmail = emailUser;
-  }
-
-  if (!emailHost || !emailUser || !emailPass) {
-    console.log("Using default AviSafe email settings");
-    emailHost = 'send.one.com';
-    emailPort = 465;
-    emailUser = 'noreply@avisafe.no';
-    emailPass = 'Avisafe!';
-    emailSecure = true;
-    fromEmail = 'noreply@avisafe.no';
-    fromName = 'AviSafe';
-  }
-
-  return {
-    host: emailHost,
-    port: emailPort,
-    user: emailUser,
-    pass: emailPass,
-    secure: emailSecure,
-    fromName,
-    fromEmail: fromEmail!,
-  };
-}
 
 interface MaintenanceItem {
   id: string;
@@ -378,7 +304,7 @@ serve(async (req) => {
       const companyName = companyData?.navn || 'Selskapet';
 
       // Get email config
-      const emailConfig = await getEmailConfig(supabase, profile.company_id);
+      const emailConfig = await getEmailConfig(profile.company_id);
 
       // Check for custom template
       const { data: template } = await supabase
@@ -451,16 +377,16 @@ serve(async (req) => {
       }
 
       try {
-        const fromAddress = emailConfig.fromName 
-          ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
-          : emailConfig.fromEmail;
+        const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+        const emailHeaders = getEmailHeaders();
 
         await emailClient.send({
-          from: fromAddress,
+          from: senderAddress,
           to: authUser.email,
-          subject: emailSubject,
-          content: "auto",
+          subject: encodeSubject(emailSubject),
           html: emailHtml,
+          date: emailHeaders.date,
+          headers: emailHeaders.headers,
         });
 
         totalEmailsSent++;
