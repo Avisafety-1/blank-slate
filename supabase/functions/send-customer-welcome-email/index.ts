@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders } from "../_shared/email-config.ts";
 import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
@@ -168,11 +168,14 @@ serve(async (req) => {
           },
         });
 
+        const emailHeaders = getEmailHeaders();
         await client.send({
           from: senderAddress,
           to: customer_email,
           subject: emailSubject,
           html: emailContent,
+          date: emailHeaders.date,
+          headers: emailHeaders.headers,
           attachments: attachments.length > 0 ? attachments : undefined,
         });
 
