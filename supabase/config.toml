@@ -47,3 +47,21 @@ verify_jwt = false
 
 [functions.ai-risk-assessment]
 verify_jwt = true
+
+[functions.send-customer-welcome-email]
+verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
+
+[functions.send-user-approved-email]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.ai-search]
+verify_jwt = true
+
+[functions.auto-complete-missions]
+verify_jwt = false
