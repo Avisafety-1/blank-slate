@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { getEmailConfig } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,6 +57,15 @@ serve(async (req) => {
 
     console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} user welcome template`);
 
+    // Fetch attachments if custom template exists
+    let attachments: any[] = [];
+    const templateId = await getTemplateId(company_id, 'user_welcome');
+    if (templateId) {
+      console.log("Fetching attachments for template:", templateId);
+      attachments = await getTemplateAttachments(templateId);
+      console.log(`Found ${attachments.length} attachments`);
+    }
+
     // Get email configuration
     const emailConfig = await getEmailConfig(company_id);
     const senderAddress = emailConfig.fromName 
@@ -74,7 +84,7 @@ serve(async (req) => {
       },
     });
 
-    console.log("Sending welcome email to:", user_email);
+    console.log("Sending welcome email to:", user_email, "with", attachments.length, "attachments");
 
     await client.send({
       from: senderAddress,
@@ -82,6 +92,7 @@ serve(async (req) => {
       subject: templateResult.subject,
       content: "auto",
       html: templateResult.content,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     await client.close();
