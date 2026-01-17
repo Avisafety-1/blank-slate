@@ -10,13 +10,28 @@ export interface EmailConfig {
   fromEmail: string;
 }
 
-// Sanitize subject line - remove control characters but let denomailer handle encoding
-// IMPORTANT: Do NOT pre-encode subjects with RFC2047 - denomailer does this automatically
-// Pre-encoding causes double-encoding which Gmail rejects as malformed headers
+// Sanitize and encode subject line for email headers
+// Denomailer doesn't handle non-ASCII (ÆØÅ) correctly, so we pre-encode with RFC2047 Base64
+// when non-ASCII characters are present. This makes the subject pure ASCII so denomailer
+// won't try to re-encode it.
 export function sanitizeSubject(subject: string): string {
   // Remove CR/LF to prevent header injection and folding issues
-  // Trim whitespace
-  return subject.replace(/[\r\n]/g, ' ').trim();
+  const cleaned = subject.replace(/[\r\n]/g, ' ').trim();
+  
+  // Check if subject contains non-ASCII characters (æøå etc.)
+  const hasNonAscii = /[^\x00-\x7F]/.test(cleaned);
+  
+  if (hasNonAscii) {
+    // Encode entire subject as RFC 2047 Base64
+    // This makes it pure ASCII so denomailer won't try to re-encode
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(cleaned);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return `=?UTF-8?B?${base64}?=`;
+  }
+  
+  // ASCII-only subjects are left as-is
+  return cleaned;
 }
 
 // @deprecated - Use sanitizeSubject instead. This function is kept for backward compatibility
