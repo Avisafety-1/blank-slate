@@ -125,7 +125,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     initCanvas();
   };
 
-  // Rotate canvas 90 degrees counter-clockwise for correct orientation
+  // Rotate canvas 90 degrees clockwise for correct orientation
   const rotateCanvasForSave = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
     const rotatedCanvas = document.createElement('canvas');
     rotatedCanvas.width = sourceCanvas.height;
@@ -133,8 +133,8 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     
     const ctx = rotatedCanvas.getContext('2d');
     if (ctx) {
-      ctx.translate(0, rotatedCanvas.height);
-      ctx.rotate(-Math.PI / 2);
+      ctx.translate(rotatedCanvas.width, 0);
+      ctx.rotate(Math.PI / 2);
       ctx.drawImage(sourceCanvas, 0, 0);
     }
     
