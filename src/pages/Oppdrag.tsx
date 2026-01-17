@@ -50,6 +50,7 @@ import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialo
 import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentTypeDialog";
 import { RiskAssessmentDialog } from "@/components/dashboard/RiskAssessmentDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { toast } from "sonner";
 
@@ -131,6 +132,9 @@ const Oppdrag = () => {
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskAssessmentMission, setRiskAssessmentMission] = useState<Mission | null>(null);
   const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
+  const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
+  const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
+  const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -537,7 +541,19 @@ const Oppdrag = () => {
     }
   };
 
-  const exportToPDF = async (mission: Mission) => {
+  const handleExportPdfClick = (mission: Mission) => {
+    setExportPdfMission(mission);
+    setIncludeRiskAssessment(false);
+    setExportPdfDialogOpen(true);
+  };
+
+  const handleConfirmExportPdf = async () => {
+    if (!exportPdfMission) return;
+    setExportPdfDialogOpen(false);
+    await exportToPDF(exportPdfMission, includeRiskAssessment);
+  };
+
+  const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
     try {
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -835,6 +851,95 @@ const Oppdrag = () => {
         });
         
         yPos = (pdf as any).lastAutoTable.finalY + 10;
+      }
+      
+      // AI Risk Assessment (if requested and available)
+      if (includeRisk && mission.aiRisk) {
+        if (yPos > 200) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("AI Risikovurdering", 15, yPos);
+        yPos += 7;
+        
+        const recommendationLabels: Record<string, string> = {
+          'proceed': 'Anbefalt',
+          'proceed_with_caution': 'Forsiktighet anbefalt',
+          'not_recommended': 'Ikke anbefalt'
+        };
+        
+        const riskInfo = [
+          ["Anbefaling", sanitizeForPdf(recommendationLabels[mission.aiRisk.recommendation?.toLowerCase()] || mission.aiRisk.recommendation)],
+          ["Total score", `${Number(mission.aiRisk.overall_score || 0).toFixed(1)}/10`],
+          ...(mission.aiRisk.weather_score !== null ? [["Vaer-score", `${Number(mission.aiRisk.weather_score).toFixed(1)}/10`]] : []),
+          ...(mission.aiRisk.airspace_score !== null ? [["Luftrom-score", `${Number(mission.aiRisk.airspace_score).toFixed(1)}/10`]] : []),
+          ...(mission.aiRisk.pilot_experience_score !== null ? [["Pilot-score", `${Number(mission.aiRisk.pilot_experience_score).toFixed(1)}/10`]] : []),
+          ...(mission.aiRisk.equipment_score !== null ? [["Utstyr-score", `${Number(mission.aiRisk.equipment_score).toFixed(1)}/10`]] : []),
+          ...(mission.aiRisk.mission_complexity_score !== null ? [["Kompleksitet-score", `${Number(mission.aiRisk.mission_complexity_score).toFixed(1)}/10`]] : []),
+          ["Vurdert", formatDateForPdf(mission.aiRisk.created_at, "dd.MM.yyyy HH:mm")]
+        ];
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: riskInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+        
+        // Add AI analysis summary if available
+        const aiAnalysis = mission.aiRisk.ai_analysis as any;
+        if (aiAnalysis?.summary) {
+          pdf.setFontSize(10);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("Oppsummering:", 15, yPos);
+          yPos += 5;
+          
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          const sanitizedSummary = sanitizeForPdf(aiAnalysis.summary);
+          const splitSummary = pdf.splitTextToSize(sanitizedSummary, pageWidth - 30);
+          pdf.text(splitSummary, 15, yPos);
+          yPos += splitSummary.length * 4 + 5;
+        }
+        
+        // Add recommendations list if available
+        if (aiAnalysis?.recommendations && aiAnalysis.recommendations.length > 0) {
+          if (yPos > 250) {
+            pdf.addPage();
+            yPos = 20;
+          }
+          
+          pdf.setFontSize(10);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("Anbefalinger:", 15, yPos);
+          yPos += 5;
+          
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          
+          aiAnalysis.recommendations.forEach((rec: string, index: number) => {
+            if (yPos > 270) {
+              pdf.addPage();
+              yPos = 20;
+            }
+            const sanitizedRec = sanitizeForPdf(rec);
+            const bulletText = `${index + 1}. ${sanitizedRec}`;
+            const splitRec = pdf.splitTextToSize(bulletText, pageWidth - 35);
+            pdf.text(splitRec, 18, yPos);
+            yPos += splitRec.length * 4 + 2;
+          });
+          
+          yPos += 5;
+        }
+        
+        yPos += 5;
       }
       
       // Incidents
@@ -1147,7 +1252,7 @@ const Oppdrag = () => {
                             Ny risikovurdering
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => exportToPDF(mission)}>
+                          <DropdownMenuItem onClick={() => handleExportPdfClick(mission)}>
                             <Download className="h-4 w-4 mr-2" />
                             Eksporter PDF
                           </DropdownMenuItem>
@@ -1716,6 +1821,43 @@ const Oppdrag = () => {
             initialTab={riskDialogShowHistory ? 'history' : 'input'}
           />
         )}
+
+        {/* Export PDF Dialog */}
+        <AlertDialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eksporter oppdragsrapport</AlertDialogTitle>
+              <AlertDialogDescription>
+                {exportPdfMission?.aiRisk ? (
+                  <div className="space-y-4 mt-2">
+                    <p>Velg hva som skal inkluderes i rapporten:</p>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="includeRisk" 
+                        checked={includeRiskAssessment}
+                        onCheckedChange={(checked) => setIncludeRiskAssessment(checked === true)}
+                      />
+                      <label 
+                        htmlFor="includeRisk" 
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Inkluder siste AI-risikovurdering
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <p>Oppdraget "{exportPdfMission?.tittel}" vil bli eksportert som PDF og lagret i dokumenter.</p>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Avbryt</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmExportPdf}>
+                Eksporter PDF
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
