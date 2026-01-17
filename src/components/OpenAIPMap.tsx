@@ -1610,7 +1610,7 @@ export function OpenAIPMap({
     
     if (!pilotPosition) return;
     
-    const VLOS_RADIUS = 500; // 500 meters
+    const VLOS_RADIUS = 120; // 120 meters (max altitude VLOS)
     
     // Create pilot marker with controller icon
     const pilotIcon = L.divIcon({
