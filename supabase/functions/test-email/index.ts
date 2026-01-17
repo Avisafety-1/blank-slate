@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { company_id, recipient_email } = await req.json();
+    const { company_id, recipient_email, subject: customSubject } = await req.json();
 
     if (!company_id || !recipient_email) {
       return new Response(JSON.stringify({ error: "company_id and recipient_email are required" }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -23,14 +23,18 @@ serve(async (req) => {
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const emailHeaders = getEmailHeaders();
-    const subject = encodeSubject("Test e-post fra ditt system");
+    
+    // Use custom subject if provided (for testing Norwegian characters), otherwise default
+    const rawSubject = customSubject || "Test e-post fra ditt system";
+    const subject = sanitizeSubject(rawSubject);
     const date = new Date().toUTCString();
 
     // Log what we're sending for debugging
     console.log("=== Email Debug Info ===");
     console.log("From (string):", senderAddress);
     console.log("To:", recipient_email);
-    console.log("Subject:", subject);
+    console.log("Raw subject:", rawSubject);
+    console.log("Sanitized subject:", subject);
     console.log("Date:", date);
     console.log("Extra headers:", JSON.stringify(emailHeaders.headers));
     console.log("SMTP Host:", emailConfig.host);
@@ -52,7 +56,7 @@ serve(async (req) => {
       subject: subject,
       date: date,
       headers: emailHeaders.headers,
-      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>SMTP: ${emailConfig.host}:${emailConfig.port}</p><p>From: ${senderAddress}</p></body></html>`,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>SMTP: ${emailConfig.host}:${emailConfig.port}</p><p>From: ${senderAddress}</p><p>Subject: ${subject}</p></body></html>`,
     });
 
     await client.close();
@@ -63,7 +67,8 @@ serve(async (req) => {
       debug: {
         from: senderAddress,
         to: recipient_email,
-        subject: subject,
+        rawSubject: rawSubject,
+        sanitizedSubject: subject,
         date: date,
         headers: emailHeaders.headers,
         smtp: `${emailConfig.host}:${emailConfig.port}`

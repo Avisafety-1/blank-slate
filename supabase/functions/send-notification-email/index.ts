@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
@@ -55,7 +55,7 @@ serve(async (req: Request): Promise<Response> => {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
         const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
       await client.close();
@@ -86,7 +86,7 @@ serve(async (req: Request): Promise<Response> => {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
         const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
       await client.close();
@@ -118,7 +118,7 @@ serve(async (req: Request): Promise<Response> => {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
         const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         sentCount++;
       }
       await client.close();
@@ -142,7 +142,7 @@ serve(async (req: Request): Promise<Response> => {
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       const emailHeaders = getEmailHeaders();
-      await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+      await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
       await client.close();
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
@@ -162,7 +162,7 @@ serve(async (req: Request): Promise<Response> => {
         if (!u.email) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -184,7 +184,7 @@ serve(async (req: Request): Promise<Response> => {
         if (!c.epost) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: c.epost, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: c.epost, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${c.epost}`, e); }
       }
@@ -206,7 +206,7 @@ serve(async (req: Request): Promise<Response> => {
         if (!u.email) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -231,7 +231,7 @@ serve(async (req: Request): Promise<Response> => {
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
     const emailHeaders = getEmailHeaders();
-    await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+    await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
     await client.close();
 
     return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

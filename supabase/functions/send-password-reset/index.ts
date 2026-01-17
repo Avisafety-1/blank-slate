@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
@@ -54,7 +54,7 @@ serve(async (req: Request): Promise<Response> => {
     await client.send({ 
       from: senderAddress, 
       to: email, 
-      subject: encodeSubject(templateResult.subject), 
+      subject: sanitizeSubject(templateResult.subject), 
       html: templateResult.content, 
       date: new Date().toUTCString(), 
       headers: emailHeaders.headers, 

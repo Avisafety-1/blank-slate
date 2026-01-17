@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, encodeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -289,7 +289,7 @@ serve(async (req) => {
               await emailClient.send({
                 from: senderAddress,
                 to: authUser.email,
-                subject: encodeSubject(emailSubject),
+                subject: sanitizeSubject(emailSubject),
                 html: emailContent,
                 date: new Date().toUTCString(),
                 headers: emailHeaders.headers,
@@ -338,7 +338,7 @@ serve(async (req) => {
             await emailClient.send({
               from: senderAddress,
               to: authUser.email,
-              subject: encodeSubject(`Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`),
+              subject: sanitizeSubject(`Dokumenter som snart utløper (${docs.length} ${docs.length === 1 ? 'dokument' : 'dokumenter'})`),
               html: emailHtml,
               date: new Date().toUTCString(),
               headers: emailHeaders.headers,
