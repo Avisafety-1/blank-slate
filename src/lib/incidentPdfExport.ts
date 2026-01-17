@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak } from "./pdfUtils";
 
 type Incident = {
   id: string;
@@ -45,48 +46,30 @@ export const exportIncidentPDF = async ({
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    let yPos = 20;
-
+    
     // Header
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("HENDELSESRAPPORT", pageWidth / 2, yPos, { align: "center" });
-    yPos += 10;
-
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "normal");
-    doc.text(incident.tittel, pageWidth / 2, yPos, { align: "center" });
-    yPos += 10;
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Eksportert: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, pageWidth / 2, yPos, { align: "center" });
-    doc.setTextColor(0);
-    yPos += 15;
+    let yPos = addPdfHeader(doc, "HENDELSESRAPPORT", incident.tittel);
 
     // Detaljer
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("DETALJER", 14, yPos);
-    yPos += 8;
+    yPos = addSectionHeader(doc, "DETALJER", yPos);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
 
     const details: [string, string][] = [
-      ["Status", incident.status],
-      ["Alvorlighetsgrad", incident.alvorlighetsgrad],
-      ["Kategori", incident.kategori || "Ikke spesifisert"],
-      ["Hovedårsak", incident.hovedaarsak || "Ikke spesifisert"],
-      ["Medvirkende årsak", incident.medvirkende_aarsak || "Ikke spesifisert"],
-      ["Hendelsestidspunkt", format(new Date(incident.hendelsestidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })],
-      ["Lokasjon", incident.lokasjon || "Ikke spesifisert"],
-      ["Rapportert av", incident.rapportert_av || "Ikke spesifisert"],
-      ["Oppfølgingsansvarlig", oppfolgingsansvarligName || "Ikke tildelt"],
+      ["Status", sanitizeForPdf(incident.status)],
+      ["Alvorlighetsgrad", sanitizeForPdf(incident.alvorlighetsgrad)],
+      ["Kategori", sanitizeForPdf(incident.kategori) || "Ikke spesifisert"],
+      ["Hovedarsak", sanitizeForPdf(incident.hovedaarsak) || "Ikke spesifisert"],
+      ["Medvirkende arsak", sanitizeForPdf(incident.medvirkende_aarsak) || "Ikke spesifisert"],
+      ["Hendelsestidspunkt", formatDateForPdf(incident.hendelsestidspunkt)],
+      ["Lokasjon", sanitizeForPdf(incident.lokasjon) || "Ikke spesifisert"],
+      ["Rapportert av", sanitizeForPdf(incident.rapportert_av) || "Ikke spesifisert"],
+      ["Oppfolgingsansvarlig", sanitizeForPdf(oppfolgingsansvarligName) || "Ikke tildelt"],
     ];
 
     if (relatedMissionTitle) {
-      details.push(["Knyttet oppdrag", relatedMissionTitle]);
+      details.push(["Knyttet oppdrag", sanitizeForPdf(relatedMissionTitle)]);
     }
 
     details.forEach(([label, value]) => {
@@ -101,37 +84,29 @@ export const exportIncidentPDF = async ({
 
     // Beskrivelse
     if (incident.beskrivelse) {
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("BESKRIVELSE", 14, yPos);
-      yPos += 8;
+      yPos = checkPageBreak(doc, yPos, 40);
+      yPos = addSectionHeader(doc, "BESKRIVELSE", yPos);
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      const splitDescription = doc.splitTextToSize(incident.beskrivelse, pageWidth - 28);
+      const sanitizedDescription = sanitizeForPdf(incident.beskrivelse);
+      const splitDescription = doc.splitTextToSize(sanitizedDescription, pageWidth - 28);
       doc.text(splitDescription, 14, yPos);
       yPos += splitDescription.length * 5 + 10;
     }
 
     // Kommentarer
     if (comments.length > 0) {
-      if (yPos > 250) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("KOMMENTARER", 14, yPos);
-      yPos += 8;
+      yPos = checkPageBreak(doc, yPos, 50);
+      yPos = addSectionHeader(doc, "KOMMENTARER", yPos);
 
       autoTable(doc, {
         startY: yPos,
         head: [["Dato", "Av", "Kommentar"]],
         body: comments.map(c => [
-          format(new Date(c.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-          c.created_by_name,
-          c.comment_text
+          formatDateForPdf(c.created_at),
+          sanitizeForPdf(c.created_by_name),
+          sanitizeForPdf(c.comment_text)
         ]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [59, 130, 246] },
@@ -145,14 +120,7 @@ export const exportIncidentPDF = async ({
 
     // Generer filnavn og blob
     const dateStr = format(new Date(), "yyyy-MM-dd");
-    const safeTitle = incident.tittel
-      .trim()
-      .toLowerCase()
-      .replace(/æ/g, 'ae').replace(/ø/g, 'o').replace(/å/g, 'a')
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 30);
+    const safeTitle = sanitizeFilenameForPdf(incident.tittel).substring(0, 30);
     const fileName = `hendelsesrapport-${safeTitle}-${dateStr}.pdf`;
     
     const pdfBlob = doc.output('blob');
@@ -172,13 +140,13 @@ export const exportIncidentPDF = async ({
     const { error: docError } = await supabase
       .from('documents')
       .insert({
-        tittel: `Hendelsesrapport - ${incident.tittel} - ${format(new Date(), "dd.MM.yyyy", { locale: nb })}`,
+        tittel: `Hendelsesrapport - ${sanitizeForPdf(incident.tittel)} - ${formatDateForPdf(new Date(), "dd.MM.yyyy")}`,
         kategori: 'rapporter',
         fil_url: filePath,
         fil_navn: fileName,
         company_id: companyId,
         user_id: userId,
-        beskrivelse: `Automatisk generert rapport for hendelse: ${incident.tittel}`
+        beskrivelse: `Automatisk generert rapport for hendelse: ${sanitizeForPdf(incident.tittel)}`
       });
 
     if (docError) throw docError;

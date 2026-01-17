@@ -38,6 +38,7 @@ import { nb } from "date-fns/locale";
 import droneBackground from "@/assets/drone-background.png";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
@@ -568,7 +569,7 @@ const Oppdrag = () => {
       
       // Mission title
       pdf.setFontSize(14);
-      pdf.text(mission.tittel, 15, 35);
+      pdf.text(sanitizeForPdf(mission.tittel), 15, 35);
       
       let yPos = 45;
       
@@ -604,10 +605,10 @@ const Oppdrag = () => {
         };
         
         const airspaceData = airspaceWarnings.map((w: any) => [
-          levelLabels[w.level] || w.level,
-          w.zone_name || "-",
+          sanitizeForPdf(levelLabels[w.level] || w.level),
+          sanitizeForPdf(w.zone_name) || "-",
           w.is_inside ? "Innenfor sone" : `${Math.round(w.distance_meters)}m unna`,
-          w.message || "-"
+          sanitizeForPdf(w.message) || "-"
         ]);
         
         autoTable(pdf, {
@@ -684,11 +685,11 @@ const Oppdrag = () => {
       pdf.setFontSize(10);
       
       const basicInfo = [
-        ["Status", mission.status],
-        ["Risikonivå", mission.risk_nivå],
-        ["Lokasjon", mission.lokasjon],
-        ["Dato/tid", format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })],
-        ...(mission.slutt_tidspunkt ? [["Sluttid", format(new Date(mission.slutt_tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })]] : []),
+        ["Status", sanitizeForPdf(mission.status)],
+        ["Risikonivia", sanitizeForPdf(mission.risk_nivå)],
+        ["Lokasjon", sanitizeForPdf(mission.lokasjon)],
+        ["Dato/tid", formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
+        ...(mission.slutt_tidspunkt ? [["Sluttid", formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
         ...(mission.latitude && mission.longitude ? [["Koordinater", `${mission.latitude.toFixed(5)}, ${mission.longitude.toFixed(5)}`]] : [])
       ];
       
@@ -714,10 +715,10 @@ const Oppdrag = () => {
         pdf.setFontSize(10);
         
         const customerInfo = [
-          ["Navn", mission.customers.navn],
-          ...(mission.customers.kontaktperson ? [["Kontaktperson", mission.customers.kontaktperson]] : []),
-          ...(mission.customers.telefon ? [["Telefon", mission.customers.telefon]] : []),
-          ...(mission.customers.epost ? [["E-post", mission.customers.epost]] : [])
+          ["Navn", sanitizeForPdf(mission.customers.navn)],
+          ...(mission.customers.kontaktperson ? [["Kontaktperson", sanitizeForPdf(mission.customers.kontaktperson)]] : []),
+          ...(mission.customers.telefon ? [["Telefon", sanitizeForPdf(mission.customers.telefon)]] : []),
+          ...(mission.customers.epost ? [["E-post", sanitizeForPdf(mission.customers.epost)]] : [])
         ];
         
         autoTable(pdf, {
@@ -740,7 +741,7 @@ const Oppdrag = () => {
         yPos += 7;
         
         const personnelData = mission.personnel.map((p: any) => [
-          p.profiles?.full_name || "Ukjent"
+          sanitizeForPdf(p.profiles?.full_name) || "Ukjent"
         ]);
         
         autoTable(pdf, {

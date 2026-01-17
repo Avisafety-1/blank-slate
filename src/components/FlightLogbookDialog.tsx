@@ -14,6 +14,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 interface FlightLogbookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -182,31 +183,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       
       // Header
       doc.setFontSize(18);
-      doc.text(`Loggbok - ${personName}`, 14, 20);
+      doc.text(sanitizeForPdf(`Loggbok - ${personName}`), 14, 20);
       
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Eksportert: ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`, 14, 28);
+      doc.text(formatDateForPdf(new Date(), "'Eksportert:' d. MMMM yyyy"), 14, 28);
       
       // Total flight time
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text(`Total flytid: ${formatDuration(Math.round(totalFlytid))}`, 14, 40);
+      doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Fra loggførte flyturer: ${formatDuration(totalMinutes)}`, 14, 47);
+      doc.text(`Fra loggforte flyturer: ${formatDurationForPdf(totalMinutes)}`, 14, 47);
       if (profileFlyvetimer > 0) {
-        doc.text(`Manuelt lagt til: ${formatDuration(Math.round(profileFlyvetimer * 60))}`, 14, 54);
+        doc.text(`Manuelt lagt til: ${formatDurationForPdf(Math.round(profileFlyvetimer * 60))}`, 14, 54);
       }
       
       // Flight logs table
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
-        log.departure_location,
-        log.landing_location,
-        formatDuration(log.flight_duration_minutes),
-        log.drone?.modell || "-",
-        log.mission?.tittel || "-"
+        sanitizeForPdf(log.departure_location),
+        sanitizeForPdf(log.landing_location),
+        formatDurationForPdf(log.flight_duration_minutes),
+        sanitizeForPdf(log.drone?.modell) || "-",
+        sanitizeForPdf(log.mission?.tittel) || "-"
       ]);
       
       autoTable(doc, {
@@ -220,39 +221,11 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       // Add signature if available
       if (signatureUrl) {
         const finalY = (doc as any).lastAutoTable?.finalY || 150;
-        
-        try {
-          // Load signature image
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error("Failed to load signature"));
-            img.src = signatureUrl;
-          });
-          
-          // Add signature to PDF
-          const signatureY = finalY + 20;
-          doc.setFontSize(10);
-          doc.setTextColor(100);
-          doc.text("Signatur:", 14, signatureY);
-          
-          // Calculate proportional dimensions
-          const maxWidth = 60;
-          const maxHeight = 30;
-          const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
-          const width = img.width * ratio;
-          const height = img.height * ratio;
-          
-          doc.addImage(img, "PNG", 14, signatureY + 5, width, height);
-        } catch (err) {
-          console.warn("Could not add signature to PDF:", err);
-        }
+        await addSignatureToPdf(doc, signatureUrl, finalY + 20, "Signatur:");
       }
       
       // Generate filename
-      const safeName = personName.replace(/[^a-zA-Z0-9æøåÆØÅ\s]/g, "").replace(/\s+/g, "_");
+      const safeName = sanitizeFilenameForPdf(personName);
       const dateStr = format(new Date(), "yyyy-MM-dd");
       const fileName = `loggbok_${safeName}_${dateStr}.pdf`;
       
@@ -270,12 +243,12 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       const { error: docError } = await supabase.from("documents").insert({
         company_id: companyId,
         user_id: user.id,
-        tittel: `Loggbok - ${personName}`,
+        tittel: sanitizeForPdf(`Loggbok - ${personName}`),
         kategori: "loggbok",
         fil_navn: fileName,
         fil_url: filePath,
         fil_storrelse: pdfBlob.size,
-        beskrivelse: `Personlig flyloggbok eksportert ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`
+        beskrivelse: sanitizeForPdf(`Personlig flyloggbok eksportert ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`)
       });
       
       if (docError) throw docError;
