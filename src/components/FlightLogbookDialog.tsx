@@ -44,6 +44,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const [loading, setLoading] = useState(true);
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [profileFlyvetimer, setProfileFlyvetimer] = useState(0);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [showAddHours, setShowAddHours] = useState(false);
   const [manualHours, setManualHours] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
@@ -53,17 +54,25 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   useEffect(() => {
     if (open && personId) {
       fetchFlightLogs();
-      fetchProfileFlyvetimer();
+      fetchProfileData();
     }
   }, [open, personId]);
 
-  const fetchProfileFlyvetimer = async () => {
+  const fetchProfileData = async () => {
     const { data } = await supabase
       .from("profiles")
       .select("flyvetimer")
       .eq("id", personId)
       .single();
     setProfileFlyvetimer(Number(data?.flyvetimer) || 0);
+    
+    // Fetch signature_url separately since it's a new column
+    const { data: signatureData } = await (supabase as any)
+      .from("profiles")
+      .select("signature_url")
+      .eq("id", personId)
+      .single();
+    setSignatureUrl(signatureData?.signature_url || null);
   };
 
   const handleConfirmAddHours = () => {
@@ -207,6 +216,40 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         styles: { fontSize: 8 },
         headStyles: { fillColor: [59, 130, 246] }
       });
+
+      // Add signature if available
+      if (signatureUrl) {
+        const finalY = (doc as any).lastAutoTable?.finalY || 150;
+        
+        try {
+          // Load signature image
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("Failed to load signature"));
+            img.src = signatureUrl;
+          });
+          
+          // Add signature to PDF
+          const signatureY = finalY + 20;
+          doc.setFontSize(10);
+          doc.setTextColor(100);
+          doc.text("Signatur:", 14, signatureY);
+          
+          // Calculate proportional dimensions
+          const maxWidth = 60;
+          const maxHeight = 30;
+          const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+          const width = img.width * ratio;
+          const height = img.height * ratio;
+          
+          doc.addImage(img, "PNG", 14, signatureY + 5, width, height);
+        } catch (err) {
+          console.warn("Could not add signature to PDF:", err);
+        }
+      }
       
       // Generate filename
       const safeName = personName.replace(/[^a-zA-Z0-9æøåÆØÅ\s]/g, "").replace(/\s+/g, "_");

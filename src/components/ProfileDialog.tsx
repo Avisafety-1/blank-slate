@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
+import { SignaturePad } from "./SignaturePad";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ interface Profile {
   nødkontakt_telefon: string | null;
   created_at: string | null;
   company_id: string;
+  signature_url: string | null;
 }
 
 interface Company {
@@ -150,8 +152,8 @@ export const ProfileDialog = () => {
         .single();
 
       if (profileData) {
-        setProfile(profileData as Profile);
-        setEditedProfile(profileData as Profile);
+        setProfile(profileData as unknown as Profile);
+        setEditedProfile(profileData as unknown as Profile);
       }
 
       // Fetch company name
@@ -626,6 +628,27 @@ export const ProfileDialog = () => {
                       ) : (
                         <p className="text-sm py-2 whitespace-pre-wrap">{profile?.adresse || t('common.notSpecified')}</p>
                       )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Signature */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <PenTool className="h-4 w-4" />
+                        {t('profile.signature') || 'Signatur'}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t('profile.signatureDescription') || 'Signaturen brukes på eksporterte loggbøker og dokumenter.'}
+                      </p>
+                      <SignaturePad 
+                        existingSignatureUrl={profile?.signature_url}
+                        onSave={(url) => {
+                          if (profile) {
+                            setProfile({ ...profile, signature_url: url });
+                          }
+                        }}
+                      />
                     </div>
                   </CardContent>
                 </Card>
