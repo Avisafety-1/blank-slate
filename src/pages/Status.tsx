@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
 
 interface KPIData {
   totalMissions: number;

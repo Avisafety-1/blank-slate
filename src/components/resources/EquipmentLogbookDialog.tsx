@@ -26,6 +26,7 @@ import {
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -280,23 +281,23 @@ export const EquipmentLogbookDialog = ({
       
       // Header
       pdf.setFontSize(18);
-      pdf.text(`Loggbok - ${equipmentNavn}`, 14, 20);
+      pdf.text(sanitizeForPdf(`Loggbok - ${equipmentNavn}`), 14, 20);
       pdf.setFontSize(11);
       pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
       pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
       
       // Table with all entries
       const tableData = allLogs.map(log => [
-        format(log.date, 'dd.MM.yyyy HH:mm'),
-        log.badgeText,
-        log.title,
-        log.description || '',
-        log.userName || 'Ukjent'
+        formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
+        sanitizeForPdf(log.badgeText),
+        sanitizeForPdf(log.title),
+        sanitizeForPdf(log.description) || '',
+        sanitizeForPdf(log.userName) || 'Ukjent'
       ]);
 
       autoTable(pdf, {
         startY: 45,
-        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
+        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utfort av']],
         body: tableData,
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [59, 130, 246] },
@@ -311,7 +312,7 @@ export const EquipmentLogbookDialog = ({
 
       // Convert PDF to blob
       const pdfBlob = pdf.output('blob');
-      const safeName = equipmentNavn.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      const safeName = sanitizeFilenameForPdf(equipmentNavn);
       const fileName = `loggbok-utstyr-${safeName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const filePath = `${companyId}/${user.id}/${Date.now()}-${fileName}`;
 
@@ -324,7 +325,7 @@ export const EquipmentLogbookDialog = ({
 
       // Create document entry
       const { error: insertError } = await supabase.from('documents').insert({
-        tittel: `Loggbok - ${equipmentNavn} - ${dateStr}`,
+        tittel: sanitizeForPdf(`Loggbok - ${equipmentNavn} - ${dateStr}`),
         kategori: 'loggbok',
         fil_url: filePath,
         fil_navn: fileName,
