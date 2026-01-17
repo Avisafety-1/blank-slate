@@ -298,33 +298,39 @@ export const EquipmentLogbookDialog = ({
       pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
       pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
       
-      // Table with all entries
-      const tableData = allLogs.map(log => [
-        formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
-        sanitizeForPdf(log.badgeText),
-        sanitizeForPdf(log.title),
-        sanitizeForPdf(log.description) || '',
-        sanitizeForPdf(log.userName) || 'Ukjent'
-      ]);
+      // Check if there are any logs
+      if (allLogs.length === 0) {
+        pdf.setFontSize(10);
+        pdf.text("Ingen oppforinger i loggboken.", 14, 55);
+      } else {
+        // Table with all entries
+        const tableData = allLogs.map(log => [
+          formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
+          sanitizeForPdf(log.badgeText),
+          sanitizeForPdf(log.title),
+          sanitizeForPdf(log.description) || '',
+          sanitizeForPdf(log.userName) || 'Ukjent'
+        ]);
 
-      autoTable(pdf, {
-        startY: 45,
-        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utfort av']],
-        body: tableData,
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [59, 130, 246] },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 25 },
-          2: { cellWidth: 45 },
-          3: { cellWidth: 55 },
-          4: { cellWidth: 30 },
-        },
-      });
+        autoTable(pdf, {
+          startY: 45,
+          head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utfort av']],
+          body: tableData,
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [59, 130, 246] },
+          columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 55 },
+            4: { cellWidth: 30 },
+          },
+        });
+      }
 
       // Add signature if available
       if (signatureUrl) {
-        const finalY = (pdf as any).lastAutoTable?.finalY || 150;
+        const finalY = allLogs.length > 0 ? ((pdf as any).lastAutoTable?.finalY || 150) : 70;
         await addSignatureToPdf(pdf, signatureUrl, finalY + 20, "Signatur:");
       }
 
