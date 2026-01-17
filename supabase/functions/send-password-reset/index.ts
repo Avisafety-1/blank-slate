@@ -3,6 +3,7 @@ import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,6 +103,15 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} password reset template`);
 
+    // Fetch attachments if custom template exists
+    let attachments: any[] = [];
+    const templateId = await getTemplateId(profile.company_id, 'password_reset');
+    if (templateId) {
+      console.log("Fetching attachments for template:", templateId);
+      attachments = await getTemplateAttachments(templateId);
+      console.log(`Found ${attachments.length} attachments`);
+    }
+
     // Get email configuration for the user's company
     const emailConfig = await getEmailConfig(profile.company_id);
     const senderAddress = emailConfig.fromName 
@@ -120,13 +130,14 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    console.log(`Sending password reset email to ${email}`);
+    console.log(`Sending password reset email to ${email} with ${attachments.length} attachments`);
 
     await client.send({
       from: senderAddress,
       to: email,
       subject: templateResult.subject,
       html: templateResult.content,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     await client.close();

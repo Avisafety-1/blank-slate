@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { getEmailConfig } from "../_shared/email-config.ts";
+import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,10 +57,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch email template from database
+    // Fetch email template from database - include id for attachments
     const { data: template, error: templateError } = await supabase
       .from('email_templates')
-      .select('subject, content')
+      .select('id, subject, content')
       .eq('company_id', company_id)
       .eq('template_type', 'customer_welcome')
       .maybeSingle();
@@ -67,6 +68,14 @@ serve(async (req) => {
     if (templateError) {
       console.error("Error fetching template:", templateError);
       throw templateError;
+    }
+
+    // Fetch attachments if template exists
+    let attachments: any[] = [];
+    if (template?.id) {
+      console.log("Fetching attachments for template:", template.id);
+      attachments = await getTemplateAttachments(template.id);
+      console.log(`Found ${attachments.length} attachments`);
     }
 
     // Default template if none exists
@@ -134,7 +143,7 @@ serve(async (req) => {
       ? `${emailConfig.fromName} <${emailConfig.fromEmail}>` 
       : emailConfig.fromEmail;
 
-    console.log("Attempting to send email to:", customer_email, "from:", senderAddress);
+    console.log("Attempting to send email to:", customer_email, "from:", senderAddress, "with", attachments.length, "attachments");
 
     // Retry logic for sporadic SMTP failures
     const maxRetries = 3;
@@ -164,6 +173,7 @@ serve(async (req) => {
           to: customer_email,
           subject: emailSubject,
           html: emailContent,
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
 
         await client.close();
