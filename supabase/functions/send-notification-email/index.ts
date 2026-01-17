@@ -3,6 +3,7 @@ import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig } from "../_shared/email-config.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,6 +135,11 @@ serve(async (req: Request): Promise<Response> => {
 
       console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} incident notification template`);
 
+      // Get template attachments
+      const templateId = await getTemplateId(companyId, 'incident_notification');
+      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      console.log(`Found ${emailAttachments.length} attachments for template`);
+
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
         ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
@@ -163,6 +169,7 @@ serve(async (req: Request): Promise<Response> => {
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
 
         emailsSent++;
@@ -256,6 +263,11 @@ serve(async (req: Request): Promise<Response> => {
 
       console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} mission notification template`);
 
+      // Get template attachments
+      const templateId = await getTemplateId(companyId, 'mission_notification');
+      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      console.log(`Found ${emailAttachments.length} attachments for template`);
+
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
         ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
@@ -285,6 +297,7 @@ serve(async (req: Request): Promise<Response> => {
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
 
         emailsSent++;
@@ -364,6 +377,11 @@ serve(async (req: Request): Promise<Response> => {
 
       console.log(`Using ${templateResult.isCustom ? 'custom' : 'default'} admin new user template`);
 
+      // Get template attachments
+      const templateId = await getTemplateId(companyId, 'admin_new_user');
+      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      console.log(`Found ${emailAttachments.length} attachments for template`);
+
       const emailConfig = await getEmailConfig(companyId);
       const senderAddress = emailConfig.fromName 
         ? `${emailConfig.fromName} <${emailConfig.fromEmail}>`
@@ -397,6 +415,7 @@ serve(async (req: Request): Promise<Response> => {
           to: user.email,
           subject: templateResult.subject,
           html: templateResult.content,
+          attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
         sentCount++;
       }
