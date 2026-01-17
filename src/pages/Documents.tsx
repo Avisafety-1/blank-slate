@@ -14,7 +14,7 @@ import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDia
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 
-export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "annet";
+export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "annet";
 export interface Document {
   id: string;
   tittel: string;
