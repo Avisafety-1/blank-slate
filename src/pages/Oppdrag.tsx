@@ -948,12 +948,20 @@ const Oppdrag = () => {
             pdf.setFont("helvetica", "normal");
             pdf.setFontSize(9);
             
-            aiAnalysis.recommendations.forEach((rec: string, index: number) => {
+            aiAnalysis.recommendations.forEach((rec: any, index: number) => {
               if (yPos > 270) {
                 pdf.addPage();
                 yPos = 20;
               }
-              const sanitizedRec = sanitizeForPdf(String(rec || ''));
+              // Handle both string and object recommendations
+              let recText = '';
+              if (typeof rec === 'string') {
+                recText = rec;
+              } else if (rec && typeof rec === 'object') {
+                // Try common properties: text, title, description, message, content
+                recText = rec.text || rec.title || rec.description || rec.message || rec.content || rec.recommendation || JSON.stringify(rec);
+              }
+              const sanitizedRec = sanitizeForPdf(recText);
               const bulletText = `${index + 1}. ${sanitizedRec}`;
               const splitRec = pdf.splitTextToSize(bulletText, pageWidth - 35);
               pdf.text(splitRec, 18, yPos);
