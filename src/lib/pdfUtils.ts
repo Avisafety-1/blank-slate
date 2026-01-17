@@ -10,9 +10,32 @@ import { nb } from "date-fns/locale";
 export const sanitizeForPdf = (text: string | null | undefined): string => {
   if (!text) return '';
   return text
+    // Norwegian characters
     .replace(/æ/g, 'ae').replace(/Æ/g, 'Ae')
     .replace(/ø/g, 'o').replace(/Ø/g, 'O')
-    .replace(/å/g, 'a').replace(/Å/g, 'A');
+    .replace(/å/g, 'a').replace(/Å/g, 'A')
+    // Other Nordic/European characters
+    .replace(/ä/g, 'ae').replace(/Ä/g, 'Ae')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+    .replace(/ß/g, 'ss')
+    .replace(/é/g, 'e').replace(/É/g, 'E')
+    .replace(/è/g, 'e').replace(/È/g, 'E')
+    .replace(/ê/g, 'e').replace(/Ê/g, 'E')
+    .replace(/ë/g, 'e').replace(/Ë/g, 'E')
+    .replace(/à/g, 'a').replace(/À/g, 'A')
+    .replace(/á/g, 'a').replace(/Á/g, 'A')
+    .replace(/â/g, 'a').replace(/Â/g, 'A')
+    .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+    // Special punctuation that can cause issues
+    .replace(/–/g, '-').replace(/—/g, '-')
+    .replace(/'/g, "'").replace(/'/g, "'")
+    .replace(/"/g, '"').replace(/"/g, '"')
+    .replace(/…/g, '...')
+    .replace(/•/g, '-')
+    // Remove any remaining non-ASCII characters that might cause issues
+    .replace(/[^\x00-\x7F]/g, '');
 };
 
 /**
