@@ -10,12 +10,47 @@ export interface EmailConfig {
   fromEmail: string;
 }
 
+// Encode subject line with UTF-8 for non-ASCII characters (RFC 2047)
+export function encodeSubject(subject: string): string {
+  // Check if subject contains non-ASCII characters
+  const hasNonAscii = /[^\x00-\x7F]/.test(subject);
+  
+  if (!hasNonAscii) {
+    return subject; // No encoding needed
+  }
+  
+  // Encode as Base64 (more reliable than Quoted-Printable for special chars)
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(subject);
+  const base64 = btoa(String.fromCharCode(...bytes));
+  
+  return `=?UTF-8?B?${base64}?=`;
+}
+
+// Format sender address as RFC 5322 compliant string
+export function formatSenderAddress(fromName: string | undefined, fromEmail: string): string {
+  const email = fromEmail.toLowerCase();
+  if (fromName) {
+    // Encode name if it contains non-ASCII
+    const hasNonAscii = /[^\x00-\x7F]/.test(fromName);
+    if (hasNonAscii) {
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(fromName);
+      const base64 = btoa(String.fromCharCode(...bytes));
+      return `=?UTF-8?B?${base64}?= <${email}>`;
+    }
+    return `${fromName} <${email}>`;
+  }
+  return email;
+}
+
 // Generate RFC 5322 compliant email headers to prevent spam blocking
 export function getEmailHeaders(domain: string = 'avisafe.no') {
   return {
     date: new Date().toUTCString(),
     headers: {
       "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
+      "X-Mailer": "AviSafe",
     },
   };
 }
