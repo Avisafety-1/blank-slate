@@ -91,14 +91,23 @@ export function getSenderObject(fromName: string | undefined, fromEmail: string)
 }
 
 // Generate RFC 5322 compliant email headers to prevent spam blocking
-export function getEmailHeaders(domain: string = 'avisafe.no') {
+// Includes From header as backup for Gmail compatibility
+export function getEmailHeaders(fromName?: string, fromEmail?: string, domain: string = 'avisafe.no') {
+  const headers: Record<string, string> = {
+    "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
+    "Date": new Date().toUTCString(),
+    "MIME-Version": "1.0",
+    "X-Mailer": "AviSafe",
+  };
+  
+  // Add From header as backup if provided
+  if (fromEmail) {
+    headers["From"] = formatSenderAddress(fromName, fromEmail);
+  }
+  
   return {
     date: new Date().toUTCString(),
-    headers: {
-      "Message-ID": `<${crypto.randomUUID()}@${domain}>`,
-      "MIME-Version": "1.0",
-      "X-Mailer": "AviSafe",
-    },
+    headers,
   };
 }
 

@@ -303,8 +303,8 @@ serve(async (req) => {
 
       const companyName = companyData?.navn || 'Selskapet';
 
-      // Get email config
       const emailConfig = await getEmailConfig(profile.company_id);
+      const fromName = emailConfig.fromName || "AviSafe";
 
       // Check for custom template
       const { data: template } = await supabase
@@ -377,8 +377,8 @@ serve(async (req) => {
       }
 
       try {
-        const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
-        const emailHeaders = getEmailHeaders();
+        const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
 
         await emailClient.send({
           from: senderAddress,

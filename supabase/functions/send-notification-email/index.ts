@@ -46,14 +46,15 @@ serve(async (req: Request): Promise<Response> => {
       const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
+        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
         await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
@@ -76,14 +77,15 @@ serve(async (req: Request): Promise<Response> => {
       const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
+        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
         await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         emailsSent++;
       }
@@ -107,14 +109,15 @@ serve(async (req: Request): Promise<Response> => {
       const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let sentCount = 0;
       for (const pref of preferences) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
+        const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
         await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
         sentCount++;
       }
@@ -134,10 +137,11 @@ serve(async (req: Request): Promise<Response> => {
       const templateResult = await getEmailTemplateWithFallback(companyId, 'followup_assigned', { user_name: followupAssigned.recipientName, incident_title: followupAssigned.incidentTitle, incident_severity: followupAssigned.incidentSeverity, incident_location: followupAssigned.incidentLocation || '', incident_description: followupAssigned.incidentDescription || '', company_name: company?.navn || '' });
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-      const emailHeaders = getEmailHeaders();
+      const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
       await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers });
       await client.close();
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
@@ -149,14 +153,15 @@ serve(async (req: Request): Promise<Response> => {
       if (!users?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const u of users) {
         if (!u.email) continue;
         try {
-          const emailHeaders = getEmailHeaders();
+          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
           await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
@@ -170,14 +175,15 @@ serve(async (req: Request): Promise<Response> => {
       if (!customers?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const c of customers) {
         if (!c.epost) continue;
         try {
-          const emailHeaders = getEmailHeaders();
+          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
           await client.send({ from: senderAddress, to: c.epost, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${c.epost}`, e); }
@@ -191,14 +197,15 @@ serve(async (req: Request): Promise<Response> => {
       if (!allUsers?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const emailConfig = await getEmailConfig(companyId);
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const u of allUsers) {
         if (!u.email) continue;
         try {
-          const emailHeaders = getEmailHeaders();
+          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
           await client.send({ from: senderAddress, to: u.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
@@ -219,10 +226,11 @@ serve(async (req: Request): Promise<Response> => {
     if (!user?.email) throw new Error("User email not found");
 
     const emailConfig = await getEmailConfig(companyId);
-    const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+    const fromName = emailConfig.fromName || "AviSafe";
+    const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-    const emailHeaders = getEmailHeaders();
+    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
     await client.send({ from: senderAddress, to: user.email, subject: encodeSubject(subject), html: htmlContent, date: emailHeaders.date, headers: emailHeaders.headers });
     await client.close();
 
