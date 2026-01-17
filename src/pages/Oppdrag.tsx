@@ -912,7 +912,7 @@ const Oppdrag = () => {
             .join(', ') || '-';
           
           return [
-            format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb }),
+            format(new Date(log.flight_date), "dd.MM.yyyy", { locale: nb }),
             `${log.flight_duration_minutes} min`,
             log.pilot?.full_name || '-',
             log.drones?.modell || '-',
