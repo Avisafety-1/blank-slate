@@ -45,12 +45,21 @@ serve(async (req: Request): Promise<Response> => {
     if (templateId) attachments = await getTemplateAttachments(templateId);
 
     const emailConfig = await getEmailConfig(profile.company_id);
-    const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+    const fromName = emailConfig.fromName || "AviSafe";
+    const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
 
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-    const emailHeaders = getEmailHeaders();
-    await client.send({ from: senderAddress, to: email, subject: encodeSubject(templateResult.subject), html: templateResult.content, date: emailHeaders.date, headers: emailHeaders.headers, attachments: attachments.length > 0 ? attachments : undefined });
+    await client.send({ 
+      from: senderAddress, 
+      to: email, 
+      subject: encodeSubject(templateResult.subject), 
+      html: templateResult.content, 
+      date: emailHeaders.date, 
+      headers: emailHeaders.headers, 
+      attachments: attachments.length > 0 ? attachments : undefined 
+    });
 
     await client.close();
     return new Response(JSON.stringify({ message: "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

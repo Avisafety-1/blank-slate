@@ -44,13 +44,14 @@ serve(async (req) => {
     }
 
     const emailConfig = await getEmailConfig(company_id);
-    const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+    const fromName = emailConfig.fromName || "AviSafe";
+    const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
 
     const client = new SMTPClient({
       connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } },
     });
 
-    const emailHeaders = getEmailHeaders();
     await client.send({
       from: senderAddress,
       to: user_email,

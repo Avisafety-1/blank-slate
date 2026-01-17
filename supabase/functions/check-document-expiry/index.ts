@@ -176,6 +176,7 @@ serve(async (req) => {
 
       // Get company-specific email configuration
       const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
       console.log(`Using email config for company ${companyId}: host=${emailConfig.host}, from=${emailConfig.fromEmail}`);
 
       const emailClient = new SMTPClient({
@@ -190,7 +191,7 @@ serve(async (req) => {
         },
       });
 
-      const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
       // Find users in this company with document expiry notifications enabled
       const { data: eligibleUsers, error: usersError } = await supabase
@@ -283,7 +284,7 @@ serve(async (req) => {
               .replace(/\{\{expiry_date\}\}/g, expiryDate)
               .replace(/\{\{company_name\}\}/g, companyName);
 
-            const emailHeaders = getEmailHeaders();
+            const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
             try {
               await emailClient.send({
                 from: senderAddress,
@@ -332,7 +333,7 @@ serve(async (req) => {
             <p style="color: #666; margin-top: 20px; font-size: 14px;">Vennligst logg inn for å fornye eller oppdatere disse dokumentene.</p>
           `;
 
-          const emailHeaders = getEmailHeaders();
+          const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
           try {
             await emailClient.send({
               from: senderAddress,

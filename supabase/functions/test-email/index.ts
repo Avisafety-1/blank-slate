@@ -20,13 +20,17 @@ serve(async (req) => {
     }
 
     const emailConfig = await getEmailConfig(company_id);
-    const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
+    const fromName = emailConfig.fromName || "AviSafe";
+    const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+    const emailHeaders = getEmailHeaders(fromName, emailConfig.fromEmail);
+
+    console.log("Sending test email with From:", senderAddress);
+    console.log("Headers (including backup From):", JSON.stringify(emailHeaders.headers));
 
     const client = new SMTPClient({
       connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.port === 465 || emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } },
     });
 
-    const emailHeaders = getEmailHeaders();
     await client.send({
       from: senderAddress,
       to: recipient_email,
