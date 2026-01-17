@@ -10,28 +10,12 @@ export interface EmailConfig {
   fromEmail: string;
 }
 
-// Sanitize and encode subject line for email headers
-// Denomailer doesn't handle non-ASCII (ÆØÅ) correctly, so we pre-encode with RFC2047 Base64
-// when non-ASCII characters are present. This makes the subject pure ASCII so denomailer
-// won't try to re-encode it.
+// Sanitize subject line - remove control characters only
+// Let denomailer/SMTP handle all encoding - do NOT pre-encode with RFC2047
+// Pre-encoding causes double-encoding which results in malformed headers (==3d)
 export function sanitizeSubject(subject: string): string {
   // Remove CR/LF to prevent header injection and folding issues
-  const cleaned = subject.replace(/[\r\n]/g, ' ').trim();
-  
-  // Check if subject contains non-ASCII characters (æøå etc.)
-  const hasNonAscii = /[^\x00-\x7F]/.test(cleaned);
-  
-  if (hasNonAscii) {
-    // Encode entire subject as RFC 2047 Base64
-    // This makes it pure ASCII so denomailer won't try to re-encode
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(cleaned);
-    const base64 = btoa(String.fromCharCode(...bytes));
-    return `=?UTF-8?B?${base64}?=`;
-  }
-  
-  // ASCII-only subjects are left as-is
-  return cleaned;
+  return subject.replace(/[\r\n]/g, ' ').trim();
 }
 
 // @deprecated - Use sanitizeSubject instead. This function is kept for backward compatibility
