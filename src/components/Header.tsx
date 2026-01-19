@@ -80,9 +80,9 @@ export const Header = () => {
   const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
 
   return (
-    <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-[env(safe-area-inset-top)] z-[1100] w-full">
+    <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
       <div className="w-full px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-3">
-        <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
+        <div className="flex items-start md:items-center justify-between gap-1 sm:gap-2 min-w-0">
           <Button 
             variant="ghost" 
             className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
@@ -91,12 +91,12 @@ export const Header = () => {
             <img 
               src={avisafeLogo} 
               alt="AviSafe" 
-              className="h-8 sm:h-10 lg:h-12 w-auto dark:invert"
+              className="h-8 sm:h-10 lg:h-12 w-auto max-w-[42vw] sm:max-w-none dark:invert"
             />
           </Button>
           
           {/* Mobile company selector and menu */}
-          <div className="flex items-center gap-0.5 md:hidden flex-shrink-0 overflow-visible">
+          <div className="flex items-center justify-end gap-0.5 md:hidden flex-1 min-w-0 flex-wrap overflow-visible">
             {isSuperAdmin && companies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
