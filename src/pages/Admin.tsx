@@ -357,9 +357,9 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
-      <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-[env(safe-area-inset-top)] z-50 w-full">
+      <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-50 w-full">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-1 sm:gap-2">
+          <div className="flex items-start sm:items-center justify-between gap-1 sm:gap-2 min-w-0">
             <Button 
               variant="ghost" 
               className="flex items-center gap-1 sm:gap-2 lg:gap-3 hover:bg-transparent p-0 flex-shrink-0"
@@ -375,8 +375,8 @@ const Admin = () => {
             {/* Mobile Navigation - Hamburger Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="sm">
-                  <Menu className="w-5 h-5" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
+                  <Menu className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="bg-card/95 backdrop-blur-md border-glass z-50">
@@ -389,11 +389,12 @@ const Admin = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <nav className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+            <nav className="flex items-center justify-end gap-0.5 sm:gap-2 lg:gap-4 flex-1 min-w-0 flex-wrap overflow-visible">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/")}
+                className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
               >
                 {t('actions.back')}
               </Button>
@@ -407,8 +408,9 @@ const Admin = () => {
                   navigate("/auth");
                 }}
                 title={t('actions.signOut')}
+                className="h-7 w-7 min-w-7 p-0 sm:h-8 sm:w-8"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </nav>
           </div>
@@ -417,32 +419,28 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className={`grid w-full max-w-3xl mx-auto relative z-10 ${isMobile ? 'grid-cols-2 gap-2 p-2 bg-transparent' : ''}`} style={!isMobile ? { gridTemplateColumns: isSuperAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr' } : undefined}>
-            <TabsTrigger value="users" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
+          <TabsList className="flex flex-wrap justify-center w-full max-w-3xl mx-auto relative z-10 gap-1 sm:gap-2 p-2 bg-muted/50 sm:bg-muted rounded-lg">
+            <TabsTrigger value="users" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
               <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{t('admin.users')}</span>
-              <span className="sm:hidden">{t('admin.users').substring(0, 4)}.</span>
+              <span>{isMobile ? t('admin.users').substring(0, 4) + '.' : t('admin.users')}</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
+            <TabsTrigger value="customers" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
               <UserCog className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{t('admin.customers')}</span>
-              <span className="sm:hidden">{t('admin.customers').substring(0, 4)}.</span>
+              <span>{isMobile ? t('admin.customers').substring(0, 4) + '.' : t('admin.customers')}</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
+            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
               <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{t('admin.emailTemplates')}</span>
-              <span className="sm:hidden">{t('auth.email')}</span>
+              <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="companies" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 bg-muted sm:bg-transparent rounded-lg sm:rounded-sm border border-border sm:border-0">
+              <TabsTrigger value="companies" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
                 <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">{t('admin.companies')}</span>
-                <span className="sm:hidden">{t('admin.companies').substring(0, 6)}</span>
+                <span>{isMobile ? t('admin.companies').substring(0, 6) : t('admin.companies')}</span>
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="users" className="mt-20 sm:mt-12">
+          <TabsContent value="users" className="mt-4 sm:mt-8">
             <div className="space-y-4 sm:space-y-6">
               {/* Registration Code Card */}
               {registrationCode && (
