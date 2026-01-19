@@ -82,7 +82,7 @@ export const Header = () => {
   return (
     <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-[env(safe-area-inset-top)] z-[1100] w-full">
       <div className="w-full px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-3">
-        <div className="flex items-center justify-between gap-1 sm:gap-2">
+        <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
           <Button 
             variant="ghost" 
             className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
@@ -96,12 +96,12 @@ export const Header = () => {
           </Button>
           
           {/* Mobile company selector and menu */}
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-0.5 md:hidden flex-shrink-0 overflow-visible">
             {isSuperAdmin && companies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Building2 className="w-4 h-4" />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
+                    <Building2 className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
@@ -121,8 +121,8 @@ export const Header = () => {
             {/* Mobile Navigation - Hamburger Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Menu className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
+                  <Menu className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
@@ -145,10 +145,10 @@ export const Header = () => {
               variant="ghost"
               size="sm"
               onClick={toggleLanguage}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 min-w-7 p-0"
               title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
-              <Globe className="w-4 h-4" />
+              <Globe className="w-3.5 h-3.5" />
             </Button>
             
             {isAdmin && (
@@ -156,10 +156,10 @@ export const Header = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/admin")}
-                className="gap-1 relative h-8 w-8 p-0"
+                className="gap-1 relative h-7 w-7 min-w-7 p-0"
                 title={t('nav.admin')}
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-3.5 h-3.5" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
               </Button>
             )}
@@ -169,9 +169,9 @@ export const Header = () => {
               size="sm"
               onClick={handleSignOut}
               title={t('actions.signOut')}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 min-w-7 p-0"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
           

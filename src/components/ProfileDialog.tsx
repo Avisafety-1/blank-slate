@@ -424,8 +424,8 @@ export const ProfileDialog = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" title={t('profile.title')} className="relative">
-          <User className="w-4 h-4" />
+        <Button variant="ghost" size="sm" title={t('profile.title')} className="relative h-7 w-7 min-w-7 p-0 md:h-auto md:w-auto md:min-w-0 md:px-2">
+          <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
           {followUpIncidents.length > 0 && (
             <Badge
               variant="destructive"
