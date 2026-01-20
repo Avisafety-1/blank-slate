@@ -52,9 +52,6 @@ export function EccairsSettingsDialog({
   const [environment, setEnvironment] = useState<Environment>("sandbox");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  // Leave empty to avoid sending `scope` unless explicitly configured.
-  // Many E2 clients use a default scope for client_credentials.
-  const [scope, setScope] = useState("");
   const [hasExistingSecret, setHasExistingSecret] = useState(false);
 
   // Fetch existing settings when dialog opens
@@ -76,12 +73,10 @@ export function EccairsSettingsDialog({
         if (data) {
           setClientId(data.e2_client_id || "");
           setClientSecret("");
-          setScope(data.e2_scope || "");
           setHasExistingSecret(!!data.e2_client_secret_encrypted);
         } else {
           setClientId("");
           setClientSecret("");
-          setScope("");
           setHasExistingSecret(false);
         }
       } catch (err) {
@@ -119,7 +114,7 @@ export function EccairsSettingsDialog({
         p_e2_client_id: clientId,
         p_e2_client_secret: clientSecret || "********",
         p_e2_base_url: E2_BASE_URLS[environment],
-        p_e2_scope: scope.trim() ? scope.trim() : null,
+        p_e2_scope: null,
       });
 
       if (error) throw error;
@@ -271,19 +266,6 @@ export function EccairsSettingsDialog({
               </p>
             </div>
 
-            {/* Scope (optional) */}
-            <div className="space-y-2">
-              <Label htmlFor="scope">OAuth Scope (valgfritt)</Label>
-              <Input
-                id="scope"
-                value={scope}
-                onChange={(e) => setScope(e.target.value)}
-                placeholder="openid"
-              />
-              <p className="text-xs text-muted-foreground">
-                La stå tomt for å ikke sende scope (bruker E2 sin default scope hvis konfigurert).
-              </p>
-            </div>
 
             {/* Test result */}
             {testResult && (
