@@ -181,6 +181,8 @@ export function EccairsAttachmentUpload({
         formData.append('files', fileData, fileName);
         formData.append('attributePath', '24.ATTRIBUTES.793');
         formData.append('versionType', 'DRAFT');
+        formData.append('incident_id', incidentId);
+        formData.append('environment', 'sandbox');
 
         const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/attachments/${encodeURIComponent(e2Id)}`, {
           method: 'POST',
