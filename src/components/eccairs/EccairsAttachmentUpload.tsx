@@ -37,7 +37,7 @@ interface SelectedDocument {
   error?: string;
 }
 
-type VersionType = 'DRAFT' | 'MINOR';
+
 
 async function getAccessToken() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -57,7 +57,7 @@ export function EccairsAttachmentUpload({
   const [selectedDocs, setSelectedDocs] = useState<SelectedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [versionType, setVersionType] = useState<VersionType>('MINOR');
+  
 
   // Fetch documents when dialog opens
   useEffect(() => {
@@ -183,7 +183,7 @@ export function EccairsAttachmentUpload({
         const fileName = item.document.fil_navn || 'document';
         formData.append('files', fileData, fileName);
         formData.append('attributePath', '24.ATTRIBUTES.793');
-        formData.append('versionType', versionType);
+        formData.append('versionType', 'DRAFT');
         formData.append('incident_id', incidentId);
         formData.append('environment', 'sandbox');
 
@@ -323,36 +323,6 @@ export function EccairsAttachmentUpload({
                 })}
               </div>
             )}
-          </div>
-
-          {/* Version type toggle (sandbox only) */}
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
-            <span className="text-sm font-medium">Version Type:</span>
-            <div className="flex gap-1">
-              <Button
-                type="button"
-                size="sm"
-                variant={versionType === 'DRAFT' ? 'default' : 'outline'}
-                onClick={() => setVersionType('DRAFT')}
-                disabled={isUploading}
-                className="h-7 px-3 text-xs"
-              >
-                DRAFT
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={versionType === 'MINOR' ? 'default' : 'outline'}
-                onClick={() => setVersionType('MINOR')}
-                disabled={isUploading}
-                className="h-7 px-3 text-xs"
-              >
-                MINOR
-              </Button>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {versionType === 'DRAFT' ? '(Lagres som utkast)' : '(Lagres permanent)'}
-            </span>
           </div>
 
           {/* Selected count */}
