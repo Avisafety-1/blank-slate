@@ -82,7 +82,7 @@ export const Header = () => {
   return (
     <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
       <div className="w-full px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-3">
-        <div className="flex items-start md:items-center justify-between gap-1 sm:gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
           <Button 
             variant="ghost" 
             className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
