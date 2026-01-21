@@ -571,6 +571,36 @@ export type Database = {
           },
         ]
       }
+      drone_models: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          eu_class: string
+          id: string
+          name: string
+          payload_kg: number
+          weight_kg: number
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          eu_class: string
+          id?: string
+          name: string
+          payload_kg?: number
+          weight_kg: number
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          eu_class?: string
+          id?: string
+          name?: string
+          payload_kg?: number
+          weight_kg?: number
+        }
+        Relationships: []
+      }
       drone_personnel: {
         Row: {
           created_at: string | null

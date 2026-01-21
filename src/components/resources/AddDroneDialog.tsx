@@ -10,6 +10,15 @@ import { useEffect, useState } from "react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useChecklists } from "@/hooks/useChecklists";
 
+interface DroneModel {
+  id: string;
+  name: string;
+  eu_class: string;
+  weight_kg: number;
+  payload_kg: number;
+  comment: string | null;
+}
+
 interface AddDroneDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,6 +35,17 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+
+  // Drone catalog state
+  const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+
+  // Controlled form fields for auto-fill
+  const [modell, setModell] = useState("");
+  const [klasse, setKlasse] = useState("");
+  const [vekt, setVekt] = useState("");
+  const [payload, setPayload] = useState("");
+  const [merknader, setMerknader] = useState("");
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -45,6 +65,40 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
     }
   }, [userId]);
 
+  // Fetch drone models catalog
+  useEffect(() => {
+    const fetchDroneModels = async () => {
+      const { data, error } = await supabase
+        .from("drone_models")
+        .select("*")
+        .order("name");
+      
+      if (data && !error) {
+        setDroneModels(data as DroneModel[]);
+      }
+    };
+    
+    if (open) {
+      fetchDroneModels();
+    }
+  }, [open]);
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedModelId("");
+      setModell("");
+      setKlasse("");
+      setVekt("");
+      setPayload("");
+      setMerknader("");
+      setInspectionStartDate("");
+      setInspectionIntervalDays("");
+      setCalculatedNextInspection("");
+      setSelectedChecklistId("");
+    }
+  }, [open]);
+
   // Calculate next inspection when start date or interval changes
   useEffect(() => {
     if (inspectionStartDate && inspectionIntervalDays) {
@@ -59,6 +113,28 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
       setCalculatedNextInspection("");
     }
   }, [inspectionStartDate, inspectionIntervalDays]);
+
+  // Handle catalog selection
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+    if (modelId && modelId !== "manual") {
+      const model = droneModels.find(m => m.id === modelId);
+      if (model) {
+        setModell(model.name);
+        setKlasse(model.eu_class);
+        setVekt(model.weight_kg.toString());
+        setPayload(model.payload_kg.toString());
+        setMerknader(model.comment || "");
+      }
+    } else {
+      // Reset for manual input
+      setModell("");
+      setKlasse("");
+      setVekt("");
+      setPayload("");
+      setMerknader("");
+    }
+  };
 
   const handleAddDrone = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,17 +157,17 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
       const { data: droneData, error } = await (supabase as any).from("drones").insert([{
         user_id: userId,
         company_id: companyId,
-        modell: formData.get("modell") as string,
+        modell: modell || (formData.get("modell") as string),
         serienummer: formData.get("serienummer") as string,
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
-        merknader: (formData.get("merknader") as string) || null,
+        merknader: merknader || null,
         sist_inspeksjon: (formData.get("sist_inspeksjon") as string) || null,
         neste_inspeksjon: nesteInspeksjon,
         kjøpsdato: (formData.get("kjøpsdato") as string) || null,
-        klasse: (formData.get("klasse") as string) || null,
-        vekt: formData.get("vekt") ? parseFloat(formData.get("vekt") as string) : null,
-        payload: formData.get("payload") ? parseFloat(formData.get("payload") as string) : null,
+        klasse: klasse || null,
+        vekt: vekt ? parseFloat(vekt) : null,
+        payload: payload ? parseFloat(payload) : null,
         inspection_start_date: inspectionStartDate || null,
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
@@ -111,6 +187,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         setInspectionIntervalDays("");
         setCalculatedNextInspection("");
         setSelectedChecklistId("");
+        setSelectedModelId("");
+        setModell("");
+        setKlasse("");
+        setVekt("");
+        setPayload("");
+        setMerknader("");
         onDroneAdded();
         onOpenChange(false);
       }
@@ -126,9 +208,36 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           <DialogTitle>{terminology.addVehicle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddDrone} className="space-y-4">
+          {/* Drone catalog selector */}
+          <div className="border-b pb-4 mb-4">
+            <Label>Velg fra katalog (valgfritt)</Label>
+            <Select value={selectedModelId} onValueChange={handleModelSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">Angi manuelt</SelectItem>
+                {droneModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name} ({model.eu_class})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Velg en modell for å auto-fylle vekt, payload og klasse
+            </p>
+          </div>
+
           <div>
             <Label htmlFor="modell">Modell</Label>
-            <Input id="modell" name="modell" required />
+            <Input 
+              id="modell" 
+              name="modell" 
+              required 
+              value={modell}
+              onChange={(e) => setModell(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="serienummer">Serienummer</Label>
@@ -136,7 +245,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           </div>
           <div>
             <Label htmlFor="klasse">Klasse</Label>
-            <Select name="klasse">
+            <Select value={klasse} onValueChange={setKlasse}>
               <SelectTrigger>
                 <SelectValue placeholder="Velg klasse" />
               </SelectTrigger>
@@ -153,11 +262,27 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
-              <Input id="vekt" name="vekt" type="number" step="0.01" placeholder="f.eks. 0.9" />
+              <Input 
+                id="vekt" 
+                name="vekt" 
+                type="number" 
+                step="0.001" 
+                placeholder="f.eks. 0.9" 
+                value={vekt}
+                onChange={(e) => setVekt(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="payload">Payload (kg)</Label>
-              <Input id="payload" name="payload" type="number" step="0.01" placeholder="f.eks. 0.5" />
+              <Input 
+                id="payload" 
+                name="payload" 
+                type="number" 
+                step="0.001" 
+                placeholder="f.eks. 0.5" 
+                value={payload}
+                onChange={(e) => setPayload(e.target.value)}
+              />
             </div>
           </div>
           <div>
@@ -257,7 +382,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           </div>
           <div>
             <Label htmlFor="merknader">Merknader</Label>
-            <Textarea id="merknader" name="merknader" />
+            <Textarea 
+              id="merknader" 
+              name="merknader" 
+              value={merknader}
+              onChange={(e) => setMerknader(e.target.value)}
+            />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Legger til..." : terminology.addVehicle}
