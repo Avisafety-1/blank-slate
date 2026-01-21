@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
+import { EccairsEventTypeSelect } from "./EccairsEventTypeSelect";
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { 
   ECCAIRS_FIELDS, 
@@ -165,8 +166,6 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
       } else if (field.code === 32 && suggestions.aircraft_category) {
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
-      } else if (field.code === 390 && suggestions.headline) {
-        newValues[makeFieldKey(field)] = suggestions.headline;
       } else if (field.code === 454 && suggestions.state_area) {
         // Auto-fill state/area based on postcode from lokasjon
         // Store as JSON array string for content_object_array format
@@ -283,6 +282,9 @@ export function EccairsMappingDialog({
     const fieldKey = makeFieldKey(field);
 
     if (field.type === 'select') {
+      // Use special component for Event Type (VL390) - only main categories
+      const isEventType = field.code === 390;
+      
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
@@ -297,7 +299,13 @@ export function EccairsMappingDialog({
           {field.helpText && (
             <p className="text-xs text-muted-foreground">{field.helpText}</p>
           )}
-          {isMultiSelect ? (
+          {isEventType ? (
+            <EccairsEventTypeSelect
+              value={getFieldValue(field) || null}
+              onChange={(val) => setFieldValue(field, val)}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          ) : isMultiSelect ? (
             <EccairsMultiSelect
               valueListKey={getVLKey(field)}
               value={parseMultiSelectValue(getFieldValue(field))}
