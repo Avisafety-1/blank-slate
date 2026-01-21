@@ -19,7 +19,6 @@ import {
   EccairsFieldConfig, 
   EccairsFieldGroup,
   ECCAIRS_FIELD_GROUP_LABELS,
-  ECCAIRS_FIELD_GROUP_ICONS,
   getOrderedGroups,
   getFieldsByGroup
 } from "@/config/eccairsFields";
@@ -414,8 +413,7 @@ export function EccairsMappingDialog({
 
     return (
       <div key={group} className="space-y-4">
-        <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground border-b pb-2">
-          <span>{ECCAIRS_FIELD_GROUP_ICONS[group]}</span>
+        <h4 className="font-medium text-sm text-muted-foreground border-b pb-2">
           {ECCAIRS_FIELD_GROUP_LABELS[group]}
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
