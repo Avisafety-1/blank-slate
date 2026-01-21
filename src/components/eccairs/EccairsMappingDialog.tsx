@@ -46,6 +46,8 @@ interface Incident {
   incident_number?: string | null;
   mission_id?: string | null;
   drone_serial_number?: string | null;
+  hovedaarsak?: string | null;
+  medvirkende_aarsak?: string | null;
   comments?: IncidentComment[];
 }
 
@@ -164,6 +166,9 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = incident.lokasjon;
       } else if (field.code === 431 && suggestions.occurrence_class) {
         newValues[makeFieldKey(field)] = suggestions.occurrence_class;
+      } else if (field.code === 390 && suggestions.event_type) {
+        // Auto-fill event type based on hovedårsak/medvirkende årsak/kategori
+        newValues[makeFieldKey(field)] = suggestions.event_type;
       } else if (field.code === 32 && suggestions.aircraft_category) {
         newValues[makeFieldKey(field)] = suggestions.aircraft_category;
       } else if (field.code === 454 && suggestions.state_area) {
