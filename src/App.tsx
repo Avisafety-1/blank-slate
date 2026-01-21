@@ -19,6 +19,7 @@ import Hendelser from "./pages/Hendelser";
 import Status from "./pages/Status";
 import Oppdrag from "./pages/Oppdrag";
 import Installer from "./pages/Installer";
+import UserManualDownload from "./pages/UserManualDownload";
 import NotFound from "./pages/NotFound";
 
 // Initialize i18n - must be imported after React setup
@@ -76,6 +77,7 @@ const App = () => {
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                 <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
                 <Route path="/installer" element={<Installer />} />
+                <Route path="/bruksanvisning" element={<UserManualDownload />} />
                 
                 {/* Protected routes with shared Header - app domain */}
                 <Route element={<AuthenticatedLayout />}>
