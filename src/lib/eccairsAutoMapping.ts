@@ -9,6 +9,51 @@ const SEVERITY_TO_OCCURRENCE_CLASS: Record<string, string> = {
   'Ubetydelig': '500', // Not determined
 };
 
+// Mapping fra AviSafe hovedårsak → ECCAIRS VL390 Event Type (hovedkategorier)
+// VL390 IDs: Equipment=1000000, Operational=99010158, Personnel=99010159, 
+//            Organisational=99010164, Consequential=3000000, Unknown=99000000, Any Other=99012035
+const HOVEDAARSAK_TO_EVENT_TYPE: Record<string, string> = {
+  'Menneskelig feil/svikt': '99010159',    // Personnel
+  'Materiellsvikt': '1000000',             // Equipment
+  'Metode eller systemfeil': '99010164',   // Organisational
+  'Management/ledelse': '99010164',        // Organisational
+  'Ytre miljøpåvirkning': '99012035',      // Any Other Events
+};
+
+// Mapping fra AviSafe medvirkende årsak → ECCAIRS VL390 Event Type
+// Brukes som fallback hvis hovedårsak ikke er satt
+const MEDVIRKENDE_TO_EVENT_TYPE: Record<string, string> = {
+  'Uhell': '99012035',                     // Any Other Events
+  'Brukerfeil': '99010159',                // Personnel
+  'Brudd på prosedyre': '99010158',        // Operational
+  'Mangelfull prosedyre': '99010164',      // Organisational
+  'Mangelfull opplæring': '99010164',      // Organisational
+  'Annen menneskelig feil/svikt': '99010159', // Personnel
+  'Stress/høy belastning': '99010159',     // Personnel
+  'Forandring i rutiner': '99010164',      // Organisational
+  'Sykdom': '99010159',                    // Personnel
+  'Mangelfull årvåkenhet': '99010159',     // Personnel
+  'Teknisk svikt': '1000000',              // Equipment
+  'Uegnet teknisk løsning': '1000000',     // Equipment
+  'Værforhold': '99012035',                // Any Other Events
+  'Fugler/dyr': '99012035',                // Any Other Events
+  'ATC-klarering': '99010158',             // Operational
+  'Nærpassering': '99010158',              // Operational
+  'Annet': '99012035',                     // Any Other Events
+  'Ukjent': '99000000',                    // Unknown
+};
+
+// Mapping fra AviSafe kategori → ECCAIRS VL390 Event Type (backup)
+const KATEGORI_TO_EVENT_TYPE: Record<string, string> = {
+  'Luft': '99010158',      // Operational
+  'Bakke': '99010158',     // Operational
+  'Luftrom': '99010158',   // Operational
+  'Teknisk': '1000000',    // Equipment
+  'Operativ': '99010158',  // Operational
+  'Miljø': '99012035',     // Any Other Events
+  'Sikkerhet': '99010158', // Operational
+};
+
 // Postnummer-til-ECCAIRS fylke mapping (basert på gamle fylkesnavn pre-2020)
 // VL454: State/Area of Occurrence
 const POSTCODE_TO_COUNTY: Record<string, string> = {
@@ -75,12 +120,39 @@ function getCountyFromPostcode(postcode: string): string | null {
   return POSTCODE_TO_COUNTY[firstDigit] || null;
 }
 
+// Bestem VL390 Event Type basert på hovedårsak, medvirkende årsak, eller kategori
+function suggestEventType(
+  hovedaarsak: string | null, 
+  medvirkendeAarsak: string | null, 
+  kategori: string | null
+): string | null {
+  // Prioritet 1: Hovedårsak
+  if (hovedaarsak && HOVEDAARSAK_TO_EVENT_TYPE[hovedaarsak]) {
+    return HOVEDAARSAK_TO_EVENT_TYPE[hovedaarsak];
+  }
+  
+  // Prioritet 2: Medvirkende årsak
+  if (medvirkendeAarsak && MEDVIRKENDE_TO_EVENT_TYPE[medvirkendeAarsak]) {
+    return MEDVIRKENDE_TO_EVENT_TYPE[medvirkendeAarsak];
+  }
+  
+  // Prioritet 3: Kategori
+  if (kategori && KATEGORI_TO_EVENT_TYPE[kategori]) {
+    return KATEGORI_TO_EVENT_TYPE[kategori];
+  }
+  
+  return null;
+}
+
 interface Incident {
   tittel: string;
   beskrivelse: string | null;
   alvorlighetsgrad: string;
   lokasjon: string | null;
+  kategori: string | null;
   hendelsestidspunkt?: string;
+  hovedaarsak?: string | null;
+  medvirkende_aarsak?: string | null;
 }
 
 export interface SuggestedMapping {
@@ -91,6 +163,7 @@ export interface SuggestedMapping {
   location_name: string | null;
   occurrence_date: string | null;
   state_area: string[] | null;  // VL454: [country, county?]
+  event_type: string | null;    // VL390: Event Type
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
@@ -115,6 +188,11 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
       ? new Date(incident.hendelsestidspunkt).toISOString().slice(0, 10)
       : null,
     state_area: stateArea,
+    event_type: suggestEventType(
+      incident.hovedaarsak || null, 
+      incident.medvirkende_aarsak || null, 
+      incident.kategori
+    ),
   };
 }
 
@@ -129,4 +207,15 @@ export const OCCURRENCE_CLASS_LABELS: Record<string, string> = {
   '500': 'Not determined',
   '501': 'Observation',
   '502': 'Occurrence with No Flight Intended',
+};
+
+// Labels for VL390 Event Type categories
+export const EVENT_TYPE_LABELS: Record<string, string> = {
+  '99012035': 'Any Other Events',
+  '3000000': 'Consequential Events',
+  '1000000': 'Equipment',
+  '99010158': 'Operational',
+  '99010164': 'Organisational',
+  '99010159': 'Personnel',
+  '99000000': 'Unknown',
 };
