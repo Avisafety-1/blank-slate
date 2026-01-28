@@ -420,6 +420,11 @@ const Index = () => {
                   </div>
                 </div>
 
+                {/* Mobile: AI Search Bar after News */}
+                <div className="lg:hidden">
+                  <AISearchBar />
+                </div>
+
                 {/* Mobile/Tablet: Missions right after Status */}
                 <div className="lg:hidden">
                   {layout
