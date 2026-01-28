@@ -1103,7 +1103,7 @@ const Status = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Totale flyvetimer</p>
-                <p className="text-3xl font-bold text-foreground">{kpiData.totalFlightHours}</p>
+                <p className="text-3xl font-bold text-foreground">{kpiData.totalFlightHours.toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground mt-1">timer</p>
               </div>
               <Clock className="w-10 h-10 text-primary opacity-70" />
