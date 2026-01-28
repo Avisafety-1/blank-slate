@@ -408,6 +408,10 @@ const Index = () => {
                           {renderSection(item.component)}
                         </DraggableSection>
                       ))}
+                    {/* Mobile: AI Search Bar between News and Status */}
+                    <div className="lg:hidden mt-3">
+                      <AISearchBar />
+                    </div>
                   </div>
                   <div className="lg:col-span-3">
                     {layout
@@ -418,11 +422,6 @@ const Index = () => {
                         </DraggableSection>
                       ))}
                   </div>
-                </div>
-
-                {/* Mobile: AI Search Bar after News */}
-                <div className="lg:hidden">
-                  <AISearchBar />
                 </div>
 
                 {/* Mobile/Tablet: Missions right after Status */}
