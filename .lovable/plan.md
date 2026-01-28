@@ -1,36 +1,102 @@
-# ECCAIRS Taxonomy Integration - Implementation Complete
 
-## Status: ✅ Implemented (MVP)
+# Plan: Utvide søkefunksjonaliteten
 
-### What was built:
+## Problemanalyse
 
-1. **Database table**: `incident_eccairs_mappings` 
-   - Stores ECCAIRS taxonomy mappings per incident
-   - Fields: occurrence_class, phase_of_flight, aircraft_category, headline, narrative, location_name
-   - RLS policies for company-scoped access
+Gjennomgang av søkefunksjonen avdekket flere mangler:
 
-2. **Hooks**:
-   - `useEccairsTaxonomy.ts` - Fetches taxonomy data from `eccairs.value_list_items` via PostgREST
-   - `useIncidentEccairsMapping.ts` - CRUD operations for incident mappings
+1. **Personell/profiler er ikke søkbare** - Kan ikke finne personer på navn, e-post eller tittel
+2. **Kompetansesøk mangler company-filter** - Søker i alle kompetanser globalt, ikke bare egen bedrift
+3. **Kunder er ikke søkbare** - Kundedata er ikke inkludert i søk
+4. **Nyheter er ikke søkbare** - Nyhetsartikler mangler i søkeresultater
+5. **Flylogger er ikke søkbare** - Loggført flytid med lokasjoner er ikke søkbart
+6. **Kalenderhendelser er ikke søkbare** - Egendefinerte hendelser kan ikke finnes
+7. **Oppdrag søker kun på tittel** - Bør også søke i beskrivelse og lokasjon
+8. **Droner har feil kolonnenavn** - Bruker `registrering` men kolonnen heter `serienummer`
 
-3. **Components**:
-   - `EccairsTaxonomySelect.tsx` - Reusable select for any ECCAIRS value list
-   - `EccairsMappingDialog.tsx` - Dialog for classifying incidents with ECCAIRS taxonomy
+## Løsning
 
-4. **Utilities**:
-   - `eccairsAutoMapping.ts` - Auto-suggests mappings based on AviSafe severity
+### Backend (Edge Function)
 
-5. **Integration**:
-   - "Klassifiser" button added to ECCAIRS section in Hendelser.tsx
-   - Opens mapping dialog to classify incidents before export
+Oppdater `supabase/functions/ai-search/index.ts`:
 
-### Key Value Lists Used:
-- VL431: Occurrence Class (Accident, Serious incident, Incident, etc.)
-- VL1072: Phase of Flight (Take-Off, En-Route, Landing, etc.)
-- VL17: Aircraft Category (UAS/RPAS default)
+1. **Legg til profiler/personellsøk:**
+   - Søk på `full_name`, `email`, `tittel`
+   - Filtrer på `company_id`
 
-### Next Steps (Future):
-- Build payload using mapping data for ECCAIRS gateway
-- Add more value lists (Event Types, Occurrence Category)
-- Hierarchical display for complex taxonomies
-- Norwegian translations for taxonomy labels
+2. **Fiks kompetansesøk:**
+   - Legg til join med profiler for å filtrere på company_id
+
+3. **Legg til kundesøk:**
+   - Søk på `navn`, `kontaktperson`, `epost`, `adresse`
+
+4. **Legg til nyhetssøk:**
+   - Søk på `tittel`, `innhold`
+
+5. **Legg til flyloggsøk:**
+   - Søk på `departure_location`, `landing_location`, `notes`
+
+6. **Legg til kalendersøk:**
+   - Søk på `title`, `description`
+
+7. **Forbedre eksisterende søk:**
+   - Oppdrag: Legg til `beskrivelse`, `lokasjon` i søket
+   - Droner: Rett `registrering` til `serienummer`
+
+8. **Oppdater AI-oppsummering** med alle nye kategorier
+
+### Frontend (AISearchBar.tsx)
+
+1. **Utvid SearchResults interface** med nye kategorier
+2. **Legg til visning av nye resultater:**
+   - Personell - klikk åpner PersonCompetencyDialog
+   - Kunder - visning med kontaktinfo
+   - Nyheter - klikk åpner NewsDetailDialog
+   - Flylogger - visning med dato/lokasjon
+   - Kalender - visning med dato
+3. **Legg til nødvendige dialogs og handlers**
+
+## Teknisk oversikt
+
+```text
++------------------+     +------------------+
+|   AISearchBar    |     |   ai-search      |
+|   (Frontend)     | --> |   (Edge Function)|
++------------------+     +------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+| Viser resultater |     | Søker i tabeller:|
+| for alle         |     | - profiles       |
+| kategorier       |     | - customers      |
++------------------+     | - news           |
+                         | - flight_logs    |
+                         | - calendar_events|
+                         | + eksisterende   |
+                         +------------------+
+```
+
+## Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `supabase/functions/ai-search/index.ts` | Legg til søk i 5 nye tabeller, fiks eksisterende søk |
+| `src/components/dashboard/AISearchBar.tsx` | Vis nye kategorier, legg til click handlers |
+
+## Nye søkbare kategorier
+
+| Kategori | Søkefelt | Klikkbar |
+|----------|----------|----------|
+| Personell | navn, e-post, tittel | Ja (åpner kompetansekort) |
+| Kunder | navn, kontaktperson, e-post | Nei (visning) |
+| Nyheter | tittel, innhold | Ja (åpner nyhet) |
+| Flylogger | avgang, landing, notater | Nei (visning) |
+| Kalender | tittel, beskrivelse | Nei (visning) |
+
+## Forbedringer av eksisterende søk
+
+| Kategori | Før | Etter |
+|----------|-----|-------|
+| Oppdrag | tittel | tittel, beskrivelse, lokasjon |
+| Droner | modell, registrering (feil) | modell, serienummer |
+| Kompetanse | ingen company-filter | filtrert på company via join |
