@@ -139,9 +139,14 @@ export function generateICSContent(events: CalendarEventExport[], companyName: s
     
     lines.push(`SUMMARY:${escapeICSText(event.title)}`);
     
+    // Build description with optional original description and always include link
+    const descParts: string[] = [];
     if (event.description) {
-      lines.push(`DESCRIPTION:${escapeICSText(event.description)}`);
+      descParts.push(event.description);
     }
+    descParts.push('Åpne i AviSafe: https://app.avisafe.no');
+    lines.push(`DESCRIPTION:${escapeICSText(descParts.join('\\n\\n'))}`);
+    lines.push(`URL:https://app.avisafe.no`);
     
     lines.push(`CATEGORIES:${getCategory(event.type)}`);
     lines.push('END:VEVENT');

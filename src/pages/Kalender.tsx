@@ -723,21 +723,22 @@ export default function Kalender() {
                   <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-row gap-2">
                   <Button 
                     variant="outline" 
-                    className="gap-2 w-full sm:w-auto"
+                    size={isMobile ? "sm" : "default"}
+                    className="gap-2"
                     onClick={() => setExportDialogOpen(true)}
                   >
                     <Download className="w-4 h-4" />
-                    Synkroniser
+                    <span className="hidden sm:inline">Synkroniser</span>
                   </Button>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button className="gap-2 w-full sm:w-auto">
+                      <Button size={isMobile ? "sm" : "default"} className="gap-2">
                         <Plus className="w-4 h-4" />
-                        Legg til oppføring
+                        <span className="hidden sm:inline">Legg til oppføring</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
