@@ -1,198 +1,285 @@
 
-# Plan: Synkronisere kalenderoppføringsvalg mellom /kalender og widgeten
+# Plan: Ressurskonfliktdeteksjon for oppdrag
 
 ## Oversikt
-Gjør "Legg til oppføring"-valgene i /kalender identiske med CalendarWidget, og legger til muligheten for å legge til oppføringer direkte fra dagsdialogen.
+Implementerer et system for å oppdage og varsle om konflikter når samme ressurs (drone, utstyr eller personell) er tildelt flere oppdrag som overlapper i tid. Dette vises både i oppdragslisten og når man legger til/redigerer et oppdrag.
 
-## Nåværende forskjeller
+## Hovedfunksjoner
 
-| Funksjon | CalendarWidget | /kalender side |
-|----------|----------------|----------------|
-| Hendelse | Ja | Ja |
-| Dokument | Ja | Ja |
-| Oppdrag | Ja | Ja |
-| Nyhet | Ja | **Nei** |
-| Annet (egendefinert) | Ja | **Nei** |
-| Legg til fra dagsdialog | Ja | **Nei** |
+### 1. Konfliktdeteksjon i AddMissionDialog
+Når bruker velger drone, utstyr eller personell skal systemet:
+- Sjekke om ressursen allerede er tildelt et annet oppdrag som overlapper i tid
+- Vise en advarsel/info-melding under den aktuelle ressurslinjen
+- Tillate brukeren å fortsette (ikke blokkere), men tydelig informere om konflikten
 
-## Endringer som skal gjøres
+### 2. Konfliktindikasjon i Oppdrag-listen (Oppdrag.tsx)
+For hvert oppdrag som vises:
+- Under hver ressurs (drone, utstyr, personell) vises en liten info/advarsel hvis ressursen er i konflikt med et annet oppdrag
+- Viser hvilket oppdrag konflikten er med og tidspunktet
 
-### 1. Legge til manglende valg i toppmeny-dropdown
-
-Oppdaterer DropdownMenu i kalendersiden med:
-- "Nyhet" - åpner AddNewsDialog
-- "Annet" - åpner et skjema for egendefinert kalenderoppføring
-
-### 2. Legge til "Legg til"-knapp i dagsdialogen
-
-Når bruker klikker på en dag og åpner dialogen, legges det til en dropdown-meny nederst (som i widgeten) med samme valg:
-- Hendelse
-- Dokument
-- Oppdrag
-- Nyhet
-- Annet
-
-### 3. Implementere "Annet"-funksjonaliteten
-
-Legger til et skjema for egendefinerte kalenderoppføringer med:
-- Tittel (påkrevd)
-- Type (valgfri: Oppdrag, Vedlikehold, Dokument, Møte, Annet)
-- Beskrivelse (valgfri)
-- Tidspunkt
+### 3. Nærhet-i-tid varsler
+I tillegg til direkte konflikter (overlappende tid):
+- Vis en "info" hvis samme ressurs brukes samme dag (men ikke overlappende)
+- Hjelper operatører med å planlegge logistikk bedre
 
 ---
 
 ## Teknisk implementering
 
-### Nye imports og state i Kalender.tsx
+### Ny hook: useResourceConflicts
 
 ```typescript
-import { AddNewsDialog } from "@/components/dashboard/AddNewsDialog";
+// src/hooks/useResourceConflicts.ts
+export interface ResourceConflict {
+  resourceId: string;
+  resourceType: 'drone' | 'equipment' | 'personnel';
+  resourceName: string;
+  conflictType: 'overlap' | 'same_day';
+  conflictingMission: {
+    id: string;
+    tittel: string;
+    tidspunkt: string;
+    slutt_tidspunkt?: string;
+  };
+}
 
-// Nye state-variabler
-const [addNewsDialogOpen, setAddNewsDialogOpen] = useState(false);
-const [showAddEventForm, setShowAddEventForm] = useState(false);
-const [newEvent, setNewEvent] = useState({
-  title: "",
-  type: "Annet",
-  description: "",
-  time: "09:00",
-});
-```
-
-### Oppdatert handleAddEntry-funksjon
-
-```typescript
-const handleAddEntry = (type: 'oppdrag' | 'hendelse' | 'dokument' | 'nyhet' | 'annet') => {
-  switch (type) {
-    case 'oppdrag':
-      setAddMissionDialogOpen(true);
-      break;
-    case 'hendelse':
-      setAddIncidentDialogOpen(true);
-      break;
-    case 'dokument':
-      setDocumentModalState({ document: null, isCreating: true });
-      setDocumentModalOpen(true);
-      break;
-    case 'nyhet':
-      setAddNewsDialogOpen(true);
-      break;
-    case 'annet':
-      setShowAddEventForm(true);
-      setDialogOpen(true);
-      break;
-  }
+export const useResourceConflicts = (
+  missionId: string | undefined,
+  missionTime: string,
+  missionEndTime?: string,
+  selectedDrones: string[],
+  selectedEquipment: string[],
+  selectedPersonnel: string[]
+) => {
+  // Fetches all active missions with their resources
+  // Compares against selected resources
+  // Returns conflicts for each resource type
 };
 ```
 
-### Oppdatert toppmeny-dropdown
+### Konfliktsjekk-logikk
 
 ```typescript
-<DropdownMenuContent align="end">
-  <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-    Hendelse
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-    Dokument
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-    Oppdrag
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
-    Nyhet
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
-    Annet
-  </DropdownMenuItem>
-</DropdownMenuContent>
+const checkTimeOverlap = (
+  mission1Start: Date, 
+  mission1End: Date | null,
+  mission2Start: Date, 
+  mission2End: Date | null
+): 'overlap' | 'same_day' | null => {
+  // Default duration: 2 timer hvis slutt_tidspunkt mangler
+  const defaultDuration = 2 * 60 * 60 * 1000; 
+  
+  const m1Start = mission1Start;
+  const m1End = mission1End || new Date(m1Start.getTime() + defaultDuration);
+  const m2Start = mission2Start;
+  const m2End = mission2End || new Date(m2Start.getTime() + defaultDuration);
+  
+  // Sjekk overlapp
+  if (m1Start < m2End && m1End > m2Start) {
+    return 'overlap';
+  }
+  
+  // Sjekk samme dag
+  if (isSameDay(m1Start, m2Start)) {
+    return 'same_day';
+  }
+  
+  return null;
+};
 ```
 
-### Oppdatert dagsdialog med "Legg til"-knapp
-
-Dialogen utvides med en dropdown-meny nederst:
+### UI-komponent: ResourceConflictWarning
 
 ```typescript
-{/* Eksisterende hendelsesliste */}
-<div className="space-y-3">
-  {selectedEvents.length > 0 ? (...) : (...)}
-</div>
+// src/components/dashboard/ResourceConflictWarning.tsx
+interface ResourceConflictWarningProps {
+  conflicts: ResourceConflict[];
+  resourceType: 'drone' | 'equipment' | 'personnel';
+}
 
-{/* Ny: Legg til-knapp med dropdown */}
-{!showAddEventForm ? (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button className="w-full gap-2 mt-4">
-        <Plus className="w-4 h-4" />
-        Legg til
-        <ChevronDown className="w-4 h-4 ml-auto" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" className="w-56">
-      <DropdownMenuItem onClick={() => {
-        setAddIncidentDialogOpen(true);
-        setDialogOpen(false);
-      }}>
-        Hendelse
-      </DropdownMenuItem>
-      {/* ... samme meny som toppmeny */}
-    </DropdownMenuContent>
-  </DropdownMenu>
-) : (
-  {/* Skjema for egendefinert oppføring */}
+export const ResourceConflictWarning = ({ conflicts, resourceType }: Props) => {
+  if (conflicts.length === 0) return null;
+  
+  const overlaps = conflicts.filter(c => c.conflictType === 'overlap');
+  const sameDay = conflicts.filter(c => c.conflictType === 'same_day');
+  
+  return (
+    <div className="space-y-1 mt-1">
+      {overlaps.length > 0 && (
+        <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            Konflikt: {overlaps[0].resourceName} er allerede tildelt "{overlaps[0].conflictingMission.tittel}" 
+            ({format(new Date(overlaps[0].conflictingMission.tidspunkt), "dd.MM HH:mm")})
+          </span>
+        </div>
+      )}
+      {sameDay.length > 0 && overlaps.length === 0 && (
+        <div className="flex items-start gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+          <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            {sameDay[0].resourceName} brukes også i "{sameDay[0].conflictingMission.tittel}" samme dag
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Endringer i AddMissionDialog
+
+```typescript
+// I AddMissionDialog.tsx - etter ressurs-valg seksjoner:
+
+// Ny state for konflikter
+const [resourceConflicts, setResourceConflicts] = useState<ResourceConflict[]>([]);
+
+// Kall hook/funksjon for å sjekke konflikter når tidspunkt eller ressurser endres
+useEffect(() => {
+  if (formData.tidspunkt) {
+    checkResourceConflicts();
+  }
+}, [formData.tidspunkt, selectedDrones, selectedEquipment, selectedPersonnel]);
+
+// Under drone-listen:
+{selectedDrones.length > 0 && (
+  <div className="mt-2 flex flex-wrap gap-2">
+    {selectedDrones.map((id) => {
+      const drone = drones.find((d) => d.id === id);
+      const conflicts = resourceConflicts.filter(
+        c => c.resourceId === id && c.resourceType === 'drone'
+      );
+      return (
+        <div key={id}>
+          <div className="flex items-center gap-1 bg-secondary ...">
+            <span>{drone?.modell}</span>
+            {conflicts.length > 0 && (
+              <AlertTriangle className="h-3 w-3 text-amber-500" />
+            )}
+            <button onClick={() => removeDrone(id)}>
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          <ResourceConflictWarning 
+            conflicts={conflicts} 
+            resourceType="drone" 
+          />
+        </div>
+      );
+    })}
+  </div>
 )}
 ```
 
-### Skjema for "Annet" (egendefinert kalenderoppføring)
+### Endringer i Oppdrag.tsx (ressurs-grid)
 
 ```typescript
-<div className="space-y-4 mt-4">
-  <div className="space-y-2">
-    <Label>Tittel *</Label>
-    <Input 
-      value={newEvent.title}
-      onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
-    />
+// I ressurs-grid seksjonen, under hver ressurs:
+
+{/* Drones */}
+<div>
+  <div className="flex items-center gap-2 mb-2">
+    <Plane className="h-4 w-4 text-muted-foreground" />
+    <p className="text-xs font-semibold text-muted-foreground">DRONER</p>
   </div>
-  
-  <div className="space-y-2">
-    <Label>Type</Label>
-    <Select value={newEvent.type} onValueChange={(v) => setNewEvent({...newEvent, type: v})}>
-      <SelectTrigger><SelectValue /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="Oppdrag">Oppdrag</SelectItem>
-        <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
-        <SelectItem value="Møte">Møte</SelectItem>
-        <SelectItem value="Annet">Annet</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
-  
-  <div className="space-y-2">
-    <Label>Tidspunkt</Label>
-    <Input type="time" value={newEvent.time} onChange={...} />
-  </div>
-  
-  <div className="flex gap-2">
-    <Button onClick={handleAddCustomEvent}>Lagre</Button>
-    <Button variant="outline" onClick={() => setShowAddEventForm(false)}>Avbryt</Button>
-  </div>
+  {mission.drones?.length > 0 ? (
+    <ul className="space-y-1">
+      {mission.drones.map((d: any) => {
+        const droneConflicts = getResourceConflicts(
+          mission.id, 
+          mission.tidspunkt, 
+          mission.slutt_tidspunkt,
+          d.drone_id, 
+          'drone',
+          allMissions
+        );
+        return (
+          <li key={d.drone_id} className="space-y-0.5">
+            <span className="text-sm text-foreground flex items-center gap-1">
+              {d.drones?.modell} (SN: {d.drones?.serienummer})
+              {droneConflicts.length > 0 && (
+                <AlertTriangle className="h-3 w-3 text-amber-500" />
+              )}
+            </span>
+            {droneConflicts.length > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 pl-0">
+                ⚠️ Brukes også i "{droneConflicts[0].conflictingMission.tittel}"
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  ) : (
+    <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
+  )}
 </div>
 ```
 
 ---
 
-## Filer som endres
+## Dataflyt
 
-| Fil | Endring |
-|-----|---------|
-| `src/pages/Kalender.tsx` | Legge til AddNewsDialog, "Annet"-skjema, og "Legg til"-knapp i dagsdialog |
+```text
++------------------+     +---------------------+     +------------------+
+|  User selects    | --> | Check conflicts     | --> | Display warnings |
+|  resource + time |     | against all active  |     | inline with      |
+|                  |     | missions            |     | resources        |
++------------------+     +---------------------+     +------------------+
+                                  |
+                                  v
+                    +---------------------------+
+                    | Query: missions with      |
+                    | personnel/drones/equipment|
+                    | that overlap in time      |
+                    +---------------------------+
+```
 
 ---
 
-## Forventet resultat
+## Filer som endres/opprettes
 
-- Toppmenyen i /kalender har samme valg som widgeten (Hendelse, Dokument, Oppdrag, Nyhet, Annet)
-- Når man klikker på en dag, vises en "Legg til"-knapp med samme valg
-- Ved valg av "Annet" vises et enkelt skjema for egendefinert kalenderoppføring
-- Full paritet mellom CalendarWidget og /kalender-siden
+| Fil | Endring |
+|-----|---------|
+| `src/hooks/useResourceConflicts.ts` | **Ny fil** - Hook for konfliktsjekking |
+| `src/components/dashboard/ResourceConflictWarning.tsx` | **Ny fil** - UI-komponent for varsler |
+| `src/components/dashboard/AddMissionDialog.tsx` | Legge til konfliktsjekking og varsler under ressurs-valg |
+| `src/pages/Oppdrag.tsx` | Legge til konflikt-indikatorer i ressurs-grid |
+
+---
+
+## Brukeropplevelse
+
+### I AddMissionDialog (når man oppretter/redigerer):
+- Når man velger en ressurs som allerede er booket:
+  - **Overlappende tid**: Gul/oransje advarsel med ⚠️-ikon
+  - **Samme dag**: Blå info med ℹ️-ikon
+- Varselet viser navn på ressurs og hvilket oppdrag den er i konflikt med
+
+### I oppdragslisten:
+- Ressurser med konflikter vises med et lite ⚠️-ikon
+- Under ressursnavnet vises en kort tekst: "Brukes også i [oppdragsnavn]"
+
+---
+
+## Eksempel på visning
+
+**I AddMissionDialog:**
+```
+Droner
+[DJI Mavic 3 ⚠️] [x]
+  ⚠️ Konflikt: Brukes i "Inspeksjon kraftledning" (15. feb 10:00)
+
+Personell  
+[Ola Nordmann] [x]
+[Kari Hansen ℹ️] [x]
+  ℹ️ Kari Hansen er også tildelt "Kursing" samme dag
+```
+
+**I Oppdrag.tsx:**
+```
+DRONER
+DJI Mavic 3 (SN: ABC123) ⚠️
+  ⚠️ Brukes også i "Kursing av droneflygere"
+```
