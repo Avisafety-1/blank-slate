@@ -1,61 +1,110 @@
 
 
-# Plan: Kalendersynkronisering med telefon (filtrert på company_id)
+# Plan: Kalenderabonnement (live .ics-feed)
 
 ## Oversikt
-Implementerer kalendereksport til telefon (Google Calendar, Apple Calendar, Samsung Calendar) via standard iCalendar-format (.ics). All data filtreres automatisk på company_id via eksisterende RLS-policies.
+Implementerer en "Abonner på kalender"-funksjon som gir brukerne en unik URL de kan legge til i Google Calendar, Apple Calendar eller Samsung Calendar. Kalenderen oppdateres automatisk når nye hendelser legges til i AviSafe.
 
-## Viktig: Datasikkerhet
-Data er allerede isolert per selskap fordi:
-1. Alle Supabase-tabeller (calendar_events, missions, documents, drones, equipment, incidents, drone_accessories) har RLS-policies som filtrerer på `company_id = get_user_company_id(auth.uid())`
-2. Edge function vil bruke brukerens auth token for å hente data, slik at RLS automatisk gjelder
-3. Ingen endringer i databasen trengs
+## Hvordan det fungerer
+
+1. Bruker klikker "Generer abonnementslenke" i dialogen
+2. System genererer et unikt, sikkert token knyttet til brukerens selskap
+3. Bruker får en URL som kan kopieres og limes inn i kalenderappen
+4. Når kalenderappen henter URL-en, returnerer edge function en .ics-fil med alle selskapets hendelser
+5. Kalenderappen oppdaterer automatisk (typisk hver 15-60 min)
 
 ---
 
 ## Teknisk implementering
 
-### Del 1: ICS-hjelpefunksjon (`src/lib/icsExport.ts`)
+### Del 1: Ny databasetabell for tokens
 
-Ny fil som håndterer konvertering til iCalendar-format:
+Oppretter `calendar_subscriptions` tabell:
 
-```typescript
-export interface CalendarEventExport {
-  id: string;
-  title: string;
-  description?: string;
-  startDate: Date;
-  endDate?: Date;
-  type: string;
-}
+| Kolonne | Type | Beskrivelse |
+|---------|------|-------------|
+| id | uuid | Primærnøkkel |
+| company_id | uuid | Selskapets ID (for å hente riktige data) |
+| user_id | uuid | Bruker som opprettet tokenet |
+| token | text | Unikt, sikkert token (64 tegn) |
+| created_at | timestamp | Opprettelsestidspunkt |
+| last_accessed_at | timestamp | Sist hentet (for statistikk) |
 
-export function generateICSContent(events: CalendarEventExport[], companyName: string): string
-export function downloadICSFile(content: string, filename: string): void
+RLS-policies:
+- Brukere kan opprette tokens for eget selskap
+- Brukere kan se egne tokens
+- Brukere kan slette egne tokens
+
+### Del 2: Edge function `calendar-feed`
+
+Ny edge function som:
+- Tar imot token som query-parameter (`?token=xxx`)
+- Validerer token mot `calendar_subscriptions`-tabellen
+- Bruker `company_id` fra tokenet til å hente data (ikke brukerautentisering)
+- Returnerer .ics-fil med Content-Type: `text/calendar`
+- Oppdaterer `last_accessed_at` ved hver forespørsel
+
+Viktig: Denne funksjonen må ha `verify_jwt = false` fordi kalenderapper ikke kan autentisere.
+
+Datakilder (alle filtrert på company_id via service role):
+- calendar_events
+- missions
+- documents (utløpsdatoer)
+- drones (inspeksjonsdatoer)
+- equipment (vedlikeholdsdatoer)
+- drone_accessories (vedlikeholdsdatoer)
+
+### Del 3: Oppdater CalendarExportDialog
+
+Legger til ny seksjon i dialogen:
+
+```text
+┌─────────────────────────────────────────────┐
+│ 📅 Synkroniser kalender                     │
+│                                             │
+│ Tidsperiode: [Neste 3 måneder ▼]            │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ 42 hendelser vil bli eksportert         │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ [⬇ Last ned kalenderfil (.ics)]             │
+│                                             │
+│ ─────────── eller ───────────               │
+│                                             │
+│ 🔗 Automatisk synkronisering                │
+│                                             │
+│ Legg til denne URL-en i din kalenderapp     │
+│ for automatiske oppdateringer:              │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ https://...functions.../calendar-feed   │ │
+│ │ ?token=abc123...                   [📋] │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ [🔄 Generer ny lenke]  [🗑️ Slett lenke]     │
+│                                             │
+│ Slik legger du til:                         │
+│ • Google Calendar: Legg til kalender → URL  │
+│ • iPhone: Innstillinger → Kalender → Kontoer│
+│ • Outlook: Legg til kalender → Fra internett│
+└─────────────────────────────────────────────┘
 ```
 
-Funksjoner:
-- Genererer standard ICS-format (RFC 5545)
-- Inkluderer VTIMEZONE for norsk tid
-- Setter riktig PRODID med selskapsnavn
-- Håndterer heldagshendelser vs. tidspunktbaserte
+---
 
-### Del 2: Eksport-dialog (`src/components/dashboard/CalendarExportDialog.tsx`)
+## Sikkerhet
 
-Ny dialog-komponent med:
-- "Last ned alle hendelser"-knapp som genererer .ics-fil
-- Forklarende tekst om hvordan man importerer til ulike kalenderapper
-- Viser antall hendelser som vil eksporteres
-- Datointervall-velger (valgfritt: neste 30/90/365 dager)
+### Token-sikkerhet
+- Tokens er 64 tegn lange, kryptografisk tilfeldige (crypto.randomUUID() + crypto.randomUUID())
+- Tokens er knyttet til company_id, ikke user_id for datahenting
+- Tokens kan tilbakekalles av bruker når som helst
+- Ingen sensitiv brukerdata eksponeres - kun hendelsesdata
 
-### Del 3: Integrasjon i Kalender.tsx
-
-Legger til synkroniseringsknapp ved siden av "Legg til oppføring":
-
-```
-[📥 Synkroniser]  [+ Legg til oppføring]
-```
-
-Knappen åpner CalendarExportDialog.
+### Data-isolasjon
+- Edge function bruker service role for å hente data
+- Spørringer filtreres eksplisitt på `company_id` fra tokenet
+- Ingen måte å hente andre selskapers data selv med gyldig token
 
 ---
 
@@ -63,71 +112,48 @@ Knappen åpner CalendarExportDialog.
 
 | Fil | Endring |
 |-----|---------|
-| `src/lib/icsExport.ts` | **NY** - ICS-format generering og nedlasting |
-| `src/components/dashboard/CalendarExportDialog.tsx` | **NY** - Dialog med eksport-alternativer |
-| `src/pages/Kalender.tsx` | Legge til synkroniseringsknapp og dialog |
+| **Database** | Ny tabell `calendar_subscriptions` med RLS |
+| `supabase/functions/calendar-feed/index.ts` | **NY** - Edge function for .ics-feed |
+| `supabase/config.toml` | Legg til calendar-feed med verify_jwt=false |
+| `src/components/dashboard/CalendarExportDialog.tsx` | Utvid med abonnementsseksjon |
+| `src/integrations/supabase/types.ts` | Oppdateres automatisk |
 
 ---
 
-## Datakilder som inkluderes
+## Edge function flow
 
-Kalenderhendelsene hentes fra følgende tabeller (alle med RLS på company_id):
-
-1. **calendar_events** - Egendefinerte hendelser
-2. **missions** - Oppdrag (tidspunkt)
-3. **incidents** - Hendelser (hendelsestidspunkt)
-4. **documents** - Dokumenter som utløper (gyldig_til)
-5. **drones** - Drone-inspeksjoner (neste_inspeksjon)
-6. **equipment** - Utstyrsvedlikehold (neste_vedlikehold)
-7. **drone_accessories** - Tilbehørsvedlikehold (neste_vedlikehold)
-
----
-
-## ICS-filformat
-
-Eksempel på generert fil:
 ```text
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//AviSafe//Drone Management v1.0//NO
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-X-WR-CALNAME:AviSafe Kalender
-BEGIN:VEVENT
-UID:mission-abc123@avisafe.no
-DTSTAMP:20260130T120000Z
-DTSTART:20260201T090000Z
-DTEND:20260201T120000Z
-SUMMARY:Inspeksjon kraftlinjer
-DESCRIPTION:Oppdrag - Kunde: Energiselskapet
-CATEGORIES:Oppdrag
-END:VEVENT
-END:VCALENDAR
+1. Kalenderapp (Google/Apple/Samsung)
+   │
+   ▼
+2. GET https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/calendar-feed?token=xxx
+   │
+   ▼
+3. Edge function validerer token
+   │
+   ├─ Ugyldig → 401 Unauthorized
+   │
+   └─ Gyldig → Hent company_id fra token
+              │
+              ▼
+4. Hent data fra alle tabeller med WHERE company_id = ?
+   │
+   ▼
+5. Generer ICS-innhold (gjenbruker logikk fra icsExport.ts)
+   │
+   ▼
+6. Returner med headers:
+   Content-Type: text/calendar; charset=utf-8
+   Cache-Control: no-cache, no-store
 ```
-
----
-
-## Brukeropplevelse
-
-1. Bruker klikker "Synkroniser"-knappen i kalenderen
-2. Dialog åpnes med informasjon om eksport
-3. Bruker velger tidsperiode (standard: alle fremtidige hendelser)
-4. Klikker "Last ned kalender"
-5. .ics-fil lastes ned
-6. Bruker åpner filen på telefon/PC - kalenderappen tilbyr å importere
-
-### Importveiledning i dialogen:
-- **iPhone**: Åpne filen i Filer-appen, velg "Del" og så "Kalender"
-- **Android/Samsung**: Åpne filen, Google Kalender åpner automatisk
-- **Google Calendar (web)**: Innstillinger → Importer og eksporter → Importer
 
 ---
 
 ## Forventet resultat
 
-- Brukere kan eksportere sin bedrifts kalenderhendelser til personlig kalender
-- Data er alltid filtrert på company_id (via RLS)
-- Støtter alle store kalenderapper
-- Enkel én-knapps nedlasting uten komplisert oppsett
-- Ingen tredjepartsbiblioteker nødvendig
+- Brukere kan generere en abonnementslenke med ett klikk
+- Lenken kan legges til i alle standard kalenderapper
+- Kalenderen oppdateres automatisk (avhenger av kalenderapp, typisk 15-60 min)
+- Enkelt å tilbakekalle tilgang ved å slette tokenet
+- Full dataisolasjon per selskap
 
