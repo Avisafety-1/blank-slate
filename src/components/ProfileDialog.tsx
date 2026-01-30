@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
+import { AddIncidentDialog } from "./dashboard/AddIncidentDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { SignaturePad } from "./SignaturePad";
@@ -122,6 +123,8 @@ export const ProfileDialog = () => {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [competencyDialogOpen, setCompetencyDialogOpen] = useState(false);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
+  const [editIncidentDialogOpen, setEditIncidentDialogOpen] = useState(false);
+  const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -404,6 +407,11 @@ export const ProfileDialog = () => {
   const handleIncidentClick = (incident: Incident) => {
     setSelectedIncident(incident);
     setIncidentDialogOpen(true);
+  };
+
+  const handleEditIncidentRequest = (incident: Incident) => {
+    setEditingIncident(incident);
+    setEditIncidentDialogOpen(true);
   };
 
   const isCompetencyExpiring = (date: string | null) => {
@@ -1177,8 +1185,22 @@ export const ProfileDialog = () => {
           incident={selectedIncident}
           open={incidentDialogOpen}
           onOpenChange={setIncidentDialogOpen}
+          onEditRequest={handleEditIncidentRequest}
         />
       )}
+
+      {/* Edit Incident Dialog */}
+      <AddIncidentDialog
+        open={editIncidentDialogOpen}
+        onOpenChange={(open) => {
+          setEditIncidentDialogOpen(open);
+          if (!open) {
+            setEditingIncident(null);
+            fetchUserData();
+          }
+        }}
+        incidentToEdit={editingIncident}
+      />
 
       {/* Competency Dialog */}
       {user && (
