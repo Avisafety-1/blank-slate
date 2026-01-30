@@ -637,17 +637,17 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="customers" className="mt-20 sm:mt-12">
+          <TabsContent value="customers" className="mt-4 sm:mt-8">
             <CustomerManagementSection />
           </TabsContent>
 
-          <TabsContent value="email-templates" className="mt-20 sm:mt-12">
+          <TabsContent value="email-templates" className="mt-4 sm:mt-8">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
             <BulkEmailSender />
           </TabsContent>
 
           {isSuperAdmin && (
-            <TabsContent value="companies" className="mt-20 sm:mt-12">
+            <TabsContent value="companies" className="mt-4 sm:mt-8">
               <CompanyManagementSection />
             </TabsContent>
           )}
