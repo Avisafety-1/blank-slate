@@ -228,7 +228,7 @@ export const Header = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/admin")}
-                className="gap-2 relative"
+                className="relative h-8 w-8 p-0"
                 title={t('nav.admin')}
               >
                 <Settings className="w-4 h-4" />
@@ -241,6 +241,7 @@ export const Header = () => {
               size="sm"
               onClick={handleSignOut}
               title={t('actions.signOut')}
+              className="h-8 w-8 p-0"
             >
               <LogOut className="w-4 h-4" />
             </Button>
