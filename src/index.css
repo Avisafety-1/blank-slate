@@ -160,6 +160,14 @@ All colors MUST be HSL.
     min-height: 100%;
   }
 
+  /* iOS keyboard support - use dynamic viewport height */
+  @supports (height: 100dvh) {
+    html,
+    body {
+      min-height: 100dvh;
+    }
+  }
+
   #root {
     @apply w-full min-h-full;
   }
