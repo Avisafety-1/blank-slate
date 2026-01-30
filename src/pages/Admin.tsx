@@ -418,28 +418,26 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <div className="w-full overflow-x-auto no-scrollbar px-2 sm:px-0">
-            <TabsList className="inline-flex w-max sm:w-auto mx-auto relative z-10 gap-0.5 sm:gap-1 p-1 sm:p-1.5 bg-secondary/80 rounded-xl">
-              <TabsTrigger value="users" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
-                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden xs:inline">{t('admin.users')}</span>
+          <TabsList className="grid grid-cols-2 sm:inline-flex w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary/80 rounded-xl">
+            <TabsTrigger value="users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{t('admin.users')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg">
+              <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{t('admin.customers')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg">
+              <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
+            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg">
+                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span>{t('admin.companies')}</span>
               </TabsTrigger>
-              <TabsTrigger value="customers" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
-                <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden xs:inline">{t('admin.customers')}</span>
-              </TabsTrigger>
-              <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
-                <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden xs:inline">{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
-              </TabsTrigger>
-              {isSuperAdmin && (
-                <TabsTrigger value="companies" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
-                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="hidden xs:inline">{t('admin.companies')}</span>
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </div>
+            )}
+          </TabsList>
 
           <TabsContent value="users" className="mt-4 sm:mt-8">
             <div className="space-y-4 sm:space-y-6">
