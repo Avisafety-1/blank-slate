@@ -96,7 +96,7 @@ export const Header = () => {
           </Button>
           
           {/* Mobile company selector and menu */}
-          <div className="flex items-center justify-end gap-0.5 md:hidden flex-1 min-w-0 flex-wrap overflow-visible">
+          <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
             {isSuperAdmin && companies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -176,7 +176,7 @@ export const Header = () => {
           </div>
           
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 flex-shrink">
+          <nav className="hidden lg:flex items-center gap-1 flex-shrink">
             <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
@@ -189,7 +189,7 @@ export const Header = () => {
             </Button>
           </nav>
           
-          <nav className="hidden md:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+          <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {isSuperAdmin && companies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
