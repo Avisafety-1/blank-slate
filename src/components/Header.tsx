@@ -156,10 +156,10 @@ export const Header = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/admin")}
-                className="gap-1 relative h-7 w-7 min-w-7 p-0"
+                className="gap-1 relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8"
                 title={t('nav.admin')}
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
               </Button>
             )}
