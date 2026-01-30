@@ -696,7 +696,12 @@ export default function Kalender() {
         setAddNewsDialogOpen(true);
         break;
       case 'annet':
+        // If no date is selected (clicking from top menu), use today's date
+        if (!selectedDate) {
+          setSelectedDate(new Date());
+        }
         setShowAddEventForm(true);
+        setDialogOpen(true);
         break;
     }
   };
