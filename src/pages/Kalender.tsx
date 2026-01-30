@@ -717,7 +717,7 @@ export default function Kalender() {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Calendar */}
             <div className="flex-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+              <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
