@@ -29,8 +29,11 @@ import {
   Trash2,
   ShieldCheck,
   Brain,
-  ChevronDown
+  ChevronDown,
+  Info
 } from "lucide-react";
+import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
+import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
@@ -1381,12 +1384,40 @@ const Oppdrag = () => {
                           <p className="text-xs font-semibold text-muted-foreground">PERSONELL</p>
                         </div>
                         {mission.personnel?.length > 0 ? (
-                          <ul className="space-y-1">
-                            {mission.personnel.map((p: any) => (
-                              <li key={p.profile_id} className="text-sm text-foreground">
-                                {p.profiles?.full_name || "Ukjent"}
-                              </li>
-                            ))}
+                          <ul className="space-y-2">
+                            {mission.personnel.map((p: any) => {
+                              const allMissionsForConflict = missions.map((m: any) => ({
+                                id: m.id,
+                                tittel: m.tittel,
+                                tidspunkt: m.tidspunkt,
+                                slutt_tidspunkt: m.slutt_tidspunkt,
+                                status: m.status,
+                                personnel: m.personnel || [],
+                                drones: m.drones || [],
+                                equipment: m.equipment || [],
+                              }));
+                              const conflicts = getResourceConflictsForMission(
+                                mission.id,
+                                mission.tidspunkt,
+                                mission.slutt_tidspunkt,
+                                p.profile_id,
+                                'personnel',
+                                allMissionsForConflict
+                              );
+                              return (
+                                <li key={p.profile_id} className="space-y-0.5">
+                                  <span className="text-sm text-foreground flex items-center gap-1">
+                                    {p.profiles?.full_name || "Ukjent"}
+                                    {conflicts.length > 0 && (
+                                      conflicts.some((c: ResourceConflict) => c.conflictType === 'overlap') 
+                                        ? <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                        : <Info className="h-3 w-3 text-blue-500" />
+                                    )}
+                                  </span>
+                                  <ResourceConflictWarning conflicts={conflicts} compact />
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
@@ -1400,12 +1431,40 @@ const Oppdrag = () => {
                           <p className="text-xs font-semibold text-muted-foreground">DRONER</p>
                         </div>
                         {mission.drones?.length > 0 ? (
-                          <ul className="space-y-1">
-                            {mission.drones.map((d: any) => (
-                              <li key={d.drone_id} className="text-sm text-foreground">
-                                {d.drones?.modell} (SN: {d.drones?.serienummer})
-                              </li>
-                            ))}
+                          <ul className="space-y-2">
+                            {mission.drones.map((d: any) => {
+                              const allMissionsForConflict = missions.map((m: any) => ({
+                                id: m.id,
+                                tittel: m.tittel,
+                                tidspunkt: m.tidspunkt,
+                                slutt_tidspunkt: m.slutt_tidspunkt,
+                                status: m.status,
+                                personnel: m.personnel || [],
+                                drones: m.drones || [],
+                                equipment: m.equipment || [],
+                              }));
+                              const conflicts = getResourceConflictsForMission(
+                                mission.id,
+                                mission.tidspunkt,
+                                mission.slutt_tidspunkt,
+                                d.drone_id,
+                                'drone',
+                                allMissionsForConflict
+                              );
+                              return (
+                                <li key={d.drone_id} className="space-y-0.5">
+                                  <span className="text-sm text-foreground flex items-center gap-1">
+                                    {d.drones?.modell} (SN: {d.drones?.serienummer})
+                                    {conflicts.length > 0 && (
+                                      conflicts.some((c: ResourceConflict) => c.conflictType === 'overlap') 
+                                        ? <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                        : <Info className="h-3 w-3 text-blue-500" />
+                                    )}
+                                  </span>
+                                  <ResourceConflictWarning conflicts={conflicts} compact />
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
@@ -1419,12 +1478,40 @@ const Oppdrag = () => {
                           <p className="text-xs font-semibold text-muted-foreground">UTSTYR</p>
                         </div>
                         {mission.equipment?.length > 0 ? (
-                          <ul className="space-y-1">
-                            {mission.equipment.map((e: any) => (
-                              <li key={e.equipment_id} className="text-sm text-foreground">
-                                {e.equipment?.navn} ({e.equipment?.type})
-                              </li>
-                            ))}
+                          <ul className="space-y-2">
+                            {mission.equipment.map((e: any) => {
+                              const allMissionsForConflict = missions.map((m: any) => ({
+                                id: m.id,
+                                tittel: m.tittel,
+                                tidspunkt: m.tidspunkt,
+                                slutt_tidspunkt: m.slutt_tidspunkt,
+                                status: m.status,
+                                personnel: m.personnel || [],
+                                drones: m.drones || [],
+                                equipment: m.equipment || [],
+                              }));
+                              const conflicts = getResourceConflictsForMission(
+                                mission.id,
+                                mission.tidspunkt,
+                                mission.slutt_tidspunkt,
+                                e.equipment_id,
+                                'equipment',
+                                allMissionsForConflict
+                              );
+                              return (
+                                <li key={e.equipment_id} className="space-y-0.5">
+                                  <span className="text-sm text-foreground flex items-center gap-1">
+                                    {e.equipment?.navn} ({e.equipment?.type})
+                                    {conflicts.length > 0 && (
+                                      conflicts.some((c: ResourceConflict) => c.conflictType === 'overlap') 
+                                        ? <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                        : <Info className="h-3 w-3 text-blue-500" />
+                                    )}
+                                  </span>
+                                  <ResourceConflictWarning conflicts={conflicts} compact />
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
