@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar as CalendarIcon, Plus, Download } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Download, ChevronDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import droneBackground from "@/assets/drone-background.png";
 import { format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -21,6 +24,7 @@ import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { AddNewsDialog } from "@/components/dashboard/AddNewsDialog";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
@@ -94,6 +98,19 @@ export default function Kalender() {
 
   // Export dialog state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  // News dialog state
+  const [addNewsDialogOpen, setAddNewsDialogOpen] = useState(false);
+
+  // Custom event form state
+  const [showAddEventForm, setShowAddEventForm] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    type: "Annet",
+    description: "",
+    time: "09:00",
+  });
+  const [savingEvent, setSavingEvent] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -657,7 +674,10 @@ export default function Kalender() {
     }
   };
 
-  const handleAddEntry = (type: 'oppdrag' | 'hendelse' | 'dokument') => {
+  const handleAddEntry = (type: 'oppdrag' | 'hendelse' | 'dokument' | 'nyhet' | 'annet', closeDialog: boolean = false) => {
+    if (closeDialog) {
+      setDialogOpen(false);
+    }
     switch (type) {
       case 'oppdrag':
         setAddMissionDialogOpen(true);
@@ -672,6 +692,53 @@ export default function Kalender() {
         });
         setDocumentModalOpen(true);
         break;
+      case 'nyhet':
+        setAddNewsDialogOpen(true);
+        break;
+      case 'annet':
+        setShowAddEventForm(true);
+        break;
+    }
+  };
+
+  const handleAddCustomEvent = async () => {
+    if (!newEvent.title.trim()) {
+      toast.error("Tittel er påkrevd");
+      return;
+    }
+
+    if (!user || !companyId) {
+      toast.error("Du må være innlogget");
+      return;
+    }
+
+    setSavingEvent(true);
+    try {
+      const eventDate = selectedDate || new Date();
+      const dateString = format(eventDate, "yyyy-MM-dd");
+
+      const { error } = await supabase.from("calendar_events").insert({
+        title: newEvent.title.trim(),
+        type: newEvent.type,
+        description: newEvent.description.trim() || null,
+        event_date: dateString,
+        event_time: newEvent.time,
+        user_id: user.id,
+        company_id: companyId,
+      });
+
+      if (error) throw error;
+
+      toast.success("Kalenderoppføring lagret");
+      setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
+      setShowAddEventForm(false);
+      setDialogOpen(false);
+      fetchCustomEvents();
+    } catch (error: any) {
+      console.error("Error adding custom event:", error);
+      toast.error("Kunne ikke lagre oppføring");
+    } finally {
+      setSavingEvent(false);
     }
   };
 
@@ -750,6 +817,12 @@ export default function Kalender() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
                         Dokument
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
+                        Nyhet
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
+                        Annet
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -893,7 +966,13 @@ export default function Kalender() {
       </div>
 
       {/* Event Details Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) {
+          setShowAddEventForm(false);
+          setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
+        }
+      }}>
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
@@ -901,60 +980,164 @@ export default function Kalender() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {selectedEvents.length > 0 ? (
-              selectedEvents.map((event, index) => {
-                const isMaintenanceEvent = event.sourceTable === 'drones' || 
-                  event.sourceTable === 'equipment' || 
-                  event.sourceTable === 'drone_accessories';
-                
-                return (
-                  <div
-                    key={event.id || index}
-                    className="p-3 bg-card/30 rounded-lg border border-border hover:bg-card/50 cursor-pointer transition-colors"
-                    onClick={(e) => handleEventClick(event, e)}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
-                        {event.description && (
-                          <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
-                        )}
-                        <Badge variant="outline" className="text-xs">
-                          {event.type}
-                        </Badge>
-                        {isMaintenanceEvent && (
-                          <div 
-                            className="flex items-center gap-2 mt-2 pt-2 border-t border-border"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Switch
-                              id={`maintenance-${event.id}`}
-                              onCheckedChange={() => handleMarkMaintenanceComplete(event, { stopPropagation: () => {} } as React.MouseEvent)}
-                              className="data-[state=checked]:bg-green-500"
-                            />
-                            <Label 
-                              htmlFor={`maintenance-${event.id}`}
-                              className="text-xs text-muted-foreground cursor-pointer"
-                            >
-                              Marker som utført
-                            </Label>
+          {!showAddEventForm ? (
+            <>
+              <div className="space-y-3">
+                {selectedEvents.length > 0 ? (
+                  selectedEvents.map((event, index) => {
+                    const isMaintenanceEvent = event.sourceTable === 'drones' || 
+                      event.sourceTable === 'equipment' || 
+                      event.sourceTable === 'drone_accessories';
+                    
+                    return (
+                      <div
+                        key={event.id || index}
+                        className="p-3 bg-card/30 rounded-lg border border-border hover:bg-card/50 cursor-pointer transition-colors"
+                        onClick={(e) => handleEventClick(event, e)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
+                            {event.description && (
+                              <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {event.type}
+                            </Badge>
+                            {isMaintenanceEvent && (
+                              <div 
+                                className="flex items-center gap-2 mt-2 pt-2 border-t border-border"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Switch
+                                  id={`maintenance-${event.id}`}
+                                  onCheckedChange={() => handleMarkMaintenanceComplete(event, { stopPropagation: () => {} } as React.MouseEvent)}
+                                  className="data-[state=checked]:bg-green-500"
+                                />
+                                <Label 
+                                  htmlFor={`maintenance-${event.id}`}
+                                  className="text-xs text-muted-foreground cursor-pointer"
+                                >
+                                  Marker som utført
+                                </Label>
+                              </div>
+                            )}
                           </div>
-                        )}
+                          <div className={cn("text-xs font-medium", event.color)}>
+                            {format(event.date, "HH:mm")}
+                          </div>
+                        </div>
                       </div>
-                      <div className={cn("text-xs font-medium", event.color)}>
-                        {format(event.date, "HH:mm")}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Ingen hendelser denne dagen
-              </p>
-            )}
-          </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen hendelser denne dagen
+                  </p>
+                )}
+              </div>
+
+              {/* Add entry dropdown button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="w-full gap-2 mt-4">
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                    <ChevronDown className="w-4 h-4 ml-auto" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleAddEntry('oppdrag', true)}>
+                    Oppdrag
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddEntry('hendelse', true)}>
+                    Hendelse
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddEntry('dokument', true)}>
+                    Dokument
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddEntry('nyhet', true)}>
+                    Nyhet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddEntry('annet', false)}>
+                    Annet
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            /* Custom event form */
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-title">Tittel *</Label>
+                <Input
+                  id="event-title"
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  placeholder="Skriv tittel..."
+                  disabled={savingEvent}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-type">Type</Label>
+                <Select
+                  value={newEvent.type}
+                  onValueChange={(v) => setNewEvent({ ...newEvent, type: v })}
+                  disabled={savingEvent}
+                >
+                  <SelectTrigger id="event-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Oppdrag">Oppdrag</SelectItem>
+                    <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
+                    <SelectItem value="Møte">Møte</SelectItem>
+                    <SelectItem value="Annet">Annet</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-time">Tidspunkt</Label>
+                <Input
+                  id="event-time"
+                  type="time"
+                  value={newEvent.time}
+                  onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                  disabled={savingEvent}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-description">Beskrivelse</Label>
+                <Textarea
+                  id="event-description"
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  placeholder="Valgfri beskrivelse..."
+                  rows={3}
+                  disabled={savingEvent}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleAddCustomEvent} disabled={savingEvent} className="flex-1">
+                  {savingEvent ? "Lagrer..." : "Lagre"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddEventForm(false);
+                    setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
+                  }}
+                  disabled={savingEvent}
+                >
+                  Avbryt
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -972,6 +1155,11 @@ export default function Kalender() {
         open={addIncidentDialogOpen}
         onOpenChange={setAddIncidentDialogOpen}
         defaultDate={selectedDate || undefined}
+      />
+
+      <AddNewsDialog
+        open={addNewsDialogOpen}
+        onOpenChange={setAddNewsDialogOpen}
       />
 
       <DocumentCardModal
