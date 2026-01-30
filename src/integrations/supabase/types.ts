@@ -148,6 +148,41 @@ export type Database = {
           },
         ]
       }
+      calendar_subscriptions: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          last_accessed_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           adresse: string | null

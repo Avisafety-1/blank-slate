@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Calendar, Smartphone, Apple, Chrome } from "lucide-react";
+import { Download, Calendar } from "lucide-react";
+import { CalendarSubscriptionSection } from "./CalendarSubscriptionSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -389,26 +390,7 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
             {loading ? "Genererer..." : "Last ned kalenderfil (.ics)"}
           </Button>
 
-          <div className="space-y-3 pt-2">
-            <p className="text-sm font-medium">Slik importerer du:</p>
-            
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <Apple className="h-4 w-4 mt-0.5 shrink-0" />
-                <p><strong>iPhone:</strong> Åpne filen, velg "Legg til alle"</p>
-              </div>
-              
-              <div className="flex items-start gap-2">
-                <Smartphone className="h-4 w-4 mt-0.5 shrink-0" />
-                <p><strong>Android/Samsung:</strong> Åpne filen, Google Kalender importerer automatisk</p>
-              </div>
-              
-              <div className="flex items-start gap-2">
-                <Chrome className="h-4 w-4 mt-0.5 shrink-0" />
-                <p><strong>Google Calendar (web):</strong> Innstillinger → Import og eksport → Importer</p>
-              </div>
-            </div>
-          </div>
+          <CalendarSubscriptionSection />
         </div>
       </DialogContent>
     </Dialog>
