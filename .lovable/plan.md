@@ -1,159 +1,198 @@
 
-
-# Plan: Kalenderabonnement (live .ics-feed)
+# Plan: Synkronisere kalenderoppføringsvalg mellom /kalender og widgeten
 
 ## Oversikt
-Implementerer en "Abonner på kalender"-funksjon som gir brukerne en unik URL de kan legge til i Google Calendar, Apple Calendar eller Samsung Calendar. Kalenderen oppdateres automatisk når nye hendelser legges til i AviSafe.
+Gjør "Legg til oppføring"-valgene i /kalender identiske med CalendarWidget, og legger til muligheten for å legge til oppføringer direkte fra dagsdialogen.
 
-## Hvordan det fungerer
+## Nåværende forskjeller
 
-1. Bruker klikker "Generer abonnementslenke" i dialogen
-2. System genererer et unikt, sikkert token knyttet til brukerens selskap
-3. Bruker får en URL som kan kopieres og limes inn i kalenderappen
-4. Når kalenderappen henter URL-en, returnerer edge function en .ics-fil med alle selskapets hendelser
-5. Kalenderappen oppdaterer automatisk (typisk hver 15-60 min)
+| Funksjon | CalendarWidget | /kalender side |
+|----------|----------------|----------------|
+| Hendelse | Ja | Ja |
+| Dokument | Ja | Ja |
+| Oppdrag | Ja | Ja |
+| Nyhet | Ja | **Nei** |
+| Annet (egendefinert) | Ja | **Nei** |
+| Legg til fra dagsdialog | Ja | **Nei** |
+
+## Endringer som skal gjøres
+
+### 1. Legge til manglende valg i toppmeny-dropdown
+
+Oppdaterer DropdownMenu i kalendersiden med:
+- "Nyhet" - åpner AddNewsDialog
+- "Annet" - åpner et skjema for egendefinert kalenderoppføring
+
+### 2. Legge til "Legg til"-knapp i dagsdialogen
+
+Når bruker klikker på en dag og åpner dialogen, legges det til en dropdown-meny nederst (som i widgeten) med samme valg:
+- Hendelse
+- Dokument
+- Oppdrag
+- Nyhet
+- Annet
+
+### 3. Implementere "Annet"-funksjonaliteten
+
+Legger til et skjema for egendefinerte kalenderoppføringer med:
+- Tittel (påkrevd)
+- Type (valgfri: Oppdrag, Vedlikehold, Dokument, Møte, Annet)
+- Beskrivelse (valgfri)
+- Tidspunkt
 
 ---
 
 ## Teknisk implementering
 
-### Del 1: Ny databasetabell for tokens
+### Nye imports og state i Kalender.tsx
 
-Oppretter `calendar_subscriptions` tabell:
+```typescript
+import { AddNewsDialog } from "@/components/dashboard/AddNewsDialog";
 
-| Kolonne | Type | Beskrivelse |
-|---------|------|-------------|
-| id | uuid | Primærnøkkel |
-| company_id | uuid | Selskapets ID (for å hente riktige data) |
-| user_id | uuid | Bruker som opprettet tokenet |
-| token | text | Unikt, sikkert token (64 tegn) |
-| created_at | timestamp | Opprettelsestidspunkt |
-| last_accessed_at | timestamp | Sist hentet (for statistikk) |
+// Nye state-variabler
+const [addNewsDialogOpen, setAddNewsDialogOpen] = useState(false);
+const [showAddEventForm, setShowAddEventForm] = useState(false);
+const [newEvent, setNewEvent] = useState({
+  title: "",
+  type: "Annet",
+  description: "",
+  time: "09:00",
+});
+```
 
-RLS-policies:
-- Brukere kan opprette tokens for eget selskap
-- Brukere kan se egne tokens
-- Brukere kan slette egne tokens
+### Oppdatert handleAddEntry-funksjon
 
-### Del 2: Edge function `calendar-feed`
+```typescript
+const handleAddEntry = (type: 'oppdrag' | 'hendelse' | 'dokument' | 'nyhet' | 'annet') => {
+  switch (type) {
+    case 'oppdrag':
+      setAddMissionDialogOpen(true);
+      break;
+    case 'hendelse':
+      setAddIncidentDialogOpen(true);
+      break;
+    case 'dokument':
+      setDocumentModalState({ document: null, isCreating: true });
+      setDocumentModalOpen(true);
+      break;
+    case 'nyhet':
+      setAddNewsDialogOpen(true);
+      break;
+    case 'annet':
+      setShowAddEventForm(true);
+      setDialogOpen(true);
+      break;
+  }
+};
+```
 
-Ny edge function som:
-- Tar imot token som query-parameter (`?token=xxx`)
-- Validerer token mot `calendar_subscriptions`-tabellen
-- Bruker `company_id` fra tokenet til å hente data (ikke brukerautentisering)
-- Returnerer .ics-fil med Content-Type: `text/calendar`
-- Oppdaterer `last_accessed_at` ved hver forespørsel
+### Oppdatert toppmeny-dropdown
 
-Viktig: Denne funksjonen må ha `verify_jwt = false` fordi kalenderapper ikke kan autentisere.
+```typescript
+<DropdownMenuContent align="end">
+  <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
+    Hendelse
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
+    Dokument
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
+    Oppdrag
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
+    Nyhet
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
+    Annet
+  </DropdownMenuItem>
+</DropdownMenuContent>
+```
 
-Datakilder (alle filtrert på company_id via service role):
-- calendar_events
-- missions
-- documents (utløpsdatoer)
-- drones (inspeksjonsdatoer)
-- equipment (vedlikeholdsdatoer)
-- drone_accessories (vedlikeholdsdatoer)
+### Oppdatert dagsdialog med "Legg til"-knapp
 
-### Del 3: Oppdater CalendarExportDialog
+Dialogen utvides med en dropdown-meny nederst:
 
-Legger til ny seksjon i dialogen:
+```typescript
+{/* Eksisterende hendelsesliste */}
+<div className="space-y-3">
+  {selectedEvents.length > 0 ? (...) : (...)}
+</div>
 
-```text
-┌─────────────────────────────────────────────┐
-│ 📅 Synkroniser kalender                     │
-│                                             │
-│ Tidsperiode: [Neste 3 måneder ▼]            │
-│                                             │
-│ ┌─────────────────────────────────────────┐ │
-│ │ 42 hendelser vil bli eksportert         │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-│ [⬇ Last ned kalenderfil (.ics)]             │
-│                                             │
-│ ─────────── eller ───────────               │
-│                                             │
-│ 🔗 Automatisk synkronisering                │
-│                                             │
-│ Legg til denne URL-en i din kalenderapp     │
-│ for automatiske oppdateringer:              │
-│                                             │
-│ ┌─────────────────────────────────────────┐ │
-│ │ https://...functions.../calendar-feed   │ │
-│ │ ?token=abc123...                   [📋] │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-│ [🔄 Generer ny lenke]  [🗑️ Slett lenke]     │
-│                                             │
-│ Slik legger du til:                         │
-│ • Google Calendar: Legg til kalender → URL  │
-│ • iPhone: Innstillinger → Kalender → Kontoer│
-│ • Outlook: Legg til kalender → Fra internett│
-└─────────────────────────────────────────────┘
+{/* Ny: Legg til-knapp med dropdown */}
+{!showAddEventForm ? (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button className="w-full gap-2 mt-4">
+        <Plus className="w-4 h-4" />
+        Legg til
+        <ChevronDown className="w-4 h-4 ml-auto" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuItem onClick={() => {
+        setAddIncidentDialogOpen(true);
+        setDialogOpen(false);
+      }}>
+        Hendelse
+      </DropdownMenuItem>
+      {/* ... samme meny som toppmeny */}
+    </DropdownMenuContent>
+  </DropdownMenu>
+) : (
+  {/* Skjema for egendefinert oppføring */}
+)}
+```
+
+### Skjema for "Annet" (egendefinert kalenderoppføring)
+
+```typescript
+<div className="space-y-4 mt-4">
+  <div className="space-y-2">
+    <Label>Tittel *</Label>
+    <Input 
+      value={newEvent.title}
+      onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+    />
+  </div>
+  
+  <div className="space-y-2">
+    <Label>Type</Label>
+    <Select value={newEvent.type} onValueChange={(v) => setNewEvent({...newEvent, type: v})}>
+      <SelectTrigger><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="Oppdrag">Oppdrag</SelectItem>
+        <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
+        <SelectItem value="Møte">Møte</SelectItem>
+        <SelectItem value="Annet">Annet</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+  
+  <div className="space-y-2">
+    <Label>Tidspunkt</Label>
+    <Input type="time" value={newEvent.time} onChange={...} />
+  </div>
+  
+  <div className="flex gap-2">
+    <Button onClick={handleAddCustomEvent}>Lagre</Button>
+    <Button variant="outline" onClick={() => setShowAddEventForm(false)}>Avbryt</Button>
+  </div>
+</div>
 ```
 
 ---
 
-## Sikkerhet
-
-### Token-sikkerhet
-- Tokens er 64 tegn lange, kryptografisk tilfeldige (crypto.randomUUID() + crypto.randomUUID())
-- Tokens er knyttet til company_id, ikke user_id for datahenting
-- Tokens kan tilbakekalles av bruker når som helst
-- Ingen sensitiv brukerdata eksponeres - kun hendelsesdata
-
-### Data-isolasjon
-- Edge function bruker service role for å hente data
-- Spørringer filtreres eksplisitt på `company_id` fra tokenet
-- Ingen måte å hente andre selskapers data selv med gyldig token
-
----
-
-## Filer som opprettes/endres
+## Filer som endres
 
 | Fil | Endring |
 |-----|---------|
-| **Database** | Ny tabell `calendar_subscriptions` med RLS |
-| `supabase/functions/calendar-feed/index.ts` | **NY** - Edge function for .ics-feed |
-| `supabase/config.toml` | Legg til calendar-feed med verify_jwt=false |
-| `src/components/dashboard/CalendarExportDialog.tsx` | Utvid med abonnementsseksjon |
-| `src/integrations/supabase/types.ts` | Oppdateres automatisk |
-
----
-
-## Edge function flow
-
-```text
-1. Kalenderapp (Google/Apple/Samsung)
-   │
-   ▼
-2. GET https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/calendar-feed?token=xxx
-   │
-   ▼
-3. Edge function validerer token
-   │
-   ├─ Ugyldig → 401 Unauthorized
-   │
-   └─ Gyldig → Hent company_id fra token
-              │
-              ▼
-4. Hent data fra alle tabeller med WHERE company_id = ?
-   │
-   ▼
-5. Generer ICS-innhold (gjenbruker logikk fra icsExport.ts)
-   │
-   ▼
-6. Returner med headers:
-   Content-Type: text/calendar; charset=utf-8
-   Cache-Control: no-cache, no-store
-```
+| `src/pages/Kalender.tsx` | Legge til AddNewsDialog, "Annet"-skjema, og "Legg til"-knapp i dagsdialog |
 
 ---
 
 ## Forventet resultat
 
-- Brukere kan generere en abonnementslenke med ett klikk
-- Lenken kan legges til i alle standard kalenderapper
-- Kalenderen oppdateres automatisk (avhenger av kalenderapp, typisk 15-60 min)
-- Enkelt å tilbakekalle tilgang ved å slette tokenet
-- Full dataisolasjon per selskap
-
+- Toppmenyen i /kalender har samme valg som widgeten (Hendelse, Dokument, Oppdrag, Nyhet, Annet)
+- Når man klikker på en dag, vises en "Legg til"-knapp med samme valg
+- Ved valg av "Annet" vises et enkelt skjema for egendefinert kalenderoppføring
+- Full paritet mellom CalendarWidget og /kalender-siden
