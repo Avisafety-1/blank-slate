@@ -418,23 +418,23 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="flex flex-wrap justify-center w-full max-w-3xl mx-auto relative z-10 gap-1 sm:gap-2 p-2 bg-muted/50 sm:bg-muted rounded-lg">
-            <TabsTrigger value="users" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span>{isMobile ? t('admin.users').substring(0, 4) + '.' : t('admin.users')}</span>
+          <TabsList className="inline-flex justify-center w-auto mx-auto relative z-10 gap-1 p-1.5 bg-secondary/80 rounded-xl">
+            <TabsTrigger value="users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{t('admin.users')}</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
-              <UserCog className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span>{isMobile ? t('admin.customers').substring(0, 4) + '.' : t('admin.customers')}</span>
+            <TabsTrigger value="customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
+              <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{t('admin.customers')}</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
-              <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
+              <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="companies" className="flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-1.5 sm:px-4 sm:py-2 bg-background rounded-md flex-shrink-0">
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span>{isMobile ? t('admin.companies').substring(0, 6) : t('admin.companies')}</span>
+              <TabsTrigger value="companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg flex-shrink-0">
+                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span>{t('admin.companies')}</span>
               </TabsTrigger>
             )}
           </TabsList>
