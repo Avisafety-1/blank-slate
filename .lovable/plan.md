@@ -1,53 +1,61 @@
 
-# Plan: Løs iOS-tastatur som dekker innhold på iPhone
 
-## Problemet
-Når brukere på iPhone trykker i tekstfelt eller input-felt i PWA eller nettleser:
-1. Tastaturet dukker opp og dekker deler av innholdet
-2. Man kan ikke scrolle ned til innhold som er skjult bak tastaturet
-3. iPhone-tastaturet har ingen innebygd knapp for å lukke/minimere tastaturet (i motsetning til Samsung)
+# Plan: Kalendersynkronisering med telefon (filtrert på company_id)
 
-## Løsning
-Vi implementerer en todelt løsning:
+## Oversikt
+Implementerer kalendereksport til telefon (Google Calendar, Apple Calendar, Samsung Calendar) via standard iCalendar-format (.ics). All data filtreres automatisk på company_id via eksisterende RLS-policies.
 
-### Del 1: Global "Ferdig"-knapp som vises når tastaturet er åpent
-En flytende knapp som vises nederst til høyre når et tekstfelt har fokus. Dette gir brukerne en måte å lukke tastaturet på - noe som mangler på iOS.
-
-### Del 2: Automatisk scroll til fokusert felt
-Når et input-felt får fokus, sørger vi for at det scrolles synlig over tastaturet ved hjelp av Visual Viewport API.
+## Viktig: Datasikkerhet
+Data er allerede isolert per selskap fordi:
+1. Alle Supabase-tabeller (calendar_events, missions, documents, drones, equipment, incidents, drone_accessories) har RLS-policies som filtrerer på `company_id = get_user_company_id(auth.uid())`
+2. Edge function vil bruke brukerens auth token for å hente data, slik at RLS automatisk gjelder
+3. Ingen endringer i databasen trengs
 
 ---
 
-## Tekniske detaljer
+## Teknisk implementering
 
-### Ny hook: `useIOSKeyboard.ts`
-Oppretter en ny React-hook som:
-- Lytter på `focusin` og `focusout` events
-- Sjekker om fokusert element er et tastatur-input (input, textarea, contenteditable)
-- Bruker Visual Viewport API for å beregne tastaturhøyde
-- Eksporterer:
-  - `isKeyboardOpen`: boolean
-  - `keyboardHeight`: number (for justering av innhold)
+### Del 1: ICS-hjelpefunksjon (`src/lib/icsExport.ts`)
 
-### Ny komponent: `KeyboardDismissButton.tsx`
-- Vises kun på iOS-enheter når et input-felt har fokus
-- Plasseres øverst til høyre på skjermen med `position: fixed`
-- Lukker tastaturet ved å kalle `document.activeElement.blur()`
-- Liten, diskret "Ferdig"-knapp som ikke tar for mye plass
+Ny fil som håndterer konvertering til iCalendar-format:
 
-### CSS-justeringer i `index.css`
-- Legger til CSS for å håndtere Visual Viewport på iOS:
-  ```css
-  @supports (height: 100dvh) {
-    html, body {
-      height: 100dvh;
-    }
-  }
-  ```
+```typescript
+export interface CalendarEventExport {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate?: Date;
+  type: string;
+}
 
-### Integrasjon i `App.tsx`
-- Legger til `KeyboardDismissButton`-komponenten globalt i app-wrapperen
-- Komponenten er aktiv på alle sider og vises automatisk ved behov
+export function generateICSContent(events: CalendarEventExport[], companyName: string): string
+export function downloadICSFile(content: string, filename: string): void
+```
+
+Funksjoner:
+- Genererer standard ICS-format (RFC 5545)
+- Inkluderer VTIMEZONE for norsk tid
+- Setter riktig PRODID med selskapsnavn
+- Håndterer heldagshendelser vs. tidspunktbaserte
+
+### Del 2: Eksport-dialog (`src/components/dashboard/CalendarExportDialog.tsx`)
+
+Ny dialog-komponent med:
+- "Last ned alle hendelser"-knapp som genererer .ics-fil
+- Forklarende tekst om hvordan man importerer til ulike kalenderapper
+- Viser antall hendelser som vil eksporteres
+- Datointervall-velger (valgfritt: neste 30/90/365 dager)
+
+### Del 3: Integrasjon i Kalender.tsx
+
+Legger til synkroniseringsknapp ved siden av "Legg til oppføring":
+
+```
+[📥 Synkroniser]  [+ Legg til oppføring]
+```
+
+Knappen åpner CalendarExportDialog.
 
 ---
 
@@ -55,15 +63,71 @@ Oppretter en ny React-hook som:
 
 | Fil | Endring |
 |-----|---------|
-| `src/hooks/useIOSKeyboard.ts` | **NY** - Hook for å detektere iOS-tastatur |
-| `src/components/KeyboardDismissButton.tsx` | **NY** - Ferdig-knapp komponent |
-| `src/index.css` | Legge til dynamic viewport height støtte |
-| `src/App.tsx` | Importere og bruke KeyboardDismissButton |
+| `src/lib/icsExport.ts` | **NY** - ICS-format generering og nedlasting |
+| `src/components/dashboard/CalendarExportDialog.tsx` | **NY** - Dialog med eksport-alternativer |
+| `src/pages/Kalender.tsx` | Legge til synkroniseringsknapp og dialog |
+
+---
+
+## Datakilder som inkluderes
+
+Kalenderhendelsene hentes fra følgende tabeller (alle med RLS på company_id):
+
+1. **calendar_events** - Egendefinerte hendelser
+2. **missions** - Oppdrag (tidspunkt)
+3. **incidents** - Hendelser (hendelsestidspunkt)
+4. **documents** - Dokumenter som utløper (gyldig_til)
+5. **drones** - Drone-inspeksjoner (neste_inspeksjon)
+6. **equipment** - Utstyrsvedlikehold (neste_vedlikehold)
+7. **drone_accessories** - Tilbehørsvedlikehold (neste_vedlikehold)
+
+---
+
+## ICS-filformat
+
+Eksempel på generert fil:
+```text
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AviSafe//Drone Management v1.0//NO
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:AviSafe Kalender
+BEGIN:VEVENT
+UID:mission-abc123@avisafe.no
+DTSTAMP:20260130T120000Z
+DTSTART:20260201T090000Z
+DTEND:20260201T120000Z
+SUMMARY:Inspeksjon kraftlinjer
+DESCRIPTION:Oppdrag - Kunde: Energiselskapet
+CATEGORIES:Oppdrag
+END:VEVENT
+END:VCALENDAR
+```
+
+---
+
+## Brukeropplevelse
+
+1. Bruker klikker "Synkroniser"-knappen i kalenderen
+2. Dialog åpnes med informasjon om eksport
+3. Bruker velger tidsperiode (standard: alle fremtidige hendelser)
+4. Klikker "Last ned kalender"
+5. .ics-fil lastes ned
+6. Bruker åpner filen på telefon/PC - kalenderappen tilbyr å importere
+
+### Importveiledning i dialogen:
+- **iPhone**: Åpne filen i Filer-appen, velg "Del" og så "Kalender"
+- **Android/Samsung**: Åpne filen, Google Kalender åpner automatisk
+- **Google Calendar (web)**: Innstillinger → Importer og eksporter → Importer
 
 ---
 
 ## Forventet resultat
-- Brukere på iPhone ser en "Ferdig"-knapp når de skriver i et felt
-- Klikk på knappen lukker tastaturet
-- Input-feltene forblir synlige når tastaturet er åpent
-- Løsningen påvirker ikke Android eller desktop-brukere
+
+- Brukere kan eksportere sin bedrifts kalenderhendelser til personlig kalender
+- Data er alltid filtrert på company_id (via RLS)
+- Støtter alle store kalenderapper
+- Enkel én-knapps nedlasting uten komplisert oppsett
+- Ingen tredjepartsbiblioteker nødvendig
+
