@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Download } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import droneBackground from "@/assets/drone-background.png";
@@ -24,6 +24,7 @@ import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialo
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { CalendarExportDialog } from "@/components/dashboard/CalendarExportDialog";
 
 interface CalendarEvent {
   type: string;
@@ -90,6 +91,9 @@ export default function Kalender() {
   // Checklist dialog state
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [pendingMaintenanceEvent, setPendingMaintenanceEvent] = useState<CalendarEvent | null>(null);
+
+  // Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -719,25 +723,36 @@ export default function Kalender() {
                   <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
                 </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="gap-2 w-full sm:w-auto">
-                      <Plus className="w-4 h-4" />
-                      Legg til oppføring
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-                      Oppdrag
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-                      Hendelse
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-                      Dokument
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 w-full sm:w-auto"
+                    onClick={() => setExportDialogOpen(true)}
+                  >
+                    <Download className="w-4 h-4" />
+                    Synkroniser
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="gap-2 w-full sm:w-auto">
+                        <Plus className="w-4 h-4" />
+                        Legg til oppføring
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
+                        Oppdrag
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
+                        Hendelse
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
+                        Dokument
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <Calendar
@@ -1019,6 +1034,12 @@ export default function Kalender() {
           onComplete={handleChecklistComplete}
         />
       )}
+
+      {/* Calendar Export Dialog */}
+      <CalendarExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+      />
     </div>
   );
 }
