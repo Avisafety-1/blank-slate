@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DomainGuard } from "@/components/DomainGuard";
 import { Header } from "@/components/Header";
+import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -72,6 +73,7 @@ const App = () => {
             <BrowserRouter>
               <Toaster />
               <Sonner />
+              <KeyboardDismissButton />
               <Routes>
                 {/* Public routes - login domain */}
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
