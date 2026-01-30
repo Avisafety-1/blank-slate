@@ -10,7 +10,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText, AlertTriangle } from "lucide-react";
+import { useResourceConflicts } from "@/hooks/useResourceConflicts";
+import { ResourceConflictWarning, ResourceConflictIndicator } from "@/components/dashboard/ResourceConflictWarning";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -96,6 +98,16 @@ export const AddMissionDialog = ({
     latitude: initialFormData?.latitude || null as number | null,
     longitude: initialFormData?.longitude || null as number | null,
   });
+
+  // Resource conflict detection
+  const { conflicts: resourceConflicts } = useResourceConflicts(
+    mission?.id,
+    formData.tidspunkt,
+    undefined, // slutt_tidspunkt not in formData yet
+    selectedDrones,
+    selectedEquipment,
+    selectedPersonnel
+  );
 
   useEffect(() => {
     if (open) {
@@ -1045,22 +1057,26 @@ export const AddMissionDialog = ({
             </Popover>
             
             {selectedPersonnel.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 space-y-2">
                 {selectedPersonnel.map((id) => {
                   const profile = profiles.find((p) => p.id === id);
+                  const conflicts = resourceConflicts.filter(
+                    (c) => c.resourceId === id && c.resourceType === 'personnel'
+                  );
                   return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
-                    >
-                      <span>{profile?.full_name || t('missions.unknown')}</span>
-                      <button
-                        type="button"
-                        onClick={() => removePersonnel(id)}
-                        className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                    <div key={id}>
+                      <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
+                        <span>{profile?.full_name || t('missions.unknown')}</span>
+                        <ResourceConflictIndicator conflicts={conflicts} />
+                        <button
+                          type="button"
+                          onClick={() => removePersonnel(id)}
+                          className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <ResourceConflictWarning conflicts={conflicts} />
                     </div>
                   );
                 })}
@@ -1110,22 +1126,26 @@ export const AddMissionDialog = ({
             </Popover>
             
             {selectedEquipment.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 space-y-2">
                 {selectedEquipment.map((id) => {
                   const eq = equipment.find((e) => e.id === id);
+                  const conflicts = resourceConflicts.filter(
+                    (c) => c.resourceId === id && c.resourceType === 'equipment'
+                  );
                   return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
-                    >
-                      <span>{eq?.navn} ({eq?.type})</span>
-                      <button
-                        type="button"
-                        onClick={() => removeEquipment(id)}
-                        className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                    <div key={id}>
+                      <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
+                        <span>{eq?.navn} ({eq?.type})</span>
+                        <ResourceConflictIndicator conflicts={conflicts} />
+                        <button
+                          type="button"
+                          onClick={() => removeEquipment(id)}
+                          className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <ResourceConflictWarning conflicts={conflicts} />
                     </div>
                   );
                 })}
@@ -1175,22 +1195,26 @@ export const AddMissionDialog = ({
             </Popover>
             
             {selectedDrones.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 space-y-2">
                 {selectedDrones.map((id) => {
                   const drone = drones.find((d) => d.id === id);
+                  const conflicts = resourceConflicts.filter(
+                    (c) => c.resourceId === id && c.resourceType === 'drone'
+                  );
                   return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
-                    >
-                      <span>{drone?.modell} ({drone?.registrering})</span>
-                      <button
-                        type="button"
-                        onClick={() => removeDrone(id)}
-                        className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                    <div key={id}>
+                      <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
+                        <span>{drone?.modell} ({drone?.registrering})</span>
+                        <ResourceConflictIndicator conflicts={conflicts} />
+                        <button
+                          type="button"
+                          onClick={() => removeDrone(id)}
+                          className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <ResourceConflictWarning conflicts={conflicts} />
                     </div>
                   );
                 })}

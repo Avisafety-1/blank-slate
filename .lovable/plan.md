@@ -1,13 +1,13 @@
 
-# Plan: Ressurskonfliktdeteksjon for oppdrag
+# Plan: Ressurskonfliktdeteksjon for oppdrag ✅ IMPLEMENTERT
 
 ## Oversikt
-Implementerer et system for å oppdage og varsle om konflikter når samme ressurs (drone, utstyr eller personell) er tildelt flere oppdrag som overlapper i tid. Dette vises både i oppdragslisten og når man legger til/redigerer et oppdrag.
+Implementert et system for å oppdage og varsle om konflikter når samme ressurs (drone, utstyr eller personell) er tildelt flere oppdrag som overlapper i tid. Dette vises både i oppdragslisten og når man legger til/redigerer et oppdrag.
 
-## Hovedfunksjoner
+## Hovedfunksjoner ✅
 
-### 1. Konfliktdeteksjon i AddMissionDialog
-Når bruker velger drone, utstyr eller personell skal systemet:
+### 1. Konfliktdeteksjon i AddMissionDialog ✅
+Når bruker velger drone, utstyr eller personell:
 - Sjekke om ressursen allerede er tildelt et annet oppdrag som overlapper i tid
 - Vise en advarsel/info-melding under den aktuelle ressurslinjen
 - Tillate brukeren å fortsette (ikke blokkere), men tydelig informere om konflikten
