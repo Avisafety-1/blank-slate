@@ -1,102 +1,69 @@
 
-# Plan: Utvide søkefunksjonaliteten
+# Plan: Løs iOS-tastatur som dekker innhold på iPhone
 
-## Problemanalyse
-
-Gjennomgang av søkefunksjonen avdekket flere mangler:
-
-1. **Personell/profiler er ikke søkbare** - Kan ikke finne personer på navn, e-post eller tittel
-2. **Kompetansesøk mangler company-filter** - Søker i alle kompetanser globalt, ikke bare egen bedrift
-3. **Kunder er ikke søkbare** - Kundedata er ikke inkludert i søk
-4. **Nyheter er ikke søkbare** - Nyhetsartikler mangler i søkeresultater
-5. **Flylogger er ikke søkbare** - Loggført flytid med lokasjoner er ikke søkbart
-6. **Kalenderhendelser er ikke søkbare** - Egendefinerte hendelser kan ikke finnes
-7. **Oppdrag søker kun på tittel** - Bør også søke i beskrivelse og lokasjon
-8. **Droner har feil kolonnenavn** - Bruker `registrering` men kolonnen heter `serienummer`
+## Problemet
+Når brukere på iPhone trykker i tekstfelt eller input-felt i PWA eller nettleser:
+1. Tastaturet dukker opp og dekker deler av innholdet
+2. Man kan ikke scrolle ned til innhold som er skjult bak tastaturet
+3. iPhone-tastaturet har ingen innebygd knapp for å lukke/minimere tastaturet (i motsetning til Samsung)
 
 ## Løsning
+Vi implementerer en todelt løsning:
 
-### Backend (Edge Function)
+### Del 1: Global "Ferdig"-knapp som vises når tastaturet er åpent
+En flytende knapp som vises nederst til høyre når et tekstfelt har fokus. Dette gir brukerne en måte å lukke tastaturet på - noe som mangler på iOS.
 
-Oppdater `supabase/functions/ai-search/index.ts`:
+### Del 2: Automatisk scroll til fokusert felt
+Når et input-felt får fokus, sørger vi for at det scrolles synlig over tastaturet ved hjelp av Visual Viewport API.
 
-1. **Legg til profiler/personellsøk:**
-   - Søk på `full_name`, `email`, `tittel`
-   - Filtrer på `company_id`
+---
 
-2. **Fiks kompetansesøk:**
-   - Legg til join med profiler for å filtrere på company_id
+## Tekniske detaljer
 
-3. **Legg til kundesøk:**
-   - Søk på `navn`, `kontaktperson`, `epost`, `adresse`
+### Ny hook: `useIOSKeyboard.ts`
+Oppretter en ny React-hook som:
+- Lytter på `focusin` og `focusout` events
+- Sjekker om fokusert element er et tastatur-input (input, textarea, contenteditable)
+- Bruker Visual Viewport API for å beregne tastaturhøyde
+- Eksporterer:
+  - `isKeyboardOpen`: boolean
+  - `keyboardHeight`: number (for justering av innhold)
 
-4. **Legg til nyhetssøk:**
-   - Søk på `tittel`, `innhold`
+### Ny komponent: `KeyboardDismissButton.tsx`
+- Vises kun på iOS-enheter når et input-felt har fokus
+- Plasseres øverst til høyre på skjermen med `position: fixed`
+- Lukker tastaturet ved å kalle `document.activeElement.blur()`
+- Liten, diskret "Ferdig"-knapp som ikke tar for mye plass
 
-5. **Legg til flyloggsøk:**
-   - Søk på `departure_location`, `landing_location`, `notes`
+### CSS-justeringer i `index.css`
+- Legger til CSS for å håndtere Visual Viewport på iOS:
+  ```css
+  @supports (height: 100dvh) {
+    html, body {
+      height: 100dvh;
+    }
+  }
+  ```
 
-6. **Legg til kalendersøk:**
-   - Søk på `title`, `description`
+### Integrasjon i `App.tsx`
+- Legger til `KeyboardDismissButton`-komponenten globalt i app-wrapperen
+- Komponenten er aktiv på alle sider og vises automatisk ved behov
 
-7. **Forbedre eksisterende søk:**
-   - Oppdrag: Legg til `beskrivelse`, `lokasjon` i søket
-   - Droner: Rett `registrering` til `serienummer`
+---
 
-8. **Oppdater AI-oppsummering** med alle nye kategorier
-
-### Frontend (AISearchBar.tsx)
-
-1. **Utvid SearchResults interface** med nye kategorier
-2. **Legg til visning av nye resultater:**
-   - Personell - klikk åpner PersonCompetencyDialog
-   - Kunder - visning med kontaktinfo
-   - Nyheter - klikk åpner NewsDetailDialog
-   - Flylogger - visning med dato/lokasjon
-   - Kalender - visning med dato
-3. **Legg til nødvendige dialogs og handlers**
-
-## Teknisk oversikt
-
-```text
-+------------------+     +------------------+
-|   AISearchBar    |     |   ai-search      |
-|   (Frontend)     | --> |   (Edge Function)|
-+------------------+     +------------------+
-         |                        |
-         v                        v
-+------------------+     +------------------+
-| Viser resultater |     | Søker i tabeller:|
-| for alle         |     | - profiles       |
-| kategorier       |     | - customers      |
-+------------------+     | - news           |
-                         | - flight_logs    |
-                         | - calendar_events|
-                         | + eksisterende   |
-                         +------------------+
-```
-
-## Filer som endres
+## Filer som opprettes/endres
 
 | Fil | Endring |
 |-----|---------|
-| `supabase/functions/ai-search/index.ts` | Legg til søk i 5 nye tabeller, fiks eksisterende søk |
-| `src/components/dashboard/AISearchBar.tsx` | Vis nye kategorier, legg til click handlers |
+| `src/hooks/useIOSKeyboard.ts` | **NY** - Hook for å detektere iOS-tastatur |
+| `src/components/KeyboardDismissButton.tsx` | **NY** - Ferdig-knapp komponent |
+| `src/index.css` | Legge til dynamic viewport height støtte |
+| `src/App.tsx` | Importere og bruke KeyboardDismissButton |
 
-## Nye søkbare kategorier
+---
 
-| Kategori | Søkefelt | Klikkbar |
-|----------|----------|----------|
-| Personell | navn, e-post, tittel | Ja (åpner kompetansekort) |
-| Kunder | navn, kontaktperson, e-post | Nei (visning) |
-| Nyheter | tittel, innhold | Ja (åpner nyhet) |
-| Flylogger | avgang, landing, notater | Nei (visning) |
-| Kalender | tittel, beskrivelse | Nei (visning) |
-
-## Forbedringer av eksisterende søk
-
-| Kategori | Før | Etter |
-|----------|-----|-------|
-| Oppdrag | tittel | tittel, beskrivelse, lokasjon |
-| Droner | modell, registrering (feil) | modell, serienummer |
-| Kompetanse | ingen company-filter | filtrert på company via join |
+## Forventet resultat
+- Brukere på iPhone ser en "Ferdig"-knapp når de skriver i et felt
+- Klikk på knappen lukker tastaturet
+- Input-feltene forblir synlige når tastaturet er åpent
+- Løsningen påvirker ikke Android eller desktop-brukere
