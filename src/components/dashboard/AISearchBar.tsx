@@ -189,7 +189,7 @@ export const AISearchBar = () => {
   };
 
   return (
-    <div className="space-y-4 mb-6">
+    <div className="space-y-4">
       <GlassCard className="p-4">
         <div className="flex gap-2">
           <Input
