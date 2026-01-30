@@ -363,6 +363,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               console.log('Could not get current phone position');
             }
           }
+          
+          // Priority 3: Fallback to departure location if still empty
+          if (!landingLocation && departureLocation) {
+            console.log('Using departure location as fallback for landing');
+            landingLocation = departureLocation;
+          }
         } catch (error) {
           console.error('Error auto-filling locations:', error);
         }
