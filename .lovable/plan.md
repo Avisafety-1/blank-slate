@@ -1,74 +1,134 @@
 
-
-# Plan: Fikse Push-varsler
+# Plan: Fikse Push-varsler på iOS
 
 ## Problemanalyse
 
-1. **Hovedproblem**: Telefonen har et gammelt push-abonnement opprettet med de forrige VAPID-nøklene
-2. **Sekundært problem**: Edge-funksjonen sender push uten payload-kryptering, noe som kan gi tomme notifikasjoner
+Etter grundig undersøkelse har jeg identifisert rotårsaken:
+
+**Hovedproblem**: I `usePushNotifications.ts` (linje 109-118) sjekker koden om det finnes et eksisterende push-abonnement, og hvis det gjør det, bruker den det i stedet for å opprette et nytt. Problemet er at dette eksisterende abonnementet ble opprettet med de gamle VAPID-nøklene.
+
+**Konsekvens**: Selv om du toggler av/på i appen, forblir det gamle abonnementet på enhetsnivå og vil alltid feile med 403 Forbidden.
+
+**Bevis fra loggene**:
+```
+Push failed for user: 403 pushing message failed: 403 Forbidden
+"the VAPID credentials in the authorization header do not correspond to the credentials used to create the subscriptions"
+```
 
 ## Løsning
 
-### Del 1: Brukerhandling (Kreves umiddelbart)
+### Del 1: Fikse subscribe-funksjonen
 
-Du må re-abonnere på push-varsler:
-1. Gå til profil-innstillinger
-2. Deaktiver push-varsler
-3. Aktiver push-varsler igjen
-4. Test med "Send testvarsling"
+Oppdatere `src/hooks/usePushNotifications.ts` til å:
+1. **Alltid slette eksisterende abonnement** før du oppretter et nytt
+2. Legge til bedre feilhåndtering og logging
+3. Legge til iOS PWA-deteksjon med informative meldinger
 
-### Del 2: Forbedre edge-funksjonen (Teknisk)
+### Del 2: Forbedre unsubscribe-funksjonen
 
-Jeg vil oppdatere `send-push-notification`-funksjonen til å bruke `web-push`-biblioteket som håndterer:
-- Korrekt VAPID-signering
-- Payload-kryptering med mottakerens p256dh og auth-nøkler
-- Standard Web Push-protokoll
+Sørge for at unsubscribe faktisk sletter abonnementet fra nettleseren, ikke bare fra databasen.
 
-#### Tekniske endringer
+### Del 3: Slette gamle abonnementer fra databasen
 
-**Fil: `supabase/functions/send-push-notification/index.ts`**
+Kjøre en SQL-kommando for å slette alle eksisterende push-abonnementer slik at alle starter med blanke ark.
 
-1. Legge til web-push håndtering med npm-pakke eller implementere riktig ECDH/HKDF kryptering
-2. Bruke mottakerens `p256dh` og `auth` nøkler fra databasen for å kryptere payloaden
-3. Sende kryptert melding så notifikasjonen inneholder tittel og tekst
+## Tekniske endringer
 
-#### Krypteringsflyt
+### Fil: `src/hooks/usePushNotifications.ts`
 
-```text
-+------------------+     +------------------+     +------------------+
-|  Edge Function   | --> |  Push Service    | --> |  Service Worker  |
-|                  |     |  (FCM/Mozilla)   |     |  på telefonen    |
-+------------------+     +------------------+     +------------------+
-        |                                                  |
-        | 1. Krypter payload med                          | 4. Dekrypter og
-        |    mottakers p256dh/auth                        |    vis notifikasjon
-        |                                                  |
-        | 2. Sign med VAPID private key                   |
-        |                                                  |
-        | 3. Send til push endpoint                       |
-        +--------------------------------------------------+
+**Endring i subscribe-funksjonen (linje 108-118)**:
+
+Fra:
+```typescript
+// Get push subscription
+let subscription = await registration.pushManager.getSubscription();
+
+if (!subscription) {
+  // Create new subscription
+  subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  });
+}
 ```
 
-### Del 3: Slette gamle abonnementer
+Til:
+```typescript
+// ALLTID slett eksisterende abonnement først for å sikre nye VAPID-nøkler brukes
+let existingSubscription = await registration.pushManager.getSubscription();
+if (existingSubscription) {
+  console.log('Removing existing push subscription...');
+  await existingSubscription.unsubscribe();
+}
 
-Legge til en database-funksjon som sletter alle eksisterende push-abonnementer slik at alle brukere må re-abonnere med de nye nøklene.
+// Opprett nytt abonnement med gjeldende VAPID-nøkler
+const subscription = await registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+});
+console.log('New push subscription created:', subscription.endpoint);
+```
 
-#### SQL-migrasjon
+**Legge til iOS PWA-deteksjon øverst i subscribe**:
+```typescript
+// Sjekk iOS og PWA-status
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isPWA = window.matchMedia('(display-mode: standalone)').matches 
+           || (window.navigator as any).standalone === true;
 
+if (isIOS && !isPWA) {
+  toast.error('På iOS må appen være lagt til hjemskjermen. Gå til Del-menyen og velg "Legg til på Hjem-skjerm".');
+  return false;
+}
+```
+
+**Forbedre feilhåndtering**:
+```typescript
+} catch (error) {
+  console.error('Error subscribing to push:', error);
+  
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError') {
+      toast.error('Tilgang til push-varsler ble avvist av nettleseren');
+    } else if (error.name === 'AbortError') {
+      toast.error('Push-registrering ble avbrutt');
+    } else {
+      toast.error(`Push-feil: ${error.name} - ${error.message}`);
+    }
+  } else {
+    toast.error('Kunne ikke aktivere push-varsler. Sjekk konsollen for detaljer.');
+  }
+  return false;
+}
+```
+
+### Database-migrasjon
+
+Slette alle eksisterende push-abonnementer:
 ```sql
--- Slett alle gamle push-abonnementer for å tvinge re-abonnering
 DELETE FROM push_subscriptions;
 ```
 
-Dette sikrer at ingen har utdaterte abonnementer.
+## Flyt etter endringene
+
+```text
++-------------------+     +-------------------+     +-------------------+
+|  Bruker aktiverer | --> |  Slett gammelt    | --> |  Opprett nytt     |
+|  push-varsler     |     |  abonnement       |     |  med nye nøkler   |
++-------------------+     +-------------------+     +-------------------+
+                                                              |
+                                                              v
++-------------------+     +-------------------+     +-------------------+
+|  Push fungerer!   | <-- |  Edge function    | <-- |  Lagre i database |
+|                   |     |  sender varsling  |     |                   |
++-------------------+     +-------------------+     +-------------------+
+```
 
 ## Oppsummering
 
-| Steg | Handling | Ansvarlig |
-|------|----------|-----------|
-| 1 | Re-abonner på telefonen | Deg |
-| 2 | Oppdater edge-funksjon med korrekt kryptering | Lovable |
-| 3 | Slett gamle abonnementer (valgfritt) | Lovable |
-
-Vil du at jeg implementerer forbedringene i edge-funksjonen?
-
+| Steg | Handling | Fil |
+|------|----------|-----|
+| 1 | Alltid slette eksisterende abonnement før nytt opprettes | usePushNotifications.ts |
+| 2 | Legge til iOS PWA-deteksjon | usePushNotifications.ts |
+| 3 | Forbedre feilmeldinger | usePushNotifications.ts |
+| 4 | Slette gamle abonnementer fra database | SQL-migrasjon |
