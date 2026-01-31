@@ -32,7 +32,7 @@ type Environment = "sandbox" | "prod";
 
 // Base URLs from ECCAIRS E2 API documentation
 const E2_BASE_URLS = {
-  sandbox: "https://e2.uat-aviationreporting.eu",
+  sandbox: "https://api.uat.aviationreporting.eu",
   prod: "https://api.aviationreporting.eu",
 } as const;
 
