@@ -81,6 +81,16 @@ export function usePushNotifications() {
       return false;
     }
 
+    // Check iOS and PWA status
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches 
+               || (window.navigator as any).standalone === true;
+
+    if (isIOS && !isPWA) {
+      toast.error('På iOS må appen være lagt til hjemskjermen. Gå til Del-menyen og velg "Legg til på Hjem-skjerm".');
+      return false;
+    }
+
     try {
       setIsLoading(true);
 
@@ -105,17 +115,19 @@ export function usePushNotifications() {
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;
 
-      // Get push subscription
-      let subscription = await registration.pushManager.getSubscription();
-      
-      if (!subscription) {
-        // Create new subscription
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-        console.log('Push subscription created:', subscription);
+      // ALWAYS delete existing subscription first to ensure new VAPID keys are used
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        console.log('Removing existing push subscription to refresh VAPID keys...');
+        await existingSubscription.unsubscribe();
       }
+
+      // Create new subscription with current VAPID keys
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      console.log('New push subscription created:', subscription.endpoint);
 
       // Extract subscription data
       const subscriptionJson = subscription.toJSON();
@@ -168,7 +180,18 @@ export function usePushNotifications() {
       return true;
     } catch (error) {
       console.error('Error subscribing to push:', error);
-      toast.error('Kunne ikke aktivere push-varsler');
+      
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          toast.error('Tilgang til push-varsler ble avvist av nettleseren');
+        } else if (error.name === 'AbortError') {
+          toast.error('Push-registrering ble avbrutt');
+        } else {
+          toast.error(`Push-feil: ${error.name} - ${error.message}`);
+        }
+      } else {
+        toast.error('Kunne ikke aktivere push-varsler. Sjekk konsollen for detaljer.');
+      }
       return false;
     } finally {
       setIsLoading(false);
