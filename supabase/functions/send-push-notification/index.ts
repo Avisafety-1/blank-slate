@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  ApplicationServer,
+  importVapidKeys,
+  PushMessageError,
+  type PushSubscription as WebPushSubscription,
+} from "jsr:@negrel/webpush@0.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,10 +19,10 @@ interface PushPayload {
   badge?: string;
   tag?: string;
   url?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
-interface PushSubscription {
+interface DbPushSubscription {
   id: string;
   user_id: string;
   endpoint: string;
@@ -40,10 +46,10 @@ function base64urlToUint8Array(base64url: string): Uint8Array {
 }
 
 // Convert Uint8Array to base64url
-function uint8ArrayToBase64url(uint8Array: Uint8Array): string {
+function uint8ArrayToBase64url(arr: Uint8Array): string {
   let binary = '';
-  for (let i = 0; i < uint8Array.length; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
+  for (let i = 0; i < arr.length; i++) {
+    binary += String.fromCharCode(arr[i]);
   }
   return btoa(binary)
     .replace(/\+/g, '-')
@@ -51,325 +57,97 @@ function uint8ArrayToBase64url(uint8Array: Uint8Array): string {
     .replace(/=/g, '');
 }
 
-// Create VAPID JWT for authentication
-async function createVapidJwt(
-  endpoint: string,
-  vapidPrivateKey: string,
-  vapidSubject: string
-): Promise<string> {
-  const url = new URL(endpoint);
-  const audience = `${url.protocol}//${url.host}`;
+// Convert VAPID keys from base64url format to JWK format
+function vapidKeysToJwk(
+  publicKeyBase64url: string,
+  privateKeyBase64url: string
+): { publicKey: JsonWebKey; privateKey: JsonWebKey } {
+  // Public key is in uncompressed format (65 bytes: 0x04 || x || y)
+  const publicKeyRaw = base64urlToUint8Array(publicKeyBase64url);
   
-  const header = { alg: 'ES256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    aud: audience,
-    exp: now + 12 * 60 * 60, // 12 hours
-    sub: vapidSubject
-  };
+  if (publicKeyRaw.length !== 65 || publicKeyRaw[0] !== 0x04) {
+    throw new Error(`Invalid VAPID public key format. Expected 65 bytes starting with 0x04, got ${publicKeyRaw.length} bytes`);
+  }
   
-  const encodedHeader = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(payload)));
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+  const x = publicKeyRaw.slice(1, 33);
+  const y = publicKeyRaw.slice(33, 65);
   
-  // Import VAPID private key for signing
-  const privateKeyBytes = base64urlToUint8Array(vapidPrivateKey);
+  const xBase64url = uint8ArrayToBase64url(x);
+  const yBase64url = uint8ArrayToBase64url(y);
   
-  // For ECDSA P-256, we need to create a proper JWK from the raw private key
-  const jwk = {
+  const publicJwk: JsonWebKey = {
     kty: 'EC',
     crv: 'P-256',
-    d: vapidPrivateKey,
-    x: '', // Will be derived
-    y: ''  // Will be derived
+    x: xBase64url,
+    y: yBase64url,
   };
   
-  try {
-    // Import as raw private key and derive public key components
-    const keyPair = await crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      true,
-      ['sign', 'verify']
-    );
-    
-    // We need to import the private key properly
-    // The VAPID private key is typically 32 bytes (256 bits) for P-256
-    const privateKeyData = base64urlToUint8Array(vapidPrivateKey);
-    
-    if (privateKeyData.length !== 32) {
-      console.error('Invalid VAPID private key length:', privateKeyData.length);
-      throw new Error('Invalid VAPID private key format');
-    }
-    
-    // Create a PKCS8 format key for import
-    // For P-256, the PKCS8 format has a specific structure
-    const pkcs8Header = new Uint8Array([
-      0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13,
-      0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-      0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
-      0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02,
-      0x01, 0x01, 0x04, 0x20
-    ]);
-    
-    const pkcs8Middle = new Uint8Array([
-      0xa1, 0x44, 0x03, 0x42, 0x00
-    ]);
-    
-    // We'll use a simpler approach - just sign with a generated key for now
-    // This is a workaround since raw key import is complex
-    const cryptoKey = await crypto.subtle.importKey(
-      'pkcs8',
-      new Uint8Array([...pkcs8Header, ...privateKeyData, ...pkcs8Middle, ...new Uint8Array(65)]),
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['sign']
-    ).catch(async () => {
-      // Fallback: use JWK import if PKCS8 fails
-      // This requires knowing x and y coordinates
-      console.log('PKCS8 import failed, trying alternative method');
-      return null;
-    });
-    
-    if (!cryptoKey) {
-      throw new Error('Could not import VAPID private key');
-    }
-    
-    const signatureBuffer = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      cryptoKey,
-      new TextEncoder().encode(unsignedToken)
-    );
-    
-    // Convert signature from DER to raw format (64 bytes for P-256)
-    const signature = new Uint8Array(signatureBuffer);
-    const encodedSignature = uint8ArrayToBase64url(signature);
-    
-    return `${unsignedToken}.${encodedSignature}`;
-  } catch (error) {
-    console.error('Error creating VAPID JWT:', error);
-    throw error;
-  }
+  const privateJwk: JsonWebKey = {
+    kty: 'EC',
+    crv: 'P-256',
+    x: xBase64url,
+    y: yBase64url,
+    d: privateKeyBase64url,
+  };
+  
+  return { publicKey: publicJwk, privateKey: privateJwk };
 }
 
-// Send push notification using simple fetch (without encryption for maximum compatibility)
-async function sendPushSimple(
-  subscription: PushSubscription,
-  payload: PushPayload,
+// Create application server from VAPID keys
+async function createAppServer(
   vapidPublicKey: string,
   vapidPrivateKey: string,
   vapidSubject: string
-): Promise<{ success: boolean; statusCode?: number; error?: string }> {
+): Promise<ApplicationServer> {
+  // Convert base64url keys to JWK format
+  const jwkKeys = vapidKeysToJwk(vapidPublicKey, vapidPrivateKey);
+  
+  console.log('JWK public key created with x length:', jwkKeys.publicKey.x?.length);
+  console.log('JWK private key created with d length:', jwkKeys.privateKey.d?.length);
+  
+  // Import keys using the library's importVapidKeys function
+  const vapidKeys = await importVapidKeys(jwkKeys, { extractable: false });
+  
+  return await ApplicationServer.new({
+    contactInformation: vapidSubject,
+    vapidKeys,
+  });
+}
+
+// Send push notification using the webpush library
+async function sendPush(
+  appServer: ApplicationServer,
+  subscription: DbPushSubscription,
+  payload: PushPayload
+): Promise<{ success: boolean; statusCode?: number; error?: string; isGone?: boolean }> {
   try {
-    const url = new URL(subscription.endpoint);
-    const audience = `${url.protocol}//${url.host}`;
-    
-    // Create JWT header and claims
-    const header = { alg: 'ES256', typ: 'JWT' };
-    const now = Math.floor(Date.now() / 1000);
-    const claims = {
-      aud: audience,
-      exp: now + 12 * 60 * 60,
-      sub: vapidSubject
+    // Convert database subscription to WebPush subscription format
+    const webPushSub: WebPushSubscription = {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+      },
     };
     
-    const encodedHeader = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(header)));
-    const encodedClaims = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(claims)));
+    // Create subscriber
+    const subscriber = appServer.subscribe(webPushSub);
     
-    // For Web Push, we need proper ECDSA signing
-    // Since Deno's crypto.subtle has limitations with raw key import,
-    // we'll use a workaround with the web-push-libs approach
+    // Send the notification with encrypted payload
+    const payloadJson = JSON.stringify(payload);
+    await subscriber.pushTextMessage(payloadJson, {});
     
-    // Import the private key as JWK
-    const privateKeyBytes = base64urlToUint8Array(vapidPrivateKey);
-    
-    // Generate a proper key pair and use it (this is a simplified approach)
-    // In production, you'd want to use proper VAPID key generation
-    
-    // For now, let's try a direct fetch with minimal headers
-    // Some push services accept requests without full encryption for testing
-    
-    const payloadString = JSON.stringify(payload);
-    const payloadBytes = new TextEncoder().encode(payloadString);
-    
-    // Try sending without encryption (works for some push services in development)
-    const response = await fetch(subscription.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'aes128gcm',
-        'TTL': '86400',
-        'Urgency': 'normal',
-        // We need proper VAPID auth - let's construct it properly
-        'Authorization': `vapid t=${encodedHeader}.${encodedClaims}.placeholder, k=${vapidPublicKey}`,
-      },
-      body: payloadBytes
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Push failed for ${subscription.user_id}:`, response.status, errorText);
-      return { success: false, statusCode: response.status, error: errorText };
-    }
-
     console.log(`Push sent successfully to ${subscription.user_id}`);
-    return { success: true, statusCode: response.status };
+    return { success: true, statusCode: 201 };
   } catch (error) {
-    console.error(`Error sending push to ${subscription.user_id}:`, error);
-    return { success: false, error: String(error) };
-  }
-}
-
-// Use an external service approach - call a web-push compatible endpoint
-// This is more reliable than implementing crypto in Deno edge functions
-async function sendPushViaWebPush(
-  subscription: PushSubscription,
-  payload: PushPayload,
-  vapidPublicKey: string,
-  vapidPrivateKey: string,
-  vapidSubject: string
-): Promise<{ success: boolean; statusCode?: number; error?: string }> {
-  try {
-    // For proper Web Push, we need to:
-    // 1. Encrypt the payload using the subscriber's p256dh and auth keys
-    // 2. Sign the request with VAPID
-    
-    // Since this is complex in Deno, we'll use a simpler notification approach
-    // that relies on the service worker showing a default notification
-    
-    // The simplest working approach: send a minimal push without payload
-    // The service worker will show a default notification
-    
-    const url = new URL(subscription.endpoint);
-    
-    // Create proper VAPID authorization
-    // We need to create a valid JWT signed with ES256
-    const audience = `${url.protocol}//${url.host}`;
-    const expiration = Math.floor(Date.now() / 1000) + 12 * 60 * 60;
-    
-    // Create unsigned JWT parts
-    const jwtHeader = { alg: 'ES256', typ: 'JWT' };
-    const jwtPayload = { aud: audience, exp: expiration, sub: vapidSubject };
-    
-    const headerB64 = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(jwtHeader)));
-    const payloadB64 = uint8ArrayToBase64url(new TextEncoder().encode(JSON.stringify(jwtPayload)));
-    
-    // For the signature, we need proper ECDSA
-    // Import the VAPID private key
-    const privateKeyRaw = base64urlToUint8Array(vapidPrivateKey);
-    
-    // Try importing as raw EC private key
-    let cryptoKey: CryptoKey | null = null;
-    
-    try {
-      // Create JWK from raw private key bytes
-      // For P-256, we need x, y (public) and d (private)
-      // The public key can be derived from private key
-      const publicKeyRaw = base64urlToUint8Array(vapidPublicKey);
-      
-      // Standard uncompressed public key format: 0x04 || x || y
-      if (publicKeyRaw[0] === 0x04 && publicKeyRaw.length === 65) {
-        const x = uint8ArrayToBase64url(publicKeyRaw.slice(1, 33));
-        const y = uint8ArrayToBase64url(publicKeyRaw.slice(33, 65));
-        const d = vapidPrivateKey;
-        
-        const jwk = {
-          kty: 'EC',
-          crv: 'P-256',
-          x: x,
-          y: y,
-          d: d
-        };
-        
-        cryptoKey = await crypto.subtle.importKey(
-          'jwk',
-          jwk,
-          { name: 'ECDSA', namedCurve: 'P-256' },
-          false,
-          ['sign']
-        );
-      }
-    } catch (e) {
-      console.error('Error importing VAPID key:', e);
+    // Check if it's a PushMessageError (from the library)
+    if (error instanceof PushMessageError) {
+      const statusCode = error.response?.status;
+      const isGone = error.isGone?.() ?? false;
+      console.error(`Push failed for ${subscription.user_id}:`, statusCode, error.toString());
+      return { success: false, statusCode, error: error.toString(), isGone };
     }
     
-    if (!cryptoKey) {
-      console.error('Could not create crypto key from VAPID keys');
-      return { success: false, error: 'Invalid VAPID key configuration' };
-    }
-    
-    // Sign the JWT
-    const unsignedToken = `${headerB64}.${payloadB64}`;
-    const signatureBuffer = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      cryptoKey,
-      new TextEncoder().encode(unsignedToken)
-    );
-    
-    // Convert DER signature to raw r||s format (64 bytes)
-    const derSignature = new Uint8Array(signatureBuffer);
-    let rawSignature: Uint8Array;
-    
-    // Check if it's DER format or raw format
-    if (derSignature[0] === 0x30) {
-      // It's DER encoded, extract r and s
-      let offset = 2;
-      const rLength = derSignature[offset + 1];
-      offset += 2;
-      const r = derSignature.slice(offset, offset + rLength);
-      offset += rLength + 1;
-      const sLength = derSignature[offset];
-      offset += 1;
-      const s = derSignature.slice(offset, offset + sLength);
-      
-      // Pad r and s to 32 bytes each
-      const rPadded = new Uint8Array(32);
-      const sPadded = new Uint8Array(32);
-      rPadded.set(r.slice(-32), 32 - Math.min(r.length, 32));
-      sPadded.set(s.slice(-32), 32 - Math.min(s.length, 32));
-      
-      rawSignature = new Uint8Array([...rPadded, ...sPadded]);
-    } else {
-      // Already raw format
-      rawSignature = derSignature;
-    }
-    
-    const signatureB64 = uint8ArrayToBase64url(rawSignature);
-    const jwt = `${unsignedToken}.${signatureB64}`;
-    
-    // Create authorization header
-    const vapidAuth = `vapid t=${jwt}, k=${vapidPublicKey}`;
-    
-    // Now encrypt the payload using the subscriber's keys
-    // Generate a random salt
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    
-    // For now, send without payload (simplest approach that works)
-    // The service worker will show a default notification
-    const response = await fetch(subscription.endpoint, {
-      method: 'POST',
-      headers: {
-        'TTL': '86400',
-        'Urgency': 'normal',
-        'Authorization': vapidAuth,
-        'Content-Length': '0'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Push failed for ${subscription.user_id}:`, response.status, errorText);
-      
-      // If 401/403, the VAPID signature is invalid
-      if (response.status === 401 || response.status === 403) {
-        console.error('VAPID authentication failed - check key configuration');
-      }
-      
-      return { success: false, statusCode: response.status, error: errorText };
-    }
-
-    console.log(`Push sent successfully to ${subscription.user_id}`);
-    return { success: true, statusCode: response.status };
-  } catch (error) {
     console.error(`Error sending push to ${subscription.user_id}:`, error);
     return { success: false, error: String(error) };
   }
@@ -396,9 +174,13 @@ serve(async (req) => {
       );
     }
 
+    console.log('Creating application server with VAPID keys...');
     console.log('VAPID Public Key length:', vapidPublicKey.length);
     console.log('VAPID Private Key length:', vapidPrivateKey.length);
-
+    
+    // Create the application server with VAPID credentials
+    const appServer = await createAppServer(vapidPublicKey, vapidPrivateKey, vapidSubject);
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { userId, userIds, companyId, title, body, url, tag, data } = await req.json();
@@ -454,12 +236,12 @@ serve(async (req) => {
 
     // Send to all subscriptions
     const results = await Promise.all(
-      subscriptions.map(sub => sendPushViaWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject))
+      subscriptions.map(sub => sendPush(appServer, sub, payload))
     );
 
     // Remove invalid subscriptions (410 Gone or 404 Not Found)
     const invalidSubscriptions = subscriptions.filter((sub, i) => 
-      results[i].statusCode === 410 || results[i].statusCode === 404
+      results[i].isGone || results[i].statusCode === 410 || results[i].statusCode === 404
     );
 
     if (invalidSubscriptions.length > 0) {
