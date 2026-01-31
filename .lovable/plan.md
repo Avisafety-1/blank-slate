@@ -1,134 +1,128 @@
 
-# Plan: Fikse Push-varsler på iOS
 
-## Problemanalyse
+# Plan: Feilsøke Push-varsler på Samsung
 
-Etter grundig undersøkelse har jeg identifisert rotårsaken:
+## Identifiserte problemer
 
-**Hovedproblem**: I `usePushNotifications.ts` (linje 109-118) sjekker koden om det finnes et eksisterende push-abonnement, og hvis det gjør det, bruker den det i stedet for å opprette et nytt. Problemet er at dette eksisterende abonnementet ble opprettet med de gamle VAPID-nøklene.
+Etter grundig analyse har jeg funnet følgende potensielle årsaker:
 
-**Konsekvens**: Selv om du toggler av/på i appen, forblir det gamle abonnementet på enhetsnivå og vil alltid feile med 403 Forbidden.
+### 1. Mulig VAPID-nøkkel mismatch
 
-**Bevis fra loggene**:
+**Frontend-nøkkel:**
 ```
-Push failed for user: 403 pushing message failed: 403 Forbidden
-"the VAPID credentials in the authorization header do not correspond to the credentials used to create the subscriptions"
+BD9yHkTYW7JVOnMJ15jtV7ef6Cfhgw0L4pbhA6Bwx3tzPm37B_FYlzzFfpQY5jxE-pMIAS2fx2HAv9nYUm6eW4U
 ```
+
+**Backend-nøkkel:** Lagret i Supabase secrets som `VAPID_PUBLIC_KEY`
+
+Disse må være **identiske**. Hvis de ikke matcher, vil FCM akseptere meldingen fra serveren, men nettleseren vil forkaste den fordi signaturen ikke stemmer med abonnementet.
+
+### 2. Service Worker-konflikt
+
+Prosjektet har **to separate service workers**:
+
+| Fil | Formål | Registrert av |
+|-----|--------|---------------|
+| `sw.js` (generert) | PWA caching via Vite PWA-plugin | Vite automatisk |
+| `/sw-push.js` | Push notifications | usePushNotifications hook |
+
+**Problem**: Nettleseren kan ha `sw.js` aktiv i stedet for `sw-push.js`, noe som betyr at push-events aldri mottas.
+
+### 3. Samsung batterioptimalisering
+
+Samsung-enheter har aggressiv batterioptimalisering som ofte blokkerer bakgrunns-push. Du må manuelt unnta Chrome/nettleseren fra "sove-apper".
 
 ## Løsning
 
-### Del 1: Fikse subscribe-funksjonen
+### Del 1: Verifiser VAPID-nøkkel
 
-Oppdatere `src/hooks/usePushNotifications.ts` til å:
-1. **Alltid slette eksisterende abonnement** før du oppretter et nytt
-2. Legge til bedre feilhåndtering og logging
-3. Legge til iOS PWA-deteksjon med informative meldinger
+Du må manuelt sjekke at VAPID_PUBLIC_KEY i Supabase matcher frontend-nøkkelen:
 
-### Del 2: Forbedre unsubscribe-funksjonen
+1. Gå til Supabase Dashboard → Settings → Edge Functions
+2. Finn secreten `VAPID_PUBLIC_KEY`
+3. Sammenlign med: `BD9yHkTYW7JVOnMJ15jtV7ef6Cfhgw0L4pbhA6Bwx3tzPm37B_FYlzzFfpQY5jxE-pMIAS2fx2HAv9nYUm6eW4U`
 
-Sørge for at unsubscribe faktisk sletter abonnementet fra nettleseren, ikke bare fra databasen.
+Hvis de ikke matcher, må du:
+- Enten oppdatere secreten i Supabase til å matche frontend
+- Eller oppdatere frontend-koden til å matche secreten
 
-### Del 3: Slette gamle abonnementer fra databasen
+### Del 2: Konsolidere Service Workers
 
-Kjøre en SQL-kommando for å slette alle eksisterende push-abonnementer slik at alle starter med blanke ark.
+Jeg vil slå sammen push-funksjonaliteten inn i Vite PWA sin service worker slik at det bare er én aktiv service worker.
+
+**Endringer:**
+
+**Fil: `vite.config.ts`**
+- Legge til `injectManifest`-modus som lar oss bruke egen service worker-kode
+- Importere push-logikken fra `sw-push.js` inn i den genererte service workeren
+
+**Fil: `src/sw.ts` (ny)**
+- Kombinert service worker som håndterer både PWA-caching og push notifications
+
+**Fil: `src/hooks/usePushNotifications.ts`**
+- Endre til å bruke `navigator.serviceWorker.ready` i stedet for manuell registrering av `/sw-push.js`
+
+### Del 3: Samsung-instruksjoner
+
+For Samsung-enheter må du gjøre følgende:
+1. Gå til **Innstillinger → Batteri → Bakgrunnsbruksgrenser**
+2. Finn Chrome (eller din nettleser)
+3. Fjern den fra listen over "sovende apper"
+4. Aktiver "Tillat bakgrunnsaktivitet"
 
 ## Tekniske endringer
 
+### Fil: `vite.config.ts`
+
+```typescript
+VitePWA({
+  strategies: 'injectManifest',
+  srcDir: 'src',
+  filename: 'sw.ts',
+  // ... eksisterende konfigurasjon
+})
+```
+
+### Fil: `src/sw.ts` (ny)
+
+```typescript
+/// <reference lib="webworker" />
+import { precacheAndRoute } from 'workbox-precaching';
+
+declare const self: ServiceWorkerGlobalScope;
+
+// PWA Precaching
+precacheAndRoute(self.__WB_MANIFEST);
+
+// Push notification handler
+self.addEventListener('push', function(event) {
+  // ... push-logikk fra sw-push.js
+});
+
+self.addEventListener('notificationclick', function(event) {
+  // ... click-logikk
+});
+```
+
 ### Fil: `src/hooks/usePushNotifications.ts`
 
-**Endring i subscribe-funksjonen (linje 108-118)**:
-
-Fra:
 ```typescript
-// Get push subscription
-let subscription = await registration.pushManager.getSubscription();
-
-if (!subscription) {
-  // Create new subscription
-  subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-  });
-}
-```
-
-Til:
-```typescript
-// ALLTID slett eksisterende abonnement først for å sikre nye VAPID-nøkler brukes
-let existingSubscription = await registration.pushManager.getSubscription();
-if (existingSubscription) {
-  console.log('Removing existing push subscription...');
-  await existingSubscription.unsubscribe();
+// Endre fra:
+let registration = await navigator.serviceWorker.getRegistration('/sw-push.js');
+if (!registration) {
+  registration = await navigator.serviceWorker.register('/sw-push.js', { scope: '/' });
 }
 
-// Opprett nytt abonnement med gjeldende VAPID-nøkler
-const subscription = await registration.pushManager.subscribe({
-  userVisibleOnly: true,
-  applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-});
-console.log('New push subscription created:', subscription.endpoint);
-```
-
-**Legge til iOS PWA-deteksjon øverst i subscribe**:
-```typescript
-// Sjekk iOS og PWA-status
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-const isPWA = window.matchMedia('(display-mode: standalone)').matches 
-           || (window.navigator as any).standalone === true;
-
-if (isIOS && !isPWA) {
-  toast.error('På iOS må appen være lagt til hjemskjermen. Gå til Del-menyen og velg "Legg til på Hjem-skjerm".');
-  return false;
-}
-```
-
-**Forbedre feilhåndtering**:
-```typescript
-} catch (error) {
-  console.error('Error subscribing to push:', error);
-  
-  if (error instanceof DOMException) {
-    if (error.name === 'NotAllowedError') {
-      toast.error('Tilgang til push-varsler ble avvist av nettleseren');
-    } else if (error.name === 'AbortError') {
-      toast.error('Push-registrering ble avbrutt');
-    } else {
-      toast.error(`Push-feil: ${error.name} - ${error.message}`);
-    }
-  } else {
-    toast.error('Kunne ikke aktivere push-varsler. Sjekk konsollen for detaljer.');
-  }
-  return false;
-}
-```
-
-### Database-migrasjon
-
-Slette alle eksisterende push-abonnementer:
-```sql
-DELETE FROM push_subscriptions;
-```
-
-## Flyt etter endringene
-
-```text
-+-------------------+     +-------------------+     +-------------------+
-|  Bruker aktiverer | --> |  Slett gammelt    | --> |  Opprett nytt     |
-|  push-varsler     |     |  abonnement       |     |  med nye nøkler   |
-+-------------------+     +-------------------+     +-------------------+
-                                                              |
-                                                              v
-+-------------------+     +-------------------+     +-------------------+
-|  Push fungerer!   | <-- |  Edge function    | <-- |  Lagre i database |
-|                   |     |  sender varsling  |     |                   |
-+-------------------+     +-------------------+     +-------------------+
+// Til:
+const registration = await navigator.serviceWorker.ready;
 ```
 
 ## Oppsummering
 
-| Steg | Handling | Fil |
-|------|----------|-----|
-| 1 | Alltid slette eksisterende abonnement før nytt opprettes | usePushNotifications.ts |
-| 2 | Legge til iOS PWA-deteksjon | usePushNotifications.ts |
-| 3 | Forbedre feilmeldinger | usePushNotifications.ts |
-| 4 | Slette gamle abonnementer fra database | SQL-migrasjon |
+| Steg | Handling | Prioritet |
+|------|----------|-----------|
+| 1 | Verifiser VAPID-nøkkel i Supabase | Kritisk |
+| 2 | Konsolidere service workers | Høy |
+| 3 | Konfigurer Samsung batteriinnstillinger | Medium |
+| 4 | Re-abonner på push fra telefonen | Påkrevd |
+
