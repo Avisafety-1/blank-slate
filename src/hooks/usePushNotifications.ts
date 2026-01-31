@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 // VAPID public key - this should match the one in your edge function secrets
-const VAPID_PUBLIC_KEY = 'BLBz5nVd7d8kpGBw-Km0Nk8kSY6GKbXLHMRY9nQQdPzUZ9D3YF4lmZqP3K5iWH7sKxkL8g3pQT5VnFbMqJvQO9Y';
+const VAPID_PUBLIC_KEY = 'BD9yHkTYW7JVOnMJ15jtV7ef6Cfhgw0L4pbhA6Bwx3tzPm37B_FYlzzFfpQY5jxE-pMIAS2fx2HAv9nYUm6eW4U';
 
 interface PushSubscriptionData {
   endpoint: string;
