@@ -103,17 +103,9 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Register service worker if not already registered
-      let registration = await navigator.serviceWorker.getRegistration('/sw-push.js');
-      if (!registration) {
-        registration = await navigator.serviceWorker.register('/sw-push.js', {
-          scope: '/'
-        });
-        console.log('Push service worker registered:', registration);
-      }
-
-      // Wait for service worker to be ready
-      await navigator.serviceWorker.ready;
+      // Use the unified service worker registered by Vite PWA plugin
+      const registration = await navigator.serviceWorker.ready;
+      console.log('Using unified service worker:', registration.scope);
 
       // ALWAYS delete existing subscription first to ensure new VAPID keys are used
       const existingSubscription = await registration.pushManager.getSubscription();
