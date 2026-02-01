@@ -6,7 +6,7 @@ import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface CustomerWelcomeRequest {
@@ -116,10 +116,11 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error("Error in send-customer-welcome-email function:", error);
+  } catch (error: any) {
+    const errorMessage = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+    console.error("Error in send-customer-welcome-email function:", errorMessage, error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

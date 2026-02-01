@@ -266,17 +266,16 @@ export const CustomerManagementDialog = ({
               )}
             />
 
-            {isCreating && (
-              <div className="flex items-center space-x-2 p-4 rounded-lg bg-muted/50">
+            {isCreating && form.watch("epost") && (
+              <div className="flex items-center space-x-2 p-4 rounded-lg bg-muted/50 border border-primary/20">
                 <Checkbox
                   id="sendWelcomeEmail"
                   checked={sendWelcomeEmail}
                   onCheckedChange={(checked) => setSendWelcomeEmail(checked === true)}
-                  disabled={!form.watch("epost") || !form.formState.isValid}
                 />
                 <label
                   htmlFor="sendWelcomeEmail"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none cursor-pointer"
                 >
                   Send velkomst-e-post til kunde
                 </label>
