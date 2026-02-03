@@ -42,7 +42,10 @@ serve(async (req: Request): Promise<Response> => {
 
     let attachments: any[] = [];
     const templateId = await getTemplateId(profile.company_id, 'password_reset');
-    if (templateId) attachments = await getTemplateAttachments(templateId);
+    if (templateId) {
+      const attachmentResult = await getTemplateAttachments(templateId);
+      attachments = attachmentResult.attachments;
+    }
 
     const emailConfig = await getEmailConfig(profile.company_id);
     const fromName = emailConfig.fromName || "AviSafe";

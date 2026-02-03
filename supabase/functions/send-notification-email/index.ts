@@ -43,7 +43,8 @@ serve(async (req: Request): Promise<Response> => {
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const templateResult = await getEmailTemplateWithFallback(companyId, 'incident_notification', { incident_title: incident.tittel, incident_severity: incident.alvorlighetsgrad, incident_location: incident.lokasjon || 'Ikke oppgitt', incident_description: incident.beskrivelse || '', company_name: company?.navn || '' });
       const templateId = await getTemplateId(companyId, 'incident_notification');
-      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], totalSizeBytes: 0 };
+      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -74,7 +75,8 @@ serve(async (req: Request): Promise<Response> => {
       const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: mission.tittel, mission_location: mission.lokasjon, mission_date: missionDate, mission_status: mission.status || 'Planlagt', mission_description: mission.beskrivelse || '', company_name: company?.navn || '' });
       const templateId = await getTemplateId(companyId, 'mission_notification');
-      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], totalSizeBytes: 0 };
+      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -106,7 +108,8 @@ serve(async (req: Request): Promise<Response> => {
 
       const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName });
       const templateId = await getTemplateId(companyId, 'admin_new_user');
-      const emailAttachments = templateId ? await getTemplateAttachments(templateId) : [];
+      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], totalSizeBytes: 0 };
+      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";

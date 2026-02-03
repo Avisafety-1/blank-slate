@@ -59,8 +59,17 @@ serve(async (req) => {
     if (templateError) throw templateError;
 
     let attachments: any[] = [];
+    let skippedAttachments: string[] = [];
     if (template?.id) {
-      attachments = await getTemplateAttachments(template.id);
+      try {
+        const attachmentResult = await getTemplateAttachments(template.id);
+        attachments = attachmentResult.attachments;
+        skippedAttachments = attachmentResult.skippedAttachments;
+        console.log(`Attachment result: ${attachments.length} included, ${skippedAttachments.length} skipped`);
+      } catch (attachmentError) {
+        console.error("Failed to fetch attachments, sending email without them:", attachmentError);
+        // Continue without attachments
+      }
     }
 
     let emailSubject = `Velkommen som kunde hos ${company_name}`;
@@ -111,8 +120,19 @@ serve(async (req) => {
     await client.close();
     console.log("Customer welcome email sent successfully to:", customer_email);
 
+    const response: any = { 
+      success: true, 
+      message: "Welcome email sent successfully",
+      attachmentsIncluded: attachments.length
+    };
+    
+    if (skippedAttachments.length > 0) {
+      response.skippedAttachments = skippedAttachments;
+      response.message = `Email sent, but ${skippedAttachments.length} attachment(s) were skipped due to size limits`;
+    }
+
     return new Response(
-      JSON.stringify({ success: true, message: "Welcome email sent successfully" }),
+      JSON.stringify(response),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
