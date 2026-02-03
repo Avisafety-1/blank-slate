@@ -145,7 +145,7 @@ export const AttachmentPickerDialog = ({
           />
         </div>
 
-        <ScrollArea className="flex-1 min-h-[300px] max-h-[400px] border rounded-lg">
+        <div className="flex-1 min-h-[300px] max-h-[400px] border rounded-lg overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -201,7 +201,7 @@ export const AttachmentPickerDialog = ({
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{selectedIds.length} dokument(er) valgt</span>
