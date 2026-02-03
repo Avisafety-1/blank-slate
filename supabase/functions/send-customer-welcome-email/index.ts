@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
-import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
+import { getTemplateAttachments, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,12 +60,21 @@ serve(async (req) => {
 
     let attachments: any[] = [];
     let skippedAttachments: string[] = [];
+    let downloadLinksHtml = '';
+    
     if (template?.id) {
       try {
         const attachmentResult = await getTemplateAttachments(template.id);
         attachments = attachmentResult.attachments;
         skippedAttachments = attachmentResult.skippedAttachments;
+        
+        // Generate download links for large files
+        downloadLinksHtml = generateDownloadLinksHtml(attachmentResult.skippedAttachmentDetails);
+        
         console.log(`Attachment result: ${attachments.length} included, ${skippedAttachments.length} skipped`);
+        if (downloadLinksHtml) {
+          console.log('Generated download links HTML for large attachments');
+        }
       } catch (attachmentError) {
         console.error("Failed to fetch attachments, sending email without them:", attachmentError);
         // Continue without attachments
@@ -78,6 +87,16 @@ serve(async (req) => {
     if (template) {
       emailSubject = template.subject.replace(/\{\{customer_name\}\}/g, customer_name).replace(/\{\{company_name\}\}/g, company_name);
       emailContent = template.content.replace(/\{\{customer_name\}\}/g, customer_name).replace(/\{\{company_name\}\}/g, company_name);
+    }
+
+    // Append download links to email content if there are large attachments
+    if (downloadLinksHtml) {
+      // Insert before closing </body> tag if present, otherwise append
+      if (emailContent.includes('</body>')) {
+        emailContent = emailContent.replace('</body>', `${downloadLinksHtml}</body>`);
+      } else {
+        emailContent += downloadLinksHtml;
+      }
     }
 
     const emailConfig = await getEmailConfig(company_id);
@@ -96,6 +115,7 @@ serve(async (req) => {
     console.log("Sanitized subject:", sanitizedSubject);
     console.log("Message-ID:", emailHeaders.headers["Message-ID"]);
     console.log("Attachments count:", attachments.length);
+    console.log("Download links included:", downloadLinksHtml ? 'yes' : 'no');
     console.log("====================================");
 
     const client = new SMTPClient({
@@ -123,12 +143,17 @@ serve(async (req) => {
     const response: any = { 
       success: true, 
       message: "Welcome email sent successfully",
-      attachmentsIncluded: attachments.length
+      attachmentsIncluded: attachments.length,
+      downloadLinksIncluded: downloadLinksHtml ? true : false
     };
     
     if (skippedAttachments.length > 0) {
       response.skippedAttachments = skippedAttachments;
-      response.message = `Email sent, but ${skippedAttachments.length} attachment(s) were skipped due to size limits`;
+      if (downloadLinksHtml) {
+        response.message = `Email sent with download links for ${skippedAttachments.length} large attachment(s)`;
+      } else {
+        response.message = `Email sent, but ${skippedAttachments.length} attachment(s) were skipped`;
+      }
     }
 
     return new Response(
