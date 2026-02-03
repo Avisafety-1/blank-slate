@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, FileText, Paperclip, Loader2 } from "lucide-react";
+import { Search, FileText, Paperclip, Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per attachment
 
 interface Document {
   id: string;
@@ -76,6 +79,18 @@ export const AttachmentPickerDialog = ({
   );
 
   const toggleDocument = (docId: string) => {
+    const doc = documents.find((d) => d.id === docId);
+    
+    // Check if trying to add a file that's too large
+    if (doc && !selectedIds.includes(docId) && doc.fil_storrelse && doc.fil_storrelse > MAX_ATTACHMENT_SIZE_BYTES) {
+      toast({
+        title: "Vedlegg for stort",
+        description: `${doc.tittel} er ${formatFileSize(doc.fil_storrelse)} - maksimum er 10 MB per vedlegg`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSelectedIds((prev) =>
       prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
     );
@@ -143,44 +158,54 @@ export const AttachmentPickerDialog = ({
             </div>
           ) : (
             <div className="p-2 space-y-1">
-              {filteredDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedIds.includes(doc.id)
-                      ? "bg-primary/10 border border-primary/30"
-                      : "hover:bg-muted/50 border border-transparent"
-                  }`}
-                  onClick={() => toggleDocument(doc.id)}
-                >
-                  <Checkbox
-                    checked={selectedIds.includes(doc.id)}
-                    onCheckedChange={() => toggleDocument(doc.id)}
-                  />
-                  <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{doc.tittel}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="bg-muted px-1.5 py-0.5 rounded">
-                        {getCategoryLabel(doc.kategori)}
-                      </span>
-                      {doc.fil_navn && <span className="truncate">{doc.fil_navn}</span>}
-                      {doc.fil_storrelse && (
-                        <span className="text-muted-foreground">
-                          ({formatFileSize(doc.fil_storrelse)})
+              {filteredDocuments.map((doc) => {
+                const isTooLarge = doc.fil_storrelse && doc.fil_storrelse > MAX_ATTACHMENT_SIZE_BYTES;
+                return (
+                  <div
+                    key={doc.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedIds.includes(doc.id)
+                        ? "bg-primary/10 border border-primary/30"
+                        : isTooLarge
+                        ? "bg-destructive/5 border border-destructive/20 hover:bg-destructive/10"
+                        : "hover:bg-muted/50 border border-transparent"
+                    }`}
+                    onClick={() => toggleDocument(doc.id)}
+                  >
+                    <Checkbox
+                      checked={selectedIds.includes(doc.id)}
+                      onCheckedChange={() => toggleDocument(doc.id)}
+                      disabled={isTooLarge}
+                    />
+                    <FileText className={`h-5 w-5 flex-shrink-0 ${isTooLarge ? "text-destructive" : "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium text-sm truncate ${isTooLarge ? "text-destructive" : ""}`}>{doc.tittel}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="bg-muted px-1.5 py-0.5 rounded">
+                          {getCategoryLabel(doc.kategori)}
                         </span>
-                      )}
+                        {doc.fil_navn && <span className="truncate">{doc.fil_navn}</span>}
+                        {doc.fil_storrelse && (
+                          <span className={isTooLarge ? "text-destructive font-medium" : "text-muted-foreground"}>
+                            ({formatFileSize(doc.fil_storrelse)})
+                            {isTooLarge && " - for stort"}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {isTooLarge && (
+                      <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{selectedIds.length} dokument(er) valgt</span>
-          <span className="text-xs">Maks 10 MB totalt anbefalt for e-post</span>
+          <span className="text-xs">Maks 10 MB per vedlegg</span>
         </div>
 
         <DialogFooter>
