@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
+import { fixEmailImages } from "../_shared/template-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,6 +46,9 @@ serve(async (req) => {
       emailSubject = template.subject.replace(/\{\{user_name\}\}/g, user_name).replace(/\{\{company_name\}\}/g, company_name);
       emailContent = template.content.replace(/\{\{user_name\}\}/g, user_name).replace(/\{\{company_name\}\}/g, company_name);
     }
+
+    // Fix images to display correctly in email clients
+    emailContent = fixEmailImages(emailContent);
 
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";

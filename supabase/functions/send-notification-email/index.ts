@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
-import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
@@ -160,12 +160,15 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
+      // Fix images in the HTML content
+      const fixedHtmlContent = fixEmailImages(htmlContent);
+
       let emailsSent = 0;
       for (const u of users) {
         if (!u.email) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -182,12 +185,15 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
+      // Fix images in the HTML content
+      const fixedHtmlContent = fixEmailImages(htmlContent);
+
       let emailsSent = 0;
       for (const c of customers) {
         if (!c.epost) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: c.epost, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: c.epost, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${c.epost}`, e); }
       }
@@ -204,12 +210,15 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
+      // Fix images in the HTML content
+      const fixedHtmlContent = fixEmailImages(htmlContent);
+
       let emailsSent = 0;
       for (const u of allUsers) {
         if (!u.email) continue;
         try {
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
         } catch (e) { console.error(`Failed: ${u.email}`, e); }
       }
@@ -233,8 +242,11 @@ serve(async (req: Request): Promise<Response> => {
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
+    // Fix images in the HTML content
+    const fixedHtmlContent = fixEmailImages(htmlContent);
+
     const emailHeaders = getEmailHeaders();
-    await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: htmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+    await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
     await client.close();
 
     return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
