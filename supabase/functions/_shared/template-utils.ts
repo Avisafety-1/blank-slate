@@ -465,18 +465,20 @@ export async function getEmailTemplateWithFallback(
   const customTemplate = await getEmailTemplate(companyId, templateType);
   
   if (customTemplate) {
+    const content = replaceTemplateVariables(customTemplate.content, variables);
     return {
       subject: replaceTemplateVariables(customTemplate.subject, variables),
-      content: replaceTemplateVariables(customTemplate.content, variables),
+      content: fixEmailImages(content),
       isCustom: true
     };
   }
   
   const defaultTemplate = defaultTemplates[templateType];
   if (defaultTemplate) {
+    const content = replaceTemplateVariables(defaultTemplate.content, variables);
     return {
       subject: replaceTemplateVariables(defaultTemplate.subject, variables),
-      content: replaceTemplateVariables(defaultTemplate.content, variables),
+      content: fixEmailImages(content),
       isCustom: false
     };
   }
@@ -487,4 +489,29 @@ export async function getEmailTemplateWithFallback(
     content: '',
     isCustom: false
   };
+}
+
+/**
+ * Fixes images in email HTML to ensure they display correctly in email clients.
+ * Adds proper styling, width constraints, and display properties to <img> tags.
+ */
+export function fixEmailImages(html: string): string {
+  // Match img tags without proper styling
+  return html.replace(/<img\s+([^>]*?)>/gi, (match, attributes) => {
+    // Skip if already has inline width/style with max-width
+    if (attributes.includes('max-width')) {
+      return match;
+    }
+    
+    // Extract src attribute
+    const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
+    if (!srcMatch) return match;
+    
+    // Build new attributes, preserving src and alt
+    const altMatch = attributes.match(/alt=["']([^"']*)["']/i);
+    const alt = altMatch ? altMatch[1] : 'Bilde';
+    
+    // Create properly styled image tag for email clients
+    return `<img src="${srcMatch[1]}" alt="${alt}" width="560" style="max-width:100%;height:auto;display:block;border:0;" />`;
+  });
 }
