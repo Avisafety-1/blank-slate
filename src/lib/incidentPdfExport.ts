@@ -1,9 +1,8 @@
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak } from "./pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak } from "./pdfUtils";
 
 type Incident = {
   id: string;
@@ -44,7 +43,7 @@ export const exportIncidentPDF = async ({
   userId,
 }: ExportOptions): Promise<boolean> => {
   try {
-    const doc = new jsPDF();
+    const doc = await createPdfDocument();
     const pageWidth = doc.internal.pageSize.getWidth();
     
     // Header
@@ -54,7 +53,7 @@ export const exportIncidentPDF = async ({
     yPos = addSectionHeader(doc, "DETALJER", yPos);
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    setFontStyle(doc, "normal");
 
     const details: [string, string][] = [
       ["Status", sanitizeForPdf(incident.status)],
@@ -73,9 +72,9 @@ export const exportIncidentPDF = async ({
     }
 
     details.forEach(([label, value]) => {
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text(`${label}:`, 14, yPos);
-      doc.setFont("helvetica", "normal");
+      setFontStyle(doc, "normal");
       doc.text(value, 60, yPos);
       yPos += 6;
     });
@@ -88,7 +87,7 @@ export const exportIncidentPDF = async ({
       yPos = addSectionHeader(doc, "BESKRIVELSE", yPos);
 
       doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
+      setFontStyle(doc, "normal");
       const sanitizedDescription = sanitizeForPdf(incident.beskrivelse);
       const splitDescription = doc.splitTextToSize(sanitizedDescription, pageWidth - 28);
       doc.text(splitDescription, 14, yPos);

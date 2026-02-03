@@ -42,9 +42,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
 
 interface KPIData {
   totalMissions: number;
@@ -581,7 +580,7 @@ const Status = () => {
                          timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
 
       // Create PDF document
-      const doc = new jsPDF();
+      const doc = await createPdfDocument();
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
       let yPos = 20;
@@ -598,13 +597,13 @@ const Status = () => {
       // Helper function: Draw bar chart
       const drawBarChart = (data: { name: string; value: number }[], x: number, y: number, width: number, height: number, title: string) => {
         doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        setFontStyle(doc, 'bold');
         doc.text(title, x, y);
         y += 8;
 
         if (data.length === 0 || data.every(d => d.value === 0)) {
           doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
+          setFontStyle(doc, 'normal');
           doc.text("Ingen data", x, y + 20);
           return;
         }
@@ -726,12 +725,12 @@ const Status = () => {
 
       // Page 1: Header and KPIs
       doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text(`Statistikkrapport - ${companyName}`, 20, yPos);
       yPos += 10;
 
       doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
+      setFontStyle(doc, "normal");
       doc.text(`Periode: ${periodLabel}`, 20, yPos);
       yPos += 7;
       doc.text(`Generert: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, 20, yPos);
@@ -739,7 +738,7 @@ const Status = () => {
 
       // KPI Table
       doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text("Nøkkeltall", 20, yPos);
       yPos += 5;
 
@@ -791,7 +790,7 @@ const Status = () => {
       yPos = 20;
 
       doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text("Hendelser", 20, yPos);
       yPos += 15;
 
@@ -825,7 +824,7 @@ const Status = () => {
           yPos = 20;
         }
         doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        setFontStyle(doc, 'bold');
         doc.text("Medvirkende årsaker", 20, yPos);
         yPos += 5;
 
@@ -857,7 +856,7 @@ const Status = () => {
       doc.setFillColor(...COLORS.success);
       doc.rect(20, yPos, 170, 20, 'F');
       doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.setTextColor(255, 255, 255);
       const daysText = daysSinceLastSevere > 0 
         ? `${daysSinceLastSevere} dager siden siste alvorlige hendelse`
@@ -871,7 +870,7 @@ const Status = () => {
       yPos = 20;
 
       doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text("Ressurser", 20, yPos);
       yPos += 15;
 
@@ -898,7 +897,7 @@ const Status = () => {
       }
 
       doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
+      setFontStyle(doc, "bold");
       doc.text("Dokumenter som utløper", 20, yPos);
       yPos += 5;
 

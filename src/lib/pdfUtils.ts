@@ -2,40 +2,105 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
+// Import fonts as base64
+import robotoRegularUrl from "@/assets/fonts/Roboto-Regular.ttf";
+import robotoBoldUrl from "@/assets/fonts/Roboto-Bold.ttf";
+
+let fontsLoaded = false;
+let robotoRegularBase64: string | null = null;
+let robotoBoldBase64: string | null = null;
+
 /**
- * Sanitizes text for PDF output by replacing Norwegian characters
- * with ASCII equivalents. This prevents encoding issues in PDFs
- * that use the default Helvetica font.
+ * Loads the custom fonts as base64 strings for embedding in PDFs.
+ * This is called once and cached for subsequent PDF generations.
+ */
+const loadFonts = async (): Promise<void> => {
+  if (fontsLoaded) return;
+
+  try {
+    const [regularResponse, boldResponse] = await Promise.all([
+      fetch(robotoRegularUrl),
+      fetch(robotoBoldUrl),
+    ]);
+
+    const [regularBuffer, boldBuffer] = await Promise.all([
+      regularResponse.arrayBuffer(),
+      boldResponse.arrayBuffer(),
+    ]);
+
+    // Convert ArrayBuffer to base64
+    robotoRegularBase64 = btoa(
+      String.fromCharCode(...new Uint8Array(regularBuffer))
+    );
+    robotoBoldBase64 = btoa(
+      String.fromCharCode(...new Uint8Array(boldBuffer))
+    );
+
+    fontsLoaded = true;
+    console.log("PDF fonts loaded successfully");
+  } catch (err) {
+    console.warn("Could not load custom fonts for PDF, falling back to default:", err);
+  }
+};
+
+/**
+ * Registers custom fonts with the jsPDF document for Norwegian character support.
+ */
+const registerFonts = (doc: jsPDF): void => {
+  if (robotoRegularBase64) {
+    doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+  }
+  if (robotoBoldBase64) {
+    doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+  }
+};
+
+/**
+ * Creates a new jsPDF document with Norwegian character support.
+ * Use this instead of `new jsPDF()` directly.
+ */
+export const createPdfDocument = async (
+  options?: ConstructorParameters<typeof jsPDF>[0]
+): Promise<jsPDF> => {
+  await loadFonts();
+  const doc = new jsPDF(options);
+  
+  if (fontsLoaded) {
+    registerFonts(doc);
+    doc.setFont("Roboto", "normal");
+  }
+  
+  return doc;
+};
+
+/**
+ * Sets font style on a PDF document.
+ * Use this instead of doc.setFont() directly when using custom fonts.
+ */
+export const setFontStyle = (doc: jsPDF, style: "normal" | "bold"): void => {
+  if (fontsLoaded) {
+    doc.setFont("Roboto", style);
+  } else {
+    doc.setFont("helvetica", style);
+  }
+};
+
+/**
+ * Sanitizes text for PDF output. With custom fonts that support Norwegian characters,
+ * this now only handles special punctuation that can cause issues.
+ * Norwegian characters (æøå) are preserved.
  */
 export const sanitizeForPdf = (text: string | null | undefined): string => {
   if (!text) return '';
   return text
-    // Norwegian characters
-    .replace(/æ/g, 'ae').replace(/Æ/g, 'Ae')
-    .replace(/ø/g, 'o').replace(/Ø/g, 'O')
-    .replace(/å/g, 'a').replace(/Å/g, 'A')
-    // Other Nordic/European characters
-    .replace(/ä/g, 'ae').replace(/Ä/g, 'Ae')
-    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
-    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
-    .replace(/ß/g, 'ss')
-    .replace(/é/g, 'e').replace(/É/g, 'E')
-    .replace(/è/g, 'e').replace(/È/g, 'E')
-    .replace(/ê/g, 'e').replace(/Ê/g, 'E')
-    .replace(/ë/g, 'e').replace(/Ë/g, 'E')
-    .replace(/à/g, 'a').replace(/À/g, 'A')
-    .replace(/á/g, 'a').replace(/Á/g, 'A')
-    .replace(/â/g, 'a').replace(/Â/g, 'A')
-    .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
-    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
     // Special punctuation that can cause issues
     .replace(/–/g, '-').replace(/—/g, '-')
     .replace(/'/g, "'").replace(/'/g, "'")
     .replace(/"/g, '"').replace(/"/g, '"')
     .replace(/…/g, '...')
-    .replace(/•/g, '-')
-    // Remove any remaining non-ASCII characters that might cause issues
-    .replace(/[^\x00-\x7F]/g, '');
+    .replace(/•/g, '-');
 };
 
 /**
@@ -126,13 +191,13 @@ export const addPdfHeader = (
   let yPos = 20;
   
   doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
+  setFontStyle(doc, "bold");
   doc.text(sanitizeForPdf(title), pageWidth / 2, yPos, { align: "center" });
   yPos += 10;
   
   if (subtitle) {
     doc.setFontSize(14);
-    doc.setFont("helvetica", "normal");
+    setFontStyle(doc, "normal");
     doc.text(sanitizeForPdf(subtitle), pageWidth / 2, yPos, { align: "center" });
     yPos += 10;
   }
@@ -156,7 +221,7 @@ export const addSectionHeader = (
   yPos: number
 ): number => {
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  setFontStyle(doc, "bold");
   doc.text(sanitizeForPdf(title), 14, yPos);
   return yPos + 8;
 };

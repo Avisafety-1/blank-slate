@@ -1,6 +1,5 @@
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, checkPageBreak } from "./pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, checkPageBreak } from "./pdfUtils";
 
 interface Section {
   title: string;
@@ -391,16 +390,16 @@ const sections: Section[] = [
 ];
 
 export const generateUserManualPDF = async (): Promise<Blob> => {
-  const doc = new jsPDF();
+  const doc = await createPdfDocument();
   const pageWidth = doc.internal.pageSize.getWidth();
   
   // Title page
   doc.setFontSize(32);
-  doc.setFont("helvetica", "bold");
+  setFontStyle(doc, "bold");
   doc.text("AviSafe", pageWidth / 2, 60, { align: "center" });
   
   doc.setFontSize(18);
-  doc.setFont("helvetica", "normal");
+  setFontStyle(doc, "normal");
   doc.text("Bruksanvisning", pageWidth / 2, 75, { align: "center" });
   
   doc.setFontSize(14);
@@ -417,12 +416,12 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
   let yPos = 20;
   
   doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
+  setFontStyle(doc, "bold");
   doc.text("Innholdsfortegnelse", 14, yPos);
   yPos += 15;
   
   doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
+  setFontStyle(doc, "normal");
   
   sections.forEach((section, index) => {
     doc.text(sanitizeForPdf(section.title), 14, yPos);
@@ -438,7 +437,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
     
     // Section title
     doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
+    setFontStyle(doc, "bold");
     doc.text(sanitizeForPdf(section.title), 14, yPos);
     yPos += 10;
     
@@ -447,7 +446,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
       
       if (item.type === 'paragraph') {
         doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
+        setFontStyle(doc, "normal");
         const lines = doc.splitTextToSize(sanitizeForPdf(item.text), pageWidth - 28);
         doc.text(lines, 14, yPos);
         yPos += lines.length * 5 + 5;
@@ -455,14 +454,14 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
       
       else if (item.type === 'heading') {
         doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
+        setFontStyle(doc, "bold");
         doc.text(sanitizeForPdf(item.text), 14, yPos);
         yPos += 8;
       }
       
       else if (item.type === 'list') {
         doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
+        setFontStyle(doc, "normal");
         for (const listItem of item.items) {
           yPos = checkPageBreak(doc, yPos, 8);
           const lines = doc.splitTextToSize(sanitizeForPdf(`- ${listItem}`), pageWidth - 32);
@@ -474,7 +473,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
       
       else if (item.type === 'numbered-list') {
         doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
+        setFontStyle(doc, "normal");
         item.items.forEach((listItem, idx) => {
           yPos = checkPageBreak(doc, yPos, 8);
           const lines = doc.splitTextToSize(sanitizeForPdf(`${idx + 1}. ${listItem}`), pageWidth - 32);
