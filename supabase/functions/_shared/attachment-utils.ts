@@ -237,15 +237,13 @@ export function generateDownloadLinksHtml(skippedDetails: SkippedAttachmentInfo[
   if (withUrls.length === 0) return '';
 
   const links = withUrls.map(s => 
-    `<li><a href="${s.downloadUrl}" style="color: #2563eb; text-decoration: underline;">${s.fileName}</a> (${s.fileSizeMB} MB)</li>`
-  ).join('\n');
+    `<li><a href="${s.downloadUrl}" style="color:#2563eb;text-decoration:underline;">${s.fileName}</a> (${s.fileSizeMB} MB)</li>`
+  ).join('');
 
-  return `
-<div style="margin-top: 24px; padding: 16px; background-color: #f3f4f6; border-radius: 8px;">
-  <p style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">📎 Vedlegg (last ned):</p>
-  <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
-    ${links}
-  </ul>
-  <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280;">Lenkene er gyldige i 7 dager.</p>
-</div>`;
+  // Avoid template literal line breaks that cause =20 in quoted-printable encoding
+  return '<div style="margin-top:24px;padding:16px;background-color:#f3f4f6;border-radius:8px;">' +
+    '<p style="margin:0 0 12px 0;font-weight:600;color:#374151;">📎 Vedlegg (last ned):</p>' +
+    '<ul style="margin:0;padding-left:20px;color:#4b5563;">' + links + '</ul>' +
+    '<p style="margin:12px 0 0 0;font-size:12px;color:#6b7280;">Lenkene er gyldige i 7 dager.</p>' +
+    '</div>';
 }
