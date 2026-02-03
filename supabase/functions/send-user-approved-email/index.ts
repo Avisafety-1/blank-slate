@@ -33,7 +33,10 @@ serve(async (req) => {
     const { data: template } = await supabase.from('email_templates').select('id, subject, content').eq('company_id', company_id).eq('template_type', 'user_approved').maybeSingle();
 
     let attachments: any[] = [];
-    if (template?.id) attachments = await getTemplateAttachments(template.id);
+    if (template?.id) {
+      const attachmentResult = await getTemplateAttachments(template.id);
+      attachments = attachmentResult.attachments;
+    }
 
     let emailSubject = `Din bruker hos ${company_name} er godkjent`;
     let emailContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Hei ${user_name}!</h2><p>Din bruker hos <strong>${company_name}</strong> er nå godkjent.</p></body></html>`;

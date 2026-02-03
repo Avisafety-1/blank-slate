@@ -31,7 +31,10 @@ serve(async (req) => {
     
     let attachments: any[] = [];
     const templateId = await getTemplateId(company_id, 'user_welcome');
-    if (templateId) attachments = await getTemplateAttachments(templateId);
+    if (templateId) {
+      const attachmentResult = await getTemplateAttachments(templateId);
+      attachments = attachmentResult.attachments;
+    }
 
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";

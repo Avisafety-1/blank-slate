@@ -177,7 +177,7 @@ export const CustomerManagementDialog = ({
             console.log("Welcome email sent to customer");
           } catch (emailError) {
             console.error("Failed to send welcome email:", emailError);
-            // Don't fail the entire operation if email fails
+            toast.warning("Kunde opprettet, men velkomst-e-post kunne ikke sendes. Sjekk at vedlegg ikke er for store.");
           }
         }
 
