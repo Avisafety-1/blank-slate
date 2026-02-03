@@ -2,7 +2,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak } from "./pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak, arePdfFontsLoaded } from "./pdfUtils";
 
 type Incident = {
   id: string;
@@ -99,6 +99,7 @@ export const exportIncidentPDF = async ({
       yPos = checkPageBreak(doc, yPos, 50);
       yPos = addSectionHeader(doc, "KOMMENTARER", yPos);
 
+      const fontName = arePdfFontsLoaded() ? 'Roboto' : 'helvetica';
       autoTable(doc, {
         startY: yPos,
         head: [["Dato", "Av", "Kommentar"]],
@@ -107,8 +108,8 @@ export const exportIncidentPDF = async ({
           sanitizeForPdf(c.created_by_name),
           sanitizeForPdf(c.comment_text)
         ]),
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 9, font: fontName },
+        headStyles: { fillColor: [59, 130, 246], font: fontName },
         columnStyles: {
           0: { cellWidth: 35 },
           1: { cellWidth: 35 },
