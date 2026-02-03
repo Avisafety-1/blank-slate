@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB per attachment
-const MAX_TOTAL_ATTACHMENTS_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB total
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per attachment
+const MAX_TOTAL_ATTACHMENTS_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB total
 
 export interface EmailAttachment {
   filename: string;
