@@ -27,9 +27,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 
 interface DroneLogbookDialogProps {
   open: boolean;
@@ -301,7 +300,7 @@ export const DroneLogbookDialog = ({
     }
 
     try {
-      const pdf = new jsPDF();
+      const pdf = await createPdfDocument();
       const dateStr = format(new Date(), 'dd.MM.yyyy');
       const timeStr = format(new Date(), 'HH:mm');
       

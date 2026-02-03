@@ -39,9 +39,8 @@ import { generateDJIKMZ, sanitizeFilename } from "@/lib/kmzExport";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import droneBackground from "@/assets/drone-background.png";
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
@@ -558,7 +557,7 @@ const Oppdrag = () => {
 
   const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
     try {
-      const pdf = new jsPDF();
+      const pdf = await createPdfDocument();
       const pageWidth = pdf.internal.pageSize.getWidth();
       
       // Fetch airspace warnings if coordinates exist
@@ -583,7 +582,7 @@ const Oppdrag = () => {
       
       // Header
       pdf.setFontSize(18);
-      pdf.setFont("helvetica", "bold");
+      setFontStyle(pdf, "bold");
       pdf.text("Oppdragsrapport", pageWidth / 2, 20, { align: "center" });
       
       // Mission title
@@ -613,7 +612,7 @@ const Oppdrag = () => {
       // Airspace Warnings
       if (airspaceWarnings.length > 0) {
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Luftromsadvarsler", 15, yPos);
         yPos += 7;
         
@@ -650,7 +649,7 @@ const Oppdrag = () => {
       // Route info
       if (mission.route && (mission.route as any).coordinates?.length > 0) {
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Planlagt flyrute", 15, yPos);
         yPos += 7;
         
@@ -696,11 +695,11 @@ const Oppdrag = () => {
       
       // Basic info
       pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
+      setFontStyle(pdf, "bold");
       pdf.text("Grunnleggende informasjon", 15, yPos);
       yPos += 7;
       
-      pdf.setFont("helvetica", "normal");
+      setFontStyle(pdf, "normal");
       pdf.setFontSize(10);
       
       const basicInfo = [
@@ -726,11 +725,11 @@ const Oppdrag = () => {
       // Customer info
       if (mission.customers) {
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Kundeinformasjon", 15, yPos);
         yPos += 7;
         
-        pdf.setFont("helvetica", "normal");
+        setFontStyle(pdf, "normal");
         pdf.setFontSize(10);
         
         const customerInfo = [
@@ -755,7 +754,7 @@ const Oppdrag = () => {
       // Personnel
       if (mission.personnel?.length > 0) {
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Personell", 15, yPos);
         yPos += 7;
         
@@ -777,7 +776,7 @@ const Oppdrag = () => {
       // Drones
       if (mission.drones?.length > 0) {
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Droner", 15, yPos);
         yPos += 7;
         
@@ -805,7 +804,7 @@ const Oppdrag = () => {
         }
         
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Utstyr", 15, yPos);
         yPos += 7;
         
@@ -833,7 +832,7 @@ const Oppdrag = () => {
         }
         
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("SORA-analyse", 15, yPos);
         yPos += 7;
         
@@ -865,7 +864,7 @@ const Oppdrag = () => {
           }
           
           pdf.setFontSize(12);
-          pdf.setFont("helvetica", "bold");
+          setFontStyle(pdf, "bold");
           pdf.text("AI Risikovurdering", 15, yPos);
           yPos += 7;
           
@@ -924,11 +923,11 @@ const Oppdrag = () => {
           const aiAnalysis = mission.aiRisk.ai_analysis as any;
           if (aiAnalysis?.summary) {
             pdf.setFontSize(10);
-            pdf.setFont("helvetica", "bold");
+            setFontStyle(pdf, "bold");
             pdf.text("Oppsummering:", 15, yPos);
             yPos += 5;
             
-            pdf.setFont("helvetica", "normal");
+            setFontStyle(pdf, "normal");
             pdf.setFontSize(9);
             const sanitizedSummary = sanitizeForPdf(aiAnalysis.summary);
             const splitSummary = pdf.splitTextToSize(sanitizedSummary, pageWidth - 30);
@@ -944,11 +943,11 @@ const Oppdrag = () => {
             }
             
             pdf.setFontSize(10);
-            pdf.setFont("helvetica", "bold");
+            setFontStyle(pdf, "bold");
             pdf.text("Anbefalinger:", 15, yPos);
             yPos += 5;
             
-            pdf.setFont("helvetica", "normal");
+            setFontStyle(pdf, "normal");
             pdf.setFontSize(9);
             
             aiAnalysis.recommendations.forEach((rec: any, index: number) => {
@@ -989,7 +988,7 @@ const Oppdrag = () => {
         }
         
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Tilknyttede hendelser", 15, yPos);
         yPos += 7;
         
@@ -1027,7 +1026,7 @@ const Oppdrag = () => {
         }
         
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        setFontStyle(pdf, "bold");
         pdf.text("Flyturer", 15, yPos);
         yPos += 7;
         
@@ -1100,11 +1099,11 @@ const Oppdrag = () => {
         
         if (mission.beskrivelse) {
           pdf.setFontSize(12);
-          pdf.setFont("helvetica", "bold");
+          setFontStyle(pdf, "bold");
           pdf.text("Beskrivelse", 15, yPos);
           yPos += 7;
           
-          pdf.setFont("helvetica", "normal");
+          setFontStyle(pdf, "normal");
           pdf.setFontSize(9);
           const splitDescription = pdf.splitTextToSize(mission.beskrivelse, pageWidth - 30);
           pdf.text(splitDescription, 15, yPos);
@@ -1118,11 +1117,11 @@ const Oppdrag = () => {
           }
           
           pdf.setFontSize(12);
-          pdf.setFont("helvetica", "bold");
+          setFontStyle(pdf, "bold");
           pdf.text("Merknader", 15, yPos);
           yPos += 7;
           
-          pdf.setFont("helvetica", "normal");
+          setFontStyle(pdf, "normal");
           pdf.setFontSize(9);
           const splitNotes = pdf.splitTextToSize(mission.merknader, pageWidth - 30);
           pdf.text(splitNotes, 15, yPos);

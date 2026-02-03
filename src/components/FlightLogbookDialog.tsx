@@ -12,9 +12,8 @@ import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText } from "lucide-rea
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 interface FlightLogbookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -179,7 +178,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
     setExporting(true);
     try {
-      const doc = new jsPDF();
+      const doc = await createPdfDocument();
       
       // Header
       doc.setFontSize(18);
@@ -195,7 +194,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Fra loggforte flyturer: ${formatDurationForPdf(totalMinutes)}`, 14, 47);
+      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(totalMinutes)}`, 14, 47);
       if (profileFlyvetimer > 0) {
         doc.text(`Manuelt lagt til: ${formatDurationForPdf(Math.round(profileFlyvetimer * 60))}`, 14, 54);
       }

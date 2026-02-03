@@ -24,9 +24,8 @@ import {
   Wrench
 } from "lucide-react";
 import { format } from "date-fns";
-import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -287,7 +286,7 @@ export const EquipmentLogbookDialog = ({
     }
 
     try {
-      const pdf = new jsPDF();
+      const pdf = await createPdfDocument();
       const dateStr = format(new Date(), 'dd.MM.yyyy');
       const timeStr = format(new Date(), 'HH:mm');
       
@@ -301,7 +300,7 @@ export const EquipmentLogbookDialog = ({
       // Check if there are any logs
       if (allLogs.length === 0) {
         pdf.setFontSize(10);
-        pdf.text("Ingen oppforinger i loggboken.", 14, 55);
+        pdf.text("Ingen oppføringer i loggboken.", 14, 55);
       } else {
         // Table with all entries
         const tableData = allLogs.map(log => [
