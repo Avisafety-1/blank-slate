@@ -7,6 +7,7 @@ import robotoRegularUrl from "@/assets/fonts/Roboto-Regular.ttf";
 import robotoBoldUrl from "@/assets/fonts/Roboto-Bold.ttf";
 
 let fontsLoaded = false;
+export const arePdfFontsLoaded = () => fontsLoaded;
 let robotoRegularBase64: string | null = null;
 let robotoBoldBase64: string | null = null;
 
