@@ -711,16 +711,18 @@ export function OpenAIPMap({
           
           // Update popup content
           const callsign = beacon.callsign || 'Ukjent';
-          const altitude = beacon.altitude || '?';
-          const speed = beacon.ground_speed || '?';
+          const altitudeMeters = beacon.altitude;
+          const altitudeFt = altitudeMeters != null ? Math.round(altitudeMeters * 3.28084) : '?';
+          const speedMs = beacon.ground_speed;
+          const speedKt = speedMs != null ? Math.round(speedMs * 1.94384) : '?';
           const typeLabel = beacon.beacon_type || 'Ukjent';
           
           existingMarker.setPopupContent(`
             <div>
               <strong>📡 ${callsign}</strong><br/>
               Type: ${typeLabel}<br/>
-              Høyde: ${altitude} m<br/>
-              Fart: ${speed} m/s<br/>
+              Høyde: ${altitudeFt} ft<br/>
+              Fart: ${speedKt} kt<br/>
               <span style="font-size: 10px; color: #888;">Via SafeSky</span>
             </div>
           `);
@@ -787,16 +789,18 @@ export function OpenAIPMap({
           const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
           
           const callsign = beacon.callsign || 'Ukjent';
-          const altitude = beacon.altitude || '?';
-          const speed = beacon.ground_speed || '?';
+          const altitudeMeters = beacon.altitude;
+          const altitudeFt = altitudeMeters != null ? Math.round(altitudeMeters * 3.28084) : '?';
+          const speedMs = beacon.ground_speed;
+          const speedKt = speedMs != null ? Math.round(speedMs * 1.94384) : '?';
           const typeLabel = beacon.beacon_type || 'Ukjent';
           
           marker.bindPopup(`
             <div>
               <strong>📡 ${callsign}</strong><br/>
               Type: ${typeLabel}<br/>
-              Høyde: ${altitude} m<br/>
-              Fart: ${speed} m/s<br/>
+              Høyde: ${altitudeFt} ft<br/>
+              Fart: ${speedKt} kt<br/>
               <span style="font-size: 10px; color: #888;">Via SafeSky</span>
             </div>
           `);
