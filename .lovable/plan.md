@@ -1,73 +1,59 @@
 
 
-# Plan: Oppdatere SafeSky Edge Function til HMAC-autentisering
+# Plan: Bytt til SafeSky Sandbox API med enkel autentisering
 
 ## Problem
-SafeSky API har endret autentiseringsmetode fra enkel `x-api-key` header til **HMAC-SHA256 signatur-basert autentisering**. Den gamle metoden er deprecated og returnerer 401 Unauthorized.
+Edge function bruker feil API-endepunkt og autentiseringsmetode:
+- **Nåværende**: `https://public-api.safesky.app` med HMAC-signering
+- **Korrekt**: `https://sandbox-public-api.safesky.app` med `x-api-key` header
 
 ## Løsning
-Implementere SafeSky sin HMAC-autentisering i edge function `safesky-beacons-fetch` basert på deres offisielle Node.js SDK.
+Forenkle edge function ved å:
+1. Endre URL til sandbox-endepunktet
+2. Fjerne all HMAC-kode (100+ linjer)
+3. Bruke enkel `x-api-key` header som vist i e-posten
 
-## Teknisk oversikt
+## Endringer i `supabase/functions/safesky-beacons-fetch/index.ts`
 
-HMAC-autentisering krever fire headere per forespørsel:
-
-| Header | Beskrivelse |
-|--------|-------------|
-| `Authorization` | `SS-HMAC Credential=<kid>/v1, SignedHeaders=host;x-ss-date;x-ss-nonce, Signature=<hex-signatur>` |
-| `X-SS-Date` | ISO8601 tidsstempel (f.eks. `2026-02-04T18:30:00Z`) |
-| `X-SS-Nonce` | Unik UUID v4 per forespørsel |
-| `X-SS-Alg` | `SS-HMAC-SHA256-V1` |
-
-### Nøkkel-derivasjon (gjøres én gang fra API-nøkkelen)
-1. **KID** = base64url(SHA256("kid:" + api_key)[0:16])
-2. **HMAC-nøkkel** = HKDF-SHA256(api_key, salt="safesky-hmac-salt-v1", info="auth-v1", 32 bytes)
-
-### Signatur-generering (per forespørsel)
-1. Generer timestamp og nonce
-2. Bygg "canonical request" streng med method, path, query, host, timestamp, nonce, body
-3. Signer med HMAC-SHA256 og HMAC-nøkkelen
-
-## Implementasjon
-
-### 1. Oppdater `supabase/functions/safesky-beacons-fetch/index.ts`
-
-Legge til HMAC-autentisering ved å:
-- Implementere `deriveKid()` funksjon (SHA256 + base64url)
-- Implementere `deriveHmacKey()` funksjon (HKDF-SHA256)
-- Implementere `generateAuthHeaders()` funksjon
-- Erstatte enkel `x-api-key` header med de fire HMAC-headerne
-
-**Deno Web Crypto API** vil brukes for kryptografi (innebygd, ingen eksterne avhengigheter).
-
-### 2. HMAC-implementasjonsdetaljer (Deno/Web Crypto)
-
-```text
-Canonical Request Format:
-<HTTP-method>\n
-<path>\n
-<query-string>\n
-host:<hostname>\n
-x-ss-date:<timestamp>\n
-x-ss-nonce:<uuid>\n
-\n
-<body-or-empty>
+### Før (kompleks HMAC)
+```typescript
+const SAFESKY_HOST = "public-api.safesky.app";
+// ... 100+ linjer HMAC-kode ...
+const authHeaders = await generateAuthHeaders(...);
 ```
 
-Signaturen beregnes som:
-```
-signature = HMAC-SHA256(hmac_key, canonical_request).hex()
+### Etter (enkel x-api-key)
+```typescript
+const SAFESKY_HOST = "sandbox-public-api.safesky.app";
+// Ingen HMAC-kode nødvendig
+
+const response = await fetch(SAFESKY_BEACONS_URL, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': SAFESKY_BEACONS_API_KEY
+  }
+});
 ```
 
-## Filendringer
+## Teknisk oppsummering
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| Host | `public-api.safesky.app` | `sandbox-public-api.safesky.app` |
+| Auth | HMAC-SHA256 (4 headers) | `x-api-key` header |
+| Kode | ~180 linjer | ~100 linjer |
+| Kompleksitet | Høy | Lav |
+
+## Filer som endres
 
 | Fil | Endring |
 |-----|---------|
-| `supabase/functions/safesky-beacons-fetch/index.ts` | Erstatte x-api-key med HMAC-auth |
+| `supabase/functions/safesky-beacons-fetch/index.ts` | Bytt til sandbox URL, fjern HMAC, bruk x-api-key |
 
-## Eksisterende API-nøkkel
-Nøkkelen `SAFESKY_BEACONS_API_KEY` du allerede har lagt til vil fortsatt brukes - bare autentiseringsmetoden endres.
+## Eksisterende secret
+API-nøkkelen `SAFESKY_BEACONS_API_KEY` som allerede er konfigurert vil fortsatt brukes - bare URL og header-format endres.
 
 ## Forventet resultat
-Etter oppdatering vil edge function sende korrekte HMAC-headere og få tilgang til SafeSky API. Flytrafikk vil vises på kartet.
+Etter endringen vil edge function kalle SafeSky sandbox-API med korrekt autentisering, og lufttrafikk vil vises på kartet.
 
