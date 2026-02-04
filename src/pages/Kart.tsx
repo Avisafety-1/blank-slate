@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import safeskyLogo from "@/assets/safesky-logo.png";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -367,6 +368,14 @@ export default function KartPage() {
 
       {/* Map Content */}
       <div className="flex-1 relative overflow-hidden">
+        {/* SafeSky Attribution */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Traffic data provided by</span>
+          <a href="https://www.safesky.app" target="_blank" rel="noopener noreferrer">
+            <img src={safeskyLogo} alt="SafeSky" className="h-5 dark:invert" />
+          </a>
+        </div>
+        
         <OpenAIPMap 
           onMissionClick={handleMissionClick}
           mode={isRoutePlanning ? "routePlanning" : "view"}
