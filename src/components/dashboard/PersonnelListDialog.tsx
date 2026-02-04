@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 import { usePresence } from "@/hooks/usePresence";
@@ -41,6 +41,17 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
       onPersonnelUpdated();
     }
   };
+
+  // Sync selectedPerson when personnel prop changes
+  useEffect(() => {
+    if (selectedPerson && personnel.length > 0) {
+      const updated = personnel.find(p => p.id === selectedPerson.id);
+      if (updated) {
+        setSelectedPerson(updated);
+      }
+    }
+  }, [personnel]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
