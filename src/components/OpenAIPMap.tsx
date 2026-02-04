@@ -696,6 +696,12 @@ export function OpenAIPMap({
           bgColor = '#ec4899'; // pink for balloon
         }
         
+        // Override to black if altitude > 2000ft (610m)
+        const altitudeMetersForColor = beacon.altitude;
+        if (altitudeMetersForColor != null && altitudeMetersForColor > 610) {
+          bgColor = '#000000'; // black for high altitude
+        }
+        
         const course = beacon.course || 0;
         
         // Choose SVG based on beacon type
