@@ -774,14 +774,12 @@ export function OpenAIPMap({
                 box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                 transform: rotate(${course}deg);
               ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 14h-4v-2a2 2 0 0 1 2 -2h0a2 2 0 0 1 2 2v2z"/>
-                  <path d="M10 14v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1 -1v-3"/>
-                  <path d="M3 10h6"/>
-                  <path d="M15 10h6"/>
-                  <path d="M12 10v-4"/>
-                  <path d="M7 18l-1 2"/>
-                  <path d="M17 18l1 2"/>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 9h18"/>
+                  <path d="M12 5v4"/>
+                  <path d="M7 12h10a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"/>
+                  <path d="M6 18l-1 2"/>
+                  <path d="M18 18l1 2"/>
                 </svg>
               </div>`,
               iconSize: [28, 28],
