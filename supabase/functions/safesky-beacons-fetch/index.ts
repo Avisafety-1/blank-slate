@@ -7,7 +7,10 @@ const corsHeaders = {
 
 // Norway bounding box for beacon fetching
 const NORWAY_VIEWPORT = "57.5,4.0,71.5,31.5";
-const SAFESKY_BEACONS_URL = `https://public-api.safesky.app/v1/beacons?viewport=${NORWAY_VIEWPORT}`;
+const SAFESKY_HOST = "public-api.safesky.app";
+const SAFESKY_PATH = "/v1/beacons";
+const SAFESKY_QUERY = `viewport=${NORWAY_VIEWPORT}`;
+const SAFESKY_BEACONS_URL = `https://${SAFESKY_HOST}${SAFESKY_PATH}?${SAFESKY_QUERY}`;
 
 // How long a heartbeat is considered "active" (10 seconds)
 const HEARTBEAT_TIMEOUT_MS = 10000;
@@ -26,6 +29,164 @@ interface SafeSkyBeacon {
   beacon_type?: string;
   callsign?: string;
 }
+
+// ============ HMAC Authentication Helpers ============
+
+// Convert ArrayBuffer to hex string
+function bufferToHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Convert ArrayBuffer to base64 string
+function bufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Convert ArrayBuffer to base64url string
+function bufferToBase64Url(buffer: ArrayBuffer): string {
+  return bufferToBase64(buffer)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// Derive KID from API key: base64url(SHA256("kid:" + api_key)[0:16])
+async function deriveKid(apiKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode("kid:" + apiKey);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const first16Bytes = hashBuffer.slice(0, 16);
+  return bufferToBase64Url(first16Bytes);
+}
+
+// Derive HMAC key using HKDF-SHA256
+async function deriveHmacKey(apiKey: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  
+  // Import the API key as key material
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(apiKey),
+    'HKDF',
+    false,
+    ['deriveKey']
+  );
+  
+  // Derive the HMAC key using HKDF
+  const salt = encoder.encode('safesky-hmac-salt-v1');
+  const info = encoder.encode('auth-v1');
+  
+  return crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: salt,
+      info: info,
+    },
+    keyMaterial,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false,
+    ['sign']
+  );
+}
+
+// Generate UUID v4
+function generateNonce(): string {
+  return crypto.randomUUID();
+}
+
+// Generate ISO8601 timestamp with milliseconds
+function generateTimestamp(): string {
+  return new Date().toISOString(); // Returns format: YYYY-MM-DDTHH:MM:SS.sssZ
+}
+
+// Generate SHA256 hash of body as hex string
+async function hashBody(body: string): Promise<string> {
+  if (!body) return '';
+  const encoder = new TextEncoder();
+  const data = encoder.encode(body);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return bufferToHex(hashBuffer);
+}
+
+// Generate HMAC signature (base64 encoded)
+async function generateSignature(hmacKey: CryptoKey, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, encoder.encode(data));
+  return bufferToBase64(signature);
+}
+
+// Build canonical request string
+// Format from SafeSky docs:
+// METHOD\n/path\nquery_string\nhost:hostname\nx-ss-date:timestamp\nx-ss-nonce:nonce\n\nbody_hash_sha256_hex
+function buildCanonicalRequest(
+  method: string,
+  path: string,
+  query: string,
+  host: string,
+  timestamp: string,
+  nonce: string,
+  bodyHash: string
+): string {
+  return [
+    method,
+    path,
+    query,
+    `host:${host}`,
+    `x-ss-date:${timestamp}`,
+    `x-ss-nonce:${nonce}`,
+    '',
+    bodyHash
+  ].join('\n');
+}
+
+// Generate all authentication headers
+async function generateAuthHeaders(
+  apiKey: string,
+  method: string,
+  path: string,
+  query: string,
+  host: string,
+  body: string = ''
+): Promise<Record<string, string>> {
+  const kid = await deriveKid(apiKey);
+  const hmacKey = await deriveHmacKey(apiKey);
+  
+  const timestamp = generateTimestamp();
+  const nonce = generateNonce();
+  const bodyHash = await hashBody(body);
+  
+  const canonicalRequest = buildCanonicalRequest(method, path, query, host, timestamp, nonce, bodyHash);
+  
+  console.log('KID:', kid);
+  console.log('Timestamp:', timestamp);
+  console.log('Nonce:', nonce);
+  console.log('Canonical request:', JSON.stringify(canonicalRequest));
+  
+  const signature = await generateSignature(hmacKey, canonicalRequest);
+  
+  console.log('Signature (base64):', signature);
+  
+  const authorization = `SS-HMAC Credential=${kid}/v1, SignedHeaders=host;x-ss-date;x-ss-nonce, Signature=${signature}`;
+  
+  console.log('Authorization header:', authorization);
+  
+  return {
+    'Authorization': authorization,
+    'X-SS-Date': timestamp,
+    'X-SS-Nonce': nonce,
+    'X-SS-Alg': 'SS-HMAC-SHA256-V1',
+  };
+}
+
+// ============ Main Handler ============
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -86,7 +247,7 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${activeViewers.length}+ active map viewer(s) - fetching beacons from SafeSky`);
 
-    // Step 2: Fetch beacons from SafeSky production API
+    // Step 2: Fetch beacons from SafeSky production API with HMAC authentication
     const SAFESKY_BEACONS_API_KEY = Deno.env.get('SAFESKY_BEACONS_API_KEY');
     if (!SAFESKY_BEACONS_API_KEY) {
       console.error('SAFESKY_BEACONS_API_KEY not configured');
@@ -96,11 +257,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Log API key prefix for debugging (don't log the full key!)
+    console.log('API key prefix:', SAFESKY_BEACONS_API_KEY.substring(0, 15) + '...');
+
+    // Generate HMAC authentication headers
+    const authHeaders = await generateAuthHeaders(
+      SAFESKY_BEACONS_API_KEY,
+      'GET',
+      SAFESKY_PATH,
+      SAFESKY_QUERY,
+      SAFESKY_HOST,
+      '' // No body for GET request
+    );
+
+    console.log('Generated HMAC auth headers, calling SafeSky API...');
+    console.log('Request URL:', SAFESKY_BEACONS_URL);
+
     const response = await fetch(SAFESKY_BEACONS_URL, {
       method: 'GET',
-      headers: {
-        'x-api-key': SAFESKY_BEACONS_API_KEY,
-      }
+      headers: authHeaders
     });
 
     if (!response.ok) {
