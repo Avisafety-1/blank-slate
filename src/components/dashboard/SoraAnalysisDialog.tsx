@@ -159,10 +159,21 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
       return;
     }
 
+    if (!companyId) {
+      toast.error("Kunne ikke finne selskaps-ID");
+      return;
+    }
+    
+    if (!user?.id) {
+      toast.error("Kunne ikke finne bruker-ID");
+      return;
+    }
+
     setLoading(true);
 
     const soraData = {
       mission_id: selectedMissionId,
+      company_id: companyId,
       environment: formData.environment || null,
       conops_summary: formData.conops_summary || null,
       igrc: formData.igrc ? parseInt(formData.igrc) : null,
@@ -177,42 +188,24 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
       operational_limits: formData.operational_limits || null,
       sora_status: formData.sora_status,
       approved_by: formData.approved_by || null,
-      approved_at: formData.sora_status === "Ferdig" && !existingSora?.approved_at ? new Date().toISOString() : existingSora?.approved_at,
+      approved_at: formData.sora_status === "Ferdig" && !existingSora?.approved_at 
+        ? new Date().toISOString() 
+        : existingSora?.approved_at || null,
+      prepared_by: existingSora?.prepared_by || user.id,
+      prepared_at: existingSora?.prepared_at || new Date().toISOString(),
     };
 
     try {
-      if (existingSora) {
-        const { error } = await supabase
-          .from("mission_sora")
-          .update(soraData)
-          .eq("id", existingSora.id);
+      const { error } = await supabase
+        .from("mission_sora")
+        .upsert(soraData, { 
+          onConflict: 'mission_id',
+          ignoreDuplicates: false
+        });
 
-        if (error) throw error;
-        toast.success("SORA-analyse oppdatert");
-      } else {
-        if (!companyId) {
-          toast.error("Kunne ikke finne selskaps-ID");
-          return;
-        }
-        
-        if (!user?.id) {
-          toast.error("Kunne ikke finne bruker-ID");
-          return;
-        }
-        
-        const { error } = await supabase
-          .from("mission_sora")
-          .insert({
-            ...soraData,
-            company_id: companyId,
-            prepared_by: user.id,
-            prepared_at: new Date().toISOString(),
-          });
-
-        if (error) throw error;
-        toast.success("SORA-analyse opprettet");
-      }
-
+      if (error) throw error;
+      
+      toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
       onSaved?.();
       onOpenChange(false);
     } catch (error: any) {
