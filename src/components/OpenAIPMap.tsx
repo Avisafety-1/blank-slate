@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
-import { airplanesLiveConfig } from "@/lib/airplaneslive";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,12 @@ import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-rea
 import airplaneIcon from "@/assets/airplane-icon.png";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import airportIcon from "@/assets/airport-icon.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
+
+// Generate a unique session ID for heartbeat tracking
+const SESSION_ID = crypto.randomUUID();
 
 export interface RoutePoint {
   lat: number;
@@ -142,6 +145,7 @@ export function OpenAIPMap({
   pilotPosition,
   isPlacingPilot
 }: OpenAIPMapProps) {
+  const { user } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -563,16 +567,6 @@ export function OpenAIPMap({
       );
     }
 
-    // Aircraft layer
-    const aircraftLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "aircraft",
-      name: "Flytrafikk (live)",
-      layer: aircraftLayer,
-      enabled: true,
-      icon: "plane",
-    });
-
     // Drone telemetry layer
     const droneLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
@@ -597,11 +591,11 @@ export function OpenAIPMap({
       icon: "mapPin",
     });
 
-    // SafeSky layer
+    // SafeSky / Lufttrafikk layer - renamed from "SafeSky (live)" to "Lufttrafikk (live)"
     const safeskyLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "safesky",
-      name: "SafeSky (live)",
+      name: "Lufttrafikk (live)",
       layer: safeskyLayer,
       enabled: true,
       icon: "radar",
@@ -1076,61 +1070,6 @@ export function OpenAIPMap({
       }
     }
 
-    async function fetchAircraft() {
-      try {
-        const center = map.getCenter();
-        const radiusNm = 150;
-        const url = `${airplanesLiveConfig.baseUrl}/point/${center.lat}/${center.lng}/${radiusNm}`;
-        const response = await fetch(url);
-        if (!response.ok) return;
-
-        const json = await response.json();
-        const aircraft = json.ac || json.aircraft || [];
-
-        aircraftLayer.clearLayers();
-
-        for (const ac of aircraft) {
-          const lat = ac.lat;
-          const lon = ac.lon;
-          if (lat == null || lon == null) continue;
-
-          const track = typeof ac.track === "number" ? ac.track : 0;
-          const altitude = ac.alt_baro ?? 0;
-          const isLowAltitude = altitude < 3000;
-          const filter = isLowAltitude ? '' : 'hue-rotate(200deg) saturate(0.6)';
-
-          const icon = L.divIcon({
-            className: "",
-            html: `<div style="
-              width: 32px;
-              height: 32px;
-              transform: translate(-50%, -50%) rotate(${track}deg);
-              transform-origin: center center;
-              filter: ${filter};
-            ">
-              <img src="${airplaneIcon}" style="width: 100%; height: 100%;" alt="aircraft" />
-            </div>`,
-            iconSize: [32, 32],
-          });
-
-          const marker = L.marker([lat, lon], { icon, interactive: modeRef.current !== 'routePlanning' });
-          marker.bindPopup(`
-            <div>
-              <strong>${ac.call || "Ukjent callsign"}</strong><br/>
-              ICAO24: ${ac.hex || "?"}<br/>
-              Høyde: ${ac.alt_baro ?? "?"} ft<br/>
-              Fart: ${ac.gs ?? "?"} kt<br/>
-              Heading: ${ac.track ?? "?"}°<br/>
-              Type: ${ac.t || "?"}
-            </div>
-          `);
-          marker.addTo(aircraftLayer);
-        }
-      } catch (err) {
-        console.error("Feil ved henting av Airplanes.live:", err);
-      }
-    }
-
     async function fetchAndDisplayMissions() {
       if (modeRef.current !== "view") return;
       
@@ -1489,21 +1428,55 @@ export function OpenAIPMap({
     fetchRpasData();
     fetchRpasCtрData();
     fetchAirportsData();
-    fetchAircraft();
     fetchDroneTelemetry();
     fetchAndDisplayMissions();
     fetchActiveAdvisories();
     fetchPilotPositions();
 
-
-    const interval = setInterval(fetchAircraft, 10000);
     const droneInterval = setInterval(fetchDroneTelemetry, 5000);
+
+    // === HEARTBEAT SYSTEM ===
+    // Sends heartbeat to database so backend knows to fetch beacons
+    let heartbeatInterval: number | undefined;
+    
+    const sendHeartbeat = async () => {
+      try {
+        const { error } = await supabase
+          .from('map_viewer_heartbeats')
+          .upsert({
+            session_id: SESSION_ID,
+            user_id: user?.id || null,
+            last_seen: new Date().toISOString(),
+          }, { onConflict: 'session_id' });
+        
+        if (error) {
+          console.error('Heartbeat error:', error);
+        }
+      } catch (err) {
+        console.error('Heartbeat failed:', err);
+      }
+    };
+    
+    const deleteHeartbeat = async () => {
+      try {
+        await supabase
+          .from('map_viewer_heartbeats')
+          .delete()
+          .eq('session_id', SESSION_ID);
+      } catch (err) {
+        console.error('Failed to delete heartbeat:', err);
+      }
+    };
+    
+    // Send initial heartbeat and start interval
+    sendHeartbeat();
+    heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
     
     // SafeSky real-time subscription - only active when layer is enabled
     let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
     const startSafeSkySubscription = () => {
       if (!safeskyChannel) {
-        console.log('SafeSky: Starting real-time subscription');
+        console.log('Lufttrafikk: Starting real-time subscription');
         // Initial fetch
         fetchSafeSkyBeacons();
         
@@ -1520,7 +1493,7 @@ export function OpenAIPMap({
     };
     const stopSafeSkySubscription = () => {
       if (safeskyChannel) {
-        console.log('SafeSky: Stopping subscription');
+        console.log('Lufttrafikk: Stopping subscription');
         safeskyChannel.unsubscribe();
         safeskyChannel = null;
         safeskyLayer.clearLayers();
@@ -1566,17 +1539,11 @@ export function OpenAIPMap({
       )
       .subscribe();
 
-    let refreshTimer: number | undefined;
-    map.on("moveend", () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(fetchAircraft, 800);
-    });
-
     return () => {
-      clearInterval(interval);
       clearInterval(droneInterval);
+      clearInterval(heartbeatInterval);
+      deleteHeartbeat();
       stopSafeSkySubscription();
-      map.off("moveend");
       map.off("click");
       missionsChannel.unsubscribe();
       telemetryChannel.unsubscribe();

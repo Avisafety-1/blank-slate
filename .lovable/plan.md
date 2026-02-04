@@ -133,8 +133,16 @@ Edge function kjører en loop i 55 sekunder, med 1 sekunds pause mellom hvert ka
 - Edge function bruker service role for å lese heartbeats og skrive beacons
 - Ingen sensitiv data eksponeres
 
-## Neste steg
-1. Du legger inn `SAFESKY_BEACONS_API_KEY` i Supabase secrets
-2. Godkjenn plan for implementering
-3. Jeg oppretter database-tabell, edge function, og oppdaterer frontend
+## Status: IMPLEMENTERT ✅
+
+Alle komponenter er implementert:
+- ✅ Database-tabell `map_viewer_heartbeats` opprettet
+- ✅ Edge function `safesky-beacons-fetch` opprettet  
+- ✅ OpenAIPMap.tsx oppdatert med heartbeat-system
+- ✅ Airplanes.live fjernet, SafeSky renamed til "Lufttrafikk (live)"
+- ✅ `src/lib/airplaneslive.ts` slettet
+- ✅ `supabase/config.toml` oppdatert
+
+## Neste steg for å fullføre
+1. Sett opp en cron-jobb som kaller `safesky-beacons-fetch` hvert sekund (via pg_cron eller ekstern scheduler)
 
