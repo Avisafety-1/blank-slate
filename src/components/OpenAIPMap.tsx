@@ -737,14 +737,13 @@ export function OpenAIPMap({
             </div>
           `);
           
-          // Update rotation for aircraft/helicopter (not drones - they use animated gif)
-          if (!isDrone) {
+          // Update rotation for aircraft only (not drones or helicopters)
+          if (!isDrone && !isHelicopter) {
             const el = existingMarker.getElement();
             if (el) {
               const img = el.querySelector('img');
               if (img) {
-                const rotation = isHelicopter ? course - 90 : course;
-                img.style.transform = `rotate(${rotation}deg)`;
+                img.style.transform = `rotate(${course}deg)`;
               }
             }
           }
@@ -761,13 +760,11 @@ export function OpenAIPMap({
               popupAnchor: [0, -31],
             });
           } else if (isHelicopter) {
-            // Helicopter icon using PNG with rotation
-            // Icon faces LEFT by default, so subtract 90° to align with course (0° = north/up)
-            const helicopterRotation = course - 90;
+            // Helicopter icon using PNG - fixed rotation (no course rotation)
             const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
             icon = L.divIcon({
               className: '',
-              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;transform:rotate(${helicopterRotation}deg);${highAltFilter}" />`,
+              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;${highAltFilter}" />`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16],
