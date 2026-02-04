@@ -737,13 +737,14 @@ export function OpenAIPMap({
             </div>
           `);
           
-          // Update rotation for aircraft (not drones - they use animated gif)
-          if (!isDrone && !isHelicopter) {
+          // Update rotation for aircraft/helicopter (not drones - they use animated gif)
+          if (!isDrone) {
             const el = existingMarker.getElement();
             if (el) {
               const img = el.querySelector('img');
               if (img) {
-                img.style.transform = `rotate(${course}deg)`;
+                const rotation = isHelicopter ? course - 90 : course;
+                img.style.transform = `rotate(${rotation}deg)`;
               }
             }
           }
