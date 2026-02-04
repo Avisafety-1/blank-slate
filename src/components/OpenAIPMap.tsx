@@ -759,31 +759,20 @@ export function OpenAIPMap({
               popupAnchor: [0, -31],
             });
           } else if (isHelicopter) {
-            // Helicopter icon as colored div with SVG
+            // Helicopter icon matching airplane style - standalone SVG with rotation
+            const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
             icon = L.divIcon({
               className: '',
-              html: `<div style="
-                width: 28px;
-                height: 28px;
-                background: ${bgColor};
-                border: 2px solid white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                transform: rotate(${course}deg);
-              ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 9h18"/>
-                  <path d="M12 5v4"/>
-                  <path d="M7 12h10a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"/>
-                  <path d="M6 18l-1 2"/>
-                  <path d="M18 18l1 2"/>
-                </svg>
-              </div>`,
-              iconSize: [28, 28],
-              iconAnchor: [14, 14],
+              html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" style="transform:rotate(${course}deg);${highAltFilter}drop-shadow(0 1px 2px rgba(0,0,0,0.5));">
+                <path d="M3 9h18" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M12 5v4" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M7 12h10a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z" fill="#22c55e" stroke="#fff" stroke-width="1"/>
+                <path d="M6 18l-1 2" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+                <path d="M18 18l1 2" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+              </svg>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+              popupAnchor: [0, -16],
             });
           } else {
             // Use airplane PNG icon for aircraft with rotation
