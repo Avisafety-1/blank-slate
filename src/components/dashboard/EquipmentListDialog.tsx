@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
@@ -28,6 +28,17 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
       onEquipmentUpdated();
     }
   };
+
+  // Sync selectedEquipment when equipment prop changes
+  useEffect(() => {
+    if (selectedEquipment && equipment.length > 0) {
+      const updated = equipment.find(e => e.id === selectedEquipment.id);
+      if (updated) {
+        setSelectedEquipment(updated);
+      }
+    }
+  }, [equipment]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
