@@ -1,83 +1,140 @@
 
 
-# Plan: Fiks sending av kunde-velkomstepost med vedlegg
+# Plan: Smart Backend-cachet SafeSky Beacons med Bruker-aktivert API
 
-## Problemsammendrag
-E-post med vedlegg sendes ikke til nye kunder. Dette skyldes sannsynligvis at store PDF-vedlegg forårsaker timeout eller minneproblemer i Edge Function.
+## Oversikt
+Erstatte Airplanes.live med SafeSky `/v1/beacons` for hele Norge. API-kall gjøres kun fra backend og **kun når minst én bruker er på kartvisningen**. Dette sparer API-kvote når ingen ser på kartet.
 
-## Rotårsak
-1. Edge Functions har 10-sekunders timeout - store vedlegg kan føre til timeout under nedlasting og prosessering
-2. Feil blir ignorert i frontend - brukeren får ikke vite at e-posten feilet
-3. Manglende logging av vedleggsstørrelse gjør debugging vanskelig
+## Arkitektur
 
----
-
-## Implementeringsplan
-
-### Steg 1: Forbedre feilhåndtering i frontend
-**Fil:** `src/components/admin/CustomerManagementDialog.tsx`
-
-- Vis en advarsel til brukeren hvis e-postsending feiler (i stedet for å ignorere feilen stille)
-- Legg til mer detaljert logging
-
-### Steg 2: Legg til størrelseslogging og validering i vedleggsfunksjonen
-**Fil:** `supabase/functions/_shared/attachment-utils.ts`
-
-- Logg størrelsen på hvert vedlegg som lastes ned
-- Sett en maksgrense på f.eks. 5 MB per vedlegg
-- Hopp over vedlegg som er for store og logg en advarsel
-
-### Steg 3: Forbedre Edge Function med timeout-håndtering
-**Fil:** `supabase/functions/send-customer-welcome-email/index.ts`
-
-- Legg til try-catch rundt vedleggsnedlasting med timeout
-- Hvis vedlegg tar for lang tid, send e-post uten vedlegg
-- Returner informasjon om at vedlegg ble hoppet over
-
-### Steg 4: Test funksjonen
-- Verifiser at e-post sendes uten vedlegg
-- Test med små vedlegg (under 1 MB)
-- Test med store vedlegg for å sikre graceful degradation
-
----
-
-## Tekniske detaljer
-
-### Maksimal vedleggsstørrelse
-Anbefalt grense: **5 MB per vedlegg, 10 MB totalt**
-
-E-post med vedlegg over denne størrelsen vil:
-1. Sende e-posten uten vedleggene
-2. Logge en advarsel
-3. Returnere suksess med info om at vedlegg ble hoppet over
-
-### Kodeendringer
-
-**attachment-utils.ts - Legg til størrelsessjekk:**
-```typescript
-const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-
-// I nedlastingsløkken:
-const arrayBuffer = await fileData.arrayBuffer();
-if (arrayBuffer.byteLength > MAX_ATTACHMENT_SIZE_BYTES) {
-  console.warn(`Attachment ${doc.fil_navn} is ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB - skipping (max ${MAX_ATTACHMENT_SIZE_BYTES / 1024 / 1024} MB)`);
-  continue;
-}
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Bruker-aktivert Backend Cache                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐    heartbeat      ┌───────────────────────┐               │
+│  │  OpenAIPMap  │  ──────────────►  │ map_viewer_heartbeats │               │
+│  │  (frontend)  │    hvert 5s       │ (database tabell)     │               │
+│  └──────┬───────┘                   └───────────┬───────────┘               │
+│         │                                       │                           │
+│         │ real-time                             │ sjekkes av                │
+│         │ subscription                          ▼                           │
+│         │                           ┌───────────────────────┐               │
+│         │                           │ safesky-beacons-fetch │               │
+│         │                           │ (edge function)       │               │
+│         │                           │ - kjører hvert 1s     │               │
+│         │                           │ - sjekker om brukere  │               │
+│         │                           │   er aktive (< 10s)   │               │
+│         │                           │ - henter fra SafeSky  │               │
+│         │                           │   kun ved aktive      │               │
+│  ┌──────▼───────┐                   └───────────┬───────────┘               │
+│  │safesky_beacons│ ◄────────────────────────────┘                           │
+│  │(database)     │            upsert beacons                                │
+│  └───────────────┘                                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**CustomerManagementDialog.tsx - Vis feilmelding:**
-```typescript
-} catch (emailError) {
-  console.error("Failed to send welcome email:", emailError);
-  toast.warning("Kunde opprettet, men velkomst-e-post kunne ikke sendes");
-}
+## Tekniske komponenter
+
+### 1. Ny databasetabell: `map_viewer_heartbeats`
+Holder styr på hvem som aktivt ser på kartet.
+
+| Kolonne | Type | Beskrivelse |
+|---------|------|-------------|
+| id | uuid | Unik bruker/session ID |
+| user_id | uuid | Bruker-ID (nullable for anonyme) |
+| last_seen | timestamptz | Sist oppdatert tidsstempel |
+
+### 2. Ny Edge Function: `safesky-beacons-fetch`
+Dedikert funksjon for å hente beacons for hele Norge.
+
+- Bruker `SAFESKY_BEACONS_API_KEY` (ny produksjonsnøkkel)
+- Produksjons-URL: `https://public-api.safesky.app/v1/beacons?viewport=57.5,4.0,71.5,31.5`
+- **Sjekker først** om det finnes aktive viewers (heartbeat < 10 sekunder)
+- Hvis ingen aktive: returner tidlig uten API-kall
+- Hvis aktive: hent beacons og upsert til `safesky_beacons`
+- Slett gamle beacons (> 30 sekunder)
+
+### 3. Cron-jobb (pg_cron)
+Kaller `safesky-beacons-fetch` hvert sekund.
+
+```sql
+select cron.schedule(
+  'safesky-beacons-norway',
+  '* * * * *', -- hvert minutt med 1-sekunds loop inne i funksjonen
+  $$ ... $$
+);
 ```
 
----
+**Alternativ for 1-sekunds granularitet:**
+Edge function kjører en loop i 55 sekunder, med 1 sekunds pause mellom hvert kall. Cron starter den hvert minutt.
 
-## Forventet resultat
-- E-poster sendes pålitelig selv med vedlegg
-- Store vedlegg hoppes over automatisk i stedet for å krasje
-- Brukeren får beskjed hvis noe går galt
-- Logging gjør debugging enklere i fremtiden
+### 4. Frontend-endringer (`OpenAIPMap.tsx`)
+
+**Legge til:**
+- `sendHeartbeat()` funksjon som kaller Supabase for å oppdatere `map_viewer_heartbeats`
+- Heartbeat sendes hvert 5. sekund mens bruker er på kartsiden
+- Ved unmount: slett heartbeat-rad
+
+**Fjerne:**
+- `fetchAircraft()` funksjon (linje 1079-1132)
+- `aircraftLayer` og "Flytrafikk (live)" kartlag
+- Import av `airplanesLiveConfig`
+- `setInterval(fetchAircraft, 10000)` (linje 1499)
+- `map.on("moveend")` for fetchAircraft (linje 1569-1572)
+
+**Endre:**
+- Rename "SafeSky (live)" til "Lufttrafikk (live)" for bedre UX
+
+### 5. Slett ubrukt fil
+`src/lib/airplaneslive.ts` - ikke lenger i bruk
+
+## API-nøkler
+
+| Nøkkel | Brukes til | Miljø |
+|--------|------------|-------|
+| `SAFESKY_API_KEY` | advisory, uav | Sandbox (uendret) |
+| `SAFESKY_BEACONS_API_KEY` | beacons for kart | Produksjon (ny) |
+
+## Dataflyt: Smart Aktivering
+
+1. **Bruker åpner /kart** → Frontend sender heartbeat til `map_viewer_heartbeats`
+2. **Hvert 5. sekund** → Frontend sender nytt heartbeat
+3. **Cron-job (hvert 1s)** → Edge function sjekker for aktive viewers
+4. **Aktive viewers funnet** → Hent beacons fra SafeSky, upsert til database
+5. **Ingen aktive viewers** → Ingen API-kall, spar kvote
+6. **Bruker forlater /kart** → Heartbeat slettes, API stopper automatisk
+
+## Filendringer
+
+| Fil | Endring |
+|-----|---------|
+| `supabase/functions/safesky-beacons-fetch/index.ts` | Ny - henter beacons fra produksjons-API |
+| `supabase/config.toml` | Legg til ny funksjon |
+| `src/components/OpenAIPMap.tsx` | Fjern Airplanes.live, legg til heartbeat |
+| `src/lib/airplaneslive.ts` | Slett |
+| **Database-migrasjon** | Opprett `map_viewer_heartbeats` tabell |
+| **pg_cron** | Opprett cron-jobb for 1-sekunds kall |
+
+## Estimert API-bruk
+
+| Scenario | Kall/minutt | Kall/time |
+|----------|-------------|-----------|
+| Ingen aktive brukere | 0 | 0 |
+| 1+ aktive brukere | 60 | 3600 |
+| Tidligere (per bruker) | 6 x N brukere | 360 x N |
+
+**Fordel:** API-bruk er konstant uavhengig av antall samtidige brukere.
+
+## Sikkerhet
+
+- Heartbeat-tabellen har RLS policy som tillater alle å oppdatere sin egen rad
+- Edge function bruker service role for å lese heartbeats og skrive beacons
+- Ingen sensitiv data eksponeres
+
+## Neste steg
+1. Du legger inn `SAFESKY_BEACONS_API_KEY` i Supabase secrets
+2. Godkjenn plan for implementering
+3. Jeg oppretter database-tabell, edge function, og oppdaterer frontend
 
