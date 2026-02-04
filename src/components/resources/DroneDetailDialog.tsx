@@ -98,6 +98,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   });
 
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const [accessoryToMaintain, setAccessoryToMaintain] = useState<Accessory | null>(null);
 
   // Update local drone state when prop changes
   useEffect(() => {
@@ -960,7 +961,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleAccessoryInspection(acc)}
+                              onClick={() => setAccessoryToMaintain(acc)}
                               className="h-8 text-xs px-2"
                             >
                               <Wrench className="w-3 h-3 mr-1" />
@@ -1296,6 +1297,36 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           }}
         />
       )}
+
+      {/* Accessory maintenance confirmation dialog */}
+      <AlertDialog open={!!accessoryToMaintain} onOpenChange={(open) => !open && setAccessoryToMaintain(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil markere vedlikehold som utført for "{accessoryToMaintain?.navn}"?
+              {accessoryToMaintain?.vedlikeholdsintervall_dager && (
+                <span className="block mt-2">
+                  Neste vedlikehold vil bli satt til om {accessoryToMaintain.vedlikeholdsintervall_dager} dager.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (accessoryToMaintain) {
+                  handleAccessoryInspection(accessoryToMaintain);
+                  setAccessoryToMaintain(null);
+                }
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
