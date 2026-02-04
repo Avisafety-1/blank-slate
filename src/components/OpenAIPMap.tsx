@@ -760,11 +760,13 @@ export function OpenAIPMap({
               popupAnchor: [0, -31],
             });
           } else if (isHelicopter) {
-            // Helicopter icon using PNG with rotation (icon points up by default)
+            // Helicopter icon using PNG with rotation
+            // Icon faces LEFT by default, so subtract 90° to align with course (0° = north/up)
+            const helicopterRotation = course - 90;
             const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
             icon = L.divIcon({
               className: '',
-              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;transform:rotate(${course}deg);${highAltFilter}" />`,
+              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;transform:rotate(${helicopterRotation}deg);${highAltFilter}" />`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16],
