@@ -652,13 +652,20 @@ export function OpenAIPMap({
           
           const marker = L.marker([t.lat, t.lon], { icon, interactive: modeRef.current !== 'routePlanning' });
           const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
-          marker.bindPopup(`
-            <div>
-              <strong>🛸 ${droneId}</strong><br/>
-              Høyde: ${t.alt ?? '?'} m<br/>
-              Oppdatert: ${updatedTime}
-            </div>
-          `);
+          marker.bindPopup(
+            `
+              <div>
+                <strong>🛸 ${droneId}</strong><br/>
+                Høyde: ${t.alt ?? '?'} m<br/>
+                Oppdatert: ${updatedTime}
+              </div>
+            `,
+            {
+              // Allow dragging map freely even when popup is open
+              autoPan: false,
+              keepInView: false,
+            }
+          );
           marker.addTo(droneLayer);
         });
       } catch (err) {
@@ -793,15 +800,22 @@ export function OpenAIPMap({
           const speedKt = speedMs != null ? Math.round(speedMs * 1.94384) : '?';
           const typeLabel = beacon.beacon_type || 'Ukjent';
           
-          marker.bindPopup(`
-            <div>
-              <strong>Callsign: ${callsign}</strong><br/>
-              Type: ${typeLabel}<br/>
-              Høyde: ${altitudeFt} ft<br/>
-              Fart: ${speedKt} kt<br/>
-              <span style="font-size: 10px; color: #888;">Via SafeSky</span>
-            </div>
-          `);
+          marker.bindPopup(
+            `
+              <div>
+                <strong>Callsign: ${callsign}</strong><br/>
+                Type: ${typeLabel}<br/>
+                Høyde: ${altitudeFt} ft<br/>
+                Fart: ${speedKt} kt<br/>
+                <span style="font-size: 10px; color: #888;">Via SafeSky</span>
+              </div>
+            `,
+            {
+              // Allow dragging map freely even when popup is open
+              autoPan: false,
+              keepInView: false,
+            }
+          );
           marker.addTo(safeskyLayer);
           safeskyMarkersCache.set(beaconId, marker);
         }
