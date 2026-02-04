@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
               type: "Feature",
               properties: {
                 id: advisoryId,
-                call_sign: `Avisafe: ${mission.tittel.substring(0, 20)}`,
+                call_sign: "Avisafe",
                 last_update: Math.floor(Date.now() / 1000),
                 max_altitude: 120,
                 remarks: "Drone operation - planned route"
