@@ -8,9 +8,9 @@ export const openAipConfig = {
       "https://{s}.api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey={key}",
   },
   attribution: {
-    osm: '&copy; OpenStreetMap contributors',
-    satellite: 'Tiles &copy; Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
-    topo: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap',
-    airspace: 'data © <a href="https://www.openaip.net">OpenAIP</a>',
+    osm: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://www.openaip.net">OpenAIP</a> | <a href="https://www.safesky.app">SafeSky</a> | <a href="https://www.geonorge.no">Geonorge</a> | <a href="https://www.miljodirektoratet.no">Miljødirektoratet</a>',
+    satellite: '© <a href="https://www.esri.com">Esri</a> | <a href="https://www.openaip.net">OpenAIP</a> | <a href="https://www.safesky.app">SafeSky</a> | <a href="https://www.geonorge.no">Geonorge</a> | <a href="https://www.miljodirektoratet.no">Miljødirektoratet</a>',
+    topo: '© <a href="https://opentopomap.org">OpenTopoMap</a> | <a href="https://www.openaip.net">OpenAIP</a> | <a href="https://www.safesky.app">SafeSky</a> | <a href="https://www.geonorge.no">Geonorge</a> | <a href="https://www.miljodirektoratet.no">Miljødirektoratet</a>',
+    airspace: '© <a href="https://www.openaip.net">OpenAIP</a>',
   },
 };
