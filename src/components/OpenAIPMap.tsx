@@ -728,7 +728,7 @@ export function OpenAIPMap({
           
           existingMarker.setPopupContent(`
             <div>
-              <strong>📡 ${callsign}</strong><br/>
+              <strong>Callsign: ${callsign}</strong><br/>
               Type: ${typeLabel}<br/>
               Høyde: ${altitudeFt} ft<br/>
               Fart: ${speedKt} kt<br/>
@@ -808,7 +808,7 @@ export function OpenAIPMap({
           
           marker.bindPopup(`
             <div>
-              <strong>📡 ${callsign}</strong><br/>
+              <strong>Callsign: ${callsign}</strong><br/>
               Type: ${typeLabel}<br/>
               Høyde: ${altitudeFt} ft<br/>
               Fart: ${speedKt} kt<br/>
