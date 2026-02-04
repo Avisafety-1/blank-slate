@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import airplaneIcon from "@/assets/airplane-icon.png";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
+import helicopterIcon from "@/assets/helicopter-icon.png";
 import airportIcon from "@/assets/airport-icon.png";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -759,17 +760,11 @@ export function OpenAIPMap({
               popupAnchor: [0, -31],
             });
           } else if (isHelicopter) {
-            // Helicopter icon matching airplane style - standalone SVG with rotation
+            // Helicopter icon using PNG with rotation (icon points up by default)
             const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
             icon = L.divIcon({
               className: '',
-              html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" style="transform:rotate(${course}deg);${highAltFilter}drop-shadow(0 1px 2px rgba(0,0,0,0.5));">
-                <path d="M3 9h18" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
-                <path d="M12 5v4" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
-                <path d="M7 12h10a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z" fill="#22c55e" stroke="#fff" stroke-width="1"/>
-                <path d="M6 18l-1 2" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
-                <path d="M18 18l1 2" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
-              </svg>`,
+              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;transform:rotate(${course}deg);${highAltFilter}" />`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16],
