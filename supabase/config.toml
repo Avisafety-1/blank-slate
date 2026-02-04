@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.safesky-beacons]
 verify_jwt = false
 
+[functions.safesky-beacons-fetch]
+verify_jwt = false
+
 [functions.safesky-advisory]
 verify_jwt = false
 
