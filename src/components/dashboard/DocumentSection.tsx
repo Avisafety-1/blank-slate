@@ -38,9 +38,19 @@ export const DocumentSection = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedDocStatus, setSelectedDocStatus] = useState<string>("Grønn");
+  const [selectedDocVisibility, setSelectedDocVisibility] = useState<string>("Intern");
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Helper to determine if document is internal (own company) or external (shared by superadmin)
+  const getDocumentVisibility = (doc: any): string => {
+    // If global_visibility is true and it's from a different company, it's "Ekstern"
+    if (doc.global_visibility && doc.company_id !== companyId) {
+      return "Ekstern";
+    }
+    return "Intern";
+  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -72,7 +82,7 @@ export const DocumentSection = () => {
               sist_endret: newDoc.oppdatert_dato ? new Date(newDoc.oppdatert_dato) : new Date(newDoc.opprettet_dato!),
               varsel_dager_for_utløp: newDoc.varsel_dager_for_utløp || 30,
               beskrivelse: newDoc.beskrivelse ?? null,
-              synlighet: "Intern" as any,
+              synlighet: (newDoc.global_visibility && newDoc.company_id !== companyId) ? "Ekstern" : "Intern" as any,
               fil_url: newDoc.fil_url,
               fil_navn: newDoc.fil_navn,
               nettside_url: newDoc.nettside_url,
@@ -91,7 +101,7 @@ export const DocumentSection = () => {
               sist_endret: updatedDoc.oppdatert_dato ? new Date(updatedDoc.oppdatert_dato) : new Date(updatedDoc.opprettet_dato!),
               varsel_dager_for_utløp: updatedDoc.varsel_dager_for_utløp || 30,
               beskrivelse: updatedDoc.beskrivelse ?? null,
-              synlighet: "Intern" as any,
+              synlighet: (updatedDoc.global_visibility && updatedDoc.company_id !== companyId) ? "Ekstern" : "Intern" as any,
               fil_url: updatedDoc.fil_url,
               fil_navn: updatedDoc.fil_navn,
               nettside_url: updatedDoc.nettside_url,
@@ -121,7 +131,7 @@ export const DocumentSection = () => {
 
       if (error) throw error;
 
-      const mappedDocuments: Document[] = (data || []).map((doc) => ({
+      const mappedDocuments: (Document & { company_id?: string; global_visibility?: boolean })[] = (data || []).map((doc) => ({
         id: doc.id,
         tittel: doc.tittel,
         kategori: doc.kategori as any,
@@ -130,12 +140,15 @@ export const DocumentSection = () => {
         sist_endret: doc.oppdatert_dato ? new Date(doc.oppdatert_dato) : new Date(doc.opprettet_dato!),
         varsel_dager_for_utløp: doc.varsel_dager_for_utløp || 30,
         beskrivelse: (doc as any).beskrivelse ?? null,
-        synlighet: "Intern" as any,
+        synlighet: (doc.global_visibility && doc.company_id !== companyId) ? "Ekstern" : "Intern" as any,
         fil_url: doc.fil_url,
         fil_navn: doc.fil_navn,
         nettside_url: doc.nettside_url,
         utsteder: doc.opprettet_av,
         merknader: undefined,
+        // Keep these for visibility calculation
+        company_id: doc.company_id,
+        global_visibility: doc.global_visibility,
       }));
 
       setDocuments(mappedDocuments);

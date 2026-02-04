@@ -54,7 +54,7 @@ interface ChecklistItem {
 }
 
 interface DocumentCardModalProps {
-  document: Document | null;
+  document: (Document & { versjon?: string; fil_navn?: string }) | null;
   isOpen: boolean;
   onClose: () => void;
   onSaveSuccess: () => void;
@@ -218,6 +218,17 @@ const DocumentCardModal = ({
     return filePath;
   };
 
+  // Helper function to increment version number
+  const incrementVersion = (currentVersion: string): string => {
+    const parts = currentVersion.split('.');
+    if (parts.length === 2) {
+      const major = parseInt(parts[0]) || 1;
+      const minor = parseInt(parts[1]) || 0;
+      return `${major}.${minor + 1}`;
+    }
+    return "1.1"; // Default increment if format is unexpected
+  };
+
   const onSubmit = async (data: FormData) => {
     if (!isAdmin || !companyId) return;
 
@@ -225,9 +236,14 @@ const DocumentCardModal = ({
     try {
       const { data: userData } = await supabase.auth.getUser();
       let fileUrl = document?.fil_url || null;
+      let fileName = document?.fil_navn || null;
+      
+      // Track if we're uploading a new file to an existing document (triggers version increment)
+      const isUpdatingFile = !isCreating && document && selectedFile;
 
       if (selectedFile) {
         fileUrl = await uploadFile(selectedFile);
+        fileName = selectedFile.name;
       }
 
       // For checklists, convert items array back to JSON
@@ -235,6 +251,13 @@ const DocumentCardModal = ({
       if (data.kategori === "sjekklister") {
         const validItems = checklistItems.filter(item => item.text.trim() !== "");
         beskrivelse = validItems.length > 0 ? JSON.stringify(validItems) : null;
+      }
+
+      // Calculate new version if updating document with new file
+      let newVersion = document?.versjon || "1.0";
+      if (isUpdatingFile) {
+        const currentVersion = document?.versjon || "1.0";
+        newVersion = incrementVersion(currentVersion);
       }
 
       const documentData = {
@@ -245,8 +268,11 @@ const DocumentCardModal = ({
         varsel_dager_for_utløp: data.varsel_dager_for_utløp || null,
         nettside_url: data.nettside_url || null,
         fil_url: fileUrl,
+        fil_navn: fileName,
         company_id: companyId,
         opprettet_av: userData.user?.email || null,
+        versjon: isCreating ? "1.0" : newVersion,
+        oppdatert_dato: new Date().toISOString(),
       };
 
       if (isCreating) {
@@ -258,6 +284,11 @@ const DocumentCardModal = ({
           .update(documentData)
           .eq("id", document.id);
         if (error) throw error;
+        
+        // Show version update message if file was updated
+        if (isUpdatingFile) {
+          toast.success(`Dokument oppdatert til versjon ${newVersion}`);
+        }
       }
 
       onSaveSuccess();
@@ -497,7 +528,9 @@ const DocumentCardModal = ({
 
               {!readOnly && (
                 <div className="space-y-2">
-                  <FormLabel>Opplasting av dokument</FormLabel>
+                  <FormLabel>
+                    {isCreating ? "Opplasting av dokument" : "Oppdater dokument"}
+                  </FormLabel>
                   <div className="flex items-center gap-2">
                     <Input
                       type="file"
@@ -516,9 +549,22 @@ const DocumentCardModal = ({
                       </Button>
                     )}
                   </div>
+                  {!isCreating && selectedFile && document?.versjon && (
+                    <p className="text-sm text-muted-foreground">
+                      Ved lagring økes versjon fra {document.versjon} til {(() => {
+                        const parts = document.versjon.split('.');
+                        if (parts.length === 2) {
+                          const major = parseInt(parts[0]) || 1;
+                          const minor = parseInt(parts[1]) || 0;
+                          return `${major}.${minor + 1}`;
+                        }
+                        return "1.1";
+                      })()}
+                    </p>
+                  )}
                   {document?.fil_url && !selectedFile && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Eksisterende fil:</span>
+                      <span>Eksisterende fil ({document.fil_navn || "fil"}):</span>
                       <Button
                         type="button"
                         variant="link"
