@@ -696,9 +696,12 @@ export function OpenAIPMap({
           bgColor = '#ec4899'; // pink for balloon
         }
         
-        // Override to black if altitude > 2000ft (610m)
+        // Check if altitude > 2000ft (610m) for high altitude styling
         const altitudeMetersForColor = beacon.altitude;
-        if (altitudeMetersForColor != null && altitudeMetersForColor > 610) {
+        const isHighAltitude = altitudeMetersForColor != null && altitudeMetersForColor > 610;
+        
+        // Override to black if high altitude
+        if (isHighAltitude) {
           bgColor = '#000000'; // black for high altitude
         }
         
@@ -783,9 +786,11 @@ export function OpenAIPMap({
             });
           } else {
             // Use airplane PNG icon for aircraft with rotation
+            // Apply grayscale + brightness filter for high altitude (black appearance)
+            const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
             icon = L.divIcon({
               className: '',
-              html: `<img src="${airplaneIcon}" style="width:32px;height:32px;transform:rotate(${course}deg);" />`,
+              html: `<img src="${airplaneIcon}" style="width:32px;height:32px;transform:rotate(${course}deg);${highAltFilter}" />`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16],
