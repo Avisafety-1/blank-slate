@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
@@ -33,35 +34,36 @@ interface Terminology {
 
 export const useTerminology = (): Terminology => {
   const { companyType } = useAuth();
+  const { t } = useTranslation();
   
   const isAirline = companyType === 'flyselskap';
   
   return {
     // Nouns (singular/plural)
-    vehicle: isAirline ? 'Fly' : 'Drone',
-    vehicles: isAirline ? 'Fly' : 'Droner',
-    vehicleLower: isAirline ? 'fly' : 'drone',
-    vehiclesLower: isAirline ? 'fly' : 'droner',
+    vehicle: isAirline ? t('terminology.aircraft') : t('terminology.drone'),
+    vehicles: isAirline ? t('terminology.aircraftPlural') : t('terminology.drones'),
+    vehicleLower: isAirline ? t('terminology.aircraftLower') : t('terminology.droneLower'),
+    vehiclesLower: isAirline ? t('terminology.aircraftPluralLower') : t('terminology.dronesLower'),
     
     // Compound words
-    vehicleWeather: isAirline ? 'Flyvær' : 'Dronevær',
-    flightHours: 'Flyvetimer',
+    vehicleWeather: isAirline ? t('terminology.aircraftWeather') : t('terminology.droneWeather'),
+    flightHours: t('terminology.flightHours'),
     
     // Actions
-    addVehicle: isAirline ? 'Legg til fly' : 'Legg til drone',
-    noVehicles: isAirline ? 'Ingen fly registrert' : 'Ingen droner registrert',
-    selectVehicle: isAirline ? 'Velg fly' : 'Velg drone',
-    vehicleModel: isAirline ? 'Flymodell' : 'Dronemodell',
-    vehicleRegistration: isAirline ? 'Flyregistrering' : 'Droneregistrering',
+    addVehicle: isAirline ? t('terminology.addAircraft') : t('terminology.addDrone'),
+    noVehicles: isAirline ? t('terminology.noAircraft') : t('terminology.noDrones'),
+    selectVehicle: isAirline ? t('terminology.selectAircraft') : t('terminology.selectDrone'),
+    vehicleModel: isAirline ? t('terminology.aircraftModel') : t('terminology.droneModel'),
+    vehicleRegistration: isAirline ? t('terminology.aircraftRegistration') : t('terminology.droneRegistration'),
     
     // Status related
-    vehicleStatus: isAirline ? 'Flystatus' : 'Dronestatus',
+    vehicleStatus: isAirline ? t('terminology.aircraftStatus') : t('terminology.droneStatus'),
     
     // Inspection
-    lastInspection: 'Siste inspeksjon',
-    nextInspection: 'Neste inspeksjon',
+    lastInspection: t('terminology.lastInspection'),
+    nextInspection: t('terminology.nextInspection'),
     
     // Labels
-    assignedVehicles: isAirline ? 'Tilknyttede fly' : 'Tilknyttede droner',
+    assignedVehicles: isAirline ? t('terminology.assignedAircraft') : t('terminology.assignedDrones'),
   };
 };
