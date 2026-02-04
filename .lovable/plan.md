@@ -1,143 +1,136 @@
 
-# Plan: Implementere sanntidsoppdateringer for dashboard og popups
+# Plan: Fikse "duplicate key value" feil ved SORA-lagring
 
-## Bakgrunn
-Når vedlikehold utføres eller data oppdateres i appen, reflekteres ikke endringene umiddelbart i dashboardet eller i popup-vinduer. Problemet skyldes at enkelte komponenter mangler sanntidssubskripsjoner til databasen.
+## Problemanalyse
 
-## Identifiserte problemområder
+### Identifisert årsak
+Tabellen `mission_sora` har en UNIQUE constraint på `mission_id`:
+```sql
+CONSTRAINT mission_sora_mission_id_key UNIQUE (mission_id)
+```
 
-### Kritisk - StatusPanel/Dashboard
-- **useStatusData hook** bruker TanStack Query med 30 sekunders cache uten sanntidssubskripsjon
-- Dashboard StatusPanel oppdateres ikke når vedlikehold utføres
+Dette betyr at det kun kan eksistere én SORA-analyse per oppdrag.
 
-### Moderat - List-dialoger på dashboard  
-- **DroneListDialog**, **EquipmentListDialog** og **PersonnelListDialog** mottar data via props
-- Når detalj-dialoger oppdaterer en entitet, reflekteres ikke dette i listen bak
+### Hvorfor feilen oppstår
+Koden i `SoraAnalysisDialog.tsx` bruker en to-stegs prosess:
+1. Sjekker om SORA eksisterer (`fetchExistingSora`)
+2. Kjører enten UPDATE eller INSERT basert på resultatet
 
-### Mindre - Drone tilbehør
-- Vedlikehold på drone-tilbehør oppdaterer ikke drone-status på dashboard
+**Race condition:** Mellom disse stegene kan en annen prosess (dobbeltklikk, annen bruker, tidsforskyvning) ha opprettet en SORA. Da prøver koden å kjøre INSERT på en `mission_id` som allerede finnes → "duplicate key value"-feil.
 
 ---
 
 ## Løsning
 
-### Del 1: Legge til sanntidssubskripsjoner i useStatusData
+### Bruk UPSERT i stedet for INSERT/UPDATE
 
-Oppdatere `src/hooks/useStatusData.ts` for å lytte på endringer i:
-- `drones` (INSERT, UPDATE, DELETE)
-- `equipment` (INSERT, UPDATE, DELETE)  
-- `profiles` (UPDATE)
-- `personnel_competencies` (alle events)
-- `drone_accessories` (alle events - påvirker drone-status)
+Supabase støtter `upsert()` med `onConflict`-parameter som håndterer dette atomisk:
 
-Ved endring invalideres TanStack Query cache, som trigger automatisk re-fetch.
+**Fra (nåværende problematisk kode):**
+```typescript
+if (existingSora) {
+  await supabase.from("mission_sora").update(soraData).eq("id", existingSora.id);
+} else {
+  await supabase.from("mission_sora").insert({...soraData, company_id, prepared_by, prepared_at});
+}
+```
 
-### Del 2: Synkronisere selectedDrone/Equipment i list-dialoger
-
-Oppdatere dialogene til å synkronisere valgt element når underliggende data endres:
-
-**DroneListDialog:**
-- Legge til useEffect som oppdaterer `selectedDrone` når `drones` prop endres
-
-**EquipmentListDialog:**
-- Legge til useEffect som oppdaterer `selectedEquipment` når `equipment` prop endres
-
-**PersonnelListDialog:**  
-- Legge til useEffect som oppdaterer `selectedPerson` når `personnel` prop endres
+**Til (robust løsning):**
+```typescript
+await supabase.from("mission_sora").upsert({
+  ...soraData,
+  company_id: companyId,
+  prepared_by: existingSora?.prepared_by || user.id,
+  prepared_at: existingSora?.prepared_at || new Date().toISOString(),
+}, { 
+  onConflict: 'mission_id',
+  ignoreDuplicates: false  // Oppdater eksisterende rad
+});
+```
 
 ---
 
 ## Tekniske detaljer
 
-### useStatusData.ts - Endringer
+### Fil som endres
+`src/components/dashboard/SoraAnalysisDialog.tsx`
 
-Legge til sanntidssubskripsjoner med React Query cache-invalidering:
+### Endringer i handleSave-funksjonen (linje 156-224)
+
+Erstatt hele if/else INSERT/UPDATE-blokken med én upsert-operasjon:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+const handleSave = async () => {
+  if (!selectedMissionId) {
+    toast.error("Vennligst velg et oppdrag");
+    return;
+  }
 
-// Inne i useStatusData:
-const queryClient = useQueryClient();
+  if (!companyId) {
+    toast.error("Kunne ikke finne selskaps-ID");
+    return;
+  }
+  
+  if (!user?.id) {
+    toast.error("Kunne ikke finne bruker-ID");
+    return;
+  }
 
-useEffect(() => {
-  if (!user) return;
+  setLoading(true);
 
-  const channel = supabase
-    .channel('status-data-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, 
-      () => queryClient.invalidateQueries({ queryKey: ['drones'] }))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, 
-      () => queryClient.invalidateQueries({ queryKey: ['equipment'] }))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, 
-      () => queryClient.invalidateQueries({ queryKey: ['personnel'] }))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, 
-      () => queryClient.invalidateQueries({ queryKey: ['personnel'] }))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, 
-      () => queryClient.invalidateQueries({ queryKey: ['drones'] }))
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
+  const soraData = {
+    mission_id: selectedMissionId,
+    company_id: companyId,
+    environment: formData.environment || null,
+    conops_summary: formData.conops_summary || null,
+    igrc: formData.igrc ? parseInt(formData.igrc) : null,
+    ground_mitigations: formData.ground_mitigations || null,
+    fgrc: formData.fgrc ? parseInt(formData.fgrc) : null,
+    arc_initial: formData.arc_initial || null,
+    airspace_mitigations: formData.airspace_mitigations || null,
+    arc_residual: formData.arc_residual || null,
+    sail: formData.sail || null,
+    residual_risk_level: formData.residual_risk_level || null,
+    residual_risk_comment: formData.residual_risk_comment || null,
+    operational_limits: formData.operational_limits || null,
+    sora_status: formData.sora_status,
+    approved_by: formData.approved_by || null,
+    approved_at: formData.sora_status === "Ferdig" && !existingSora?.approved_at 
+      ? new Date().toISOString() 
+      : existingSora?.approved_at || null,
+    // Bevar original prepared_by og prepared_at ved oppdatering
+    prepared_by: existingSora?.prepared_by || user.id,
+    prepared_at: existingSora?.prepared_at || new Date().toISOString(),
   };
-}, [user, queryClient]);
-```
 
-### DroneListDialog.tsx - Endringer
+  try {
+    const { error } = await supabase
+      .from("mission_sora")
+      .upsert(soraData, { 
+        onConflict: 'mission_id',
+        ignoreDuplicates: false
+      });
 
-```typescript
-// Synkroniser selectedDrone når drones prop endres
-useEffect(() => {
-  if (selectedDrone && drones.length > 0) {
-    const updated = drones.find(d => d.id === selectedDrone.id);
-    if (updated) {
-      setSelectedDrone(updated);
-    }
+    if (error) throw error;
+    
+    toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
+    onSaved?.();
+    onOpenChange(false);
+  } catch (error: any) {
+    console.error("Error saving SORA:", error);
+    toast.error("Kunne ikke lagre SORA-analyse: " + error.message);
+  } finally {
+    setLoading(false);
   }
-}, [drones]);
+};
 ```
-
-### EquipmentListDialog.tsx - Endringer
-
-```typescript
-useEffect(() => {
-  if (selectedEquipment && equipment.length > 0) {
-    const updated = equipment.find(e => e.id === selectedEquipment.id);
-    if (updated) {
-      setSelectedEquipment(updated);
-    }
-  }
-}, [equipment]);
-```
-
-### PersonnelListDialog.tsx - Endringer
-
-```typescript
-useEffect(() => {
-  if (selectedPerson && personnel.length > 0) {
-    const updated = personnel.find(p => p.id === selectedPerson.id);
-    if (updated) {
-      setSelectedPerson(updated);
-    }
-  }
-}, [personnel]);
-```
-
----
-
-## Filer som endres
-
-1. `src/hooks/useStatusData.ts` - Legge til sanntidssubskripsjoner
-2. `src/components/dashboard/DroneListDialog.tsx` - Synkronisere selectedDrone
-3. `src/components/dashboard/EquipmentListDialog.tsx` - Synkronisere selectedEquipment  
-4. `src/components/dashboard/PersonnelListDialog.tsx` - Synkronisere selectedPerson
 
 ---
 
 ## Forventet resultat
 
 Etter implementering:
-- Dashboard StatusPanel oppdateres umiddelbart ved vedlikehold/endringer
-- Droner/utstyr/personell-lister oppdateres i sanntid
-- Åpne popup-vinduer reflekterer endringer gjort fra andre komponenter
-- Ingen manuell refresh nødvendig for å se oppdaterte data
+- Ingen "duplicate key value"-feil ved lagring av SORA
+- Race conditions håndteres automatisk av databasen
+- Atomisk operasjon garanterer dataintegritet
+- Original `prepared_by` og `prepared_at` bevares ved oppdateringer
