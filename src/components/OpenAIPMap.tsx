@@ -716,8 +716,10 @@ export function OpenAIPMap({
         const existingMarker = safeskyMarkersCache.get(beaconId);
         
         if (existingMarker) {
-          // Update position of existing marker (smooth update, no flicker)
-          existingMarker.setLatLng([lat, lon]);
+          // Only update position if popup is not open (prevents map jumping when user is viewing popup)
+          if (!existingMarker.isPopupOpen()) {
+            existingMarker.setLatLng([lat, lon]);
+          }
           
           // Update popup content
           const callsign = beacon.callsign || 'Ukjent';
