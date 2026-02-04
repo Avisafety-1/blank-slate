@@ -127,14 +127,14 @@ export const AddPersonnelToDroneDialog = ({
               {filteredPersonnel.map((person) => (
                 <div
                   key={person.id}
-                  className="flex items-center justify-between p-3 bg-card border border-border rounded-lg"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-card border border-border rounded-lg"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{person.full_name || "Ukjent"}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <p className="font-medium text-sm sm:text-base truncate">{person.full_name || "Ukjent"}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
                       {person.tittel && <span>{person.tittel}</span>}
-                      {person.email && person.tittel && <span>•</span>}
-                      {person.email && <span className="truncate">{person.email}</span>}
+                      {person.email && person.tittel && <span className="hidden sm:inline">•</span>}
+                      {person.email && <span className="truncate max-w-[180px] sm:max-w-none">{person.email}</span>}
                     </div>
                   </div>
                   <Button
@@ -142,7 +142,7 @@ export const AddPersonnelToDroneDialog = ({
                     variant="outline"
                     onClick={() => handleAddPersonnel(person.id)}
                     disabled={addingId === person.id}
-                    className="gap-1 ml-2"
+                    className="gap-1 w-full sm:w-auto shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                     {addingId === person.id ? "..." : "Legg til"}
