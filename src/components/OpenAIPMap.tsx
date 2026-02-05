@@ -1104,6 +1104,23 @@ export function OpenAIPMap({
         if (!response.ok) return;
         
         const geojson = await response.json();
+       
+       // Fix incorrect coordinates for known airports
+       const coordinateFixes: Record<string, [number, number]> = {
+         'ENKJ': [11.0364, 59.9753], // Kjeller flyplass - correct coordinates [lng, lat]
+       };
+       
+       // Apply coordinate fixes
+       if (geojson.features) {
+         geojson.features = geojson.features.map((feature: any) => {
+           const icao = feature.properties?.ICAO || feature.properties?.icao;
+           if (icao && coordinateFixes[icao] && feature.geometry?.coordinates) {
+             feature.geometry.coordinates = coordinateFixes[icao];
+           }
+           return feature;
+         });
+       }
+       
         const geoJsonLayer = L.geoJSON(geojson, {
           pointToLayer: (feature, latlng) => {
             const icon = L.icon({
