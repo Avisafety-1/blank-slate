@@ -9,7 +9,8 @@ const corsHeaders = {
 const NORWAY_VIEWPORT = "57.5,4.0,71.5,31.5";
 const SAFESKY_HOST = "sandbox-public-api.safesky.app";
 const SAFESKY_PATH = "/v1/beacons";
-const SAFESKY_QUERY = `viewport=${NORWAY_VIEWPORT}`;
+// Include grounded traffic (default is false, which filters out GROUNDED beacons)
+const SAFESKY_QUERY = `viewport=${NORWAY_VIEWPORT}&return_grounded_traffic=true`;
 const SAFESKY_BEACONS_URL = `https://${SAFESKY_HOST}${SAFESKY_PATH}?${SAFESKY_QUERY}`;
 
 // How long a heartbeat is considered "active" (10 seconds)
