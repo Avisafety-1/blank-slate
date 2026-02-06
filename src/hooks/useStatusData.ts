@@ -19,48 +19,26 @@ const countByStatus = (items: { status: Status }[]): StatusCounts => {
 };
 
 const fetchDrones = async () => {
-  // Batch all 3 queries in parallel instead of N+1 per drone
-  const [dronesResult, accessoriesResult, droneEquipmentResult] = await Promise.all([
-    supabase.from("drones").select("*").eq("aktiv", true),
-    supabase.from("drone_accessories").select("*"),
-    supabase.from("drone_equipment").select(`
-      drone_id,
-      equipment:equipment_id (
-        id,
-        neste_vedlikehold,
-        varsel_dager
-      )
-    `),
-  ]);
+  // Single query with nested selects — PostgREST joins server-side.
+  // The 1000-row limit applies only to top-level rows (drones), not nested data.
+  const { data: dronesData, error } = await supabase
+    .from("drones")
+    .select(`
+      *,
+      drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
+      drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager))
+    `)
+    .eq("aktiv", true);
 
-  if (dronesResult.error || !dronesResult.data) {
-    throw dronesResult.error;
+  if (error || !dronesData) {
+    throw error;
   }
 
-  const dronesData = dronesResult.data;
-  const allAccessories = accessoriesResult.data || [];
-  const allDroneEquipment = droneEquipmentResult.data || [];
-
-  // Group accessories and equipment by drone_id in memory
-  const accessoriesByDrone = new Map<string, any[]>();
-  for (const acc of allAccessories) {
-    const list = accessoriesByDrone.get(acc.drone_id) || [];
-    list.push(acc);
-    accessoriesByDrone.set(acc.drone_id, list);
-  }
-
-  const equipmentByDrone = new Map<string, any[]>();
-  for (const link of allDroneEquipment) {
-    if (link.equipment) {
-      const list = equipmentByDrone.get(link.drone_id) || [];
-      list.push(link.equipment);
-      equipmentByDrone.set(link.drone_id, list);
-    }
-  }
-
-  return dronesData.map((drone) => {
-    const accessories = accessoriesByDrone.get(drone.id) || [];
-    const linkedEquipment = equipmentByDrone.get(drone.id) || [];
+  return dronesData.map((drone: any) => {
+    const accessories = drone.drone_accessories || [];
+    const linkedEquipment = (drone.drone_equipment || [])
+      .map((link: any) => link.equipment)
+      .filter(Boolean);
 
     const { status } = calculateDroneAggregatedStatus(
       { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
