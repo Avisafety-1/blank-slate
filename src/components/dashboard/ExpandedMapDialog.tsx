@@ -72,7 +72,12 @@ export const ExpandedMapDialog = ({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !latitude || !longitude) return;
+    if (!open || !latitude || !longitude) {
+      console.log("[ExpandedMap] Skipping init:", { open, latitude, longitude });
+      return;
+    }
+
+    console.log("[ExpandedMap] Init effect running:", { latitude, longitude, hasRoute: !!route, hasFlightTracks: !!flightTracks, trackCount: flightTracks?.length, mapKey });
 
     let cancelled = false;
     let retryCount = 0;
@@ -84,6 +89,7 @@ export const ExpandedMapDialog = ({
 
       const container = mapRef.current;
       if (!container) {
+        console.log("[ExpandedMap] No container, retry:", retryCount);
         if (retryCount < maxRetries) {
           retryCount++;
           const t = setTimeout(tryInitMap, 100);
@@ -94,13 +100,18 @@ export const ExpandedMapDialog = ({
 
       // Ensure container has dimensions - retry if not ready yet
       if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        console.log("[ExpandedMap] Container has no dimensions, retry:", retryCount, container.offsetWidth, container.offsetHeight);
         if (retryCount < maxRetries) {
           retryCount++;
           const t = setTimeout(tryInitMap, 100);
           timeouts.push(t);
+        } else {
+          console.error("[ExpandedMap] Gave up after max retries - container never got dimensions");
         }
         return;
       }
+
+      console.log("[ExpandedMap] Container ready:", container.offsetWidth, "x", container.offsetHeight, "retry:", retryCount);
 
       // Clean up any existing map first
       if (leafletMapRef.current) {
@@ -113,11 +124,13 @@ export const ExpandedMapDialog = ({
       }
 
       try {
+        console.log("[ExpandedMap] Creating Leaflet map...");
         // Initialize map
         const map = L.map(container, {
           zoomControl: true,
           scrollWheelZoom: true,
         }).setView([latitude, longitude], 13);
+        console.log("[ExpandedMap] Map created successfully, zoom:", map.getZoom());
 
         leafletMapRef.current = map;
 
@@ -260,7 +273,9 @@ export const ExpandedMapDialog = ({
         // Fit bounds to show everything (maxZoom prevents white tiles when points are very close)
         if (allPoints.length > 1) {
           const bounds = L.latLngBounds(allPoints);
+          console.log("[ExpandedMap] Fitting bounds:", bounds.toBBoxString(), "points:", allPoints.length);
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          console.log("[ExpandedMap] After fitBounds, zoom:", map.getZoom());
         }
 
         // Fetch and display airspace zones
