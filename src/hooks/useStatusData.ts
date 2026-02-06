@@ -112,17 +112,17 @@ export const useStatusData = () => {
     const channel = supabase
       .channel('status-data-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['equipment', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['equipment', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_equipment' }, 
-        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
+        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .subscribe();
 
     return () => {
@@ -136,21 +136,21 @@ export const useStatusData = () => {
         queryKey: ['drones', companyId],
         queryFn: fetchDrones,
         enabled: !!user,
-        staleTime: 30000, // 30 seconds
+        staleTime: 5000,
         refetchOnWindowFocus: true,
       },
       {
         queryKey: ['equipment', companyId],
         queryFn: fetchEquipment,
         enabled: !!user,
-        staleTime: 30000,
+        staleTime: 5000,
         refetchOnWindowFocus: true,
       },
       {
         queryKey: ['personnel', companyId],
         queryFn: fetchPersonnel,
         enabled: !!user,
-        staleTime: 30000,
+        staleTime: 5000,
         refetchOnWindowFocus: true,
       },
     ],
