@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown, AlertTriangle } from "lucide-react";
@@ -408,43 +409,83 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   }, [formData.droneId]);
 
   const fetchDrones = async () => {
-    const { data } = await supabase
-      .from("drones")
-      .select("id, modell, serienummer")
-      .eq("aktiv", true)
-      .order("modell");
-    
-    if (data) setDrones(data);
+    try {
+      const { data, error } = await supabase
+        .from("drones")
+        .select("id, modell, serienummer")
+        .eq("aktiv", true)
+        .order("modell");
+      if (error) throw error;
+      if (data) {
+        setDrones(data);
+        setCachedData(`offline_logflight_drones_${companyId}`, data);
+      }
+    } catch {
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Drone[]>(`offline_logflight_drones_${companyId}`);
+        if (cached) setDrones(cached);
+      }
+    }
   };
 
   const fetchMissions = async () => {
-    const { data } = await supabase
-      .from("missions")
-      .select("id, tittel, tidspunkt")
-      .order("tidspunkt", { ascending: false })
-      .limit(50);
-    
-    if (data) setMissions(data);
+    try {
+      const { data, error } = await supabase
+        .from("missions")
+        .select("id, tittel, tidspunkt")
+        .order("tidspunkt", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      if (data) {
+        setMissions(data);
+        setCachedData(`offline_logflight_missions_${companyId}`, data);
+      }
+    } catch {
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Mission[]>(`offline_logflight_missions_${companyId}`);
+        if (cached) setMissions(cached);
+      }
+    }
   };
 
   const fetchPersonnel = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("approved", true)
-      .order("full_name");
-    
-    if (data) setPersonnel(data);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("approved", true)
+        .order("full_name");
+      if (error) throw error;
+      if (data) {
+        setPersonnel(data);
+        setCachedData(`offline_logflight_personnel_${companyId}`, data);
+      }
+    } catch {
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Personnel[]>(`offline_logflight_personnel_${companyId}`);
+        if (cached) setPersonnel(cached);
+      }
+    }
   };
 
   const fetchEquipment = async () => {
-    const { data } = await supabase
-      .from("equipment")
-      .select("id, navn, serienummer")
-      .eq("aktiv", true)
-      .order("navn");
-    
-    if (data) setEquipmentList(data);
+    try {
+      const { data, error } = await supabase
+        .from("equipment")
+        .select("id, navn, serienummer")
+        .eq("aktiv", true)
+        .order("navn");
+      if (error) throw error;
+      if (data) {
+        setEquipmentList(data);
+        setCachedData(`offline_logflight_equipment_${companyId}`, data);
+      }
+    } catch {
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Equipment[]>(`offline_logflight_equipment_${companyId}`);
+        if (cached) setEquipmentList(cached);
+      }
+    }
   };
 
   const fetchMissionDetails = async (missionId: string) => {
@@ -546,11 +587,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           ? { positions: flightTrack } 
           : null;
 
-        // Queue the flight log
+        // Generate a client-side UUID so secondary records can reference this flight log
+        const offlineFlightLogId = crypto.randomUUID();
+
+        // Queue the flight log (trigger will auto-update drone flyvetimer on sync)
         addToQueue({
           table: 'flight_logs',
           operation: 'insert',
           data: {
+            id: offlineFlightLogId,
             company_id: companyId,
             user_id: user.id,
             drone_id: formData.droneId,
@@ -569,18 +614,44 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           description: 'Flylogg (offline)',
         });
 
-        // Queue drone flight hours update via RPC not possible offline, 
-        // but we can queue an update with increment
-        addToQueue({
-          table: 'drones',
-          operation: 'update',
-          matchColumn: 'id',
-          matchValue: formData.droneId,
-          data: {
-            flyvetimer: formData.flightDurationMinutes, // Will need RPC on sync
-          },
-          description: 'Oppdater drone flytimer (offline)',
-        });
+        // Queue flight_log_equipment entries (trigger will auto-update equipment flyvetimer)
+        for (const equipmentId of selectedEquipment) {
+          addToQueue({
+            table: 'flight_log_equipment',
+            operation: 'insert',
+            data: {
+              flight_log_id: offlineFlightLogId,
+              equipment_id: equipmentId,
+            },
+            description: `Utstyr til flylogg (offline)`,
+          });
+        }
+
+        // Queue flight_log_personnel entries for linked personnel
+        for (const profileId of linkedPersonnel) {
+          addToQueue({
+            table: 'flight_log_personnel',
+            operation: 'insert',
+            data: {
+              flight_log_id: offlineFlightLogId,
+              profile_id: profileId,
+            },
+            description: `Personell til flylogg (offline)`,
+          });
+        }
+
+        // Add pilot to personnel if not already linked
+        if (formData.pilotId && !linkedPersonnel.includes(formData.pilotId)) {
+          addToQueue({
+            table: 'flight_log_personnel',
+            operation: 'insert',
+            data: {
+              flight_log_id: offlineFlightLogId,
+              profile_id: formData.pilotId,
+            },
+            description: `Pilot til flylogg (offline)`,
+          });
+        }
 
         toast.success("Flylogg lagret lokalt – synkroniseres når nett er tilbake");
         
@@ -678,38 +749,17 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
       if (flightLogError) throw flightLogError;
 
-      // 2. Update drone flight hours using RPC function (bypasses RLS)
-      const { error: droneUpdateError } = await supabase.rpc('add_drone_flight_hours', {
-        p_drone_id: formData.droneId,
-        p_minutes: formData.flightDurationMinutes
-      });
-      
-      if (droneUpdateError) {
-        console.error("Error updating drone flight hours:", droneUpdateError);
-      }
-
-      // 3. Update equipment flight hours and create flight_log_equipment entries
+      // 2. Create flight_log_equipment entries (trigger auto-updates equipment flyvetimer)
       for (const equipmentId of selectedEquipment) {
-        // Create flight log equipment entry
         await (supabase as any)
           .from("flight_log_equipment")
           .insert({
             flight_log_id: flightLog.id,
             equipment_id: equipmentId,
           });
-
-        // Update equipment flight hours using RPC function (bypasses RLS)
-        const { error: equipmentUpdateError } = await supabase.rpc('add_equipment_flight_hours', {
-          p_equipment_id: equipmentId,
-          p_minutes: formData.flightDurationMinutes
-        });
-        
-        if (equipmentUpdateError) {
-          console.error("Error updating equipment flight hours:", equipmentUpdateError);
-        }
       }
 
-      // 4. Create flight_log_personnel entries for linked personnel
+      // 3. Create flight_log_personnel entries for linked personnel
       for (const profileId of linkedPersonnel) {
         await (supabase as any)
           .from("flight_log_personnel")
@@ -719,7 +769,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           });
       }
 
-      // 5. Add pilot to flight log personnel if selected and not already linked
+      // 4. Add pilot to flight log personnel if selected and not already linked
       if (formData.pilotId && !linkedPersonnel.includes(formData.pilotId)) {
         await (supabase as any)
           .from("flight_log_personnel")
@@ -729,7 +779,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           });
       }
 
-      // 6. Update mission status to "Fullført" if checkbox is checked and mission exists
+      // 5. Update mission status to "Fullført" if checkbox is checked and mission exists
       if (missionIdToUse && formData.markMissionCompleted && formData.missionId) {
         // Only update if it was an existing mission (not auto-created, which is already "Fullført")
         const { error: missionUpdateError } = await supabase
