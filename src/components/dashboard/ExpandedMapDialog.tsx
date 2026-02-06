@@ -257,10 +257,10 @@ export const ExpandedMapDialog = ({
           });
         }
 
-        // Fit bounds to show everything
+        // Fit bounds to show everything (maxZoom prevents white tiles when points are very close)
         if (allPoints.length > 1) {
           const bounds = L.latLngBounds(allPoints);
-          map.fitBounds(bounds, { padding: [50, 50] });
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
         }
 
         // Fetch and display airspace zones
