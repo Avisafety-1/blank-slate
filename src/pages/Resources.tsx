@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
 import { Plane, Plus, Gauge, Users, Search, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -122,60 +123,87 @@ const Resources = () => {
   }, [equipment]);
 
   const fetchDrones = async () => {
-    const { data, error } = await (supabase as any)
-      .from("drones")
-      .select("*")
-      .eq("aktiv", true)
-      .order("opprettet_dato", { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching drones:", error);
-      toast.error(t('resources.couldNotLoadDrones'));
-    } else {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("drones")
+        .select("*")
+        .eq("aktiv", true)
+        .order("opprettet_dato", { ascending: false });
+      
+      if (error) throw error;
       setDrones(data || []);
+      if (companyId) setCachedData(`offline_drones_${companyId}`, data || []);
+    } catch (err) {
+      console.error("Error fetching drones:", err);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any[]>(`offline_drones_${companyId}`);
+        if (cached) setDrones(cached);
+      } else {
+        toast.error(t('resources.couldNotLoadDrones'));
+      }
     }
   };
 
   const fetchEquipment = async () => {
-    const { data, error } = await (supabase as any)
-      .from("equipment")
-      .select("*")
-      .eq("aktiv", true)
-      .order("opprettet_dato", { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching equipment:", error);
-      toast.error(t('resources.couldNotLoadEquipment'));
-    } else {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("equipment")
+        .select("*")
+        .eq("aktiv", true)
+        .order("opprettet_dato", { ascending: false });
+      
+      if (error) throw error;
       setEquipment(data || []);
+      if (companyId) setCachedData(`offline_equipment_${companyId}`, data || []);
+    } catch (err) {
+      console.error("Error fetching equipment:", err);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any[]>(`offline_equipment_${companyId}`);
+        if (cached) setEquipment(cached);
+      } else {
+        toast.error(t('resources.couldNotLoadEquipment'));
+      }
     }
   };
 
   const fetchDronetags = async () => {
-    const { data, error } = await supabase
-      .from("dronetag_devices")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching dronetags:", error);
-    } else {
+    try {
+      const { data, error } = await supabase
+        .from("dronetag_devices")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
       setDronetags(data || []);
+      if (companyId) setCachedData(`offline_dronetags_${companyId}`, data || []);
+    } catch (err) {
+      console.error("Error fetching dronetags:", err);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any[]>(`offline_dronetags_${companyId}`);
+        if (cached) setDronetags(cached);
+      }
     }
   };
 
   const fetchPersonnel = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*, personnel_competencies(*)")
-      .eq("approved", true)
-      .order("created_at", { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching personnel:", error);
-      toast.error(t('resources.couldNotLoadPersonnel'));
-    } else {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*, personnel_competencies(*)")
+        .eq("approved", true)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
       setPersonnel(data || []);
+      if (companyId) setCachedData(`offline_personnel_${companyId}`, data || []);
+    } catch (err) {
+      console.error("Error fetching personnel:", err);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any[]>(`offline_personnel_${companyId}`);
+        if (cached) setPersonnel(cached);
+      } else {
+        toast.error(t('resources.couldNotLoadPersonnel'));
+      }
     }
   };
 

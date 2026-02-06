@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -358,9 +359,18 @@ const Oppdrag = () => {
       );
 
       setMissions(missionsWithDetails);
+      // Cache for offline use
+      if (companyId) setCachedData(`offline_missions_${companyId}_${filterTab}`, missionsWithDetails);
     } catch (error) {
       console.error("Error fetching missions:", error);
-      toast.error("Kunne ikke laste oppdrag");
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${filterTab}`);
+        if (cached) {
+          setMissions(cached);
+        }
+      } else {
+        toast.error("Kunne ikke laste oppdrag");
+      }
     } finally {
       setIsLoading(false);
     }

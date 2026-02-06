@@ -29,6 +29,12 @@ export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) 
       return;
     }
 
+    // Skip redirects when offline - user can't reach other domains anyway
+    if (!navigator.onLine) {
+      console.log('DomainGuard: Offline, skipping redirects');
+      return;
+    }
+
     // IMPORTANT: Don't auto-redirect from /auth page
     // Auth.tsx needs to handle OAuth callbacks and profile verification first
     if (isAuthPage) {

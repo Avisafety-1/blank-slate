@@ -5,6 +5,18 @@ import { toast } from "sonner";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
+const PROFILE_CACHE_KEY = (userId: string) => `avisafe_user_profile_${userId}`;
+
+interface CachedProfile {
+  companyId: string | null;
+  companyName: string | null;
+  companyType: CompanyType;
+  isApproved: boolean;
+  userRole: string | null;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -54,6 +66,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  const applyCachedProfile = (userId: string): boolean => {
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY(userId));
+      if (!raw) return false;
+
+      const cached: CachedProfile = JSON.parse(raw);
+      setCompanyId(cached.companyId);
+      setCompanyName(cached.companyName);
+      setCompanyType(cached.companyType);
+      setIsApproved(cached.isApproved);
+      setUserRole(cached.userRole);
+      setIsAdmin(cached.isAdmin);
+      setIsSuperAdmin(cached.isSuperAdmin);
+      console.log('AuthContext: Applied cached profile for offline use');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const saveCachedProfile = (userId: string, profile: CachedProfile) => {
+    try {
+      localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify(profile));
+    } catch {
+      // localStorage full - ignore
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -118,23 +158,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .maybeSingle()
       ]);
       
+      let profileData: CachedProfile = {
+        companyId: null,
+        companyName: null,
+        companyType: 'droneoperator',
+        isApproved: false,
+        userRole: null,
+        isAdmin: false,
+        isSuperAdmin: false,
+      };
+
       if (profileResult.data) {
         const profile = profileResult.data;
-        setCompanyId(profile.company_id);
-        setIsApproved(profile.approved ?? false);
+        profileData.companyId = profile.company_id;
+        profileData.isApproved = profile.approved ?? false;
         
         const company = profile.companies as any;
-        setCompanyName(company?.navn || null);
-        setCompanyType(company?.selskapstype || 'droneoperator');
+        profileData.companyName = company?.navn || null;
+        profileData.companyType = company?.selskapstype || 'droneoperator';
       }
 
       if (roleResult.data) {
-        setUserRole(roleResult.data.role);
-        setIsSuperAdmin(roleResult.data.role === 'superadmin');
-        setIsAdmin(roleResult.data.role === 'admin' || roleResult.data.role === 'superadmin');
+        profileData.userRole = roleResult.data.role;
+        profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
+        profileData.isAdmin = roleResult.data.role === 'admin' || roleResult.data.role === 'superadmin';
       }
+
+      // Apply to state
+      setCompanyId(profileData.companyId);
+      setCompanyName(profileData.companyName);
+      setCompanyType(profileData.companyType);
+      setIsApproved(profileData.isApproved);
+      setUserRole(profileData.userRole);
+      setIsAdmin(profileData.isAdmin);
+      setIsSuperAdmin(profileData.isSuperAdmin);
+
+      // Cache for offline use
+      saveCachedProfile(userId, profileData);
     } catch (error) {
       console.error('Error fetching user info:', error);
+      // If fetch failed (likely offline), try cached profile
+      if (!navigator.onLine) {
+        applyCachedProfile(userId);
+      }
     }
   };
 
