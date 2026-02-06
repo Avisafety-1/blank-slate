@@ -186,7 +186,7 @@ const Oppdrag = () => {
   }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && navigator.onLine) {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
@@ -221,6 +221,21 @@ const Oppdrag = () => {
   }, [filterTab, companyId]);
 
   const fetchMissions = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${filterTab}`);
+      if (cached) {
+        setMissions(cached);
+        setIsLoading(false);
+      }
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       let query = supabase
@@ -364,14 +379,7 @@ const Oppdrag = () => {
       if (companyId) setCachedData(`offline_missions_${companyId}_${filterTab}`, missionsWithDetails);
     } catch (error) {
       console.error("Error fetching missions:", error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${filterTab}`);
-        if (cached) {
-          setMissions(cached);
-        }
-      } else {
-        toast.error("Kunne ikke laste oppdrag");
-      }
+      toast.error("Kunne ikke laste oppdrag");
     } finally {
       setIsLoading(false);
     }

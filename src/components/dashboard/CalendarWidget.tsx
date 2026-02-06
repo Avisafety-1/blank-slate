@@ -103,6 +103,7 @@ export const CalendarWidget = () => {
   }, [companyId]);
 
   const checkAdminStatus = async () => {
+    if (!navigator.onLine) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -219,6 +220,19 @@ export const CalendarWidget = () => {
   }, [companyId]);
 
   const fetchCustomEvents = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<CalendarEventDB[]>(`offline_cal_custom_${companyId}`);
+      if (cached) setCustomEvents(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Fetch fresh data
     try {
       const { data, error } = await supabase
         .from('calendar_events')
@@ -231,18 +245,23 @@ export const CalendarWidget = () => {
       if (companyId) setCachedData(`offline_cal_custom_${companyId}`, data || []);
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<CalendarEventDB[]>(`offline_cal_custom_${companyId}`);
-        if (cached) setCustomEvents(cached);
-      } else {
-        toast.error(t('dashboard.calendar.couldNotLoad'));
-      }
+      toast.error(t('dashboard.calendar.couldNotLoad'));
     } finally {
       setLoading(false);
     }
   };
 
   const fetchRealCalendarEvents = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<CalendarEvent[]>(`offline_cal_real_${companyId}`);
+      if (cached) setRealEvents(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+
+    // 3. Fetch fresh data
     try {
       const events: CalendarEvent[] = [];
 
@@ -356,10 +375,6 @@ export const CalendarWidget = () => {
       if (companyId) setCachedData(`offline_cal_real_${companyId}`, events);
     } catch (error) {
       console.error('Error fetching real calendar events:', error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<CalendarEvent[]>(`offline_cal_real_${companyId}`);
-        if (cached) setRealEvents(cached);
-      }
     }
   };
 

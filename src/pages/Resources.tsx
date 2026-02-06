@@ -54,7 +54,7 @@ const Resources = () => {
   const [equipmentSearch, setEquipmentSearch] = useState("");
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && navigator.onLine) {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
@@ -125,6 +125,14 @@ const Resources = () => {
   }, [equipment]);
 
   const fetchDrones = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any[]>(`offline_drones_${companyId}`);
+      if (cached) setDrones(cached);
+    }
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+    // 3. Fetch fresh data
     try {
       const { data, error } = await (supabase as any)
         .from("drones")
@@ -137,16 +145,19 @@ const Resources = () => {
       if (companyId) setCachedData(`offline_drones_${companyId}`, data || []);
     } catch (err) {
       console.error("Error fetching drones:", err);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any[]>(`offline_drones_${companyId}`);
-        if (cached) setDrones(cached);
-      } else {
-        toast.error(t('resources.couldNotLoadDrones'));
-      }
+      toast.error(t('resources.couldNotLoadDrones'));
     }
   };
 
   const fetchEquipment = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any[]>(`offline_equipment_${companyId}`);
+      if (cached) setEquipment(cached);
+    }
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+    // 3. Fetch fresh data
     try {
       const { data, error } = await (supabase as any)
         .from("equipment")
@@ -159,16 +170,19 @@ const Resources = () => {
       if (companyId) setCachedData(`offline_equipment_${companyId}`, data || []);
     } catch (err) {
       console.error("Error fetching equipment:", err);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any[]>(`offline_equipment_${companyId}`);
-        if (cached) setEquipment(cached);
-      } else {
-        toast.error(t('resources.couldNotLoadEquipment'));
-      }
+      toast.error(t('resources.couldNotLoadEquipment'));
     }
   };
 
   const fetchDronetags = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any[]>(`offline_dronetags_${companyId}`);
+      if (cached) setDronetags(cached);
+    }
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+    // 3. Fetch fresh data
     try {
       const { data, error } = await supabase
         .from("dronetag_devices")
@@ -180,14 +194,18 @@ const Resources = () => {
       if (companyId) setCachedData(`offline_dronetags_${companyId}`, data || []);
     } catch (err) {
       console.error("Error fetching dronetags:", err);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any[]>(`offline_dronetags_${companyId}`);
-        if (cached) setDronetags(cached);
-      }
     }
   };
 
   const fetchPersonnel = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any[]>(`offline_personnel_${companyId}`);
+      if (cached) setPersonnel(cached);
+    }
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+    // 3. Fetch fresh data
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -200,12 +218,7 @@ const Resources = () => {
       if (companyId) setCachedData(`offline_personnel_${companyId}`, data || []);
     } catch (err) {
       console.error("Error fetching personnel:", err);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any[]>(`offline_personnel_${companyId}`);
-        if (cached) setPersonnel(cached);
-      } else {
-        toast.error(t('resources.couldNotLoadPersonnel'));
-      }
+      toast.error(t('resources.couldNotLoadPersonnel'));
     }
   };
 

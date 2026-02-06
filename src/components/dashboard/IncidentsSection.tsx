@@ -41,7 +41,7 @@ type Incident = Tables<"incidents">;
 
 export const IncidentsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, user } = useAuth();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,14 +113,25 @@ export const IncidentsSection = () => {
   // Fetch follow-up incidents for logged-in user
   useEffect(() => {
     const fetchMyFollowUps = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setMyFollowUpIncidents([]);
-          setFollowUpLoading(false);
-          return;
-        }
+      // 1. Load cache first
+      if (companyId) {
+        const cached = getCachedData<Incident[]>(`offline_dashboard_followups_${companyId}`);
+        if (cached) setMyFollowUpIncidents(cached);
+      }
 
+      // 2. Skip network if offline
+      if (!navigator.onLine) {
+        setFollowUpLoading(false);
+        return;
+      }
+
+      // 3. Use user from AuthContext (works offline)
+      if (!user) {
+        setFollowUpLoading(false);
+        return;
+      }
+
+      try {
         const { data, error } = await supabase
           .from('incidents')
           .select('*')
@@ -134,12 +145,6 @@ export const IncidentsSection = () => {
         if (companyId) setCachedData(`offline_dashboard_followups_${companyId}`, data || []);
       } catch (error: any) {
         console.error('Error fetching follow-up incidents:', error);
-        if (!navigator.onLine && companyId) {
-          const cached = getCachedData<Incident[]>(`offline_dashboard_followups_${companyId}`);
-          if (cached) setMyFollowUpIncidents(cached);
-        } else {
-          toast.error(t('dashboard.incidents.couldNotLoadFollowUp'));
-        }
       } finally {
         setFollowUpLoading(false);
       }
@@ -167,11 +172,12 @@ export const IncidentsSection = () => {
     return () => {
       supabase.removeChannel(followUpChannel);
     };
-  }, [companyId, t]);
+  }, [companyId, user, t]);
 
   // Fetch comment counts for all incidents
   useEffect(() => {
     const fetchCommentCounts = async () => {
+      if (!navigator.onLine) return;
       const allIncidentIds = [...new Set([...incidents.map(i => i.id), ...myFollowUpIncidents.map(i => i.id)])];
       if (allIncidentIds.length === 0) return;
 
@@ -231,6 +237,19 @@ export const IncidentsSection = () => {
   }, []);
 
   const fetchIncidents = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<Incident[]>(`offline_dashboard_incidents_${companyId}`);
+      if (cached) setIncidents(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Fetch fresh data
     try {
       const { data, error } = await supabase
         .from('incidents')
@@ -244,12 +263,7 @@ export const IncidentsSection = () => {
       if (companyId) setCachedData(`offline_dashboard_incidents_${companyId}`, data || []);
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<Incident[]>(`offline_dashboard_incidents_${companyId}`);
-        if (cached) setIncidents(cached);
-      } else {
-        toast.error(t('dashboard.incidents.couldNotLoad'));
-      }
+      toast.error(t('dashboard.incidents.couldNotLoad'));
     } finally {
       setLoading(false);
     }

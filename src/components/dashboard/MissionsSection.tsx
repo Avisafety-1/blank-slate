@@ -77,7 +77,16 @@ export const MissionsSection = () => {
   }, [companyId]);
 
   const fetchMissions = async () => {
-    // Calculate date 1 day ago
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any[]>(`offline_dashboard_missions_${companyId}`);
+      if (cached) setMissions(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+
+    // 3. Fetch fresh data
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
@@ -102,10 +111,6 @@ export const MissionsSection = () => {
       }
     } catch (error) {
       console.error("Error fetching missions:", error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any[]>(`offline_dashboard_missions_${companyId}`);
-        if (cached) setMissions(cached);
-      }
     }
   };
 
