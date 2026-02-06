@@ -6,6 +6,14 @@ import { toast } from "sonner";
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
 const PROFILE_CACHE_KEY = (userId: string) => `avisafe_user_profile_${userId}`;
+const SESSION_CACHE_KEY = 'avisafe_session_cache';
+
+interface CachedSession {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+}
 
 interface CachedProfile {
   companyId: string | null;
@@ -95,20 +103,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const cacheSession = (user: User) => {
+    try {
+      const cached: CachedSession = {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata,
+        app_metadata: user.app_metadata,
+      };
+      localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cached));
+    } catch {
+      // localStorage full - ignore
+    }
+  };
+
+  const restoreFromCache = (): boolean => {
+    try {
+      const raw = localStorage.getItem(SESSION_CACHE_KEY);
+      if (!raw) return false;
+      const cached: CachedSession = JSON.parse(raw);
+      if (!cached.id) return false;
+      // Create minimal User-like object from cache
+      setUser(cached as unknown as User);
+      applyCachedProfile(cached.id);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
         if (event === 'SIGNED_IN' && session?.user) {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          cacheSession(session.user);
           // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(() => {
             fetchUserInfo(session.user.id);
           }, 0);
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          setSession(session);
+          setUser(session.user);
+          cacheSession(session.user);
         } else if (event === 'SIGNED_OUT') {
+          // Offline guard: Supabase fires SIGNED_OUT when token
+          // refresh fails offline — ignore it to keep user logged in
+          if (!navigator.onLine) {
+            console.log('AuthContext: Ignoring SIGNED_OUT while offline');
+            return;
+          }
+          // Online: genuine sign-out
+          setSession(null);
+          setUser(null);
           setCompanyId(null);
           setCompanyName(null);
           setCompanyType(null);
@@ -116,18 +166,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAdmin(false);
           setIsApproved(false);
           setUserRole(null);
+          setLoading(false);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
         }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
       if (session?.user) {
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
+        cacheSession(session.user);
         fetchUserInfo(session.user.id);
+      } else if (!navigator.onLine) {
+        // Offline fallback: restore user from cache
+        console.log('AuthContext: Offline with no session, trying cache');
+        const restored = restoreFromCache();
+        setLoading(false);
+        if (restored) {
+          console.log('AuthContext: Restored user from offline cache');
+        }
+      } else {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
       }
     });
 
@@ -205,6 +272,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Clear offline caches before signing out
+    try {
+      localStorage.removeItem(SESSION_CACHE_KEY);
+      if (user) {
+        localStorage.removeItem(PROFILE_CACHE_KEY(user.id));
+      }
+    } catch {
+      // ignore
+    }
     await supabase.auth.signOut();
   };
 
