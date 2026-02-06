@@ -1,196 +1,202 @@
 
 
-# Offline-modus for AviSafe
+# Fiks offline-modus: Autentisering, data-caching og misjonsliste
 
-## Kartlegging av nettverksstatus
+## Problemanalyse
 
-### Hva som allerede finnes
-- **PWA med Service Worker**: Appen bruker allerede `vite-plugin-pwa` med `injectManifest`-strategi og precaching av statiske filer (JS, CSS, HTML, bilder)
-- **localStorage for flytimer**: `useFlightTimer` lagrer allerede starttid, misjon-ID og publish mode i localStorage som backup
-- **Databasen som "source of truth"**: Aktiv flytur lagres i `active_flights`-tabellen med localStorage som fallback
+Jeg har funnet tre konkrete arsaker til at offline-modus ikke fungerer som forventet:
 
-### Alle sider og funksjoner - offline-vurdering
+### Problem 1: Autentisering feiler offline
+Nar appen starter, kaller `AuthContext` databasen for a hente brukerinformasjon (selskap, rolle, godkjent-status). Offline feiler dette kallet, og `isApproved` forblir `false`. Deretter blokkerer `AuthenticatedLayout` all rendering fordi den sjekker `if (!user || !isApproved)` -- sa brukeren ser en blank side.
 
-| Side / Funksjon | Avhenger av nett | Kan fungere offline | Synkronisering |
-|---|---|---|---|
-| **Dashboard (/)** | Ja - henter misjoner, hendelser, nyheter, dokumenter, KPI | Delvis - kan vise cachet data | Les-cache |
-| **Oppdrag (/oppdrag)** | Ja - henter/oppretter misjoner | Delvis - lese cachet, opprette lokalt | Koe nye oppdrag |
-| **Kart (/kart)** | Ja - kartfliser, luftromsdata, SafeSky | Svart begrenset - kartfliser caches ikke godt | Begrenset |
-| **Dokumenter (/dokumenter)** | Ja - henter fra Supabase | Delvis - lese cachet dokumentliste | Les-cache |
-| **Kalender (/kalender)** | Ja - henter hendelser | Delvis - lese cachet | Les-cache |
-| **Hendelser (/hendelser)** | Ja - henter/oppretter hendelser | Delvis - lese cachet, opprette lokalt | Koe nye hendelser |
-| **Status (/status)** | Ja - henter statistikk | Delvis - lese cachet | Les-cache |
-| **Ressurser (/ressurser)** | Ja - droner, utstyr, personell | Delvis - lese cachet | Les-cache |
-| **Flytidstimer** | Ja - starter i databasen | JA - allerede delvis offline | Sync ved nett |
-| **Flylogging (LogFlightTimeDialog)** | Ja - INSERT til database | JA - kan koes lokalt | Sync ved nett |
-| **Start flytur (StartFlightDialog)** | Ja - sjekklister, SafeSky | Delvis - kan starte lokalt | Sync ved nett |
-| **Profil** | Ja - henter/oppdaterer profil | Begrenset | Les-cache |
-| **Admin (/admin)** | Ja - brukeradministrasjon | NEI - krever live data | Ikke aktuelt |
-| **AI-sok** | Ja - edge function | NEI - krever nett | Ikke aktuelt |
-| **AI Risikovurdering** | Ja - edge function | NEI - krever nett | Ikke aktuelt |
+### Problem 2: Sidene bruker ikke TanStack Query
+Sidene Ressurser, Oppdrag, Hendelser, Status og Kalender henter data direkte med `supabase.from().select()` i `useEffect`-hooks. Kun Dokumenter-siden bruker TanStack Query. Derfor hjelper ikke `PersistQueryClientProvider`-cachen for de fleste sidene -- dataen forsvinner nar Supabase-kallene feiler offline.
 
-### Funksjoner som KAN fungere offline med synkronisering
-
-**Prioritet 1 - Kritisk (brukes i felt uten nett)**:
-1. **Flytidstimer** - Allerede delvis offline (localStorage). Trenger: offline start og stopp uten database
-2. **Logge flytur** - Lagre flylogg lokalt, sync senere
-3. **Opprette hendelser/avvik** - Lagre lokalt, sync senere
-
-**Prioritet 2 - Viktig (lese cachet data)**:
-4. **Lese oppdrag** - Vis sist hentet data fra cache
-5. **Lese dokumenter** - Vis dokumentliste fra cache
-6. **Lese ressurser** - Vis droner, utstyr, personell fra cache
-7. **Lese kalender** - Vis hendelser fra cache
-
-**Prioritet 3 - Ikke mulig offline**:
-- Kart (trenger kartfliser fra internett)
-- AI-sok og AI-risikovurdering (trenger edge functions)
-- Admin-panelet (trenger live data for brukerbehandling)
-- SafeSky-integrasjon (trenger API)
-- Push-notifikasjoner (trenger nett)
+### Problem 3: StartFlightDialog henter misjoner direkte
+Dialogen for a starte flytur henter misjoner fra databasen i en `useEffect`. Nar man er offline, returnerer dette tomt resultat, og man kan ikke velge misjon.
 
 ---
 
-## Implementeringsplan
+## Losningsstrategi
 
-### Steg 1: Nettverksstatus-indikator (Offline-banner)
+Istedenfor a migrere alle sider til TanStack Query (som ville vaert en enorm refaktor), implementerer vi:
 
-Opprette en `useNetworkStatus`-hook som bruker `navigator.onLine` og `online`/`offline` events. Vise en synlig statuslinje oeverst i appen (under Header) med teksten "Du er frakoblet - endringer lagres lokalt" med en gul/oransje bakgrunn. Banneret vises kun nar appen er offline, og forsvinner med en "Synkroniserer..."-melding nar nett er tilbake.
+1. **Offline-sikker autentisering** -- Cache brukerdata i localStorage
+2. **Generisk offline-cache-hjelper** -- En `useOfflineCache`-funksjon som alle fetch-funksjoner kan bruke
+3. **Offline-sikker StartFlightDialog** -- Bruk cachet misjonsliste
+4. **DomainGuard offline-bypass** -- Ikke omdiriger nar man er offline
 
-**Filer:**
-- Ny: `src/hooks/useNetworkStatus.ts`
-- Ny: `src/components/OfflineBanner.tsx`
-- Endre: `src/App.tsx` - legge til OfflineBanner i AuthenticatedLayout
+---
 
-### Steg 2: Offline-ko-system (Sync Queue)
+## Detaljert implementering
 
-Opprette et generisk system for a koe opp database-operasjoner som skal utfores nar nett er tilbake:
+### Steg 1: Offline-sikker AuthContext
 
-- `src/lib/offlineQueue.ts` - Haandterer localStorage-basert ko av pending operasjoner
-  - Lagrer operasjoner som `{ id, table, operation, data, timestamp }`
-  - Ved `online`-event: prosesser koen sekvensielt
-  - Vis toast-melding "X endringer synkronisert" nar koen er tomt
-  - Haandterer feil (f.eks. konflikter) med retry-logikk
+**Fil: `src/contexts/AuthContext.tsx`**
 
-### Steg 3: Offline flytidslogging
+Endringer:
+- Etter vellykket `fetchUserInfo`, lagre resultatet i `localStorage` under nokkel `avisafe_user_profile_{userId}`
+- Ved oppstart: Hvis `getSession()` returnerer en gyldig sesjon men `fetchUserInfo()` feiler (offline), les cachet profil fra localStorage
+- Sett `isApproved`, `companyId`, `companyName`, `companyType`, `userRole`, `isAdmin`, `isSuperAdmin` fra cachet data
+- Legg til en `isOfflineMode`-flagg i konteksten sa andre komponenter kan vite at data er cachet
 
-Oppdatere `useFlightTimer.ts`:
-- `startFlight`: Hvis offline, lagre kun i localStorage (hopp over database INSERT). Koe database-operasjonen.
-- `endFlight`: Hvis offline, lagre kun i localStorage. Koe database DELETE.
-- Ved online: Sync `active_flights` fra localStorage til database.
-
-Oppdatere `LogFlightTimeDialog.tsx`:
-- Hvis offline ved innsending: Lagre flyloggen i offline-koen istedenfor a sende direkte til Supabase
-- Vis melding "Flylogg lagret lokalt - synkroniseres nar nett er tilbake"
-
-### Steg 4: Offline hendelsesrapportering
-
-Oppdatere `AddIncidentDialog.tsx`:
-- Hvis offline: Lagre hendelsen i offline-koen
-- Vis melding "Hendelse lagret lokalt"
-
-### Steg 5: Lese-cache for data (TanStack Query)
-
-TanStack Query har allerede innebygd caching. Konfigurere `staleTime` og `gcTime` (garbage collection time) for a beholde data lengre:
-
-Oppdatere QueryClient i `App.tsx`:
 ```text
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,    // 5 min for data er "stale"
-      gcTime: 24 * 60 * 60 * 1000,  // Behold i 24 timer
-      retry: (failureCount, error) => {
-        if (!navigator.onLine) return false;
-        return failureCount < 3;
-      },
-    },
-  },
-});
+// Ny hjelpefunksjon
+const PROFILE_CACHE_KEY = (userId: string) => `avisafe_user_profile_${userId}`;
+
+// I fetchUserInfo - etter vellykket henting:
+localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify({
+  companyId, companyName, companyType, isApproved, userRole, isAdmin, isSuperAdmin
+}));
+
+// I getSession - hvis fetchUserInfo feiler:
+const cached = localStorage.getItem(PROFILE_CACHE_KEY(userId));
+if (cached) {
+  // Bruk cachet data
+}
 ```
 
-Implementere `persistQueryClient` med localStorage for a overleve app-restart:
+### Steg 2: Generisk offline-cache-hjelper
 
-- Installere `@tanstack/query-sync-storage-persister` og `@tanstack/react-query-persist-client`
-- Wrapp appen med `PersistQueryClientProvider`
-- Cachet data lastes fra localStorage ved oppstart og vises umiddelbart
+**Ny fil: `src/lib/offlineCache.ts`**
 
-### Steg 6: Synkroniseringslogikk ved online-event
-
-I `useNetworkStatus`-hooken:
-- Lytt pa `online`-eventet
-- Nar nett er tilbake:
-  1. Vis "Synkroniserer..." i banneret
-  2. Prosesser offline-koen (INSERT/UPDATE/DELETE operasjoner)
-  3. Invalider TanStack Query-cacher for a hente ferske data
-  4. Vis "Synkronisering fullfort" toast
-
----
-
-## Tekniske detaljer
-
-### offlineQueue.ts - Kjernestruktur
+En enkel hjelper som wrapper enhver fetch-funksjon:
+- Ved vellykket nettverkshenting: Lagre resultatet i localStorage med en nokkel
+- Ved feilet henting (offline): Returner sist lagrede resultat fra localStorage
+- Inkluderer TTL (time-to-live) for a unnga uendelig gammel data
 
 ```text
-interface QueuedOperation {
-  id: string;
-  table: string;
-  operation: 'insert' | 'update' | 'delete';
-  data: Record<string, unknown>;
-  timestamp: number;
-  retries: number;
+interface CacheOptions {
+  key: string;           // Unik nokkel for denne dataen
+  maxAge?: number;       // Maks alder i ms (default 24 timer)
 }
 
-- addToQueue(op): Legger til i localStorage-array
-- getQueue(): Henter pending operasjoner
-- processQueue(): Kjoerer alle operasjoner mot Supabase
-- removeFromQueue(id): Fjerner fullfort operasjon
+async function fetchWithOfflineCache<T>(
+  fetchFn: () => Promise<T>,
+  options: CacheOptions
+): Promise<{ data: T; fromCache: boolean }>
+
+function getCachedData<T>(key: string): T | null
+function setCachedData<T>(key: string, data: T): void
 ```
 
-### useNetworkStatus.ts
+### Steg 3: Oppdater datahenting i sidene
+
+Legge til offline-cache i alle fetch-funksjoner pa de viktigste sidene. Dette gjores ved a wrappe eksisterende Supabase-kall med `fetchWithOfflineCache`, uten a endre sidestruktur:
+
+**Fil: `src/pages/Resources.tsx`**
+- `fetchDrones()`: Wrapper med cache-nokkel `offline_drones_{companyId}`
+- `fetchEquipment()`: Cache-nokkel `offline_equipment_{companyId}`
+- `fetchDronetags()`: Cache-nokkel `offline_dronetags_{companyId}`
+- `fetchPersonnel()`: Cache-nokkel `offline_personnel_{companyId}`
+
+**Fil: `src/pages/Oppdrag.tsx`**
+- `fetchMissions()`: Cache-nokkel `offline_missions_{companyId}_{filterTab}`
+
+**Fil: `src/pages/Hendelser.tsx`**
+- `fetchIncidents()`: Cache-nokkel `offline_incidents_{companyId}`
+
+**Fil: `src/pages/Kalender.tsx`**
+- Kalender-data caches med relevant nokkel
+
+**Fil: `src/pages/Status.tsx`**
+- Statistikk-data caches
+
+Monsteret i hver fetch-funksjon blir:
+```text
+const fetchDrones = async () => {
+  try {
+    const { data, error } = await supabase.from("drones").select("*")...;
+    if (error) throw error;
+    setDrones(data || []);
+    setCachedData(`offline_drones_${companyId}`, data || []);  // <-- ny linje
+  } catch (err) {
+    // Hvis offline, bruk cachet data
+    if (!navigator.onLine) {
+      const cached = getCachedData(`offline_drones_${companyId}`);
+      if (cached) setDrones(cached);
+    }
+  }
+};
+```
+
+### Steg 4: Offline-sikker StartFlightDialog
+
+**Fil: `src/components/StartFlightDialog.tsx`**
+
+- I `useEffect` som henter misjoner: Lagre resultatet med `setCachedData`
+- Hvis hentingen feiler og vi er offline: Bruk `getCachedData` for misjonslisten
+- Brukeren kan da velge blant sist hentede misjoner nar de starter en flytur offline
+- Tilsvarende for dronetag-enheter og sjekklister
+
+### Steg 5: DomainGuard offline-bypass
+
+**Fil: `src/components/DomainGuard.tsx`**
+
+- Legg til sjekk: Hvis `!navigator.onLine`, ikke omdiriger til login-domenet
+- Dette forhindrer at offline-brukere blir kastet ut til en login-side de ikke kan na
 
 ```text
-- Bruker navigator.onLine for initial status
-- Lytter pa window 'online' og 'offline' events
-- Returnerer { isOnline, isSyncing }
-- Ved 'online': trigger processQueue() og invalidateQueries()
+// I useEffect:
+if (!navigator.onLine) {
+  console.log('DomainGuard: Offline, skipping redirects');
+  return;
+}
 ```
 
-### OfflineBanner.tsx
+### Steg 6: AuthenticatedLayout offline-tilpasning
+
+**Fil: `src/App.tsx`**
+
+- Nar brukeren er offline og har cachet sesjon: Ikke blokker rendering selv om `isApproved` mangler
+- Vis innholdet med offline-banner synlig
 
 ```text
-- Fast posisjonert under Header (z-index under header)
-- Gul bakgrunn med ikon "WifiOff" og tekst
-- Animert inn/ut med CSS transition
-- Viser "Synkroniserer..." under prosessering
-- Viser antall koede operasjoner
+const AuthenticatedLayout = () => {
+  const { user, loading, isApproved } = useAuth();
+  const isOnline = navigator.onLine; // eller useNetworkStatus
+
+  // Offline med gyldig sesjon: vis innhold
+  if (!loading && user && !isApproved && !isOnline) {
+    // Bruker cachet profil - vis innhold
+    return <Layout />;
+  }
+  
+  if (loading || !user || !isApproved) {
+    return <Outlet />;
+  }
+  // ... resten som for
+};
 ```
 
-### Endringer i eksisterende filer
+---
+
+## Nye filer
+
+| Fil | Formal |
+|-----|--------|
+| `src/lib/offlineCache.ts` | Generisk offline-cache-hjelper med localStorage |
+
+## Endrede filer
 
 | Fil | Endring |
 |-----|---------|
-| `src/App.tsx` | Legge til OfflineBanner, oppdatere QueryClient config, legge til PersistQueryClient |
-| `src/hooks/useFlightTimer.ts` | Sjekke `navigator.onLine` for startFlight/endFlight, bruke offlineQueue |
-| `src/components/LogFlightTimeDialog.tsx` | Sjekke online-status for submit, koe hvis offline |
-| `src/components/dashboard/AddIncidentDialog.tsx` | Sjekke online-status for submit, koe hvis offline |
-| `package.json` | Legge til `@tanstack/query-sync-storage-persister` og `@tanstack/react-query-persist-client` |
-
-### Nye filer
-
-| Fil | Formaal |
-|-----|---------|
-| `src/hooks/useNetworkStatus.ts` | Hook for nettverksstatus |
-| `src/components/OfflineBanner.tsx` | Visuell offline-indikator |
-| `src/lib/offlineQueue.ts` | Ko-system for offline operasjoner |
+| `src/contexts/AuthContext.tsx` | Cache brukerdata, fallback til cache ved offline |
+| `src/components/DomainGuard.tsx` | Skip redirect nar offline |
+| `src/App.tsx` | AuthenticatedLayout tillater rendering med cachet auth offline |
+| `src/pages/Resources.tsx` | Legg til offline-cache i alle fetch-funksjoner |
+| `src/pages/Oppdrag.tsx` | Legg til offline-cache i fetchMissions |
+| `src/pages/Hendelser.tsx` | Legg til offline-cache i fetchIncidents |
+| `src/pages/Status.tsx` | Legg til offline-cache i fetch-funksjoner |
+| `src/pages/Kalender.tsx` | Legg til offline-cache i datahenting |
+| `src/components/StartFlightDialog.tsx` | Bruk cachet misjoner nar offline |
 
 ---
 
-## Begrensninger og forutsetninger
+## Begrensninger
 
-- **Kartfliser**: Leaflet-kartene vil ikke fungere offline uten en dedikert tile-caching-losning (svart komplekst, anbefales ikke i forste omgang)
-- **Filvedlegg**: Opplasting av filer/bilder kan ikke koes offline (for store for localStorage)
-- **Autentisering**: Brukerens Supabase-sesjon ma vaere gyldig. Hvis sesjonen utloper mens brukeren er offline, ma de logge inn pa nytt
-- **Konflikter**: Hvis samme data endres pa to enheter mens begge er offline, brukes "siste skriver vinner"-strategi
-- **localStorage-grense**: Ca 5-10 MB. Tilstrekkelig for metadata og koeoperasjoner, men ikke for store filer
+- **Innlogging offline**: Det er teknisk umulig a logge inn nar man er helt offline (krever Supabase-autentisering). Losningen sikrer at brukere som allerede er innlogget forblir innlogget.
+- **Sesjonsutlop**: Hvis Supabase-sesjonen utloper mens brukeren er offline, ma de logge inn igjen nar nett er tilbake. Supabase-sesjoner varer typisk 1 time, men auto-refresh fungerer sa lenge nett er tilgjengelig.
+- **Sanntidsoppdateringer**: Realtime-subscriptions fungerer ikke offline, men data vises fra cache.
+- **localStorage-grense**: Ca 5-10 MB total. For a unnga problemer begrenses cache til de viktigste datasettene.
 
