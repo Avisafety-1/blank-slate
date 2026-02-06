@@ -1867,25 +1867,41 @@ const Oppdrag = () => {
         />
 
         {/* Expanded Map Dialog */}
-        {expandedMapMission && (
-          <ExpandedMapDialog
-            open={!!expandedMapMission}
-            onOpenChange={(open) => !open && setExpandedMapMission(null)}
-            latitude={expandedMapMission.latitude}
-            longitude={expandedMapMission.longitude}
-            route={expandedMapMission.route as any}
-            flightTracks={
-              expandedMapMission.flightLogs
-                ?.filter((log: any) => log.flight_track?.positions?.length > 0)
-                .map((log: any) => ({
-                  positions: log.flight_track.positions,
-                  flightLogId: log.id,
-                  flightDate: log.flight_date,
-                })) || null
-            }
-            missionTitle={expandedMapMission.tittel}
-          />
-        )}
+        {expandedMapMission && (() => {
+          const routeCoords = (expandedMapMission.route as any)?.coordinates;
+          const effectiveLat = (expandedMapMission as any).latitude ?? routeCoords?.[0]?.lat;
+          const effectiveLng = (expandedMapMission as any).longitude ?? routeCoords?.[0]?.lng;
+          
+          // Also try to get coordinates from flight tracks if no mission coords
+          const firstTrack = (expandedMapMission as any).flightLogs?.find((log: any) => log.flight_track?.positions?.length > 0);
+          const trackLat = firstTrack?.flight_track?.positions?.[0]?.lat;
+          const trackLng = firstTrack?.flight_track?.positions?.[0]?.lng;
+          
+          const finalLat = effectiveLat ?? trackLat;
+          const finalLng = effectiveLng ?? trackLng;
+          
+          if (!finalLat || !finalLng) return null;
+          
+          return (
+            <ExpandedMapDialog
+              open={!!expandedMapMission}
+              onOpenChange={(open) => !open && setExpandedMapMission(null)}
+              latitude={finalLat}
+              longitude={finalLng}
+              route={expandedMapMission.route as any}
+              flightTracks={
+                (expandedMapMission as any).flightLogs
+                  ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+                  .map((log: any) => ({
+                    positions: log.flight_track.positions,
+                    flightLogId: log.id,
+                    flightDate: log.flight_date,
+                  })) || null
+              }
+              missionTitle={expandedMapMission.tittel}
+            />
+          );
+        })()}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deletingMission} onOpenChange={(open) => !open && setDeletingMission(null)}>
