@@ -1,126 +1,91 @@
 
 
-# Fix: Automatisk utlogging ved offline-modus
+# Fix: "Avventer godkjenning" ved offline-modus
 
 ## Rotarsak
 
-Nar appen starter eller kjorer offline, prover Supabase-klienten a forny tilgangstokenet (access token) via et nettverkskall til `/token`. Nar dette feiler fordi enheten er offline, skjer folgende:
+Det er to problemer som sammen forarsaker at brukeren kastes ut med meldingen "Avventer godkjenning" nar de gar offline:
 
-1. `supabase.auth.getSession()` returnerer `null` (fordi token-fornyelsen feilet)
-2. `onAuthStateChange` fyrer en `SIGNED_OUT`-hendelse
-3. AuthContext setter `user` til `null` og `isApproved` til `false`
-4. Brukeren ser enten en blank side eller blir omdirigert til login
+### Problem 1: Race condition i onAuthStateChange
 
-Dette er et kjent problem med Supabase JS v2 (bekreftet i GitHub issues #226 og #36906).
-
-## Losning
-
-Beskytte AuthContext mot falske utlogginger som skyldes nettverksfeil, ved a:
-
-1. Cache brukerdata (User-objektet) i localStorage sammen med profildata
-2. Ignorere `SIGNED_OUT`-hendelser nar enheten er offline
-3. Gjenopprette brukerdata fra cache nar `getSession()` returnerer null offline
-
-## Detaljert implementering
-
-### Fil: `src/contexts/AuthContext.tsx`
-
-**Endring 1: Utvid cache med User-objekt**
-
-Legge til et eget cache-felt for brukerdata (user ID, email, metadata) slik at vi kan gjenopprette `user`-staten nar Supabase returnerer null offline.
+I `AuthContext.tsx` har vi lagt til en offline-guard for `SIGNED_OUT`-hendelser, men det finnes en `else`-gren (linje 170-174) som fanger ALLE andre hendelser, inkludert `INITIAL_SESSION`:
 
 ```text
-const SESSION_CACHE_KEY = 'avisafe_session_cache';
-
-// Lagre ved vellykket innlogging/sesjonsinnhenting:
-localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
-  userId: user.id,
-  email: user.email,
-  user_metadata: user.user_metadata,
-  app_metadata: user.app_metadata,
-}));
-```
-
-**Endring 2: Beskytt onAuthStateChange mot offline SIGNED_OUT**
-
-Nar vi mottar `SIGNED_OUT` og enheten er offline, sjekk om vi har cachet brukerdata. Hvis ja, behold eksisterende state i stedet for a nullstille alt:
-
-```text
-} else if (event === 'SIGNED_OUT') {
-  // Offline guard: Supabase fires SIGNED_OUT when token
-  // refresh fails offline - ignore it
-  if (!navigator.onLine) {
-    console.log('AuthContext: Ignoring SIGNED_OUT while offline');
-    return; // <-- Ikke nullstill state
-  }
-  // Online: Ekte utlogging, nullstill alt
-  setUser(null);
-  setSession(null);
-  // ... resten av nullstillingen
+} else {
+  setSession(session);
+  setUser(session?.user ?? null);  // <-- Setter user til null offline!
+  setLoading(false);
 }
 ```
 
-**Endring 3: Fallback i getSession()**
+Nar Supabase fyrer `INITIAL_SESSION` med `session=null` (fordi token-fornyelsen feilet offline), setter denne grenen `user` til `null` -- for `getSession()`-fallbacken rekker a gjenopprette fra cache.
 
-Nar `getSession()` returnerer null og enheten er offline, gjenopprett fra cache:
+### Problem 2: Manglende offline-sjekk i Index.tsx
+
+I `Index.tsx` linje 271 sjekkes det:
 
 ```text
-supabase.auth.getSession().then(({ data: { session } }) => {
-  if (session?.user) {
-    setSession(session);
-    setUser(session.user);
-    setLoading(false);
-    fetchUserInfo(session.user.id);
-  } else if (!navigator.onLine) {
-    // Offline fallback: Restore from cache
-    const cachedSession = localStorage.getItem(SESSION_CACHE_KEY);
-    const cachedUserId = cachedSession ? JSON.parse(cachedSession).userId : null;
-    if (cachedUserId) {
-      // Create minimal user object from cache
-      setUser(JSON.parse(cachedSession) as User);
-      applyCachedProfile(cachedUserId);
-      setLoading(false);
-    } else {
-      setLoading(false);
+if (!user || !isApproved) {
+  // Viser "Avventer godkjenning"-skjermen
+}
+```
+
+Denne sjekken har ingen offline-unntak. Selv om `AuthenticatedLayout` i `App.tsx` allerede har en `isOfflineWithSession`-sjekk, sa er det `Index.tsx` sin egen sjekk som viser "Avventer godkjenning" til brukeren.
+
+---
+
+## Losning
+
+### Steg 1: Fiks else-grenen i onAuthStateChange (AuthContext.tsx)
+
+Legg til en offline-guard i `else`-grenen slik at vi ikke overskriver brukerdata nar enheten er offline og Supabase returnerer null session:
+
+```text
+} else {
+  // Offline guard for INITIAL_SESSION with null session
+  if (!session && !navigator.onLine) {
+    console.log('AuthContext: Ignoring null session event while offline');
+    // Try to restore from cache if we don't have a user yet
+    if (!user) {
+      restoreFromCache();
     }
-  } else {
     setLoading(false);
+    return;
   }
-});
+  setSession(session);
+  setUser(session?.user ?? null);
+  setLoading(false);
+}
 ```
 
-**Endring 4: Rydd cache ved ekte utlogging**
+### Steg 2: Legg til offline-unntak i Index.tsx
 
-Nar brukeren logger ut med vilje (online), fjern bade sesjonscache og profilcache:
+Oppdater sjekken pa linje 271 til a tillate brukere som er offline med cachet sesjon:
 
 ```text
-const signOut = async () => {
-  // Rydd cache for vi logger ut
-  localStorage.removeItem(SESSION_CACHE_KEY);
-  if (user) {
-    localStorage.removeItem(PROFILE_CACHE_KEY(user.id));
-  }
-  await supabase.auth.signOut();
-};
+const isOfflineWithCachedSession = !navigator.onLine && user;
+
+if (!user || (!isApproved && !isOfflineWithCachedSession)) {
+  // Vis "Avventer godkjenning" bare nar brukeren faktisk ikke er godkjent OG er online
+  return ( ... );
+}
 ```
 
-### Fil: `src/components/DomainGuard.tsx`
-
-Allerede fikset med offline-bypass. Ingen ytterligere endringer nodvendig.
-
-### Fil: `src/App.tsx`
-
-Allerede fikset med `isOfflineWithSession`-sjekken. Ingen ytterligere endringer nodvendig.
+---
 
 ## Endrede filer
 
 | Fil | Endring |
 |-----|---------|
-| `src/contexts/AuthContext.tsx` | Cache User-objekt, ignorer offline SIGNED_OUT, fallback i getSession(), rydd cache ved ekte utlogging |
+| `src/contexts/AuthContext.tsx` | Legg til offline-guard i `else`-grenen av `onAuthStateChange` for a hindre at brukerdata nullstilles ved `INITIAL_SESSION` |
+| `src/pages/Index.tsx` | Legg til offline-unntak i `!isApproved`-sjekken sa brukere ikke ser "Avventer godkjenning" offline |
 
-## Begrensninger
+## Flyten etter fix
 
-- Brukeren kan IKKE logge inn for forste gang uten nettverk (krever Supabase-autentisering)
-- Hvis sesjonen har utlopt og brukeren har vaert offline i lang tid, ma de logge inn pa nytt nar nett er tilbake
-- API-kall vil fortsatt feile offline, men brukergrensesnittet viser cachet data i stedet for a kaste brukeren ut
+1. Bruker er online og innlogget -- alt fungerer normalt, sesjon og profil caches
+2. Bruker gar offline -- Supabase fyrer hendelser med null session
+3. `onAuthStateChange` fanger null-session offline -- gjenoppretter fra cache i stedet for a nullstille
+4. `getSession()` returnerer null offline -- gjenoppretter fra cache (eksisterende logikk)
+5. `Index.tsx` ser at bruker er offline med cachet sesjon -- viser dashboardet
+6. Bruker far nett igjen -- Supabase forner token, normal drift gjenopptas
 
