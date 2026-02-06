@@ -19,51 +19,57 @@ const countByStatus = (items: { status: Status }[]): StatusCounts => {
 };
 
 const fetchDrones = async () => {
-  const { data: dronesData, error } = await supabase
-    .from("drones")
-    .select("*")
-    .eq("aktiv", true);
-  
-  if (error || !dronesData) {
-    throw error;
+  // Batch all 3 queries in parallel instead of N+1 per drone
+  const [dronesResult, accessoriesResult, droneEquipmentResult] = await Promise.all([
+    supabase.from("drones").select("*").eq("aktiv", true),
+    supabase.from("drone_accessories").select("*"),
+    supabase.from("drone_equipment").select(`
+      drone_id,
+      equipment:equipment_id (
+        id,
+        neste_vedlikehold,
+        varsel_dager
+      )
+    `),
+  ]);
+
+  if (dronesResult.error || !dronesResult.data) {
+    throw dronesResult.error;
   }
 
-  // Fetch accessories and linked equipment for each drone in parallel
-  const dronesWithAggregatedStatus = await Promise.all(
-    dronesData.map(async (drone) => {
-      const [accessoriesResult, linkedEquipmentResult] = await Promise.all([
-        supabase
-          .from("drone_accessories")
-          .select("*")
-          .eq("drone_id", drone.id),
-        supabase
-          .from("drone_equipment")
-          .select(`
-            equipment:equipment_id (
-              id,
-              neste_vedlikehold,
-              varsel_dager
-            )
-          `)
-          .eq("drone_id", drone.id)
-      ]);
+  const dronesData = dronesResult.data;
+  const allAccessories = accessoriesResult.data || [];
+  const allDroneEquipment = droneEquipmentResult.data || [];
 
-      const accessories = accessoriesResult.data || [];
-      const linkedEquipment = (linkedEquipmentResult.data || [])
-        .map((link: any) => link.equipment)
-        .filter(Boolean);
+  // Group accessories and equipment by drone_id in memory
+  const accessoriesByDrone = new Map<string, any[]>();
+  for (const acc of allAccessories) {
+    const list = accessoriesByDrone.get(acc.drone_id) || [];
+    list.push(acc);
+    accessoriesByDrone.set(acc.drone_id, list);
+  }
 
-      const { status } = calculateDroneAggregatedStatus(
-        { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
-        accessories,
-        linkedEquipment
-      );
+  const equipmentByDrone = new Map<string, any[]>();
+  for (const link of allDroneEquipment) {
+    if (link.equipment) {
+      const list = equipmentByDrone.get(link.drone_id) || [];
+      list.push(link.equipment);
+      equipmentByDrone.set(link.drone_id, list);
+    }
+  }
 
-      return { ...drone, status };
-    })
-  );
+  return dronesData.map((drone) => {
+    const accessories = accessoriesByDrone.get(drone.id) || [];
+    const linkedEquipment = equipmentByDrone.get(drone.id) || [];
 
-  return dronesWithAggregatedStatus;
+    const { status } = calculateDroneAggregatedStatus(
+      { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+      accessories,
+      linkedEquipment
+    );
+
+    return { ...drone, status };
+  });
 };
 
 const fetchEquipment = async () => {
