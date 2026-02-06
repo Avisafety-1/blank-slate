@@ -274,8 +274,9 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   const getDaysUntilExpiry = () => {
     if (!document.gyldig_til) return null;
     const today = new Date();
+    const expiryDate = new Date(document.gyldig_til);
     return Math.floor(
-      (document.gyldig_til.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
   };
 

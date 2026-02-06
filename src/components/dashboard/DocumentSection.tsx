@@ -16,7 +16,8 @@ const getDocumentStatus = (doc: Document) => {
   if (!doc.gyldig_til) return "Grønn";
 
   const today = new Date();
-  const daysUntilExpiry = Math.floor((doc.gyldig_til.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const expiryDate = new Date(doc.gyldig_til);
+  const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   if (daysUntilExpiry < 0) return "Rød";
   if (daysUntilExpiry <= doc.varsel_dager_for_utløp) return "Gul";
