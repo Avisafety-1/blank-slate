@@ -1,136 +1,58 @@
 
-# Plan: Fikse "duplicate key value" feil ved SORA-lagring
 
-## Problemanalyse
+## Kopiere oppdraget "Demo dronetag" til Avisafe
 
-### Identifisert årsak
-Tabellen `mission_sora` har en UNIQUE constraint på `mission_id`:
-```sql
-CONSTRAINT mission_sora_mission_id_key UNIQUE (mission_id)
-```
+### Hva som skal kopieres
 
-Dette betyr at det kun kan eksistere én SORA-analyse per oppdrag.
+Oppdraget "Demo dronetag" fra UAS Voss inneholder:
+- **Oppdragsdata**: Tittel, lokasjon (Voss), beskrivelse, rute (4 koordinater, 0.42 km2, 3.2 km), risikoniva (Lav), status (Fullfort)
+- **Tilknyttet drone**: Matrice 4 E (finnes ikke hos Avisafe)
+- **Tilknyttet personell**: Kenneth Kleppe (tilhorer UAS Voss)
+- **Flylogg**: 1 flylogg med 140 track-punkter fra DroneTag, 12 min flytid
+- **DroneTag-enhet**: "AviSafe DroneTag" (tilhorer UAS Voss)
+- **Risikovurdering (AI)**: Fullstendig AI-analyse med score 8/10
+- **Ingen utstyr** tilknyttet
+- **Ingen SORA-analyse**
 
-### Hvorfor feilen oppstår
-Koden i `SoraAnalysisDialog.tsx` bruker en to-stegs prosess:
-1. Sjekker om SORA eksisterer (`fetchExistingSora`)
-2. Kjører enten UPDATE eller INSERT basert på resultatet
+### Utfordringer og losning
 
-**Race condition:** Mellom disse stegene kan en annen prosess (dobbeltklikk, annen bruker, tidsforskyvning) ha opprettet en SORA. Da prøver koden å kjøre INSERT på en `mission_id` som allerede finnes → "duplicate key value"-feil.
+Avisafe har ikke samme drone, pilot eller DroneTag-enhet. Her er strategien:
 
----
+| Ressurs | UAS Voss | Avisafe-losning |
+|---------|----------|-----------------|
+| Drone (Matrice 4 E) | Finnes | Kopieres UTEN drone-tilknytning. Bruker kan selv velge drone etterpå |
+| Personell (Kenneth Kleppe) | Finnes | Kopieres UTEN personell. Bruker kan selv tilknytte |
+| DroneTag-enhet | Finnes hos UAS Voss | Ikke tilgjengelig. Kopieres uten |
+| Flylogg med trackdata | 140 punkter | Kopieres MED trackdata, men uten drone_id og dronetag_device_id |
+| Risikovurdering | AI-analyse | Kopieres som den er (historisk referanse) |
+| Rute | 4 koordinater | Kopieres identisk |
 
-## Løsning
+### Gjennomforing (SQL-operasjoner)
 
-### Bruk UPSERT i stedet for INSERT/UPDATE
+Jeg vil utfore folgende steg via direkte database-operasjoner (ingen kodeendring nodvendig):
 
-Supabase støtter `upsert()` med `onConflict`-parameter som håndterer dette atomisk:
+1. **Opprett nytt oppdrag** i `missions`-tabellen med Avisafe sin `company_id`, same rute, lokasjon og beskrivelse. Tittel settes til "Demo dronetag (kopi)".
 
-**Fra (nåværende problematisk kode):**
-```typescript
-if (existingSora) {
-  await supabase.from("mission_sora").update(soraData).eq("id", existingSora.id);
-} else {
-  await supabase.from("mission_sora").insert({...soraData, company_id, prepared_by, prepared_at});
-}
-```
+2. **Kopier flyloggen** til `flight_logs` med:
+   - Avisafe sin `company_id`
+   - `drone_id` satt til `NULL` (ingen tilsvarende drone)
+   - `dronetag_device_id` satt til `NULL` (ingen DroneTag hos Avisafe)
+   - `user_id` satt til en Avisafe-bruker (f.eks. admin-bruker)
+   - Alle track-punkter (`flight_track`) beholdes intakt
 
-**Til (robust løsning):**
-```typescript
-await supabase.from("mission_sora").upsert({
-  ...soraData,
-  company_id: companyId,
-  prepared_by: existingSora?.prepared_by || user.id,
-  prepared_at: existingSora?.prepared_at || new Date().toISOString(),
-}, { 
-  onConflict: 'mission_id',
-  ignoreDuplicates: false  // Oppdater eksisterende rad
-});
-```
+3. **Kopier risikovurderingen** til `mission_risk_assessments` med referanse til det nye oppdraget.
 
----
+4. **IKKE kopier**: mission_drones, mission_personnel (ingen matchende ressurser hos Avisafe)
 
-## Tekniske detaljer
+### Resultat
 
-### Fil som endres
-`src/components/dashboard/SoraAnalysisDialog.tsx`
+Etter kopiering vil Avisafe ha:
+- Et fullfort oppdrag med komplett rute og kartdata
+- Flylogg med 140 DroneTag track-punkter (synlig pa kartet)
+- AI-risikovurdering som historisk referanse
+- Mulighet til a knytte egne droner og personell til oppdraget i etterkant
 
-### Endringer i handleSave-funksjonen (linje 156-224)
+### Teknisk detalj
 
-Erstatt hele if/else INSERT/UPDATE-blokken med én upsert-operasjon:
+Alle operasjoner er rene data-innsettinger (INSERT) i databasen. Ingen kodeendringer er nodvendige. RLS-policies vil automatisk sikre at dataen kun er synlig for Avisafe-brukere.
 
-```typescript
-const handleSave = async () => {
-  if (!selectedMissionId) {
-    toast.error("Vennligst velg et oppdrag");
-    return;
-  }
-
-  if (!companyId) {
-    toast.error("Kunne ikke finne selskaps-ID");
-    return;
-  }
-  
-  if (!user?.id) {
-    toast.error("Kunne ikke finne bruker-ID");
-    return;
-  }
-
-  setLoading(true);
-
-  const soraData = {
-    mission_id: selectedMissionId,
-    company_id: companyId,
-    environment: formData.environment || null,
-    conops_summary: formData.conops_summary || null,
-    igrc: formData.igrc ? parseInt(formData.igrc) : null,
-    ground_mitigations: formData.ground_mitigations || null,
-    fgrc: formData.fgrc ? parseInt(formData.fgrc) : null,
-    arc_initial: formData.arc_initial || null,
-    airspace_mitigations: formData.airspace_mitigations || null,
-    arc_residual: formData.arc_residual || null,
-    sail: formData.sail || null,
-    residual_risk_level: formData.residual_risk_level || null,
-    residual_risk_comment: formData.residual_risk_comment || null,
-    operational_limits: formData.operational_limits || null,
-    sora_status: formData.sora_status,
-    approved_by: formData.approved_by || null,
-    approved_at: formData.sora_status === "Ferdig" && !existingSora?.approved_at 
-      ? new Date().toISOString() 
-      : existingSora?.approved_at || null,
-    // Bevar original prepared_by og prepared_at ved oppdatering
-    prepared_by: existingSora?.prepared_by || user.id,
-    prepared_at: existingSora?.prepared_at || new Date().toISOString(),
-  };
-
-  try {
-    const { error } = await supabase
-      .from("mission_sora")
-      .upsert(soraData, { 
-        onConflict: 'mission_id',
-        ignoreDuplicates: false
-      });
-
-    if (error) throw error;
-    
-    toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
-    onSaved?.();
-    onOpenChange(false);
-  } catch (error: any) {
-    console.error("Error saving SORA:", error);
-    toast.error("Kunne ikke lagre SORA-analyse: " + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
----
-
-## Forventet resultat
-
-Etter implementering:
-- Ingen "duplicate key value"-feil ved lagring av SORA
-- Race conditions håndteres automatisk av databasen
-- Atomisk operasjon garanterer dataintegritet
-- Original `prepared_by` og `prepared_at` bevares ved oppdateringer
