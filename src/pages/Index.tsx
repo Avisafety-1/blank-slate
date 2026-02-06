@@ -268,7 +268,9 @@ const Index = () => {
     );
   }
 
-  if (!user || !isApproved) {
+  const isOfflineWithCachedSession = !navigator.onLine && user;
+
+  if (!user || (!isApproved && !isOfflineWithCachedSession)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">

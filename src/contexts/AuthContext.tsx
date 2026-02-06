@@ -168,6 +168,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUserRole(null);
           setLoading(false);
         } else {
+          // Offline guard: if session is null while offline, don't overwrite user state
+          if (!session && !navigator.onLine) {
+            console.log('AuthContext: Ignoring null session event while offline');
+            if (!user) {
+              restoreFromCache();
+            }
+            setLoading(false);
+            return;
+          }
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
