@@ -1,160 +1,126 @@
 
-# Fix: Kritiske feil i offline flylogging
 
-## Funn fra kodegjennomgang
+# Fix: Automatisk utlogging ved offline-modus
 
-Jeg kunne ikke gjennomfore en full nettlesertest fordi innlogging kreves, men en grundig kodegjennomgang avdekket **3 kritiske feil** som forhindrer at offline flylogging fungerer korrekt.
+## Rotarsak
 
----
+Nar appen starter eller kjorer offline, prover Supabase-klienten a forny tilgangstokenet (access token) via et nettverkskall til `/token`. Nar dette feiler fordi enheten er offline, skjer folgende:
 
-## Problem 1: LogFlightTimeDialog sine dropdowns er tomme offline
+1. `supabase.auth.getSession()` returnerer `null` (fordi token-fornyelsen feilet)
+2. `onAuthStateChange` fyrer en `SIGNED_OUT`-hendelse
+3. AuthContext setter `user` til `null` og `isApproved` til `false`
+4. Brukeren ser enten en blank side eller blir omdirigert til login
 
-**Alvorlighetsgrad: KRITISK - blokkerer all offline-logging**
+Dette er et kjent problem med Supabase JS v2 (bekreftet i GitHub issues #226 og #36906).
 
-`LogFlightTimeDialog.tsx` henter droner, misjoner, personell og utstyr direkte fra Supabase uten offline-cache (linje 410-448). Nar brukeren er offline:
-- Alle fire `fetch`-funksjoner feiler stille
-- Dropdown-menyene for drone, pilot, misjon og utstyr er tomme
-- Validering feiler med "Velg en drone" fordi ingen droner er tilgjengelige
-- Brukeren nar aldri den offline-logikken (linje 543) fordi valideringen stopper dem forst
+## Losning
 
-**Losning**: Legg til `setCachedData`/`getCachedData` i alle fire fetch-funksjoner i `LogFlightTimeDialog`, identisk med monsteret brukt i `Resources.tsx`.
+Beskytte AuthContext mot falske utlogginger som skyldes nettverksfeil, ved a:
 
----
+1. Cache brukerdata (User-objektet) i localStorage sammen med profildata
+2. Ignorere `SIGNED_OUT`-hendelser nar enheten er offline
+3. Gjenopprette brukerdata fra cache nar `getSession()` returnerer null offline
 
-## Problem 2: Drone-flytimer overskrives i stedet for a legges til
+## Detaljert implementering
 
-**Alvorlighetsgrad: KRITISK - datakorrumpering**
+### Fil: `src/contexts/AuthContext.tsx`
 
-I offline-stien (linje 574-583) koes en `update`-operasjon som setter `flyvetimer` til kun den siste flyturens minutter:
+**Endring 1: Utvid cache med User-objekt**
+
+Legge til et eget cache-felt for brukerdata (user ID, email, metadata) slik at vi kan gjenopprette `user`-staten nar Supabase returnerer null offline.
 
 ```text
-data: {
-  flyvetimer: formData.flightDurationMinutes, // FEIL: Overskriver totalen
+const SESSION_CACHE_KEY = 'avisafe_session_cache';
+
+// Lagre ved vellykket innlogging/sesjonsinnhenting:
+localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
+  userId: user.id,
+  email: user.email,
+  user_metadata: user.user_metadata,
+  app_metadata: user.app_metadata,
+}));
+```
+
+**Endring 2: Beskytt onAuthStateChange mot offline SIGNED_OUT**
+
+Nar vi mottar `SIGNED_OUT` og enheten er offline, sjekk om vi har cachet brukerdata. Hvis ja, behold eksisterende state i stedet for a nullstille alt:
+
+```text
+} else if (event === 'SIGNED_OUT') {
+  // Offline guard: Supabase fires SIGNED_OUT when token
+  // refresh fails offline - ignore it
+  if (!navigator.onLine) {
+    console.log('AuthContext: Ignoring SIGNED_OUT while offline');
+    return; // <-- Ikke nullstill state
+  }
+  // Online: Ekte utlogging, nullstill alt
+  setUser(null);
+  setSession(null);
+  // ... resten av nullstillingen
 }
 ```
 
-Men online-stien bruker en RPC-funksjon: `supabase.rpc('add_drone_flight_hours', {...})` som korrekt **legger til** minutter. Offline-koen stotter ikke RPC-kall, sa dette vil overskrive dronens totale flytimer med kun siste flytur.
+**Endring 3: Fallback i getSession()**
 
-**Losning**: Fjern drone-timer-oppdateringen fra offline-koen. Legg i stedet til en ny `rpc`-operasjonstype i offlineQueue, eller handter drone-timer-synkronisering som en del av flight_log-synkroniseringen via en database-trigger.
-
-Den enkleste losningen: Opprett en database-trigger `on INSERT flight_logs` som automatisk oppdaterer `drones.flyvetimer`. Da trenger verken online- eller offline-stien a koe en separat oppdatering -- det skjer automatisk nar flyloggen synkroniseres.
-
----
-
-## Problem 3: Utstyrs-flytimer og koblingstabeller mangler offline
-
-**Alvorlighetsgrad: MEDIUM**
-
-Offline-stien (linje 543-613) mangler:
-- `flight_log_equipment`-oppforinger (utstyr koblet til flyloggen)
-- `flight_log_personnel`-oppforinger (personell koblet til flyloggen)
-- Utstyrsflytimerr-oppdateringer
-- Automatisk misjon-opprettelse for ustrukturerte flyvninger
-
-Disse finnes alle i online-stien (linje 617-776) men ble ikke implementert offline.
-
-**Losning**: Koe alle sekundaere operasjoner som separate koeoppforinger, eller bruk database-triggere for automatisk opprettelse.
-
----
-
-## Implementeringsplan
-
-### Steg 1: Legg til offline-cache i LogFlightTimeDialog sine fetch-funksjoner
-
-Oppdater de fire fetch-funksjonene i `LogFlightTimeDialog.tsx`:
+Nar `getSession()` returnerer null og enheten er offline, gjenopprett fra cache:
 
 ```text
-// fetchDrones - linje 410-418
-const fetchDrones = async () => {
-  try {
-    const { data, error } = await supabase
-      .from("drones")
-      .select("id, modell, serienummer")
-      .eq("aktiv", true)
-      .order("modell");
-    if (error) throw error;
-    if (data) {
-      setDrones(data);
-      setCachedData(`offline_logflight_drones_${companyId}`, data);
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (session?.user) {
+    setSession(session);
+    setUser(session.user);
+    setLoading(false);
+    fetchUserInfo(session.user.id);
+  } else if (!navigator.onLine) {
+    // Offline fallback: Restore from cache
+    const cachedSession = localStorage.getItem(SESSION_CACHE_KEY);
+    const cachedUserId = cachedSession ? JSON.parse(cachedSession).userId : null;
+    if (cachedUserId) {
+      // Create minimal user object from cache
+      setUser(JSON.parse(cachedSession) as User);
+      applyCachedProfile(cachedUserId);
+      setLoading(false);
+    } else {
+      setLoading(false);
     }
-  } catch {
-    if (!navigator.onLine && companyId) {
-      const cached = getCachedData<Drone[]>(`offline_logflight_drones_${companyId}`);
-      if (cached) setDrones(cached);
-    }
+  } else {
+    setLoading(false);
   }
+});
+```
+
+**Endring 4: Rydd cache ved ekte utlogging**
+
+Nar brukeren logger ut med vilje (online), fjern bade sesjonscache og profilcache:
+
+```text
+const signOut = async () => {
+  // Rydd cache for vi logger ut
+  localStorage.removeItem(SESSION_CACHE_KEY);
+  if (user) {
+    localStorage.removeItem(PROFILE_CACHE_KEY(user.id));
+  }
+  await supabase.auth.signOut();
 };
 ```
 
-Samme monster for `fetchMissions`, `fetchPersonnel`, og `fetchEquipment`.
+### Fil: `src/components/DomainGuard.tsx`
 
-### Steg 2: Fiks drone-flytimer (database-trigger)
+Allerede fikset med offline-bypass. Ingen ytterligere endringer nodvendig.
 
-Opprett en database-trigger som automatisk oppdaterer `drones.flyvetimer` nar en ny `flight_log` settes inn:
+### Fil: `src/App.tsx`
 
-```text
-CREATE OR REPLACE FUNCTION update_drone_flight_hours_on_log()
-RETURNS trigger AS $$
-BEGIN
-  UPDATE drones 
-  SET flyvetimer = COALESCE(flyvetimer, 0) + NEW.flight_duration_minutes
-  WHERE id = NEW.drone_id;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER trg_update_drone_hours
-  AFTER INSERT ON flight_logs
-  FOR EACH ROW
-  EXECUTE FUNCTION update_drone_flight_hours_on_log();
-```
-
-Tilsvarende trigger for utstyrsflytimerr via `flight_log_equipment`.
-
-Fjern den manuelle drone-timer-oppdateringen fra bade online- og offline-stien i LogFlightTimeDialog (forenkler koden).
-
-### Steg 3: Koe sekundaere operasjoner offline
-
-Utvid offline-stien med koing av:
-- `flight_log_equipment` INSERT for hvert valgt utstyr
-- `flight_log_personnel` INSERT for koblet personell og pilot  
-- Automatisk misjon-opprettelse for flyvninger uten misjon
-
-### Steg 4: Legg til RPC-stotte i offlineQueue (valgfritt)
-
-Utvid `QueuedOperation`-interfacet med en `rpc`-operasjonstype:
-
-```text
-interface QueuedOperation {
-  // ... eksisterende felt
-  operation: 'insert' | 'update' | 'delete' | 'rpc';
-  rpcName?: string;
-  rpcArgs?: Record<string, unknown>;
-}
-```
-
-Med tilhorende `executeOperation`-logikk. Men dette er valgfritt hvis database-triggere brukes.
-
----
+Allerede fikset med `isOfflineWithSession`-sjekken. Ingen ytterligere endringer nodvendig.
 
 ## Endrede filer
 
 | Fil | Endring |
 |-----|---------|
-| `src/components/LogFlightTimeDialog.tsx` | Legg til offlineCache import, oppdater alle 4 fetch-funksjoner med cache, utvid offline-stien med sekundaere operasjoner |
-| `src/lib/offlineQueue.ts` | (Valgfritt) Legg til RPC-stotte |
-| Ny migrasjon | Database-trigger for automatisk flytimer-oppdatering |
+| `src/contexts/AuthContext.tsx` | Cache User-objekt, ignorer offline SIGNED_OUT, fallback i getSession(), rydd cache ved ekte utlogging |
 
----
+## Begrensninger
 
-## Oppsummering
+- Brukeren kan IKKE logge inn for forste gang uten nettverk (krever Supabase-autentisering)
+- Hvis sesjonen har utlopt og brukeren har vaert offline i lang tid, ma de logge inn pa nytt nar nett er tilbake
+- API-kall vil fortsatt feile offline, men brukergrensesnittet viser cachet data i stedet for a kaste brukeren ut
 
-Etter disse fiksene vil offline flylogging fungere slik:
-
-1. Bruker har vaert online -- dropdown-data er cachet i localStorage
-2. Bruker gar offline -- banner viser "Du er frakoblet"
-3. Bruker starter flytur -- lagres i localStorage + koes til database
-4. Bruker stopper flytur -- LogFlightTimeDialog viser cachet droner, misjoner, personell
-5. Bruker fyller ut og lagrer -- flylogg koes i offline-koen
-6. Bruker far nett igjen -- koen prosesseres, flylogg insertes, trigger oppdaterer flytimer
-7. Banner viser "Synkronisering fullfort"
