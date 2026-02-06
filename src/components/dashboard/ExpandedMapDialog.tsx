@@ -74,13 +74,31 @@ export const ExpandedMapDialog = ({
   useEffect(() => {
     if (!open || !latitude || !longitude) return;
 
-    // Wait for DOM to be ready
-    const initTimeout = setTimeout(() => {
-      const container = mapRef.current;
-      if (!container) return;
+    let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 10;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-      // Ensure container has dimensions
+    function tryInitMap() {
+      if (cancelled) return;
+
+      const container = mapRef.current;
+      if (!container) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          const t = setTimeout(tryInitMap, 100);
+          timeouts.push(t);
+        }
+        return;
+      }
+
+      // Ensure container has dimensions - retry if not ready yet
       if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          const t = setTimeout(tryInitMap, 100);
+          timeouts.push(t);
+        }
         return;
       }
 
@@ -325,20 +343,29 @@ export const ExpandedMapDialog = ({
 
         fetchZones();
 
-        // Force map to recalculate size after dialog animation
-        setTimeout(() => {
-          if (leafletMapRef.current) {
-            leafletMapRef.current.invalidateSize();
-          }
-        }, 200);
+        // Force map to recalculate size after dialog animation completes
+        const invalidateDelays = [300, 500, 800];
+        invalidateDelays.forEach((delay) => {
+          const t = setTimeout(() => {
+            if (!cancelled && leafletMapRef.current) {
+              leafletMapRef.current.invalidateSize();
+            }
+          }, delay);
+          timeouts.push(t);
+        });
       } catch (err) {
         console.error("Error initializing map:", err);
       }
-    }, 200);
+    }
+
+    // Start first attempt after a short delay for dialog to begin rendering
+    const t = setTimeout(tryInitMap, 150);
+    timeouts.push(t);
 
     // Cleanup
     return () => {
-      clearTimeout(initTimeout);
+      cancelled = true;
+      timeouts.forEach(clearTimeout);
     };
   }, [open, latitude, longitude, route, flightTracks, mapKey]);
 
