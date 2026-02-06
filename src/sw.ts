@@ -1,10 +1,20 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute } from 'workbox-precaching';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
 
 declare const self: ServiceWorkerGlobalScope;
 
 // PWA Precaching - this will be replaced by the build tool with the list of assets
 precacheAndRoute(self.__WB_MANIFEST);
+
+// SPA navigation fallback: serve cached index.html for all navigation requests
+// Without this, refreshing on /ressurser or any sub-route while offline fails
+const navigationHandler = createHandlerBoundToURL('/index.html');
+const navigationRoute = new NavigationRoute(navigationHandler, {
+  // Don't intercept API calls or static assets
+  denylist: [/^\/api\//, /^\/supabase\//, /\.\w+$/],
+});
+registerRoute(navigationRoute);
 
 // Push notification handler
 self.addEventListener('push', function(event) {
