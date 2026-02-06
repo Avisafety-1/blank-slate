@@ -67,30 +67,32 @@ const Resources = () => {
       fetchPersonnel();
     }
 
-    // Real-time subscriptions
+    // Real-time subscriptions (guarded for offline)
+    const guardedFetch = (fn: () => void) => () => { if (navigator.onLine) fn(); };
+
     const dronesChannel = supabase
       .channel('drones-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, fetchDrones)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, guardedFetch(fetchDrones))
       .subscribe();
 
     const equipmentChannel = supabase
       .channel('equipment-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, fetchEquipment)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, guardedFetch(fetchEquipment))
       .subscribe();
 
     const dronetagChannel = supabase
       .channel('dronetag-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, fetchDronetags)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))
       .subscribe();
 
     const profilesChannel = supabase
       .channel('profiles-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchPersonnel)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, guardedFetch(fetchPersonnel))
       .subscribe();
 
     const competenciesChannel = supabase
       .channel('competencies-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, fetchPersonnel)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, guardedFetch(fetchPersonnel))
       .subscribe();
 
     return () => {

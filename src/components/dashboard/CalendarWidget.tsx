@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "react-i18next";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 
 interface CalendarEvent {
   type: string;
@@ -163,7 +164,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'missions'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .on(
         'postgres_changes',
@@ -172,7 +173,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'documents'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .on(
         'postgres_changes',
@@ -181,7 +182,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'drones'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .on(
         'postgres_changes',
@@ -190,7 +191,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'equipment'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .on(
         'postgres_changes',
@@ -199,7 +200,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'incidents'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .on(
         'postgres_changes',
@@ -208,7 +209,7 @@ export const CalendarWidget = () => {
           schema: 'public',
           table: 'drone_accessories'
         },
-        () => fetchRealCalendarEvents()
+        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
       )
       .subscribe();
 
@@ -227,9 +228,15 @@ export const CalendarWidget = () => {
       if (error) throw error;
 
       setCustomEvents(data || []);
+      if (companyId) setCachedData(`offline_cal_custom_${companyId}`, data || []);
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
-      toast.error(t('dashboard.calendar.couldNotLoad'));
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<CalendarEventDB[]>(`offline_cal_custom_${companyId}`);
+        if (cached) setCustomEvents(cached);
+      } else {
+        toast.error(t('dashboard.calendar.couldNotLoad'));
+      }
     } finally {
       setLoading(false);
     }
@@ -346,8 +353,13 @@ export const CalendarWidget = () => {
       }
 
       setRealEvents(events);
+      if (companyId) setCachedData(`offline_cal_real_${companyId}`, events);
     } catch (error) {
       console.error('Error fetching real calendar events:', error);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<CalendarEvent[]>(`offline_cal_real_${companyId}`);
+        if (cached) setRealEvents(cached);
+      }
     }
   };
 

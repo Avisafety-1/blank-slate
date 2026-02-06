@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 
 type News = any;
 
@@ -38,6 +39,7 @@ export const NewsSection = () => {
           table: 'news'
         },
         () => {
+          if (!navigator.onLine) return;
           fetchNews();
         }
       )
@@ -57,8 +59,13 @@ export const NewsSection = () => {
 
       if (error) throw error;
       setNews(data || []);
+      if (companyId) setCachedData(`offline_dashboard_news_${companyId}`, data || []);
     } catch (error) {
       console.error('Error fetching news:', error);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<News[]>(`offline_dashboard_news_${companyId}`);
+        if (cached) setNews(cached);
+      }
     }
   };
   
