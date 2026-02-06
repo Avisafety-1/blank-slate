@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { addToQueue } from '@/lib/offlineQueue';
+import { toast } from 'sonner';
 
 // User-specific localStorage keys to prevent cross-user state sharing
 const getStorageKey = (userId: string) => `active_flight_start_time_${userId}`;
@@ -269,7 +271,7 @@ export const useFlightTimer = () => {
     localStorage.setItem(getChecklistsKey(user.id), JSON.stringify(completedChecklistIds));
 
     // Save to database for cross-device sync, including route_data copy and live_uav start position
-    const { error } = await supabase.from('active_flights').insert([{
+    const flightData = {
       profile_id: user.id,
       company_id: companyId,
       start_time: startTime.toISOString(),
@@ -280,10 +282,21 @@ export const useFlightTimer = () => {
       start_lng: startPosition?.lng || null,
       pilot_name: pilotName || null,
       dronetag_device_id: dronetagDeviceId || null,
-    }]);
+    };
 
-    if (error) {
-      console.error('Error starting flight:', error);
+    if (navigator.onLine) {
+      const { error } = await supabase.from('active_flights').insert([flightData]);
+      if (error) {
+        console.error('Error starting flight:', error);
+      }
+    } else {
+      addToQueue({
+        table: 'active_flights',
+        operation: 'insert',
+        data: flightData,
+        description: 'Start flight (offline)',
+      });
+      toast.info('Flytur startet offline – synkroniseres når nett er tilbake');
     }
 
     setState({
@@ -446,10 +459,21 @@ export const useFlightTimer = () => {
 
     // Clear database
     if (user) {
-      await supabase
-        .from('active_flights')
-        .delete()
-        .eq('profile_id', user.id);
+      if (navigator.onLine) {
+        await supabase
+          .from('active_flights')
+          .delete()
+          .eq('profile_id', user.id);
+      } else {
+        addToQueue({
+          table: 'active_flights',
+          operation: 'delete',
+          matchColumn: 'profile_id',
+          matchValue: user.id,
+          data: {},
+          description: 'End flight (offline)',
+        });
+      }
     }
 
     setState({

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { addToQueue } from "@/lib/offlineQueue";
 
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -211,6 +212,26 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         oppdatert_dato: new Date().toISOString(),
       };
 
+      // === OFFLINE PATH ===
+      if (!navigator.onLine && !incidentToEdit) {
+        addToQueue({
+          table: 'incidents',
+          operation: 'insert',
+          data: {
+            ...incidentData,
+            company_id: companyId,
+            user_id: user.id,
+            rapportert_av: user.email || 'Ukjent',
+          },
+          description: `Hendelse: ${formData.tittel} (offline)`,
+        });
+
+        toast.success("Hendelse lagret lokalt – synkroniseres når nett er tilbake");
+        onOpenChange(false);
+        return;
+      }
+
+      // === ONLINE PATH ===
       if (incidentToEdit) {
         // UPDATE eksisterende hendelse
         const { error } = await supabase
