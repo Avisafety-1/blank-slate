@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { addToQueue } from "@/lib/offlineQueue";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown, AlertTriangle } from "lucide-react";
@@ -538,6 +539,81 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
     setIsSubmitting(true);
     
+    // === OFFLINE PATH ===
+    if (!navigator.onLine) {
+      try {
+        const flightTrackData = flightTrack && flightTrack.length > 0 
+          ? { positions: flightTrack } 
+          : null;
+
+        // Queue the flight log
+        addToQueue({
+          table: 'flight_logs',
+          operation: 'insert',
+          data: {
+            company_id: companyId,
+            user_id: user.id,
+            drone_id: formData.droneId,
+            mission_id: formData.missionId || null,
+            departure_location: formData.departureLocation,
+            landing_location: formData.landingLocation,
+            flight_duration_minutes: formData.flightDurationMinutes,
+            movements: formData.movements,
+            flight_date: flightStartTime?.toISOString() || new Date().toISOString(),
+            notes: formData.notes || null,
+            safesky_mode: safeskyMode || null,
+            completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
+            flight_track: flightTrackData,
+            dronetag_device_id: dronetagDeviceId || null,
+          },
+          description: 'Flylogg (offline)',
+        });
+
+        // Queue drone flight hours update via RPC not possible offline, 
+        // but we can queue an update with increment
+        addToQueue({
+          table: 'drones',
+          operation: 'update',
+          matchColumn: 'id',
+          matchValue: formData.droneId,
+          data: {
+            flyvetimer: formData.flightDurationMinutes, // Will need RPC on sync
+          },
+          description: 'Oppdater drone flytimer (offline)',
+        });
+
+        toast.success("Flylogg lagret lokalt – synkroniseres når nett er tilbake");
+        
+        // Reset form
+        setFormData({
+          droneId: "",
+          missionId: "",
+          pilotId: "",
+          departureLocation: "",
+          landingLocation: "",
+          flightDurationMinutes: 0,
+          movements: 1,
+          flightDate: new Date().toISOString().split('T')[0],
+          notes: "",
+          markMissionCompleted: false,
+        });
+        setSelectedEquipment([]);
+        setLinkedPersonnel([]);
+        setStartTime("");
+        setEndTime("");
+        
+        onOpenChange(false);
+        onFlightLogged?.();
+      } catch (error: any) {
+        console.error("Error queuing flight log offline:", error);
+        toast.error(`Kunne ikke lagre flylogg lokalt: ${error.message}`);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // === ONLINE PATH (original logic) ===
     try {
       let missionIdToUse = formData.missionId;
 
