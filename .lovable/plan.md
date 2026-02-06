@@ -1,114 +1,112 @@
 
 
-# Fix: Data forsvinner ved sideoppdatering/navigasjon offline
+# Fix: Rotarsaken til at data forsvinner ved offline-oppdatering
 
-## Rotarsak
+## Er offline i PWA realistisk?
 
-Problemet er at alle data-hentende komponenter bruker et **fetch-forst**-monster: de starter med tom tilstand `[]`, prover a hente fra Supabase (som feiler offline), og forst da laster de fra cache. Dette gir to problemer:
+Ja, absolutt. PWA-er er designet for offline-bruk. Problemet her er en spesifikk bug i koden, ikke en teknisk begrensning.
 
-1. **Timing-problem**: Nar siden lastes pa nytt, er `companyId` fra AuthContext null i noen millisekunder. Fetch-funksjonen kjorer med `companyId=null`, feiler, og cachenokkel `offline_xxx_null` matcher ikke den lagrede nokkelens `offline_xxx_abc123`. Resultatet er tom data + feilmelding.
+## Rotarsaken funnet
 
-2. **Unodvendig nettverksforsok**: Selv nar enheten vet den er offline (`navigator.onLine === false`), prover den likevel a gjore Supabase-kall som feiler og forarsaker feilmeldinger.
-
-3. **Direkte Supabase auth-kall**: Flere komponenter kaller `supabase.auth.getUser()` direkte (IncidentsSection, CalendarWidget, Kalender), som returnerer null offline og forer til manglende data (f.eks. "mine oppfolginger" forsvinner).
-
-4. **Manglende offline-guard pa auth-redirects**: Sider som Resources, Oppdrag, Hendelser og Documents sjekker `if (!loading && !user) navigate("/auth")` uten offline-unntak.
-
----
-
-## Losning: Cache-forst-monster
-
-Endre alle fetch-funksjoner fra "fetch-forst, cache-som-fallback" til "cache-forst, fetch-hvis-online":
+Problemet ligger i `fetchUserInfo()` i `AuthContext.tsx` (linje 213-281). Her er hva som skjer steg for steg nar du oppdaterer siden offline:
 
 ```text
-// NYTT MONSTER:
-const fetchData = async () => {
-  const cacheKey = companyId ? `offline_xxx_${companyId}` : null;
+1. Siden lastes pa nytt
+2. AuthContext initialiseres: user=null, companyId=null
+3. Supabase finner session fra localStorage (selv offline)
+4. user settes til session-brukeren
+5. fetchUserInfo() kalles
+6. Supabase-sporringer kjorer (profiles, user_roles)
+7. Offline: fetch() feiler, men Supabase KASTER IKKE feil
+   -> Returnerer { data: null, error: {...} }
+8. Promise.all FULLFORERES (ikke avviser)
+9. catch-blokken kjorer ALDRI
+10. profileResult.data er null
+11. profileData far standardverdier: companyId = null
+12. setCompanyId(null) -- OVERSKRIVER riktig companyId!
+13. saveCachedProfile(userId, { companyId: null, ... })
+    -- ODELEGGER den gode profil-cachen!
+14. Alle cache-oppslag bruker feil nokkel:
+    offline_drones_null i stedet for offline_drones_abc123
+15. Ingen data finnes -> tomme lister
+```
 
-  // 1. Last fra cache umiddelbart (gir instant visning)
-  if (cacheKey) {
-    const cached = getCachedData(cacheKey);
-    if (cached) setData(cached);
-  }
+Dette er hele arsaken. Fordi `companyId` blir `null`, matcher ingen cache-nokler, og alle sider viser tom data.
 
-  // 2. Hopp over nettverkskall hvis offline
-  if (!navigator.onLine) {
-    setLoading(false);
-    return;
-  }
+## Sekundare problemer
 
-  // 3. Hent ferske data fra nett
-  try {
-    const { data, error } = await supabase.from("xxx").select("*");
-    if (error) throw error;
-    setData(data || []);
-    if (cacheKey) setCachedData(cacheKey, data || []);
-  } catch (error) {
-    console.error("Error:", error);
-    // Data er allerede lastet fra cache i steg 1
-    toast.error("Kunne ikke oppdatere data");
-  } finally {
-    setLoading(false);
-  }
-};
+### Problem 2: onAuthStateChange setter user uten companyId
+
+Nar `INITIAL_SESSION` mottas med en gyldig sesjon (fra localStorage), setter koden `user` men IKKE `companyId`. Dette skaper et vindu der komponenter kjorer med `companyId=null`:
+
+```text
+// Nuvarende kode (linje 171-183):
+else {
+  setUser(session?.user ?? null);  // user settes
+  setLoading(false);               // companyId forblir null!
+  // Ingen applyCachedProfile() her
+}
+```
+
+### Problem 3: Index.tsx auth-redirect mangler offline-guard
+
+```text
+// Index.tsx linje 217-221:
+if (!loading && !user) {
+  navigate("/auth");  // Kan omdirigere offline!
+}
+// Mangler: && navigator.onLine
 ```
 
 ---
 
-## Implementeringsplan
+## Losning
 
-### Steg 1: Dashboard-komponenter - cache-forst
+### Fix 1: fetchUserInfo() - Early return ved offline (HOVEDFIX)
 
-Oppdater alle 5 dashboard-komponenter til cache-forst-monsteret:
+Legg til offline-sjekk pa toppen av `fetchUserInfo()` slik at den aldri gjor nettverkskall offline, men i stedet umiddelbart laster fra profil-cachen:
 
-**DocumentSection.tsx**:
-- `fetchDocuments()`: Last cache forst, deretter hopp over nett hvis offline
+```text
+const fetchUserInfo = async (userId: string) => {
+  // NYTT: Offline guard - bruk cachet profil direkte
+  if (!navigator.onLine) {
+    applyCachedProfile(userId);
+    return;
+  }
 
-**MissionsSection.tsx**:
-- `fetchMissions()`: Last cache forst, hopp over nett + `auto-complete-missions` edge function-kall
+  try { ... }  // Resten forblir uendret
+};
+```
 
-**IncidentsSection.tsx**:
-- `fetchIncidents()`: Last cache forst
-- `fetchMyFollowUps()`: Erstatt `supabase.auth.getUser()` med `user` fra AuthContext-props; last cache forst
-- `fetchCommentCounts()`: Hopp over hvis offline
+I tillegg, legg til en sikkerhet i try-blokken: hvis Supabase-resultatene har feil, bruk cache i stedet for a overskrive med null:
 
-**CalendarWidget.tsx**:
-- `fetchCustomEvents()` og `fetchRealCalendarEvents()`: Last cache forst
-- `checkAdminStatus()`: Legg til offline-guard (`if (!navigator.onLine) return;`)
+```text
+try {
+  const [profileResult, roleResult] = await Promise.all([...]);
+  
+  // NYTT: Hvis begge resultatene har feil, bruk cache
+  if (profileResult.error && roleResult.error) {
+    applyCachedProfile(userId);
+    return;
+  }
+  
+  // Resten forblir uendret...
+} catch (error) { ... }
+```
 
-**NewsSection.tsx**:
-- `fetchNews()`: Last cache forst (delvis implementert allerede, men mangler "hopp over nett")
+### Fix 2: onAuthStateChange - Sett companyId umiddelbart
 
-### Steg 2: Helsider - cache-forst
+Oppdater de to stedene der `user` settes uten `companyId`:
 
-**Oppdrag.tsx**:
-- `fetchMissions()`: Last cache forst, hopp over nett
-- Auth-redirect: Legg til `&& navigator.onLine` i sjekken
+**a) `onAuthStateChange` SIGNED_IN-handler**: Legg til offline-sjekk for som bruker cachet profil i stedet for a kalle `fetchUserInfo()`.
 
-**Hendelser.tsx**:
-- `fetchIncidents()`: Last cache forst, hopp over nett
-- Auth-redirect: Legg til offline-guard
-- `fetchCommentsData()`, `fetchMissions()`, `fetchEccairsExports()`: Hopp over hvis offline
+**b) `onAuthStateChange` else-handler** (INITIAL_SESSION): Nar offline og session finnes, kall `applyCachedProfile()` umiddelbart slik at `user` og `companyId` settes i samme render-batch.
 
-**Resources.tsx**:
-- Alle 4 fetch-funksjoner: Last cache forst (allerede delvis implementert, men mangler "hopp over nett"-logikk)
-- Auth-redirect: Legg til offline-guard
+**c) `getSession().then()` handler**: Sjekk online-status for `fetchUserInfo` kalles. Hvis offline, bruk `applyCachedProfile()` i stedet.
 
-**Kalender.tsx**:
-- `fetchCustomEvents()`: Last cache forst, hopp over nett (allerede delvis implementert)
-- `checkAdminStatus()`: Legg til offline-guard
+### Fix 3: Index.tsx auth-redirect
 
-**Documents.tsx**:
-- Realtime-subscription: Legg til `if (!navigator.onLine) return;` guard
-- Auth-redirect: Legg til offline-guard
-
-### Steg 3: IncidentsSection bruk av supabase.auth.getUser()
-
-`fetchMyFollowUps()` kaller `supabase.auth.getUser()` som feiler offline. Erstatt med `user` fra `useAuth()` som allerede er tilgjengelig i komponenten.
-
-### Steg 4: CalendarWidget og Kalender checkAdminStatus()
-
-Begge kaller `supabase.auth.getUser()` direkte. Legg til offline-guard sa de bare kjorer nar nett er tilgjengelig. Admin-status er ikke kritisk offline.
+Legg til `&& navigator.onLine` i auth-redirect-sjekken pa Index.tsx, samme monsteret som allerede er brukt i Resources.tsx, Oppdrag.tsx, Hendelser.tsx og Documents.tsx.
 
 ---
 
@@ -116,25 +114,27 @@ Begge kaller `supabase.auth.getUser()` direkte. Legg til offline-guard sa de bar
 
 | Fil | Endring |
 |-----|---------|
-| `src/components/dashboard/DocumentSection.tsx` | Cache-forst i `fetchDocuments()` |
-| `src/components/dashboard/MissionsSection.tsx` | Cache-forst i `fetchMissions()` |
-| `src/components/dashboard/IncidentsSection.tsx` | Cache-forst + erstatt `getUser()` med AuthContext |
-| `src/components/dashboard/CalendarWidget.tsx` | Cache-forst + offline-guard pa `checkAdminStatus()` |
-| `src/components/dashboard/NewsSection.tsx` | Cache-forst med early return |
-| `src/pages/Oppdrag.tsx` | Cache-forst + offline auth-guard |
-| `src/pages/Hendelser.tsx` | Cache-forst + offline auth-guard + guard sekundaer-fetches |
-| `src/pages/Resources.tsx` | Cache-forst early return + offline auth-guard |
-| `src/pages/Kalender.tsx` | Cache-forst + offline-guard pa `checkAdminStatus()` |
-| `src/pages/Documents.tsx` | Realtime offline-guard + offline auth-guard |
+| `src/contexts/AuthContext.tsx` | Offline-guard i `fetchUserInfo()` + error-sjekk + `applyCachedProfile()` i event-handlers |
+| `src/pages/Index.tsx` | Legg til `&& navigator.onLine` i auth-redirect |
+
+Kun 2 filer trenger endring. Alle de andre filene (Resources, Oppdrag, osv.) har allerede riktig cache-first logikk -- de feiler bare fordi `companyId` er null.
 
 ---
 
-## Forventet resultat
+## Forventet flyt etter fix
 
-1. Bruker er online - all data hentes og caches i localStorage
-2. Bruker gar offline - data forblir synlig fra cache
-3. Bruker oppdaterer siden offline - cache lastes umiddelbart, ingen feilmeldinger
-4. Bruker navigerer mellom sider offline - cache lastes pa nytt for hver side
-5. Ingen unodvendige nettverkskall eller toast-feilmeldinger offline
-6. Bruker far nett igjen - ferske data hentes automatisk
+```text
+1. Bruker er online -> data hentes, caches, companyId lagres i profil-cache
+2. Bruker gar offline -> OfflineBanner vises
+3. Bruker oppdaterer siden offline:
+   a. AuthContext starter
+   b. Supabase finner session fra localStorage
+   c. user settes + applyCachedProfile() -> companyId settes UMIDDELBART
+   d. React rendrer med bade user OG companyId satt
+   e. Komponentenes useEffects kjorer med riktig companyId
+   f. Cache-oppslag bruker riktig nokkel: offline_drones_abc123
+   g. Data lastes fra cache -> alt vises korrekt
+4. Bruker navigerer mellom sider -> samme monsteret, data forblir synlig
+5. Bruker far nett igjen -> ferske data hentes, cacher oppdateres
+```
 
