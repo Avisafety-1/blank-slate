@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useState, useEffect } from "react";
 import droneBackground from "@/assets/drone-background.png";
 import { Button } from "@/components/ui/button";
@@ -392,6 +393,7 @@ const Hendelser = () => {
       });
       if (error) throw error;
       setIncidents(data || []);
+      if (companyId) setCachedData(`offline_incidents_${companyId}`, data || []);
 
       // Hent oppfølgingsansvarlige for hendelser som har det
       const incidentsWithResponsible = (data || []).filter(inc => inc.oppfolgingsansvarlig_id);
@@ -408,6 +410,10 @@ const Hendelser = () => {
       }
     } catch (error) {
       console.error('Error fetching incidents:', error);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Incident[]>(`offline_incidents_${companyId}`);
+        if (cached) setIncidents(cached);
+      }
     } finally {
       setLoading(false);
     }

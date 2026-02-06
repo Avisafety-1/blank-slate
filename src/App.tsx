@@ -53,7 +53,9 @@ const AuthenticatedLayout = () => {
   const location = useLocation();
   
   // Don't render Header until we know user is authenticated and approved
-  if (loading || !user || !isApproved) {
+  // Exception: offline with cached session — allow rendering
+  const isOfflineWithSession = !navigator.onLine && user && !isApproved;
+  if (loading || !user || (!isApproved && !isOfflineWithSession)) {
     return <Outlet />;
   }
   

@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -127,15 +128,26 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     const fetchMissions = async () => {
       if (!companyId || !open) return;
 
-      const { data } = await supabase
-        .from('missions')
-        .select('id, tittel, lokasjon, route')
-        .eq('company_id', companyId)
-        .in('status', ['Planlagt', 'Pågående'])
-        .order('tidspunkt', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('missions')
+          .select('id, tittel, lokasjon, route')
+          .eq('company_id', companyId)
+          .in('status', ['Planlagt', 'Pågående'])
+          .order('tidspunkt', { ascending: true });
 
-      if (data) {
-        setMissions(data);
+        if (error) throw error;
+
+        if (data) {
+          setMissions(data);
+          setCachedData(`offline_startflight_missions_${companyId}`, data);
+        }
+      } catch (err) {
+        console.error('Error fetching missions for StartFlightDialog:', err);
+        if (!navigator.onLine) {
+          const cached = getCachedData<Mission[]>(`offline_startflight_missions_${companyId}`);
+          if (cached) setMissions(cached);
+        }
       }
     };
 
@@ -147,14 +159,25 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     const fetchDronetagDevices = async () => {
       if (!companyId || !open) return;
 
-      const { data } = await supabase
-        .from('dronetag_devices')
-        .select('id, name, callsign')
-        .eq('company_id', companyId)
-        .not('callsign', 'is', null);
+      try {
+        const { data, error } = await supabase
+          .from('dronetag_devices')
+          .select('id, name, callsign')
+          .eq('company_id', companyId)
+          .not('callsign', 'is', null);
 
-      if (data) {
-        setDronetagDevices(data);
+        if (error) throw error;
+
+        if (data) {
+          setDronetagDevices(data);
+          setCachedData(`offline_startflight_dronetags_${companyId}`, data);
+        }
+      } catch (err) {
+        console.error('Error fetching dronetag devices:', err);
+        if (!navigator.onLine) {
+          const cached = getCachedData<DronetagDevice[]>(`offline_startflight_dronetags_${companyId}`);
+          if (cached) setDronetagDevices(cached);
+        }
       }
     };
 

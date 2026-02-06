@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar } from "@/components/ui/calendar";
@@ -333,9 +334,36 @@ export default function Kalender() {
       if (!accessoriesError) {
         setAccessories(accessoriesData || []);
       }
+
+      // Cache all calendar data for offline
+      if (companyId) {
+        setCachedData(`offline_calendar_${companyId}`, {
+          customEvents: calendarData || [],
+          missions: missionsData || [],
+          incidents: incidentsData || [],
+          documents: documentsData || [],
+          drones: dronesData || [],
+          equipment: equipmentData || [],
+          accessories: accessoriesData || [],
+        });
+      }
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
-      toast.error('Kunne ikke laste kalenderoppføringer');
+      // Try cache if offline
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any>(`offline_calendar_${companyId}`);
+        if (cached) {
+          setCustomEvents(cached.customEvents || []);
+          setMissions(cached.missions || []);
+          setIncidents(cached.incidents || []);
+          setDocuments(cached.documents || []);
+          setDrones(cached.drones || []);
+          setEquipment(cached.equipment || []);
+          setAccessories(cached.accessories || []);
+        }
+      } else {
+        toast.error('Kunne ikke laste kalenderoppføringer');
+      }
     } finally {
       setLoading(false);
     }

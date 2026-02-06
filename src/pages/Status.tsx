@@ -1,3 +1,4 @@
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,8 +127,17 @@ const Status = () => {
         fetchResourceStatistics(),
         fetchDocumentStatistics(),
       ]);
+      // Cache all state after successful fetch
+      if (companyId) {
+        setCachedData(`offline_status_loaded_${companyId}`, true);
+      }
     } catch (error) {
       console.error("Error fetching statistics:", error);
+      // Try loading from cache if offline
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any>(`offline_status_kpi_${companyId}`);
+        if (cached) setKpiData(cached);
+      }
     } finally {
       setLoading(false);
     }
