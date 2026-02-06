@@ -48,7 +48,7 @@ const Documents = () => {
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
   const [sortByExpiry, setSortByExpiry] = useState(false);
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && navigator.onLine) {
       navigate("/auth", {
         replace: true
       });

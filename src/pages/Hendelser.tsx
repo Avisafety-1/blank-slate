@@ -164,7 +164,7 @@ const Hendelser = () => {
   const [eccairsSubmitIncidentId, setEccairsSubmitIncidentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && navigator.onLine) {
       navigate("/auth", { replace: true });
     }
   }, [user, authLoading, navigate]);
@@ -201,7 +201,7 @@ const Hendelser = () => {
   // Fetch comment counts and comments when incidents change
   useEffect(() => {
     const fetchCommentsData = async () => {
-      if (incidents.length === 0) return;
+      if (!navigator.onLine || incidents.length === 0) return;
 
       try {
         const { data, error } = await supabase
@@ -241,6 +241,7 @@ const Hendelser = () => {
   // Fetch linked missions
   useEffect(() => {
     const fetchMissions = async () => {
+      if (!navigator.onLine) return;
       const incidentsWithMissions = incidents.filter(i => i.mission_id);
       if (incidentsWithMissions.length === 0) return;
 
@@ -270,6 +271,7 @@ const Hendelser = () => {
   // Fetch ECCAIRS exports when incidents change
   useEffect(() => {
     const fetchEccairsExports = async () => {
+      if (!navigator.onLine) return;
       if (!incidents || incidents.length === 0) {
         setEccairsExports({});
         return;
@@ -388,6 +390,19 @@ const Hendelser = () => {
   }, [incidents, searchQuery, selectedStatus]);
 
   const fetchIncidents = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<Incident[]>(`offline_incidents_${companyId}`);
+      if (cached) setIncidents(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Fetch fresh data
     try {
       const { data, error } = await supabase.from('incidents').select('*').order('opprettet_dato', {
         ascending: false
@@ -411,10 +426,6 @@ const Hendelser = () => {
       }
     } catch (error) {
       console.error('Error fetching incidents:', error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<Incident[]>(`offline_incidents_${companyId}`);
-        if (cached) setIncidents(cached);
-      }
     } finally {
       setLoading(false);
     }

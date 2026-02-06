@@ -124,6 +124,7 @@ export default function Kalender() {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
+      if (!navigator.onLine) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase.rpc('has_role', {
@@ -194,6 +195,27 @@ export default function Kalender() {
   }, [companyId]);
 
   const fetchCustomEvents = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<any>(`offline_calendar_${companyId}`);
+      if (cached) {
+        setCustomEvents(cached.customEvents || []);
+        setMissions(cached.missions || []);
+        setIncidents(cached.incidents || []);
+        setDocuments(cached.documents || []);
+        setDrones(cached.drones || []);
+        setEquipment(cached.equipment || []);
+        setAccessories(cached.accessories || []);
+      }
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Fetch fresh data
     try {
       // Fetch calendar events
       const { data: calendarData, error: calendarError } = await supabase
@@ -282,19 +304,7 @@ export default function Kalender() {
       }
     } catch (error: any) {
       console.error('Error fetching calendar events:', error);
-      // Try cache if offline
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<any>(`offline_calendar_${companyId}`);
-        if (cached) {
-          setCustomEvents(cached.customEvents || []);
-          setMissions(cached.missions || []);
-          setIncidents(cached.incidents || []);
-          setDocuments(cached.documents || []);
-          setDrones(cached.drones || []);
-          setEquipment(cached.equipment || []);
-          setAccessories(cached.accessories || []);
-        }
-      } else {
+      if (navigator.onLine) {
         toast.error('Kunne ikke laste kalenderoppføringer');
       }
     } finally {

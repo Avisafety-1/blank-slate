@@ -51,6 +51,16 @@ export const NewsSection = () => {
   }, [companyId]);
 
   const fetchNews = async () => {
+    // 1. Load cache first
+    if (companyId) {
+      const cached = getCachedData<News[]>(`offline_dashboard_news_${companyId}`);
+      if (cached) setNews(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) return;
+
+    // 3. Fetch fresh data
     try {
       const { data, error } = await (supabase as any)
         .from('news')
@@ -62,10 +72,6 @@ export const NewsSection = () => {
       if (companyId) setCachedData(`offline_dashboard_news_${companyId}`, data || []);
     } catch (error) {
       console.error('Error fetching news:', error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<News[]>(`offline_dashboard_news_${companyId}`);
-        if (cached) setNews(cached);
-      }
     }
   };
   

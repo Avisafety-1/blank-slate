@@ -124,6 +124,19 @@ export const DocumentSection = () => {
   }, [companyId]);
 
   const fetchDocuments = async () => {
+    // 1. Load cache first for instant display
+    if (companyId) {
+      const cached = getCachedData<Document[]>(`offline_dashboard_docs_${companyId}`);
+      if (cached) setDocuments(cached);
+    }
+
+    // 2. Skip network if offline
+    if (!navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Fetch fresh data from network
     try {
       const { data, error } = await supabase
         .from("documents")
@@ -147,7 +160,6 @@ export const DocumentSection = () => {
         nettside_url: doc.nettside_url,
         utsteder: doc.opprettet_av,
         merknader: undefined,
-        // Keep these for visibility calculation
         company_id: doc.company_id,
         global_visibility: doc.global_visibility,
       }));
@@ -156,12 +168,7 @@ export const DocumentSection = () => {
       if (companyId) setCachedData(`offline_dashboard_docs_${companyId}`, mappedDocuments);
     } catch (error: any) {
       console.error("Error fetching documents:", error);
-      if (!navigator.onLine && companyId) {
-        const cached = getCachedData<Document[]>(`offline_dashboard_docs_${companyId}`);
-        if (cached) setDocuments(cached);
-      } else {
-        toast.error(t('dashboard.documents.couldNotLoad'));
-      }
+      toast.error(t('dashboard.documents.couldNotLoad'));
     } finally {
       setLoading(false);
     }
