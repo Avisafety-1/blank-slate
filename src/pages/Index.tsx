@@ -215,7 +215,7 @@ const Index = () => {
   };
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && navigator.onLine) {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);

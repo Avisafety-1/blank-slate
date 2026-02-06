@@ -136,15 +136,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user) {
           setSession(session);
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
-          // Defer Supabase calls with setTimeout to prevent deadlock
-          setTimeout(() => {
-            fetchUserInfo(session.user.id);
-          }, 0);
+          // Offline: use cached profile immediately instead of network call
+          if (!navigator.onLine) {
+            applyCachedProfile(session.user.id);
+          } else {
+            // Defer Supabase calls with setTimeout to prevent deadlock
+            setTimeout(() => {
+              fetchUserInfo(session.user.id);
+            }, 0);
+          }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           setSession(session);
           setUser(session.user);
@@ -179,6 +184,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setSession(session);
           setUser(session?.user ?? null);
+          // When offline with a valid session, apply cached profile immediately
+          if (session?.user && !navigator.onLine) {
+            applyCachedProfile(session.user.id);
+          }
           setLoading(false);
         }
       }
@@ -191,7 +200,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session.user);
         setLoading(false);
         cacheSession(session.user);
-        fetchUserInfo(session.user.id);
+        // Offline: use cached profile; Online: fetch fresh data
+        if (!navigator.onLine) {
+          applyCachedProfile(session.user.id);
+        } else {
+          fetchUserInfo(session.user.id);
+        }
       } else if (!navigator.onLine) {
         // Offline fallback: restore user from cache
         console.log('AuthContext: Offline with no session, trying cache');
@@ -211,6 +225,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const fetchUserInfo = async (userId: string) => {
+    // Offline guard: never make network calls offline, use cached profile
+    if (!navigator.onLine) {
+      applyCachedProfile(userId);
+      return;
+    }
+
     try {
       // Parallel queries for profile+company and role
       const [profileResult, roleResult] = await Promise.all([
@@ -243,6 +263,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin: false,
         isSuperAdmin: false,
       };
+
+      // If both queries failed (e.g. network error), fall back to cache
+      if (profileResult.error && roleResult.error) {
+        console.log('AuthContext: Both queries failed, using cached profile');
+        applyCachedProfile(userId);
+        return;
+      }
 
       if (profileResult.data) {
         const profile = profileResult.data;
