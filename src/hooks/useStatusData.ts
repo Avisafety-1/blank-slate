@@ -112,17 +112,17 @@ export const useStatusData = () => {
     const channel = supabase
       .channel('status-data-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['drones', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['equipment', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['equipment', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['drones', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_equipment' }, 
-        () => queryClient.invalidateQueries({ queryKey: ['drones', companyId] }))
+        () => { if (navigator.onLine) queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
       .subscribe();
 
     return () => {

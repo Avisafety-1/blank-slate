@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 
 const getDocumentStatus = (doc: Document) => {
   if (!doc.gyldig_til) return "Grønn";
@@ -152,9 +153,15 @@ export const DocumentSection = () => {
       }));
 
       setDocuments(mappedDocuments);
+      if (companyId) setCachedData(`offline_dashboard_docs_${companyId}`, mappedDocuments);
     } catch (error: any) {
       console.error("Error fetching documents:", error);
-      toast.error(t('dashboard.documents.couldNotLoad'));
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Document[]>(`offline_dashboard_docs_${companyId}`);
+        if (cached) setDocuments(cached);
+      } else {
+        toast.error(t('dashboard.documents.couldNotLoad'));
+      }
     } finally {
       setLoading(false);
     }

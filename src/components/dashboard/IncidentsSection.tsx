@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 
 const severityColors = {
   Lav: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -130,9 +131,15 @@ export const IncidentsSection = () => {
         if (error) throw error;
 
         setMyFollowUpIncidents(data || []);
+        if (companyId) setCachedData(`offline_dashboard_followups_${companyId}`, data || []);
       } catch (error: any) {
         console.error('Error fetching follow-up incidents:', error);
-        toast.error(t('dashboard.incidents.couldNotLoadFollowUp'));
+        if (!navigator.onLine && companyId) {
+          const cached = getCachedData<Incident[]>(`offline_dashboard_followups_${companyId}`);
+          if (cached) setMyFollowUpIncidents(cached);
+        } else {
+          toast.error(t('dashboard.incidents.couldNotLoadFollowUp'));
+        }
       } finally {
         setFollowUpLoading(false);
       }
@@ -151,6 +158,7 @@ export const IncidentsSection = () => {
           table: 'incidents'
         },
         async () => {
+          if (!navigator.onLine) return;
           fetchMyFollowUps();
         }
       )
@@ -233,9 +241,15 @@ export const IncidentsSection = () => {
       if (error) throw error;
 
       setIncidents(data || []);
+      if (companyId) setCachedData(`offline_dashboard_incidents_${companyId}`, data || []);
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
-      toast.error(t('dashboard.incidents.couldNotLoad'));
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<Incident[]>(`offline_dashboard_incidents_${companyId}`);
+        if (cached) setIncidents(cached);
+      } else {
+        toast.error(t('dashboard.incidents.couldNotLoad'));
+      }
     } finally {
       setLoading(false);
     }

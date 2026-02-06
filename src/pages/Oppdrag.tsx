@@ -209,6 +209,7 @@ const Oppdrag = () => {
           table: 'missions'
         },
         () => {
+          if (!navigator.onLine) return;
           fetchMissions();
         }
       )

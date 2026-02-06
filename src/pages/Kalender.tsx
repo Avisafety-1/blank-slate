@@ -115,14 +115,12 @@ export default function Kalender() {
   const [savingEvent, setSavingEvent] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+    // Use AuthContext user instead of direct session check (works offline)
+    if (!user && !navigator.onLine) return; // Don't redirect if offline
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -142,111 +140,46 @@ export default function Kalender() {
     fetchCustomEvents();
   }, [companyId]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions (guarded for offline)
   useEffect(() => {
+    const refetchIfOnline = () => {
+      if (!navigator.onLine) return;
+      fetchCustomEvents();
+    };
+
     const calendarChannel = supabase
       .channel('calendar-events-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'calendar_events'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, refetchIfOnline)
       .subscribe();
 
     const missionsChannel = supabase
       .channel('missions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'missions'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, refetchIfOnline)
       .subscribe();
 
     const incidentsChannel = supabase
       .channel('incidents-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incidents'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, refetchIfOnline)
       .subscribe();
 
     const documentsChannel = supabase
       .channel('documents-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'documents'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, refetchIfOnline)
       .subscribe();
 
     const dronesChannel = supabase
       .channel('drones-calendar-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'drones'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, refetchIfOnline)
       .subscribe();
 
     const equipmentChannel = supabase
       .channel('equipment-calendar-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'equipment'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, refetchIfOnline)
       .subscribe();
 
     const accessoriesChannel = supabase
       .channel('accessories-calendar-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'drone_accessories'
-        },
-        () => {
-          fetchCustomEvents();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, refetchIfOnline)
       .subscribe();
 
     return () => {

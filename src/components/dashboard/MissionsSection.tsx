@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { getCachedData, setCachedData } from "@/lib/offlineCache";
 
 type Mission = any;
 type MissionSora = any;
@@ -47,8 +48,10 @@ export const MissionsSection = () => {
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   useEffect(() => {
-    // Auto-complete old missions on load
-    supabase.functions.invoke('auto-complete-missions').catch(console.error);
+    // Auto-complete old missions on load (skip if offline)
+    if (navigator.onLine) {
+      supabase.functions.invoke('auto-complete-missions').catch(console.error);
+    }
     
     fetchMissions();
 
@@ -62,6 +65,7 @@ export const MissionsSection = () => {
           table: 'missions',
         },
         () => {
+          if (!navigator.onLine) return;
           fetchMissions();
         }
       )
@@ -77,23 +81,30 @@ export const MissionsSection = () => {
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
-    const { data, error } = await (supabase as any)
-      .from("missions")
-      .select("*")
-      .neq("status", "Fullført")
-      .neq("status", "Avlyst")
-      .gte("tidspunkt", oneDayAgo.toISOString())
-      .order("tidspunkt", { ascending: true });
+    try {
+      const { data, error } = await (supabase as any)
+        .from("missions")
+        .select("*")
+        .neq("status", "Fullført")
+        .neq("status", "Avlyst")
+        .gte("tidspunkt", oneDayAgo.toISOString())
+        .order("tidspunkt", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching missions:", error);
-    } else {
+      if (error) throw error;
+
       setMissions(data || []);
+      if (companyId) setCachedData(`offline_dashboard_missions_${companyId}`, data || []);
       if (data && data.length > 0) {
         const missionIds = data.map((m: any) => m.id);
         fetchMissionSoras(missionIds);
         fetchMissionDocumentCounts(missionIds);
         fetchMissionAIRisks(missionIds);
+      }
+    } catch (error) {
+      console.error("Error fetching missions:", error);
+      if (!navigator.onLine && companyId) {
+        const cached = getCachedData<any[]>(`offline_dashboard_missions_${companyId}`);
+        if (cached) setMissions(cached);
       }
     }
   };

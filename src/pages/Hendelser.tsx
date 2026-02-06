@@ -190,6 +190,7 @@ const Hendelser = () => {
       schema: 'public',
       table: 'incidents'
     }, () => {
+      if (!navigator.onLine) return;
       fetchIncidents();
     }).subscribe();
     return () => {
