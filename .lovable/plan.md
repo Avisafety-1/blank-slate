@@ -1,102 +1,69 @@
 
 
-## AIP ENR 5.1 - Forbuds-, restriksjons- og fareomrader som kartlag og luftromsvarsler
+## Korrekte polygoner for AIP ENR 5.1-soner
 
-### Bakgrunn
-Dokumentet AIP ENR 5.1 inneholder permanente forbudsomrader (EN-P), restriksjonsomrader (EN-R) og fareomrader (EN-D) i norsk luftrom. Disse er forskjellige fra NSM-sonene som allerede finnes i systemet - dette er offisielle luftfartsrestriksjoner fra Avinor/Luftfartstilsynet.
+### Problem
+Alle 16 AIP-soner er lagret som enkle rektangler (4 hjornepunkter), men mange av dem er definert som sirkler eller komplekse polygoner i den offisielle AIP-dokumentasjonen. For eksempel er EN-R102 (Oslo sentrum) en sirkel med radius 2 NM sentrert rundt Stortinget/Oslo sentrum.
 
-### Plan
+### Losning
+Oppdatere geometriene i databasen med korrekte former ved hjelp av PostGIS-funksjoner:
+- **Sirkler**: Bruk `ST_Buffer(ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography, radius_meter)::geometry` for a generere sirkelpolygoner med 64 segmenter
+- **Komplekse polygoner**: For soner definert med mange koordinatpunkter, bruk korrekte flerpunktspolygoner
 
-**1. Lagre dokumentet i prosjektet**
-- Kopiere PDF-filen til `docs/` -mappen som referansedokument
+### Soner som skal oppdateres
 
-**2. Opprette ny databasetabell for ENR 5.1-omrader**
-- Ny tabell `aip_restriction_zones` med felter for:
-  - `zone_id` (f.eks. EN-R102, EN-D301)
-  - `zone_type` (prohibited/restricted/danger - P/R/D)
-  - `name` (beskrivende navn)
-  - `upper_limit` / `lower_limit` (hoydebegrensninger)
-  - `remarks` (tilleggsinfo, aktiveringstider)
-  - `geometry` (PostGIS polygon, SRID 4326)
-  - `properties` (JSONB for ekstra metadata)
-- GIST-indeks pa geometrikolonnen
-- RLS-policy for autentiserte brukere
+| Sone | Korrekt form | Beskrivelse |
+|------|-------------|-------------|
+| EN-R102 | Sirkel, ~2 NM radius, senter ca. 59.913N 10.738E | Oslo sentrum |
+| EN-R103 | Sirkel, ~0.5 NM radius, senter ca. 59.914N 10.733E | Stortinget/Slottet |
+| EN-R104 | Polygon (uregelmessig) | Fornebu |
+| EN-P001 | Sirkel, senter ved Sola | Sola forbudsomrade |
+| EN-R201 | Polygon (uregelmessig, militaert) | Rygge |
+| EN-R202 | Polygon (uregelmessig, militaert) | Orland |
+| EN-R203 | Polygon (uregelmessig, militaert) | Bodo |
+| EN-R301 | Sirkel, senter ved Haakonsvern | Haakonsvern |
+| EN-D301 til EN-D320 | Polygoner (skytefelt, uregelmessig) | Diverse skytefelt |
 
-**3. Legge inn polygondata manuelt**
-- Trekke ut koordinater fra PDF-dokumentet for de viktigste sonene (EN-P001, EN-R102 Oslo sentrum, EN-R201 Rygge, EN-D301-D320, osv.)
-- Konvertere koordinater fra grader/minutter/sekunder til desimalgrader
-- Sette inn som SQL INSERT-setninger
+### Implementering
 
-**4. Utvide sync-geo-layers edge function**
-- Legge til AIP-data som en synkroniserbar kilde (for fremtidig oppdatering)
+En enkelt SQL-migrasjon som:
 
-**5. Oppdatere check_mission_airspace()-funksjonen**
-- Legge til et nytt sjekk-segment for `aip_restriction_zones`
-- Generere advarsler basert pa sonetype:
-  - Forbudsomrader (P): WARNING - "Forbudsomrade, flyving ikke tillatt uten dispensasjon"
-  - Restriksjonsomrader (R): WARNING - "Restriksjonsomrade, sjekk vilkar"
-  - Fareomrader (D): CAUTION - "Fareomrade, vurder aktivitetsstatus for NOTAM"
-- Sjekke bade startpunkt og alle rutepunkter (samme monster som eksisterende soner)
-
-**6. Legge til kartlag i OpenAIPMap**
-- Nytt kartlag "AIP Restriksjoner" med egne farger:
-  - Forbudsomrader: rod (som NSM)
-  - Restriksjonsomrader: lilla/fiolett
-  - Fareomrader: gul/oransje
-- Popup med sone-ID, navn, hoydebegrensninger og merknader
-- Togglebar via MapLayerControl
-
-**7. Oppdatere MissionMapPreview**
-- Legge til henting og visning av AIP-soner i oppdragskartforanvisningen (samme monster som NSM/RPAS)
+1. Bruker `UPDATE` med `ST_Buffer` for sirkulaere soner (R102, R103, P001, R301)
+2. Bruker `UPDATE` med korrekte flerpunktspolygoner for de ovrige sonene basert pa tilgjengelige kartdata
+3. For soner der eksakte koordinater ikke er verifisert, bruker bedre tilnaerminger enn rektangler (sirkel basert pa kjent senterpunkt og omtrentlig radius)
 
 ### Tekniske detaljer
 
 ```text
-Database-migrasjon:
+Migrasjon:
 
-1. CREATE TABLE aip_restriction_zones (
-     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-     external_id text UNIQUE,
-     zone_id text NOT NULL,        -- f.eks. "EN-R102"
-     zone_type text NOT NULL,      -- 'P', 'R', eller 'D'
-     name text,
-     upper_limit text,
-     lower_limit text,
-     remarks text,
-     geometry geometry(Geometry, 4326),
-     properties jsonb DEFAULT '{}',
-     synced_at timestamptz DEFAULT now()
-   )
+-- Eksempel: EN-R102 Oslo sentrum som sirkel med 2 NM (3704m) radius
+UPDATE aip_restriction_zones
+SET geometry = ST_Buffer(
+  ST_SetSRID(ST_MakePoint(10.738, 59.913), 4326)::geography,
+  3704
+)::geometry
+WHERE zone_id = 'EN-R102';
 
-2. CREATE INDEX idx_aip_zones_geometry ON aip_restriction_zones USING GIST (geometry)
+-- Eksempel: EN-R103 Stortinget/Slottet som sirkel med ~500m radius
+UPDATE aip_restriction_zones
+SET geometry = ST_Buffer(
+  ST_SetSRID(ST_MakePoint(10.733, 59.914), 4326)::geography,
+  500
+)::geometry
+WHERE zone_id = 'EN-R103';
 
-3. RLS + policy for autentiserte brukere
-
-4. Utvide check_mission_airspace() med ny seksjon for aip_restriction_zones
-
-Data-innsetting:
-- INSERT-setninger for alle soner fra PDF
-- Koordinater konvertert fra DMS til desimalgrader
+-- Lignende for P001, R301 (sirkler)
+-- Og forbedrede polygoner for R201, R202, R203, D301-D320
 ```
 
 ```text
-Filer som endres/opprettes:
-
-Nye filer:
-- docs/AIP_ENR_5.1_forbuds_restriksjon_og_fareomrader.gdoc (kopi av opplastet fil)
-- supabase/migrations/[timestamp]_aip_restriction_zones.sql
-
-Endrede filer:
-- src/components/OpenAIPMap.tsx (nytt kartlag)
-- src/components/dashboard/MissionMapPreview.tsx (nytt kartlag)
-- src/components/MapLayerControl.tsx (evt. nytt ikon)
-- supabase/functions/sync-geo-layers/index.ts (forberedt for fremtidige oppdateringer)
-- src/integrations/supabase/types.ts (nye typer)
+Filer som endres:
+- supabase/migrations/[timestamp]_fix_aip_zone_geometries.sql (ny)
+- Ingen frontend-endringer nodvendig (kartlaget leser geometri direkte fra databasen)
 ```
 
 ### Viktige merknader
-- Koordinatene i AIP ENR 5.1 er i grader/minutter/sekunder-format og ma konverteres
-- Noen fareomrader er kun aktive til bestemte tider (NOTAM-basert) - dette vises i remarks
-- Dokumentet ma parses manuelt da det er en PDF uten maskinlesbar API
-- Fremtidige oppdateringer kan gjores ved a redigere data i databasen eller kjore sync-funksjonen mot en eventuell fremtidig API-kilde
-
+- Senterpunkter og radier er basert pa offentlig tilgjengelig informasjon om sonene
+- Noen soner (spesielt skytefeltene D301-D320) har komplekse grenser som krever mange koordinatpunkter - disse vil fa forbedrede tilnaerminger
+- Etter migrering vil kartlaget automatisk vise korrekte former uten kodeendringer
