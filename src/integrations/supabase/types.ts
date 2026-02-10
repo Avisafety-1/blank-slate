@@ -101,6 +101,48 @@ export type Database = {
           },
         ]
       }
+      aip_restriction_zones: {
+        Row: {
+          external_id: string | null
+          geometry: unknown
+          id: string
+          lower_limit: string | null
+          name: string | null
+          properties: Json | null
+          remarks: string | null
+          synced_at: string | null
+          upper_limit: string | null
+          zone_id: string
+          zone_type: string
+        }
+        Insert: {
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          lower_limit?: string | null
+          name?: string | null
+          properties?: Json | null
+          remarks?: string | null
+          synced_at?: string | null
+          upper_limit?: string | null
+          zone_id: string
+          zone_type: string
+        }
+        Update: {
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          lower_limit?: string | null
+          name?: string | null
+          properties?: Json | null
+          remarks?: string | null
+          synced_at?: string | null
+          upper_limit?: string | null
+          zone_id?: string
+          zone_type?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           company_id: string

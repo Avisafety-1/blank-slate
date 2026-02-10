@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
+import { supabase } from "@/integrations/supabase/client";
 import "leaflet/dist/leaflet.css";
 
 interface RoutePoint {
@@ -239,6 +240,39 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
               layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
             }
           }).addTo(zonesLayer);
+        }
+        // AIP ENR 5.1 restriction zones from database
+        try {
+          const { data: aipZones } = await supabase
+            .from('aip_restriction_zones')
+            .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry');
+
+          if (aipZones) {
+            for (const zone of aipZones) {
+              if (!zone.geometry) continue;
+              let color = '#f59e0b';
+              let label = 'Fareområde';
+              if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
+              else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
+
+              try {
+                L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
+                  style: {
+                    color,
+                    weight: 2,
+                    fillColor: color,
+                    fillOpacity: 0.15,
+                    dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
+                  },
+                  onEachFeature: (feature, layer) => {
+                    layer.bindPopup(`<strong>${label}</strong><br/><strong>${zone.zone_id}</strong> - ${zone.name || 'Ukjent'}<br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
+                  }
+                }).addTo(zonesLayer);
+              } catch {}
+            }
+          }
+        } catch (err) {
+          console.error("Feil ved henting av AIP-soner:", err);
         }
       } catch (err) {
         console.error("Feil ved henting av luftromssoner:", err);

@@ -534,6 +534,16 @@ export function OpenAIPMap({
       icon: "ban",
     });
 
+    // AIP ENR 5.1 Restriction zones (Prohibited/Restricted/Danger)
+    const aipLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "aip",
+      name: "AIP Restriksjoner (ENR 5.1)",
+      layer: aipLayer,
+      enabled: true,
+      icon: "shield",
+    });
+
     // Airports
     const airportsLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
@@ -1097,6 +1107,77 @@ export function OpenAIPMap({
       }
     }
 
+    // Fetch AIP ENR 5.1 restriction zones from database
+    async function fetchAipRestrictionZones() {
+      try {
+        const { data, error } = await supabase
+          .from('aip_restriction_zones')
+          .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties');
+
+        if (error || !data) {
+          console.error('Feil ved henting av AIP-soner:', error);
+          return;
+        }
+
+        aipLayer.clearLayers();
+
+        for (const zone of data) {
+          if (!zone.geometry) continue;
+
+          // Color based on zone type
+          let color = '#f59e0b'; // orange default (Danger)
+          let label = 'Fareområde';
+          if (zone.zone_type === 'P') {
+            color = '#dc2626'; // red for Prohibited
+            label = 'Forbudsområde';
+          } else if (zone.zone_type === 'R') {
+            color = '#8b5cf6'; // purple for Restricted
+            label = 'Restriksjonsområde';
+          }
+
+          try {
+            const geojsonFeature = {
+              type: 'Feature' as const,
+              geometry: zone.geometry,
+              properties: {
+                zone_id: zone.zone_id,
+                zone_type: zone.zone_type,
+                name: zone.name,
+                upper_limit: zone.upper_limit,
+                lower_limit: zone.lower_limit,
+                remarks: zone.remarks,
+              }
+            };
+
+            const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+              interactive: mode !== 'routePlanning',
+              style: {
+                color,
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.2,
+                dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
+              },
+              onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+                const p = feature.properties || {};
+                let popup = `<strong>${label}</strong><br/>`;
+                popup += `<strong>${p.zone_id}</strong> - ${p.name || 'Ukjent'}<br/>`;
+                if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
+                if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
+                if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
+                layer.bindPopup(popup);
+              } : undefined,
+            });
+            geoJsonLayer.addTo(aipLayer);
+          } catch (err) {
+            console.error(`Feil ved parsing av AIP-sone ${zone.zone_id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('Kunne ikke hente AIP restriksjonsområder:', err);
+      }
+    }
+
     async function fetchAirportsData() {
       try {
         const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/FlyplassInfo_PROD/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
@@ -1511,6 +1592,7 @@ export function OpenAIPMap({
     fetchNsmData();
     fetchRpasData();
     fetchRpasCtрData();
+    fetchAipRestrictionZones();
     fetchAirportsData();
     fetchDroneTelemetry();
     fetchAndDisplayMissions();
