@@ -120,7 +120,6 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="welcome-box">
 <p style="margin: 0;">Du er nå registrert i vårt system. Vi ser frem til et godt samarbeid.</p>
 </div>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
@@ -969,8 +968,6 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         ${htmlContent}
       </div>
       <div class="footer">
-        <p>Med vennlig hilsen,<br>{{company_name}}</p>
-        <p style="font-size: 11px; color: #aaa;">Dette er en automatisk generert e-post. Vennligst ikke svar på denne e-posten.</p>
       </div>
     </div>
   </body>
