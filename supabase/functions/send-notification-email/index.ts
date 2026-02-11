@@ -23,6 +23,7 @@ interface EmailRequest {
   mission?: { tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
+  pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -32,7 +33,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, newUser, incident, mission, followupAssigned, approvalMission }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment }: EmailRequest = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -180,6 +181,52 @@ serve(async (req: Request): Promise<Response> => {
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
+        if (!user?.email) continue;
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        emailsSent++;
+      }
+      await client.close();
+      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Handle pilot comment notification
+    if (type === 'notify_pilot_comment' && companyId && missionId && pilotComment) {
+      // Fetch personnel linked to this mission
+      const { data: personnel } = await supabase
+        .from('mission_personnel')
+        .select('profile_id')
+        .eq('mission_id', missionId);
+
+      if (!personnel?.length) {
+        return new Response(JSON.stringify({ success: true, message: 'No personnel' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
+      const missionDate = new Date(pilotComment.missionDate).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'pilot_comment_notification', {
+        mission_title: pilotComment.missionTitle,
+        mission_location: pilotComment.missionLocation,
+        mission_date: missionDate,
+        comment: pilotComment.comment,
+        sender_name: pilotComment.senderName,
+        company_name: company?.navn || '',
+      });
+
+      if (!templateResult.content) {
+        templateResult.content = `<html><body><h2>Kommentar til oppdrag: ${pilotComment.missionTitle}</h2><p><strong>Fra:</strong> ${pilotComment.senderName}</p><p><strong>Lokasjon:</strong> ${pilotComment.missionLocation}</p><p><strong>Tidspunkt:</strong> ${missionDate}</p><p><strong>Kommentar:</strong></p><p>${pilotComment.comment}</p></body></html>`;
+        if (!templateResult.subject) templateResult.subject = `Kommentar til oppdrag: ${pilotComment.missionTitle}`;
+      }
+
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
+
+      let emailsSent = 0;
+      for (const p of personnel) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(p.profile_id);
         if (!user?.email) continue;
         const emailHeaders = getEmailHeaders();
         await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });

@@ -484,6 +484,46 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </html>`
   },
   
+  pilot_comment_notification: {
+    subject: 'Kommentar til oppdrag: {{mission_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.comment-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #3b82f6; }
+.mission-info { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Kommentar til oppdrag</h1>
+</div>
+<div class="content">
+<p>Du har mottatt en kommentar fra <strong>{{sender_name}}</strong> angående følgende oppdrag:</p>
+<div class="mission-info">
+<h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
+<p><strong>Lokasjon:</strong> {{mission_location}}</p>
+<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+</div>
+<div class="comment-box">
+<p style="margin: 0;"><strong>Kommentar:</strong></p>
+<p style="margin: 5px 0 0 0;">{{comment}}</p>
+</div>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Gå til oppdraget</a>
+</p>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
   maintenance_reminder: {
     subject: 'Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet',
     content: `<!DOCTYPE html>

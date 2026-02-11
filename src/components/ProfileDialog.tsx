@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -499,6 +499,40 @@ export const ProfileDialog = () => {
     } catch (error) {
       console.error('Error saving comment:', error);
       toast.error('Kunne ikke lagre kommentar');
+    }
+  };
+
+  const handleNotifyPilot = async (missionId: string, comment: string) => {
+    if (!user || !comment.trim()) {
+      toast.error('Skriv en kommentar før du sender varsel');
+      return;
+    }
+    try {
+      const mission = pendingApprovalMissions.find((m: any) => m.id === missionId);
+      if (!mission) return;
+
+      const senderName = profile?.full_name || user.email || 'Ukjent';
+
+      const { error } = await supabase.functions.invoke('send-notification-email', {
+        body: {
+          type: 'notify_pilot_comment',
+          companyId: profile?.company_id,
+          missionId: mission.id,
+          pilotComment: {
+            missionTitle: mission.tittel,
+            missionLocation: mission.lokasjon || 'Ikke oppgitt',
+            missionDate: mission.tidspunkt,
+            comment: comment.trim(),
+            senderName,
+          },
+        },
+      });
+
+      if (error) throw error;
+      toast.success('Varsel sendt til pilot(er)');
+    } catch (error) {
+      console.error('Error sending pilot notification:', error);
+      toast.error('Kunne ikke sende varsel');
     }
   };
 
@@ -1357,9 +1391,13 @@ export const ProfileDialog = () => {
                                     rows={2}
                                     className="text-sm"
                                   />
-                                  <div className="flex gap-2">
+                                  <div className="flex flex-wrap gap-2">
                                     <Button size="sm" onClick={() => handleSaveComment(mission.id)}>
                                       Lagre
+                                    </Button>
+                                    <Button size="sm" variant="secondary" onClick={() => handleNotifyPilot(mission.id, missionComment)}>
+                                      <Send className="h-4 w-4 mr-1" />
+                                      Send varsel til pilot
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
                                       Tilbake
