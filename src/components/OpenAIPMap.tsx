@@ -511,6 +511,14 @@ export function OpenAIPMap({
       safeskyPane.style.zIndex = '645';
       safeskyPane.style.pointerEvents = 'auto';
     }
+
+    // Mission markers pane - above airspace layers and route, below popups
+    map.createPane('missionPane');
+    const missionPane = map.getPane('missionPane');
+    if (missionPane) {
+      missionPane.style.zIndex = '660';
+      missionPane.style.pointerEvents = 'auto';
+    }
     console.log('routePane created:', !!routePane);
 
     // OSM background
@@ -1333,7 +1341,7 @@ export function OpenAIPMap({
             iconAnchor: [16, 32],
           });
 
-          const marker = L.marker([mission.latitude, mission.longitude], { icon });
+          const marker = L.marker([mission.latitude, mission.longitude], { icon, pane: 'missionPane' });
           marker.on('click', () => {
             onMissionClickRef.current?.(mission);
           });
