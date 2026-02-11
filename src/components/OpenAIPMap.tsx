@@ -599,7 +599,7 @@ export function OpenAIPMap({
     const aipLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
       id: "aip",
-      name: "AIP Restriksjoner (ENR 5.1)",
+      name: "Fareområder (P/R/D)",
       layer: aipLayer,
       enabled: true,
       icon: "shield",
