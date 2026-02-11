@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.calendar-feed]
 verify_jwt = false
+
+[functions.sync-openaip-airspaces]
+verify_jwt = false
