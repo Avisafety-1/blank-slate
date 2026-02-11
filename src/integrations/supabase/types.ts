@@ -3819,6 +3819,20 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_openaip_airspace: {
+        Args: {
+          p_geometry_geojson: string
+          p_lower_limit?: string
+          p_name: string
+          p_openaip_id: string
+          p_properties?: string
+          p_remarks?: string
+          p_upper_limit?: string
+          p_zone_id: string
+          p_zone_type: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
