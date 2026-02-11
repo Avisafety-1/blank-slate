@@ -672,6 +672,15 @@ export const ProfileDialog = () => {
 
               {/* Profile Tab */}
               <TabsContent value="profile" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFeedbackOpen(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Gi tilbakemelding
+                </Button>
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -845,26 +854,6 @@ export const ProfileDialog = () => {
                       />
                     </div>
 
-                    <Separator />
-
-                    {/* Feedback */}
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        Tilbakemelding
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Har du forslag, feil eller ønsker? Send oss en tilbakemelding.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setFeedbackOpen(true)}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Gi tilbakemelding
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
 
