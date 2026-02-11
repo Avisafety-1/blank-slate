@@ -145,16 +145,21 @@ export const AddMissionDialog = ({
         fetchMissionDocuments(mission.id);
       } else if (initialFormData || initialRouteData) {
         // Restore form data from navigation state (returning from route planner)
+        const firstCoord = initialRouteData?.coordinates?.[0];
+        const autoLat = initialFormData?.latitude || firstCoord?.lat || null;
+        const autoLng = initialFormData?.longitude || firstCoord?.lng || null;
+        const autoLokasjon = initialFormData?.lokasjon || "";
+
         setFormData({
           tittel: initialFormData?.tittel || "",
-          lokasjon: initialFormData?.lokasjon || "",
+          lokasjon: autoLokasjon,
           tidspunkt: initialFormData?.tidspunkt || "",
           beskrivelse: initialFormData?.beskrivelse || "",
           merknader: initialFormData?.merknader || "",
           status: initialFormData?.status || "Planlagt",
           risk_nivå: initialFormData?.risk_nivå || "Lav",
-          latitude: initialFormData?.latitude || null,
-          longitude: initialFormData?.longitude || null,
+          latitude: autoLat,
+          longitude: autoLng,
         });
         setRouteData(initialRouteData || null);
         if (initialSelectedPersonnel) setSelectedPersonnel(initialSelectedPersonnel);
@@ -162,6 +167,24 @@ export const AddMissionDialog = ({
         if (initialSelectedDrones) setSelectedDrones(initialSelectedDrones);
         if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
         if (initialSelectedDocuments) setSelectedDocuments(initialSelectedDocuments);
+
+        // Auto-fill location from first route point via reverse geocoding
+        if (!autoLokasjon && firstCoord) {
+          fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lat=${firstCoord.lat}&lon=${firstCoord.lng}&radius=500&treffPerSide=1`)
+            .then(res => res.json())
+            .then(data => {
+              const addr = data?.adresser?.[0];
+              if (addr) {
+                const lokasjon = `${addr.adressetekst}, ${addr.poststed || addr.kommunenavn || ''}`.replace(/, $/, '');
+                setFormData(prev => ({ ...prev, lokasjon }));
+              } else {
+                setFormData(prev => ({ ...prev, lokasjon: `${firstCoord.lat.toFixed(5)}, ${firstCoord.lng.toFixed(5)}` }));
+              }
+            })
+            .catch(() => {
+              setFormData(prev => ({ ...prev, lokasjon: `${firstCoord.lat.toFixed(5)}, ${firstCoord.lng.toFixed(5)}` }));
+            });
+        }
       } else {
         // Reset form når vi oppretter nytt oppdrag
         setFormData({
