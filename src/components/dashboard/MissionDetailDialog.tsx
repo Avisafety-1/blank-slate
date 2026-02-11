@@ -200,6 +200,24 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               </div>
             </div>
           )}
+
+          {/* Approver Comments */}
+          {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Kommentarer fra godkjenner</p>
+              <div className="space-y-2">
+                {mission.approver_comments.map((c: any, i: number) => (
+                  <div key={i} className="text-sm bg-muted/50 rounded-md p-2">
+                    <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                    {c.comment}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short', year: 'numeric' })})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

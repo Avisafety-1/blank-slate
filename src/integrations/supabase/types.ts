@@ -2122,6 +2122,7 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          approver_comments: Json
           beskrivelse: string | null
           company_id: string
           customer_id: string | null
@@ -2147,6 +2148,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          approver_comments?: Json
           beskrivelse?: string | null
           company_id: string
           customer_id?: string | null
@@ -2172,6 +2174,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          approver_comments?: Json
           beskrivelse?: string | null
           company_id?: string
           customer_id?: string | null

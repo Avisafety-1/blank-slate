@@ -412,6 +412,39 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </html>`
   },
   
+  mission_approved: {
+    subject: 'Oppdrag godkjent: {{mission_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.mission-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #059669; }
+.comments-box { background: #fffbeb; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Oppdrag godkjent</h1>
+</div>
+<div class="content">
+<div class="mission-box">
+<h2 style="margin-top: 0;">{{mission_title}}</h2>
+<p><strong>Lokasjon:</strong> {{mission_location}}</p>
+<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+</div>
+{{comments_section}}
+<p>Logg inn i appen for å se oppdraget.</p>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
   maintenance_reminder: {
     subject: 'Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet',
     content: `<!DOCTYPE html>
