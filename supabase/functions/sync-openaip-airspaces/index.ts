@@ -29,18 +29,21 @@ Deno.serve(async (req) => {
       3: "P",  // Prohibited
       4: "R",  // Restricted
       5: "D",  // Danger
+      8: "RMZ",  // Radio Mandatory Zone
+      9: "TMZ",  // Transponder Mandatory Zone
+      13: "ATZ", // Aerodrome Traffic Zone
     };
 
     // OpenAIP airspace types for Norway:
-    // type 1 = Other, 2 = Restricted, 3 = Danger, 4 = Prohibited
-    // But the actual API uses different numbering - let's fetch all and filter
+    // 1-5 = P/R/D zones, 8 = RMZ, 9 = TMZ, 13 = ATZ
+    // We skip 6 (CTR) and 7 (TMA) as those come from ArcGIS
     const allAirspaces: any[] = [];
     let page = 1;
     const limit = 100;
     let hasMore = true;
 
     while (hasMore) {
-      const url = `https://api.core.openaip.net/api/airspaces?country=NO&type=1,2,3,4,5&limit=${limit}&page=${page}`;
+      const url = `https://api.core.openaip.net/api/airspaces?country=NO&type=1,2,3,4,5,8,9,13&limit=${limit}&page=${page}`;
       console.log(`Fetching page ${page}: ${url}`);
 
       const response = await fetch(url, {

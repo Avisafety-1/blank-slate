@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -350,6 +351,40 @@ export const ExpandedMapDialog = ({
                   layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
                 },
               }).addTo(zonesLayer);
+            }
+
+            // AIP restriction zones from database (including RMZ/TMZ/ATZ)
+            try {
+              const { data: aipZones } = await supabase
+                .from('aip_restriction_zones')
+                .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry');
+
+              if (aipZones) {
+                for (const zone of aipZones) {
+                  if (!zone.geometry) continue;
+                  let color = '#f59e0b';
+                  let label = 'Fareområde';
+                  let dashArray: string | undefined = undefined;
+                  if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
+                  else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
+                  else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
+                  else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
+                  else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
+                  else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'ATZ'; }
+
+                  try {
+                    L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
+                      style: { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray },
+                      onEachFeature: (feature, layer) => {
+                        const displayName = zone.name || zone.zone_id || 'Ukjent';
+                        layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
+                      }
+                    }).addTo(zonesLayer);
+                  } catch {}
+                }
+              }
+            } catch (err) {
+              console.error("Feil ved henting av AIP-soner:", err);
             }
           } catch (err) {
             console.error("Feil ved henting av luftromssoner:", err);

@@ -2367,6 +2367,42 @@ export type Database = {
         }
         Relationships: []
       }
+      openaip_obstacles: {
+        Row: {
+          elevation: number | null
+          geometry: unknown
+          height_agl: number | null
+          id: string
+          name: string | null
+          openaip_id: string
+          properties: Json | null
+          synced_at: string | null
+          type: string | null
+        }
+        Insert: {
+          elevation?: number | null
+          geometry?: unknown
+          height_agl?: number | null
+          id?: string
+          name?: string | null
+          openaip_id: string
+          properties?: Json | null
+          synced_at?: string | null
+          type?: string | null
+        }
+        Update: {
+          elevation?: number | null
+          geometry?: unknown
+          height_agl?: number | null
+          id?: string
+          name?: string | null
+          openaip_id?: string
+          properties?: Json | null
+          synced_at?: string | null
+          type?: string | null
+        }
+        Relationships: []
+      }
       personnel_competencies: {
         Row: {
           beskrivelse: string | null
