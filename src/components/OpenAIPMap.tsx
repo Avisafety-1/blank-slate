@@ -83,6 +83,8 @@ interface OpenAIPMapProps {
   onPilotPositionChange?: (position: RoutePoint | undefined) => void;
   pilotPosition?: RoutePoint;
   isPlacingPilot?: boolean;
+  focusFlightId?: string | null;
+  onFocusFlightHandled?: () => void;
 }
 
 // Calculate distance between two points using Haversine formula
@@ -185,7 +187,9 @@ export function OpenAIPMap({
   onStartRoutePlanning,
   onPilotPositionChange,
   pilotPosition,
-  isPlacingPilot
+  isPlacingPilot,
+  focusFlightId,
+  onFocusFlightHandled,
 }: OpenAIPMapProps) {
   const { user } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +205,7 @@ export function OpenAIPMap({
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
   const pilotLayerRef = useRef<L.LayerGroup | null>(null);
+  const flightMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
@@ -906,6 +911,10 @@ export function OpenAIPMap({
         }
         
         activeAdvisoryLayer.clearLayers();
+        // Clear advisory markers from flight markers ref
+        for (const [key] of flightMarkersRef.current) {
+          if (key.startsWith('advisory_')) flightMarkersRef.current.delete(key);
+        }
         
         for (const flight of activeFlights || []) {
           const route = flight.route_data as any;
@@ -934,6 +943,14 @@ export function OpenAIPMap({
           `);
           
           polygon.addTo(activeAdvisoryLayer);
+
+          // Create an invisible marker at centroid for focus navigation
+          const centLat = polygonCoords.reduce((s: number, c: [number, number]) => s + c[0], 0) / polygonCoords.length;
+          const centLng = polygonCoords.reduce((s: number, c: [number, number]) => s + c[1], 0) / polygonCoords.length;
+          const invisibleIcon = L.divIcon({ className: '', html: '', iconSize: [0, 0] });
+          const centroidMarker = L.marker([centLat, centLng], { icon: invisibleIcon, interactive: false });
+          centroidMarker.addTo(activeAdvisoryLayer);
+          flightMarkersRef.current.set(flight.id, centroidMarker as any);
         }
       } catch (err) {
         console.error('Error fetching active advisories:', err);
@@ -957,6 +974,10 @@ export function OpenAIPMap({
         }
         
         pilotPositionsLayer.clearLayers();
+        // Clear live markers from flight markers ref
+        for (const [key] of flightMarkersRef.current) {
+          if (key.startsWith('live_')) flightMarkersRef.current.delete(key);
+        }
         
         for (const flight of liveFlights || []) {
           if (!flight.start_lat || !flight.start_lng) continue;
@@ -1002,6 +1023,7 @@ export function OpenAIPMap({
           `);
           
           marker.addTo(pilotPositionsLayer);
+          flightMarkersRef.current.set(flight.id, marker);
         }
         
         console.log(`Rendered ${liveFlights?.length || 0} pilot positions`);
@@ -1801,6 +1823,44 @@ export function OpenAIPMap({
       updateRouteDisplay();
     }
   }, [existingRoute, updateRouteDisplay]);
+
+  // Focus on a specific flight when focusFlightId is set
+  useEffect(() => {
+    if (!focusFlightId || !leafletMapRef.current) return;
+
+    // Wait a tick for markers to be rendered
+    const timer = setTimeout(() => {
+      const marker = flightMarkersRef.current.get(focusFlightId);
+      if (marker) {
+        const latlng = marker.getLatLng();
+        leafletMapRef.current?.setView(latlng, 14, { animate: true });
+        marker.openPopup();
+      } else {
+        // Fallback: fetch position from DB and pan there
+        supabase
+          .from('active_flights')
+          .select('start_lat, start_lng, publish_mode, route_data')
+          .eq('id', focusFlightId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (!data || !leafletMapRef.current) return;
+            if (data.start_lat && data.start_lng) {
+              leafletMapRef.current.setView([data.start_lat, data.start_lng], 14, { animate: true });
+            } else if (data.route_data) {
+              const rd = data.route_data as any;
+              if (rd.coordinates?.length > 0) {
+                const centLat = rd.coordinates.reduce((s: number, c: any) => s + c.lat, 0) / rd.coordinates.length;
+                const centLng = rd.coordinates.reduce((s: number, c: any) => s + c.lng, 0) / rd.coordinates.length;
+                leafletMapRef.current.setView([centLat, centLng], 13, { animate: true });
+              }
+            }
+          });
+      }
+      onFocusFlightHandled?.();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [focusFlightId, onFocusFlightHandled]);
 
   // Update pilot position marker and VLOS circle
   useEffect(() => {
