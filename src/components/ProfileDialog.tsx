@@ -671,7 +671,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-20 md:mt-16 lg:mt-4 mb-2">
+                <div className="mt-20 md:mt-16 lg:mt-4 mb-4">
                   <Button
                     variant="outline"
                     size="sm"
