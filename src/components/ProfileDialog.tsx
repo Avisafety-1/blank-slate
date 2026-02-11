@@ -671,7 +671,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-28 md:mt-16 lg:mt-4 mb-[-0.5rem]">
+                <div className="mt-28 md:mt-16 lg:mt-4">
                   <Button
                     variant="outline"
                     size="sm"
@@ -685,7 +685,7 @@ export const ProfileDialog = () => {
               )}
 
               {/* Profile Tab */}
-              <TabsContent value="profile" className="space-y-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="profile" className="space-y-4 mt-2 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
