@@ -497,12 +497,13 @@ export function OpenAIPMap({
       rmzPane: '635',
     };
 
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
       if (pane) {
         pane.style.zIndex = zIndex;
-        pane.style.pointerEvents = 'auto';
+        pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
     console.log('Panes created:', Object.keys(paneConfig).join(', '));
