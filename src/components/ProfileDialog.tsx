@@ -618,11 +618,11 @@ export const ProfileDialog = () => {
                   <Bell className="h-3 w-3" />
                   <span>{t('profile.notifications')}</span>
                 </TabsTrigger>
-                <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
                   {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full">
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-[10px] leading-none rounded-full pointer-events-none">
                       {followUpIncidents.length + pendingApprovalMissions.length}
                     </Badge>
                   )}
