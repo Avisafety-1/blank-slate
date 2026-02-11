@@ -73,7 +73,7 @@ const Admin = () => {
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
-  const [syncingAirspaces, setSyncingAirspaces] = useState(false);
+  
 
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletingByEmail, setDeletingByEmail] = useState(false);
@@ -491,42 +491,6 @@ const Admin = () => {
                 </Card>
               )}
 
-              {/* OpenAIP Airspace Sync */}
-              {isSuperAdmin && (
-                <Card>
-                  <CardHeader className="pb-3 sm:pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                      Synkroniser luftromsdata (OpenAIP)
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Hent offisielle restriksjonsområder (P, R, D) fra OpenAIP og oppdater kartdataene.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="px-4 sm:px-6">
-                    <Button
-                      onClick={async () => {
-                        setSyncingAirspaces(true);
-                        try {
-                          const { data, error } = await supabase.functions.invoke('sync-openaip-airspaces');
-                          if (error) throw error;
-                          toast.success(`Synkronisert ${data.synced} soner (${data.errors} feil av ${data.total_fetched} hentet)`);
-                        } catch (err) {
-                          console.error('Sync error:', err);
-                          toast.error('Kunne ikke synkronisere luftromsdata');
-                        } finally {
-                          setSyncingAirspaces(false);
-                        }
-                      }}
-                      disabled={syncingAirspaces}
-                      variant="outline"
-                    >
-                      <RefreshCw className={`w-4 h-4 mr-2 ${syncingAirspaces ? 'animate-spin' : ''}`} />
-                      {syncingAirspaces ? 'Synkroniserer...' : 'Synkroniser nå'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
 
               {isSuperAdmin && (
                 <Card>
