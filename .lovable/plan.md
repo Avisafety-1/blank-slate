@@ -1,74 +1,45 @@
 
 
-# Update Map Beacon Icons to SVG by Type
+# Ny widget: Aktive flyturer i selskapet
 
-## Overview
-Replace the current PNG-based aircraft icons (airplane-icon.png, helicopter-icon.png, drone-animated.gif) with proper SVG icons matching each SafeSky beacon type. Add animated rotor blades for helicopters by cycling through 4 SVG animation frames.
+## Oversikt
+Legge til en ny dashboard-widget som viser pågående/aktive flyturer i selskapet. Widgeten henter data fra `active_flights`-tabellen, viser dem som klikkbare kort (samme stil som "Kommende oppdrag"), og inkluderer en "Vis på kart"-knapp.
 
-## Beacon Type to Icon Mapping
+## Plassering
 
-| Beacon Type | Icon File | Animation |
-|---|---|---|
-| UNKNOWN | dot.svg | None |
-| STATIC_OBJECT | dot.svg | None |
-| GLIDER | glider.svg | None |
-| PARA_GLIDER | para_glider.svg (not provided -- fallback to dot.svg) | None |
-| HAND_GLIDER | hand_glider.svg (not provided -- fallback to dot.svg) | None |
-| PARA_MOTOR | para_motor.svg (not provided -- fallback to dot.svg) | None |
-| PARACHUTE | parachute.svg (not provided -- fallback to dot.svg) | None |
-| FLEX_WING_TRIKES | flex_wing_trikes.svg (not provided -- fallback to dot.svg) | None |
-| THREE_AXES_LIGHT_PLANE | light_aircraft.svg | None |
-| MOTORPLANE | aircraft.svg | None |
-| JET | heavy_aircraft.svg | None |
-| HELICOPTER | helicopter.svg | Cycle helicopter-anim_0 through _3 |
-| GYROCOPTER | gyrocopter.svg (not provided -- fallback to helicopter.svg) | None |
-| AIRSHIP | airship.svg (not provided -- fallback to dot.svg) | None |
-| BALLOON | ballon.svg (not provided -- fallback to dot.svg) | None |
-| UAV | uav.svg (not provided -- fallback to drone-animated.gif) | Existing GIF |
-| PAV | pav.svg (not provided -- fallback to dot.svg) | None |
-| MILITARY | military.svg (not provided -- fallback to aircraft.svg) | None |
+**Desktop/tablet (lg+):**
+- I midtkolonnen, mellom start/avslutt-knappene og "Kommende oppdrag"-boksen
+- Vises alltid (tom-tilstand med melding hvis ingen aktive flyturer)
 
-Note: Only the SVGs the user uploaded are available. Missing types will use sensible fallbacks.
+**Mobil:**
+- Under start/avslutt flytur-knappene
+- Skjules helt hvis det ikke er aktive flyturer i selskapet
 
-## Steps
+## Implementasjon
 
-### 1. Copy SVG assets into `src/assets/safesky-icons/`
-Copy all uploaded SVG files:
-- dot.svg, glider.svg, aircraft.svg, light_aircraft.svg, heavy_aircraft.svg
-- helicopter.svg, helicopter-anim_0.svg, helicopter-anim_1.svg, helicopter-anim_2.svg, helicopter-anim_3.svg
+### 1. Ny komponent: `src/components/dashboard/ActiveFlightsSection.tsx`
+- Henter `active_flights` fra Supabase, filtrert på `company_id`
+- Joiner med `profiles` (pilotnavn) og `missions` (oppdragstittel) for visning
+- Sanntidsoppdatering via `postgres_changes`-subscription på `active_flights`
+- Hvert kort viser: pilotnavn, starttidspunkt, varighet (beregnet fra `start_time`), tilknyttet oppdrag, og publiseringsmodus
+- Klikkbart kort navigerer til `/kart` for å se flyturen
+- "Vis på kart"-knapp nederst navigerer til `/kart`
+- Bruker `GlassCard` med samme layout-stil som `MissionsSection`
 
-### 2. Update OpenAIPMap.tsx -- imports
-- Import all new SVG icons at the top of the file
-- Remove the old `airplaneIcon` and `helicopterIcon` PNG imports (keep `droneAnimatedIcon` for UAV)
+### 2. Oppdater `src/pages/Index.tsx`
+- Importer `ActiveFlightsSection`
+- **Desktop**: Plasser widgeten i midtkolonnen etter flight-knappene, før missions-blokken
+- **Mobil**: Plasser etter start/avslutt-knappene, wrappet i en betinget visning som kun rendrer hvis det finnes aktive flyturer
 
-### 3. Update OpenAIPMap.tsx -- beacon type mapping
-Create a helper function `getBeaconSvgUrl(beaconType: string)` that maps the SafeSky `beacon_type` string to the correct imported SVG URL. The beacon_type values from SafeSky are strings like "MOTORPLANE", "HELICOPTER", "UAV", etc.
+### 3. Oversettelser
+- Legg til nøkler i `en.json` og `no.json` under `dashboard.activeFlights`
 
-### 4. Update OpenAIPMap.tsx -- helicopter animation
-For HELICOPTER beacons:
-- Store the 4 animation frame SVG URLs in an array
-- On marker creation, start a `setInterval` (every 150-200ms) that cycles through the 4 frames by updating the `<img>` src
-- Track intervals in a Map keyed by beacon ID
-- Clear intervals when markers are removed
-- Skip frame updates if the marker popup is open
+## Tekniske detaljer
 
-### 5. Update marker rendering logic
-In `renderSafeSkyBeacons()`:
-- Replace the current `isDrone`/`isHelicopter`/else branching with the new `getBeaconSvgUrl()` lookup
-- Keep the existing high-altitude filter (grayscale+brightness for >2000ft)
-- Keep rotation via CSS transform for non-helicopter types
-- Helicopters: no rotation, use animation cycling instead
-- UAV: keep using existing drone-animated.gif
-- All other types: use the SVG icon with heading rotation
-
-### 6. Update existing marker updates
-In the "existingMarker" branch, also update icon src if beacon type could change (unlikely but safe), and ensure helicopter animation intervals are properly managed.
-
-## Technical Details
-
-- SVG icons are imported as ES module URLs (Vite handles this)
-- Helicopter animation: `setInterval` at ~200ms cycling through frames 0-3
-- Animation intervals stored in a `Map<string, number>` alongside `safeskyMarkersCache`
-- Cleanup: intervals cleared when markers are removed from cache or on component unmount
-- Icon size: 32x32px for all types (consistent with current), 62x62 for UAV drones (keeping current size)
+- Spørring: `supabase.from('active_flights').select('*, profiles:profile_id(full_name), missions:mission_id(tittel)')` med filter på company
+- Sanntids-subscription på `active_flights`-tabellen for INSERT/DELETE events
+- Elapsed time beregnes client-side fra `start_time` med `setInterval` (oppdateres hvert sekund)
+- "Vis på kart"-knapp bruker `useNavigate` til `/kart`
+- Widgeten er ikke del av DndContext/draggable layout -- den er fast plassert i midtkolonnen
+- Mobil: bruker en state `hasActiveFlights` som styrer `lg:hidden`/skjul-logikken
 
