@@ -451,7 +451,7 @@ export function OpenAIPMap({
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
       const pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane'];
+      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'missionPane'];
       for (const paneName of panesToDisable) {
         const pane = map.getPane(paneName);
         if (pane) {
@@ -1788,7 +1788,6 @@ export function OpenAIPMap({
     fetchNsmData();
     fetchRpasData();
     fetchAipRestrictionZones();
-    fetchAipRestrictionZones();
     fetchRmzTmzAtzZones();
     fetchObstacles();
     fetchAirportsData();
@@ -2138,7 +2137,7 @@ export function OpenAIPMap({
 
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
-      <div ref={mapRef} className="w-full h-full touch-manipulation" />
+      <div ref={mapRef} className={`w-full h-full touch-manipulation ${mode === 'routePlanning' ? 'route-planning-active' : ''}`} />
       
       {/* Map controls */}
       <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
