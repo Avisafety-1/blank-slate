@@ -441,21 +441,16 @@ export function OpenAIPMap({
       setGeoJsonInteractivity(layer, vectorsInteractive);
     });
 
-    // Disable pointer events on overlay panes when in route planning mode
-    // This allows clicks to pass through to the map for adding route points
+    // Disable pointer events on all airspace panes when in route planning mode
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
-      const overlayPane = map.getPane("overlayPane");
-      if (overlayPane) {
-        overlayPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      }
-      const aipPane = map.getPane("aipPane");
-      if (aipPane) {
-        aipPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      }
-      const nsmPane = map.getPane("nsmPane");
-      if (nsmPane) {
-        nsmPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
+      const pointerEvents = mode === "routePlanning" ? "none" : "auto";
+      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'ctrPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane'];
+      for (const paneName of panesToDisable) {
+        const pane = map.getPane(paneName);
+        if (pane) {
+          pane.style.pointerEvents = pointerEvents;
+        }
       }
     }
 
@@ -480,46 +475,40 @@ export function OpenAIPMap({
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
     leafletMapRef.current = map;
 
-    // Create custom pane for route elements with higher z-index
-    map.createPane('routePane');
-    const routePane = map.getPane('routePane');
-    if (routePane) {
-      routePane.style.zIndex = '670'; // Above all airspace panes (aipPane: 630, nsmPane: 640, safesky: 645, missionPane: 660)
-      routePane.style.pointerEvents = 'auto';
-    }
+    // Z-index hierarchy (smallest/most specific areas on top):
+    // 690: airportPane   - Airport markers (highest, always clickable)
+    // 685: missionPane   - Mission markers
+    // 680: routePane     - Route planner
+    // 675: obstaclePane  - Obstacles (wind turbines, masts)
+    // 660: safeskyPane   - SafeSky traffic
+    // 650: nsmPane       - NSM restriction zones
+    // 645: rpasPane      - RPAS 5km zones
+    // 640: ctrPane       - CTR zones
+    // 635: rmzPane       - RMZ/TMZ/ATZ/TIZ zones
+    // 630: aipPane       - Danger/Prohibited/Restricted (largest areas, bottom)
 
-    // AIP restriction zones pane - below route pane so route planning works on top
-    map.createPane('aipPane');
-    const aipPane = map.getPane('aipPane');
-    if (aipPane) {
-      aipPane.style.zIndex = '630';
-      aipPane.style.pointerEvents = 'auto';
-    }
+    const paneConfig: Record<string, string> = {
+      airportPane: '690',
+      missionPane: '685',
+      routePane: '680',
+      obstaclePane: '675',
+      safeskyPane: '660',
+      nsmPane: '650',
+      rpasPane: '645',
+      ctrPane: '640',
+      rmzPane: '635',
+      aipPane: '630',
+    };
 
-    // NSM pane - make sure NSM areas are above RPAS/CTR and clickable
-    map.createPane('nsmPane');
-    const nsmPane = map.getPane('nsmPane');
-    if (nsmPane) {
-      nsmPane.style.zIndex = '640';
-      nsmPane.style.pointerEvents = 'auto';
+    for (const [paneName, zIndex] of Object.entries(paneConfig)) {
+      map.createPane(paneName);
+      const pane = map.getPane(paneName);
+      if (pane) {
+        pane.style.zIndex = zIndex;
+        pane.style.pointerEvents = 'auto';
+      }
     }
-
-    // SafeSky beacons pane - above NSM (640) and AIP (630), below route (650)
-    map.createPane('safeskyPane');
-    const safeskyPane = map.getPane('safeskyPane');
-    if (safeskyPane) {
-      safeskyPane.style.zIndex = '645';
-      safeskyPane.style.pointerEvents = 'auto';
-    }
-
-    // Mission markers pane - above airspace layers and route, below popups
-    map.createPane('missionPane');
-    const missionPane = map.getPane('missionPane');
-    if (missionPane) {
-      missionPane.style.zIndex = '660';
-      missionPane.style.pointerEvents = 'auto';
-    }
-    console.log('routePane created:', !!routePane);
+    console.log('Panes created:', Object.keys(paneConfig).join(', '));
 
     // OSM background
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
@@ -1130,6 +1119,7 @@ export function OpenAIPMap({
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
           interactive: mode !== 'routePlanning',
+          pane: 'rpasPane',
           style: {
             color: '#f97316',
             weight: 2,
@@ -1164,6 +1154,7 @@ export function OpenAIPMap({
         const geojson = await response.json();
         const geoJsonLayer = L.geoJSON(geojson, {
           interactive: mode !== 'routePlanning',
+          pane: 'ctrPane',
           style: {
             color: '#ec4899',
             weight: 2,
@@ -1321,7 +1312,7 @@ export function OpenAIPMap({
                 fillColor: color,
                 fillOpacity: 0.12,
                 dashArray,
-                pane: 'aipPane',
+                pane: 'rmzPane',
               },
               onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
                 const p = feature.properties || {};
@@ -1396,7 +1387,7 @@ export function OpenAIPMap({
               popupAnchor: [0, -10],
             });
 
-            const marker = L.marker([lat, lng], { icon: obstacleIcon, interactive: mode !== 'routePlanning' });
+            const marker = L.marker([lat, lng], { icon: obstacleIcon, interactive: mode !== 'routePlanning', pane: 'obstaclePane' });
             
             const typeName = obstacle.type || 'Ukjent';
             const displayName = obstacle.name || typeName;
@@ -1449,7 +1440,7 @@ export function OpenAIPMap({
               iconAnchor: [16, 40],
               popupAnchor: [0, -40]
             });
-            return L.marker(latlng, { icon, interactive: mode !== 'routePlanning' });
+            return L.marker(latlng, { icon, interactive: mode !== 'routePlanning', pane: 'airportPane' });
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             if (feature.properties) {
