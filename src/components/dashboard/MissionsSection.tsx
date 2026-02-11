@@ -55,6 +55,11 @@ export const MissionsSection = () => {
     
     fetchMissions();
 
+    const handler = () => {
+      if (!navigator.onLine) return;
+      fetchMissions();
+    };
+
     const channel = supabase
       .channel('missions-changes')
       .on(
@@ -64,10 +69,7 @@ export const MissionsSection = () => {
           schema: 'public',
           table: 'missions',
         },
-        () => {
-          if (!navigator.onLine) return;
-          fetchMissions();
-        }
+        handler
       )
       .subscribe();
 
