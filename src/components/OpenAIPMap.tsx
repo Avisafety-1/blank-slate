@@ -234,6 +234,13 @@ export function OpenAIPMap({
         if (el) {
           (el as HTMLElement).style.pointerEvents = enabled ? "auto" : "none";
         }
+
+        // Also toggle Leaflet's internal interactive target registration
+        if (!enabled && typeof layer.removeInteractiveTarget === "function" && el) {
+          layer.removeInteractiveTarget(el);
+        } else if (enabled && typeof layer.addInteractiveTarget === "function" && el) {
+          layer.addInteractiveTarget(el);
+        }
       });
     },
     []
