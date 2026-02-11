@@ -1266,7 +1266,7 @@ export function OpenAIPMap({
         const { data, error } = await supabase
           .from('aip_restriction_zones')
           .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-          .in('zone_type', ['RMZ', 'TMZ', 'ATZ', 'TIZ']);
+          .in('zone_type', ['RMZ', 'TMZ', 'ATZ']);
 
         if (error || !data) {
           console.error('Feil ved henting av RMZ/TMZ/ATZ-soner:', error);
@@ -1289,10 +1289,6 @@ export function OpenAIPMap({
             color = '#38bdf8'; // light blue
             label = 'ATZ (Aerodrome Traffic Zone)';
             dashArray = undefined; // solid
-          } else if (zone.zone_type === 'TIZ') {
-            color = '#a78bfa'; // violet
-            label = 'TIZ (Traffic Information Zone)';
-            dashArray = '4, 4';
           }
 
           try {
