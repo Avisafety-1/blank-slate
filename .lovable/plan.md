@@ -1,45 +1,84 @@
 
 
-# Ny widget: Aktive flyturer i selskapet
+# Importer nye datalag fra OpenAIP (uten duplikater)
 
-## Oversikt
-Legge til en ny dashboard-widget som viser pågående/aktive flyturer i selskapet. Widgeten henter data fra `active_flights`-tabellen, viser dem som klikkbare kort (samme stil som "Kommende oppdrag"), og inkluderer en "Vis på kart"-knapp.
+## Maal
+Utvide OpenAIP-importen til aa hente data som IKKE allerede finnes fra ArcGIS-kildene. Dette gir bedre dekning av luftrom og hindringer relevante for droneoperasjoner.
 
-## Plassering
+## Hva importeres (nytt)
 
-**Desktop/tablet (lg+):**
-- I midtkolonnen, mellom start/avslutt-knappene og "Kommende oppdrag"-boksen
-- Vises alltid (tom-tilstand med melding hvis ingen aktive flyturer)
+| Datakilde | OpenAIP Type | Eksempel | Farge paa kart |
+|-----------|-------------|----------|----------------|
+| RMZ (Radio Mandatory Zone) | type 8 | Geiteryggen ENSG | Groenn |
+| TMZ (Transponder Mandatory Zone) | type 9 | | Turkis |
+| ATZ (Aerodrome Traffic Zone) | type 13 | | Lysebla |
+| Hindringer (Obstacles) | eget API-endepunkt | Vindturbiner, master | Roed/oransje ikoner |
 
-**Mobil:**
-- Under start/avslutt flytur-knappene
-- Skjules helt hvis det ikke er aktive flyturer i selskapet
+## Hva importeres IKKE (allerede fra ArcGIS)
+- CTR (type 6) - har RPAS CTR/TIZ fra ArcGIS
+- TMA (type 7) - dekket av eksisterende lag
+- NSM-soner - egen ArcGIS-kilde
+- RPAS 5km-soner - egen ArcGIS-kilde
+- Flyplasser - beholder ArcGIS som primaerkilde (mer paalitelig for norske data)
 
-## Implementasjon
+## Teknisk plan
 
-### 1. Ny komponent: `src/components/dashboard/ActiveFlightsSection.tsx`
-- Henter `active_flights` fra Supabase, filtrert på `company_id`
-- Joiner med `profiles` (pilotnavn) og `missions` (oppdragstittel) for visning
-- Sanntidsoppdatering via `postgres_changes`-subscription på `active_flights`
-- Hvert kort viser: pilotnavn, starttidspunkt, varighet (beregnet fra `start_time`), tilknyttet oppdrag, og publiseringsmodus
-- Klikkbart kort navigerer til `/kart` for å se flyturen
-- "Vis på kart"-knapp nederst navigerer til `/kart`
-- Bruker `GlassCard` med samme layout-stil som `MissionsSection`
+### Steg 1: Database - nye tabeller og utvidelse
 
-### 2. Oppdater `src/pages/Index.tsx`
-- Importer `ActiveFlightsSection`
-- **Desktop**: Plasser widgeten i midtkolonnen etter flight-knappene, før missions-blokken
-- **Mobil**: Plasser etter start/avslutt-knappene, wrappet i en betinget visning som kun rendrer hvis det finnes aktive flyturer
+**Utvid `aip_restriction_zones`-tabellen** til aa ogsaa lagre RMZ/TMZ/ATZ-soner (de bruker samme struktur med polygon-geometri).
 
-### 3. Oversettelser
-- Legg til nøkler i `en.json` og `no.json` under `dashboard.activeFlights`
+Nye zone_type-verdier: `RMZ`, `TMZ`, `ATZ`
 
-## Tekniske detaljer
+**Ny tabell `openaip_obstacles`**:
+- id, openaip_id, name, type (mast, vindturbin, etc.)
+- geometry (Point), elevation, height_agl
+- properties (jsonb), synced_at
 
-- Spørring: `supabase.from('active_flights').select('*, profiles:profile_id(full_name), missions:mission_id(tittel)')` med filter på company
-- Sanntids-subscription på `active_flights`-tabellen for INSERT/DELETE events
-- Elapsed time beregnes client-side fra `start_time` med `setInterval` (oppdateres hvert sekund)
-- "Vis på kart"-knapp bruker `useNavigate` til `/kart`
-- Widgeten er ikke del av DndContext/draggable layout -- den er fast plassert i midtkolonnen
-- Mobil: bruker en state `hasActiveFlights` som styrer `lg:hidden`/skjul-logikken
+RLS: Lesbar for alle autentiserte brukere.
+
+### Steg 2: Utvid sync-openaip-airspaces edge function
+
+- Legg til type 8 (RMZ), 9 (TMZ), 13 (ATZ) i API-kallet
+- Mappe disse til zone_type RMZ/TMZ/ATZ i typeMap
+- Upsert til `aip_restriction_zones` med riktig zone_type
+
+### Steg 3: Ny edge function for hindringer
+
+Ny funksjon `sync-openaip-obstacles`:
+- Henter fra `https://api.core.openaip.net/api/obstacles?country=NO`
+- Lagrer i `openaip_obstacles`-tabellen
+- Kjores daglig via cron (sammen med airspaces)
+
+### Steg 4: Vis nye lag paa kartet (OpenAIPMap.tsx)
+
+- Hent RMZ/TMZ/ATZ fra `aip_restriction_zones` (samme query, nye zone_type-verdier)
+- Vis med egne farger og styling:
+  - RMZ: groenn stiplet linje
+  - TMZ: turkis stiplet linje  
+  - ATZ: lysebla heltrukket linje
+- Nytt kartlag for hindringer med ikoner (trekant-varsel)
+- Legg til i MapLayerControl saa brukere kan sla av/paa
+
+### Steg 5: Luftromsadvarsler for nye soner
+
+Oppdater `check_mission_airspace`-funksjonen til aa ogsaa sjekke RMZ/TMZ/ATZ:
+- RMZ/TMZ: FORSIKTIGHET-nivaa (krever radiokontakt/transponder)
+- ATZ: INFORMASJON-nivaa
+
+### Steg 6: Oppdater MissionMapPreview og ExpandedMapDialog
+
+Vis de nye sonene ogsaa i oppdragskart-forhåndsvisningen og utvidet kartdialog.
+
+## Filer som endres/opprettes
+
+| Fil | Endring |
+|-----|---------|
+| Ny migrasjon | Ny tabell `openaip_obstacles`, utvid `check_mission_airspace` |
+| `supabase/functions/sync-openaip-airspaces/index.ts` | Legg til type 8, 9, 13 |
+| `supabase/functions/sync-openaip-obstacles/index.ts` | Ny edge function |
+| `supabase/config.toml` | Config for ny funksjon |
+| `src/components/OpenAIPMap.tsx` | Vis RMZ/TMZ/ATZ og hindringer |
+| `src/components/MapLayerControl.tsx` | Nye toggle-valg |
+| `src/components/dashboard/MissionMapPreview.tsx` | Vis nye soner |
+| `src/components/dashboard/ExpandedMapDialog.tsx` | Vis nye soner |
 
