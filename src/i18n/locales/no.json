@@ -502,6 +502,7 @@
     "roleAssigned": "Rolle tildelt",
     "roleRemoved": "Rolle fjernet",
     "userDeleted": "Bruker slettet",
+    "deleteUser": "Slett bruker",
     "confirmDeleteUser": "Er du sikker på at du vil slette brukeren {{name}}? Dette kan ikke angres.",
     "noAccessPage": "Du har ikke tilgang til denne siden",
     "errorCheckingAccess": "Feil ved sjekking av tilgang",

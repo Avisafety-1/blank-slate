@@ -502,6 +502,7 @@
     "roleAssigned": "Role assigned",
     "roleRemoved": "Role removed",
     "userDeleted": "User deleted",
+    "deleteUser": "Delete user",
     "confirmDeleteUser": "Are you sure you want to delete the user {{name}}? This cannot be undone.",
     "noAccessPage": "You do not have access to this page",
     "errorCheckingAccess": "Error checking access",
