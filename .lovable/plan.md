@@ -1,25 +1,91 @@
 
 
-## Fix: Norwegian Characters (Æ Ø Å) in Email Templates
+## Erstatt manuelle AIP-soner med OpenAIP polygon-data
 
-### Problem
-The three recent email templates -- "Oppdrag godkjent" (mission_approved), "Send til godkjenning" (mission_approval_request), and "Kommentar til pilot" (pilot_comment_notification) -- are all missing `<meta charset="utf-8">` in their HTML `<head>` section. Without this, email clients may not correctly interpret Norwegian characters like Æ, Ø, and Å.
+### Bakgrunn
+De nåværende AIP-restriksjonssonene (R-102, R-104, D-301 osv.) er manuelt definert med estimerte koordinater og tilnærmede sirkler/polygoner. OpenAIP-kartlaget viser de offisielle grensene, og forskjellen mellom disse skaper forvirring. Losningen er a hente de offisielle polygonene direkte fra OpenAIP sitt API.
 
-### Solution
-Add `<meta charset="utf-8">` to the `<head>` of all three default templates in `template-utils.ts`, and ensure the inline fallback HTML in `send-notification-email/index.ts` also includes charset declarations.
+### Tilnarming
+Opprette en Edge Function som henter luftromsdata fra OpenAIP Core API og lagrer polygonene i `aip_restriction_zones`-tabellen. Dette erstatter de manuelt estimerte geometriene med presise, offisielle data.
 
-### Changes
+### Steg
 
-**File 1: `supabase/functions/_shared/template-utils.ts`**
-- Add `<meta charset="utf-8">` inside `<head>` for:
-  - `mission_approved` template (line ~420)
-  - `mission_approval_request` template (line ~453)
-  - `pilot_comment_notification` template (line ~492)
+**1. Ny Edge Function: `sync-openaip-airspaces`**
+- Henter norske restriksjonsomrader (Prohibited, Restricted, Danger) fra OpenAIP API:
+  - `GET https://api.core.openaip.net/api/airspaces?country=NO&type=1,2,3` (P, R, D-typer)
+- Konverterer geometrien til PostGIS-format
+- Upsert inn i `aip_restriction_zones` med riktig `zone_id`, `zone_type`, `name`, `geometry`, `upper_limit`, `lower_limit`, `remarks`
+- Bruker OpenAIP API-nokkel fra secrets/environment
 
-**File 2: `supabase/functions/send-notification-email/index.ts`**
-- Update inline fallback HTML strings for all three handlers to include `<meta charset="utf-8">`:
-  - `notify_mission_approval` fallback (line ~172)
-  - `notify_pilot_comment` fallback (line ~218)
-  - `notify_mission_approved` fallback (line ~284)
+**2. Oppdater `aip_restriction_zones`-tabellen**
+- Legg til kolonne `source` (text) for a skille mellom manuell og automatisk data
+- Legg til kolonne `openaip_id` (text) for a koble til OpenAIP sin ID
 
-After changes, redeploy the `send-notification-email` edge function.
+**3. Oppdater kartvisningen**
+- Fjern dobbeltvisning: nar AIP-sonene kommer fra OpenAIP trenger vi ikke vise bade OpenAIP tile-laget og vart eget polygon-lag for de samme sonene
+- Alternativt: behold begge, men la brukeren sla av/pa hvert lag separat (dette fungerer allerede)
+
+**4. Legg til manuell sync-knapp i Admin**
+- Knapp i admin-panelet for a trigge synkronisering
+- Viser resultat (antall oppdaterte soner)
+
+### Tekniske detaljer
+
+**OpenAIP API-kall:**
+```text
+GET https://api.core.openaip.net/api/airspaces
+  ?country=NO
+  &type=1,2,3    (1=Prohibited, 2=Restricted, 3=Danger)
+  &limit=500
+Headers: x-openaip-client-id: <API_KEY>
+```
+
+**Respons-format (forenklet):**
+```text
+{
+  "items": [
+    {
+      "_id": "abc123",
+      "name": "EN-R102 OSLO",
+      "type": 2,
+      "country": "NO",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[10.72, 59.90], ...]]
+      },
+      "upperLimit": { "value": 3000, "unit": 1, "referenceDatum": 1 },
+      "lowerLimit": { "value": 0, "unit": 1, "referenceDatum": 1 }
+    }
+  ]
+}
+```
+
+**Database-migrering:**
+```text
+ALTER TABLE aip_restriction_zones 
+  ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual',
+  ADD COLUMN IF NOT EXISTS openaip_id text;
+```
+
+**Edge Function pseudokode:**
+```text
+1. Fetch airspaces from OpenAIP API (country=NO, type=1,2,3)
+2. For each airspace:
+   a. Map type (1->P, 2->R, 3->D)
+   b. Extract zone_id from name (e.g. "EN-R102")
+   c. Convert geometry to PostGIS via ST_GeomFromGeoJSON
+   d. Upsert into aip_restriction_zones
+3. Return summary of synced zones
+```
+
+**Filer som endres:**
+- `supabase/functions/sync-openaip-airspaces/index.ts` (ny)
+- `supabase/config.toml` (registrer ny funksjon)
+- Ny migrering for kolonnene `source` og `openaip_id`
+- Valgfritt: admin-knapp i `src/pages/Admin.tsx`
+
+### Fordeler
+- Presise, offisielle polygoner som matcher OpenAIP-kartlaget
+- Automatisk synkronisering istedenfor manuelt arbeid
+- Bedre noyaktighet i luftromsadvarsler (check_mission_airspace)
+
