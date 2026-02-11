@@ -555,6 +555,54 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
           <div className="flex-1 overflow-y-auto -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 180px)' }}>
             <div className="space-y-6 py-4 pb-6">
+            {/* Nearest air traffic info - shown above checklists */}
+            {(trafficLoading || nearestTraffic !== null) && (
+              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
+                nearestTraffic && nearestTraffic.distanceKm < 5 
+                  ? 'bg-destructive/10' 
+                  : nearestTraffic && nearestTraffic.distanceKm < 15 
+                    ? 'bg-amber-500/10' 
+                    : 'bg-muted'
+              }`}>
+                <Plane className={`h-4 w-4 mt-0.5 ${
+                  nearestTraffic && nearestTraffic.distanceKm < 5 
+                    ? 'text-destructive' 
+                    : nearestTraffic && nearestTraffic.distanceKm < 15 
+                      ? 'text-amber-500' 
+                      : 'text-muted-foreground'
+                }`} />
+                <div className="space-y-0.5">
+                  {trafficLoading ? (
+                    <p className="text-muted-foreground">Sjekker lufttrafikk i nærheten...</p>
+                  ) : nearestTraffic ? (
+                    <>
+                      <p className="font-medium">
+                        Nærmeste trafikk: {nearestTraffic.distanceKm < 1 
+                          ? `${Math.round(nearestTraffic.distanceKm * 1000)} m` 
+                          : `${nearestTraffic.distanceKm.toFixed(1)} km`}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {nearestTraffic.callsign} ({nearestTraffic.type})
+                        {nearestTraffic.altitudeFt != null && ` • ${nearestTraffic.altitudeFt} ft`}
+                      </p>
+                      <p className="text-xs text-muted-foreground italic">
+                        Trafikk over 5 000 ft er filtrert bort
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {!trafficLoading && nearestTraffic === null && gpsPosition && (
+              <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
+                <Plane className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Ingen lufttrafikk under 5 000 ft i nærheten
+                </p>
+              </div>
+            )}
+
             {/* Linked Checklists Section */}
             {checklists.length > 0 && (
               <div className="space-y-3">
@@ -778,54 +826,6 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     </p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Nearest air traffic info */}
-            {(trafficLoading || nearestTraffic !== null) && (
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
-                nearestTraffic && nearestTraffic.distanceKm < 5 
-                  ? 'bg-destructive/10' 
-                  : nearestTraffic && nearestTraffic.distanceKm < 15 
-                    ? 'bg-amber-500/10' 
-                    : 'bg-muted'
-              }`}>
-                <Plane className={`h-4 w-4 mt-0.5 ${
-                  nearestTraffic && nearestTraffic.distanceKm < 5 
-                    ? 'text-destructive' 
-                    : nearestTraffic && nearestTraffic.distanceKm < 15 
-                      ? 'text-amber-500' 
-                      : 'text-muted-foreground'
-                }`} />
-                <div className="space-y-0.5">
-                  {trafficLoading ? (
-                    <p className="text-muted-foreground">Sjekker lufttrafikk i nærheten...</p>
-                  ) : nearestTraffic ? (
-                    <>
-                      <p className="font-medium">
-                        Nærmeste trafikk: {nearestTraffic.distanceKm < 1 
-                          ? `${Math.round(nearestTraffic.distanceKm * 1000)} m` 
-                          : `${nearestTraffic.distanceKm.toFixed(1)} km`}
-                      </p>
-                      <p className="text-muted-foreground">
-                        {nearestTraffic.callsign} ({nearestTraffic.type})
-                        {nearestTraffic.altitudeFt != null && ` • ${nearestTraffic.altitudeFt} ft`}
-                      </p>
-                      <p className="text-xs text-muted-foreground italic">
-                        Trafikk over 5 000 ft er filtrert bort
-                      </p>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
-            {!trafficLoading && nearestTraffic === null && gpsPosition && (
-              <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
-                <Plane className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Ingen lufttrafikk under 5 000 ft i nærheten
-                </p>
               </div>
             )}
 
