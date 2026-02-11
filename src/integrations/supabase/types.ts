@@ -2118,6 +2118,10 @@ export type Database = {
       }
       missions: {
         Row: {
+          approval_comment: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           beskrivelse: string | null
           company_id: string
           customer_id: string | null
@@ -2132,12 +2136,17 @@ export type Database = {
           route: Json | null
           slutt_tidspunkt: string | null
           status: string
+          submitted_for_approval_at: string | null
           tidspunkt: string
           tittel: string
           user_id: string
           weather_data_snapshot: Json | null
         }
         Insert: {
+          approval_comment?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           beskrivelse?: string | null
           company_id: string
           customer_id?: string | null
@@ -2152,12 +2161,17 @@ export type Database = {
           route?: Json | null
           slutt_tidspunkt?: string | null
           status?: string
+          submitted_for_approval_at?: string | null
           tidspunkt: string
           tittel: string
           user_id: string
           weather_data_snapshot?: Json | null
         }
         Update: {
+          approval_comment?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           beskrivelse?: string | null
           company_id?: string
           customer_id?: string | null
@@ -2172,6 +2186,7 @@ export type Database = {
           route?: Json | null
           slutt_tidspunkt?: string | null
           status?: string
+          submitted_for_approval_at?: string | null
           tidspunkt?: string
           tittel?: string
           user_id?: string
@@ -2250,6 +2265,7 @@ export type Database = {
           email_document_expiry: boolean
           email_followup_assigned: boolean
           email_inspection_reminder: boolean
+          email_mission_approval: boolean
           email_new_incident: boolean
           email_new_mission: boolean
           email_new_user_pending: boolean
@@ -2269,6 +2285,7 @@ export type Database = {
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
+          email_mission_approval?: boolean
           email_new_incident?: boolean
           email_new_mission?: boolean
           email_new_user_pending?: boolean
@@ -2288,6 +2305,7 @@ export type Database = {
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
+          email_mission_approval?: boolean
           email_new_incident?: boolean
           email_new_mission?: boolean
           email_new_user_pending?: boolean
@@ -2394,6 +2412,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           avatar_url: string | null
+          can_approve_missions: boolean
           company_id: string
           created_at: string | null
           email: string | null
@@ -2413,6 +2432,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          can_approve_missions?: boolean
           company_id: string
           created_at?: string | null
           email?: string | null
@@ -2432,6 +2452,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          can_approve_missions?: boolean
           company_id?: string
           created_at?: string | null
           email?: string | null

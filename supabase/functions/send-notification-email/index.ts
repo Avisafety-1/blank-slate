@@ -21,6 +21,7 @@ interface EmailRequest {
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   mission?: { tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
+  approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -30,7 +31,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, newUser, incident, mission, followupAssigned }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, newUser, incident, mission, followupAssigned, approvalMission }: EmailRequest = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -148,6 +149,37 @@ serve(async (req: Request): Promise<Response> => {
       await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
       await client.close();
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Handle mission approval notification
+    if (type === 'notify_mission_approval' && companyId && (mission || approvalMission)) {
+      const missionData = mission || approvalMission;
+      // Find users who can approve and have email_mission_approval enabled
+      const { data: approvers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true).eq('can_approve_missions', true);
+      if (!approvers?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', approvers.map(u => u.id)).eq('email_mission_approval', true);
+      if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers with notifications' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
+      const missionDate = new Date(missionData!.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: missionData!.tittel, mission_location: missionData!.lokasjon || 'Ikke oppgitt', mission_date: missionDate, mission_description: missionData!.beskrivelse || '', company_name: company?.navn || '' });
+
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
+
+      let emailsSent = 0;
+      for (const pref of notificationPrefs) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
+        if (!user?.email) continue;
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        emailsSent++;
+      }
+      await client.close();
+      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Handle bulk emails

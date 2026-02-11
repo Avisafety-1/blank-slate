@@ -31,7 +31,9 @@ import {
   ShieldCheck,
   Brain,
   ChevronDown,
-  Info
+  Info,
+  Send,
+  CheckCircle2
 } from "lucide-react";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
@@ -475,6 +477,44 @@ const Oppdrag = () => {
     const n = typeof score === "number" ? score : Number(score);
     if (!Number.isFinite(n)) return "—/10";
     return `${n.toFixed(1)}/10`;
+  };
+
+  const handleSubmitForApproval = async (mission: Mission) => {
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({
+          approval_status: 'pending_approval',
+          submitted_for_approval_at: new Date().toISOString()
+        })
+        .eq('id', mission.id);
+
+      if (error) throw error;
+
+      // Send email notification to approvers
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_mission_approval',
+            companyId,
+            mission: {
+              tittel: mission.tittel,
+              lokasjon: mission.lokasjon,
+              tidspunkt: mission.tidspunkt,
+              beskrivelse: mission.beskrivelse || '',
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Error sending approval notification:', emailError);
+      }
+
+      toast.success('Oppdraget er sendt til godkjenning');
+      fetchMissions();
+    } catch (error) {
+      console.error('Error submitting for approval:', error);
+      toast.error('Kunne ikke sende til godkjenning');
+    }
   };
 
   const handleDeleteMission = async () => {
@@ -1269,6 +1309,24 @@ const Oppdrag = () => {
                         <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
                         <div className="flex flex-wrap gap-2">
                           <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
+                          {/* Approval status badge */}
+                          {mission.approval_status === 'pending_approval' && (
+                            <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Venter på godkjenning
+                            </Badge>
+                          )}
+                          {mission.approval_status === 'approved' && (
+                            <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Godkjent
+                            </Badge>
+                          )}
+                          {mission.approval_status === 'not_approved' && (
+                            <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 border-gray-500/30">
+                              Ikke godkjent
+                            </Badge>
+                          )}
                           {mission.aiRisk && (
                             <Badge 
                               variant="outline" 
@@ -1308,6 +1366,12 @@ const Oppdrag = () => {
                             <ShieldCheck className="h-4 w-4 mr-2" />
                             Ny risikovurdering
                           </DropdownMenuItem>
+                          {mission.approval_status === 'not_approved' && (
+                            <DropdownMenuItem onClick={() => handleSubmitForApproval(mission)}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Send til godkjenning
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleExportPdfClick(mission)}>
                             <Download className="h-4 w-4 mr-2" />
