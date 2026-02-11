@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,10 @@ export const ProfileDialog = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
+  const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
+  const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
+  const [approvalComment, setApprovalComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -205,6 +209,30 @@ export const ProfileDialog = () => {
 
       if (followUpIncidentsData) {
         setFollowUpIncidents(followUpIncidentsData);
+      }
+
+      // Check if user can approve missions
+      const { data: profileApproval } = await supabase
+        .from("profiles")
+        .select("can_approve_missions")
+        .eq("id", user.id)
+        .single();
+
+      const userCanApprove = profileApproval?.can_approve_missions === true;
+      setCanApproveMissions(userCanApprove);
+
+      // Fetch pending approval missions if user can approve
+      if (userCanApprove && profileData?.company_id) {
+        const { data: pendingMissions } = await supabase
+          .from("missions")
+          .select("id, tittel, lokasjon, tidspunkt, status, beskrivelse")
+          .eq("company_id", profileData.company_id)
+          .eq("approval_status", "pending_approval")
+          .order("submitted_for_approval_at", { ascending: false });
+
+        setPendingApprovalMissions(pendingMissions || []);
+      } else {
+        setPendingApprovalMissions([]);
       }
 
       // Fetch notification preferences
@@ -414,6 +442,31 @@ export const ProfileDialog = () => {
     setEditIncidentDialogOpen(true);
   };
 
+  const handleApproveMission = async (missionId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({
+          approval_status: 'approved',
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+          approval_comment: approvalComment || null,
+        } as any)
+        .eq('id', missionId);
+
+      if (error) throw error;
+
+      toast.success('Oppdraget er godkjent');
+      setApprovingMissionId(null);
+      setApprovalComment("");
+      fetchUserData();
+    } catch (error) {
+      console.error('Error approving mission:', error);
+      toast.error('Kunne ikke godkjenne oppdraget');
+    }
+  };
+
   const isCompetencyExpiring = (date: string | null) => {
     if (!date) return false;
     const expiryDate = new Date(date);
@@ -434,12 +487,12 @@ export const ProfileDialog = () => {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" title={t('profile.title')} className="relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8">
           <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          {followUpIncidents.length > 0 && (
+          {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full"
             >
-              {followUpIncidents.length}
+              {followUpIncidents.length + pendingApprovalMissions.length}
             </Badge>
           )}
         </Button>
@@ -477,11 +530,11 @@ export const ProfileDialog = () => {
                   <span>{t('profile.notifications')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm relative bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>{t('profile.incidents')}</span>
-                  {followUpIncidents.length > 0 && (
+                  <ClipboardCheck className="h-3 w-3" />
+                  <span>Oppfølging</span>
+                  {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
                     <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px]">
-                      {followUpIncidents.length}
+                      {followUpIncidents.length + pendingApprovalMissions.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -920,6 +973,29 @@ export const ProfileDialog = () => {
                           disabled={!isAdmin}
                         />
                       </div>
+
+                      {/* Mission approval notification - only shown for approvers */}
+                      {canApproveMissions && (
+                        <>
+                          <Separator />
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5 flex-1">
+                              <label className="text-sm font-medium">
+                                Oppdrag til godkjenning
+                              </label>
+                              <p className="text-xs text-muted-foreground">
+                                Motta e-post når oppdrag sendes til godkjenning
+                              </p>
+                            </div>
+                            <Switch
+                              checked={(notificationPrefs as any)?.email_mission_approval ?? false}
+                              onCheckedChange={(checked) => 
+                                updateNotificationPref('email_mission_approval' as any, checked)
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
                       
                       <Separator />
                       
@@ -1138,11 +1214,79 @@ export const ProfileDialog = () => {
                 </Card>
               </TabsContent>
 
-              {/* Incidents Tab */}
+              {/* Oppfølging Tab */}
               <TabsContent value="incidents" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+                {/* Pending Approval Missions */}
+                {canApproveMissions && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5" />
+                        Oppdrag til godkjenning ({pendingApprovalMissions.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {pendingApprovalMissions.length > 0 ? (
+                        <div className="space-y-3">
+                          {pendingApprovalMissions.map((mission) => (
+                            <div key={mission.id} className="p-3 rounded-lg border border-border space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">{mission.tittel}</p>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                    {mission.lokasjon && (
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" />
+                                        {mission.lokasjon}
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {new Date(mission.tidspunkt).toLocaleDateString("no-NO", { day: "2-digit", month: "short", year: "numeric" })}
+                                    </span>
+                                  </div>
+                                  <Badge className="mt-1 text-xs" variant="outline">{mission.status}</Badge>
+                                </div>
+                              </div>
+                              {approvingMissionId === mission.id ? (
+                                <div className="space-y-2 pt-2 border-t border-border/50">
+                                  <Textarea
+                                    placeholder="Kommentar (valgfritt)"
+                                    value={approvalComment}
+                                    onChange={(e) => setApprovalComment(e.target.value)}
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleApproveMission(mission.id)}>
+                                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                                      Godkjenn
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => { setApprovingMissionId(null); setApprovalComment(""); }}>
+                                      Avbryt
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Godkjenn
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Ingen oppdrag venter på godkjenning</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Follow-up Incidents */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t('profile.myIncidents')} ({followUpIncidents.length})</CardTitle>
+                    <CardTitle>Hendelser til oppfølging ({followUpIncidents.length})</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {followUpIncidents.length > 0 ? (

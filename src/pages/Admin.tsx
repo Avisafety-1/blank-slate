@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,8 @@ import { CustomerManagementSection } from "@/components/admin/CustomerManagement
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 
 interface Profile {
@@ -41,6 +43,7 @@ interface Profile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  can_approve_missions?: boolean;
 }
 
 interface UserRole {
@@ -333,6 +336,25 @@ const Admin = () => {
     return found ? t(found.labelKey) : role;
   };
 
+  const toggleApprover = async (userId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ can_approve_missions: !currentValue } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, can_approve_missions: !currentValue } : p
+      ));
+      toast.success(!currentValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
+    } catch (error) {
+      console.error("Error toggling approver:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -603,6 +625,22 @@ const Admin = () => {
                           </div>
                           
                           <div className="flex items-center gap-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <Switch
+                                      checked={profile.can_approve_missions === true}
+                                      onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
+                                      className="scale-75"
+                                    />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Kan godkjenne oppdrag</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <Select 
                               value={userRole?.role || ""} 
                               onValueChange={(value) => assignRole(profile.id, value)}
