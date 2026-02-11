@@ -256,6 +256,12 @@
       "maintenance": "maintenance",
       "expires": "expires"
     },
+    "activeFlights": {
+      "title": "Active flights",
+      "noFlights": "No active flights",
+      "viewOnMap": "View on map",
+      "freeFlight": "Free flight"
+    },
     "status": {
       "title": "Resource status",
       "equipment": "Equipment",
