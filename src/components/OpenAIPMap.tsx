@@ -498,6 +498,14 @@ export function OpenAIPMap({
       nsmPane.style.zIndex = '640';
       nsmPane.style.pointerEvents = 'auto';
     }
+
+    // SafeSky beacons pane - above NSM (640) and AIP (630), below route (650)
+    map.createPane('safeskyPane');
+    const safeskyPane = map.getPane('safeskyPane');
+    if (safeskyPane) {
+      safeskyPane.style.zIndex = '645';
+      safeskyPane.style.pointerEvents = 'auto';
+    }
     console.log('routePane created:', !!routePane);
 
     // OSM background
@@ -824,7 +832,7 @@ export function OpenAIPMap({
             popupAnchor: [0, -anchor],
           });
           
-          const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
+          const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning', pane: 'safeskyPane' });
           marker.bindPopup(popupHtml, { autoPan: false, keepInView: false });
           marker.addTo(safeskyLayer);
           safeskyMarkersCache.set(beaconId, marker);
