@@ -4,6 +4,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertTriangle, AlertCircle, Info, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
+interface AirspaceWarningRaw {
+  z_id: string;
+  z_type: string;
+  z_name: string;
+  min_distance: number;
+  route_inside: boolean;
+  severity: string;
+}
+
 interface AirspaceWarning {
   zone_type: string;
   zone_name: string;
@@ -49,8 +58,27 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
           return;
         }
 
-        // Cast data to array and sort warnings by severity: warning > caution > note
-        const warningsArray = (data as unknown as AirspaceWarning[]) || [];
+        // Map raw RPC response to expected format
+        const rawArray = (data as unknown as AirspaceWarningRaw[]) || [];
+        const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
+          const level: AirspaceWarning["level"] =
+            r.severity === "WARNING" ? "warning" : r.severity === "CAUTION" ? "caution" : "note";
+          const distMeters = Math.round(r.min_distance);
+          let message: string;
+          if (r.route_inside) {
+            message = `Ruten går gjennom ${r.z_type}-sone «${r.z_name}».`;
+          } else {
+            message = `Ruten er ${distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km"} fra ${r.z_type}-sone «${r.z_name}».`;
+          }
+          return {
+            zone_type: r.z_type,
+            zone_name: r.z_name,
+            distance_meters: distMeters,
+            is_inside: r.route_inside,
+            level,
+            message,
+          };
+        });
         const severityOrder = { warning: 0, caution: 1, note: 2 };
         const sortedWarnings = warningsArray.sort(
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
