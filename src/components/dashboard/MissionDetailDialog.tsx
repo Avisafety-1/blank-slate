@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
@@ -109,6 +109,23 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <Badge className={`${statusColors[mission.status] || ""} border`}>
               {mission.status}
             </Badge>
+            {mission.approval_status === 'pending_approval' && (
+              <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
+                <Clock className="h-3 w-3 mr-1" />
+                Venter godkjenning
+              </Badge>
+            )}
+            {mission.approval_status === 'approved' && (
+              <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Godkjent
+              </Badge>
+            )}
+            {mission.approval_status === 'not_approved' && (
+              <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30">
+                Ikke godkjent
+              </Badge>
+            )}
             {mission.aiRisk ? (
               <Badge 
                 className={`${getAIRiskBadgeColor(mission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
