@@ -199,8 +199,13 @@ const Oppdrag = () => {
     }
   }, [companyId, filterTab]);
 
-  // Real-time subscription
+  // Real-time subscription for missions + approval/comment updates
   useEffect(() => {
+    const handler = () => {
+      if (!navigator.onLine) return;
+      fetchMissions();
+    };
+
     const channel = supabase
       .channel('oppdrag-page-changes')
       .on(
@@ -208,12 +213,27 @@ const Oppdrag = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'missions'
+          table: 'missions',
         },
-        () => {
-          if (!navigator.onLine) return;
-          fetchMissions();
-        }
+        handler
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mission_personnel',
+        },
+        handler
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mission_drones',
+        },
+        handler
       )
       .subscribe();
 
