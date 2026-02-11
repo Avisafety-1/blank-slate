@@ -113,6 +113,7 @@ export const ProfileDialog = () => {
   const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
+  const [activeTab, setActiveTab] = useState("profile");
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -595,7 +596,7 @@ export const ProfileDialog = () => {
               <p className="text-muted-foreground">{t('common.loading')}</p>
             </div>
           ) : (
-            <Tabs defaultValue="profile" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
