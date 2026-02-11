@@ -108,8 +108,10 @@ export type Database = {
           id: string
           lower_limit: string | null
           name: string | null
+          openaip_id: string | null
           properties: Json | null
           remarks: string | null
+          source: string | null
           synced_at: string | null
           upper_limit: string | null
           zone_id: string
@@ -121,8 +123,10 @@ export type Database = {
           id?: string
           lower_limit?: string | null
           name?: string | null
+          openaip_id?: string | null
           properties?: Json | null
           remarks?: string | null
+          source?: string | null
           synced_at?: string | null
           upper_limit?: string | null
           zone_id: string
@@ -134,8 +138,10 @@ export type Database = {
           id?: string
           lower_limit?: string | null
           name?: string | null
+          openaip_id?: string | null
           properties?: Json | null
           remarks?: string | null
+          source?: string | null
           synced_at?: string | null
           upper_limit?: string | null
           zone_id?: string
