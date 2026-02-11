@@ -622,7 +622,7 @@ export const ProfileDialog = () => {
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
                   {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px]">
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full">
                       {followUpIncidents.length + pendingApprovalMissions.length}
                     </Badge>
                   )}
