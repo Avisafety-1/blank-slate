@@ -1,24 +1,41 @@
 
 
-## Fjern manuelle AIP-restriksjonsoner
+## Fiks ruteplanlegger over AIP-luftromslaget (PC/mus)
 
-### Bakgrunn
-Etter synkronisering med OpenAIP finnes det 16 manuelt opprettede soner som skaper duplikater (f.eks. R-102 vises to ganger). Disse skal slettes fra databasen.
+### Problem
+Nar ruteplanleggeren aktiveres, deaktiveres museklikk pa NSM-, RPAS- og CTR-lagene via `setGeoJsonInteractivity()`. Men AIP-restriksjonslaget (de nye OpenAIP-sonene) har ingen tilsvarende ref, sa de individuelle SVG-elementene beholder `pointer-events: auto` og fanger opp museklikk for de nar kartet.
 
-### Endring
+A sette `pointer-events: none` pa selve pane-elementet fungerer ikke palitelig for mus fordi Leaflet registrerer hendelser direkte pa SVG path-elementene inne i panen.
 
-**1. Slett manuelle soner fra databasen**
-- Kjor en SQL-kommando som sletter alle rader i `aip_restriction_zones` der `source = 'manual'`
-- Dette fjerner alle 16 manuelle soner og eliminerer duplikatene
+### Losning
+
+**Fil: `src/components/OpenAIPMap.tsx`**
+
+1. **Legg til en ref for AIP-laget** -- pa samme mate som `nsmGeoJsonRef`, `rpasGeoJsonRef` og `rpasCtrGeoJsonRef`:
+   - Opprett `aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([])` for a holde alle individuelle GeoJSON-lag.
+
+2. **Lagre referansene ved oppretting** -- i `fetchAipRestrictionZones()`, etter at hvert `geoJsonLayer` er opprettet, legg det til i `aipGeoJsonLayersRef.current`.
+
+3. **Veksle interaktivitet ved modebytte** -- i `useEffect` som reagerer pa `mode`, iterer gjennom `aipGeoJsonLayersRef.current` og kall `setGeoJsonInteractivity()` pa hvert lag, slik at alle SVG path-elementer far `pointer-events: none` nar ruteplanlegging er aktiv.
+
+### Teknisk detalj
 
 ```text
-DELETE FROM aip_restriction_zones WHERE source = 'manual';
+// Ny ref
+aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([])
+
+// I fetchAipRestrictionZones, etter geoJsonLayer.addTo(aipLayer):
+aipGeoJsonLayersRef.current.push(geoJsonLayer);
+// Og for loopen: aipGeoJsonLayersRef.current = [];
+
+// I mode-useEffect, etter eksisterende setGeoJsonInteractivity-kall:
+aipGeoJsonLayersRef.current.forEach(layer => {
+  setGeoJsonInteractivity(layer, vectorsInteractive);
+});
 ```
 
-Ingen kodeendringer er nodvendige -- kartvisningen henter fra samme tabell og vil automatisk bare vise de offisielle OpenAIP-sonene etter slettingen.
-
 ### Pavirkning
-- R-102, R-103, R-104, R-201, R-202, R-203, R-301, P-001, D-301 til D-320 vises bare en gang (fra OpenAIP)
-- Kartlaget, luftromsadvarsler og popups fungerer som for
-- Ingen endring i kode
+- Ruteplanlegger fungerer med mus pa PC -- klikk gar gjennom til kartet
+- Nar ruteplanlegging avsluttes, blir AIP-sonene klikkbare igjen med popups
+- Ingen endring i utseende eller andre funksjoner
 
