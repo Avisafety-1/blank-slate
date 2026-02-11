@@ -135,6 +135,10 @@ export const ProfileDialog = () => {
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDetailOpen, setMissionDetailOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackSubject, setFeedbackSubject] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -840,8 +844,102 @@ export const ProfileDialog = () => {
                         }}
                       />
                     </div>
+
+                    <Separator />
+
+                    {/* Feedback */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Tilbakemelding
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Har du forslag, feil eller ønsker? Send oss en tilbakemelding.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFeedbackOpen(true)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Gi tilbakemelding
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
+
+                {/* Feedback Dialog */}
+                <Dialog open={feedbackOpen} onOpenChange={(open) => {
+                  setFeedbackOpen(open);
+                  if (!open) {
+                    setFeedbackSubject("");
+                    setFeedbackMessage("");
+                  }
+                }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Gi tilbakemelding</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Overskrift</Label>
+                        <Input
+                          value={feedbackSubject}
+                          onChange={(e) => setFeedbackSubject(e.target.value)}
+                          placeholder="Hva gjelder tilbakemeldingen?"
+                          maxLength={200}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Melding</Label>
+                        <Textarea
+                          value={feedbackMessage}
+                          onChange={(e) => setFeedbackMessage(e.target.value)}
+                          placeholder="Beskriv tilbakemeldingen din..."
+                          rows={5}
+                          maxLength={5000}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setFeedbackOpen(false)}
+                          disabled={feedbackSending}
+                        >
+                          Avbryt
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            if (!feedbackSubject.trim() || !feedbackMessage.trim()) {
+                              toast.error("Fyll ut både overskrift og melding");
+                              return;
+                            }
+                            setFeedbackSending(true);
+                            try {
+                              const { error } = await supabase.functions.invoke('send-feedback', {
+                                body: { subject: feedbackSubject.trim(), message: feedbackMessage.trim() },
+                              });
+                              if (error) throw error;
+                              toast.success("Tilbakemelding sendt! Takk for innspillet.");
+                              setFeedbackOpen(false);
+                              setFeedbackSubject("");
+                              setFeedbackMessage("");
+                            } catch (err: any) {
+                              console.error("Error sending feedback:", err);
+                              toast.error(err.message || "Kunne ikke sende tilbakemelding");
+                            } finally {
+                              setFeedbackSending(false);
+                            }
+                          }}
+                          disabled={feedbackSending || !feedbackSubject.trim() || !feedbackMessage.trim()}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          {feedbackSending ? "Sender..." : "Send"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
 
               {/* Security Tab */}
