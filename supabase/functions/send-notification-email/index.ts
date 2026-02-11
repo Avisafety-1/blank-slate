@@ -17,6 +17,7 @@ interface EmailRequest {
   htmlContent?: string;
   type?: string;
   companyId?: string;
+  missionId?: string;
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   mission?: { tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
@@ -31,7 +32,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, newUser, incident, mission, followupAssigned, approvalMission }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, newUser, incident, mission, followupAssigned, approvalMission }: EmailRequest = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -184,8 +185,6 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle mission approved notification to pilots
     if (type === 'notify_mission_approved' && (companyId || true)) {
-      const body = await req.clone().json().catch(() => ({}));
-      const missionId = body.missionId;
       if (!missionId) throw new Error('Missing missionId');
 
       // Fetch mission data
