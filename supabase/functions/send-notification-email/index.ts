@@ -226,6 +226,12 @@ serve(async (req: Request): Promise<Response> => {
         comments_section: commentsHtml,
       });
 
+      if (!templateResult.content) {
+        console.warn('Empty template content for mission_approved, using inline fallback');
+        templateResult.content = `<html><body><h2>Oppdrag godkjent: ${missionData.tittel}</h2><p>Lokasjon: ${missionData.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p>${commentsHtml}<p>Logg inn i appen for å se oppdraget.</p></body></html>`;
+        if (!templateResult.subject) templateResult.subject = `Oppdrag godkjent: ${missionData.tittel}`;
+      }
+
       const emailConfig = await getEmailConfig(effectiveCompanyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
@@ -236,7 +242,7 @@ serve(async (req: Request): Promise<Response> => {
         const { data: { user } } = await supabase.auth.admin.getUserById(p.profile_id);
         if (!user?.email) continue;
         const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject || 'Oppdrag godkjent'), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
         emailsSent++;
       }
       await client.close();
