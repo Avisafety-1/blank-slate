@@ -266,21 +266,11 @@ export const MissionsSection = () => {
                 onClick={() => handleMissionClick(mission)}
                 className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
               >
-                <div className="flex items-start justify-between gap-2 mb-1 sm:mb-1.5">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-xs sm:text-sm truncate">{mission.tittel}</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-1 sm:gap-2 items-center flex-shrink-0">
+                <div className="mb-1 sm:mb-1.5">
+                  <h3 className="font-semibold text-xs sm:text-sm truncate mb-1">{mission.tittel}</h3>
+                  <div className="flex flex-wrap gap-1 items-center">
                     <Badge className={`${statusColors[mission.status] || ""} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
                       {mission.status}
-                    </Badge>
-                    <Badge 
-                      onClick={(e) => handleSoraClick(mission.id, e)}
-                      className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
-                    >
-                      {missionSoras[mission.id]?.sora_status 
-                        ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
-                        : t('dashboard.missions.soraNoStatus')}
                     </Badge>
                     {(() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
@@ -296,6 +286,14 @@ export const MissionsSection = () => {
                         </Badge>
                       );
                     })()}
+                    <Badge 
+                      onClick={(e) => handleSoraClick(mission.id, e)}
+                      className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
+                    >
+                      {missionSoras[mission.id]?.sora_status 
+                        ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
+                        : t('dashboard.missions.soraNoStatus')}
+                    </Badge>
                     {missionAIRisks[mission.id] && (
                       <Badge 
                         className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
