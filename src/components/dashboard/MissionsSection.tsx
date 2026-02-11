@@ -282,6 +282,20 @@ export const MissionsSection = () => {
                         ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
                         : t('dashboard.missions.soraNoStatus')}
                     </Badge>
+                    {(() => {
+                      const approvalStatus = mission.approval_status || 'not_approved';
+                      const approvalLabel = approvalStatus === 'approved' ? 'Godkjent' : approvalStatus === 'pending_approval' ? 'Venter' : 'Ikke godkjent';
+                      const approvalColor = approvalStatus === 'approved' 
+                        ? 'bg-status-green/20 text-green-700 dark:text-green-300' 
+                        : approvalStatus === 'pending_approval' 
+                          ? 'bg-status-yellow/20 text-yellow-700 dark:text-yellow-300' 
+                          : 'bg-status-red/20 text-red-700 dark:text-red-300';
+                      return (
+                        <Badge className={`${approvalColor} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
+                          {approvalLabel}
+                        </Badge>
+                      );
+                    })()}
                     {missionAIRisks[mission.id] && (
                       <Badge 
                         className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
