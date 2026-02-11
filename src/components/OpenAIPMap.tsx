@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
@@ -435,7 +436,6 @@ export function OpenAIPMap({
     const vectorsInteractive = mode !== "routePlanning";
     setGeoJsonInteractivity(nsmGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
-    aipGeoJsonLayersRef.current.forEach(layer => {
     aipGeoJsonLayersRef.current.forEach(layer => {
       setGeoJsonInteractivity(layer, vectorsInteractive);
     });
