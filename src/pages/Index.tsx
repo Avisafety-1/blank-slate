@@ -398,12 +398,10 @@ const Index = () => {
             </div>
             </div>
 
-            {/* Mobile: Active flights (only shown if there are active flights) */}
-            {hasActiveFlights && (
-              <div className="lg:hidden mb-3 sm:mb-4">
-                <ActiveFlightsSection />
-              </div>
-            )}
+            {/* Mobile: Active flights */}
+            <div className="lg:hidden mb-3 sm:mb-4">
+              <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
+            </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
