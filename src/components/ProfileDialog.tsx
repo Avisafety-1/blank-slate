@@ -670,17 +670,22 @@ export const ProfileDialog = () => {
                 </TabsTrigger>
               </TabsList>
 
+              {activeTab === "profile" && (
+                <div className="mt-28 md:mt-16 lg:mt-4 mb-[-0.5rem]">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFeedbackOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Gi tilbakemelding
+                  </Button>
+                </div>
+              )}
+
               {/* Profile Tab */}
-              <TabsContent value="profile" className="space-y-2 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFeedbackOpen(true)}
-                  className="w-full sm:w-auto"
-                >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Gi tilbakemelding
-                </Button>
+              <TabsContent value="profile" className="space-y-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
