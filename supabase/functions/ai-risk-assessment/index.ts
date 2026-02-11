@@ -270,10 +270,10 @@ serve(async (req) => {
       } : null),
       airspace: {
         warnings: airspaceWarnings.map((w: any) => ({
-          type: w.type,
-          name: w.name,
-          distance: w.distance,
-          inside: w.inside,
+          type: w.zone_type,
+          name: w.zone_name,
+          distance: w.distance_meters,
+          inside: w.is_inside,
           level: w.level,
           message: w.message,
         })),
