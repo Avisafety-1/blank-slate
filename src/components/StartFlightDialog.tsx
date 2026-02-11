@@ -33,7 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleCheck } from '@/hooks/useRoleCheck';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler, Plane } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -101,6 +101,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // DroneTag device selection for telemetry tracking
   const [dronetagDevices, setDronetagDevices] = useState<DronetagDevice[]>([]);
   const [selectedDronetagId, setSelectedDronetagId] = useState<string>('');
+  
+  // Nearest air traffic info
+  const [nearestTraffic, setNearestTraffic] = useState<{
+    callsign: string;
+    type: string;
+    distanceKm: number;
+    altitudeFt: number | null;
+  } | null>(null);
+  const [trafficLoading, setTrafficLoading] = useState(false);
 
   // Fetch company-level checklist settings
   useEffect(() => {
@@ -200,8 +209,74 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setShowAdvisoryTooLarge(false);
       setAdvisoryAreaKm2(null);
       setPendingFlightStart(false);
+      setNearestTraffic(null);
+      setTrafficLoading(false);
     }
   }, [open]);
+
+  // Fetch nearest air traffic when GPS position is available
+  useEffect(() => {
+    if (!open || !gpsPosition) return;
+
+    const fetchNearestTraffic = async () => {
+      setTrafficLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('safesky_beacons')
+          .select('id, callsign, beacon_type, latitude, longitude, altitude');
+
+        if (error || !data) {
+          setTrafficLoading(false);
+          return;
+        }
+
+        // Filter: only below 5000ft (1524m) and with valid position
+        const MAX_ALT_M = 1524; // 5000ft
+        const filtered = data.filter(b => 
+          b.latitude != null && b.longitude != null &&
+          (b.altitude == null || b.altitude <= MAX_ALT_M)
+        );
+
+        if (filtered.length === 0) {
+          setNearestTraffic(null);
+          setTrafficLoading(false);
+          return;
+        }
+
+        // Find nearest
+        let nearest = filtered[0];
+        let minDist = Infinity;
+        const toRad = (d: number) => d * Math.PI / 180;
+
+        for (const b of filtered) {
+          const R = 6371;
+          const dLat = toRad(b.latitude! - gpsPosition.lat);
+          const dLng = toRad(b.longitude! - gpsPosition.lng);
+          const a = Math.sin(dLat/2)**2 + 
+            Math.cos(toRad(gpsPosition.lat)) * Math.cos(toRad(b.latitude!)) * 
+            Math.sin(dLng/2)**2;
+          const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          if (dist < minDist) {
+            minDist = dist;
+            nearest = b;
+          }
+        }
+
+        setNearestTraffic({
+          callsign: nearest.callsign || 'Ukjent',
+          type: nearest.beacon_type || 'Ukjent',
+          distanceKm: minDist,
+          altitudeFt: nearest.altitude != null ? Math.round(nearest.altitude * 3.28084) : null,
+        });
+      } catch (err) {
+        console.error('Error fetching nearest traffic:', err);
+      } finally {
+        setTrafficLoading(false);
+      }
+    };
+
+    fetchNearestTraffic();
+  }, [open, gpsPosition]);
 
   // Fetch pilot name when dialog opens
   useEffect(() => {
@@ -650,6 +725,54 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Nearest air traffic info */}
+            {(trafficLoading || nearestTraffic !== null) && (
+              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
+                nearestTraffic && nearestTraffic.distanceKm < 5 
+                  ? 'bg-destructive/10' 
+                  : nearestTraffic && nearestTraffic.distanceKm < 15 
+                    ? 'bg-amber-500/10' 
+                    : 'bg-muted'
+              }`}>
+                <Plane className={`h-4 w-4 mt-0.5 ${
+                  nearestTraffic && nearestTraffic.distanceKm < 5 
+                    ? 'text-destructive' 
+                    : nearestTraffic && nearestTraffic.distanceKm < 15 
+                      ? 'text-amber-500' 
+                      : 'text-muted-foreground'
+                }`} />
+                <div className="space-y-0.5">
+                  {trafficLoading ? (
+                    <p className="text-muted-foreground">Sjekker lufttrafikk i nærheten...</p>
+                  ) : nearestTraffic ? (
+                    <>
+                      <p className="font-medium">
+                        Nærmeste trafikk: {nearestTraffic.distanceKm < 1 
+                          ? `${Math.round(nearestTraffic.distanceKm * 1000)} m` 
+                          : `${nearestTraffic.distanceKm.toFixed(1)} km`}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {nearestTraffic.callsign} ({nearestTraffic.type})
+                        {nearestTraffic.altitudeFt != null && ` • ${nearestTraffic.altitudeFt} ft`}
+                      </p>
+                      <p className="text-xs text-muted-foreground italic">
+                        Trafikk over 5 000 ft er filtrert bort
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {!trafficLoading && nearestTraffic === null && gpsPosition && (
+              <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
+                <Plane className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Ingen lufttrafikk under 5 000 ft i nærheten
+                </p>
               </div>
             )}
 
