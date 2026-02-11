@@ -1255,6 +1255,10 @@ export function OpenAIPMap({
             });
             geoJsonLayer.addTo(aipLayer);
             aipGeoJsonLayersRef.current.push(geoJsonLayer);
+            // Ensure interactivity is disabled if currently in route planning mode
+            if (modeRef.current === 'routePlanning') {
+              setGeoJsonInteractivity(geoJsonLayer, false);
+            }
           } catch (err) {
             console.error(`Feil ved parsing av AIP-sone ${zone.zone_id}:`, err);
           }
@@ -1332,6 +1336,10 @@ export function OpenAIPMap({
             });
             geoJsonLayer.addTo(rmzTmzAtzLayer);
             aipGeoJsonLayersRef.current.push(geoJsonLayer);
+            // Ensure interactivity is disabled if currently in route planning mode
+            if (modeRef.current === 'routePlanning') {
+              setGeoJsonInteractivity(geoJsonLayer, false);
+            }
           } catch (err) {
             console.error(`Feil ved parsing av ${zone.zone_type}-sone ${zone.zone_id}:`, err);
           }
