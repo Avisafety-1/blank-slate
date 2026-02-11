@@ -484,7 +484,7 @@ export function OpenAIPMap({
     map.createPane('routePane');
     const routePane = map.getPane('routePane');
     if (routePane) {
-      routePane.style.zIndex = '650'; // Above markers (600), below popups (700)
+      routePane.style.zIndex = '670'; // Above all airspace panes (aipPane: 630, nsmPane: 640, safesky: 645, missionPane: 660)
       routePane.style.pointerEvents = 'auto';
     }
 
