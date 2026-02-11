@@ -169,7 +169,7 @@ serve(async (req: Request): Promise<Response> => {
 
       if (!templateResult.content) {
         console.warn('Empty template content for mission_approval_request, using inline fallback');
-        templateResult.content = `<html><body><h2>Oppdrag venter på godkjenning: ${missionData!.tittel}</h2><p>Lokasjon: ${missionData!.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p><p>${missionData!.beskrivelse || ''}</p><p>Logg inn i appen for å godkjenne oppdraget.</p></body></html>`;
+        templateResult.content = `<html><head><meta charset="utf-8"></head><body><h2>Oppdrag venter på godkjenning: ${missionData!.tittel}</h2><p>Lokasjon: ${missionData!.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p><p>${missionData!.beskrivelse || ''}</p><p>Logg inn i appen for å godkjenne oppdraget.</p></body></html>`;
         if (!templateResult.subject) templateResult.subject = `Oppdrag venter på godkjenning: ${missionData!.tittel}`;
       }
 
@@ -215,7 +215,7 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (!templateResult.content) {
-        templateResult.content = `<html><body><h2>Kommentar til oppdrag: ${pilotComment.missionTitle}</h2><p><strong>Fra:</strong> ${pilotComment.senderName}</p><p><strong>Lokasjon:</strong> ${pilotComment.missionLocation}</p><p><strong>Tidspunkt:</strong> ${missionDate}</p><p><strong>Kommentar:</strong></p><p>${pilotComment.comment}</p></body></html>`;
+        templateResult.content = `<html><head><meta charset="utf-8"></head><body><h2>Kommentar til oppdrag: ${pilotComment.missionTitle}</h2><p><strong>Fra:</strong> ${pilotComment.senderName}</p><p><strong>Lokasjon:</strong> ${pilotComment.missionLocation}</p><p><strong>Tidspunkt:</strong> ${missionDate}</p><p><strong>Kommentar:</strong></p><p>${pilotComment.comment}</p></body></html>`;
         if (!templateResult.subject) templateResult.subject = `Kommentar til oppdrag: ${pilotComment.missionTitle}`;
       }
 
@@ -281,7 +281,7 @@ serve(async (req: Request): Promise<Response> => {
 
       if (!templateResult.content) {
         console.warn('Empty template content for mission_approved, using inline fallback');
-        templateResult.content = `<html><body><h2>Oppdrag godkjent: ${missionData.tittel}</h2><p>Lokasjon: ${missionData.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p>${commentsHtml}<p>Logg inn i appen for å se oppdraget.</p></body></html>`;
+        templateResult.content = `<html><head><meta charset="utf-8"></head><body><h2>Oppdrag godkjent: ${missionData.tittel}</h2><p>Lokasjon: ${missionData.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p>${commentsHtml}<p>Logg inn i appen for å se oppdraget.</p></body></html>`;
         if (!templateResult.subject) templateResult.subject = `Oppdrag godkjent: ${missionData.tittel}`;
       }
 
