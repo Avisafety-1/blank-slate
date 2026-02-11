@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +113,8 @@ export const ProfileDialog = () => {
   const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
+  const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
+  const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -469,9 +471,54 @@ export const ProfileDialog = () => {
     setEditIncidentDialogOpen(true);
   };
 
+  const handleSaveComment = async (missionId: string) => {
+    if (!user || !missionComment.trim()) return;
+    try {
+      const mission = pendingApprovalMissions.find((m: any) => m.id === missionId);
+      const existingComments = Array.isArray(mission?.approver_comments) ? mission.approver_comments : [];
+      const newComment = {
+        author_id: user.id,
+        author_name: profile?.full_name || user.email || 'Ukjent',
+        comment: missionComment.trim(),
+        created_at: new Date().toISOString(),
+      };
+      const updatedComments = [...existingComments, newComment];
+
+      const { error } = await supabase
+        .from('missions')
+        .update({ approver_comments: updatedComments } as any)
+        .eq('id', missionId);
+
+      if (error) throw error;
+
+      toast.success('Kommentar lagret');
+      setCommentingMissionId(null);
+      setMissionComment("");
+      fetchUserData();
+    } catch (error) {
+      console.error('Error saving comment:', error);
+      toast.error('Kunne ikke lagre kommentar');
+    }
+  };
+
   const handleApproveMission = async (missionId: string) => {
     if (!user) return;
     try {
+      const mission = pendingApprovalMissions.find((m: any) => m.id === missionId);
+      const existingComments = Array.isArray(mission?.approver_comments) ? mission.approver_comments : [];
+      let updatedComments = existingComments;
+
+      // If there's an approval comment, also add it to approver_comments
+      if (approvalComment.trim()) {
+        const newComment = {
+          author_id: user.id,
+          author_name: profile?.full_name || user.email || 'Ukjent',
+          comment: approvalComment.trim(),
+          created_at: new Date().toISOString(),
+        };
+        updatedComments = [...existingComments, newComment];
+      }
+
       const { error } = await supabase
         .from('missions')
         .update({
@@ -479,10 +526,24 @@ export const ProfileDialog = () => {
           approved_by: user.id,
           approved_at: new Date().toISOString(),
           approval_comment: approvalComment || null,
+          approver_comments: updatedComments,
         } as any)
         .eq('id', missionId);
 
       if (error) throw error;
+
+      // Send email notification to pilots
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_mission_approved',
+            missionId,
+            companyId: profile?.company_id,
+          },
+        });
+      } catch (emailError) {
+        console.error('Error sending approval email:', emailError);
+      }
 
       toast.success('Oppdraget er godkjent');
       setApprovingMissionId(null);
@@ -1282,6 +1343,28 @@ export const ProfileDialog = () => {
                                   <Badge className="mt-1 text-xs" variant="outline">{mission.status}</Badge>
                                 </div>
                               </div>
+                              {/* Comment section */}
+                              {commentingMissionId === mission.id && (
+                                <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                                  <Textarea
+                                    placeholder="Skriv kommentar..."
+                                    value={missionComment}
+                                    onChange={(e) => setMissionComment(e.target.value)}
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleSaveComment(mission.id)}>
+                                      Lagre
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
+                                      Tilbake
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Approval section */}
                               {approvingMissionId === mission.id ? (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
@@ -1302,10 +1385,31 @@ export const ProfileDialog = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setApprovingMissionId(mission.id); }}>
-                                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                                  Godkjenn
-                                </Button>
+                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(commentingMissionId === mission.id ? null : mission.id); setMissionComment(""); }}>
+                                    <MessageSquare className="h-4 w-4 mr-1" />
+                                    Kommentar
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)}>
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Godkjenn
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Display existing comments */}
+                              {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
+                                <div className="pt-2 border-t border-border/50 space-y-1">
+                                  {mission.approver_comments.map((c: any, i: number) => (
+                                    <p key={i} className="text-xs text-muted-foreground">
+                                      <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                                      {c.comment}
+                                      <span className="ml-1 opacity-60">
+                                        ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short' })})
+                                      </span>
+                                    </p>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           ))}

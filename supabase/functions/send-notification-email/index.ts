@@ -182,6 +182,68 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
+    // Handle mission approved notification to pilots
+    if (type === 'notify_mission_approved' && (companyId || true)) {
+      const body = await req.clone().json().catch(() => ({}));
+      const missionId = body.missionId;
+      if (!missionId) throw new Error('Missing missionId');
+
+      // Fetch mission data
+      const { data: missionData, error: missionError } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('id', missionId)
+        .single();
+      if (missionError || !missionData) throw new Error('Mission not found');
+
+      const effectiveCompanyId = companyId || missionData.company_id;
+
+      // Fetch personnel linked to this mission
+      const { data: personnel } = await supabase
+        .from('mission_personnel')
+        .select('profile_id')
+        .eq('mission_id', missionId);
+
+      if (!personnel?.length) {
+        return new Response(JSON.stringify({ success: true, message: 'No personnel' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      // Build comments section HTML
+      const comments = Array.isArray(missionData.approver_comments) ? missionData.approver_comments : [];
+      let commentsHtml = '';
+      if (comments.length > 0) {
+        commentsHtml = '<div class="comments-box"><h3>Kommentarer fra godkjenner</h3>';
+        for (const c of comments) {
+          commentsHtml += `<p><strong>${c.author_name}:</strong> ${c.comment}</p>`;
+        }
+        commentsHtml += '</div>';
+      }
+
+      const missionDate = new Date(missionData.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const templateResult = await getEmailTemplateWithFallback(effectiveCompanyId, 'mission_approved', {
+        mission_title: missionData.tittel,
+        mission_location: missionData.lokasjon || 'Ikke oppgitt',
+        mission_date: missionDate,
+        comments_section: commentsHtml,
+      });
+
+      const emailConfig = await getEmailConfig(effectiveCompanyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
+
+      let emailsSent = 0;
+      for (const p of personnel) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(p.profile_id);
+        if (!user?.email) continue;
+        const emailHeaders = getEmailHeaders();
+        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        emailsSent++;
+      }
+      await client.close();
+      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
     // Handle bulk emails
     if (type === 'bulk_email_users' && companyId && subject && htmlContent) {
       const { data: users } = await supabase.from('profiles').select('email').eq('company_id', companyId).eq('approved', true).not('email', 'is', null);
