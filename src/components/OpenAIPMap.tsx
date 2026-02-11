@@ -6,9 +6,50 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
-import airplaneIcon from "@/assets/airplane-icon.png";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
-import helicopterIcon from "@/assets/helicopter-icon.png";
+// SafeSky beacon type SVG icons
+import dotSvg from "@/assets/safesky-icons/dot.svg";
+import gliderSvg from "@/assets/safesky-icons/glider.svg";
+import aircraftSvg from "@/assets/safesky-icons/aircraft.svg";
+import lightAircraftSvg from "@/assets/safesky-icons/light_aircraft.svg";
+import heavyAircraftSvg from "@/assets/safesky-icons/heavy_aircraft.svg";
+import helicopterSvg from "@/assets/safesky-icons/helicopter.svg";
+import heliAnim0 from "@/assets/safesky-icons/helicopter-anim_0.svg";
+import heliAnim1 from "@/assets/safesky-icons/helicopter-anim_1.svg";
+import heliAnim2 from "@/assets/safesky-icons/helicopter-anim_2.svg";
+import heliAnim3 from "@/assets/safesky-icons/helicopter-anim_3.svg";
+
+const HELI_ANIM_FRAMES = [heliAnim0, heliAnim1, heliAnim2, heliAnim3];
+
+// Map SafeSky beacon_type string to SVG icon URL
+function getBeaconSvgUrl(beaconType: string): string {
+  switch (beaconType) {
+    case 'MOTORPLANE': return aircraftSvg;
+    case 'THREE_AXES_LIGHT_PLANE': return lightAircraftSvg;
+    case 'JET': return heavyAircraftSvg;
+    case 'GLIDER': return gliderSvg;
+    case 'HELICOPTER': return heliAnim0;
+    case 'GYROCOPTER': return helicopterSvg; // fallback to static helicopter
+    case 'MILITARY': return aircraftSvg;
+    case 'UAV': return droneAnimatedIcon;
+    // Fallback to dot for types without dedicated icons
+    case 'UNKNOWN':
+    case 'STATIC_OBJECT':
+    case 'PARA_GLIDER':
+    case 'HAND_GLIDER':
+    case 'PARA_MOTOR':
+    case 'PARACHUTE':
+    case 'FLEX_WING_TRIKES':
+    case 'AIRSHIP':
+    case 'BALLOON':
+    case 'PAV':
+    default: return dotSvg;
+  }
+}
+
+function isAnimatedType(beaconType: string): boolean {
+  return beaconType === 'HELICOPTER';
+}
 import airportIcon from "@/assets/airport-icon.png";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -705,6 +746,8 @@ export function OpenAIPMap({
 
     // SafeSky markers cache for efficient updates
     const safeskyMarkersCache = new Map<string, L.Marker>();
+    // Animation intervals for helicopter beacons
+    const heliAnimIntervals = new Map<string, number>();
     
     // SafeSky render function - updates existing markers or creates new ones
     function renderSafeSkyBeacons(beacons: any[]) {
@@ -719,65 +762,45 @@ export function OpenAIPMap({
         const beaconId = beacon.id || `${lat}_${lon}`;
         currentIds.add(beaconId);
         
-        // Color based on beacon type
-        let bgColor = '#6b7280'; // gray default
-        const beaconType = (beacon.beacon_type || '').toLowerCase();
-        if (beaconType.includes('plane') || beaconType.includes('aircraft') || beaconType === '1') {
-          bgColor = '#3b82f6'; // blue for aircraft
-        } else if (beaconType.includes('helicopter') || beaconType.includes('heli') || beaconType === '2') {
-          bgColor = '#22c55e'; // green for helicopter
-        } else if (beaconType.includes('drone') || beaconType.includes('uav') || beaconType === '8') {
-          bgColor = '#8b5cf6'; // purple for drone
-        } else if (beaconType.includes('paraglider') || beaconType.includes('hang') || beaconType === '4') {
-          bgColor = '#f97316'; // orange for paraglider
-        } else if (beaconType.includes('balloon') || beaconType === '5') {
-          bgColor = '#ec4899'; // pink for balloon
-        }
+        const beaconType = beacon.beacon_type || 'UNKNOWN';
+        const course = beacon.course || 0;
+        const isDrone = beaconType === 'UAV';
+        const isHeli = isAnimatedType(beaconType);
         
         // Check if altitude > 2000ft (610m) for high altitude styling
         const altitudeMetersForColor = beacon.altitude;
         const isHighAltitude = altitudeMetersForColor != null && altitudeMetersForColor > 610;
+        const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
         
-        // Override to black if high altitude
-        if (isHighAltitude) {
-          bgColor = '#000000'; // black for high altitude
-        }
+        const iconUrl = getBeaconSvgUrl(beaconType);
         
-        const course = beacon.course || 0;
-        
-        // Choose SVG based on beacon type
-        const isDrone = beaconType.includes('drone') || beaconType.includes('uav') || beaconType === '8';
-        const isHelicopter = beaconType.includes('helicopter') || beaconType.includes('heli') || beaconType === '2';
+        // Popup content builder
+        const callsign = beacon.callsign || 'Ukjent';
+        const altitudeFt = beacon.altitude != null ? Math.round(beacon.altitude * 3.28084) : '?';
+        const speedKt = beacon.ground_speed != null ? Math.round(beacon.ground_speed * 1.94384) : '?';
+        const typeLabel = beaconType || 'Ukjent';
+        const popupHtml = `
+          <div>
+            <strong>Callsign: ${callsign}</strong><br/>
+            Type: ${typeLabel}<br/>
+            Høyde: ${altitudeFt} ft<br/>
+            Fart: ${speedKt} kt<br/>
+            <span style="font-size: 10px; color: #888;">Via SafeSky</span>
+          </div>
+        `;
         
         // Check if marker already exists
         const existingMarker = safeskyMarkersCache.get(beaconId);
         
         if (existingMarker) {
-          // Only update position if popup is not open (prevents map jumping when user is viewing popup)
+          // Only update position if popup is not open
           if (!existingMarker.isPopupOpen()) {
             existingMarker.setLatLng([lat, lon]);
           }
+          existingMarker.setPopupContent(popupHtml);
           
-          // Update popup content
-          const callsign = beacon.callsign || 'Ukjent';
-          const altitudeMeters = beacon.altitude;
-          const altitudeFt = altitudeMeters != null ? Math.round(altitudeMeters * 3.28084) : '?';
-          const speedMs = beacon.ground_speed;
-          const speedKt = speedMs != null ? Math.round(speedMs * 1.94384) : '?';
-          const typeLabel = beacon.beacon_type || 'Ukjent';
-          
-          existingMarker.setPopupContent(`
-            <div>
-              <strong>Callsign: ${callsign}</strong><br/>
-              Type: ${typeLabel}<br/>
-              Høyde: ${altitudeFt} ft<br/>
-              Fart: ${speedKt} kt<br/>
-              <span style="font-size: 10px; color: #888;">Via SafeSky</span>
-            </div>
-          `);
-          
-          // Update rotation for aircraft only (not drones or helicopters)
-          if (!isDrone && !isHelicopter) {
+          // Update rotation for non-helicopter, non-drone types
+          if (!isDrone && !isHeli) {
             const el = existingMarker.getElement();
             if (el) {
               const img = el.querySelector('img');
@@ -788,66 +811,41 @@ export function OpenAIPMap({
           }
         } else {
           // Create new marker
-          let icon;
-          if (isDrone) {
-            // Use animated GIF drone icon for drones
-            icon = L.divIcon({
-              className: '',
-              html: `<img src="${droneAnimatedIcon}" style="width:62px;height:62px;" />`,
-              iconSize: [62, 62],
-              iconAnchor: [31, 31],
-              popupAnchor: [0, -31],
-            });
-          } else if (isHelicopter) {
-            // Helicopter icon using PNG - fixed rotation (no course rotation)
-            const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
-            icon = L.divIcon({
-              className: '',
-              html: `<img src="${helicopterIcon}" style="width:32px;height:32px;${highAltFilter}" />`,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-              popupAnchor: [0, -16],
-            });
-          } else {
-            // Use airplane PNG icon for aircraft with rotation
-            // Apply grayscale + brightness filter for high altitude (black appearance)
-            const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
-            icon = L.divIcon({
-              className: '',
-              html: `<img src="${airplaneIcon}" style="width:32px;height:32px;transform:rotate(${course}deg);${highAltFilter}" />`,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-              popupAnchor: [0, -16],
-            });
-          }
+          let icon: L.DivIcon;
+          const size = isDrone ? 62 : 32;
+          const anchor = size / 2;
+          const rotation = (!isDrone && !isHeli) ? `transform:rotate(${course}deg);` : '';
+          
+          icon = L.divIcon({
+            className: '',
+            html: `<img src="${iconUrl}" style="width:${size}px;height:${size}px;${rotation}${highAltFilter}" data-beacon-type="${beaconType}" />`,
+            iconSize: [size, size],
+            iconAnchor: [anchor, anchor],
+            popupAnchor: [0, -anchor],
+          });
           
           const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning' });
-          
-          const callsign = beacon.callsign || 'Ukjent';
-          const altitudeMeters = beacon.altitude;
-          const altitudeFt = altitudeMeters != null ? Math.round(altitudeMeters * 3.28084) : '?';
-          const speedMs = beacon.ground_speed;
-          const speedKt = speedMs != null ? Math.round(speedMs * 1.94384) : '?';
-          const typeLabel = beacon.beacon_type || 'Ukjent';
-          
-          marker.bindPopup(
-            `
-              <div>
-                <strong>Callsign: ${callsign}</strong><br/>
-                Type: ${typeLabel}<br/>
-                Høyde: ${altitudeFt} ft<br/>
-                Fart: ${speedKt} kt<br/>
-                <span style="font-size: 10px; color: #888;">Via SafeSky</span>
-              </div>
-            `,
-            {
-              // Allow dragging map freely even when popup is open
-              autoPan: false,
-              keepInView: false,
-            }
-          );
+          marker.bindPopup(popupHtml, { autoPan: false, keepInView: false });
           marker.addTo(safeskyLayer);
           safeskyMarkersCache.set(beaconId, marker);
+          
+          // Start helicopter animation
+          if (isHeli) {
+            let frameIdx = 0;
+            const intervalId = window.setInterval(() => {
+              // Skip if popup is open
+              if (marker.isPopupOpen()) return;
+              frameIdx = (frameIdx + 1) % HELI_ANIM_FRAMES.length;
+              const el = marker.getElement();
+              if (el) {
+                const img = el.querySelector('img');
+                if (img) {
+                  img.src = HELI_ANIM_FRAMES[frameIdx];
+                }
+              }
+            }, 200);
+            heliAnimIntervals.set(beaconId, intervalId);
+          }
         }
       }
       
@@ -856,6 +854,12 @@ export function OpenAIPMap({
         if (!currentIds.has(id)) {
           safeskyLayer.removeLayer(marker);
           safeskyMarkersCache.delete(id);
+          // Clear helicopter animation interval
+          const intervalId = heliAnimIntervals.get(id);
+          if (intervalId != null) {
+            clearInterval(intervalId);
+            heliAnimIntervals.delete(id);
+          }
         }
       }
     }
@@ -1762,6 +1766,11 @@ export function OpenAIPMap({
       clearInterval(heartbeatInterval);
       deleteHeartbeat();
       stopSafeSkySubscription();
+      // Clear all helicopter animation intervals
+      for (const [, intervalId] of heliAnimIntervals) {
+        clearInterval(intervalId);
+      }
+      heliAnimIntervals.clear();
       map.off("click");
       missionsChannel.unsubscribe();
       telemetryChannel.unsubscribe();
