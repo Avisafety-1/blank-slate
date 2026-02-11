@@ -155,6 +155,7 @@ export function OpenAIPMap({
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasCtrGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
+  const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
@@ -390,6 +391,9 @@ export function OpenAIPMap({
     setGeoJsonInteractivity(nsmGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasCtrGeoJsonRef.current, vectorsInteractive);
+    aipGeoJsonLayersRef.current.forEach(layer => {
+      setGeoJsonInteractivity(layer, vectorsInteractive);
+    });
 
     // Disable pointer events on overlay panes when in route planning mode
     // This allows clicks to pass through to the map for adding route points
@@ -1136,6 +1140,7 @@ export function OpenAIPMap({
         }
 
         aipLayer.clearLayers();
+        aipGeoJsonLayersRef.current = [];
 
         for (const zone of data) {
           if (!zone.geometry) continue;
@@ -1186,6 +1191,7 @@ export function OpenAIPMap({
               } : undefined,
             });
             geoJsonLayer.addTo(aipLayer);
+            aipGeoJsonLayersRef.current.push(geoJsonLayer);
           } catch (err) {
             console.error(`Feil ved parsing av AIP-sone ${zone.zone_id}:`, err);
           }
