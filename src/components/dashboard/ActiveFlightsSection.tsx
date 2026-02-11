@@ -150,26 +150,26 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                   {flight.publish_mode && flight.publish_mode !== 'none' && (
                     <Radio className="w-3 h-3 text-primary animate-pulse" />
                   )}
-                  <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-mono">
-                    <Clock className="w-3 h-3 mr-1" />
-                    {formatElapsed(flight.start_time)}
-                  </Badge>
                 </div>
               </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
+                <User className="w-3 h-3" />
+                <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
+              </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <User className="w-3 h-3" />
-                  <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
-                </div>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  variant="outline"
+                  className="h-7 px-3 text-xs"
                   onClick={(e) => handleViewOnMap(e, flight.id)}
                 >
                   <MapPin className="w-3 h-3 mr-1" />
                   {t('dashboard.activeFlights.viewOnMap')}
                 </Button>
+                <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-mono">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {formatElapsed(flight.start_time)}
+                </Badge>
               </div>
             </div>
           ))}
