@@ -256,6 +256,12 @@
       "maintenance": "vedlikehold",
       "expires": "utgår"
     },
+    "activeFlights": {
+      "title": "Aktive flyturer",
+      "noFlights": "Ingen aktive flyturer",
+      "viewOnMap": "Vis på kart",
+      "freeFlight": "Fri flytur"
+    },
     "status": {
       "title": "Ressursstatus",
       "equipment": "Utstyr",

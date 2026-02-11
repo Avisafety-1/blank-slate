@@ -8,6 +8,7 @@ import { MissionsSection } from "@/components/dashboard/MissionsSection";
 import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
+import { ActiveFlightsSection } from "@/components/dashboard/ActiveFlightsSection";
 import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { useState, useEffect } from "react";
@@ -65,7 +66,7 @@ const Index = () => {
   
   // Track if DroneTag positions are being recorded
   const [trackingStatus, setTrackingStatus] = useState<'checking' | 'recording' | 'not_recording'>('checking');
-  
+  const [hasActiveFlights, setHasActiveFlights] = useState(false);
   // Check for recent DroneTag positions when flight is active with real-time updates
   useEffect(() => {
     if (!isActive || !activeFlightDronetagId || !startTime) {
@@ -395,8 +396,14 @@ const Index = () => {
                 {t('actions.endFlight')}
               </Button>
             </div>
-          </div>
+            </div>
 
+            {/* Mobile: Active flights (only shown if there are active flights) */}
+            {hasActiveFlights && (
+              <div className="lg:hidden">
+                <ActiveFlightsSection />
+              </div>
+            )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
@@ -520,6 +527,11 @@ const Index = () => {
                           {t('actions.endFlight')}
                         </Button>
                       </div>
+                    </div>
+
+                    {/* Active flights - Desktop */}
+                    <div className="hidden lg:block">
+                      <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
                     </div>
 
                     {/* Missions - Desktop only (mobile shows after status) */}
