@@ -671,7 +671,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {/* Profile Tab */}
-              <TabsContent value="profile" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="profile" className="space-y-2 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Button
                   variant="outline"
                   size="sm"
