@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
       const response = await fetch(url, {
         headers: {
-          "x-openaip-client-id": OPENAIP_API_KEY,
+          "x-openaip-api-key": OPENAIP_API_KEY,
           Accept: "application/json",
         },
       });
