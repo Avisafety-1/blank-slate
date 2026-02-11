@@ -221,52 +221,105 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     const fetchNearestTraffic = async () => {
       setTrafficLoading(true);
       try {
-        const { data, error } = await supabase
+        const toRad = (d: number) => d * Math.PI / 180;
+        const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+          const R = 6371;
+          const dLat = toRad(lat2 - lat1);
+          const dLon = toRad(lon2 - lon1);
+          const a = Math.sin(dLat/2)**2 + 
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+            Math.sin(dLon/2)**2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        };
+
+        // Candidates: { callsign, type, lat, lng, altitudeFt }
+        const candidates: Array<{ callsign: string; type: string; lat: number; lng: number; altitudeFt: number | null }> = [];
+
+        // 1. SafeSky beacons
+        const { data: beacons } = await supabase
           .from('safesky_beacons')
           .select('id, callsign, beacon_type, latitude, longitude, altitude');
 
-        if (error || !data) {
-          setTrafficLoading(false);
-          return;
+        if (beacons) {
+          const MAX_ALT_M = 1524; // 5000ft
+          for (const b of beacons) {
+            if (b.latitude != null && b.longitude != null && (b.altitude == null || b.altitude <= MAX_ALT_M)) {
+              candidates.push({
+                callsign: b.callsign || 'Ukjent',
+                type: b.beacon_type || 'Ukjent',
+                lat: b.latitude,
+                lng: b.longitude,
+                altitudeFt: b.altitude != null ? Math.round(b.altitude * 3.28084) : null,
+              });
+            }
+          }
         }
 
-        // Filter: only below 5000ft (1524m) and with valid position
-        const MAX_ALT_M = 1524; // 5000ft
-        const filtered = data.filter(b => 
-          b.latitude != null && b.longitude != null &&
-          (b.altitude == null || b.altitude <= MAX_ALT_M)
-        );
+        // 2. Company's own active flights (advisory & live tracks)
+        const { data: activeFlights } = await supabase
+          .from('active_flights')
+          .select('id, profile_id, pilot_name, publish_mode, start_lat, start_lng, route_data, mission_id');
 
-        if (filtered.length === 0) {
+        if (activeFlights) {
+          for (const flight of activeFlights) {
+            // Skip own flight
+            if (flight.profile_id === user?.id) continue;
+
+            const mode = flight.publish_mode || 'none';
+            if (mode === 'none') continue;
+
+            if (mode === 'live_uav' && flight.start_lat != null && flight.start_lng != null) {
+              candidates.push({
+                callsign: flight.pilot_name || 'Pilot',
+                type: 'Live UAV',
+                lat: flight.start_lat,
+                lng: flight.start_lng,
+                altitudeFt: null,
+              });
+            }
+
+            if (mode === 'advisory' && flight.route_data) {
+              // Use route centroid as approximate position
+              const rd = flight.route_data as { coordinates?: Array<{ lat: number; lng: number }> };
+              if (rd.coordinates && rd.coordinates.length > 0) {
+                const coords = rd.coordinates;
+                const centLat = coords.reduce((s, c) => s + c.lat, 0) / coords.length;
+                const centLng = coords.reduce((s, c) => s + c.lng, 0) / coords.length;
+                candidates.push({
+                  callsign: flight.pilot_name || 'Advisory',
+                  type: 'Advisory',
+                  lat: centLat,
+                  lng: centLng,
+                  altitudeFt: null,
+                });
+              }
+            }
+          }
+        }
+
+        if (candidates.length === 0) {
           setNearestTraffic(null);
           setTrafficLoading(false);
           return;
         }
 
         // Find nearest
-        let nearest = filtered[0];
+        let nearest = candidates[0];
         let minDist = Infinity;
-        const toRad = (d: number) => d * Math.PI / 180;
 
-        for (const b of filtered) {
-          const R = 6371;
-          const dLat = toRad(b.latitude! - gpsPosition.lat);
-          const dLng = toRad(b.longitude! - gpsPosition.lng);
-          const a = Math.sin(dLat/2)**2 + 
-            Math.cos(toRad(gpsPosition.lat)) * Math.cos(toRad(b.latitude!)) * 
-            Math.sin(dLng/2)**2;
-          const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        for (const c of candidates) {
+          const dist = haversine(gpsPosition.lat, gpsPosition.lng, c.lat, c.lng);
           if (dist < minDist) {
             minDist = dist;
-            nearest = b;
+            nearest = c;
           }
         }
 
         setNearestTraffic({
-          callsign: nearest.callsign || 'Ukjent',
-          type: nearest.beacon_type || 'Ukjent',
+          callsign: nearest.callsign,
+          type: nearest.type,
           distanceKm: minDist,
-          altitudeFt: nearest.altitude != null ? Math.round(nearest.altitude * 3.28084) : null,
+          altitudeFt: nearest.altitudeFt,
         });
       } catch (err) {
         console.error('Error fetching nearest traffic:', err);
@@ -276,7 +329,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     };
 
     fetchNearestTraffic();
-  }, [open, gpsPosition]);
+  }, [open, gpsPosition, user?.id]);
 
   // Fetch pilot name when dialog opens
   useEffect(() => {
