@@ -1878,6 +1878,24 @@ const Oppdrag = () => {
                         <p className="text-sm text-foreground whitespace-pre-wrap">{mission.merknader}</p>
                       </div>
                     )}
+
+                    {/* Approver Comments */}
+                    {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">KOMMENTARER</p>
+                        <div className="space-y-1.5">
+                          {mission.approver_comments.map((c: any, i: number) => (
+                            <div key={i} className="text-sm bg-muted/50 rounded-md p-2">
+                              <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                              {c.comment}
+                              <span className="ml-1 text-xs text-muted-foreground">
+                                ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short', year: 'numeric' })})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </GlassCard>
                 ))}
               </div>
