@@ -1,39 +1,45 @@
 
 
-## Fix: Airspace warnings must check the entire route, not just the start point
+## Gi tilbakemelding-knapp i Min profil
 
-### Problem
-The `check_mission_airspace` SQL function pre-filters candidate zones using `ST_DWithin(geometry::geography, v_point::geography, 50000)` where `v_point` is only the start coordinate (p_lat/p_lon). If an AIP zone (like R-107) is more than 50 km from the start point but directly intersected by the route, it is never evaluated.
+### Oversikt
+Legger til en "Gi tilbakemelding"-knapp i profildialogen som åpner en ny dialog med overskrift og tekstfelt. Når brukeren trykker "Send", sendes innholdet som e-post til kontakt@avisafe.no via en ny edge function.
 
-The inner loop correctly iterates all route points, but the outer WHERE clause eliminates zones too far from the start before they reach the inner loop.
+### Endringer
 
-### Solution
-Create a geometry that represents the full route extent, and use that for the `ST_DWithin` filter instead of just the start point.
+**1. Ny Edge Function: `send-feedback`**
+- Ny fil: `supabase/functions/send-feedback/index.ts`
+- Mottar `subject`, `message`, og valgfritt `senderName` og `senderEmail` fra request body
+- Bruker standard SMTP-oppsett (via `_shared/email-config.ts` uten companyId, slik at den faller tilbake til standard AviSafe SMTP)
+- Sender e-post til `kontakt@avisafe.no` med brukerens tilbakemelding
+- Inkluderer avsenderens navn og e-post i e-postinnholdet slik at mottaker kan svare
 
-**File: New SQL migration**
+**2. Oppdatering av `supabase/config.toml`**
+- Legger til `[functions.send-feedback]` med `verify_jwt = false` (validerer auth i koden)
 
-After building the `v_points` array, construct a convex hull (`v_envelope`) from all route points. Then replace all four `ST_DWithin(..., v_point::geography, 50000)` filters with `ST_DWithin(..., v_envelope::geography, 50000)`.
+**3. Oppdatering av `src/components/ProfileDialog.tsx`**
+- Legger til ny state for tilbakemeldingsdialogen (`feedbackOpen`, `feedbackSubject`, `feedbackMessage`, `feedbackSending`)
+- Legger til en "Gi tilbakemelding"-knapp med `MessageSquare`-ikonet (allerede importert) nederst i profil-fanen, under signatur-seksjonen
+- Ny `Dialog` med:
+  - Overskrift-felt (Input)
+  - Meldingstekst (Textarea)
+  - "Avbryt" og "Send" knapper i footer
+- Send-funksjonen kaller `supabase.functions.invoke('send-feedback', ...)` med validering (begge felt må fylles ut)
+- Viser toast ved suksess/feil
 
-### Technical Detail
+### Tekniske detaljer
 
+**Edge function (`send-feedback/index.ts`):**
 ```text
--- After building v_points array, add:
-v_envelope := ST_ConvexHull(ST_Collect(v_points));
-
--- Replace all 4 occurrences of:
-WHERE ST_DWithin(geometry::geography, v_point::geography, 50000)
--- With:
-WHERE ST_DWithin(geometry::geography, v_envelope::geography, 50000)
+- CORS headers
+- Autentiserer brukeren via Authorization header
+- Henter brukerens profil (navn, e-post) fra Supabase
+- Validerer at subject og message ikke er tomme, med lengdebegrensninger
+- Bygger HTML-e-post med brukerinfo og melding
+- Sender til kontakt@avisafe.no via standard SMTP
 ```
 
-This applies to all four zone checks:
-1. RPAS 5km zones (line 58)
-2. CTR/TIZ zones (line 82)
-3. NSM zones (line 117)
-4. AIP restriction zones (line 143)
-
-### Impact
-- Routes passing through any airspace zone will trigger warnings regardless of where the start point is
-- No change to warning severity logic or messages
-- Slightly broader candidate set means marginally more zones evaluated, but the 50 km buffer already makes this negligible
+**Profildialog-knapp plassering:**
+- Plasseres som en `Separator` + ny seksjon etter signatur-blokken i profil-fanen
+- Knappen er alltid synlig (ikke bare i redigeringsmodus)
 
