@@ -400,7 +400,7 @@ const Index = () => {
 
             {/* Mobile: Active flights (only shown if there are active flights) */}
             {hasActiveFlights && (
-              <div className="lg:hidden mt-3 sm:mt-4">
+              <div className="lg:hidden mb-3 sm:mb-4">
                 <ActiveFlightsSection />
               </div>
             )}
