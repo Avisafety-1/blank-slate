@@ -166,8 +166,8 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                   <MapPin className="w-3 h-3 mr-1" />
                   {t('dashboard.activeFlights.viewOnMap')}
                 </Button>
-                <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-mono">
-                  <Clock className="w-3 h-3 mr-1" />
+                <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-xs sm:text-sm font-mono px-2.5 py-1">
+                  <Clock className="w-3.5 h-3.5 mr-1.5" />
                   {formatElapsed(flight.start_time)}
                 </Badge>
               </div>
