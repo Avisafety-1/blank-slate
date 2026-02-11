@@ -265,7 +265,8 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
                     dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
                   },
                   onEachFeature: (feature, layer) => {
-                    layer.bindPopup(`<strong>${label}</strong><br/><strong>${zone.zone_id}</strong> - ${zone.name || 'Ukjent'}<br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
+                    const displayName = zone.name || zone.zone_id || 'Ukjent';
+                    layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
                   }
                 }).addTo(zonesLayer);
               } catch {}

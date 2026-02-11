@@ -1182,8 +1182,9 @@ export function OpenAIPMap({
               },
               onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
                 const p = feature.properties || {};
+                const displayName = p.name || p.zone_id || 'Ukjent';
                 let popup = `<strong>${label}</strong><br/>`;
-                popup += `<strong>${p.zone_id}</strong> - ${p.name || 'Ukjent'}<br/>`;
+                popup += `<strong>${displayName}</strong><br/>`;
                 if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
                 if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
                 if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
