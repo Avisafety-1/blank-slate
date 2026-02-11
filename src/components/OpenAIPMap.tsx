@@ -399,6 +399,14 @@ export function OpenAIPMap({
       if (overlayPane) {
         overlayPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
       }
+      const aipPane = map.getPane("aipPane");
+      if (aipPane) {
+        aipPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
+      }
+      const nsmPane = map.getPane("nsmPane");
+      if (nsmPane) {
+        nsmPane.style.pointerEvents = mode === "routePlanning" ? "none" : "auto";
+      }
     }
 
     // Update route display when mode changes (to update draggable status on markers)
@@ -428,6 +436,14 @@ export function OpenAIPMap({
     if (routePane) {
       routePane.style.zIndex = '650'; // Above markers (600), below popups (700)
       routePane.style.pointerEvents = 'auto';
+    }
+
+    // AIP restriction zones pane - below route pane so route planning works on top
+    map.createPane('aipPane');
+    const aipPane = map.getPane('aipPane');
+    if (aipPane) {
+      aipPane.style.zIndex = '630';
+      aipPane.style.pointerEvents = 'auto';
     }
 
     // NSM pane - make sure NSM areas are above RPAS/CTR and clickable
@@ -1157,6 +1173,7 @@ export function OpenAIPMap({
                 fillColor: color,
                 fillOpacity: 0.2,
                 dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
+                pane: 'aipPane',
               },
               onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
                 const p = feature.properties || {};
