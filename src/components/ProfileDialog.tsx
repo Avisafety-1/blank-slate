@@ -18,6 +18,7 @@ import { IncidentDetailDialog } from "./dashboard/IncidentDetailDialog";
 import { AddIncidentDialog } from "./dashboard/AddIncidentDialog";
 import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
+import { MissionDetailDialog } from "./dashboard/MissionDetailDialog";
 import { SignaturePad } from "./SignaturePad";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
@@ -129,6 +130,8 @@ export const ProfileDialog = () => {
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
   const [editIncidentDialogOpen, setEditIncidentDialogOpen] = useState(false);
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
+  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [missionDetailOpen, setMissionDetailOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -225,12 +228,36 @@ export const ProfileDialog = () => {
       if (userCanApprove && profileData?.company_id) {
         const { data: pendingMissions } = await supabase
           .from("missions")
-          .select("id, tittel, lokasjon, tidspunkt, status, beskrivelse")
+          .select("*")
           .eq("company_id", profileData.company_id)
           .eq("approval_status", "pending_approval")
           .order("submitted_for_approval_at", { ascending: false });
 
-        setPendingApprovalMissions(pendingMissions || []);
+        // Fetch AI risk assessments for pending missions
+        const missionIds = (pendingMissions || []).map((m: any) => m.id);
+        let riskMap: Record<string, any> = {};
+        if (missionIds.length > 0) {
+          const { data: riskData } = await supabase
+            .from("mission_risk_assessments")
+            .select("*")
+            .in("mission_id", missionIds)
+            .order("created_at", { ascending: false });
+
+          if (riskData) {
+            for (const r of riskData) {
+              if (!riskMap[r.mission_id]) {
+                riskMap[r.mission_id] = r;
+              }
+            }
+          }
+        }
+
+        setPendingApprovalMissions(
+          (pendingMissions || []).map((m: any) => ({
+            ...m,
+            aiRisk: riskMap[m.id] || null,
+          }))
+        );
       } else {
         setPendingApprovalMissions([]);
       }
@@ -1229,7 +1256,14 @@ export const ProfileDialog = () => {
                       {pendingApprovalMissions.length > 0 ? (
                         <div className="space-y-3">
                           {pendingApprovalMissions.map((mission) => (
-                            <div key={mission.id} className="p-3 rounded-lg border border-border space-y-2">
+                            <div
+                              key={mission.id}
+                              className="p-3 rounded-lg border border-border space-y-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                              onClick={() => {
+                                setSelectedMission(mission);
+                                setMissionDetailOpen(true);
+                              }}
+                            >
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <p className="font-medium">{mission.tittel}</p>
@@ -1249,7 +1283,7 @@ export const ProfileDialog = () => {
                                 </div>
                               </div>
                               {approvingMissionId === mission.id ? (
-                                <div className="space-y-2 pt-2 border-t border-border/50">
+                                <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
                                     placeholder="Kommentar (valgfritt)"
                                     value={approvalComment}
@@ -1268,7 +1302,7 @@ export const ProfileDialog = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)}>
+                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setApprovingMissionId(mission.id); }}>
                                   <CheckCircle2 className="h-4 w-4 mr-1" />
                                   Godkjenn
                                 </Button>
@@ -1368,6 +1402,14 @@ export const ProfileDialog = () => {
           personName={profile?.full_name || user.email || 'Bruker'}
         />
       )}
+
+      {/* Mission Detail Dialog */}
+      <MissionDetailDialog
+        open={missionDetailOpen}
+        onOpenChange={setMissionDetailOpen}
+        mission={selectedMission}
+        onMissionUpdated={fetchUserData}
+      />
     </Dialog>
   );
 };
