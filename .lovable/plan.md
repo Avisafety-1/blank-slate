@@ -1,45 +1,74 @@
 
 
-## Gi tilbakemelding-knapp i Min profil
+# Update Map Beacon Icons to SVG by Type
 
-### Oversikt
-Legger til en "Gi tilbakemelding"-knapp i profildialogen som åpner en ny dialog med overskrift og tekstfelt. Når brukeren trykker "Send", sendes innholdet som e-post til kontakt@avisafe.no via en ny edge function.
+## Overview
+Replace the current PNG-based aircraft icons (airplane-icon.png, helicopter-icon.png, drone-animated.gif) with proper SVG icons matching each SafeSky beacon type. Add animated rotor blades for helicopters by cycling through 4 SVG animation frames.
 
-### Endringer
+## Beacon Type to Icon Mapping
 
-**1. Ny Edge Function: `send-feedback`**
-- Ny fil: `supabase/functions/send-feedback/index.ts`
-- Mottar `subject`, `message`, og valgfritt `senderName` og `senderEmail` fra request body
-- Bruker standard SMTP-oppsett (via `_shared/email-config.ts` uten companyId, slik at den faller tilbake til standard AviSafe SMTP)
-- Sender e-post til `kontakt@avisafe.no` med brukerens tilbakemelding
-- Inkluderer avsenderens navn og e-post i e-postinnholdet slik at mottaker kan svare
+| Beacon Type | Icon File | Animation |
+|---|---|---|
+| UNKNOWN | dot.svg | None |
+| STATIC_OBJECT | dot.svg | None |
+| GLIDER | glider.svg | None |
+| PARA_GLIDER | para_glider.svg (not provided -- fallback to dot.svg) | None |
+| HAND_GLIDER | hand_glider.svg (not provided -- fallback to dot.svg) | None |
+| PARA_MOTOR | para_motor.svg (not provided -- fallback to dot.svg) | None |
+| PARACHUTE | parachute.svg (not provided -- fallback to dot.svg) | None |
+| FLEX_WING_TRIKES | flex_wing_trikes.svg (not provided -- fallback to dot.svg) | None |
+| THREE_AXES_LIGHT_PLANE | light_aircraft.svg | None |
+| MOTORPLANE | aircraft.svg | None |
+| JET | heavy_aircraft.svg | None |
+| HELICOPTER | helicopter.svg | Cycle helicopter-anim_0 through _3 |
+| GYROCOPTER | gyrocopter.svg (not provided -- fallback to helicopter.svg) | None |
+| AIRSHIP | airship.svg (not provided -- fallback to dot.svg) | None |
+| BALLOON | ballon.svg (not provided -- fallback to dot.svg) | None |
+| UAV | uav.svg (not provided -- fallback to drone-animated.gif) | Existing GIF |
+| PAV | pav.svg (not provided -- fallback to dot.svg) | None |
+| MILITARY | military.svg (not provided -- fallback to aircraft.svg) | None |
 
-**2. Oppdatering av `supabase/config.toml`**
-- Legger til `[functions.send-feedback]` med `verify_jwt = false` (validerer auth i koden)
+Note: Only the SVGs the user uploaded are available. Missing types will use sensible fallbacks.
 
-**3. Oppdatering av `src/components/ProfileDialog.tsx`**
-- Legger til ny state for tilbakemeldingsdialogen (`feedbackOpen`, `feedbackSubject`, `feedbackMessage`, `feedbackSending`)
-- Legger til en "Gi tilbakemelding"-knapp med `MessageSquare`-ikonet (allerede importert) nederst i profil-fanen, under signatur-seksjonen
-- Ny `Dialog` med:
-  - Overskrift-felt (Input)
-  - Meldingstekst (Textarea)
-  - "Avbryt" og "Send" knapper i footer
-- Send-funksjonen kaller `supabase.functions.invoke('send-feedback', ...)` med validering (begge felt må fylles ut)
-- Viser toast ved suksess/feil
+## Steps
 
-### Tekniske detaljer
+### 1. Copy SVG assets into `src/assets/safesky-icons/`
+Copy all uploaded SVG files:
+- dot.svg, glider.svg, aircraft.svg, light_aircraft.svg, heavy_aircraft.svg
+- helicopter.svg, helicopter-anim_0.svg, helicopter-anim_1.svg, helicopter-anim_2.svg, helicopter-anim_3.svg
 
-**Edge function (`send-feedback/index.ts`):**
-```text
-- CORS headers
-- Autentiserer brukeren via Authorization header
-- Henter brukerens profil (navn, e-post) fra Supabase
-- Validerer at subject og message ikke er tomme, med lengdebegrensninger
-- Bygger HTML-e-post med brukerinfo og melding
-- Sender til kontakt@avisafe.no via standard SMTP
-```
+### 2. Update OpenAIPMap.tsx -- imports
+- Import all new SVG icons at the top of the file
+- Remove the old `airplaneIcon` and `helicopterIcon` PNG imports (keep `droneAnimatedIcon` for UAV)
 
-**Profildialog-knapp plassering:**
-- Plasseres som en `Separator` + ny seksjon etter signatur-blokken i profil-fanen
-- Knappen er alltid synlig (ikke bare i redigeringsmodus)
+### 3. Update OpenAIPMap.tsx -- beacon type mapping
+Create a helper function `getBeaconSvgUrl(beaconType: string)` that maps the SafeSky `beacon_type` string to the correct imported SVG URL. The beacon_type values from SafeSky are strings like "MOTORPLANE", "HELICOPTER", "UAV", etc.
+
+### 4. Update OpenAIPMap.tsx -- helicopter animation
+For HELICOPTER beacons:
+- Store the 4 animation frame SVG URLs in an array
+- On marker creation, start a `setInterval` (every 150-200ms) that cycles through the 4 frames by updating the `<img>` src
+- Track intervals in a Map keyed by beacon ID
+- Clear intervals when markers are removed
+- Skip frame updates if the marker popup is open
+
+### 5. Update marker rendering logic
+In `renderSafeSkyBeacons()`:
+- Replace the current `isDrone`/`isHelicopter`/else branching with the new `getBeaconSvgUrl()` lookup
+- Keep the existing high-altitude filter (grayscale+brightness for >2000ft)
+- Keep rotation via CSS transform for non-helicopter types
+- Helicopters: no rotation, use animation cycling instead
+- UAV: keep using existing drone-animated.gif
+- All other types: use the SVG icon with heading rotation
+
+### 6. Update existing marker updates
+In the "existingMarker" branch, also update icon src if beacon type could change (unlikely but safe), and ensure helicopter animation intervals are properly managed.
+
+## Technical Details
+
+- SVG icons are imported as ES module URLs (Vite handles this)
+- Helicopter animation: `setInterval` at ~200ms cycling through frames 0-3
+- Animation intervals stored in a `Map<string, number>` alongside `safeskyMarkersCache`
+- Cleanup: intervals cleared when markers are removed from cache or on component unmount
+- Icon size: 32x32px for all types (consistent with current), 62x62 for UAV drones (keeping current size)
 
