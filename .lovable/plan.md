@@ -1,105 +1,32 @@
 
 
-## Kommentarer fra godkjenner og e-postvarsling ved godkjenning
+# Fix: E-post ved innsending til godkjenning feiler
 
-### Oversikt
-Legge til en "Kommentar"-knapp pa oppdragskortene i godkjenningslisten, og sende e-post til piloten nar oppdraget godkjennes.
+## Problem
+Nar du sender et oppdrag til godkjenning, feiler e-postvarslingen med "No content provided!" fordi malen `mission_approval_request` ikke finnes i standardmalene i `template-utils.ts`. Funksjonen `getEmailTemplateWithFallback` returnerer tom subject og content, og denomailer nekter a sende en e-post uten innhold.
 
----
+Selve oppdateringen av oppdraget (status endres til `pending_approval`) fungerer - det er kun e-posten som feiler.
 
-### 1. Database-endring
+## Losning
 
-**Ny kolonne pa `missions`-tabellen:**
-- `approver_comments` (jsonb, default '[]') - liste med kommentarer fra godkjennere
+### 1. Legg til standardmal `mission_approval_request` i `template-utils.ts`
+Legge til en ny mal i `defaultTemplates`-objektet med variabler: `mission_title`, `mission_location`, `mission_date`, `mission_description`, `company_name`. Malen informerer godkjennere om at et oppdrag venter pa godkjenning.
 
-Hver kommentar lagres som:
-```text
-{
-  "author_id": "uuid",
-  "author_name": "Navn",
-  "comment": "Teksten",
-  "created_at": "2026-02-11T12:00:00Z"
-}
-```
+### 2. Legg til fallback i `send-notification-email/index.ts`
+I `notify_mission_approval`-handleren (linje 167), legge til en sjekk etter `getEmailTemplateWithFallback` som genererer inline HTML hvis innholdet er tomt - samme monster som allerede brukes for `notify_mission_approved` (linje 229-233).
 
-Den eksisterende `approval_comment` beholdes (brukes ved selve godkjenningen).
+## Tekniske detaljer
 
----
+**Fil 1: `supabase/functions/_shared/template-utils.ts`**
+- Legge til `mission_approval_request` i `defaultTemplates`-objektet med norsk tekst
+- Subject: `Oppdrag venter pa godkjenning: {{mission_title}}`
+- Innhold: HTML med oppdragstittel, lokasjon, tidspunkt, beskrivelse
 
-### 2. Frontend - Oppdragskort i "Oppfolging"
+**Fil 2: `supabase/functions/send-notification-email/index.ts`**
+- Etter linje 167, legge til sjekk for tom `templateResult.content`
+- Generere en enkel inline HTML-fallback med oppdragsinfo
+- Sette default subject hvis tom
 
-**Nye knapper pa hvert oppdragskort (ved siden av "Godkjenn"):**
-- **Kommentar** (MessageSquare-ikon): Klikker man pa denne, vises et fritekstfelt med "Tilbake" og "Lagre"-knapper
-- Lagring henter eksisterende `approver_comments` fra oppdraget, legger til ny kommentar med godkjennerens navn og tidspunkt, og oppdaterer kolonnen
+**Fil 3: Eventuelt feilhandtering i `src/pages/Oppdrag.tsx`**
+- E-postfeilen fanges allerede i try/catch (linje 528), men `supabase.functions.invoke` returnerer feil i `data.error` uten a kaste exception - suksess-toasten vises uansett. Ingen endring nodvendig her, men kan forbedre logging.
 
-**Visning av kommentarer:**
-- Nederst pa oppdragskortet vises alle kommentarer i en liste
-- Format: "Kommentar fra godkjenner **Navn**: kommentarteksten" med dato
-- Nar oppdraget godkjennes med kommentar, legges ogsa den kommentaren til i `approver_comments`
-
-**State-handtering:**
-- Ny state `commentingMissionId` for a tracke hvilket oppdrag man kommenterer
-- Ny state `missionComment` for selve kommentarteksten
-
----
-
-### 3. MissionDetailDialog - Vise kommentarer
-
-**I bunn av MissionDetailDialog:**
-- Vis alle `approver_comments` under en "Kommentarer fra godkjenner"-seksjon
-- Samme format som pa kortet
-
----
-
-### 4. E-postvarsling til pilot ved godkjenning
-
-**Ny e-posttype `notify_mission_approved`:**
-- Sendes nar godkjenner klikker "Godkjenn"
-- Mottagere: alle piloter knyttet til oppdraget via `mission_personnel`
-- Innhold: oppdragstittel, kommentarer fra godkjenner(e), og teksten "Logg inn i appen for a se oppdraget"
-
-**Endringer i edge function:**
-- Ny handler for type `notify_mission_approved` i `send-notification-email`
-- Mottar `missionId`, henter personnel fra `mission_personnel`, sender e-post til hver pilot
-- E-postmal med kommentarer og oppdrags-info
-
-**Ny default e-postmal `mission_approved` i template-utils.ts**
-
----
-
-### Tekniske detaljer
-
-```text
-Database-migrasjon:
-
-ALTER TABLE missions ADD COLUMN approver_comments jsonb NOT NULL DEFAULT '[]'::jsonb;
-```
-
-```text
-Filer som endres:
-
-- supabase/migrations/[timestamp]_approver_comments.sql (ny migrasjon)
-- src/components/ProfileDialog.tsx (kommentar-knapp, kommentar-visning, e-post ved godkjenning)
-- src/components/dashboard/MissionDetailDialog.tsx (vise approver_comments)
-- supabase/functions/send-notification-email/index.ts (ny type notify_mission_approved)
-- supabase/functions/_shared/template-utils.ts (ny default mal mission_approved)
-```
-
-```text
-Flyt - Legg til kommentar:
-
-1. Godkjenner klikker "Kommentar" pa oppdragskort
-2. Fritekstfelt vises med "Tilbake" og "Lagre"-knapper
-3. Ved "Lagre": hent oppdragets approver_comments, legg til ny kommentar med navn/tidspunkt
-4. Oppdater missions.approver_comments
-5. Toast-melding "Kommentar lagret"
-
-Flyt - Godkjenn med e-post:
-
-1. Godkjenner klikker "Godkjenn", skriver valgfri kommentar
-2. Kommentaren legges til i approver_comments (i tillegg til approval_comment)
-3. missions oppdateres med approval_status='approved'
-4. Frontend kaller send-notification-email med type 'notify_mission_approved'
-5. Edge function henter piloter fra mission_personnel
-6. Sender e-post med kommentarer og "Logg inn i appen for a se oppdraget"
-```
