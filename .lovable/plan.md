@@ -1,41 +1,39 @@
 
 
-## Fiks ruteplanlegger over AIP-luftromslaget (PC/mus)
+## Fix: Airspace warnings must check the entire route, not just the start point
 
 ### Problem
-Nar ruteplanleggeren aktiveres, deaktiveres museklikk pa NSM-, RPAS- og CTR-lagene via `setGeoJsonInteractivity()`. Men AIP-restriksjonslaget (de nye OpenAIP-sonene) har ingen tilsvarende ref, sa de individuelle SVG-elementene beholder `pointer-events: auto` og fanger opp museklikk for de nar kartet.
+The `check_mission_airspace` SQL function pre-filters candidate zones using `ST_DWithin(geometry::geography, v_point::geography, 50000)` where `v_point` is only the start coordinate (p_lat/p_lon). If an AIP zone (like R-107) is more than 50 km from the start point but directly intersected by the route, it is never evaluated.
 
-A sette `pointer-events: none` pa selve pane-elementet fungerer ikke palitelig for mus fordi Leaflet registrerer hendelser direkte pa SVG path-elementene inne i panen.
+The inner loop correctly iterates all route points, but the outer WHERE clause eliminates zones too far from the start before they reach the inner loop.
 
-### Losning
+### Solution
+Create a geometry that represents the full route extent, and use that for the `ST_DWithin` filter instead of just the start point.
 
-**Fil: `src/components/OpenAIPMap.tsx`**
+**File: New SQL migration**
 
-1. **Legg til en ref for AIP-laget** -- pa samme mate som `nsmGeoJsonRef`, `rpasGeoJsonRef` og `rpasCtrGeoJsonRef`:
-   - Opprett `aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([])` for a holde alle individuelle GeoJSON-lag.
+After building the `v_points` array, construct a convex hull (`v_envelope`) from all route points. Then replace all four `ST_DWithin(..., v_point::geography, 50000)` filters with `ST_DWithin(..., v_envelope::geography, 50000)`.
 
-2. **Lagre referansene ved oppretting** -- i `fetchAipRestrictionZones()`, etter at hvert `geoJsonLayer` er opprettet, legg det til i `aipGeoJsonLayersRef.current`.
-
-3. **Veksle interaktivitet ved modebytte** -- i `useEffect` som reagerer pa `mode`, iterer gjennom `aipGeoJsonLayersRef.current` og kall `setGeoJsonInteractivity()` pa hvert lag, slik at alle SVG path-elementer far `pointer-events: none` nar ruteplanlegging er aktiv.
-
-### Teknisk detalj
+### Technical Detail
 
 ```text
-// Ny ref
-aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([])
+-- After building v_points array, add:
+v_envelope := ST_ConvexHull(ST_Collect(v_points));
 
-// I fetchAipRestrictionZones, etter geoJsonLayer.addTo(aipLayer):
-aipGeoJsonLayersRef.current.push(geoJsonLayer);
-// Og for loopen: aipGeoJsonLayersRef.current = [];
-
-// I mode-useEffect, etter eksisterende setGeoJsonInteractivity-kall:
-aipGeoJsonLayersRef.current.forEach(layer => {
-  setGeoJsonInteractivity(layer, vectorsInteractive);
-});
+-- Replace all 4 occurrences of:
+WHERE ST_DWithin(geometry::geography, v_point::geography, 50000)
+-- With:
+WHERE ST_DWithin(geometry::geography, v_envelope::geography, 50000)
 ```
 
-### Pavirkning
-- Ruteplanlegger fungerer med mus pa PC -- klikk gar gjennom til kartet
-- Nar ruteplanlegging avsluttes, blir AIP-sonene klikkbare igjen med popups
-- Ingen endring i utseende eller andre funksjoner
+This applies to all four zone checks:
+1. RPAS 5km zones (line 58)
+2. CTR/TIZ zones (line 82)
+3. NSM zones (line 117)
+4. AIP restriction zones (line 143)
+
+### Impact
+- Routes passing through any airspace zone will trigger warnings regardless of where the start point is
+- No change to warning severity logic or messages
+- Slightly broader candidate set means marginally more zones evaluated, but the 50 km buffer already makes this negligible
 
