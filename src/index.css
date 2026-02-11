@@ -2,25 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force disable pointer events on all airspace panes during route planning */
-.route-planning-active .leaflet-aipPane-pane,
-.route-planning-active .leaflet-aipPane-pane *,
-.route-planning-active .leaflet-rmzPane-pane,
-.route-planning-active .leaflet-rmzPane-pane *,
-.route-planning-active .leaflet-rpasPane-pane,
-.route-planning-active .leaflet-rpasPane-pane *,
-.route-planning-active .leaflet-nsmPane-pane,
-.route-planning-active .leaflet-nsmPane-pane *,
-.route-planning-active .leaflet-obstaclePane-pane,
-.route-planning-active .leaflet-obstaclePane-pane *,
-.route-planning-active .leaflet-airportPane-pane,
-.route-planning-active .leaflet-airportPane-pane *,
-.route-planning-active .leaflet-safeskyPane-pane,
-.route-planning-active .leaflet-safeskyPane-pane *,
-.route-planning-active .leaflet-missionPane-pane,
-.route-planning-active .leaflet-missionPane-pane *,
-.route-planning-active .leaflet-overlay-pane,
-.route-planning-active .leaflet-overlay-pane * {
+/* Force disable pointer events on airspace SVG paths during route planning */
+.route-planning-active .leaflet-aipPane-pane path,
+.route-planning-active .leaflet-rmzPane-pane path,
+.route-planning-active .leaflet-rpasPane-pane path,
+.route-planning-active .leaflet-nsmPane-pane path,
+.route-planning-active .leaflet-obstaclePane-pane path,
+.route-planning-active .leaflet-airportPane-pane .leaflet-interactive,
+.route-planning-active .leaflet-safeskyPane-pane .leaflet-interactive,
+.route-planning-active .leaflet-missionPane-pane .leaflet-interactive,
+.route-planning-active .leaflet-overlay-pane .leaflet-interactive {
   pointer-events: none !important;
 }
 

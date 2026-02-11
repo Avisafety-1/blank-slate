@@ -450,6 +450,12 @@ export function OpenAIPMap({
     // Disable pointer events on all airspace panes when in route planning mode
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
+      const container = map.getContainer();
+      if (mode === "routePlanning") {
+        container.classList.add("route-planning-active");
+      } else {
+        container.classList.remove("route-planning-active");
+      }
       const pointerEvents = mode === "routePlanning" ? "none" : "auto";
       const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'missionPane'];
       for (const paneName of panesToDisable) {
@@ -2137,7 +2143,7 @@ export function OpenAIPMap({
 
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
-      <div ref={mapRef} className={`w-full h-full touch-manipulation ${mode === 'routePlanning' ? 'route-planning-active' : ''}`} />
+      <div ref={mapRef} className="w-full h-full touch-manipulation" />
       
       {/* Map controls */}
       <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
