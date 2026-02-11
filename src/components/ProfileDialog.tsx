@@ -1307,7 +1307,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Oppfølging Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="incidents" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
@@ -1323,7 +1323,7 @@ export const ProfileDialog = () => {
                           {pendingApprovalMissions.map((mission) => (
                             <div
                               key={mission.id}
-                              className="p-3 rounded-lg border border-border space-y-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                              className="p-3 rounded-lg border border-border space-y-2 cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden min-w-0"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
@@ -1331,8 +1331,8 @@ export const ProfileDialog = () => {
                             >
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                  <p className="font-medium">{mission.tittel}</p>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                  <p className="font-medium break-words">{mission.tittel}</p>
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
                                     {mission.lokasjon && (
                                       <span className="flex items-center gap-1">
                                         <MapPin className="h-3 w-3" />
@@ -1389,7 +1389,7 @@ export const ProfileDialog = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(commentingMissionId === mission.id ? null : mission.id); setMissionComment(""); }}>
                                     <MessageSquare className="h-4 w-4 mr-1" />
                                     Kommentar
