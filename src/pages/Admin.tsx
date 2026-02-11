@@ -669,7 +669,7 @@ const Admin = () => {
                                       className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
-                                      {t('admin.deleteUser') || 'Slett bruker'}
+                                      {t('admin.deleteUser')}
                                     </Button>
                                   </div>
                                 </PopoverContent>
