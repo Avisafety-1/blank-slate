@@ -199,7 +199,6 @@ export function OpenAIPMap({
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
-  const rpasCtrGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const pilotMarkerRef = useRef<L.Marker | null>(null);
@@ -436,7 +435,7 @@ export function OpenAIPMap({
     const vectorsInteractive = mode !== "routePlanning";
     setGeoJsonInteractivity(nsmGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
-    setGeoJsonInteractivity(rpasCtrGeoJsonRef.current, vectorsInteractive);
+    aipGeoJsonLayersRef.current.forEach(layer => {
     aipGeoJsonLayersRef.current.forEach(layer => {
       setGeoJsonInteractivity(layer, vectorsInteractive);
     });
@@ -445,7 +444,7 @@ export function OpenAIPMap({
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
       const pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'ctrPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane'];
+      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane'];
       for (const paneName of panesToDisable) {
         const pane = map.getPane(paneName);
         if (pane) {
@@ -483,8 +482,7 @@ export function OpenAIPMap({
     // 660: safeskyPane   - SafeSky traffic
     // 650: nsmPane       - NSM restriction zones
     // 645: rpasPane      - RPAS 5km zones
-    // 640: ctrPane       - CTR zones
-    // 635: rmzPane       - RMZ/TMZ/ATZ/TIZ zones
+    // 635: rmzPane       - RMZ/TMZ/ATZ zones
     // 630: aipPane       - Danger/Prohibited/Restricted (largest areas, bottom)
 
     const paneConfig: Record<string, string> = {
@@ -495,7 +493,6 @@ export function OpenAIPMap({
       safeskyPane: '660',
       nsmPane: '650',
       rpasPane: '645',
-      ctrPane: '640',
       rmzPane: '635',
       aipPane: '630',
     };
@@ -585,15 +582,8 @@ export function OpenAIPMap({
       icon: "radio",
     });
 
-    // RPAS CTR/TIZ
-    const rpasCtрLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "rpas_ctr",
-      name: "RPAS CTR/TIZ",
-      layer: rpasCtрLayer,
-      enabled: true,
-      icon: "shield",
-    });
+
+
 
     // NSM Forbudsområder - added last so it's on top and clickable
     const nsmLayer = L.layerGroup().addTo(map);
@@ -1145,40 +1135,7 @@ export function OpenAIPMap({
       }
     }
 
-    async function fetchRpasCtрData() {
-      try {
-        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        const response = await fetch(url);
-        if (!response.ok) return;
-        
-        const geojson = await response.json();
-        const geoJsonLayer = L.geoJSON(geojson, {
-          interactive: mode !== 'routePlanning',
-          pane: 'ctrPane',
-          style: {
-            color: '#ec4899',
-            weight: 2,
-            fillColor: '#ec4899',
-            fillOpacity: 0.2,
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-            if (feature.properties) {
-              const name = feature.properties.navn || feature.properties.name || 'Ukjent';
-              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
-            }
-          } : undefined
-        });
 
-        // Make sure the layer doesn't block adding route points when switching mode
-        rpasCtrGeoJsonRef.current = geoJsonLayer;
-        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
-        
-        rpasCtрLayer.clearLayers();
-        rpasCtрLayer.addLayer(geoJsonLayer);
-      } catch (err) {
-        console.error("Kunne ikke hente RPAS CTR/TIZ soner:", err);
-      }
-    }
 
     // Fetch AIP ENR 5.1 restriction zones from database
     async function fetchAipRestrictionZones() {
@@ -1822,7 +1779,7 @@ export function OpenAIPMap({
 
     fetchNsmData();
     fetchRpasData();
-    fetchRpasCtрData();
+    fetchAipRestrictionZones();
     fetchAipRestrictionZones();
     fetchRmzTmzAtzZones();
     fetchObstacles();
