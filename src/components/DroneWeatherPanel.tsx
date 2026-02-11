@@ -544,11 +544,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                   key={index}
                   variant={warning.level === 'warning' ? 'destructive' : 'default'}
                   className={cn(
-                    warning.level === 'caution' && "bg-warning/10 border-warning text-warning",
-                    warning.level === 'note' && "bg-info/10 border-info text-info"
+                    "text-foreground [&>svg]:text-foreground",
+                    warning.level === 'caution' && "bg-warning/10 border-warning",
+                    warning.level === 'note' && "bg-info/10 border-info",
+                    warning.level === 'warning' && "bg-destructive/10"
                   )}
                 >
-                  <AlertDescription className="text-xs">{warning.message}</AlertDescription>
+                  <AlertDescription className="text-xs text-foreground">{warning.message}</AlertDescription>
                 </Alert>
               ))}
             </div>
