@@ -22,28 +22,35 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Type mapping: OpenAIP type -> zone_type
+    // Based on actual API data for Norway:
+    // 0=Other, 1=R, 2=D, 3=P, 4=CTR, 5=D, 6=RMZ, 7=TMA
+    // 21=ATZ-like (airfields), 23=TIZ, 24=TIA, 26=CTA, 27=ACC, 28=Airwork
     const typeMap: Record<number, string> = {
-      0: "P",  // Prohibited (other/unknown mapped to P)
-      1: "R",  // Restricted  
-      2: "D",  // Danger
-      3: "P",  // Prohibited
-      4: "R",  // Restricted
-      5: "D",  // Danger
-      8: "RMZ",  // Radio Mandatory Zone
-      9: "TMZ",  // Transponder Mandatory Zone
-      13: "ATZ", // Aerodrome Traffic Zone
+      0: "P",    // Other/unknown -> Prohibited
+      1: "R",    // Restricted
+      2: "D",    // Danger
+      3: "P",    // Prohibited
+      4: "CTR",  // Control Zone (CTR) - include for completeness
+      5: "D",    // Danger
+      6: "RMZ",  // Radio Mandatory Zone (confirmed: Geiteryggen, Ekofisk, Kjeller, Oslo)
+      21: "ATZ", // Aerodrome Traffic Zone (Eggemoen, Gauldal, Gvarv etc.)
+      23: "TIZ", // Traffic Information Zone (Anda, Båtsfjord, Berlevåg etc.)
     };
 
-    // OpenAIP airspace types for Norway:
-    // 1-5 = P/R/D zones, 8 = RMZ, 9 = TMZ, 13 = ATZ
-    // We skip 6 (CTR) and 7 (TMA) as those come from ArcGIS
+    // Types to INCLUDE (filter in code, not via API)
+    // Include P/R/D zones (0,1,2,3,5), RMZ (6), ATZ (21), TIZ (23)
+    // Exclude CTR (4) and TMA (7) - already covered by ArcGIS
+    // Exclude TIA (24), CTA (26), ACC (27), Airwork (28), OCA (15)
+    const includedTypes = new Set([0, 1, 2, 3, 5, 6, 21, 23]);
+
+    // Fetch ALL airspaces for Norway (no type filter - API filter is unreliable)
     const allAirspaces: any[] = [];
     let page = 1;
     const limit = 100;
     let hasMore = true;
 
     while (hasMore) {
-      const url = `https://api.core.openaip.net/api/airspaces?country=NO&type=1,2,3,4,5,8,9,13&limit=${limit}&page=${page}`;
+      const url = `https://api.core.openaip.net/api/airspaces?country=NO&limit=${limit}&page=${page}`;
       console.log(`Fetching page ${page}: ${url}`);
 
       const response = await fetch(url, {
@@ -75,11 +82,33 @@ Deno.serve(async (req) => {
 
     console.log(`Total airspaces fetched: ${allAirspaces.length}`);
 
+    // Log type statistics
+    const typeStats: Record<number, { count: number; names: string[] }> = {};
+    for (const airspace of allAirspaces) {
+      const t = airspace.type;
+      if (!typeStats[t]) {
+        typeStats[t] = { count: 0, names: [] };
+      }
+      typeStats[t].count++;
+      if (typeStats[t].names.length < 5) {
+        typeStats[t].names.push(airspace.name || "unnamed");
+      }
+    }
+    console.log("=== TYPE STATISTICS ===");
+    for (const [type, stats] of Object.entries(typeStats)) {
+      console.log(`Type ${type}: ${stats.count} airspaces. Examples: ${stats.names.join(", ")}`);
+    }
+
+    // Filter to only included types
+    const filteredAirspaces = allAirspaces.filter(a => includedTypes.has(a.type));
+    const excludedCount = allAirspaces.length - filteredAirspaces.length;
+    console.log(`After filtering: ${filteredAirspaces.length} included, ${excludedCount} excluded`);
+
     let synced = 0;
     let errors = 0;
     const details: string[] = [];
 
-    for (const airspace of allAirspaces) {
+    for (const airspace of filteredAirspaces) {
       try {
         const openaipId = airspace._id;
         const name = airspace.name || "Ukjent";
@@ -94,9 +123,25 @@ Deno.serve(async (req) => {
         // Map type
         const zoneType = typeMap[airspaceType] || "D";
 
-        // Extract zone_id from name (e.g., "EN-R102 OSLO" -> "EN-R102")
-        const zoneIdMatch = name.match(/EN-[RPDA]\d+[A-Z]?/i);
-        const zoneId = zoneIdMatch ? zoneIdMatch[0].toUpperCase() : `OPENAIP-${openaipId}`;
+        // Extract zone_id from name
+        // Match EN-R102, EN-D303 etc.
+        const enMatch = name.match(/EN-[RPDA]\d+[A-Z]?/i);
+        // Or use name-based ID for RMZ/TMZ/ATZ/TIZ
+        let zoneId: string;
+        if (enMatch) {
+          zoneId = enMatch[0].toUpperCase();
+        } else if (["RMZ", "ATZ", "TIZ", "CTR"].includes(zoneType)) {
+          // e.g. "GEITERYGGEN RMZ" -> "GEITERYGGEN-RMZ"
+          // e.g. "KJELLER RMZ/TMZ" -> "KJELLER-RMZ"
+          // Remove leading "NO" prefix if present
+          const cleanName = name
+            .replace(/^NO/, "")
+            .replace(/\s+(RMZ|TMZ|ATZ|TIZ|RMZ\/TMZ|CTR)$/i, "")
+            .trim();
+          zoneId = `${cleanName}-${zoneType}`.toUpperCase();
+        } else {
+          zoneId = `OPENAIP-${openaipId}`;
+        }
 
         // Format limits
         const upperLimit = airspace.upperLimit
@@ -132,7 +177,7 @@ Deno.serve(async (req) => {
           details.push(`❌ ${zoneId}: ${upsertError.message}`);
         } else {
           synced++;
-          details.push(`✅ ${zoneId} (${name})`);
+          details.push(`✅ ${zoneId} (${name}) [type=${airspaceType}/${zoneType}]`);
         }
       } catch (err) {
         errors++;
@@ -143,9 +188,12 @@ Deno.serve(async (req) => {
 
     const summary = {
       total_fetched: allAirspaces.length,
+      filtered: filteredAirspaces.length,
+      excluded: excludedCount,
       synced,
       errors,
-      details: details.slice(0, 50), // Limit details in response
+      type_stats: typeStats,
+      details: details.slice(0, 50),
     };
 
     console.log(`Sync complete: ${synced} synced, ${errors} errors`);
