@@ -3012,8 +3012,15 @@ export type Database = {
             Returns: string
           }
       check_mission_airspace: {
-        Args: { p_lat: number; p_lon: number; p_route_points?: Json }
-        Returns: Json
+        Args: { p_lat: number; p_lng: number; p_route?: Json }
+        Returns: {
+          distance_meters: number
+          is_inside: boolean
+          severity: string
+          zone_id: string
+          zone_name: string
+          zone_type: string
+        }[]
       }
       check_mission_zone_conflicts: {
         Args: { p_latitude: number; p_longitude: number }

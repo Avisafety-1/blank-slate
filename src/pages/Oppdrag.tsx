@@ -648,8 +648,8 @@ const Oppdrag = () => {
       if (effectiveLat && effectiveLng) {
         const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
           p_lat: effectiveLat,
-          p_lon: effectiveLng,
-          p_route_points: routeCoords,
+          p_lng: effectiveLng,
+          p_route: routeCoords,
         });
         if (airspaceData) {
           const severityOrder: Record<string, number> = { warning: 0, caution: 1, note: 2 };

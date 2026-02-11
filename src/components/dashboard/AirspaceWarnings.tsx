@@ -40,8 +40,8 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
       try {
         const { data, error } = await supabase.rpc("check_mission_airspace", {
           p_lat: latitude,
-          p_lon: longitude,
-          p_route_points: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
+          p_lng: longitude,
+          p_route: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
         });
 
         if (error) {
