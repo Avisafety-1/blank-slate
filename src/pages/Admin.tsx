@@ -689,22 +689,14 @@ const Admin = () => {
                           
                           {!isMobile && (
                             <div className="flex items-center gap-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center">
-                                      <Switch
-                                        checked={profile.can_approve_missions === true}
-                                        onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
-                                        className="scale-75"
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Kan godkjenne oppdrag</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <div className="flex items-center gap-1.5">
+                                <Switch
+                                  checked={profile.can_approve_missions === true}
+                                  onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
+                                  className="scale-75"
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner</span>
+                              </div>
                               <Select 
                                 value={userRole?.role || ""} 
                                 onValueChange={(value) => assignRole(profile.id, value)}
