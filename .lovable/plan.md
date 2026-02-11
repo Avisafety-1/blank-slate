@@ -1,69 +1,135 @@
 
 
-## Korrekte polygoner for AIP ENR 5.1-soner
+## Oppdragsgodkjenning med varsling og profiloppfolging
 
-### Problem
-Alle 16 AIP-soner er lagret som enkle rektangler (4 hjornepunkter), men mange av dem er definert som sirkler eller komplekse polygoner i den offisielle AIP-dokumentasjonen. For eksempel er EN-R102 (Oslo sentrum) en sirkel med radius 2 NM sentrert rundt Stortinget/Oslo sentrum.
+### Oversikt
+Legge til et godkjenningssystem for oppdrag med tre statuser (ikke godkjent, venter pa godkjenning, godkjent), e-postvarsling til godkjennere, og en ny "Oppfolging"-fane i profildialogen som samler bade hendelser og oppdrag til godkjenning.
 
-### Losning
-Oppdatere geometriene i databasen med korrekte former ved hjelp av PostGIS-funksjoner:
-- **Sirkler**: Bruk `ST_Buffer(ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography, radius_meter)::geometry` for a generere sirkelpolygoner med 64 segmenter
-- **Komplekse polygoner**: For soner definert med mange koordinatpunkter, bruk korrekte flerpunktspolygoner
+---
 
-### Soner som skal oppdateres
+### 1. Database-endringer
 
-| Sone | Korrekt form | Beskrivelse |
-|------|-------------|-------------|
-| EN-R102 | Sirkel, ~2 NM radius, senter ca. 59.913N 10.738E | Oslo sentrum |
-| EN-R103 | Sirkel, ~0.5 NM radius, senter ca. 59.914N 10.733E | Stortinget/Slottet |
-| EN-R104 | Polygon (uregelmessig) | Fornebu |
-| EN-P001 | Sirkel, senter ved Sola | Sola forbudsomrade |
-| EN-R201 | Polygon (uregelmessig, militaert) | Rygge |
-| EN-R202 | Polygon (uregelmessig, militaert) | Orland |
-| EN-R203 | Polygon (uregelmessig, militaert) | Bodo |
-| EN-R301 | Sirkel, senter ved Haakonsvern | Haakonsvern |
-| EN-D301 til EN-D320 | Polygoner (skytefelt, uregelmessig) | Diverse skytefelt |
+**Ny kolonne pa `missions`-tabellen:**
+- `approval_status` (text, default 'not_approved') - verdier: `not_approved`, `pending_approval`, `approved`
+- `approval_comment` (text, nullable) - kommentar fra godkjenner
+- `approved_by` (uuid, nullable) - hvem som godkjente
+- `approved_at` (timestamptz, nullable) - nar oppdraget ble godkjent
+- `submitted_for_approval_at` (timestamptz, nullable) - nar det ble sendt til godkjenning
 
-### Implementering
+**Ny kolonne pa `notification_preferences`-tabellen:**
+- `email_mission_approval` (boolean, default false) - om brukeren skal motta varsler om oppdrag til godkjenning
 
-En enkelt SQL-migrasjon som:
+**Ny innstilling pa `profiles`-tabellen:**
+- `can_approve_missions` (boolean, default false) - om brukeren kan godkjenne oppdrag
 
-1. Bruker `UPDATE` med `ST_Buffer` for sirkulaere soner (R102, R103, P001, R301)
-2. Bruker `UPDATE` med korrekte flerpunktspolygoner for de ovrige sonene basert pa tilgjengelige kartdata
-3. For soner der eksakte koordinater ikke er verifisert, bruker bedre tilnaerminger enn rektangler (sirkel basert pa kjent senterpunkt og omtrentlig radius)
+**RLS-oppdateringer:**
+- Alle som kan se oppdrag kan lese godkjenningsstatus
+- Godkjennere (can_approve_missions = true) kan oppdatere approval_status, approval_comment, approved_by og approved_at
+- Oppdragseiere og saksbehandlere+ kan sende til godkjenning (oppdatere approval_status til pending_approval)
+
+---
+
+### 2. Frontend - Oppdragskort (/oppdrag)
+
+**Ny godkjenningsbadge pa hvert oppdragskort:**
+- Ikke godkjent: gra badge "Ikke godkjent"
+- Venter pa godkjenning: gul badge "Venter pa godkjenning"
+- Godkjent: gronn badge med hake "Godkjent av [navn]"
+
+**Ny knapp "Send til godkjenning":**
+- Vises pa kort med status `not_approved`
+- Legges til i "Flere valg"-dropdown-menyen
+- Klikk oppdaterer `approval_status` til `pending_approval` og sender e-postvarsling
+
+---
+
+### 3. Profildialogen - Ny "Oppfolging"-fane
+
+**Erstatte "Hendelser"-fanen med "Oppfolging":**
+- Tabben far ikon `ClipboardCheck` og navn "Oppfolging"
+- Inni tabben: to seksjoner med overskrifter
+  - **Hendelser til oppfolging** (eksisterende logikk, flyttes hit)
+  - **Oppdrag til godkjenning** (nytt)
+    - Viser oppdrag med `approval_status = 'pending_approval'` der brukeren har `can_approve_missions = true`
+    - Hvert oppdrag viser: tittel, lokasjon, dato, status
+    - Knapp "Godkjenn" som apner et lite kommentarfelt
+    - Godkjenning oppdaterer `approval_status` til `approved`, lagrer kommentar, godkjenner-ID og tidspunkt
+
+**Badge-teller pa fanen:**
+- Kombinerer antall hendelser + oppdrag til godkjenning
+
+---
+
+### 4. Admin-innstillinger
+
+**I bruker-listen pa Admin-siden:**
+- Ny toggle/switch per bruker: "Kan godkjenne oppdrag"
+- Oppdaterer `profiles.can_approve_missions`
+- Kun admin/superadmin kan endre denne innstillingen
+
+---
+
+### 5. E-postvarsling
+
+**Ny e-postmal `mission_approval_request`:**
+- Sendes nar noen klikker "Send til godkjenning"
+- Mottagere: alle brukere med `can_approve_missions = true` OG `email_mission_approval = true` i notification_preferences
+- Innhold: oppdragstittel, lokasjon, dato, beskrivelse, lenke til app
+
+**Ny varslingsinnstilling i profilen:**
+- Toggle "Oppdrag til godkjenning" under varslinger-fanen (vises kun for brukere med can_approve_missions)
+
+---
 
 ### Tekniske detaljer
 
 ```text
-Migrasjon:
+Database-migrasjon:
 
--- Eksempel: EN-R102 Oslo sentrum som sirkel med 2 NM (3704m) radius
-UPDATE aip_restriction_zones
-SET geometry = ST_Buffer(
-  ST_SetSRID(ST_MakePoint(10.738, 59.913), 4326)::geography,
-  3704
-)::geometry
-WHERE zone_id = 'EN-R102';
+ALTER TABLE missions ADD COLUMN approval_status text NOT NULL DEFAULT 'not_approved';
+ALTER TABLE missions ADD COLUMN approval_comment text;
+ALTER TABLE missions ADD COLUMN approved_by uuid REFERENCES auth.users(id);
+ALTER TABLE missions ADD COLUMN approved_at timestamptz;
+ALTER TABLE missions ADD COLUMN submitted_for_approval_at timestamptz;
 
--- Eksempel: EN-R103 Stortinget/Slottet som sirkel med ~500m radius
-UPDATE aip_restriction_zones
-SET geometry = ST_Buffer(
-  ST_SetSRID(ST_MakePoint(10.733, 59.914), 4326)::geography,
-  500
-)::geometry
-WHERE zone_id = 'EN-R103';
+ALTER TABLE profiles ADD COLUMN can_approve_missions boolean NOT NULL DEFAULT false;
 
--- Lignende for P001, R301 (sirkler)
--- Og forbedrede polygoner for R201, R202, R203, D301-D320
+ALTER TABLE notification_preferences ADD COLUMN email_mission_approval boolean NOT NULL DEFAULT false;
 ```
 
 ```text
 Filer som endres:
-- supabase/migrations/[timestamp]_fix_aip_zone_geometries.sql (ny)
-- Ingen frontend-endringer nodvendig (kartlaget leser geometri direkte fra databasen)
+
+Nye filer:
+- supabase/migrations/[timestamp]_mission_approval.sql
+
+Endrede filer:
+- src/pages/Oppdrag.tsx (godkjenningsbadge, send til godkjenning-knapp)
+- src/components/ProfileDialog.tsx (ny "Oppfolging"-fane med hendelser + oppdrag)
+- src/pages/Admin.tsx (toggle for kan godkjenne oppdrag)
+- src/components/dashboard/MissionsSection.tsx (godkjenningsbadge pa dashboard)
+- src/components/dashboard/MissionDetailDialog.tsx (godkjenningsstatus)
+- supabase/functions/send-notification-email/index.ts (ny type mission_approval_request)
+- src/lib/notifications.ts (ny notifikasjonstype)
+- src/i18n/locales/no.json (nye oversettelser)
+- src/i18n/locales/en.json (nye oversettelser)
+- src/integrations/supabase/types.ts (oppdaterte typer)
 ```
 
-### Viktige merknader
-- Senterpunkter og radier er basert pa offentlig tilgjengelig informasjon om sonene
-- Noen soner (spesielt skytefeltene D301-D320) har komplekse grenser som krever mange koordinatpunkter - disse vil fa forbedrede tilnaerminger
-- Etter migrering vil kartlaget automatisk vise korrekte former uten kodeendringer
+```text
+Flyt - Send til godkjenning:
+
+1. Bruker klikker "Send til godkjenning" pa oppdragskort
+2. Frontend oppdaterer missions.approval_status = 'pending_approval'
+3. Frontend kaller send-notification-email med type 'notify_mission_approval'
+4. Edge function finner brukere med can_approve_missions = true og email_mission_approval = true
+5. Sender e-post til alle godkjennere
+
+Flyt - Godkjenn oppdrag:
+
+1. Godkjenner ser oppdrag i profil > Oppfolging
+2. Klikker "Godkjenn", skriver kommentar
+3. Frontend oppdaterer missions: approval_status='approved', approved_by, approved_at, approval_comment
+4. Oppdraget forsvinner fra godkjennerens liste
+```
+
