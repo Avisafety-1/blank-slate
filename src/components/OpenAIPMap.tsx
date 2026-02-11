@@ -482,8 +482,8 @@ export function OpenAIPMap({
     // 660: safeskyPane   - SafeSky traffic
     // 650: nsmPane       - NSM restriction zones
     // 645: rpasPane      - RPAS 5km zones
+    // 640: aipPane       - Danger/Prohibited/Restricted (P/R/D) - above RMZ
     // 635: rmzPane       - RMZ/TMZ/ATZ zones
-    // 630: aipPane       - Danger/Prohibited/Restricted (largest areas, bottom)
 
     const paneConfig: Record<string, string> = {
       airportPane: '690',
@@ -493,8 +493,8 @@ export function OpenAIPMap({
       safeskyPane: '660',
       nsmPane: '650',
       rpasPane: '645',
+      aipPane: '640',
       rmzPane: '635',
-      aipPane: '630',
     };
 
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
