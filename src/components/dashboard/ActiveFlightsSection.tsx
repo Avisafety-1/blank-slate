@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 
 interface ActiveFlight {
   id: string;
@@ -25,6 +26,8 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
   const [now, setNow] = useState(Date.now());
+  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [missionDialogOpen, setMissionDialogOpen] = useState(false);
 
   const fetchFlights = useCallback(async () => {
     if (!companyId) return;
@@ -81,6 +84,30 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const handleFlightClick = async (flight: ActiveFlight) => {
+    if (!flight.mission_id) {
+      navigate('/kart', { state: { focusFlightId: flight.id } });
+      return;
+    }
+    const { data, error } = await supabase
+      .from('missions')
+      .select('*')
+      .eq('id', flight.mission_id)
+      .maybeSingle();
+
+    if (error || !data) {
+      navigate('/kart', { state: { focusFlightId: flight.id } });
+      return;
+    }
+    setSelectedMission(data);
+    setMissionDialogOpen(true);
+  };
+
+  const handleViewOnMap = (e: React.MouseEvent, flightId: string) => {
+    e.stopPropagation();
+    navigate('/kart', { state: { focusFlightId: flightId } });
+  };
+
   if (flights.length === 0) {
     return (
       <GlassCard className="hidden lg:block">
@@ -94,51 +121,66 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   }
 
   return (
-    <GlassCard>
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <div className="flex items-center gap-2">
-          <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-          <h2 className="text-sm sm:text-base font-semibold">{t('dashboard.activeFlights.title')}</h2>
-          <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs">
-            {flights.length}
-          </Badge>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => navigate('/kart')}>
-          <MapPin className="w-4 h-4 mr-1" />
-          {t('dashboard.activeFlights.viewOnMap')}
-        </Button>
-      </div>
-
-      <div className="space-y-1.5 sm:space-y-2 max-h-[250px] overflow-y-auto">
-        {flights.map((flight) => (
-          <div
-            key={flight.id}
-            onClick={() => navigate('/kart')}
-            className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
-          >
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-xs sm:text-sm truncate">
-                  {flight.missionTitle || t('dashboard.activeFlights.freeFlight')}
-                </h3>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {flight.publish_mode && flight.publish_mode !== 'none' && (
-                  <Radio className="w-3 h-3 text-primary animate-pulse" />
-                )}
-                <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-mono">
-                  <Clock className="w-3 h-3 mr-1" />
-                  {formatElapsed(flight.start_time)}
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <User className="w-3 h-3" />
-              <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
-            </div>
+    <>
+      <GlassCard>
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="flex items-center gap-2">
+            <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <h2 className="text-sm sm:text-base font-semibold">{t('dashboard.activeFlights.title')}</h2>
+            <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs">
+              {flights.length}
+            </Badge>
           </div>
-        ))}
-      </div>
-    </GlassCard>
+        </div>
+
+        <div className="space-y-1.5 sm:space-y-2 max-h-[250px] overflow-y-auto">
+          {flights.map((flight) => (
+            <div
+              key={flight.id}
+              onClick={() => handleFlightClick(flight)}
+              className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-xs sm:text-sm truncate">
+                    {flight.missionTitle || t('dashboard.activeFlights.freeFlight')}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {flight.publish_mode && flight.publish_mode !== 'none' && (
+                    <Radio className="w-3 h-3 text-primary animate-pulse" />
+                  )}
+                  <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-mono">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {formatElapsed(flight.start_time)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <User className="w-3 h-3" />
+                  <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={(e) => handleViewOnMap(e, flight.id)}
+                >
+                  <MapPin className="w-3 h-3 mr-1" />
+                  {t('dashboard.activeFlights.viewOnMap')}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      <MissionDetailDialog
+        open={missionDialogOpen}
+        onOpenChange={setMissionDialogOpen}
+        mission={selectedMission}
+      />
+    </>
   );
 };

@@ -28,6 +28,7 @@ export default function KartPage() {
   const { user, loading } = useAuth();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
+  const [focusFlightId, setFocusFlightId] = useState<string | null>(null);
   
   // Route planning state
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
@@ -46,14 +47,19 @@ export default function KartPage() {
 
   // Check for route planning mode from navigation state
   useEffect(() => {
-    const state = location.state as RoutePlanningState | null;
+    const state = location.state as (RoutePlanningState & { focusFlightId?: string }) | null;
     if (state?.mode === "routePlanning") {
       setIsRoutePlanning(true);
       setRoutePlanningState(state);
       if (state.existingRoute) {
         setCurrentRoute(state.existingRoute);
       }
-      // Clear the navigation state to prevent re-triggering
+    }
+    if (state?.focusFlightId) {
+      setFocusFlightId(state.focusFlightId);
+    }
+    // Clear the navigation state to prevent re-triggering
+    if (state) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -387,6 +393,8 @@ export default function KartPage() {
           onPilotPositionChange={handlePilotPositionChange}
           pilotPosition={pilotPosition}
           isPlacingPilot={isPlacingPilot}
+          focusFlightId={focusFlightId}
+          onFocusFlightHandled={() => setFocusFlightId(null)}
         />
       </div>
 
