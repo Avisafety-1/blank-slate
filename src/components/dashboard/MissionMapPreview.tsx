@@ -252,8 +252,13 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
               if (!zone.geometry) continue;
               let color = '#f59e0b';
               let label = 'Fareområde';
+              let dashArray: string | undefined = undefined;
               if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
               else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
+              else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
+              else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
+              else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
+              else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'ATZ'; }
 
               try {
                 L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
@@ -262,7 +267,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
                     weight: 2,
                     fillColor: color,
                     fillOpacity: 0.15,
-                    dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
+                    dashArray,
                   },
                   onEachFeature: (feature, layer) => {
                     const displayName = zone.name || zone.zone_id || 'Ukjent';

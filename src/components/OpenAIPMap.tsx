@@ -626,6 +626,26 @@ export function OpenAIPMap({
       icon: "shield",
     });
 
+    // RMZ/TMZ/ATZ zones from OpenAIP
+    const rmzTmzAtzLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({
+      id: "rmz_tmz_atz",
+      name: "RMZ / TMZ / ATZ",
+      layer: rmzTmzAtzLayer,
+      enabled: true,
+      icon: "radio",
+    });
+
+    // OpenAIP Obstacles (wind turbines, masts, etc.)
+    const obstaclesLayer = L.layerGroup();
+    layerConfigs.push({
+      id: "obstacles",
+      name: "Hindringer (OpenAIP)",
+      layer: obstaclesLayer,
+      enabled: false,
+      icon: "alertTriangle",
+    });
+
     // Airports
     const airportsLayer = L.layerGroup().addTo(map);
     layerConfigs.push({
@@ -1244,6 +1264,151 @@ export function OpenAIPMap({
       }
     }
 
+    // Fetch RMZ/TMZ/ATZ zones from database
+    async function fetchRmzTmzAtzZones() {
+      try {
+        const { data, error } = await supabase
+          .from('aip_restriction_zones')
+          .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
+          .in('zone_type', ['RMZ', 'TMZ', 'ATZ']);
+
+        if (error || !data) {
+          console.error('Feil ved henting av RMZ/TMZ/ATZ-soner:', error);
+          return;
+        }
+
+        rmzTmzAtzLayer.clearLayers();
+
+        for (const zone of data) {
+          if (!zone.geometry) continue;
+
+          let color = '#22c55e'; // green default (RMZ)
+          let label = 'RMZ (Radio Mandatory Zone)';
+          let dashArray: string | undefined = '8, 6';
+          if (zone.zone_type === 'TMZ') {
+            color = '#06b6d4'; // cyan
+            label = 'TMZ (Transponder Mandatory Zone)';
+            dashArray = '8, 6';
+          } else if (zone.zone_type === 'ATZ') {
+            color = '#38bdf8'; // light blue
+            label = 'ATZ (Aerodrome Traffic Zone)';
+            dashArray = undefined; // solid
+          }
+
+          try {
+            const geojsonFeature = {
+              type: 'Feature' as const,
+              geometry: zone.geometry,
+              properties: {
+                zone_id: zone.zone_id,
+                zone_type: zone.zone_type,
+                name: zone.name,
+                upper_limit: zone.upper_limit,
+                lower_limit: zone.lower_limit,
+                remarks: zone.remarks,
+              }
+            };
+
+            const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+              interactive: mode !== 'routePlanning',
+              style: {
+                color,
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.12,
+                dashArray,
+                pane: 'aipPane',
+              },
+              onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+                const p = feature.properties || {};
+                const displayName = p.name || p.zone_id || 'Ukjent';
+                let popup = `<strong>${label}</strong><br/>`;
+                popup += `<strong>${displayName}</strong><br/>`;
+                if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
+                if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
+                if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
+                layer.bindPopup(popup);
+              } : undefined,
+            });
+            geoJsonLayer.addTo(rmzTmzAtzLayer);
+            aipGeoJsonLayersRef.current.push(geoJsonLayer);
+          } catch (err) {
+            console.error(`Feil ved parsing av ${zone.zone_type}-sone ${zone.zone_id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('Kunne ikke hente RMZ/TMZ/ATZ-soner:', err);
+      }
+    }
+
+    // Fetch OpenAIP obstacles from database
+    async function fetchObstacles() {
+      try {
+        const { data, error } = await supabase
+          .from('openaip_obstacles')
+          .select('openaip_id, name, type, geometry, elevation, height_agl, properties');
+
+        if (error || !data) {
+          console.error('Feil ved henting av hindringer:', error);
+          return;
+        }
+
+        obstaclesLayer.clearLayers();
+
+        for (const obstacle of data) {
+          if (!obstacle.geometry) continue;
+
+          try {
+            const geom = obstacle.geometry as any;
+            let lat: number, lng: number;
+            
+            if (geom.coordinates) {
+              [lng, lat] = geom.coordinates;
+            } else {
+              continue;
+            }
+
+            const obstacleIcon = L.divIcon({
+              className: '',
+              html: `<div style="
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#991b1b" stroke-width="1.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/>
+                </svg>
+              </div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+              popupAnchor: [0, -10],
+            });
+
+            const marker = L.marker([lat, lng], { icon: obstacleIcon, interactive: mode !== 'routePlanning' });
+            
+            const typeName = obstacle.type || 'Ukjent';
+            const displayName = obstacle.name || typeName;
+            let popup = `<strong>⚠️ Hindring</strong><br/>`;
+            popup += `<strong>${displayName}</strong><br/>`;
+            popup += `Type: ${typeName}<br/>`;
+            if (obstacle.elevation) popup += `Høyde (MSL): ${obstacle.elevation} m<br/>`;
+            if (obstacle.height_agl) popup += `Høyde (AGL): ${obstacle.height_agl} m<br/>`;
+            marker.bindPopup(popup);
+            
+            marker.addTo(obstaclesLayer);
+          } catch (err) {
+            // Skip individual obstacles that fail
+          }
+        }
+      } catch (err) {
+        console.error('Kunne ikke hente hindringer:', err);
+      }
+    }
+
     async function fetchAirportsData() {
       try {
         const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/FlyplassInfo_PROD/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
@@ -1659,6 +1824,8 @@ export function OpenAIPMap({
     fetchRpasData();
     fetchRpasCtрData();
     fetchAipRestrictionZones();
+    fetchRmzTmzAtzZones();
+    fetchObstacles();
     fetchAirportsData();
     fetchDroneTelemetry();
     fetchAndDisplayMissions();
