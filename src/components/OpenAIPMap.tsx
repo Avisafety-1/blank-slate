@@ -1491,7 +1491,12 @@ export function OpenAIPMap({
       
       const { lat, lng } = e.latlng;
       
-      // Check if we're placing pilot position
+      // Pilot placement is handled by the capture-phase click interceptor in route planning mode
+      if (isPlacingPilotRef.current && modeRef.current === "routePlanning") {
+        return;
+      }
+      
+      // Check if we're placing pilot position (in view mode)
       if (isPlacingPilotRef.current) {
         const cb = onPilotPositionChangeRef.current;
         if (cb) {
@@ -1501,19 +1506,9 @@ export function OpenAIPMap({
       }
       
       if (modeRef.current === "routePlanning") {
-        // Add point to route
-        routePointsRef.current.push({ lat, lng });
-        updateRouteDisplay();
-
-        const cb = onRouteChangeRef.current;
-        if (cb) {
-          const coords = [...routePointsRef.current];
-          cb({
-            coordinates: coords,
-            totalDistance: calculateTotalDistance(coords),
-            areaKm2: calculatePolygonAreaKm2(coords),
-          });
-        }
+        // Route point addition is handled by the capture-phase click interceptor
+        // (see useEffect with route planning click interceptor) to bypass GeoJSON layers
+        return;
       } else if (weatherEnabledRef.current) {
         // Show weather popup only when weather is enabled
         const popup = L.popup()
@@ -2136,12 +2131,88 @@ export function OpenAIPMap({
     }
   }, [updateRouteDisplay, onRouteChange]);
 
+  // Route planning click interceptor — attaches a capture-phase listener on the map
+  // container to catch clicks BEFORE any GeoJSON layer can consume them.
+  useEffect(() => {
+    if (mode !== "routePlanning" || !mapRef.current || !leafletMapRef.current) return;
+
+    const container = mapRef.current as HTMLDivElement;
+    const map = leafletMapRef.current;
+    let downPos: { x: number; y: number } | null = null;
+
+    const onDown = (e: MouseEvent) => {
+      downPos = { x: e.clientX, y: e.clientY };
+    };
+
+    const onUp = (e: MouseEvent) => {
+      if (!downPos) return;
+      const dx = e.clientX - downPos.x;
+      const dy = e.clientY - downPos.y;
+      downPos = null;
+
+      // If mouse moved more than 5px, it was a drag/pan — ignore
+      if (Math.sqrt(dx * dx + dy * dy) > 5) return;
+
+      // Ignore clicks on controls, markers, popups
+      const target = e.target as HTMLElement;
+      if (target.closest('.leaflet-control-container, .leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper, button, a')) {
+        return;
+      }
+
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const latlng = map.containerPointToLatLng(L.point(x, y));
+
+      if (isPlacingPilotRef.current) {
+        const cb = onPilotPositionChangeRef.current;
+        if (cb) cb({ lat: latlng.lat, lng: latlng.lng });
+        // Stop propagation so GeoJSON layers don't also handle it
+        e.stopPropagation();
+        return;
+      }
+
+      routePointsRef.current.push({ lat: latlng.lat, lng: latlng.lng });
+      updateRouteDisplay();
+
+      const cb = onRouteChangeRef.current;
+      if (cb) {
+        const coords = [...routePointsRef.current];
+        cb({
+          coordinates: coords,
+          totalDistance: calculateTotalDistance(coords),
+          areaKm2: calculatePolygonAreaKm2(coords),
+        });
+      }
+
+      // Stop propagation so GeoJSON popups don't open
+      e.stopPropagation();
+    };
+
+    // Use capture phase to intercept before Leaflet's GeoJSON handlers
+    container.addEventListener('mousedown', onDown, true);
+    container.addEventListener('mouseup', onUp, true);
+    // Also stop click from reaching GeoJSON layers
+    const stopClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.leaflet-control-container, button, a')) return;
+      e.stopPropagation();
+    };
+    container.addEventListener('click', stopClick, true);
+
+    return () => {
+      container.removeEventListener('mousedown', onDown, true);
+      container.removeEventListener('mouseup', onUp, true);
+      container.removeEventListener('click', stopClick, true);
+    };
+  }, [mode, updateRouteDisplay]);
+
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
-      <div ref={mapRef} className="w-full h-full touch-manipulation" />
+      <div ref={mapRef} className={`w-full h-full touch-manipulation ${mode === "routePlanning" ? "cursor-crosshair" : ""}`} />
       
       {/* Map controls */}
-      <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
+      <div className="absolute top-4 right-4 z-[1051] flex flex-col gap-2">
         {/* Weather toggle button */}
         <Button
           variant={weatherEnabled ? "default" : "secondary"}
@@ -2220,7 +2291,7 @@ export function OpenAIPMap({
 
       {/* Route planning instructions */}
       {mode === "routePlanning" && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1051] text-sm pointer-events-none">
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
       )}
