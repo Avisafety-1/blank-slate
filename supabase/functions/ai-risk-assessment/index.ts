@@ -204,8 +204,8 @@ serve(async (req) => {
         console.log(`Checking airspace for coordinates: lat=${lat}, lon=${lng}`);
         const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
           p_lat: lat,
-          p_lon: lng,
-          p_route_points: routeCoords || null,
+          p_lng: lng,
+          p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
         });
         if (airspaceError) {
           console.error('Airspace check RPC error:', airspaceError);
@@ -270,12 +270,11 @@ serve(async (req) => {
       } : null),
       airspace: {
         warnings: airspaceWarnings.map((w: any) => ({
-          type: w.zone_type,
-          name: w.zone_name,
-          distance: w.distance_meters,
-          inside: w.is_inside,
-          level: w.level,
-          message: w.message,
+          type: w.z_type,
+          name: w.z_name,
+          distance: Math.round(w.min_distance),
+          inside: w.route_inside,
+          severity: w.severity,
         })),
       },
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
