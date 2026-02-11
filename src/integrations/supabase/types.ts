@@ -3014,12 +3014,12 @@ export type Database = {
       check_mission_airspace: {
         Args: { p_lat: number; p_lng: number; p_route?: Json }
         Returns: {
-          distance_meters: number
-          is_inside: boolean
+          min_distance: number
+          route_inside: boolean
           severity: string
-          zone_id: string
-          zone_name: string
-          zone_type: string
+          z_id: string
+          z_name: string
+          z_type: string
         }[]
       }
       check_mission_zone_conflicts: {
