@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +31,7 @@ import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 
 interface Profile {
@@ -616,56 +617,119 @@ const Admin = () => {
                           className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm sm:text-base truncate">
-                              {profile.full_name || t('common.notSpecified')}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {profile.email || t('admin.noEmail')}
-                            </p>
+                            {isMobile ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="text-left w-full group">
+                                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors flex items-center gap-1">
+                                      {profile.full_name || t('common.notSpecified')}
+                                      <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {profile.email || t('admin.noEmail')}
+                                    </p>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-3 space-y-3" align="start">
+                                  <div>
+                                    <p className="font-medium text-sm">{profile.full_name || t('common.notSpecified')}</p>
+                                    <p className="text-xs text-muted-foreground">{profile.email || t('admin.noEmail')}</p>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
+                                      <Switch
+                                        checked={profile.can_approve_missions === true}
+                                        onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
+                                        className="scale-75"
+                                      />
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
+                                      <Select 
+                                        value={userRole?.role || ""} 
+                                        onValueChange={(value) => assignRole(profile.id, value)}
+                                      >
+                                        <SelectTrigger className="w-full h-9">
+                                          <SelectValue placeholder={t('admin.selectRole')} />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[1300]">
+                                          {availableRoles.map((role) => (
+                                            <SelectItem key={role.value} value={role.value}>
+                                              {t(role.labelKey)}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => deleteUser(profile.id, profile.full_name)}
+                                      className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      {t('admin.deleteUser') || 'Slett bruker'}
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <>
+                                <p className="font-medium text-sm sm:text-base truncate">
+                                  {profile.full_name || t('common.notSpecified')}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {profile.email || t('admin.noEmail')}
+                                </p>
+                              </>
+                            )}
                           </div>
                           
-                          <div className="flex items-center gap-2">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex items-center">
-                                    <Switch
-                                      checked={profile.can_approve_missions === true}
-                                      onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
-                                      className="scale-75"
-                                    />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Kan godkjenne oppdrag</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <Select 
-                              value={userRole?.role || ""} 
-                              onValueChange={(value) => assignRole(profile.id, value)}
-                            >
-                              <SelectTrigger className="w-[110px] sm:w-[140px] h-9 sm:h-10">
-                                <SelectValue placeholder={t('admin.selectRole')} />
-                              </SelectTrigger>
-                              <SelectContent className="z-50">
-                                {availableRoles.map((role) => (
-                                  <SelectItem key={role.value} value={role.value}>
-                                    {t(role.labelKey)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteUser(profile.id, profile.full_name)}
-                              className="h-9 sm:h-10 px-2 sm:px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          {!isMobile && (
+                            <div className="flex items-center gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center">
+                                      <Switch
+                                        checked={profile.can_approve_missions === true}
+                                        onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
+                                        className="scale-75"
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Kan godkjenne oppdrag</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <Select 
+                                value={userRole?.role || ""} 
+                                onValueChange={(value) => assignRole(profile.id, value)}
+                              >
+                                <SelectTrigger className="w-[140px] h-10">
+                                  <SelectValue placeholder={t('admin.selectRole')} />
+                                </SelectTrigger>
+                                <SelectContent className="z-50">
+                                  {availableRoles.map((role) => (
+                                    <SelectItem key={role.value} value={role.value}>
+                                      {t(role.labelKey)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteUser(profile.id, profile.full_name)}
+                                className="h-10 px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
