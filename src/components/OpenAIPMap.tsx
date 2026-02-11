@@ -812,7 +812,7 @@ export function OpenAIPMap({
         } else {
           // Create new marker
           let icon: L.DivIcon;
-          const size = isDrone ? 62 : 32;
+          const size = 56;
           const anchor = size / 2;
           const rotation = (!isDrone && !isHeli) ? `transform:rotate(${course}deg);` : '';
           
