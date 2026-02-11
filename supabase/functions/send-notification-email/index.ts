@@ -166,6 +166,12 @@ serve(async (req: Request): Promise<Response> => {
       const missionDate = new Date(missionData!.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: missionData!.tittel, mission_location: missionData!.lokasjon || 'Ikke oppgitt', mission_date: missionDate, mission_description: missionData!.beskrivelse || '', company_name: company?.navn || '' });
 
+      if (!templateResult.content) {
+        console.warn('Empty template content for mission_approval_request, using inline fallback');
+        templateResult.content = `<html><body><h2>Oppdrag venter på godkjenning: ${missionData!.tittel}</h2><p>Lokasjon: ${missionData!.lokasjon || 'Ikke oppgitt'}</p><p>Tidspunkt: ${missionDate}</p><p>${missionData!.beskrivelse || ''}</p><p>Logg inn i appen for å godkjenne oppdraget.</p></body></html>`;
+        if (!templateResult.subject) templateResult.subject = `Oppdrag venter på godkjenning: ${missionData!.tittel}`;
+      }
+
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);

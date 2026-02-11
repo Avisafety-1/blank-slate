@@ -445,6 +445,45 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </html>`
   },
   
+  mission_approval_request: {
+    subject: 'Oppdrag venter på godkjenning: {{mission_title}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.mission-box { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+.pending-icon { font-size: 48px; margin-bottom: 15px; }
+.button { display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="pending-icon">⏳</div>
+<h1 style="margin: 0;">Oppdrag venter på godkjenning</h1>
+</div>
+<div class="content">
+<p>Et oppdrag har blitt sendt til godkjenning og venter på din vurdering.</p>
+<div class="mission-box">
+<h2 style="margin-top: 0;">{{mission_title}}</h2>
+<p><strong>Lokasjon:</strong> {{mission_location}}</p>
+<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+<p><strong>Beskrivelse:</strong> {{mission_description}}</p>
+</div>
+<p style="text-align: center;">
+<a href="https://app.avisafe.no" class="button">Gå til godkjenning</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`
+  },
+  
   maintenance_reminder: {
     subject: 'Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet',
     content: `<!DOCTYPE html>
