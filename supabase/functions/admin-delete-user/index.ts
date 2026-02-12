@@ -244,7 +244,8 @@ serve(async (req: Request): Promise<Response> => {
     // Other user-owned tables
     await admin.from("active_flights").delete().eq("profile_id", targetUserId);
     await admin.from("calendar_events").delete().eq("user_id", targetUserId);
-    await admin.from("customers").delete().eq("user_id", targetUserId);
+    // Keep customers but remove user reference (customers belong to the company, not the user)
+    await admin.from("customers").update({ user_id: null }).eq("user_id", targetUserId);
     await admin.from("documents").delete().eq("user_id", targetUserId);
     await admin.from("incidents").delete().eq("user_id", targetUserId);
     await admin.from("missions").delete().eq("user_id", targetUserId);
