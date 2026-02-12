@@ -1,73 +1,57 @@
 
 
-# Bakgrunnslasting av fullforte oppdrag
+# Auto-sett oppdragsstatus til "Pagaende" ved flystart
 
 ## Hva endres?
 
-Nar brukeren lander pa `/oppdrag`, lastes "Pagaende og kommende" forst (som i dag). Samtidig starter en bakgrunnshenting av "Fullforte" oppdrag -- slik at nar brukeren klikker pa fanen, er dataene allerede klare uten ny lasting.
+Nar en bruker starter en flytur med et tilknyttet oppdrag, skal oppdragets status automatisk endres fra "Planlagt" til "Pagaende". Endringen reflekteres umiddelbart pa /oppdrag og i MissionDetailDialog via eksisterende realtime-subscription.
 
-## Strategi
+## Endringer
 
-I dag styrer `filterTab` bade hvilken fane som vises OG hvilket Supabase-kall som kjores. Vi endrer til:
+### 1. `src/hooks/useFlightTimer.ts` -- Oppdater misjonsstatus ved flystart
 
-1. **To separate state-variabler**: `activeMissions` og `completedMissions`
-2. **To separate hente-funksjoner**: `fetchActiveMissions()` og `fetchCompletedMissions()`
-3. **Prioritert lasting**: `fetchActiveMissions()` kjores forst. Nar den er ferdig, starter `fetchCompletedMissions()` automatisk i bakgrunnen
-4. **Fanevalg styrer kun visning**: `filterTab` bestemmer hvilken liste som vises, uten a trigge ny henting
-5. **Cache per tab**: Eksisterende offline-cache per tab fungerer som for
-
-## Flyt
+Etter at `active_flights`-raden er satt inn (linje ~288), legger vi til en statusoppdatering dersom det er et tilknyttet oppdrag:
 
 ```text
-Bruker lander pa /oppdrag
-  |
-  v
-fetchActiveMissions()  -->  Viser "Pagaende og kommende" umiddelbart
-  |
-  v (nar ferdig)
-fetchCompletedMissions()  -->  Lagrer i completedMissions state (bakgrunn)
-  |
-  v
-Bruker klikker "Fullforte"  -->  Data vises umiddelbart, ingen spinner
+// Etter active_flights insert (linje ~300):
+if (missionId && navigator.onLine) {
+  await supabase
+    .from('missions')
+    .update({ status: 'Pagaende' })
+    .eq('id', missionId)
+    .eq('status', 'Planlagt');  // Kun oppdater hvis "Planlagt"
+}
 ```
 
-## Hva pavirkes
+For offline-modus legges dette til i offline-koeen.
 
-- Fane-bytte trigger IKKE lenger ny henting (fjerner `filterTab` fra useEffect-dependency)
-- Nar bruker gjor endringer (redigerer, sletter, legger til oppdrag), oppdateres riktig liste
-- Realtime-subscription dekker begge statusfiltre
+### 2. Oppdater `/oppdrag`-siden automatisk (allerede dekket)
+
+- `useDashboardRealtime` lytter allerede pa `missions`-tabellen
+- Oppdrag-siden har realtime-subscription som kaller `fetchMissionsForTab` ved endringer
+- Statusendringen propageres automatisk til oppdragskortene
+
+### 3. MissionDetailDialog (allerede dekket)
+
+- Dialogen viser `mission.status` via en Badge
+- Nar dataene re-fetches via realtime, oppdateres badgen automatisk
+
+## Hva pavirkes IKKE
+
+- Ingen UI-endringer i komponenter
+- Ingen nye database-migrasjoner (missions-tabellen har allerede `status`-kolonnen)
+- Ingen endring i RLS-policyer (brukere kan allerede oppdatere egne missions)
+- MissionDetailDialog og oppdragskort bruker allerede realtime
 
 ## Teknisk detalj
 
-**Fil:** `src/pages/Oppdrag.tsx`
+**Fil:** `src/hooks/useFlightTimer.ts`
 
-### State-endringer
-- `missions` -> splittes til `activeMissions` + `completedMissions`
-- `isLoading` -> splittes til `isLoadingActive` + `isLoadingCompleted`
-- Ny computed variabel: `missions = filterTab === 'active' ? activeMissions : completedMissions`
-- Ny computed variabel: `isLoading = filterTab === 'active' ? isLoadingActive : isLoadingCompleted`
-
-### useEffect-endring (linje 196-200)
-- Fjern `filterTab` fra dependency-arrayet
-- Kall `fetchActiveMissions()` forst, deretter `fetchCompletedMissions()` nar den er ferdig
-
-### fetchMissions() -> to funksjoner
-- `fetchActiveMissions()`: Identisk med dagens logikk men hardkodet `.in("status", ["Planlagt", "Pagaende"])`
-- `fetchCompletedMissions()`: Identisk men hardkodet `.eq("status", "Fullfort")`
-- Begge bruker sin egen cache-noekkel (`offline_missions_${companyId}_active` / `_completed`)
-
-### Oppdaterings-handlere
-- `handleMissionUpdated`, `handleMissionAdded`, etc. kaller begge fetch-funksjoner for a holde begge lister oppdatert
-
-### Realtime-subscription (linje 202-243)
-- Fjern `filterTab` fra dependency
-- Subscription-handleren kaller begge fetch-funksjoner
-
-### Visningslogikk
-- Alt som bruker `missions` i dag fortsetter a fungere via den computed variabelen
-- Ingen endring i JSX-rendering eller kortkomponenter
+Eneste endring: Legg til 4-5 linjer etter `active_flights` insert (linje ~300) som oppdaterer misjonens status til "Pagaende" dersom:
+1. Det finnes en `missionId`
+2. Misjonens navarende status er "Planlagt" (unngaar a overskrive andre statuser)
 
 ## Risiko
 
-- **Lav**: Dobbel datamengde i minnet (aktive + fullforte), men dette er allerede begrenset av RLS og selskapstilhorighet
-- **Lav**: To bakgrunnskall i stedet for ett, men de kjorer sekvensielt sa de belaster ikke serveren mer enn i dag
+- **Lav**: `.eq('status', 'Planlagt')` sikrer at kun planlagte oppdrag endres -- pagaende eller fullforte oppdrag pavirkes ikke
+- **Lav**: Eksisterende RLS-policyer tillater brukere a oppdatere missions i eget selskap
