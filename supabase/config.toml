@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.sync-openaip-obstacles]
 verify_jwt = false
+
+[functions.platform-statistics]
+verify_jwt = false
