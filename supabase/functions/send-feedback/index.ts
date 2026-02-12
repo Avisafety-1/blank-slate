@@ -33,11 +33,11 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Get user profile
+    // Get user profile including company_id
     const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: profile } = await serviceClient
       .from('profiles')
-      .select('full_name, email')
+      .select('full_name, email, company_id')
       .eq('id', userId)
       .single();
 
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 </body></html>`;
 
     // Get SMTP config (falls back to default AviSafe SMTP)
-    const emailConfig = await getEmailConfig();
+    const emailConfig = await getEmailConfig(profile?.company_id);
     const emailHeaders = getEmailHeaders();
 
     const client = new SMTPClient({
