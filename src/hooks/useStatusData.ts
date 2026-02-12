@@ -1,9 +1,8 @@
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
-import { useEffect } from "react";
 
 interface StatusCounts {
   Grønn: number;
@@ -87,32 +86,9 @@ const fetchPersonnel = async () => {
 
 export const useStatusData = () => {
   const { user, companyId } = useAuth();
-  const queryClient = useQueryClient();
 
-  // Real-time subscriptions for automatic cache invalidation
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('status-data-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['equipment', companyId] }); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['personnel', companyId] }); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_equipment' }, 
-        () => { queryClient.invalidateQueries({ queryKey: ['drones', companyId] }); })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, companyId, queryClient]);
+  // Real-time cache invalidation is now handled by useDashboardRealtime hook
+  // in the dashboard-main channel (see src/hooks/useDashboardRealtime.ts)
 
   const results = useQueries({
     queries: [

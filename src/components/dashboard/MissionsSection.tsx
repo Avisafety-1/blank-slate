@@ -15,6 +15,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
 type Mission = any;
 type MissionSora = any;
@@ -30,6 +31,7 @@ const statusColors: Record<string, string> = {
 export const MissionsSection = () => {
   const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
+  const { registerMain } = useDashboardRealtimeContext();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -54,29 +56,16 @@ export const MissionsSection = () => {
     }
     
     fetchMissions();
+  }, [companyId]);
 
-    const handler = () => {
+  // Real-time via shared dashboard channel
+  useEffect(() => {
+    const unregister = registerMain('missions', () => {
       if (!navigator.onLine) return;
       fetchMissions();
-    };
-
-    const channel = supabase
-      .channel('missions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'missions',
-        },
-        handler
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [companyId]);
+    });
+    return unregister;
+  }, [registerMain]);
 
   const fetchMissions = async () => {
     // 1. Load cache first

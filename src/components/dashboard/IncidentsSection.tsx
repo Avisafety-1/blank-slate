@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
 const severityColors = {
   Lav: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -42,6 +43,7 @@ type Incident = Tables<"incidents">;
 export const IncidentsSection = () => {
   const { t, i18n } = useTranslation();
   const { companyId, user } = useAuth();
+  const { registerMain } = useDashboardRealtimeContext();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,56 +61,40 @@ export const IncidentsSection = () => {
     fetchIncidents();
   }, [companyId]);
 
-  // Real-time subscription
+  // Real-time via shared dashboard channel
   useEffect(() => {
-    const channel = supabase
-      .channel('incidents-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incidents'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newIncident = payload.new as Incident;
-            if (newIncident.status !== 'Ferdigbehandlet') {
-              setIncidents((current) => [newIncident, ...current]);
-            }
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedIncident = payload.new as Incident;
-          
-          // Oppdater selectedIncident hvis det er samme hendelse
-          setSelectedIncident((current) => {
-            if (current?.id === updatedIncident.id) {
-              return updatedIncident;
-            }
-            return current;
-          });
-          
-          setIncidents((current) => {
-            // Remove if now Ferdigbehandlet, otherwise update
-            if (updatedIncident.status === 'Ferdigbehandlet') {
-              return current.filter((incident) => incident.id !== updatedIncident.id);
-            }
-            return current.map((incident) =>
-              incident.id === updatedIncident.id ? updatedIncident : incident
-            );
-          });
-        } else if (payload.eventType === 'DELETE') {
-            setIncidents((current) =>
-              current.filter((incident) => incident.id !== (payload.old as Incident).id)
-            );
-          }
+    const unregister = registerMain('incidents', (payload) => {
+      if (payload.eventType === 'INSERT') {
+        const newIncident = payload.new as Incident;
+        if (newIncident.status !== 'Ferdigbehandlet') {
+          setIncidents((current) => [newIncident, ...current]);
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [companyId]);
+      } else if (payload.eventType === 'UPDATE') {
+        const updatedIncident = payload.new as Incident;
+        
+        setSelectedIncident((current) => {
+          if (current?.id === updatedIncident.id) {
+            return updatedIncident;
+          }
+          return current;
+        });
+        
+        setIncidents((current) => {
+          if (updatedIncident.status === 'Ferdigbehandlet') {
+            return current.filter((incident) => incident.id !== updatedIncident.id);
+          }
+          return current.map((incident) =>
+            incident.id === updatedIncident.id ? updatedIncident : incident
+          );
+        });
+      } else if (payload.eventType === 'DELETE') {
+        setIncidents((current) =>
+          current.filter((incident) => incident.id !== (payload.old as Incident).id)
+        );
+      }
+    });
+    return unregister;
+  }, [registerMain]);
 
   // Fetch follow-up incidents for logged-in user
   useEffect(() => {
@@ -152,27 +138,14 @@ export const IncidentsSection = () => {
 
     fetchMyFollowUps();
 
-    // Realtime subscription for follow-up incidents
-    const followUpChannel = supabase
-      .channel('my-followup-incidents')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incidents'
-        },
-        async () => {
-          if (!navigator.onLine) return;
-          fetchMyFollowUps();
-        }
-      )
-      .subscribe();
+    // Follow-up refetch also handled by shared incidents listener
+    const unregister = registerMain('incidents', () => {
+      if (!navigator.onLine) return;
+      fetchMyFollowUps();
+    });
 
-    return () => {
-      supabase.removeChannel(followUpChannel);
-    };
-  }, [companyId, user, t]);
+    return unregister;
+  }, [companyId, user, t, registerMain]);
 
   // Fetch comment counts for all incidents
   useEffect(() => {
@@ -202,39 +175,25 @@ export const IncidentsSection = () => {
     fetchCommentCounts();
   }, [incidents, myFollowUpIncidents]);
 
-  // Real-time subscription for comment changes
+  // Real-time for comment changes via shared channel
   useEffect(() => {
-    const channel = supabase
-      .channel('incident-comments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incident_comments'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newComment = payload.new as { incident_id: string };
-            setCommentCounts(prev => ({
-              ...prev,
-              [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedComment = payload.old as { incident_id: string };
-            setCommentCounts(prev => ({
-              ...prev,
-              [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    const unregister = registerMain('incident_comments', (payload) => {
+      if (payload.eventType === 'INSERT') {
+        const newComment = payload.new as { incident_id: string };
+        setCommentCounts(prev => ({
+          ...prev,
+          [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
+        }));
+      } else if (payload.eventType === 'DELETE') {
+        const deletedComment = payload.old as { incident_id: string };
+        setCommentCounts(prev => ({
+          ...prev,
+          [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
+        }));
+      }
+    });
+    return unregister;
+  }, [registerMain]);
 
   const fetchIncidents = async () => {
     // 1. Load cache first

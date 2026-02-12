@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
+import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
 interface ActiveFlight {
   id: string;
@@ -23,6 +24,7 @@ interface ActiveFlight {
 export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChange?: (has: boolean) => void }) => {
   const { t } = useTranslation();
   const { companyId } = useAuth();
+  const { registerFlights } = useDashboardRealtimeContext();
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
   const [now, setNow] = useState(Date.now());
@@ -58,16 +60,15 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
 
   useEffect(() => {
     fetchFlights();
-
-    const channel = supabase
-      .channel('active-flights-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
-        fetchFlights();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, [fetchFlights]);
+
+  // Real-time via shared flights channel
+  useEffect(() => {
+    const unregister = registerFlights('active_flights', () => {
+      fetchFlights();
+    });
+    return unregister;
+  }, [registerFlights, fetchFlights]);
 
   // Tick elapsed time every second
   useEffect(() => {
