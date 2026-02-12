@@ -10,6 +10,7 @@ import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
+import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
@@ -187,8 +188,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                   {format(new Date(mission.tidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
                 </p>
               </div>
-            </div>
           </div>
+          </div>
+
+          <MissionResourceSections mission={mission} open={open} />
 
           {mission.latitude && mission.longitude && (
             <div className="border-t border-border pt-4">
