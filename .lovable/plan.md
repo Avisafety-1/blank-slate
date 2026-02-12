@@ -1,78 +1,70 @@
 
+# Plattformstatistikk (/statistikk)
 
-## Problem
+En dedikert statistikkside som viser aggregerte tall pa tvers av alle selskaper i AviSafe. Kun tilgjengelig for superadmins som er logget inn pa selskapet "Avisafe".
 
-The `check_mission_airspace` database function only checks the `aip_restriction_zones` table, which contains P, R, D, RMZ, TIZ, and ATZ zones from OpenAIP. It does **not** check three other important spatial tables:
+## Tilgangskontroll
+- Krever bade `isSuperAdmin` OG at `companyName` matcher "Avisafe" (case-insensitive)
+- Brukere som ikke oppfyller begge krav redirectes til dashbordet
 
-1. **`rpas_ctr_tiz`** - Contains 20 CTR (Control) zones and 31 TIZ zones from Avinor/ArcGIS
-2. **`nsm_restriction_zones`** - Contains 154 NSM sensor restriction zones (photography/sensor bans)
-3. **`rpas_5km_zones`** - Contains airport 5km buffer zones with airport names
+## Ekskluder Avisafe-toggle
+- En synlig bryter (Switch) oppe pa siden: "Ekskluder Avisafe testdata"
+- Nar den er pa, filtreres Avisafe sitt company_id (`a6698b2d-8464-4f88-9bc4-ebcc072f629d`) bort fra all statistikk
 
-This means warnings for CTR zones, NSM areas, and airport proximity are completely missing from mission cards.
+## Hva vises
 
-## Solution
+### KPI-kort (overste rad)
+- Antall selskaper (aktive)
+- Antall brukere (godkjente)
+- Totalt antall flyturer
+- Total flytid (timer)
+- Totalt antall hendelser
+- Totalt antall droner
+- Totalt antall oppdrag
 
-Update the `check_mission_airspace` PostgreSQL function to also query these three additional tables, unioning the results with the existing AIP zone checks.
+### Grafer
+- **Flyturer per maned** (stolpediagram, siste 12 maneder)
+- **Flytid per maned** (linjediagram)
+- **Hendelser per maned** (stolpediagram)
+- **Nye brukere per maned** (linjediagram)
+- **Hendelser per alvorlighetsgrad** (kakediagram)
+- **Top 10 selskaper etter flytimer** (horisontalt stolpediagram)
+- **Top 10 selskaper etter oppdrag** (horisontalt stolpediagram)
+- **Oppdrag per status** (kakediagram)
 
-### Database Changes
+### Ekstra metrikker
+- SafeSky-bruksrate (andel flyturer publisert)
+- Sjekkliste-fullforingsrate
+- Gjennomsnittlig flytid per flytur
+- Hendelsesfrekvens (hendelser per 100 flytimer)
 
-Modify the `check_mission_airspace` RPC function to add three additional CTEs that check each extra table:
+## Teknisk plan
 
-- **CTR/TIZ from `rpas_ctr_tiz`**: Use `properties->>'Zone'` for zone type (CTR or TIZ), and `properties->>'NAVN'` for name (falling back to the `name` column). Severity: **WARNING** for CTR (requires ATC clearance).
-- **NSM from `nsm_restriction_zones`**: Zone type = "NSM", name from `properties->>'navn'`. Severity: **WARNING** (sensor/photography restrictions).
-- **5km zones from `rpas_5km_zones`**: Zone type = "5KM", name from `properties->>'NAVN'` or `name` column. Severity: **CAUTION** (airport proximity).
+### 1. Ny Edge Function: `platform-statistics`
+- Plasseres i `supabase/functions/platform-statistics/index.ts`
+- `verify_jwt = true` i config.toml
+- Validerer at innlogget bruker er superadmin OG tilhorer Avisafe-selskapet (server-side sjekk)
+- Aksepterer query-parameter `exclude_avisafe=true` for a filtrere bort Avisafe-data
+- Bruker service_role-nokkel for a omga RLS og kjore aggregerte sporringer mot:
+  - `companies` (count aktive)
+  - `profiles` (count godkjente, created_at for trend)
+  - `flight_logs` (count, sum flight_duration_minutes, flight_date, safesky_mode, completed_checklists)
+  - `incidents` (count, alvorlighetsgrad, hendelsestidspunkt)
+  - `drones` (count, sum flyvetimer)
+  - `missions` (count, status)
+- Returnerer ferdig aggregert JSON -- ingen ra-data til klienten
 
-All three will use the same convex-hull envelope (`v_envelope`) for spatial pre-filtering and compute `route_inside` and `min_distance` identically to the existing logic.
+### 2. Ny side: `src/pages/Statistikk.tsx`
+- Bygges etter samme monster som `Status.tsx` med GlassCard, Recharts og KPI-kort
+- Henter data fra edge function via `supabase.functions.invoke('platform-statistics')`
+- "Ekskluder Avisafe"-bryter sender `exclude_avisafe` parameter
+- Tidsperiode-velger (siste 6/12 maneder, i ar, egendefinert)
+- Eksport til Excel/PDF (gjenbruk monster fra Status.tsx)
 
-The results will be UNIONed together and filtered with the same `route_inside = true OR min_distance < 5000` condition.
+### 3. Ruting i `App.tsx`
+- Legges til som egen rute: `<Route path="/statistikk" element={<Statistikk />} />`
+- Utenfor AuthenticatedLayout (egen header, likt Admin-siden)
+- Tilgangskontroll skjer inne i komponenten
 
-### Frontend Changes
-
-No frontend changes needed — the `AirspaceWarnings.tsx` component already maps `z_type` and `z_name` from the RPC response into readable messages like "Ruten går gjennom CTR-sone «Oslo lufthavn»". The new zone types (CTR, NSM, 5KM) will automatically appear with correct severity coloring (warning/caution).
-
-### Technical Details
-
-The updated SQL function will look like this (simplified):
-
-```text
-RETURN QUERY
-WITH candidate_zones AS (
-  -- existing: aip_restriction_zones (P, R, D, RMZ, TIZ, ATZ)
-  SELECT z.zone_id, z.zone_type, z.name, z.geometry
-  FROM aip_restriction_zones z
-  WHERE ST_DWithin(z.geometry::geography, v_envelope::geography, 50000)
-
-  UNION ALL
-
-  -- rpas_ctr_tiz (CTR, TIZ from Avinor)
-  SELECT c.id::text, properties->>'Zone',
-         COALESCE(properties->>'NAVN', c.name), c.geometry
-  FROM rpas_ctr_tiz c
-  WHERE ST_DWithin(c.geometry::geography, v_envelope::geography, 50000)
-
-  UNION ALL
-
-  -- nsm_restriction_zones (sensor restrictions)
-  SELECT n.id::text, 'NSM',
-         COALESCE(n.properties->>'navn', n.name), n.geometry
-  FROM nsm_restriction_zones n
-  WHERE ST_DWithin(n.geometry::geography, v_envelope::geography, 50000)
-
-  UNION ALL
-
-  -- rpas_5km_zones (airport 5km buffers)
-  SELECT a.id::text, '5KM',
-         COALESCE(a.properties->>'NAVN', a.name), a.geometry
-  FROM rpas_5km_zones a
-  WHERE ST_DWithin(a.geometry::geography, v_envelope::geography, 50000)
-),
-route_check AS ( ... same logic ... )
-SELECT ... with updated severity mapping:
-  - P, R       -> WARNING
-  - CTR, NSM   -> WARNING
-  - D, RMZ, TMZ, TIZ, ATZ -> CAUTION
-  - 5KM        -> CAUTION
-```
-
-This restores the full airspace warning coverage that existed before.
-
+### 4. Navigasjon
+- Lenke til `/statistikk` legges til i Header, kun synlig nar bruker er superadmin OG tilhorer Avisafe
