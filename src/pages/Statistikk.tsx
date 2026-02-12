@@ -78,7 +78,7 @@ const Statistikk = () => {
   const { user, loading: authLoading, isSuperAdmin, companyName } = useAuth();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [excludeAvisafe, setExcludeAvisafe] = useState(false);
+  const [excludeAvisafe, setExcludeAvisafe] = useState(true);
 
   const canAccess = isSuperAdmin && companyName?.toLowerCase() === "avisafe";
 
@@ -137,24 +137,24 @@ const Statistikk = () => {
       <div className="min-h-screen backdrop-blur-sm bg-background/80">
         {/* Header */}
         <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100]">
-          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Tilbake
+          <div className="w-full px-3 sm:px-4 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0 flex-shrink-0 sm:h-auto sm:w-auto sm:px-3">
+                <ArrowLeft className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Tilbake</span>
               </Button>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">
+              <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
                 Plattformstatistikk
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pl-10 sm:pl-0">
               <Switch
                 id="exclude-avisafe"
                 checked={excludeAvisafe}
                 onCheckedChange={setExcludeAvisafe}
               />
-              <Label htmlFor="exclude-avisafe" className="text-sm cursor-pointer">
-                Ekskluder Avisafe testdata
+              <Label htmlFor="exclude-avisafe" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
+                Ekskluder Avisafe
               </Label>
             </div>
           </div>
