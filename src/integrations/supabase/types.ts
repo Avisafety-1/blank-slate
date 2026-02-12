@@ -3179,6 +3179,10 @@ export type Database = {
           e2_scope: string
         }[]
       }
+      get_platform_statistics: {
+        Args: { p_exclude_company_id?: string }
+        Returns: Json
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
