@@ -289,6 +289,15 @@ export const useFlightTimer = () => {
       if (error) {
         console.error('Error starting flight:', error);
       }
+
+      // Auto-set mission status to "Pågående" if currently "Planlagt"
+      if (missionId) {
+        await supabase
+          .from('missions')
+          .update({ status: 'Pågående' })
+          .eq('id', missionId)
+          .eq('status', 'Planlagt');
+      }
     } else {
       addToQueue({
         table: 'active_flights',
