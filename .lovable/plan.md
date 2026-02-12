@@ -1,122 +1,63 @@
 
+# Fiks: «Feil ved sletting av bruker»
 
-# Sikring av RLS-policyer med selskapsfilter
+## Årsak
 
-## Problemet
+Edge-funksjonen `admin-delete-user` feiler fordi den ikke sletter data fra alle tabeller som har foreign keys til `profiles` eller `auth.users`. Feilen er konkret:
 
-Selv om brukere logger inn til sitt eget selskap, kan de teknisk sett bruke sin JWT-token til a sende direkte API-kall til Supabase REST API (utenfor appen). Policyer som `auth.role() = 'authenticated'` gir da tilgang til data fra alle selskaper.
-
-## Garantert ikke-brekende endringer
-
-Alle endringene legger til **strengere betingelser** pa eksisterende policyer. Brukere som i dag jobber innenfor sitt eget selskap vil ikke merke noen forskjell -- queryene deres oppfyller allerede de nye betingelsene. Det eneste som endres er at direkte API-misbruk pa tvers av selskaper blokkeres.
-
-## Endringer (4 SQL-migrasjoner)
-
-### Migrasjon 1: mission_drones, mission_equipment, mission_personnel
-
-For alle tre tabellene gjelder identisk monster:
-
-**Dropper:**
-- "All authenticated users can view [table]" (SELECT uten selskapsfilter)
-- "Admins can manage all [table]" (ALL uten selskapsfilter)
-
-**Oppretter:**
-- Ny SELECT: Brukere kan se rader der oppdragets company_id matcher eget selskap
-- Ny admin ALL: Adminer kan administrere rader der oppdragets company_id matcher eget selskap
-
-```text
--- Ny SELECT-policy (erstatter "all authenticated")
-CREATE POLICY "Users can view mission_drones in own company"
-ON mission_drones FOR SELECT TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM missions
-    WHERE missions.id = mission_drones.mission_id
-    AND missions.company_id = get_user_company_id(auth.uid())
-  )
-);
-
--- Ny admin-policy (erstatter "admins can manage all")
-CREATE POLICY "Admins can manage mission_drones in own company"
-ON mission_drones FOR ALL TO authenticated
-USING (
-  has_role(auth.uid(), 'admin') AND
-  EXISTS (
-    SELECT 1 FROM missions
-    WHERE missions.id = mission_drones.mission_id
-    AND missions.company_id = get_user_company_id(auth.uid())
-  )
-)
-WITH CHECK (...same...);
+```
+update or delete on table "profiles" violates foreign key constraint
+"mission_risk_assessments_pilot_id_fkey" on table "mission_risk_assessments"
 ```
 
-Identisk for mission_equipment og mission_personnel.
+## Manglende tabeller
 
-### Migrasjon 2: personnel_competencies
+Funksjonen rydder i dag opp i en del tabeller, men mangler disse:
 
-**Dropper:**
-- "All authenticated users can view personnel competencies"
-- "Admins can delete all competencies"
-- "Admins and saksbehandler can create all competencies"
-- "Admins and saksbehandler can update all competencies"
+| Tabell | Kolonne | Refererer til | Data for Ivar |
+|--------|---------|---------------|---------------|
+| `mission_risk_assessments` | `pilot_id` | `profiles` | 2 rader |
+| `personnel_competencies` | `profile_id` | `profiles` | 1 rad |
+| `incident_comments` | `user_id` | `auth.users` | 2 rader |
+| `flight_log_personnel` | `profile_id` | `profiles` | 1 rad |
+| `map_viewer_heartbeats` | `user_id` | `auth.users` | 2 rader |
+| `push_subscriptions` | `user_id` | `auth.users` | 0 rader |
+| `mission_sora` | `prepared_by` / `approved_by` | `auth.users` | Ukjent |
+| `mission_personnel` | `profile_id` | `profiles` | 0 rader |
+| `drone_personnel` | `profile_id` | `profiles` | 0 rader |
 
-**Oppretter:**
-- Ny SELECT: Via profiles-subquery for selskapsfilter
-- Ny admin DELETE/INSERT/UPDATE: Med selskapsfilter via profiles
+I tillegg er det kolonner som bor settes til NULL i stedet for a slette raden:
+- `incidents.oppfolgingsansvarlig_id` (settes til NULL)
+- `missions.approved_by` (settes til NULL)
+- `profiles.approved_by` (settes til NULL, andre brukeres profiler)
 
-```text
--- Ny SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = personnel_competencies.profile_id
-    AND profiles.company_id = get_user_company_id(auth.uid())
-  )
-);
-```
+## Losning
 
-### Migrasjon 3: user_roles
+Oppdatere `supabase/functions/admin-delete-user/index.ts` med komplett opprydding for ALLE relaterte tabeller. Rekkefølgen er viktig pga. foreign key-avhengigheter.
 
-**Dropper:**
-- "Admins can view all roles"
-- "Admins can insert non-superadmin roles"
-- "Admins can update non-superadmin roles"
-- "Admins can delete non-superadmin roles"
-
-**Oppretter:**
-- Samme policyer MED selskapsfilter via profiles-subquery
+### Ny sletterekkefølge (legges til for eksisterende kode):
 
 ```text
--- Eksempel: Admins kan se roller i eget selskap
-USING (
-  has_role(auth.uid(), 'admin') AND
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = user_roles.user_id
-    AND profiles.company_id = get_user_company_id(auth.uid())
-  )
-);
+1. mission_risk_assessments  (DELETE WHERE pilot_id = targetUserId)
+2. mission_personnel         (DELETE WHERE profile_id = targetUserId)
+3. mission_sora              (SET NULL prepared_by/approved_by)
+4. missions                  (SET NULL approved_by)
+5. personnel_competencies    (DELETE WHERE profile_id = targetUserId)
+6. incident_comments         (DELETE WHERE user_id = targetUserId)
+7. incidents                 (SET NULL oppfolgingsansvarlig_id)
+8. flight_log_personnel      (DELETE WHERE profile_id = targetUserId)
+9. drone_personnel           (DELETE WHERE profile_id = targetUserId)
+10. push_subscriptions       (DELETE WHERE user_id = targetUserId)
+11. map_viewer_heartbeats    (DELETE WHERE user_id = targetUserId)
+12. profiles                 (SET NULL approved_by WHERE approved_by = targetUserId)
 ```
 
-### Migrasjon 4: Views (eccairs_integrations_safe, email_settings_safe)
+Deretter kjores den eksisterende slettingen (flight_logs, drones, equipment, osv.).
 
-Gjenskape begge views med `security_invoker = true` slik at RLS pa underliggende tabeller respekteres.
+### Endret fil
 
-```text
-CREATE OR REPLACE VIEW eccairs_integrations_safe
-WITH (security_invoker = on) AS
-SELECT ... FROM eccairs_integrations;
-```
+**`supabase/functions/admin-delete-user/index.ts`** -- legge til alle manglende DELETE/SET NULL-operasjoner for tabellene i listen. Funksjonen deployes automatisk.
 
-## Hva pavirkes IKKE
+## Etter implementering
 
-- Ingen frontend-kode endres
-- Brukere som jobber innenfor eget selskap merker ingen forskjell
-- Superadmin-policyer (som allerede bruker `is_superadmin()`) pavirkes ikke
-- "Users can manage [table] for their missions"-policyer beholdes uendret (de har allerede riktig subquery)
-- Eksisterende "Users can view/delete own"-policyer beholdes uendret
-
-## Risiko
-
-**Svart lav** -- vi legger kun til strengere filtrering. Alle legitime operasjoner i appen bruker allerede data fra eget selskap, sa de nye betingelsene er automatisk oppfylt.
-
+Sletting av brukeren "Ivar Moen" (ID: `66546c88-...`) skal fungere etter at endringen er deployet.
