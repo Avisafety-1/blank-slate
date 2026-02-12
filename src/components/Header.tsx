@@ -133,16 +133,16 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/installer")}>
-                   <Download className="w-4 h-4 mr-2" />
-                   {t('nav.installApp', 'Installer app')}
-                </DropdownMenuItem>
                 {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                   <DropdownMenuItem onClick={() => navigate("/statistikk")}>
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Plattformstatistikk
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/installer")}>
+                   <Download className="w-4 h-4 mr-2" />
+                   {t('nav.installApp', 'Installer app')}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             
