@@ -172,7 +172,29 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("admin-delete-user: deleting", { targetUserId, requestedBy: requester.id, email: emailFromBody || undefined });
 
-    // ---- Delete data in public schema (best effort) ----
+    // ---- Delete/nullify data in public schema (best effort) ----
+
+    // 1. Tables referencing profiles that the original code missed
+    await admin.from("mission_risk_assessments").delete().eq("pilot_id", targetUserId);
+    await admin.from("mission_personnel").delete().eq("profile_id", targetUserId);
+    await admin.from("personnel_competencies").delete().eq("profile_id", targetUserId);
+    await admin.from("flight_log_personnel").delete().eq("profile_id", targetUserId);
+    await admin.from("drone_personnel").delete().eq("profile_id", targetUserId);
+
+    // 2. Tables referencing auth.users
+    await admin.from("incident_comments").delete().eq("user_id", targetUserId);
+    await admin.from("push_subscriptions").delete().eq("user_id", targetUserId);
+    await admin.from("map_viewer_heartbeats").delete().eq("user_id", targetUserId);
+    await admin.from("calendar_subscriptions").delete().eq("user_id", targetUserId);
+
+    // 3. SET NULL on columns where we want to keep the row but remove the reference
+    await admin.from("mission_sora").update({ prepared_by: null }).eq("prepared_by", targetUserId);
+    await admin.from("mission_sora").update({ approved_by: null }).eq("approved_by", targetUserId);
+    await admin.from("missions").update({ approved_by: null }).eq("approved_by", targetUserId);
+    await admin.from("incidents").update({ oppfolgingsansvarlig_id: null }).eq("oppfolgingsansvarlig_id", targetUserId);
+    await admin.from("profiles").update({ approved_by: null }).eq("approved_by", targetUserId);
+
+    // ---- Original cleanup ----
 
     // Flight logs + join tables
     const { data: flightLogs } = await admin
