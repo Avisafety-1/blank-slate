@@ -1,70 +1,44 @@
 
-# Plattformstatistikk (/statistikk)
 
-En dedikert statistikkside som viser aggregerte tall pa tvers av alle selskaper i AviSafe. Kun tilgjengelig for superadmins som er logget inn pa selskapet "Avisafe".
+# Gjennomgang: Dato/tid i PDF-eksporter
 
-## Tilgangskontroll
-- Krever bade `isSuperAdmin` OG at `companyName` matcher "Avisafe" (case-insensitive)
-- Brukere som ikke oppfyller begge krav redirectes til dashbordet
+## Funn
 
-## Ekskluder Avisafe-toggle
-- En synlig bryter (Switch) oppe pa siden: "Ekskluder Avisafe testdata"
-- Nar den er pa, filtreres Avisafe sitt company_id (`a6698b2d-8464-4f88-9bc4-ebcc072f629d`) bort fra all statistikk
+Etter gjennomgang av alle 6 PDF-eksportfunksjoner er disse problemene identifisert:
 
-## Hva vises
+### Problem 1: Oppdragsrapport mangler eksporttidspunkt helt
+**Fil:** `src/pages/Oppdrag.tsx` (linje 662-670)
 
-### KPI-kort (overste rad)
-- Antall selskaper (aktive)
-- Antall brukere (godkjente)
-- Totalt antall flyturer
-- Total flytid (timer)
-- Totalt antall hendelser
-- Totalt antall droner
-- Totalt antall oppdrag
+Oppdragsrapporten skriver kun "Oppdragsrapport" og oppdragstittelen i headeren. Den viser **ingen** dato/tid for nar PDFen ble generert. Alle andre PDF-eksporter viser dette.
 
-### Grafer
-- **Flyturer per maned** (stolpediagram, siste 12 maneder)
-- **Flytid per maned** (linjediagram)
-- **Hendelser per maned** (stolpediagram)
-- **Nye brukere per maned** (linjediagram)
-- **Hendelser per alvorlighetsgrad** (kakediagram)
-- **Top 10 selskaper etter flytimer** (horisontalt stolpediagram)
-- **Top 10 selskaper etter oppdrag** (horisontalt stolpediagram)
-- **Oppdrag per status** (kakediagram)
+**Lossning:** Legg til eksporttidspunkt under tittelen, lik monstered i `addPdfHeader()`: `Eksportert: dd.MM.yyyy kl. HH:mm`
 
-### Ekstra metrikker
-- SafeSky-bruksrate (andel flyturer publisert)
-- Sjekkliste-fullforingsrate
-- Gjennomsnittlig flytid per flytur
-- Hendelsesfrekvens (hendelser per 100 flytimer)
+### Problem 2: Flyloggbok (person) mangler klokkeslett i eksportdato
+**Fil:** `src/components/FlightLogbookDialog.tsx` (linje 189)
 
-## Teknisk plan
+Bruker formatet `'Eksportert:' d. MMMM yyyy` som kun viser dato, ikke klokkeslett. Alle andre eksporter inkluderer klokkeslett.
 
-### 1. Ny Edge Function: `platform-statistics`
-- Plasseres i `supabase/functions/platform-statistics/index.ts`
-- `verify_jwt = true` i config.toml
-- Validerer at innlogget bruker er superadmin OG tilhorer Avisafe-selskapet (server-side sjekk)
-- Aksepterer query-parameter `exclude_avisafe=true` for a filtrere bort Avisafe-data
-- Bruker service_role-nokkel for a omga RLS og kjore aggregerte sporringer mot:
-  - `companies` (count aktive)
-  - `profiles` (count godkjente, created_at for trend)
-  - `flight_logs` (count, sum flight_duration_minutes, flight_date, safesky_mode, completed_checklists)
-  - `incidents` (count, alvorlighetsgrad, hendelsestidspunkt)
-  - `drones` (count, sum flyvetimer)
-  - `missions` (count, status)
-- Returnerer ferdig aggregert JSON -- ingen ra-data til klienten
+**Lossning:** Endre format til `"'Eksportert:' d. MMMM yyyy 'kl.' HH:mm"`
 
-### 2. Ny side: `src/pages/Statistikk.tsx`
-- Bygges etter samme monster som `Status.tsx` med GlassCard, Recharts og KPI-kort
-- Henter data fra edge function via `supabase.functions.invoke('platform-statistics')`
-- "Ekskluder Avisafe"-bryter sender `exclude_avisafe` parameter
-- Tidsperiode-velger (siste 6/12 maneder, i ar, egendefinert)
-- Eksport til Excel/PDF (gjenbruk monster fra Status.tsx)
+### Problem 3: Manglende sanitering i Oppdrag incident-dato
+**Fil:** `src/pages/Oppdrag.tsx` (linje 1079)
 
-### 3. Ruting i `App.tsx`
-- Legges til som egen rute: `<Route path="/statistikk" element={<Statistikk />} />`
-- Utenfor AuthenticatedLayout (egen header, likt Admin-siden)
-- Tilgangskontroll skjer inne i komponenten
+Bruker `format()` direkte i stedet for `formatDateForPdf()` som inkluderer sanitering. Kan gi problemer med spesialtegn fra `nb`-locale.
 
-### 4. Navigasjon
-- Lenke til `/statistikk` legges til i Header, kun synlig nar bruker er superadmin OG tilhorer Avisafe
+**Lossning:** Bytt til `formatDateForPdf(incident.hendelsestidspunkt, "dd.MM.yyyy HH:mm")`
+
+## Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `src/pages/Oppdrag.tsx` | Legg til eksportdato/tid i header (linje ~669). Bytt `format()` til `formatDateForPdf()` for incident-dato (linje 1079) |
+| `src/components/FlightLogbookDialog.tsx` | Legg til klokkeslett i eksport-datoen (linje 189) |
+
+## Filer som er OK (ingen endring nodvendig)
+
+- `src/lib/pdfUtils.ts` - `addPdfHeader()` bruker `new Date()` korrekt
+- `src/lib/incidentPdfExport.ts` - Bruker `addPdfHeader()`, alle datoer korrekt
+- `src/components/resources/DroneLogbookDialog.tsx` - Viser dato og tid korrekt
+- `src/components/resources/EquipmentLogbookDialog.tsx` - Viser dato og tid korrekt
+- `src/pages/Status.tsx` - Viser dato og tid korrekt
+
