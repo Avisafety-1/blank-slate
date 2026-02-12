@@ -1698,7 +1698,6 @@ const Oppdrag = () => {
                           <DroneWeatherPanel
                             latitude={effectiveLat}
                             longitude={effectiveLng}
-                            compact
                             savedWeatherData={isCompleted && hasWeatherSnapshot ? hasWeatherSnapshot : undefined}
                           />
                           <AirspaceWarnings
