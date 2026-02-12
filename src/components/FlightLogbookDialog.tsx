@@ -186,7 +186,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(formatDateForPdf(new Date(), "'Eksportert:' d. MMMM yyyy"), 14, 28);
+      doc.text(formatDateForPdf(new Date(), "'Eksportert:' d. MMMM yyyy 'kl.' HH:mm"), 14, 28);
       
       // Total flight time
       doc.setFontSize(12);

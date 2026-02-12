@@ -666,9 +666,15 @@ const Oppdrag = () => {
       
       // Mission title
       pdf.setFontSize(14);
-      pdf.text(sanitizeForPdf(mission.tittel), 15, 35);
+      setFontStyle(pdf, "normal");
+      pdf.text(sanitizeForPdf(mission.tittel), pageWidth / 2, 32, { align: "center" });
       
-      let yPos = 45;
+      pdf.setFontSize(10);
+      pdf.setTextColor(100);
+      pdf.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, 40, { align: "center" });
+      pdf.setTextColor(0);
+      
+      let yPos = 50;
       
       // Add map image if coordinates exist
       if (mission.latitude && mission.longitude) {
@@ -1076,7 +1082,7 @@ const Oppdrag = () => {
           incident.alvorlighetsgrad,
           incident.status,
           incident.hovedaarsak || "-",
-          format(new Date(incident.hendelsestidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })
+          formatDateForPdf(new Date(incident.hendelsestidspunkt), "dd.MM.yyyy HH:mm")
         ]);
         
         autoTable(pdf, {
