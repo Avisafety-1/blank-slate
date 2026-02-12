@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Building2, Globe, Download } from "lucide-react";
+import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3 } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -134,9 +134,15 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/installer")}>
-                  <Download className="w-4 h-4 mr-2" />
-                  {t('nav.installApp', 'Installer app')}
+                   <Download className="w-4 h-4 mr-2" />
+                   {t('nav.installApp', 'Installer app')}
                 </DropdownMenuItem>
+                {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+                  <DropdownMenuItem onClick={() => navigate("/statistikk")}>
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Plattformstatistikk
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -187,6 +193,11 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/installer")} title={t('nav.installApp', 'Installer app')}>
               <Download className="w-4 h-4" />
             </Button>
+            {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/statistikk")} title="Plattformstatistikk">
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+            )}
           </nav>
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">

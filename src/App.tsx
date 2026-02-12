@@ -24,6 +24,7 @@ import Status from "./pages/Status";
 import Oppdrag from "./pages/Oppdrag";
 import Installer from "./pages/Installer";
 import UserManualDownload from "./pages/UserManualDownload";
+import Statistikk from "./pages/Statistikk";
 import NotFound from "./pages/NotFound";
 
 // Initialize i18n - must be imported after React setup
@@ -118,6 +119,7 @@ const App = () => {
                 
                 {/* Admin has its own header */}
                 <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
+                <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
