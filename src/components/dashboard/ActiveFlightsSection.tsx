@@ -1,10 +1,11 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User } from "lucide-react";
+import { Plane, Clock, MapPin, Radio, User, Building2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
@@ -19,11 +20,13 @@ interface ActiveFlight {
   profile_id: string;
   profileName?: string;
   missionTitle?: string;
+  companyName?: string;
 }
 
 export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChange?: (has: boolean) => void }) => {
   const { t } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, companyName } = useAuth();
+  const { isSuperAdmin } = useRoleCheck();
   const { registerFlights } = useDashboardRealtimeContext();
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
@@ -31,12 +34,19 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
 
+  const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
+
   const fetchFlights = useCallback(async () => {
-    if (!companyId) return;
-    const { data, error } = await (supabase as any)
+    if (!companyId && !isSuperAdminAvisafe) return;
+    let query = (supabase as any)
       .from('active_flights')
-      .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel)')
-      .eq('company_id', companyId);
+      .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
+
+    if (!isSuperAdminAvisafe) {
+      query = query.eq('company_id', companyId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching active flights:', error);
@@ -52,11 +62,12 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
       profile_id: f.profile_id,
       profileName: f.profiles?.full_name || null,
       missionTitle: f.missions?.tittel || null,
+      companyName: f.companies?.navn || null,
     }));
 
     setFlights(mapped);
     onHasFlightsChange?.(mapped.length > 0);
-  }, [companyId, onHasFlightsChange]);
+  }, [companyId, onHasFlightsChange, isSuperAdminAvisafe]);
 
   useEffect(() => {
     fetchFlights();
@@ -134,7 +145,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
           </div>
         </div>
 
-        <div className="space-y-1.5 sm:space-y-2 max-h-[250px] overflow-y-auto">
+        <div className={`space-y-1.5 sm:space-y-2 ${isSuperAdminAvisafe ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
           {flights.map((flight) => (
             <div
               key={flight.id}
@@ -153,10 +164,16 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <User className="w-3 h-3" />
                 <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
               </div>
+              {isSuperAdminAvisafe && flight.companyName && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
+                  <Building2 className="w-3 h-3" />
+                  <span className="truncate">{flight.companyName}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <Button
                   size="sm"
