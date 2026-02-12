@@ -1,57 +1,63 @@
 
 
-# Auto-sett oppdragsstatus til "Pagaende" ved flystart
+# Aktive flyturer pa tvers av alle selskaper for Avisafe-superadminer
 
 ## Hva endres?
 
-Nar en bruker starter en flytur med et tilknyttet oppdrag, skal oppdragets status automatisk endres fra "Planlagt" til "Pagaende". Endringen reflekteres umiddelbart pa /oppdrag og i MissionDetailDialog via eksisterende realtime-subscription.
+Superadminer i selskapet "Avisafe" far se aktive flyturer fra ALLE selskaper pa dashbordet. Andre brukere og selskaper ser kun sine egne flyturer som i dag. Ved mange samtidige flyturer vises de i en scrollbar ramme.
 
 ## Endringer
 
-### 1. `src/hooks/useFlightTimer.ts` -- Oppdater misjonsstatus ved flystart
+### Fil: `src/components/dashboard/ActiveFlightsSection.tsx`
 
-Etter at `active_flights`-raden er satt inn (linje ~288), legger vi til en statusoppdatering dersom det er et tilknyttet oppdrag:
+1. **Importer `useRoleCheck`** for a sjekke om brukeren er superadmin
+2. **Hent `companyName`** fra `useAuth()` for a identifisere Avisafe-selskapet
+3. **Betinget query**: Hvis superadmin OG companyName er "Avisafe", hent ALLE aktive flyturer (uten `.eq('company_id', companyId)`). Ellers behold dagens filter.
+4. **Legg til selskapsnavn** i `ActiveFlight`-interfacet og vis det pa hvert flyturkort (kun for global visning)
+5. **Utvid select-query** til a inkludere `companies:company_id(navn)` for a hente selskapsnavn
+6. **Scrollbar ramme** er allerede delvis implementert (`max-h-[250px] overflow-y-auto` pa linje 137). Oker til `max-h-[400px]` for global visning slik at flere flyturer far plass for scrolling aktiveres.
 
+### Detaljerte endringer
+
+**Interface-utvidelse:**
 ```text
-// Etter active_flights insert (linje ~300):
-if (missionId && navigator.onLine) {
-  await supabase
-    .from('missions')
-    .update({ status: 'Pagaende' })
-    .eq('id', missionId)
-    .eq('status', 'Planlagt');  // Kun oppdater hvis "Planlagt"
+interface ActiveFlight {
+  ...eksisterende felter...
+  companyName?: string;  // Nytt felt
 }
 ```
 
-For offline-modus legges dette til i offline-koeen.
+**Fetch-logikk:**
+```text
+const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
-### 2. Oppdater `/oppdrag`-siden automatisk (allerede dekket)
+let query = supabase
+  .from('active_flights')
+  .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, 
+           profiles:profile_id(full_name), 
+           missions:mission_id(tittel),
+           companies:company_id(navn)');  // Nytt join
 
-- `useDashboardRealtime` lytter allerede pa `missions`-tabellen
-- Oppdrag-siden har realtime-subscription som kaller `fetchMissionsForTab` ved endringer
-- Statusendringen propageres automatisk til oppdragskortene
+if (!isSuperAdminAvisafe) {
+  query = query.eq('company_id', companyId);
+}
+```
 
-### 3. MissionDetailDialog (allerede dekket)
+**Visning av selskapsnavn** (kun nar isSuperAdminAvisafe):
+- Vises som en liten tekst under pilotnavn pa hvert kort, f.eks. med et Building-ikon
 
-- Dialogen viser `mission.status` via en Badge
-- Nar dataene re-fetches via realtime, oppdateres badgen automatisk
+**Scrollramme:**
+- For global visning: `max-h-[400px]` i stedet for `max-h-[250px]`
+
+## Sikkerhet
+
+- RLS pa `active_flights` tillater allerede alle autentiserte brukere a se alle aktive flyturer (`auth.uid() IS NOT NULL`)
+- Sjekken for superadmin + Avisafe-selskap er en ekstra frontend-begrensning -- backend-tilgangen er allerede sikret
+- Ingen RLS-endringer nodvendig
 
 ## Hva pavirkes IKKE
 
-- Ingen UI-endringer i komponenter
-- Ingen nye database-migrasjoner (missions-tabellen har allerede `status`-kolonnen)
-- Ingen endring i RLS-policyer (brukere kan allerede oppdatere egne missions)
-- MissionDetailDialog og oppdragskort bruker allerede realtime
-
-## Teknisk detalj
-
-**Fil:** `src/hooks/useFlightTimer.ts`
-
-Eneste endring: Legg til 4-5 linjer etter `active_flights` insert (linje ~300) som oppdaterer misjonens status til "Pagaende" dersom:
-1. Det finnes en `missionId`
-2. Misjonens navarende status er "Planlagt" (unngaar a overskrive andre statuser)
-
-## Risiko
-
-- **Lav**: `.eq('status', 'Planlagt')` sikrer at kun planlagte oppdrag endres -- pagaende eller fullforte oppdrag pavirkes ikke
-- **Lav**: Eksisterende RLS-policyer tillater brukere a oppdatere missions i eget selskap
+- Andre brukere/selskaper ser kun egne flyturer (uendret)
+- Realtime-subscription fungerer som for (lytter allerede pa hele tabellen)
+- Kartvisning pavirkes ikke
+- MissionDetailDialog pavirkes ikke
