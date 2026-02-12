@@ -303,7 +303,7 @@ export type Database = {
           oppdatert_dato: string
           opprettet_dato: string
           telefon: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           adresse?: string | null
@@ -317,7 +317,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           telefon?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           adresse?: string | null
@@ -331,7 +331,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           telefon?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
