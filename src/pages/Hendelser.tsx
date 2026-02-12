@@ -185,14 +185,62 @@ const Hendelser = () => {
 
   useEffect(() => {
     fetchIncidents();
-    const channel = supabase.channel('incidents_changes').on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'incidents'
-    }, () => {
-      if (!navigator.onLine) return;
-      fetchIncidents();
-    }).subscribe();
+  }, [companyId]);
+
+  // Consolidated real-time channel for Hendelser page
+  useEffect(() => {
+    const channel = supabase
+      .channel('hendelser-main')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, () => {
+        if (!navigator.onLine) return;
+        fetchIncidents();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eccairs_exports', filter: `environment=eq.${ECCAIRS_ENV}` }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const exportData = payload.new as unknown as EccairsExport;
+          setEccairsExports(prev => ({
+            ...prev,
+            [exportData.incident_id]: exportData,
+          }));
+        } else if (payload.eventType === 'DELETE') {
+          const deleted = payload.old as { incident_id: string };
+          setEccairsExports(prev => {
+            const updated = { ...prev };
+            delete updated[deleted.incident_id];
+            return updated;
+          });
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incident_comments' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newComment = payload.new as { incident_id: string; id: string; comment_text: string; created_by_name: string; created_at: string };
+          setCommentCounts(prev => ({
+            ...prev,
+            [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
+          }));
+          setComments(prev => ({
+            ...prev,
+            [newComment.incident_id]: [...(prev[newComment.incident_id] || []), {
+              id: newComment.id,
+              comment_text: newComment.comment_text,
+              created_by_name: newComment.created_by_name,
+              created_at: newComment.created_at
+            }]
+          }));
+        } else if (payload.eventType === 'DELETE') {
+          const deletedComment = payload.old as { incident_id: string; id: string };
+          setCommentCounts(prev => ({
+            ...prev,
+            [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
+          }));
+          setComments(prev => ({
+            ...prev,
+            [deletedComment.incident_id]: (prev[deletedComment.incident_id] || []).filter(c => c.id !== deletedComment.id)
+          }));
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -302,88 +350,7 @@ const Hendelser = () => {
     fetchEccairsExports();
   }, [incidents]);
 
-  // Real-time subscription for ECCAIRS exports
-  useEffect(() => {
-    const channel = supabase
-      .channel(`eccairs-exports-${ECCAIRS_ENV}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'eccairs_exports',
-          filter: `environment=eq.${ECCAIRS_ENV}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const exportData = payload.new as unknown as EccairsExport;
-            setEccairsExports(prev => ({
-              ...prev,
-              [exportData.incident_id]: exportData,
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            const deleted = payload.old as { incident_id: string };
-            setEccairsExports(prev => {
-              const updated = { ...prev };
-              delete updated[deleted.incident_id];
-              return updated;
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Real-time subscription for comment changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('hendelser-comments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incident_comments'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newComment = payload.new as { incident_id: string; id: string; comment_text: string; created_by_name: string; created_at: string };
-            setCommentCounts(prev => ({
-              ...prev,
-              [newComment.incident_id]: (prev[newComment.incident_id] || 0) + 1
-            }));
-            setComments(prev => ({
-              ...prev,
-              [newComment.incident_id]: [...(prev[newComment.incident_id] || []), {
-                id: newComment.id,
-                comment_text: newComment.comment_text,
-                created_by_name: newComment.created_by_name,
-                created_at: newComment.created_at
-              }]
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedComment = payload.old as { incident_id: string; id: string };
-            setCommentCounts(prev => ({
-              ...prev,
-              [deletedComment.incident_id]: Math.max((prev[deletedComment.incident_id] || 1) - 1, 0)
-            }));
-            setComments(prev => ({
-              ...prev,
-              [deletedComment.incident_id]: (prev[deletedComment.incident_id] || []).filter(c => c.id !== deletedComment.id)
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // ECCAIRS exports and comments are now handled by the consolidated hendelser-main channel above
 
   useEffect(() => {
     filterIncidents();

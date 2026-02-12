@@ -1905,35 +1905,15 @@ export function OpenAIPMap({
       startSafeSkySubscription();
     }, 500);
 
-    const missionsChannel = supabase
-      .channel('missions-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'missions' },
-        () => fetchAndDisplayMissions()
-      )
-      .subscribe();
-
-    const telemetryChannel = supabase
-      .channel('telemetry-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'drone_telemetry' },
-        () => fetchDroneTelemetry()
-      )
-      .subscribe();
-
-    // Real-time subscription for active flights (advisory areas and pilot positions)
-    const activeFlightsChannel = supabase
-      .channel('active-flights-advisories')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'active_flights' },
-        () => {
-          fetchActiveAdvisories();
-          fetchPilotPositions();
-        }
-      )
+    // Consolidated map channel for missions, telemetry, and active flights
+    const mapChannel = supabase
+      .channel('kart-main')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
+        fetchActiveAdvisories();
+        fetchPilotPositions();
+      })
       .subscribe();
 
     return () => {
@@ -1947,9 +1927,7 @@ export function OpenAIPMap({
       }
       heliAnimIntervals.clear();
       map.off("click");
-      missionsChannel.unsubscribe();
-      telemetryChannel.unsubscribe();
-      activeFlightsChannel.unsubscribe();
+      mapChannel.unsubscribe();
       map.remove();
     };
   }, []);

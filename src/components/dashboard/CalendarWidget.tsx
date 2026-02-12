@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
 interface CalendarEvent {
   type: string;
@@ -55,6 +56,7 @@ type CalendarEventDB = Tables<"calendar_events">;
 export const CalendarWidget = () => {
   const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
+  const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -131,93 +133,34 @@ export const CalendarWidget = () => {
     }
   };
 
-  // Real-time subscriptions
+  // Real-time subscriptions via shared dashboard channel
   useEffect(() => {
-    const channel = supabase
-      .channel('calendar-events-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'calendar_events'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setCustomEvents((current) => [...current, payload.new as CalendarEventDB]);
-          } else if (payload.eventType === 'UPDATE') {
-            setCustomEvents((current) =>
-              current.map((event) =>
-                event.id === (payload.new as CalendarEventDB).id ? (payload.new as CalendarEventDB) : event
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setCustomEvents((current) =>
-              current.filter((event) => event.id !== (payload.old as CalendarEventDB).id)
-            );
-          }
+    const unregisters = [
+      registerMain('calendar_events', (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setCustomEvents((current) => [...current, payload.new as CalendarEventDB]);
+        } else if (payload.eventType === 'UPDATE') {
+          setCustomEvents((current) =>
+            current.map((event) =>
+              event.id === (payload.new as CalendarEventDB).id ? (payload.new as CalendarEventDB) : event
+            )
+          );
+        } else if (payload.eventType === 'DELETE') {
+          setCustomEvents((current) =>
+            current.filter((event) => event.id !== (payload.old as CalendarEventDB).id)
+          );
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'missions'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'documents'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'drones'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'equipment'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'incidents'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'drone_accessories'
-        },
-        () => { if (navigator.onLine) fetchRealCalendarEvents(); }
-      )
-      .subscribe();
+      }),
+      registerMain('missions', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+      registerMain('documents', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+      registerMain('drones', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+      registerMain('equipment', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+      registerMain('incidents', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+      registerMain('drone_accessories', () => { if (navigator.onLine) fetchRealCalendarEvents(); }),
+    ];
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [companyId]);
+    return () => { unregisters.forEach(fn => fn()); };
+  }, [registerMain]);
 
   const fetchCustomEvents = async () => {
     // 1. Load cache first

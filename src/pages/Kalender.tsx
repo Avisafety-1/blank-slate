@@ -141,56 +141,26 @@ export default function Kalender() {
     fetchCustomEvents();
   }, [companyId]);
 
-  // Real-time subscriptions (guarded for offline)
+  // Real-time subscriptions — single consolidated channel
   useEffect(() => {
     const refetchIfOnline = () => {
       if (!navigator.onLine) return;
       fetchCustomEvents();
     };
 
-    const calendarChannel = supabase
-      .channel('calendar-events-changes')
+    const channel = supabase
+      .channel('kalender-main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, refetchIfOnline)
-      .subscribe();
-
-    const missionsChannel = supabase
-      .channel('missions-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, refetchIfOnline)
-      .subscribe();
-
-    const incidentsChannel = supabase
-      .channel('incidents-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, refetchIfOnline)
-      .subscribe();
-
-    const documentsChannel = supabase
-      .channel('documents-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, refetchIfOnline)
-      .subscribe();
-
-    const dronesChannel = supabase
-      .channel('drones-calendar-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, refetchIfOnline)
-      .subscribe();
-
-    const equipmentChannel = supabase
-      .channel('equipment-calendar-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, refetchIfOnline)
-      .subscribe();
-
-    const accessoriesChannel = supabase
-      .channel('accessories-calendar-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, refetchIfOnline)
       .subscribe();
 
     return () => {
-      supabase.removeChannel(calendarChannel);
-      supabase.removeChannel(missionsChannel);
-      supabase.removeChannel(incidentsChannel);
-      supabase.removeChannel(documentsChannel);
-      supabase.removeChannel(dronesChannel);
-      supabase.removeChannel(equipmentChannel);
-      supabase.removeChannel(accessoriesChannel);
+      supabase.removeChannel(channel);
     };
   }, [companyId]);
 

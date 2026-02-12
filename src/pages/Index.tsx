@@ -15,6 +15,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
+import { DashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
@@ -47,6 +49,7 @@ const Index = () => {
   const { t } = useTranslation();
   const { user, loading, isApproved } = useAuth();
   const navigate = useNavigate();
+  const dashboardRealtime = useDashboardRealtime();
   const [layout, setLayout] = useState(defaultLayout);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
@@ -74,11 +77,10 @@ const Index = () => {
       return;
     }
 
-    let deviceId: string | null = null;
+    let resolvedDeviceId: string | null = null;
 
     const checkTrackingStatus = async () => {
       try {
-        // Get the device_id from dronetag_devices
         const { data: device } = await supabase
           .from('dronetag_devices')
           .select('device_id')
@@ -90,9 +92,8 @@ const Index = () => {
           return null;
         }
 
-        deviceId = device.device_id;
+        resolvedDeviceId = device.device_id;
 
-        // Check for positions since flight start
         const { data: positions, error } = await supabase
           .from('dronetag_positions')
           .select('id')
@@ -115,39 +116,19 @@ const Index = () => {
       }
     };
 
-    // Check immediately, then set up real-time subscription
-    checkTrackingStatus().then((resolvedDeviceId) => {
-      if (resolvedDeviceId) {
-        // Subscribe to real-time updates for this device
-        const channel = supabase
-          .channel(`dronetag-tracking-${resolvedDeviceId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'dronetag_positions',
-              filter: `device_id=eq.${resolvedDeviceId}`
-            },
-            () => {
-              setTrackingStatus('recording');
-            }
-          )
-          .subscribe();
+    checkTrackingStatus();
 
-        // Store channel reference for cleanup
-        (window as any).__dronetagTrackingChannel = channel;
+    // Use the shared flights channel for dronetag_positions updates
+    const unregister = dashboardRealtime.registerFlights('dronetag_positions', (payload) => {
+      if (resolvedDeviceId && payload?.new?.device_id === resolvedDeviceId) {
+        setTrackingStatus('recording');
       }
     });
 
     return () => {
-      const channel = (window as any).__dronetagTrackingChannel;
-      if (channel) {
-        supabase.removeChannel(channel);
-        delete (window as any).__dronetagTrackingChannel;
-      }
+      unregister();
     };
-  }, [isActive, activeFlightDronetagId, startTime]);
+  }, [isActive, activeFlightDronetagId, startTime, dashboardRealtime]);
 
   const handleStartFlight = () => {
     setStartFlightConfirmOpen(true);
@@ -312,6 +293,7 @@ const Index = () => {
   };
 
   return (
+    <DashboardRealtimeContext.Provider value={dashboardRealtime}>
     <div className="min-h-screen relative w-full overflow-x-hidden">
       {/* Background with gradient overlay */}
       <div
@@ -600,6 +582,7 @@ const Index = () => {
         onStartFlight={confirmStartFlight}
       />
     </div>
+    </DashboardRealtimeContext.Provider>
   );
 };
 

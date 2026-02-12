@@ -12,12 +12,14 @@ import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
 type News = any;
 
 export const NewsSection = () => {
   const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
+  const { registerMain } = useDashboardRealtimeContext();
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -28,27 +30,16 @@ export const NewsSection = () => {
   
   useEffect(() => {
     fetchNews();
-    
-    const channel = supabase
-      .channel('news-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'news'
-        },
-        () => {
-          if (!navigator.onLine) return;
-          fetchNews();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [companyId]);
+
+  // Real-time via shared dashboard channel
+  useEffect(() => {
+    const unregister = registerMain('news', () => {
+      if (!navigator.onLine) return;
+      fetchNews();
+    });
+    return unregister;
+  }, [registerMain]);
 
   const fetchNews = async () => {
     // 1. Load cache first
