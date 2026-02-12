@@ -118,10 +118,13 @@ const Oppdrag = () => {
   const { isAdmin } = useRoleCheck();
   const navigate = useNavigate();
   const location = useLocation();
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [activeMissions, setActiveMissions] = useState<Mission[]>([]);
+  const [completedMissions, setCompletedMissions] = useState<Mission[]>([]);
+  const [isLoadingActive, setIsLoadingActive] = useState(true);
+  const [isLoadingCompleted, setIsLoadingCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
+
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -148,6 +151,10 @@ const Oppdrag = () => {
   const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
   const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
   const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
+
+  // Computed variables - tab only controls which list is shown
+  const missions = filterTab === 'active' ? activeMissions : completedMissions;
+  const isLoading = filterTab === 'active' ? isLoadingActive : isLoadingCompleted;
 
   // Handle navigation state from route planner
   useEffect(() => {
@@ -195,15 +202,21 @@ const Oppdrag = () => {
 
   useEffect(() => {
     if (companyId) {
-      fetchMissions();
+      const loadAll = async () => {
+        await fetchMissionsForTab('active');
+        // Background-load completed after active is done
+        fetchMissionsForTab('completed');
+      };
+      loadAll();
     }
-  }, [companyId, filterTab]);
+  }, [companyId]);
 
   // Real-time subscription for missions + approval/comment updates
   useEffect(() => {
     const handler = () => {
       if (!navigator.onLine) return;
-      fetchMissions();
+      fetchMissionsForTab('active');
+      fetchMissionsForTab('completed');
     };
 
     const channel = supabase
@@ -240,25 +253,28 @@ const Oppdrag = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filterTab, companyId]);
+  }, [companyId]);
 
-  const fetchMissions = async () => {
+  const fetchMissionsForTab = async (tab: 'active' | 'completed') => {
+    const setData = tab === 'active' ? setActiveMissions : setCompletedMissions;
+    const setLoading = tab === 'active' ? setIsLoadingActive : setIsLoadingCompleted;
+
     // 1. Load cache first
     if (companyId) {
-      const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${filterTab}`);
+      const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${tab}`);
       if (cached) {
-        setMissions(cached);
-        setIsLoading(false);
+        setData(cached);
+        setLoading(false);
       }
     }
 
     // 2. Skip network if offline
     if (!navigator.onLine) {
-      setIsLoading(false);
+      setLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
     try {
       let query = supabase
         .from("missions")
@@ -272,9 +288,9 @@ const Oppdrag = () => {
             epost
           )
         `)
-        .order("tidspunkt", { ascending: filterTab === "active" });
+        .order("tidspunkt", { ascending: tab === "active" });
 
-      if (filterTab === "active") {
+      if (tab === "active") {
         query = query.in("status", ["Planlagt", "Pågående"]);
       } else {
         query = query.eq("status", "Fullført");
@@ -285,13 +301,13 @@ const Oppdrag = () => {
       if (error) throw error;
 
       // Batch-fetch all related data in parallel instead of per-mission
-      const missions = data || [];
-      const missionIds = missions.map(m => m.id);
+      const missionsList = data || [];
+      const missionIds = missionsList.map(m => m.id);
 
       if (missionIds.length === 0) {
-        setMissions([]);
-        if (companyId) setCachedData(`offline_missions_${companyId}_${filterTab}`, []);
-        setIsLoading(false);
+        setData([]);
+        if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+        setLoading(false);
         return;
       }
 
@@ -316,7 +332,7 @@ const Oppdrag = () => {
         : { data: [] };
 
       // Batch-fetch creator profiles
-      const uniqueUserIds = [...new Set(missions.map(m => m.user_id).filter(Boolean))] as string[];
+      const uniqueUserIds = [...new Set(missionsList.map(m => m.user_id).filter(Boolean))] as string[];
       const profilesRes = uniqueUserIds.length > 0
         ? await supabase.from("profiles").select("id, full_name").in("id", uniqueUserIds)
         : { data: [] };
@@ -343,7 +359,7 @@ const Oppdrag = () => {
       const flpMap = groupBy((flightLogPersonnelRes.data || []) as any[], "flight_log_id");
       const profileMap = new Map((profilesRes.data || []).map((p: any) => [p.id, p.full_name]));
 
-      const missionsWithDetails = missions.map((mission) => {
+      const missionsWithDetails = missionsList.map((mission) => {
         const missionLogs = (logsMap.get(mission.id) || []).map((log: any) => {
           const pilotEntry = (flpMap.get(log.id) || [])[0];
           return { ...log, pilot: pilotEntry?.profiles || null };
@@ -365,15 +381,21 @@ const Oppdrag = () => {
         };
       });
 
-      setMissions(missionsWithDetails);
+      setData(missionsWithDetails);
       // Cache for offline use
-      if (companyId) setCachedData(`offline_missions_${companyId}_${filterTab}`, missionsWithDetails);
+      if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
     } catch (error) {
       console.error("Error fetching missions:", error);
       toast.error("Kunne ikke laste oppdrag");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
+  };
+
+  // Convenience wrapper to refresh both tabs
+  const fetchMissions = () => {
+    fetchMissionsForTab('active');
+    fetchMissionsForTab('completed');
   };
 
   const filteredMissions = missions.filter((mission) => {
