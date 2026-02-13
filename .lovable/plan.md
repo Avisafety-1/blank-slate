@@ -1,58 +1,42 @@
 
-# Inntekts- og kostnadskalkulator for AviSafe superadmins
+# Scenarioer og selskapsvelger for kalkulatoren
 
 ## Oversikt
-En ny fane i admin-panelet (kun synlig for superadmins i AviSafe-selskapet) som lar deg beregne inntekter og kostnader basert på antall brukere, bedriftsstorrelser og Dronetag/NRI-kostnader.
+Utvide kalkulatoren med to nye funksjoner:
+1. **3 lagrede scenarioer** - Mulighet til aa lagre, bytte mellom og navngi 3 ulike beregningsscenarioer
+2. **Selskapsvelger** - Nedtrekksmeny som henter alle selskaper fra databasen og automatisk fyller inn antall brukere
 
-## Hva som lages
+## Hva som endres
 
-### Ny fane "Kalkulator" i Admin-panelet
-- Vises kun for superadmins der `companyName === 'avisafe'`
-- Plasseres som siste tab etter "Selskaper"
-- Ikon: Calculator (fra lucide-react)
+### Ny toppseksjon i kalkulatoren
+- **Scenariovelger**: Tre knapper/faner (Scenario 1, 2, 3) med mulighet til aa gi hvert scenario et egendefinert navn
+- **Selskapsvelger**: En nedtrekksmeny som lister alle selskaper. Naar et selskap velges, hentes antall brukere automatisk fra databasen og fylles inn. Alle beregninger oppdateres umiddelbart.
+- Man kan ogsaa velge "Alle selskaper" for aa se totalt antall brukere paa tvers, eller "Egendefinert" for aa skrive inn manuelt
 
-### Kalkulatorens innhold
-
-**Seksjon 1: Bedriftsstorrelser og priser**
-- Tre rader: Liten, Medium, Stor
-- Hvert nivaa har felter for:
-  - Maks antall brukere (grense for aa kvalifisere som liten/medium/stor)
-  - Pris per bruker per maaned (NOK)
-
-**Seksjon 2: Brukerberegning**
-- Inputfelt: Totalt antall brukere i systemet
-- Automatisk kategorisering basert pa grensene satt i seksjon 1
-- Automatisk beregning av maanedlig totalpris
-
-**Seksjon 3: Dronetag-kostnader**
-- Innkjopskostnad per Dronetag (hva AviSafe betaler)
-- Kostpris til kunde for Dronetag-integrasjon (hva kunden betaler)
-- Valg: Nedbetaling (antall maaneder) eller engangskostnad
-- Antall Dronetags i bruk
-- Automatisk beregning av maanedlig Dronetag-kostnad
-
-**Seksjon 4: NRI Hours**
-- Innkjopspris NRI Hours (hva AviSafe betaler)
-- Kostpris til kunde for NRI Hours
-
-**Seksjon 5: Oppsummering**
-- Maanedlig inntekt fra brukerlisenser
-- Maanedlig inntekt fra Dronetag
-- Maanedlig kostnad Dronetag
-- Maanedlig kostnad NRI
-- Netto maanedlig resultat
+### Lagring
+- Alle 3 scenarioer lagres i localStorage (som i dag, men utvidet struktur)
+- Hvert scenario inneholder: navn, valgt selskap, og alle kalkulatorfelt
 
 ## Teknisk plan
 
-### Nye filer
-1. **`src/components/admin/RevenueCalculator.tsx`** - Hovedkomponent for kalkulatoren med all logikk og UI. Ren klientside-kalkulator uten database (kun state). Bruker eksisterende UI-komponenter: Card, Input, Label, Select.
+### Endringer i `src/components/admin/RevenueCalculator.tsx`
 
-### Endringer i eksisterende filer
-1. **`src/pages/Admin.tsx`**:
-   - Importer `Calculator` fra lucide-react og `RevenueCalculator`
-   - Legg til ny `TabsTrigger` med value="calculator" (kun for superadmin + avisafe)
-   - Legg til ny `TabsContent` som renderer `<RevenueCalculator />`
-   - Oppdater `grid-cols` i TabsList for aa handtere ekstra tab
+**Ny datastruktur:**
+```text
+interface Scenario {
+  name: string;            // Egendefinert navn, f.eks. "Optimistisk"
+  selectedCompanyId: string | null;  // null = egendefinert
+  state: CalcState;        // Eksisterende kalkulatortilstand
+}
 
-### Ingen database-endringer
-Kalkulatoren er et rent beregningsverktoy. Alle verdier lagres kun i komponentens lokale state (evt. localStorage for persistens mellom sidebesok).
+// 3 scenarioer lagres i localStorage
+```
+
+**Ny funksjonalitet:**
+1. Importere `supabase` for aa hente selskaper og brukerantall
+2. `useEffect` som henter alle selskaper med brukerantall ved oppstart
+3. Scenariofaner med redigerbare navn (klikk for aa endre navn)
+4. Select-komponent for selskapsvelger som automatisk setter `totalUsers`
+5. Naar selskap velges: kjoer spoorring for aa telle brukere i det selskapet og oppdater feltet
+
+**Ingen nye filer eller database-endringer** - alt er klientside med eksisterende Supabase-sporringer.
