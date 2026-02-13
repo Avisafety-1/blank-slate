@@ -413,8 +413,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </div>
 
                     {/* Summary */}
-                    <div className="p-4 rounded-lg bg-muted/50">
-                      <p className="text-sm">{currentAssessment.summary}</p>
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Foreslått konklusjon</h3>
+                      <div className="p-4 rounded-lg bg-muted/50">
+                        <p className="text-sm">{currentAssessment.summary}</p>
+                      </div>
                     </div>
 
                     {/* Score Card with new SMS fields */}
