@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save } from "lucide-react";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
@@ -43,6 +43,7 @@ interface Assessment {
   overall_score: number;
   recommendation: string;
   ai_analysis: any;
+  pilot_comments?: any;
 }
 
 export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input' }: RiskAssessmentDialogProps) => {
@@ -53,7 +54,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
   const [previousAssessments, setPreviousAssessments] = useState<Assessment[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  
+  const [categoryComments, setCategoryComments] = useState<Record<string, string>>({});
+  const [savingComments, setSavingComments] = useState(false);
+  const [currentAssessmentId, setCurrentAssessmentId] = useState<string | null>(null);
   // Mission selector states
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
@@ -124,7 +127,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     try {
       const { data, error } = await supabase
         .from('mission_risk_assessments')
-        .select('id, created_at, overall_score, recommendation, ai_analysis')
+        .select('id, created_at, overall_score, recommendation, ai_analysis, pilot_comments')
         .eq('mission_id', currentMissionId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -182,6 +185,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       const result = await response.json();
       setCurrentAssessment(result.aiAnalysis);
+      setCurrentAssessmentId(result.assessment?.id || null);
+      setCategoryComments({});
       setActiveTab('result');
       toast.success(t('riskAssessment.completed', 'Risikovurdering fullført'));
       loadPreviousAssessments();
@@ -195,7 +200,28 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   const viewPreviousAssessment = (assessment: Assessment) => {
     setCurrentAssessment(assessment.ai_analysis);
+    setCurrentAssessmentId(assessment.id);
+    setCategoryComments(assessment.pilot_comments || {});
     setActiveTab('result');
+  };
+
+  const saveComments = async () => {
+    if (!currentAssessmentId) return;
+    setSavingComments(true);
+    try {
+      const { error } = await supabase
+        .from('mission_risk_assessments')
+        .update({ pilot_comments: categoryComments } as any)
+        .eq('id', currentAssessmentId);
+      if (error) throw error;
+      toast.success(t('riskAssessment.commentsSaved', 'Kommentarer lagret'));
+      loadPreviousAssessments();
+    } catch (error) {
+      console.error('Error saving comments:', error);
+      toast.error(t('riskAssessment.commentsSaveError', 'Kunne ikke lagre kommentarer'));
+    } finally {
+      setSavingComments(false);
+    }
   };
 
   return (
@@ -429,7 +455,28 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       hardStopReason={currentAssessment.hard_stop_reason}
                       missionOverview={currentAssessment.mission_overview}
                       assessmentMethod={currentAssessment.assessment_method}
+                      categoryComments={categoryComments}
+                      onCategoryCommentChange={(category, comment) => 
+                        setCategoryComments(prev => ({ ...prev, [category]: comment }))
+                      }
                     />
+
+                    {/* Save comments button */}
+                    {currentAssessmentId && (
+                      <Button
+                        onClick={saveComments}
+                        disabled={savingComments}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {savingComments ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        {t('riskAssessment.saveComments', 'Lagre kommentarer')}
+                      </Button>
+                    )}
 
                     {/* Recommendations with new SMS fields */}
                     <RiskRecommendations
