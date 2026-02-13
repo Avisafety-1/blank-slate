@@ -537,7 +537,10 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.dronetagCount || ""}
-                onChange={(e) => updateState({ dronetagCount: num(e.target.value) })}
+                onChange={(e) => {
+                  const count = num(e.target.value);
+                  updateState({ dronetagCount: count, nriHours: count * 30 });
+                }}
               />
             </div>
           </div>
