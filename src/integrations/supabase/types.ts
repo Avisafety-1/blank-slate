@@ -2469,6 +2469,7 @@ export type Database = {
           signature_url: string | null
           telefon: string | null
           tittel: string | null
+          uas_operator_number: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2489,6 +2490,7 @@ export type Database = {
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
+          uas_operator_number?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2509,6 +2511,7 @@ export type Database = {
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
+          uas_operator_number?: string | null
           updated_at?: string | null
         }
         Relationships: [
