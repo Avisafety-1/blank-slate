@@ -27,6 +27,9 @@ interface CalcState {
   };
   totalUsers: number;
   dronetagEnabled: boolean;
+  dronetagAcquisitionType: "leasing" | "purchase";
+  dronetagLeasingCostPerMonth: number;
+  dronetagLeasingCustomerPricePerMonth: number;
   dronetagPurchaseCostEur: number;
   dronetagDiscountPercent: number;
   dronetagCustomerPrice: number;
@@ -58,6 +61,9 @@ const defaultCalcState: CalcState = {
   },
   totalUsers: 0,
   dronetagEnabled: true,
+  dronetagAcquisitionType: "purchase",
+  dronetagLeasingCostPerMonth: 0,
+  dronetagLeasingCustomerPricePerMonth: 0,
   dronetagPurchaseCostEur: 299,
   dronetagDiscountPercent: 20,
   dronetagCustomerPrice: 0,
@@ -363,14 +369,22 @@ export const RevenueCalculator = () => {
 
     let monthlyDronetagCost = 0;
     let monthlyDronetagRevenue = 0;
+    let monthlyLeasingCost = 0;
+    let monthlyLeasingRevenue = 0;
+
     if (state.dronetagEnabled) {
-      // Total customer revenue: count × customer price (one-time total)
-      monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
-      // Cost: spread over installment months if applicable
-      if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
-        monthlyDronetagCost = (dronetagPurchaseNok * dronetagCount) / dronetagInstallmentMonths;
+      if (state.dronetagAcquisitionType === "leasing") {
+        // Leasing mode: monthly costs and revenue
+        monthlyLeasingCost = state.dronetagLeasingCostPerMonth * dronetagCount;
+        monthlyLeasingRevenue = state.dronetagLeasingCustomerPricePerMonth * dronetagCount;
       } else {
-        monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
+        // Purchase mode (existing logic)
+        monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
+        if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
+          monthlyDronetagCost = (dronetagPurchaseNok * dronetagCount) / dronetagInstallmentMonths;
+        } else {
+          monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
+        }
       }
     }
 
@@ -387,14 +401,14 @@ export const RevenueCalculator = () => {
     }
 
     // Recurring revenue (continues after installment period)
-    const recurringRevenue = monthlyUserRevenue + monthlyNriRevenue + monthlyIntegrationRevenue;
+    const recurringRevenue = monthlyUserRevenue + monthlyNriRevenue + monthlyIntegrationRevenue + monthlyLeasingRevenue;
     // Recurring costs (continues after installment period)
-    const recurringCost = monthlyNriCost;
+    const recurringCost = monthlyNriCost + monthlyLeasingCost;
 
-    // Monthly Dronetag customer payment (spread if installment, full if upfront)
-    const monthlyDronetagCustomerPayment = (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0)
+    // Monthly Dronetag customer payment (spread if installment, full if upfront) — purchase mode only
+    const monthlyDronetagCustomerPayment = (state.dronetagAcquisitionType === "purchase" && dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0)
       ? monthlyDronetagRevenue / dronetagInstallmentMonths
-      : 0; // upfront: not a monthly stream
+      : 0;
 
     // Total monthly during installment: recurring + monthly customer payment
     const totalRevenue = recurringRevenue + monthlyDronetagCustomerPayment;
@@ -410,6 +424,8 @@ export const RevenueCalculator = () => {
       monthlyUserRevenue,
       monthlyDronetagCost,
       monthlyDronetagRevenue,
+      monthlyLeasingCost,
+      monthlyLeasingRevenue,
       monthlyIntegrationRevenue,
       monthlyNriCost,
       monthlyNriRevenue,
@@ -632,79 +648,136 @@ export const RevenueCalculator = () => {
           </div>
         </CardHeader>
         {state.dronetagEnabled && <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <Label>Innkjøpspris (EUR)</Label>
-              <Input
-                type="number"
-                value={state.dronetagPurchaseCostEur || ""}
-                onChange={(e) => updateState({ dronetagPurchaseCostEur: num(e.target.value) })}
-              />
-            </div>
-            <div>
-              <Label>Avslag (%)</Label>
-              <Input
-                type="number"
-                value={state.dronetagDiscountPercent || ""}
-                onChange={(e) => updateState({ dronetagDiscountPercent: num(e.target.value) })}
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Innkjøpspris etter avslag (NOK)</Label>
-              <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm font-medium">
-                {fmt(Math.round(dronetagPurchaseNok))} NOK
-              </div>
-            </div>
+          {/* Antall Dronetags */}
+          <div className="max-w-xs">
+            <Label>Antall Dronetags i bruk</Label>
+            <Input
+              type="number"
+              value={state.dronetagCount || ""}
+              onChange={(e) => {
+                const count = num(e.target.value);
+                updateState({ dronetagCount: count, nriHours: count * 30 });
+              }}
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Kostpris til kunde (NOK)</Label>
-              <Input
-                type="number"
-                value={state.dronetagCustomerPrice || ""}
-                onChange={(e) => updateState({ dronetagCustomerPrice: num(e.target.value) })}
-              />
-            </div>
-            <div>
-              <Label>Antall Dronetags i bruk</Label>
-              <Input
-                type="number"
-                value={state.dronetagCount || ""}
-                onChange={(e) => {
-                  const count = num(e.target.value);
-                  updateState({ dronetagCount: count, nriHours: count * 30 });
-                }}
-              />
-            </div>
-          </div>
-
+          {/* Top-level: Leasing vs Kjøp */}
           <div className="space-y-3">
-            <Label>Betalingsmodell</Label>
+            <Label className="text-sm font-semibold">Anskaffelsesmodell</Label>
             <RadioGroup
-              value={state.dronetagPaymentType}
-              onValueChange={(v) => updateState({ dronetagPaymentType: v as "installment" | "oneoff" })}
+              value={state.dronetagAcquisitionType}
+              onValueChange={(v) => updateState({ dronetagAcquisitionType: v as "leasing" | "purchase" })}
               className="flex gap-4"
             >
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="installment" id={`installment-${activeIndex}`} />
-                <Label htmlFor={`installment-${activeIndex}`} className="cursor-pointer font-normal">Nedbetaling</Label>
+                <RadioGroupItem value="leasing" id={`leasing-${activeIndex}`} />
+                <Label htmlFor={`leasing-${activeIndex}`} className="cursor-pointer font-normal">Leasing</Label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="oneoff" id={`oneoff-${activeIndex}`} />
-                <Label htmlFor={`oneoff-${activeIndex}`} className="cursor-pointer font-normal">Engangskostnad</Label>
+                <RadioGroupItem value="purchase" id={`purchase-${activeIndex}`} />
+                <Label htmlFor={`purchase-${activeIndex}`} className="cursor-pointer font-normal">Kjøp</Label>
               </div>
             </RadioGroup>
           </div>
 
-          {state.dronetagPaymentType === "installment" && (
-            <div className="max-w-xs">
-              <Label>Antall måneder nedbetaling</Label>
-              <Input
-                type="number"
-                value={state.dronetagInstallmentMonths || ""}
-                onChange={(e) => updateState({ dronetagInstallmentMonths: num(e.target.value) })}
-              />
+          {/* === LEASING MODE === */}
+          {state.dronetagAcquisitionType === "leasing" && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Leasing</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Vår leasingkostnad per enhet/mnd (NOK)</Label>
+                  <Input
+                    type="number"
+                    value={state.dronetagLeasingCostPerMonth || ""}
+                    onChange={(e) => updateState({ dronetagLeasingCostPerMonth: num(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Kundepris per enhet/mnd (NOK)</Label>
+                  <Input
+                    type="number"
+                    value={state.dronetagLeasingCustomerPricePerMonth || ""}
+                    onChange={(e) => updateState({ dronetagLeasingCustomerPricePerMonth: num(e.target.value) })}
+                  />
+                </div>
+              </div>
+              {state.dronetagCount > 0 && state.dronetagLeasingCostPerMonth > 0 && (
+                <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+                  <p>Vår månedlige leasingkostnad: <span className="font-semibold">{fmt(state.dronetagLeasingCostPerMonth * state.dronetagCount)} NOK</span></p>
+                  <p>Månedlig inntekt fra kunde: <span className="font-semibold">{fmt(state.dronetagLeasingCustomerPricePerMonth * state.dronetagCount)} NOK</span></p>
+                  <p>Margin: <span className="font-semibold">{fmt((state.dronetagLeasingCustomerPricePerMonth - state.dronetagLeasingCostPerMonth) * state.dronetagCount)} NOK/mnd</span></p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* === PURCHASE MODE === */}
+          {state.dronetagAcquisitionType === "purchase" && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kjøp</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <Label>Innkjøpspris (EUR)</Label>
+                  <Input
+                    type="number"
+                    value={state.dronetagPurchaseCostEur || ""}
+                    onChange={(e) => updateState({ dronetagPurchaseCostEur: num(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Avslag (%)</Label>
+                  <Input
+                    type="number"
+                    value={state.dronetagDiscountPercent || ""}
+                    onChange={(e) => updateState({ dronetagDiscountPercent: num(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Innkjøpspris etter avslag (NOK)</Label>
+                  <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm font-medium">
+                    {fmt(Math.round(dronetagPurchaseNok))} NOK
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-xs">
+                <Label>Kostpris til kunde (NOK)</Label>
+                <Input
+                  type="number"
+                  value={state.dronetagCustomerPrice || ""}
+                  onChange={(e) => updateState({ dronetagCustomerPrice: num(e.target.value) })}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label>Betalingsmodell</Label>
+                <RadioGroup
+                  value={state.dronetagPaymentType}
+                  onValueChange={(v) => updateState({ dronetagPaymentType: v as "installment" | "oneoff" })}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="installment" id={`installment-${activeIndex}`} />
+                    <Label htmlFor={`installment-${activeIndex}`} className="cursor-pointer font-normal">Nedbetaling</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="oneoff" id={`oneoff-${activeIndex}`} />
+                    <Label htmlFor={`oneoff-${activeIndex}`} className="cursor-pointer font-normal">Engangskostnad</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {state.dronetagPaymentType === "installment" && (
+                <div className="max-w-xs">
+                  <Label>Antall måneder nedbetaling</Label>
+                  <Input
+                    type="number"
+                    value={state.dronetagInstallmentMonths || ""}
+                    onChange={(e) => updateState({ dronetagInstallmentMonths: num(e.target.value) })}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -787,6 +860,12 @@ export const RevenueCalculator = () => {
               <span className="text-muted-foreground text-xs sm:text-sm">Inntekt Avisafe-integrasjon</span>
               <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue))} NOK</span>
             </div>
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
+              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing-inntekt ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK)</span>
+                <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK</span>
+              </div>
+            )}
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
               <span>Sum løpende inntekter</span>
@@ -800,14 +879,20 @@ export const RevenueCalculator = () => {
               <span className="text-muted-foreground text-xs sm:text-sm">Kostnad NRI Hours</span>
               <span className="font-medium text-destructive">−{fmt(calc.monthlyNriCost)} NOK</span>
             </div>
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingCost > 0 && (
+              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasingkostnad ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCostPerMonth)} NOK)</span>
+                <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyLeasingCost))} NOK</span>
+              </div>
+            )}
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
               <span>Sum løpende kostnader</span>
               <span className="text-destructive">−{fmt(Math.round(calc.recurringCost))} NOK</span>
             </div>
 
-            {/* === Dronetag hardware === */}
-            {state.dronetagEnabled && (
+            {/* === Dronetag hardware (purchase mode only) === */}
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && (
               <>
                 <div className="pt-2" />
                 {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 ? (
@@ -882,7 +967,13 @@ export const RevenueCalculator = () => {
                 <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
               </div>
             )}
-            {state.dronetagEnabled && calc.monthlyDronetagRevenue > 0 && (
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
+              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth * 1.25))} NOK)</span>
+                <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue * 1.25))} NOK/mnd</span>
+              </div>
+            )}
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && calc.monthlyDronetagRevenue > 0 && (
               <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
                 <span className="text-muted-foreground text-xs sm:text-sm">
                   Dronetag hardware ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice * 1.25))} NOK)
@@ -893,7 +984,7 @@ export const RevenueCalculator = () => {
                 </span>
               </div>
             )}
-            {state.dronetagEnabled && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
               <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
                 <span>Månedlig innbetaling inkl. MVA</span>
                 <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
@@ -910,15 +1001,21 @@ export const RevenueCalculator = () => {
                 ) : (
                   <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
                 )}
-                <span className="text-sm sm:text-lg">{state.dronetagEnabled ? "Netto månedlig (i nedbetalingsperioden)" : "Netto overskudd"}</span>
+                <span className="text-sm sm:text-lg">
+                  {!state.dronetagEnabled
+                    ? "Netto overskudd"
+                    : state.dronetagAcquisitionType === "leasing"
+                      ? "Netto månedlig"
+                      : "Netto månedlig (i nedbetalingsperioden)"}
+                </span>
               </span>
               <span className={`text-right ${calc.netResult >= 0 ? "text-green-500" : "text-destructive"}`}>
                 {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
               </span>
             </div>
 
-            {/* === Etter nedbetaling === */}
-            {state.dronetagEnabled && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && (
+            {/* === Etter nedbetaling (purchase + installment only) === */}
+            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && (
               <div className="flex flex-col sm:flex-row sm:justify-between text-base sm:text-lg font-bold gap-1">
                 <span className="flex items-center gap-2">
                   {calc.netAfterInstallment >= 0 ? (
