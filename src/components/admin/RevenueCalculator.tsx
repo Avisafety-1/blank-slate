@@ -107,17 +107,19 @@ export const RevenueCalculator = () => {
 
   // Load scenarios from database for the selected company
   const loadFromDatabase = useCallback(async (companyKey: string) => {
-    if (companyKey === "custom") {
-      setScenarios(loadScenarios(companyKey));
-      return;
-    }
     setLoadingFromDb(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("revenue_calculator_scenarios")
-        .select("scenarios")
-        .eq("company_id", companyKey)
-        .maybeSingle();
+        .select("scenarios");
+      
+      if (companyKey === "custom") {
+        query = query.is("company_id", null);
+      } else {
+        query = query.eq("company_id", companyKey);
+      }
+      
+      const { data, error } = await query.maybeSingle();
       
       if (error) {
         console.error("Failed to load scenarios from DB:", error);
@@ -181,44 +183,43 @@ export const RevenueCalculator = () => {
   );
 
   const saveScenarios = useCallback(async () => {
-    if (storageKey === "custom") {
-      // Custom mode: save to localStorage only
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
-        setHasUnsavedChanges(false);
-        toast.success("Scenarioer lagret lokalt");
-      } catch {
-        toast.error("Kunne ikke lagre scenarioer");
-      }
-      return;
-    }
-
-    // Save to database
     setSavingToDb(true);
     try {
-      const { data: existing } = await supabase
+      let existingQuery = supabase
         .from("revenue_calculator_scenarios")
-        .select("id")
-        .eq("company_id", storageKey)
-        .maybeSingle();
+        .select("id");
+      
+      if (storageKey === "custom") {
+        existingQuery = existingQuery.is("company_id", null);
+      } else {
+        existingQuery = existingQuery.eq("company_id", storageKey);
+      }
 
+      const { data: existing } = await existingQuery.maybeSingle();
       const { data: { user } } = await supabase.auth.getUser();
 
       if (existing) {
-        const { error } = await supabase
+        let updateQuery = supabase
           .from("revenue_calculator_scenarios")
           .update({
             scenarios: scenarios as any,
             updated_at: new Date().toISOString(),
             updated_by: user?.id,
-          })
-          .eq("company_id", storageKey);
+          });
+        
+        if (storageKey === "custom") {
+          updateQuery = updateQuery.is("company_id", null);
+        } else {
+          updateQuery = updateQuery.eq("company_id", storageKey);
+        }
+        
+        const { error } = await updateQuery;
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("revenue_calculator_scenarios")
           .insert({
-            company_id: storageKey,
+            company_id: storageKey === "custom" ? null : storageKey,
             scenarios: scenarios as any,
             updated_by: user?.id,
           });

@@ -2564,21 +2564,21 @@ export type Database = {
       }
       revenue_calculator_scenarios: {
         Row: {
-          company_id: string
+          company_id: string | null
           id: string
           scenarios: Json
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          company_id: string
+          company_id?: string | null
           id?: string
           scenarios?: Json
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          company_id?: string
+          company_id?: string | null
           id?: string
           scenarios?: Json
           updated_at?: string
@@ -2588,7 +2588,7 @@ export type Database = {
           {
             foreignKeyName: "revenue_calculator_scenarios_company_id_fkey"
             columns: ["company_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
