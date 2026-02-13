@@ -415,11 +415,30 @@ export function PersonCompetencyDialog({
                             id={`affects-status-${competency.id}`}
                             checked={competency.påvirker_status !== false}
                             onCheckedChange={async (checked) => {
+                              setPerson(prev => {
+                                if (!prev) return prev;
+                                return {
+                                  ...prev,
+                                  personnel_competencies: (prev.personnel_competencies || []).map(c =>
+                                    c.id === competency.id ? { ...c, påvirker_status: checked } : c
+                                  ),
+                                };
+                              });
+
                               const { error } = await supabase
                                 .from("personnel_competencies")
                                 .update({ påvirker_status: checked })
                                 .eq("id", competency.id);
                               if (error) {
+                                setPerson(prev => {
+                                  if (!prev) return prev;
+                                  return {
+                                    ...prev,
+                                    personnel_competencies: (prev.personnel_competencies || []).map(c =>
+                                      c.id === competency.id ? { ...c, påvirker_status: !checked } : c
+                                    ),
+                                  };
+                                });
                                 toast({
                                   title: "Feil",
                                   description: "Kunne ikke oppdatere innstilling",
