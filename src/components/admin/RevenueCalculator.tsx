@@ -7,6 +7,7 @@ import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Penci
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -25,6 +26,7 @@ interface CalcState {
     large: TierConfig;
   };
   totalUsers: number;
+  dronetagEnabled: boolean;
   dronetagPurchaseCostEur: number;
   dronetagDiscountPercent: number;
   dronetagCustomerPrice: number;
@@ -55,6 +57,7 @@ const defaultCalcState: CalcState = {
     large: { maxUsers: 999, pricePerUser: 199 },
   },
   totalUsers: 0,
+  dronetagEnabled: true,
   dronetagPurchaseCostEur: 299,
   dronetagDiscountPercent: 20,
   dronetagCustomerPrice: 0,
@@ -251,12 +254,15 @@ export const RevenueCalculator = () => {
 
     const monthlyUserRevenue = totalUsers * pricePerUser;
 
-    const monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
+    let monthlyDronetagCost = 0;
     let monthlyDronetagRevenue = 0;
-    if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
-      monthlyDronetagRevenue = (dronetagCustomerPrice * dronetagCount) / dronetagInstallmentMonths;
-    } else {
-      monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
+    if (state.dronetagEnabled) {
+      monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
+      if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
+        monthlyDronetagRevenue = (dronetagCustomerPrice * dronetagCount) / dronetagInstallmentMonths;
+      } else {
+        monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
+      }
     }
 
     const monthlyNriCost = nriPurchaseCost * state.nriHours;
@@ -464,10 +470,20 @@ export const RevenueCalculator = () => {
       {/* Section 3: Dronetag */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Package className="h-5 w-5 text-primary" />
-            Dronetag-kostnader
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Package className="h-5 w-5 text-primary" />
+              Dronetag-kostnader
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="dronetag-toggle" className="text-sm text-muted-foreground">Inkluder</Label>
+              <Switch
+                id="dronetag-toggle"
+                checked={state.dronetagEnabled}
+                onCheckedChange={(v) => updateState({ dronetagEnabled: v })}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
