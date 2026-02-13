@@ -1965,6 +1965,7 @@ export type Database = {
           mission_complexity_score: number | null
           mission_id: string
           overall_score: number | null
+          pilot_comments: Json | null
           pilot_experience_score: number | null
           pilot_id: string
           pilot_inputs: Json | null
@@ -1983,6 +1984,7 @@ export type Database = {
           mission_complexity_score?: number | null
           mission_id: string
           overall_score?: number | null
+          pilot_comments?: Json | null
           pilot_experience_score?: number | null
           pilot_id: string
           pilot_inputs?: Json | null
@@ -2001,6 +2003,7 @@ export type Database = {
           mission_complexity_score?: number | null
           mission_id?: string
           overall_score?: number | null
+          pilot_comments?: Json | null
           pilot_experience_score?: number | null
           pilot_id?: string
           pilot_inputs?: Json | null

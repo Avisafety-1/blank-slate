@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { AlertOctagon, CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CategoryScore {
   score: number;
@@ -29,6 +30,9 @@ interface RiskScoreCardProps {
   hardStopReason?: string;
   missionOverview?: string;
   assessmentMethod?: string;
+  categoryComments?: Record<string, string>;
+  onCategoryCommentChange?: (category: string, comment: string) => void;
+  readOnly?: boolean;
 }
 
 export const RiskScoreCard = ({ 
@@ -38,7 +42,10 @@ export const RiskScoreCard = ({
   hardStopTriggered,
   hardStopReason,
   missionOverview,
-  assessmentMethod
+  assessmentMethod,
+  categoryComments,
+  onCategoryCommentChange,
+  readOnly
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
@@ -202,6 +209,18 @@ export const RiskScoreCard = ({
                   ))}
                 </div>
               )}
+
+              {/* Manual comment */}
+              <Textarea
+                placeholder={t('riskAssessment.addComment', 'Legg til kommentar...')}
+                value={categoryComments?.[key] || ''}
+                onChange={(e) => onCategoryCommentChange?.(key, e.target.value)}
+                readOnly={readOnly}
+                className={cn(
+                  "mt-2 text-xs min-h-[60px]",
+                  readOnly && "opacity-70 cursor-default"
+                )}
+              />
             </div>
           );
         })}
