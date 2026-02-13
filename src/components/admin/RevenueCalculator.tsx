@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const STORAGE_KEY = "avisafe_revenue_scenarios";
+const STORAGE_KEY_PREFIX = "avisafe_revenue_scenarios_";
 const EUR_TO_NOK = 11.5; // Approximate exchange rate
 
 interface TierConfig {
@@ -41,7 +41,6 @@ interface CalcState {
 
 interface Scenario {
   name: string;
-  selectedCompanyId: string | null;
   state: CalcState;
 }
 
@@ -72,20 +71,19 @@ const defaultCalcState: CalcState = {
 };
 
 const defaultScenarios: Scenario[] = [
-  { name: "Scenario 1", selectedCompanyId: null, state: { ...defaultCalcState } },
-  { name: "Scenario 2", selectedCompanyId: null, state: { ...defaultCalcState } },
-  { name: "Scenario 3", selectedCompanyId: null, state: { ...defaultCalcState } },
+  { name: "Scenario 1", state: { ...defaultCalcState } },
+  { name: "Scenario 2", state: { ...defaultCalcState } },
+  { name: "Scenario 3", state: { ...defaultCalcState } },
 ];
 
-const loadScenarios = (): Scenario[] => {
+const loadScenarios = (companyKey: string): Scenario[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + companyKey);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length === 3) {
         return parsed.map((s: any, i: number) => ({
           name: s.name || `Scenario ${i + 1}`,
-          selectedCompanyId: s.selectedCompanyId ?? null,
           state: { ...defaultCalcState, ...s.state },
         }));
       }
@@ -95,7 +93,9 @@ const loadScenarios = (): Scenario[] => {
 };
 
 export const RevenueCalculator = () => {
-  const [scenarios, setScenarios] = useState<Scenario[]>(loadScenarios);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const storageKey = selectedCompanyId ?? "custom";
+  const [scenarios, setScenarios] = useState<Scenario[]>(() => loadScenarios(storageKey));
   const [activeIndex, setActiveIndex] = useState(0);
   const [editingName, setEditingName] = useState<number | null>(null);
   const [tempName, setTempName] = useState("");
@@ -137,13 +137,13 @@ export const RevenueCalculator = () => {
 
   const saveScenarios = useCallback(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
+      localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
       setHasUnsavedChanges(false);
       toast.success("Scenarioer lagret");
     } catch {
       toast.error("Kunne ikke lagre scenarioer");
     }
-  }, [scenarios]);
+  }, [scenarios, storageKey]);
 
   const updateScenario = useCallback(
     (partial: Partial<Scenario>) => {
@@ -208,17 +208,38 @@ export const RevenueCalculator = () => {
   }, [state.dronetagPurchaseCostEur, state.dronetagDiscountPercent]);
 
   const handleCompanyChange = (value: string) => {
+    // Save current scenarios before switching if there are unsaved changes
+    if (hasUnsavedChanges) {
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
+      } catch {}
+    }
+
+    const newCompanyId = value === "custom" ? null : value;
+    setSelectedCompanyId(newCompanyId);
+    const newKey = newCompanyId ?? "custom";
+    const loaded = loadScenarios(newKey);
+    setScenarios(loaded);
+    setActiveIndex(0);
+    setHasUnsavedChanges(false);
+
+    // Update totalUsers for the first scenario based on selection
     if (value === "custom") {
-      updateScenario({ selectedCompanyId: null });
-      updateState({ totalUsers: 0 });
+      // Keep whatever is saved
     } else if (value === "all") {
-      updateScenario({ selectedCompanyId: "all" });
-      updateState({ totalUsers: totalUsersAllCompanies });
+      setScenarios(prev => {
+        const next = [...prev];
+        next[0] = { ...next[0], state: { ...next[0].state, totalUsers: totalUsersAllCompanies } };
+        return next;
+      });
     } else {
       const company = companies.find((c) => c.id === value);
-      updateScenario({ selectedCompanyId: value });
       if (company) {
-        updateState({ totalUsers: company.userCount });
+        setScenarios(prev => {
+          const next = [...prev];
+          next[0] = { ...next[0], state: { ...next[0].state, totalUsers: company.userCount } };
+          return next;
+        });
       }
     }
   };
@@ -307,9 +328,9 @@ export const RevenueCalculator = () => {
     { key: "large", label: "Stor" },
   ];
 
-  const selectValue = scenario.selectedCompanyId === null
+  const selectValue = selectedCompanyId === null
     ? "custom"
-    : scenario.selectedCompanyId;
+    : selectedCompanyId;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -455,9 +476,9 @@ export const RevenueCalculator = () => {
               type="number"
               value={state.totalUsers || ""}
               onChange={(e) => updateState({ totalUsers: num(e.target.value) })}
-              disabled={scenario.selectedCompanyId !== null}
+              disabled={selectedCompanyId !== null}
             />
-            {scenario.selectedCompanyId !== null && (
+            {selectedCompanyId !== null && (
               <p className="text-xs text-muted-foreground mt-1">
                 Automatisk hentet fra valgt selskap. Velg «Egendefinert» for å endre manuelt.
               </p>
