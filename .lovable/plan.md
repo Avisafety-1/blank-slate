@@ -1,98 +1,62 @@
 
-# Eksporter risikovurdering til PDF
 
-## Oversikt
-Legge til "Eksporter til PDF"-knapp i risikovurderingsdialogen, bade i resultat-fanen (ved siden av "Lagre kommentarer") og i historikk-fanen (per vurdering). PDF-en genereres med samme innhold som vises pa skjermen, og lagres i dokumenter under en ny kategori "risikovurderinger".
+# Fiks: Komplett PDF-eksport av risikovurdering
 
-## Endringer
+## Problem
+PDF-eksporten mangler mye innhold fordi:
+1. **Feil datastruktur**: Koden antar at `categories` er en array, men det er et objekt (`{ weather: {...}, airspace: {...}, ... }`)
+2. **Feil feltnavn**: Koden bruker `positive_factors` men dataen har `factors`
+3. **Manglende felter**: `actual_conditions`, `drone_status`, `experience_summary`, `complexity_factors` vises ikke
+4. **Manglende detaljer i anbefalinger**: `reason` og `risk_addressed` fra anbefalingene vises ikke
+5. **Kategorinavn**: Vises som "weather" istedenfor "Vaer"
 
-### 1. Ny dokumentkategori "risikovurderinger"
-Legge til "risikovurderinger" i alle steder der dokumentkategorier er definert:
+## Losning
+Skrive om `riskAssessmentPdfExport.ts` til a handtere den faktiske datastrukturen, slik at PDF-en inneholder alt som vises pa skjermen:
 
-- **src/pages/Documents.tsx** - Utvide `DocumentCategory`-typen
-- **src/components/documents/DocumentsFilterBar.tsx** - Legge til filter-badge
-- **src/components/documents/DocumentCardModal.tsx** - Legge til i zod-enum og CATEGORIES-listen
-- **src/lib/userManualPdf.ts** - Oppdatere kategorilisten i brukermanualen
+### Endringer i `src/lib/riskAssessmentPdfExport.ts`
 
-### 2. Ny fil: `src/lib/riskAssessmentPdfExport.ts`
-Opprette en ny eksportfunksjon etter same monster som `incidentPdfExport.ts`. Funksjonen tar inn vurderingsdata og genererer en PDF med:
+1. **Kategorier som objekt**: Iterere over `Object.entries(assessment.categories)` istedenfor array
+2. **Norske kategorinavn**: Mappe `weather` -> `Vaer`, `airspace` -> `Luftrom`, osv.
+3. **Riktige feltnavn**: Bruke `factors` og `concerns` (ikke `positive_factors`)
+4. **Kategori-detaljer**: Inkludere `actual_conditions`, `drone_status`, `experience_summary`, `complexity_factors` under hver kategori
+5. **Anbefalingsdetaljer**: Inkludere `reason` og `risk_addressed` for hver anbefaling
+6. **GO-beslutning**: Bruke `go_decision`-feltet riktig (strengverdier "GO", "BETINGET", "NO-GO")
 
-- **Header**: "RISIKOVURDERING" med oppdragstittel og eksporttidspunkt
-- **Oppdragsoversikt**: Hvis tilgjengelig fra AI-analysen
-- **Vurderingsmetode**: Hvis tilgjengelig
-- **Samlet score**: Score og anbefaling (GO/BETINGET/NO-GO)
-- **Kategoriscorer**: Tabell med hver kategori (Vaer, Luftrom, Piloterfaring, etc.) med score, GO-beslutning, positive faktorer, bekymringer, og pilotkommentar
-- **Anbefalte tiltak**: Gruppert etter prioritet (hoy, medium, lav)
-- **Forutsetninger**: Hvis tilgjengelig
-- **AI-forbehold**: Disclaimer-tekst
+### Hva PDF-en vil inneholde (komplett)
+- Header med oppdragstittel og tidspunkt
+- Oppdragsoversikt
+- Vurderingsmetode
+- Samlet score og anbefaling (GO/BETINGET GO/NO-GO)
+- Hard stop-advarsel (hvis relevant)
+- Sammendrag/konklusjon
+- Kategoriscorer-tabell med pilotkommentarer
+- For hver kategori: detaljbeskrivelse, positive faktorer og bekymringer
+- Anbefalte tiltak med begrunnelse, gruppert etter prioritet
+- Forutsetninger
+- AI-forbehold
 
-Funksjonen laster opp til Supabase Storage under `documents`-bucketen og oppretter en dokumentoppforing med kategori "risikovurderinger".
+### Teknisk detalj
 
-### 3. Oppdatere `RiskAssessmentDialog.tsx`
-- Importere eksportfunksjonen og `FileDown`-ikonet
-- Legge til `exportingPdf`-state
-- Legge til `exportToPdf`-funksjon som kaller eksportfunksjonen med current assessment data
-- **Resultat-fanen**: Legge til "Eksporter til PDF"-knapp ved siden av "Lagre kommentarer" (begge i en flex-rad)
-- **Historikk-fanen**: Legge til en liten "Eksporter til PDF"-knapp pa hver historisk vurdering
-
-## Tekniske detaljer
-
-### Ny eksportfunksjon (riskAssessmentPdfExport.ts)
-
-```typescript
-interface RiskExportOptions {
-  assessment: any; // AI-analysedata
-  missionTitle: string;
-  categoryComments: Record<string, string>;
-  companyId: string;
-  userId: string;
-  createdAt?: string;
+Kategoridata i appen:
+```text
+{
+  weather: { score: 8.5, go_decision: "GO", factors: [...], concerns: [...], actual_conditions: "..." },
+  airspace: { score: 7.0, go_decision: "BETINGET", factors: [...], concerns: [...] },
+  pilot_experience: { ... },
+  mission_complexity: { ... },
+  equipment: { ... }
 }
-
-export const exportRiskAssessmentPDF = async (options: RiskExportOptions): Promise<boolean> => {
-  // 1. Opprett PDF med createPdfDocument()
-  // 2. Header med "RISIKOVURDERING" og oppdragstittel
-  // 3. Oppdragsoversikt og vurderingsmetode
-  // 4. Samlet score og anbefaling
-  // 5. Kategoriscorer med autoTable
-  // 6. Pilotkommentarer per kategori
-  // 7. Anbefalte tiltak
-  // 8. Forutsetninger
-  // 9. Last opp til storage og opprett dokumentoppforing
-};
 ```
 
-### Kategori-tabell i PDF
-Bruker `jspdf-autotable` for a vise kategoriscorer:
-
-| Kategori | Score | Beslutning | Kommentar |
-|----------|-------|------------|-----------|
-| Vaer | 8.5/10 | GO | Sjekket lokalt... |
-| Luftrom | 7.0/10 | BETINGET | Kontaktet taarnet... |
-
-Deretter listes faktorer (positive) og bekymringer (negative) under tabellen for hver kategori.
-
-### Knappeplassering
-
-**Resultat-fanen** - Erstatter enkeltknapp med en flex-rad:
-```tsx
-<div className="flex gap-2">
-  <Button onClick={saveComments} ...>Lagre kommentarer</Button>
-  <Button onClick={exportToPdf} ...>Eksporter til PDF</Button>
-</div>
-```
-
-**Historikk-fanen** - Legger til en liten knapp pa hver rad med `e.stopPropagation()` for a unnga a apne vurderingen:
-```tsx
-<Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); exportHistoryItem(assessment); }}>
-  <FileDown className="w-4 h-4" />
-</Button>
+Kategorinavnmapping:
+```text
+weather -> Vaer
+airspace -> Luftrom
+pilot_experience -> Piloterfaring
+mission_complexity -> Oppdragskompleksitet
+equipment -> Utstyr
 ```
 
 ### Filer som endres
-1. `src/lib/riskAssessmentPdfExport.ts` (ny fil)
-2. `src/components/dashboard/RiskAssessmentDialog.tsx` (knapper + eksportlogikk)
-3. `src/pages/Documents.tsx` (ny kategori i type)
-4. `src/components/documents/DocumentsFilterBar.tsx` (ny filter-badge)
-5. `src/components/documents/DocumentCardModal.tsx` (ny kategori i enum + liste)
-6. `src/lib/userManualPdf.ts` (oppdatere kategoriliste)
+Kun 1 fil: `src/lib/riskAssessmentPdfExport.ts`
+
