@@ -475,7 +475,7 @@ export const RevenueCalculator = () => {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Pris/bruker/mnd (NOK)</Label>
+                    <Label className="text-xs">Pris/bruker/mnd</Label>
                     <Input
                       type="number"
                       value={state.tiers[key].pricePerUser || ""}
