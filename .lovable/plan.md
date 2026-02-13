@@ -1,31 +1,57 @@
 
 
-# Legg til UAS operatornummer i profilen
+# Fiks "Påvirker status"-toggle som ikke viser endring
 
-## Hva skal gjores
+## Problem
+Når brukeren trykker på "Påvirker status"-bryteren i visningsmodusen til et kompetansekort, oppdateres databasen korrekt, men den lokale tilstanden oppdateres ikke. Siden `checked`-egenskapen til Switch-komponenten leser fra den lokale `person`-tilstanden, spretter bryteren visuelt tilbake til sin opprinnelige posisjon umiddelbart etter klikk.
 
-Legge til et felt for UAS operatornummer (f.eks. NOR87astrdge12k) i "Min profil"-dialogen, slik at brukere kan registrere sitt operatornummer fra Luftfartstilsynets flydrone-tjeneste.
+## Losning
+Legge til en optimistisk oppdatering av den lokale `person`-tilstanden i `onCheckedChange`-handleren, slik at bryteren visuelt reflekterer endringen umiddelbart.
 
-## Endringer
+## Tekniske detaljer
 
-### 1. Database: Ny kolonne i `profiles`-tabellen
-Legge til en ny nullable tekstkolonne `uas_operator_number` i `profiles`-tabellen via migrering.
+**Fil:** `src/components/resources/PersonCompetencyDialog.tsx`
 
-### 2. Profilside: `src/components/ProfileDialog.tsx`
-- Utvide `Profile`-interfacet med `uas_operator_number: string | null`
-- Legge til et nytt felt i profilskjemaet (i "Basic Info"-grid-seksjonen, etter adresse-feltet) med label "UAS operatornummer"
-- Feltet skal vare redigerbart i redigeringsmodus og vise verdien i visningsmodus
-- Legge til en kort hjelpetekst under feltet som forklarer at dette er nummeret fra Luftfartstilsynets flydrone-tjeneste, og at de siste sifrene er hemmelige og ikke skal tas med i merkingen
-- Inkludere `uas_operator_number` i `handleSaveProfile`-funksjonen sin update-kall
+I `onCheckedChange`-handleren (linje 417-431), legge til optimistisk oppdatering av `person`-state for bryteren viser endringen umiddelbart:
 
-### Tekniske detaljer
+```tsx
+onCheckedChange={async (checked) => {
+  // Optimistisk oppdatering av lokal state
+  setPerson(prev => {
+    if (!prev) return prev;
+    return {
+      ...prev,
+      personnel_competencies: (prev.personnel_competencies || []).map(c =>
+        c.id === competency.id ? { ...c, påvirker_status: checked } : c
+      ),
+    };
+  });
 
-**SQL-migrering:**
-```sql
-ALTER TABLE profiles ADD COLUMN uas_operator_number text;
+  const { error } = await supabase
+    .from("personnel_competencies")
+    .update({ påvirker_status: checked })
+    .eq("id", competency.id);
+  if (error) {
+    // Reverser ved feil
+    setPerson(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        personnel_competencies: (prev.personnel_competencies || []).map(c =>
+          c.id === competency.id ? { ...c, påvirker_status: !checked } : c
+        ),
+      };
+    });
+    toast({
+      title: "Feil",
+      description: "Kunne ikke oppdatere innstilling",
+      variant: "destructive",
+    });
+  } else {
+    onCompetencyUpdated();
+  }
+}}
 ```
 
-**UI-plassering:** Feltet plasseres etter adresse-seksjonen og for signatur-seksjonen i profil-fanen, med en `Separator` mellom.
-
-**Lagring:** Feltet inkluderes i det eksisterende `supabase.from("profiles").update(...)` kallet i `handleSaveProfile`.
+Dette er en enkelt endring i en fil som sikrer at bryteren visuelt oppdateres umiddelbart (optimistisk), og reverserer dersom databaseoppdateringen feiler.
 
