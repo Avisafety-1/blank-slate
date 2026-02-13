@@ -36,6 +36,7 @@ interface CalcState {
   nriPurchaseCost: number;
   nriCustomerPrice: number;
   nriHours: number;
+  dronetagIntegrationCostPerUnit: number;
 }
 
 interface Scenario {
@@ -67,6 +68,7 @@ const defaultCalcState: CalcState = {
   nriPurchaseCost: 0,
   nriCustomerPrice: 0,
   nriHours: 0,
+  dronetagIntegrationCostPerUnit: 0,
 };
 
 const defaultScenarios: Scenario[] = [
@@ -265,6 +267,11 @@ export const RevenueCalculator = () => {
       }
     }
 
+    let monthlyIntegrationCost = 0;
+    if (state.dronetagEnabled) {
+      monthlyIntegrationCost = state.dronetagIntegrationCostPerUnit * dronetagCount;
+    }
+
     let monthlyNriCost = 0;
     let monthlyNriRevenue = 0;
     if (state.dronetagEnabled) {
@@ -273,7 +280,7 @@ export const RevenueCalculator = () => {
     }
 
     const totalRevenue = monthlyUserRevenue + monthlyDronetagRevenue + monthlyNriRevenue;
-    const totalCost = monthlyDronetagCost + monthlyNriCost;
+    const totalCost = monthlyDronetagCost + monthlyIntegrationCost + monthlyNriCost;
     const netResult = totalRevenue - totalCost;
 
     return {
@@ -282,6 +289,7 @@ export const RevenueCalculator = () => {
       monthlyUserRevenue,
       monthlyDronetagCost,
       monthlyDronetagRevenue,
+      monthlyIntegrationCost,
       monthlyNriCost,
       monthlyNriRevenue,
       totalRevenue,
@@ -565,6 +573,26 @@ export const RevenueCalculator = () => {
 
           <Separator />
 
+          {/* Dronetag Avisafe integrasjon sub-section */}
+          <div>
+            <Label className="text-sm font-semibold">Dronetag Avisafe-integrasjon</Label>
+          </div>
+          <div className="max-w-xs">
+            <Label>Kostnad per Dronetag/mnd (NOK)</Label>
+            <Input
+              type="number"
+              value={state.dronetagIntegrationCostPerUnit || ""}
+              onChange={(e) => updateState({ dronetagIntegrationCostPerUnit: num(e.target.value) })}
+            />
+            {state.dronetagCount > 0 && state.dronetagIntegrationCostPerUnit > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {state.dronetagCount} stk × {fmt(state.dronetagIntegrationCostPerUnit)} NOK = {fmt(state.dronetagIntegrationCostPerUnit * state.dronetagCount)} NOK/mnd
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
           {/* NRI Hours sub-section */}
           <div>
             <Label className="text-sm font-semibold">NRI Hours</Label>
@@ -631,6 +659,10 @@ export const RevenueCalculator = () => {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Kostnad Dronetag (per stk: {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
               <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyDronetagCost))} NOK</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Kostnad Avisafe-integrasjon</span>
+              <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyIntegrationCost))} NOK</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Kostnad NRI Hours</span>
