@@ -452,27 +452,36 @@ export const RevenueCalculator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {tierRows.map(({ key, label }) => (
-              <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-end">
-                <div>
-                  <Label className="text-xs text-muted-foreground">{label}</Label>
+              <div key={key} className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                    {label}
+                  </span>
+                  {state.tiers[key].maxUsers > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      (opptil {state.tiers[key].maxUsers} brukere)
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <Label className="text-xs">Maks brukere</Label>
-                  <Input
-                    type="number"
-                    value={state.tiers[key].maxUsers || ""}
-                    onChange={(e) => updateTier(key, "maxUsers", num(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Pris/bruker/mnd (NOK)</Label>
-                  <Input
-                    type="number"
-                    value={state.tiers[key].pricePerUser || ""}
-                    onChange={(e) => updateTier(key, "pricePerUser", num(e.target.value))}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Maks brukere</Label>
+                    <Input
+                      type="number"
+                      value={state.tiers[key].maxUsers || ""}
+                      onChange={(e) => updateTier(key, "maxUsers", num(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Pris/bruker/mnd (NOK)</Label>
+                    <Input
+                      type="number"
+                      value={state.tiers[key].pricePerUser || ""}
+                      onChange={(e) => updateTier(key, "pricePerUser", num(e.target.value))}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
