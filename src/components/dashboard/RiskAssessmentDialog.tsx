@@ -402,6 +402,16 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               <ScrollArea className="h-[calc(90vh-220px)]">
                 {currentAssessment && (
                   <div className="space-y-6 pr-4">
+                    {/* AI Disclaimer */}
+                    <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-foreground">
+                          AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget.
+                        </p>
+                      </div>
+                    </div>
+
                     {/* Summary */}
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm">{currentAssessment.summary}</p>
