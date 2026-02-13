@@ -307,9 +307,14 @@ export const RevenueCalculator = () => {
     // Recurring costs (continues after installment period)
     const recurringCost = monthlyNriCost;
 
-    // Dronetag hardware: separate one-time/installment calculation
-    const totalRevenue = recurringRevenue + monthlyDronetagRevenue;
-    const totalCost = recurringCost + monthlyDronetagCost;
+    // Monthly Dronetag customer payment (spread if installment, full if upfront)
+    const monthlyDronetagCustomerPayment = (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0)
+      ? monthlyDronetagRevenue / dronetagInstallmentMonths
+      : 0; // upfront: not a monthly stream
+
+    // Total monthly during installment: recurring + monthly customer payment
+    const totalRevenue = recurringRevenue + monthlyDronetagCustomerPayment;
+    const totalCost = recurringCost;
     const netResult = totalRevenue - totalCost;
 
     // After installment period: no more Dronetag hardware cost/revenue
