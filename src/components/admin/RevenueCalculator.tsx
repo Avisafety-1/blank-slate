@@ -33,6 +33,7 @@ interface CalcState {
   dronetagCount: number;
   nriPurchaseCost: number;
   nriCustomerPrice: number;
+  nriHours: number;
 }
 
 interface Scenario {
@@ -62,6 +63,7 @@ const defaultCalcState: CalcState = {
   dronetagCount: 0,
   nriPurchaseCost: 0,
   nriCustomerPrice: 0,
+  nriHours: 0,
 };
 
 const defaultScenarios: Scenario[] = [
@@ -257,8 +259,8 @@ export const RevenueCalculator = () => {
       monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
     }
 
-    const monthlyNriCost = nriPurchaseCost;
-    const monthlyNriRevenue = nriCustomerPrice;
+    const monthlyNriCost = nriPurchaseCost * state.nriHours;
+    const monthlyNriRevenue = nriCustomerPrice * state.nriHours;
 
     const totalRevenue = monthlyUserRevenue + monthlyDronetagRevenue + monthlyNriRevenue;
     const totalCost = monthlyDronetagCost + monthlyNriCost;
@@ -552,9 +554,17 @@ export const RevenueCalculator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <Label>Innkjøpspris NRI Hours (NOK)</Label>
+              <Label>Stipulert forbruk (timer)</Label>
+              <Input
+                type="number"
+                value={state.nriHours || ""}
+                onChange={(e) => updateState({ nriHours: num(e.target.value) })}
+              />
+            </div>
+            <div>
+              <Label>Innkjøpspris per time (NOK)</Label>
               <Input
                 type="number"
                 value={state.nriPurchaseCost || ""}
@@ -562,7 +572,7 @@ export const RevenueCalculator = () => {
               />
             </div>
             <div>
-              <Label>Kostpris til kunde (NOK)</Label>
+              <Label>Kostpris til kunde per time (NOK)</Label>
               <Input
                 type="number"
                 value={state.nriCustomerPrice || ""}
