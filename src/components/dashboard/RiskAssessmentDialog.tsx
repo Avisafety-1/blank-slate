@@ -274,7 +274,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5" />
@@ -511,32 +511,34 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Save comments button */}
                     {currentAssessmentId && (
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           onClick={saveComments}
                           disabled={savingComments}
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 min-w-0"
+                          size="sm"
                         >
                           {savingComments ? (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           ) : (
-                            <Save className="w-4 h-4 mr-2" />
+                            <Save className="w-4 h-4 mr-2 flex-shrink-0" />
                           )}
-                          {t('riskAssessment.saveComments', 'Lagre kommentarer')}
+                          <span className="truncate">{t('riskAssessment.saveComments', 'Lagre kommentarer')}</span>
                         </Button>
                         <Button
                           onClick={() => exportToPdf(currentAssessment, categoryComments)}
                           disabled={exportingPdf}
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 min-w-0"
+                          size="sm"
                         >
                           {exportingPdf ? (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           ) : (
-                            <FileDown className="w-4 h-4 mr-2" />
+                            <FileDown className="w-4 h-4 mr-2 flex-shrink-0" />
                           )}
-                          Eksporter til PDF
+                          <span className="truncate">Eksporter til PDF</span>
                         </Button>
                       </div>
                     )}
