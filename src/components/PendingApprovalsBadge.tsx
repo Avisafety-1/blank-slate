@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PendingApprovalsBadgeProps {
   isAdmin: boolean;
@@ -8,9 +9,10 @@ interface PendingApprovalsBadgeProps {
 
 export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) => {
   const [pendingCount, setPendingCount] = useState(0);
+  const { companyId } = useAuth();
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || !companyId) return;
 
     const fetchPendingCount = async () => {
       try {
@@ -18,7 +20,8 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
         const { data } = await supabase
           .from("profiles")
           .select("id")
-          .eq("approved", false);
+          .eq("approved", false)
+          .eq("company_id", companyId);
         
         if (data) {
           setPendingCount(data.length);
@@ -49,7 +52,7 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAdmin]);
+  }, [isAdmin, companyId]);
 
   if (!isAdmin || pendingCount === 0) return null;
 

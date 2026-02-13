@@ -43,10 +43,12 @@ export const AddPersonnelToDroneDialog = ({
   }, [open, companyId, existingPersonnelIds]);
 
   const fetchAvailablePersonnel = async () => {
+    if (!companyId) return;
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, email, tittel")
       .eq("approved", true)
+      .eq("company_id", companyId)
       .order("full_name");
 
     if (error) {
