@@ -300,9 +300,18 @@ export const RevenueCalculator = () => {
       monthlyNriRevenue = nriCustomerPrice * state.nriHours;
     }
 
-    const totalRevenue = monthlyUserRevenue + monthlyDronetagRevenue + monthlyNriRevenue + monthlyIntegrationRevenue;
-    const totalCost = monthlyDronetagCost + monthlyNriCost;
+    // Recurring revenue (continues after installment period)
+    const recurringRevenue = monthlyUserRevenue + monthlyNriRevenue + monthlyIntegrationRevenue;
+    // Recurring costs (continues after installment period)
+    const recurringCost = monthlyNriCost;
+
+    // Dronetag hardware: separate one-time/installment calculation
+    const totalRevenue = recurringRevenue + monthlyDronetagRevenue;
+    const totalCost = recurringCost + monthlyDronetagCost;
     const netResult = totalRevenue - totalCost;
+
+    // After installment period: no more Dronetag hardware cost/revenue
+    const netAfterInstallment = recurringRevenue - recurringCost;
 
     return {
       tierLabel,
@@ -313,9 +322,12 @@ export const RevenueCalculator = () => {
       monthlyIntegrationRevenue,
       monthlyNriCost,
       monthlyNriRevenue,
+      recurringRevenue,
+      recurringCost,
       totalRevenue,
       totalCost,
       netResult,
+      netAfterInstallment,
     };
   }, [state, dronetagPurchaseNok]);
 
@@ -660,13 +672,11 @@ export const RevenueCalculator = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
+            {/* === Løpende inntekter === */}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende inntekter</p>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Inntekt brukerlisenser</span>
+              <span className="text-muted-foreground">Brukerlisensinntekt ({state.totalUsers} brukere × {fmt(calc.pricePerUser)} NOK)</span>
               <span className="font-medium">{fmt(calc.monthlyUserRevenue)} NOK</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Inntekt Dronetag</span>
-              <span className="font-medium">{fmt(calc.monthlyDronetagRevenue)} NOK</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Inntekt NRI Hours</span>
@@ -678,29 +688,54 @@ export const RevenueCalculator = () => {
             </div>
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
-              <span>Total inntekt</span>
-              <span className="text-primary">{fmt(calc.totalRevenue)} NOK</span>
+              <span>Sum løpende inntekter</span>
+              <span className="text-primary">{fmt(Math.round(calc.recurringRevenue))} NOK</span>
             </div>
 
+            {/* === Løpende kostnader === */}
             <div className="pt-2" />
-
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Kostnad Dronetag (per stk: {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
-              <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyDronetagCost))} NOK</span>
-            </div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende kostnader</p>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Kostnad NRI Hours</span>
               <span className="font-medium text-destructive">−{fmt(calc.monthlyNriCost)} NOK</span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
-              <span>Total kostnad</span>
-              <span className="text-destructive">−{fmt(Math.round(calc.totalCost))} NOK</span>
+              <span>Sum løpende kostnader</span>
+              <span className="text-destructive">−{fmt(Math.round(calc.recurringCost))} NOK</span>
             </div>
 
+            {/* === Dronetag engangskostnad / nedbetaling === */}
+            {state.dronetagEnabled && (
+              <>
+                <div className="pt-2" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Dronetag engangskostnad / nedbetaling
+                  {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0
+                    ? ` (${state.dronetagInstallmentMonths} mnd)`
+                    : " (engangsbetaling)"}
+                </p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dronetag kundepris ({state.dronetagCount} stk)</span>
+                  <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK/mnd</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dronetag innkjøpskostnad (per stk: {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+                  <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyDronetagCost))} NOK/mnd</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Netto Dronetag nedbetaling</span>
+                  <span className={calc.monthlyDronetagRevenue - calc.monthlyDronetagCost >= 0 ? "text-primary" : "text-destructive"}>
+                    {fmt(Math.round(calc.monthlyDronetagRevenue - calc.monthlyDronetagCost))} NOK/mnd
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* === Totalt === */}
             <div className="pt-2" />
             <Separator className="bg-primary/30" />
-
             <div className="flex justify-between text-lg font-bold">
               <span className="flex items-center gap-2">
                 {calc.netResult >= 0 ? (
@@ -708,12 +743,29 @@ export const RevenueCalculator = () => {
                 ) : (
                   <TrendingDown className="h-5 w-5 text-destructive" />
                 )}
-                Netto månedlig resultat
+                Netto månedlig (i nedbetalingsperioden)
               </span>
               <span className={calc.netResult >= 0 ? "text-green-500" : "text-destructive"}>
                 {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
               </span>
             </div>
+
+            {/* === Etter nedbetaling === */}
+            {state.dronetagEnabled && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && (
+              <div className="flex justify-between text-lg font-bold">
+                <span className="flex items-center gap-2">
+                  {calc.netAfterInstallment >= 0 ? (
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-5 w-5 text-destructive" />
+                  )}
+                  Netto månedlig (etter nedbetaling)
+                </span>
+                <span className={calc.netAfterInstallment >= 0 ? "text-green-500" : "text-destructive"}>
+                  {calc.netAfterInstallment >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netAfterInstallment)))} NOK
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
