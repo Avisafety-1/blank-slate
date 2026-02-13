@@ -1,6 +1,5 @@
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createPdfDocument,
@@ -21,6 +20,46 @@ interface RiskExportOptions {
   companyId: string;
   userId: string;
   createdAt?: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  weather: "Vær",
+  airspace: "Luftrom",
+  pilot_experience: "Piloterfaring",
+  mission_complexity: "Oppdragskompleksitet",
+  equipment: "Utstyr",
+  regulatory: "Regelverk",
+  environment: "Miljø",
+  population: "Befolkning",
+  terrain: "Terreng",
+  communications: "Kommunikasjon",
+};
+
+const GO_LABELS: Record<string, string> = {
+  GO: "GO",
+  BETINGET: "BETINGET GO",
+  "NO-GO": "NO-GO",
+  go: "GO",
+  caution: "BETINGET GO",
+  "no-go": "NO-GO",
+};
+
+function getCategoryLabel(key: string): string {
+  return CATEGORY_LABELS[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function getGoLabel(decision: any): string {
+  if (typeof decision === "boolean") return decision ? "GO" : "IKKE GO";
+  if (typeof decision === "string") return GO_LABELS[decision] || decision;
+  return "N/A";
+}
+
+function getCategoryEntries(categories: any): [string, any][] {
+  if (!categories) return [];
+  if (Array.isArray(categories)) {
+    return categories.map((cat: any) => [cat.name || cat.category || "", cat]);
+  }
+  return Object.entries(categories);
 }
 
 export const exportRiskAssessmentPDF = async ({
@@ -84,12 +123,7 @@ export const exportRiskAssessmentPDF = async ({
     yPos = addSectionHeader(doc, "SAMLET VURDERING", yPos);
     doc.setFontSize(10);
     setFontStyle(doc, "bold");
-    const recLabel =
-      assessment.recommendation === "go"
-        ? "GO"
-        : assessment.recommendation === "caution"
-        ? "BETINGET GO"
-        : "NO-GO";
+    const recLabel = getGoLabel(assessment.recommendation);
     doc.text(
       `Score: ${assessment.overall_score?.toFixed(1) || "N/A"}/10 - ${recLabel}`,
       14,
@@ -123,15 +157,16 @@ export const exportRiskAssessmentPDF = async ({
     }
 
     // Category scores table
-    if (assessment.categories && assessment.categories.length > 0) {
+    const catEntries = getCategoryEntries(assessment.categories);
+    if (catEntries.length > 0) {
       yPos = checkPageBreak(doc, yPos, 50);
       yPos = addSectionHeader(doc, "KATEGORISCORER", yPos);
 
-      const tableBody = assessment.categories.map((cat: any) => [
-        sanitizeForPdf(cat.name || cat.category || ""),
+      const tableBody = catEntries.map(([key, cat]: [string, any]) => [
+        sanitizeForPdf(getCategoryLabel(key)),
         `${cat.score?.toFixed(1) || "N/A"}/10`,
-        cat.go_decision ? "GO" : "IKKE GO",
-        sanitizeForPdf(categoryComments[cat.name || cat.category] || ""),
+        getGoLabel(cat.go_decision),
+        sanitizeForPdf(categoryComments[key] || ""),
       ]);
 
       autoTable(doc, {
@@ -150,12 +185,19 @@ export const exportRiskAssessmentPDF = async ({
 
       yPos = (doc as any).lastAutoTable?.finalY + 10 || yPos + 40;
 
-      // Category details (factors/concerns)
-      for (const cat of assessment.categories) {
-        const catName = cat.name || cat.category || "";
-        const hasFactors =
-          cat.positive_factors?.length > 0 || cat.concerns?.length > 0;
-        if (!hasFactors) continue;
+      // Category details
+      for (const [key, cat] of catEntries) {
+        const catName = getCategoryLabel(key);
+        const hasContent =
+          cat.factors?.length > 0 ||
+          cat.positive_factors?.length > 0 ||
+          cat.concerns?.length > 0 ||
+          cat.actual_conditions ||
+          cat.drone_status ||
+          cat.experience_summary ||
+          cat.complexity_factors;
+
+        if (!hasContent) continue;
 
         yPos = checkPageBreak(doc, yPos, 30);
         doc.setFontSize(10);
@@ -166,20 +208,57 @@ export const exportRiskAssessmentPDF = async ({
         setFontStyle(doc, "normal");
         doc.setFontSize(9);
 
-        if (cat.positive_factors?.length > 0) {
-          for (const factor of cat.positive_factors) {
+        // Extra detail fields
+        const detailFields: [string, string | undefined][] = [
+          ["Faktiske forhold", cat.actual_conditions],
+          ["Dronestatus", cat.drone_status],
+          ["Erfaringssammendrag", cat.experience_summary],
+          ["Kompleksitetsfaktorer", cat.complexity_factors],
+        ];
+
+        for (const [label, value] of detailFields) {
+          if (!value) continue;
+          yPos = checkPageBreak(doc, yPos, 12);
+          setFontStyle(doc, "bold");
+          doc.text(`${label}:`, 18, yPos);
+          yPos += 5;
+          setFontStyle(doc, "normal");
+          const lines = doc.splitTextToSize(sanitizeForPdf(value), pageWidth - 36);
+          doc.text(lines, 22, yPos);
+          yPos += lines.length * 5 + 3;
+        }
+
+        // Positive factors
+        const factors = cat.factors || cat.positive_factors || [];
+        if (factors.length > 0) {
+          yPos = checkPageBreak(doc, yPos, 10);
+          setFontStyle(doc, "bold");
+          doc.text("Positive faktorer:", 18, yPos);
+          yPos += 5;
+          setFontStyle(doc, "normal");
+          for (const factor of factors) {
             yPos = checkPageBreak(doc, yPos, 8);
-            doc.text(`+ ${sanitizeForPdf(factor)}`, 18, yPos);
-            yPos += 5;
+            const lines = doc.splitTextToSize(`+ ${sanitizeForPdf(factor)}`, pageWidth - 36);
+            doc.text(lines, 22, yPos);
+            yPos += lines.length * 5;
           }
         }
+
+        // Concerns
         if (cat.concerns?.length > 0) {
+          yPos = checkPageBreak(doc, yPos, 10);
+          setFontStyle(doc, "bold");
+          doc.text("Bekymringer:", 18, yPos);
+          yPos += 5;
+          setFontStyle(doc, "normal");
           for (const concern of cat.concerns) {
             yPos = checkPageBreak(doc, yPos, 8);
-            doc.text(`- ${sanitizeForPdf(concern)}`, 18, yPos);
-            yPos += 5;
+            const lines = doc.splitTextToSize(`- ${sanitizeForPdf(concern)}`, pageWidth - 36);
+            doc.text(lines, 22, yPos);
+            yPos += lines.length * 5;
           }
         }
+
         yPos += 4;
       }
     }
@@ -193,7 +272,7 @@ export const exportRiskAssessmentPDF = async ({
 
       const priorityOrder = ["high", "medium", "low"];
       const priorityLabels: Record<string, string> = {
-        high: "Hoy",
+        high: "Høy",
         medium: "Medium",
         low: "Lav",
       };
@@ -211,13 +290,40 @@ export const exportRiskAssessmentPDF = async ({
         setFontStyle(doc, "normal");
 
         for (const item of items) {
-          yPos = checkPageBreak(doc, yPos, 8);
+          yPos = checkPageBreak(doc, yPos, 15);
+          const actionText = item.action || item.text || (typeof item === "string" ? item : "");
           const lines = doc.splitTextToSize(
-            `- ${sanitizeForPdf(item.action || item.text || item)}`,
+            `- ${sanitizeForPdf(actionText)}`,
             pageWidth - 32
           );
           doc.text(lines, 18, yPos);
           yPos += lines.length * 5;
+
+          // Reason
+          if (item.reason) {
+            doc.setTextColor(80);
+            const reasonLines = doc.splitTextToSize(
+              `Begrunnelse: ${sanitizeForPdf(item.reason)}`,
+              pageWidth - 40
+            );
+            doc.text(reasonLines, 22, yPos);
+            yPos += reasonLines.length * 5;
+            doc.setTextColor(0);
+          }
+
+          // Risk addressed
+          if (item.risk_addressed) {
+            doc.setTextColor(80);
+            const riskLines = doc.splitTextToSize(
+              `Adresserer risiko: ${sanitizeForPdf(item.risk_addressed)}`,
+              pageWidth - 40
+            );
+            doc.text(riskLines, 22, yPos);
+            yPos += riskLines.length * 5;
+            doc.setTextColor(0);
+          }
+
+          yPos += 2;
         }
         yPos += 3;
       }
@@ -254,7 +360,7 @@ export const exportRiskAssessmentPDF = async ({
     setFontStyle(doc, "normal");
     const disclaimer =
       assessment.ai_disclaimer ||
-      "AI risikovurdering kan brukes som beslutningsstotte. Det er alltid pilot-in-command som selv ma vurdere risikoen knyttet til oppdraget.";
+      "AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid pilot-in-command som selv må vurdere risikoen knyttet til oppdraget.";
     const disclaimerLines = doc.splitTextToSize(
       sanitizeForPdf(disclaimer),
       pageWidth - 28
