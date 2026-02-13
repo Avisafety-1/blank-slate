@@ -1,42 +1,36 @@
 
-# Scenarioer og selskapsvelger for kalkulatoren
 
-## Oversikt
-Utvide kalkulatoren med to nye funksjoner:
-1. **3 lagrede scenarioer** - Mulighet til aa lagre, bytte mellom og navngi 3 ulike beregningsscenarioer
-2. **Selskapsvelger** - Nedtrekksmeny som henter alle selskaper fra databasen og automatisk fyller inn antall brukere
+# Fikse "Utsteder"-feltet i dokumenter
 
-## Hva som endres
+## Problem
+Når systemgenererte dokumenter (PDF-rapporter, KMZ-eksporter, statistikkrapporter) opprettes, settes `opprettet_av`-feltet til brukerens UUID (`user?.id`) i stedet for brukerens navn. Dokumentwidgeten viser dette feltet som "Utsteder", noe som gir et kryptisk UUID i stedet for et lesbart personnavn.
 
-### Ny toppseksjon i kalkulatoren
-- **Scenariovelger**: Tre knapper/faner (Scenario 1, 2, 3) med mulighet til aa gi hvert scenario et egendefinert navn
-- **Selskapsvelger**: En nedtrekksmeny som lister alle selskaper. Naar et selskap velges, hentes antall brukere automatisk fra databasen og fylles inn. Alle beregninger oppdateres umiddelbart.
-- Man kan ogsaa velge "Alle selskaper" for aa se totalt antall brukere paa tvers, eller "Egendefinert" for aa skrive inn manuelt
+## Berørte filer og endringer
 
-### Lagring
-- Alle 3 scenarioer lagres i localStorage (som i dag, men utvidet struktur)
-- Hvert scenario inneholder: navn, valgt selskap, og alle kalkulatorfelt
+### 1. `src/pages/Oppdrag.tsx` (2 steder)
+- **Linje ~604**: KMZ-eksport -- endre `opprettet_av: user?.id` til brukerens fulle navn
+- **Linje ~1239**: PDF-eksport -- samme endring
 
-## Teknisk plan
+For begge steder: hent brukerens `full_name` fra `profiles`-tabellen og bruk det i stedet for UUID-en.
 
-### Endringer i `src/components/admin/RevenueCalculator.tsx`
+### 2. `src/pages/Status.tsx` (2 steder)
+- **Linje ~554**: Excel-rapport eksport
+- **Linje ~953**: PDF-rapport eksport
 
-**Ny datastruktur:**
-```text
-interface Scenario {
-  name: string;            // Egendefinert navn, f.eks. "Optimistisk"
-  selectedCompanyId: string | null;  // null = egendefinert
-  state: CalcState;        // Eksisterende kalkulatortilstand
-}
+Samme fix: bruk `full_name` fra profilen i stedet for `user?.id`.
 
-// 3 scenarioer lagres i localStorage
-```
+### 3. `src/lib/incidentPdfExport.ts`
+- Denne filen setter ikke `opprettet_av` i det hele tatt ved dokument-insert (linje ~140-155). Legge til `opprettet_av` med brukerens navn. Siden funksjonen allerede mottar `userId`, hentes `full_name` fra profiltabellen.
 
-**Ny funksjonalitet:**
-1. Importere `supabase` for aa hente selskaper og brukerantall
-2. `useEffect` som henter alle selskaper med brukerantall ved oppstart
-3. Scenariofaner med redigerbare navn (klikk for aa endre navn)
-4. Select-komponent for selskapsvelger som automatisk setter `totalUsers`
-5. Naar selskap velges: kjoer spoorring for aa telle brukere i det selskapet og oppdater feltet
+## Teknisk tilnærming
 
-**Ingen nye filer eller database-endringer** - alt er klientside med eksisterende Supabase-sporringer.
+I hver fil der `opprettet_av: user?.id` brukes, gjøres følgende:
+1. Spør `profiles`-tabellen med `supabase.from('profiles').select('full_name').eq('id', userId).single()`
+2. Bruk `profile?.full_name || user?.email || 'Ukjent'` som fallback-kjede
+3. Sett `opprettet_av` til dette navnet
+
+Dette følger eksisterende mønster i kodebasen (f.eks. `StartFlightDialog.tsx` linje 339-346 gjør allerede dette).
+
+## Eksisterende dokumenter
+Dokumenter som allerede er opprettet med UUID vil fortsatt vise UUID. For å fikse disse kan man eventuelt kjøre en engangs SQL-oppdatering, men det er valgfritt.
+
