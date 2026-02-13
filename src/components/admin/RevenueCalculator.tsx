@@ -3,13 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "avisafe_revenue_scenarios";
+const EUR_TO_NOK = 11.5; // Approximate exchange rate
 
 interface TierConfig {
   maxUsers: number;
@@ -23,7 +25,8 @@ interface CalcState {
     large: TierConfig;
   };
   totalUsers: number;
-  dronetagPurchaseCost: number;
+  dronetagPurchaseCostEur: number;
+  dronetagDiscountPercent: number;
   dronetagCustomerPrice: number;
   dronetagPaymentType: "installment" | "oneoff";
   dronetagInstallmentMonths: number;
@@ -34,7 +37,7 @@ interface CalcState {
 
 interface Scenario {
   name: string;
-  selectedCompanyId: string | null; // null = custom, "all" = all companies
+  selectedCompanyId: string | null;
   state: CalcState;
 }
 
@@ -51,7 +54,8 @@ const defaultCalcState: CalcState = {
     large: { maxUsers: 999, pricePerUser: 199 },
   },
   totalUsers: 0,
-  dronetagPurchaseCost: 0,
+  dronetagPurchaseCostEur: 299,
+  dronetagDiscountPercent: 20,
   dronetagCustomerPrice: 0,
   dronetagPaymentType: "installment",
   dronetagInstallmentMonths: 12,
@@ -90,16 +94,10 @@ export const RevenueCalculator = () => {
   const [tempName, setTempName] = useState("");
   const [companies, setCompanies] = useState<CompanyWithUsers[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const scenario = scenarios[activeIndex];
   const state = scenario.state;
-
-  // Persist scenarios
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
-    } catch {}
-  }, [scenarios]);
 
   // Fetch companies with user counts via edge function (bypasses RLS)
   useEffect(() => {
@@ -107,9 +105,7 @@ export const RevenueCalculator = () => {
       setLoadingCompanies(true);
       try {
         const { data, error } = await supabase.functions.invoke("count-all-users", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ breakdown: true }),
+          body: { breakdown: true },
         });
 
         if (error || !data) {
@@ -132,6 +128,16 @@ export const RevenueCalculator = () => {
     [companies]
   );
 
+  const saveScenarios = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
+      setHasUnsavedChanges(false);
+      toast.success("Scenarioer lagret");
+    } catch {
+      toast.error("Kunne ikke lagre scenarioer");
+    }
+  }, [scenarios]);
+
   const updateScenario = useCallback(
     (partial: Partial<Scenario>) => {
       setScenarios((prev) => {
@@ -139,6 +145,7 @@ export const RevenueCalculator = () => {
         next[activeIndex] = { ...next[activeIndex], ...partial };
         return next;
       });
+      setHasUnsavedChanges(true);
     },
     [activeIndex]
   );
@@ -153,6 +160,7 @@ export const RevenueCalculator = () => {
         };
         return next;
       });
+      setHasUnsavedChanges(true);
     },
     [activeIndex]
   );
@@ -161,7 +169,7 @@ export const RevenueCalculator = () => {
     tier: "small" | "medium" | "large",
     field: keyof TierConfig,
     value: number
-  ) =>
+  ) => {
     setScenarios((prev) => {
       const next = [...prev];
       const s = next[activeIndex];
@@ -177,11 +185,20 @@ export const RevenueCalculator = () => {
       };
       return next;
     });
+    setHasUnsavedChanges(true);
+  };
 
   const num = (v: string) => {
     const n = parseFloat(v);
     return isNaN(n) ? 0 : n;
   };
+
+  // Dronetag purchase cost in NOK after discount
+  const dronetagPurchaseNok = useMemo(() => {
+    const baseNok = state.dronetagPurchaseCostEur * EUR_TO_NOK;
+    const discount = state.dronetagDiscountPercent / 100;
+    return baseNok * (1 - discount);
+  }, [state.dronetagPurchaseCostEur, state.dronetagDiscountPercent]);
 
   const handleCompanyChange = (value: string) => {
     if (value === "custom") {
@@ -211,13 +228,14 @@ export const RevenueCalculator = () => {
         next[editingName] = { ...next[editingName], name: tempName.trim() };
         return next;
       });
+      setHasUnsavedChanges(true);
     }
     setEditingName(null);
   };
 
   // Calculations
   const calc = useMemo(() => {
-    const { tiers, totalUsers, dronetagPurchaseCost, dronetagCustomerPrice, dronetagPaymentType, dronetagInstallmentMonths, dronetagCount, nriPurchaseCost, nriCustomerPrice } = state;
+    const { tiers, totalUsers, dronetagCustomerPrice, dronetagPaymentType, dronetagInstallmentMonths, dronetagCount, nriPurchaseCost, nriCustomerPrice } = state;
 
     let pricePerUser = tiers.large.pricePerUser;
     let tierLabel = "Stor";
@@ -231,7 +249,7 @@ export const RevenueCalculator = () => {
 
     const monthlyUserRevenue = totalUsers * pricePerUser;
 
-    const monthlyDronetagCost = dronetagPurchaseCost * dronetagCount;
+    const monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
     let monthlyDronetagRevenue = 0;
     if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
       monthlyDronetagRevenue = (dronetagCustomerPrice * dronetagCount) / dronetagInstallmentMonths;
@@ -258,7 +276,7 @@ export const RevenueCalculator = () => {
       totalCost,
       netResult,
     };
-  }, [state]);
+  }, [state, dronetagPurchaseNok]);
 
   const fmt = (n: number) =>
     n.toLocaleString("nb-NO", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -278,7 +296,19 @@ export const RevenueCalculator = () => {
       {/* Scenario selector */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Scenarioer</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base sm:text-lg">Scenarioer</CardTitle>
+            <Button
+              size="sm"
+              onClick={saveScenarios}
+              className="gap-1.5"
+              variant={hasUnsavedChanges ? "default" : "outline"}
+            >
+              <Save className="h-4 w-4" />
+              Lagre
+              {hasUnsavedChanges && <span className="ml-1 h-2 w-2 rounded-full bg-background" />}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -438,21 +468,46 @@ export const RevenueCalculator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <Label>Innkjøpskostnad per Dronetag (NOK)</Label>
+              <Label>Innkjøpspris (EUR)</Label>
               <Input
                 type="number"
-                value={state.dronetagPurchaseCost || ""}
-                onChange={(e) => updateState({ dronetagPurchaseCost: num(e.target.value) })}
+                value={state.dronetagPurchaseCostEur || ""}
+                onChange={(e) => updateState({ dronetagPurchaseCostEur: num(e.target.value) })}
               />
             </div>
+            <div>
+              <Label>Avslag (%)</Label>
+              <Input
+                type="number"
+                value={state.dronetagDiscountPercent || ""}
+                onChange={(e) => updateState({ dronetagDiscountPercent: num(e.target.value) })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Innkjøpspris etter avslag (NOK)</Label>
+              <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm font-medium">
+                {fmt(Math.round(dronetagPurchaseNok))} NOK
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Kostpris til kunde (NOK)</Label>
               <Input
                 type="number"
                 value={state.dronetagCustomerPrice || ""}
                 onChange={(e) => updateState({ dronetagCustomerPrice: num(e.target.value) })}
+              />
+            </div>
+            <div>
+              <Label>Antall Dronetags i bruk</Label>
+              <Input
+                type="number"
+                value={state.dronetagCount || ""}
+                onChange={(e) => updateState({ dronetagCount: num(e.target.value) })}
               />
             </div>
           </div>
@@ -485,15 +540,6 @@ export const RevenueCalculator = () => {
               />
             </div>
           )}
-
-          <div className="max-w-xs">
-            <Label>Antall Dronetags i bruk</Label>
-            <Input
-              type="number"
-              value={state.dronetagCount || ""}
-              onChange={(e) => updateState({ dronetagCount: num(e.target.value) })}
-            />
-          </div>
         </CardContent>
       </Card>
 
@@ -558,8 +604,8 @@ export const RevenueCalculator = () => {
             <div className="pt-2" />
 
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Kostnad Dronetag</span>
-              <span className="font-medium text-destructive">−{fmt(calc.monthlyDronetagCost)} NOK</span>
+              <span className="text-muted-foreground">Kostnad Dronetag (per stk: {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+              <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyDronetagCost))} NOK</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Kostnad NRI Hours</span>
@@ -568,7 +614,7 @@ export const RevenueCalculator = () => {
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
               <span>Total kostnad</span>
-              <span className="text-destructive">−{fmt(calc.totalCost)} NOK</span>
+              <span className="text-destructive">−{fmt(Math.round(calc.totalCost))} NOK</span>
             </div>
 
             <div className="pt-2" />
@@ -584,7 +630,7 @@ export const RevenueCalculator = () => {
                 Netto månedlig resultat
               </span>
               <span className={calc.netResult >= 0 ? "text-green-500" : "text-destructive"}>
-                {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(calc.netResult))} NOK
+                {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
               </span>
             </div>
           </div>
