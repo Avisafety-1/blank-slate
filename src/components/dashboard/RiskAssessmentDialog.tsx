@@ -134,6 +134,21 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       if (error) throw error;
       setPreviousAssessments(data || []);
+      
+      // If opening with result tab and we have a current assessment but no comments loaded,
+      // restore comments from the latest matching assessment
+      if (data && data.length > 0 && currentAssessmentId) {
+        const match = data.find((a: any) => a.id === currentAssessmentId);
+        if (match?.pilot_comments) {
+          setCategoryComments(match.pilot_comments as Record<string, string>);
+        }
+      } else if (data && data.length > 0 && !currentAssessmentId && initialTab === 'result') {
+        // Reopening dialog - restore from latest assessment
+        const latest = data[0];
+        setCurrentAssessment(latest.ai_analysis);
+        setCurrentAssessmentId(latest.id);
+        setCategoryComments((latest.pilot_comments as Record<string, string>) || {});
+      }
     } catch (error) {
       console.error('Error loading assessments:', error);
     } finally {
