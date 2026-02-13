@@ -2562,6 +2562,38 @@ export type Database = {
           },
         ]
       }
+      revenue_calculator_scenarios: {
+        Row: {
+          company_id: string
+          id: string
+          scenarios: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          scenarios?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          scenarios?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_calculator_scenarios_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rpas_5km_zones: {
         Row: {
           created_at: string | null
