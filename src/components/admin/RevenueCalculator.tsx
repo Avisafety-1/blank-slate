@@ -734,9 +734,9 @@ export const RevenueCalculator = () => {
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm font-semibold">
-                  <span>Netto Dronetag nedbetaling</span>
+                  <span>{state.dronetagPaymentType === "installment" ? "Netto Dronetag nedbetaling" : "Netto Dronetag engangskostnad"}</span>
                   <span className={calc.monthlyDronetagRevenue - calc.monthlyDronetagCost >= 0 ? "text-primary" : "text-destructive"}>
-                    {fmt(Math.round(calc.monthlyDronetagRevenue - calc.monthlyDronetagCost))} NOK/mnd
+                    {fmt(Math.round(calc.monthlyDronetagRevenue - calc.monthlyDronetagCost))} NOK{state.dronetagPaymentType === "installment" ? "/mnd" : ""}
                   </span>
                 </div>
               </>
