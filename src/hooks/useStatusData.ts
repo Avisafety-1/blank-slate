@@ -65,11 +65,12 @@ const fetchEquipment = async () => {
   }));
 };
 
-const fetchPersonnel = async () => {
+const fetchPersonnel = async (companyId: string) => {
   const { data, error } = await supabase
     .from("profiles")
     .select("*, personnel_competencies(*)")
-    .eq("approved", true);
+    .eq("approved", true)
+    .eq("company_id", companyId);
   
   if (error || !data) {
     throw error;
@@ -108,8 +109,8 @@ export const useStatusData = () => {
       },
       {
         queryKey: ['personnel', companyId],
-        queryFn: fetchPersonnel,
-        enabled: !!user,
+        queryFn: () => fetchPersonnel(companyId!),
+        enabled: !!user && !!companyId,
         staleTime: 5000,
         refetchOnWindowFocus: true,
       },
