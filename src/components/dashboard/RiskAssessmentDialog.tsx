@@ -569,7 +569,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       <button
                         key={assessment.id}
                         onClick={() => viewPreviousAssessment(assessment)}
-                        className="w-full p-4 rounded-lg border bg-card hover:bg-accent transition-colors text-left"
+                        className="w-full p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -589,6 +589,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             <Button
                               size="sm"
                               variant="ghost"
+                              className="hover:bg-primary/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 exportToPdf(
