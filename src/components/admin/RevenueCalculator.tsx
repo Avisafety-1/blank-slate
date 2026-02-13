@@ -707,38 +707,60 @@ export const RevenueCalculator = () => {
               <span className="text-destructive">−{fmt(Math.round(calc.recurringCost))} NOK</span>
             </div>
 
-            {/* === Dronetag engangskostnad / nedbetaling === */}
+            {/* === Dronetag hardware === */}
             {state.dronetagEnabled && (
               <>
                 <div className="pt-2" />
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Dronetag engangskostnad / nedbetaling
-                  {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0
-                    ? ` (${state.dronetagInstallmentMonths} mnd)`
-                    : " (engangsbetaling)"}
-                </p>
                 {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 ? (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Månedlig nedbetaling fra kunde ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} / {state.dronetagInstallmentMonths} mnd)</span>
-                    <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} NOK/mnd</span>
-                  </div>
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Dronetag hardware — nedbetaling ({state.dronetagInstallmentMonths} mnd)
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Vår engangskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+                      <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Kundens totalpris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Margin på hardware (engangs)</span>
+                      <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
+                        {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">Månedlig innbetaling fra kunde</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} NOK/mnd</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
+                      <span>Tilbakebetalt etter ca. {Math.ceil((dronetagPurchaseNok * state.dronetagCount) / (calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} mnd</span>
+                    </div>
+                  </>
                 ) : (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Dronetag kundepris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
-                    <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
-                  </div>
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Dronetag hardware — engangsbetaling
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Kundepris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Innkjøpskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+                      <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Margin på hardware (engangs)</span>
+                      <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
+                        {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
+                      </span>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Dronetag innkjøpskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
-                  <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-sm font-semibold">
-                  <span>{state.dronetagPaymentType === "installment" ? "Netto Dronetag nedbetaling" : "Netto Dronetag engangskostnad"}</span>
-                  <span className={calc.monthlyDronetagRevenue - calc.monthlyDronetagCost >= 0 ? "text-primary" : "text-destructive"}>
-                    {fmt(Math.round(calc.monthlyDronetagRevenue - calc.monthlyDronetagCost))} NOK{state.dronetagPaymentType === "installment" ? "/mnd" : ""}
-                  </span>
-                </div>
               </>
             )}
 
