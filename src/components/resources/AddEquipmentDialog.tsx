@@ -80,7 +80,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         company_id: companyId,
         navn: formData.get("navn") as string,
         type: formData.get("type") as string,
-        serienummer: formData.get("serienummer") as string,
+        serienummer: (formData.get("serienummer") as string) || '',
         status: (formData.get("status") as string) || "Grønn",
         merknader: (formData.get("merknader") as string) || null,
         sist_vedlikeholdt: (formData.get("sist_vedlikeholdt") as string) || null,
@@ -141,7 +141,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="serienummer">Serienummer</Label>
-              <Input id="serienummer" name="serienummer" required />
+              <Input id="serienummer" name="serienummer" />
             </div>
             <div>
               <Label htmlFor="vekt">Vekt (kg)</Label>
