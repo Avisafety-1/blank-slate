@@ -565,6 +565,14 @@ const Oppdrag = () => {
     }
     
     try {
+      // Fetch user's full name for opprettet_av
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+      const opprettetAv = userProfile?.full_name || user?.email || 'Ukjent';
+
       const blob = await generateDJIKMZ(
         mission.tittel || 'Oppdrag',
         route,
@@ -601,7 +609,7 @@ const Oppdrag = () => {
           fil_storrelse: blob.size,
           company_id: companyId,
           user_id: user?.id,
-          opprettet_av: user?.id,
+          opprettet_av: opprettetAv,
         });
       
       if (insertError) throw insertError;
@@ -627,6 +635,14 @@ const Oppdrag = () => {
 
   const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
     try {
+      // Fetch user's full name for opprettet_av
+      const { data: pdfUserProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+      const pdfOpprettetAv = pdfUserProfile?.full_name || user?.email || 'Ukjent';
+
       const pdf = await createPdfDocument();
       const pageWidth = pdf.internal.pageSize.getWidth();
       
@@ -1236,7 +1252,7 @@ const Oppdrag = () => {
           fil_storrelse: pdfBlob.size,
           company_id: companyId,
           user_id: user?.id,
-          opprettet_av: user?.id,
+          opprettet_av: pdfOpprettetAv,
         });
       
       if (insertError) throw insertError;
