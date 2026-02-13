@@ -1010,14 +1010,14 @@ export const ProfileDialog = () => {
                   </CardHeader>
                   <CardContent>
                     {competencies.length > 0 ? (
-                      <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-hidden">
                         {competencies.map((comp) => {
                           const expired = isCompetencyExpired(comp.utloper_dato);
                           const expiring = isCompetencyExpiring(comp.utloper_dato);
                           return (
                             <div
                               key={comp.id}
-                              className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
+                              className={`p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.01] min-w-0 overflow-hidden ${
                                 expired
                                   ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
                                   : expiring
@@ -1025,20 +1025,20 @@ export const ProfileDialog = () => {
                                   : "border-border bg-background/50 hover:border-primary/50 hover:bg-background/70"
                               }`}
                             >
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
+                              <div className="flex items-start justify-between gap-1.5 mb-2 min-w-0">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <div className={`shrink-0 h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center ${
                                     expired
                                       ? "bg-destructive/15 text-destructive"
                                       : expiring
                                       ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
                                       : "bg-primary/10 text-primary"
                                   }`}>
-                                    <Award className="h-4 w-4" />
+                                    <Award className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                   </div>
-                                  <h4 className="font-semibold text-sm truncate">{comp.navn}</h4>
+                                  <h4 className="font-semibold text-xs sm:text-sm truncate min-w-0">{comp.navn}</h4>
                                 </div>
-                                <Badge variant={expired ? "destructive" : expiring ? "outline" : "secondary"} className="text-xs shrink-0">
+                                <Badge variant={expired ? "destructive" : expiring ? "outline" : "secondary"} className="text-[10px] sm:text-xs shrink-0">
                                   {comp.type}
                                 </Badge>
                               </div>
@@ -1046,7 +1046,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{comp.beskrivelse}</p>
                               )}
                               <Separator className="mb-3" />
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-muted-foreground">
                                 {comp.utstedt_dato && (
                                   <div className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
