@@ -1,12 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "avisafe_revenue_calculator";
+const STORAGE_KEY = "avisafe_revenue_scenarios";
 
 interface TierConfig {
   maxUsers: number;
@@ -29,7 +32,19 @@ interface CalcState {
   nriCustomerPrice: number;
 }
 
-const defaultState: CalcState = {
+interface Scenario {
+  name: string;
+  selectedCompanyId: string | null; // null = custom, "all" = all companies
+  state: CalcState;
+}
+
+interface CompanyWithUsers {
+  id: string;
+  navn: string;
+  userCount: number;
+}
+
+const defaultCalcState: CalcState = {
   tiers: {
     small: { maxUsers: 5, pricePerUser: 299 },
     medium: { maxUsers: 15, pricePerUser: 249 },
@@ -45,49 +60,176 @@ const defaultState: CalcState = {
   nriCustomerPrice: 0,
 };
 
-const loadState = (): CalcState => {
+const defaultScenarios: Scenario[] = [
+  { name: "Scenario 1", selectedCompanyId: null, state: { ...defaultCalcState } },
+  { name: "Scenario 2", selectedCompanyId: null, state: { ...defaultCalcState } },
+  { name: "Scenario 3", selectedCompanyId: null, state: { ...defaultCalcState } },
+];
+
+const loadScenarios = (): Scenario[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...defaultState, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === 3) {
+        return parsed.map((s: any, i: number) => ({
+          name: s.name || `Scenario ${i + 1}`,
+          selectedCompanyId: s.selectedCompanyId ?? null,
+          state: { ...defaultCalcState, ...s.state },
+        }));
+      }
+    }
   } catch {}
-  return defaultState;
+  return defaultScenarios.map(s => ({ ...s, state: { ...s.state } }));
 };
 
 export const RevenueCalculator = () => {
-  const [state, setState] = useState<CalcState>(loadState);
+  const [scenarios, setScenarios] = useState<Scenario[]>(loadScenarios);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [editingName, setEditingName] = useState<number | null>(null);
+  const [tempName, setTempName] = useState("");
+  const [companies, setCompanies] = useState<CompanyWithUsers[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
 
+  const scenario = scenarios[activeIndex];
+  const state = scenario.state;
+
+  // Persist scenarios
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
     } catch {}
-  }, [state]);
+  }, [scenarios]);
 
-  const update = (partial: Partial<CalcState>) =>
-    setState((prev) => ({ ...prev, ...partial }));
+  // Fetch companies with user counts
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoadingCompanies(true);
+      const { data: companiesData } = await supabase
+        .from("companies")
+        .select("id, navn")
+        .order("navn");
+
+      if (!companiesData) {
+        setLoadingCompanies(false);
+        return;
+      }
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("company_id");
+
+      const countMap: Record<string, number> = {};
+      (profiles || []).forEach((p: any) => {
+        if (p.company_id) {
+          countMap[p.company_id] = (countMap[p.company_id] || 0) + 1;
+        }
+      });
+
+      setCompanies(
+        companiesData.map((c) => ({
+          id: c.id,
+          navn: c.navn,
+          userCount: countMap[c.id] || 0,
+        }))
+      );
+      setLoadingCompanies(false);
+    };
+    fetchCompanies();
+  }, []);
+
+  const totalUsersAllCompanies = useMemo(
+    () => companies.reduce((sum, c) => sum + c.userCount, 0),
+    [companies]
+  );
+
+  const updateScenario = useCallback(
+    (partial: Partial<Scenario>) => {
+      setScenarios((prev) => {
+        const next = [...prev];
+        next[activeIndex] = { ...next[activeIndex], ...partial };
+        return next;
+      });
+    },
+    [activeIndex]
+  );
+
+  const updateState = useCallback(
+    (partial: Partial<CalcState>) => {
+      setScenarios((prev) => {
+        const next = [...prev];
+        next[activeIndex] = {
+          ...next[activeIndex],
+          state: { ...next[activeIndex].state, ...partial },
+        };
+        return next;
+      });
+    },
+    [activeIndex]
+  );
 
   const updateTier = (
     tier: "small" | "medium" | "large",
     field: keyof TierConfig,
     value: number
   ) =>
-    setState((prev) => ({
-      ...prev,
-      tiers: {
-        ...prev.tiers,
-        [tier]: { ...prev.tiers[tier], [field]: value },
-      },
-    }));
+    setScenarios((prev) => {
+      const next = [...prev];
+      const s = next[activeIndex];
+      next[activeIndex] = {
+        ...s,
+        state: {
+          ...s.state,
+          tiers: {
+            ...s.state.tiers,
+            [tier]: { ...s.state.tiers[tier], [field]: value },
+          },
+        },
+      };
+      return next;
+    });
 
   const num = (v: string) => {
     const n = parseFloat(v);
     return isNaN(n) ? 0 : n;
   };
 
+  const handleCompanyChange = (value: string) => {
+    if (value === "custom") {
+      updateScenario({ selectedCompanyId: null });
+      updateState({ totalUsers: 0 });
+    } else if (value === "all") {
+      updateScenario({ selectedCompanyId: "all" });
+      updateState({ totalUsers: totalUsersAllCompanies });
+    } else {
+      const company = companies.find((c) => c.id === value);
+      updateScenario({ selectedCompanyId: value });
+      if (company) {
+        updateState({ totalUsers: company.userCount });
+      }
+    }
+  };
+
+  const startEditName = (index: number) => {
+    setEditingName(index);
+    setTempName(scenarios[index].name);
+  };
+
+  const confirmEditName = () => {
+    if (editingName !== null && tempName.trim()) {
+      setScenarios((prev) => {
+        const next = [...prev];
+        next[editingName] = { ...next[editingName], name: tempName.trim() };
+        return next;
+      });
+    }
+    setEditingName(null);
+  };
+
   // Calculations
   const calc = useMemo(() => {
     const { tiers, totalUsers, dronetagPurchaseCost, dronetagCustomerPrice, dronetagPaymentType, dronetagInstallmentMonths, dronetagCount, nriPurchaseCost, nriCustomerPrice } = state;
 
-    // Determine tier for user count
     let pricePerUser = tiers.large.pricePerUser;
     let tierLabel = "Stor";
     if (totalUsers <= tiers.small.maxUsers) {
@@ -100,7 +242,6 @@ export const RevenueCalculator = () => {
 
     const monthlyUserRevenue = totalUsers * pricePerUser;
 
-    // Dronetag
     const monthlyDronetagCost = dronetagPurchaseCost * dronetagCount;
     let monthlyDronetagRevenue = 0;
     if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
@@ -109,7 +250,6 @@ export const RevenueCalculator = () => {
       monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
     }
 
-    // NRI
     const monthlyNriCost = nriPurchaseCost;
     const monthlyNriRevenue = nriCustomerPrice;
 
@@ -140,8 +280,90 @@ export const RevenueCalculator = () => {
     { key: "large", label: "Stor" },
   ];
 
+  const selectValue = scenario.selectedCompanyId === null
+    ? "custom"
+    : scenario.selectedCompanyId;
+
   return (
     <div className="space-y-6 max-w-4xl">
+      {/* Scenario selector */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">Scenarioer</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {scenarios.map((s, i) => (
+              <div key={i} className="flex items-center gap-1">
+                {editingName === i ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      className="h-8 w-36 text-sm"
+                      value={tempName}
+                      onChange={(e) => setTempName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && confirmEditName()}
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={confirmEditName}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant={activeIndex === i ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setActiveIndex(i)}
+                  >
+                    {s.name}
+                    <Pencil
+                      className="h-3 w-3 opacity-60 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditName(i);
+                      }}
+                    />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Company selector */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Users className="h-5 w-5 text-primary" />
+            Selskapsvelger
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-sm">
+            <Label>Velg selskap</Label>
+            <Select
+              value={selectValue}
+              onValueChange={handleCompanyChange}
+              disabled={loadingCompanies}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={loadingCompanies ? "Laster selskaper..." : "Velg selskap"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom">Egendefinert</SelectItem>
+                <SelectItem value="all">Alle selskaper ({totalUsersAllCompanies} brukere)</SelectItem>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.navn} ({c.userCount} brukere)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Section 1: Tiers */}
       <Card>
         <CardHeader className="pb-3">
@@ -193,8 +415,14 @@ export const RevenueCalculator = () => {
             <Input
               type="number"
               value={state.totalUsers || ""}
-              onChange={(e) => update({ totalUsers: num(e.target.value) })}
+              onChange={(e) => updateState({ totalUsers: num(e.target.value) })}
+              disabled={scenario.selectedCompanyId !== null}
             />
+            {scenario.selectedCompanyId !== null && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Automatisk hentet fra valgt selskap. Velg «Egendefinert» for å endre manuelt.
+              </p>
+            )}
           </div>
           {state.totalUsers > 0 && (
             <div className="rounded-lg bg-muted p-4 space-y-1 text-sm">
@@ -227,7 +455,7 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.dronetagPurchaseCost || ""}
-                onChange={(e) => update({ dronetagPurchaseCost: num(e.target.value) })}
+                onChange={(e) => updateState({ dronetagPurchaseCost: num(e.target.value) })}
               />
             </div>
             <div>
@@ -235,7 +463,7 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.dronetagCustomerPrice || ""}
-                onChange={(e) => update({ dronetagCustomerPrice: num(e.target.value) })}
+                onChange={(e) => updateState({ dronetagCustomerPrice: num(e.target.value) })}
               />
             </div>
           </div>
@@ -244,16 +472,16 @@ export const RevenueCalculator = () => {
             <Label>Betalingsmodell</Label>
             <RadioGroup
               value={state.dronetagPaymentType}
-              onValueChange={(v) => update({ dronetagPaymentType: v as "installment" | "oneoff" })}
+              onValueChange={(v) => updateState({ dronetagPaymentType: v as "installment" | "oneoff" })}
               className="flex gap-4"
             >
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="installment" id="installment" />
-                <Label htmlFor="installment" className="cursor-pointer font-normal">Nedbetaling</Label>
+                <RadioGroupItem value="installment" id={`installment-${activeIndex}`} />
+                <Label htmlFor={`installment-${activeIndex}`} className="cursor-pointer font-normal">Nedbetaling</Label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="oneoff" id="oneoff" />
-                <Label htmlFor="oneoff" className="cursor-pointer font-normal">Engangskostnad</Label>
+                <RadioGroupItem value="oneoff" id={`oneoff-${activeIndex}`} />
+                <Label htmlFor={`oneoff-${activeIndex}`} className="cursor-pointer font-normal">Engangskostnad</Label>
               </div>
             </RadioGroup>
           </div>
@@ -264,7 +492,7 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.dronetagInstallmentMonths || ""}
-                onChange={(e) => update({ dronetagInstallmentMonths: num(e.target.value) })}
+                onChange={(e) => updateState({ dronetagInstallmentMonths: num(e.target.value) })}
               />
             </div>
           )}
@@ -274,7 +502,7 @@ export const RevenueCalculator = () => {
             <Input
               type="number"
               value={state.dronetagCount || ""}
-              onChange={(e) => update({ dronetagCount: num(e.target.value) })}
+              onChange={(e) => updateState({ dronetagCount: num(e.target.value) })}
             />
           </div>
         </CardContent>
@@ -295,7 +523,7 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.nriPurchaseCost || ""}
-                onChange={(e) => update({ nriPurchaseCost: num(e.target.value) })}
+                onChange={(e) => updateState({ nriPurchaseCost: num(e.target.value) })}
               />
             </div>
             <div>
@@ -303,7 +531,7 @@ export const RevenueCalculator = () => {
               <Input
                 type="number"
                 value={state.nriCustomerPrice || ""}
-                onChange={(e) => update({ nriCustomerPrice: num(e.target.value) })}
+                onChange={(e) => updateState({ nriCustomerPrice: num(e.target.value) })}
               />
             </div>
           </div>
@@ -315,7 +543,7 @@ export const RevenueCalculator = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Månedlig oppsummering
+            Månedlig oppsummering — {scenario.name}
           </CardTitle>
         </CardHeader>
         <CardContent>
