@@ -61,7 +61,7 @@ const defaultCalcState: CalcState = {
     large: { maxUsers: 999, pricePerUser: 199 },
   },
   totalUsers: 0,
-  showTiers: true,
+  showTiers: false,
   dronetagEnabled: true,
   dronetagAcquisitionType: "purchase",
   dronetagLeasingCostPerMonth: 0,
