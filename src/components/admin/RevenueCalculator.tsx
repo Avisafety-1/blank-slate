@@ -170,6 +170,11 @@ export const RevenueCalculator = () => {
     fetchCompanies();
   }, []);
 
+  // Load scenarios from DB whenever storageKey changes (including initial mount)
+  useEffect(() => {
+    loadFromDatabase(storageKey);
+  }, [storageKey, loadFromDatabase]);
+
   const totalUsersAllCompanies = useMemo(
     () => companies.reduce((sum, c) => sum + c.userCount, 0),
     [companies]
