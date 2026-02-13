@@ -36,6 +36,7 @@ interface Profile {
   created_at: string | null;
   company_id: string;
   signature_url: string | null;
+  uas_operator_number: string | null;
 }
 
 interface Company {
@@ -372,6 +373,7 @@ export const ProfileDialog = () => {
           nødkontakt_navn: editedProfile.nødkontakt_navn,
           nødkontakt_telefon: editedProfile.nødkontakt_telefon,
           avatar_url: avatarUrl,
+          uas_operator_number: editedProfile.uas_operator_number || null,
         })
         .eq("id", user.id);
 
@@ -833,6 +835,25 @@ export const ProfileDialog = () => {
                       ) : (
                         <p className="text-sm py-2 whitespace-pre-wrap">{profile?.adresse || t('common.notSpecified')}</p>
                       )}
+                    </div>
+
+                    <Separator />
+
+                    {/* UAS Operator Number */}
+                    <div className="space-y-2">
+                      <Label>UAS operatørnummer</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedProfile.uas_operator_number || ""}
+                          onChange={(e) => setEditedProfile({ ...editedProfile, uas_operator_number: e.target.value })}
+                          placeholder="f.eks. NOR87astrdge12k"
+                        />
+                      ) : (
+                        <p className="text-sm py-2">{profile?.uas_operator_number || t('common.notSpecified')}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Operatørnummeret fra Luftfartstilsynets flydrone-tjeneste. De siste sifrene i nummeret er hemmelige og skal ikke tas med i merkingen av dronen.
+                      </p>
                     </div>
 
                     <Separator />
