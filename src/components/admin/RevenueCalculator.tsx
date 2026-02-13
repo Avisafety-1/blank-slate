@@ -101,38 +101,27 @@ export const RevenueCalculator = () => {
     } catch {}
   }, [scenarios]);
 
-  // Fetch companies with user counts
+  // Fetch companies with user counts via edge function (bypasses RLS)
   useEffect(() => {
     const fetchCompanies = async () => {
       setLoadingCompanies(true);
-      const { data: companiesData } = await supabase
-        .from("companies")
-        .select("id, navn")
-        .order("navn");
+      try {
+        const { data, error } = await supabase.functions.invoke("count-all-users", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ breakdown: true }),
+        });
 
-      if (!companiesData) {
-        setLoadingCompanies(false);
-        return;
-      }
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("company_id");
-
-      const countMap: Record<string, number> = {};
-      (profiles || []).forEach((p: any) => {
-        if (p.company_id) {
-          countMap[p.company_id] = (countMap[p.company_id] || 0) + 1;
+        if (error || !data) {
+          console.error("Failed to fetch company breakdown:", error);
+          setLoadingCompanies(false);
+          return;
         }
-      });
 
-      setCompanies(
-        companiesData.map((c) => ({
-          id: c.id,
-          navn: c.navn,
-          userCount: countMap[c.id] || 0,
-        }))
-      );
+        setCompanies(data.companies || []);
+      } catch (err) {
+        console.error("Error fetching companies:", err);
+      }
       setLoadingCompanies(false);
     };
     fetchCompanies();
