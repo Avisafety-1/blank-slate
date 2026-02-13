@@ -769,6 +769,43 @@ export const RevenueCalculator = () => {
               </>
             )}
 
+            {/* === Kostnad til kunde inkl. MVA === */}
+            <div className="pt-2" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kostnad til kunde inkl. 25% MVA</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Brukerlisens ({state.totalUsers} brukere × {fmt(Math.round(calc.pricePerUser * 1.25))} NOK)</span>
+              <span className="font-medium">{fmt(Math.round(calc.monthlyUserRevenue * 1.25))} NOK/mnd</span>
+            </div>
+            {state.dronetagEnabled && calc.monthlyNriRevenue > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">NRI Hours ({state.nriHours} t × {fmt(Math.round(state.nriCustomerPrice * 1.25))} NOK)</span>
+                <span className="font-medium">{fmt(Math.round(calc.monthlyNriRevenue * 1.25))} NOK/mnd</span>
+              </div>
+            )}
+            {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
+                <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
+              </div>
+            )}
+            {state.dronetagEnabled && calc.monthlyDronetagRevenue > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Dronetag hardware ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice * 1.25))} NOK)
+                </span>
+                <span className="font-medium">
+                  {fmt(Math.round(calc.monthlyDronetagRevenue * 1.25))} NOK
+                  {state.dronetagPaymentType === "installment" ? "" : " (engang)"}
+                </span>
+              </div>
+            )}
+            {state.dronetagEnabled && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
+                <span>Månedlig innbetaling inkl. MVA</span>
+                <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
+              </div>
+            )}
+
             {/* === Totalt === */}
             <div className="pt-2" />
             <Separator className="bg-primary/30" />
