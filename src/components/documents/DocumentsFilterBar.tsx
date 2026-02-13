@@ -39,6 +39,9 @@ const CATEGORIES: {
   value: "dokumentstyring",
   label: "Dokumentstyring"
 }, {
+  value: "risikovurderinger",
+  label: "Risikovurderinger"
+}, {
   value: "annet",
   label: "Annet"
 }];

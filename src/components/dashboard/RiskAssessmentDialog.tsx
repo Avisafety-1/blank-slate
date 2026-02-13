@@ -11,7 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown } from "lucide-react";
+import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
@@ -56,6 +57,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [categoryComments, setCategoryComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [currentAssessmentId, setCurrentAssessmentId] = useState<string | null>(null);
   // Mission selector states
   const [missions, setMissions] = useState<any[]>([]);
@@ -236,6 +238,37 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       toast.error(t('riskAssessment.commentsSaveError', 'Kunne ikke lagre kommentarer'));
     } finally {
       setSavingComments(false);
+    }
+  };
+
+  const exportToPdf = async (assessmentData: any, comments: Record<string, string>, assessmentCreatedAt?: string) => {
+    if (!companyId) return;
+    setExportingPdf(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Du må være logget inn');
+        return;
+      }
+      const mTitle = mission?.tittel || missions.find(m => m.id === selectedMissionId)?.tittel || 'Oppdrag';
+      const success = await exportRiskAssessmentPDF({
+        assessment: assessmentData,
+        missionTitle: mTitle,
+        categoryComments: comments,
+        companyId,
+        userId: user.id,
+        createdAt: assessmentCreatedAt,
+      });
+      if (success) {
+        toast.success('Risikovurdering eksportert til PDF og lagret i Dokumenter');
+      } else {
+        toast.error('Kunne ikke eksportere til PDF');
+      }
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Kunne ikke eksportere til PDF');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -478,19 +511,34 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Save comments button */}
                     {currentAssessmentId && (
-                      <Button
-                        onClick={saveComments}
-                        disabled={savingComments}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        {savingComments ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="w-4 h-4 mr-2" />
-                        )}
-                        {t('riskAssessment.saveComments', 'Lagre kommentarer')}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={saveComments}
+                          disabled={savingComments}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          {savingComments ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-2" />
+                          )}
+                          {t('riskAssessment.saveComments', 'Lagre kommentarer')}
+                        </Button>
+                        <Button
+                          onClick={() => exportToPdf(currentAssessment, categoryComments)}
+                          disabled={exportingPdf}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          {exportingPdf ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <FileDown className="w-4 h-4 mr-2" />
+                          )}
+                          Eksporter til PDF
+                        </Button>
+                      </div>
                     )}
 
                     {/* Recommendations with new SMS fields */}
@@ -526,7 +574,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {assessment.ai_analysis?.hard_stop_triggered && (
-                              <AlertOctagon className="w-4 h-4 text-red-500" />
+                              <AlertOctagon className="w-4 h-4 text-destructive" />
                             )}
                             <div>
                               <p className="text-sm font-medium">
@@ -537,14 +585,35 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                               </p>
                             </div>
                           </div>
-                          <div className={`px-2 py-1 rounded text-xs font-medium ${
-                            assessment.recommendation === 'go' 
-                              ? 'bg-green-500/20 text-green-700 dark:text-green-300'
-                              : assessment.recommendation === 'caution'
-                              ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
-                              : 'bg-red-500/20 text-red-700 dark:text-red-300'
-                          }`}>
-                            {assessment.recommendation.toUpperCase()}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportToPdf(
+                                  assessment.ai_analysis,
+                                  (assessment.pilot_comments as Record<string, string>) || {},
+                                  assessment.created_at
+                                );
+                              }}
+                              disabled={exportingPdf}
+                            >
+                              {exportingPdf ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FileDown className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <div className={`px-2 py-1 rounded text-xs font-medium ${
+                              assessment.recommendation === 'go' 
+                                ? 'bg-green-500/20 text-green-700 dark:text-green-300'
+                                : assessment.recommendation === 'caution'
+                                ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
+                                : 'bg-red-500/20 text-red-700 dark:text-red-300'
+                            }`}>
+                              {assessment.recommendation.toUpperCase()}
+                            </div>
                           </div>
                         </div>
                       </button>

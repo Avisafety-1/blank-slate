@@ -73,13 +73,14 @@ const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "loggbok", label: "Loggbok" },
   { value: "kml-kmz", label: "KML/KMZ" },
   { value: "dokumentstyring", label: "Dokumentstyring" },
+  { value: "risikovurderinger", label: "Risikovurderinger" },
   { value: "annet", label: "Annet" },
 ];
 
 const formSchema = z.object({
   tittel: z.string().min(1, "Tittel er påkrevd").max(200, "Tittel må være under 200 tegn"),
   beskrivelse: z.string().max(1000, "Beskrivelse må være under 1000 tegn").optional(),
-  kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "annet"]),
+  kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "annet"]),
   gyldig_til: z.date().optional(),
   varsel_dager_for_utløp: z.coerce.number().int().min(0).max(365).optional(),
   nettside_url: z.string().max(500, "URL må være under 500 tegn").optional(),

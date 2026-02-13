@@ -121,7 +121,7 @@ const sections: Section[] = [
       { type: 'heading', text: "Kategorier" },
       { type: 'list', items: [
         "Regelverk", "Prosedyrer", "Sjekklister", "Rapporter", "Nettsider",
-        "Oppdragsdokumenter", "Loggbok", "KML/KMZ-filer", "Dokumentstyring", "Annet"
+        "Oppdragsdokumenter", "Loggbok", "KML/KMZ-filer", "Dokumentstyring", "Risikovurderinger", "Annet"
       ]},
       { type: 'heading', text: "Opprette dokument" },
       { type: 'numbered-list', items: [
