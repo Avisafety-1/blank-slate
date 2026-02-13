@@ -1010,52 +1010,77 @@ export const ProfileDialog = () => {
                   </CardHeader>
                   <CardContent>
                     {competencies.length > 0 ? (
-                      <div className="space-y-3">
-                        {competencies.map((comp) => (
-                          <div
-                            key={comp.id}
-                            className={`p-3 rounded-lg border ${
-                              isCompetencyExpired(comp.utloper_dato)
-                                ? "border-red-500/30 bg-red-500/10"
-                                : isCompetencyExpiring(comp.utloper_dato)
-                                ? "border-yellow-500/30 bg-yellow-500/10"
-                                : "border-border"
-                            }`}
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-semibold">{comp.navn}</p>
-                                  <Badge variant="outline" className="text-xs">
-                                    {comp.type}
-                                  </Badge>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {competencies.map((comp) => {
+                          const expired = isCompetencyExpired(comp.utloper_dato);
+                          const expiring = isCompetencyExpiring(comp.utloper_dato);
+                          return (
+                            <div
+                              key={comp.id}
+                              className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
+                                expired
+                                  ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
+                                  : expiring
+                                  ? "border-yellow-500/40 bg-yellow-500/5 hover:border-yellow-500/60"
+                                  : "border-border bg-background/50 hover:border-primary/50 hover:bg-background/70"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
+                                    expired
+                                      ? "bg-destructive/15 text-destructive"
+                                      : expiring
+                                      ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
+                                      : "bg-primary/10 text-primary"
+                                  }`}>
+                                    <Award className="h-4 w-4" />
+                                  </div>
+                                  <h4 className="font-semibold text-sm truncate">{comp.navn}</h4>
                                 </div>
-                                {comp.beskrivelse && (
-                                  <p className="text-sm text-muted-foreground mb-2">{comp.beskrivelse}</p>
-                                )}
-                                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                  {comp.utstedt_dato && (
-                                    <p>{t('profile.issued')}: {formatDate(comp.utstedt_dato)}</p>
-                                  )}
-                                  {comp.utloper_dato && (
-                                    <p className={
-                                      isCompetencyExpired(comp.utloper_dato)
-                                        ? "text-red-600 dark:text-red-400 font-semibold"
-                                        : isCompetencyExpiring(comp.utloper_dato)
-                                        ? "text-yellow-600 dark:text-yellow-400 font-semibold"
-                                        : ""
-                                    }>
-                                      {t('profile.expires')}: {formatDate(comp.utloper_dato)}
-                                    </p>
-                                  )}
-                                </div>
+                                <Badge variant={expired ? "destructive" : expiring ? "outline" : "secondary"} className="text-xs shrink-0">
+                                  {comp.type}
+                                </Badge>
                               </div>
+                              {comp.beskrivelse && (
+                                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{comp.beskrivelse}</p>
+                              )}
+                              <Separator className="mb-3" />
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                {comp.utstedt_dato && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{t('profile.issued')}: {formatDate(comp.utstedt_dato)}</span>
+                                  </div>
+                                )}
+                                {comp.utloper_dato && (
+                                  <div className={`flex items-center gap-1 ${
+                                    expired
+                                      ? "text-destructive font-semibold"
+                                      : expiring
+                                      ? "text-yellow-600 dark:text-yellow-400 font-semibold"
+                                      : ""
+                                  }`}>
+                                    {(expired || expiring) && <AlertCircle className="h-3 w-3" />}
+                                    <span>{t('profile.expires')}: {formatDate(comp.utloper_dato)}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {expired && (
+                                <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Utløpt
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">{t('profile.noCompetencies')}</p>
+                      <div className="text-center py-8">
+                        <Award className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground">{t('profile.noCompetencies')}</p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
