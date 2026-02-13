@@ -407,7 +407,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-foreground">
-                          AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget.
+                          AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget. Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i data kan påvirke resultatet.
                         </p>
                       </div>
                     </div>
