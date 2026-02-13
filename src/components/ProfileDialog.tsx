@@ -758,6 +758,22 @@ export const ProfileDialog = () => {
                             <p className="text-lg font-semibold">{profile?.full_name || t('common.notSet')}</p>
                           )}
                         </div>
+                        <div className="grid gap-1">
+                          <Label className="text-xs">UAS operatørnummer</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editedProfile.uas_operator_number || ""}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, uas_operator_number: e.target.value })}
+                              placeholder="f.eks. NOR87astrdge12k"
+                              className="h-8 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground">{profile?.uas_operator_number || t('common.notSpecified')}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground/70">
+                            Fra Luftfartstilsynets flydrone-tjeneste. De siste sifrene er hemmelige og skal ikke tas med i merkingen.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -839,24 +855,6 @@ export const ProfileDialog = () => {
 
                     <Separator />
 
-                    {/* UAS Operator Number */}
-                    <div className="space-y-2">
-                      <Label>UAS operatørnummer</Label>
-                      {isEditing ? (
-                        <Input
-                          value={editedProfile.uas_operator_number || ""}
-                          onChange={(e) => setEditedProfile({ ...editedProfile, uas_operator_number: e.target.value })}
-                          placeholder="f.eks. NOR87astrdge12k"
-                        />
-                      ) : (
-                        <p className="text-sm py-2">{profile?.uas_operator_number || t('common.notSpecified')}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Operatørnummeret fra Luftfartstilsynets flydrone-tjeneste. De siste sifrene i nummeret er hemmelige og skal ikke tas med i merkingen av dronen.
-                      </p>
-                    </div>
-
-                    <Separator />
 
                     {/* Signature */}
                     <div className="space-y-2">
