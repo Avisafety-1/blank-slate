@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const STORAGE_KEY_PREFIX = "avisafe_revenue_scenarios_";
+const STORAGE_KEY_PREFIX = "avisafe_revenue_scenarios_"; // fallback only
 const EUR_TO_NOK = 11.5; // Approximate exchange rate
 
 interface TierConfig {
@@ -102,6 +102,46 @@ export const RevenueCalculator = () => {
   const [companies, setCompanies] = useState<CompanyWithUsers[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savingToDb, setSavingToDb] = useState(false);
+  const [loadingFromDb, setLoadingFromDb] = useState(false);
+
+  // Load scenarios from database for the selected company
+  const loadFromDatabase = useCallback(async (companyKey: string) => {
+    if (companyKey === "custom") {
+      setScenarios(loadScenarios(companyKey));
+      return;
+    }
+    setLoadingFromDb(true);
+    try {
+      const { data, error } = await supabase
+        .from("revenue_calculator_scenarios")
+        .select("scenarios")
+        .eq("company_id", companyKey)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Failed to load scenarios from DB:", error);
+        setScenarios(loadScenarios(companyKey));
+      } else if (data?.scenarios) {
+        const parsed = data.scenarios as any[];
+        if (Array.isArray(parsed) && parsed.length === 3) {
+          setScenarios(parsed.map((s: any, i: number) => ({
+            name: s.name || `Scenario ${i + 1}`,
+            state: { ...defaultCalcState, ...s.state },
+          })));
+        } else {
+          setScenarios(loadScenarios(companyKey));
+        }
+      } else {
+        // No DB record yet, use defaults
+        setScenarios(defaultScenarios.map(s => ({ ...s, state: { ...s.state } })));
+      }
+    } catch (err) {
+      console.error("Error loading scenarios:", err);
+      setScenarios(loadScenarios(companyKey));
+    }
+    setLoadingFromDb(false);
+  }, []);
 
   const scenario = scenarios[activeIndex];
   const state = scenario.state;
@@ -135,14 +175,58 @@ export const RevenueCalculator = () => {
     [companies]
   );
 
-  const saveScenarios = useCallback(() => {
+  const saveScenarios = useCallback(async () => {
+    if (storageKey === "custom") {
+      // Custom mode: save to localStorage only
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
+        setHasUnsavedChanges(false);
+        toast.success("Scenarioer lagret lokalt");
+      } catch {
+        toast.error("Kunne ikke lagre scenarioer");
+      }
+      return;
+    }
+
+    // Save to database
+    setSavingToDb(true);
     try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
+      const { data: existing } = await supabase
+        .from("revenue_calculator_scenarios")
+        .select("id")
+        .eq("company_id", storageKey)
+        .maybeSingle();
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("revenue_calculator_scenarios")
+          .update({
+            scenarios: scenarios as any,
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id,
+          })
+          .eq("company_id", storageKey);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("revenue_calculator_scenarios")
+          .insert({
+            company_id: storageKey,
+            scenarios: scenarios as any,
+            updated_by: user?.id,
+          });
+        if (error) throw error;
+      }
+
       setHasUnsavedChanges(false);
       toast.success("Scenarioer lagret");
-    } catch {
-      toast.error("Kunne ikke lagre scenarioer");
+    } catch (err) {
+      console.error("Failed to save scenarios:", err);
+      toast.error("Kunne ikke lagre scenarioer til databasen");
     }
+    setSavingToDb(false);
   }, [scenarios, storageKey]);
 
   const updateScenario = useCallback(
@@ -207,21 +291,15 @@ export const RevenueCalculator = () => {
     return baseNok * (1 - discount);
   }, [state.dronetagPurchaseCostEur, state.dronetagDiscountPercent]);
 
-  const handleCompanyChange = (value: string) => {
-    // Save current scenarios before switching if there are unsaved changes
-    if (hasUnsavedChanges) {
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(scenarios));
-      } catch {}
-    }
-
+  const handleCompanyChange = async (value: string) => {
     const newCompanyId = value === "custom" ? null : value;
     setSelectedCompanyId(newCompanyId);
     const newKey = newCompanyId ?? "custom";
-    const loaded = loadScenarios(newKey);
-    setScenarios(loaded);
     setActiveIndex(0);
     setHasUnsavedChanges(false);
+
+    // Load from database for real companies, localStorage for custom
+    await loadFromDatabase(newKey);
 
     // Update totalUsers for the first scenario based on selection
     if (value === "custom") {
@@ -363,10 +441,11 @@ export const RevenueCalculator = () => {
               onClick={saveScenarios}
               className="gap-1.5"
               variant={hasUnsavedChanges ? "default" : "outline"}
+              disabled={savingToDb || loadingFromDb}
             >
               <Save className="h-4 w-4" />
-              Lagre
-              {hasUnsavedChanges && <span className="ml-1 h-2 w-2 rounded-full bg-background" />}
+              {savingToDb ? "Lagrer..." : "Lagre"}
+              {hasUnsavedChanges && !savingToDb && <span className="ml-1 h-2 w-2 rounded-full bg-background" />}
             </Button>
           </div>
         </CardHeader>
