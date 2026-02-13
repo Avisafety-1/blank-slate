@@ -52,7 +52,57 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Count all approved users with email across all companies
+    // Check if breakdown by company is requested (via query param or body)
+    const url = new URL(req.url);
+    let breakdown = url.searchParams.get("breakdown") === "true";
+    
+    if (!breakdown && req.method === "POST") {
+      try {
+        const body = await req.json();
+        breakdown = body?.breakdown === true;
+      } catch {}
+    }
+
+    if (breakdown) {
+      // Get all companies
+      const { data: companies, error: compError } = await supabase
+        .from("companies")
+        .select("id, navn")
+        .order("navn");
+
+      if (compError) throw compError;
+
+      // Get all profiles with company_id
+      const { data: profiles, error: profError } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("approved", true)
+        .not("email", "is", null);
+
+      if (profError) throw profError;
+
+      const countMap: Record<string, number> = {};
+      (profiles || []).forEach((p: any) => {
+        if (p.company_id) {
+          countMap[p.company_id] = (countMap[p.company_id] || 0) + 1;
+        }
+      });
+
+      const result = (companies || []).map((c: any) => ({
+        id: c.id,
+        navn: c.navn,
+        userCount: countMap[c.id] || 0,
+      }));
+
+      const total = Object.values(countMap).reduce((a: number, b: number) => a + b, 0);
+
+      return new Response(
+        JSON.stringify({ companies: result, total }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Original: count all approved users with email
     const { count, error: countError } = await supabase
       .from("profiles")
       .select("*", { count: "exact", head: true })
@@ -63,8 +113,6 @@ serve(async (req: Request): Promise<Response> => {
       console.error("Error counting users:", countError);
       throw countError;
     }
-
-    console.log(`Total approved users with email: ${count}`);
 
     return new Response(
       JSON.stringify({ count: count || 0 }),
