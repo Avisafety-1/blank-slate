@@ -816,7 +816,7 @@ export const RevenueCalculator = () => {
                 ) : (
                   <TrendingDown className="h-5 w-5 text-destructive" />
                 )}
-                Netto månedlig (i nedbetalingsperioden)
+                {state.dronetagEnabled ? "Netto månedlig (i nedbetalingsperioden)" : "Netto overskudd"}
               </span>
               <span className={calc.netResult >= 0 ? "text-green-500" : "text-destructive"}>
                 {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
