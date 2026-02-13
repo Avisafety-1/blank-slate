@@ -126,6 +126,14 @@ export const exportIncidentPDF = async ({
     const pdfBlob = doc.output('blob');
     const filePath = `${companyId}/${fileName}`;
 
+    // Hent brukerens navn for opprettet_av
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+    const opprettetAv = userProfile?.full_name || 'Ukjent';
+
     // Last opp til Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('documents')
@@ -146,6 +154,7 @@ export const exportIncidentPDF = async ({
         fil_navn: fileName,
         company_id: companyId,
         user_id: userId,
+        opprettet_av: opprettetAv,
         beskrivelse: `Automatisk generert rapport for hendelse: ${sanitizeForPdf(incident.tittel)}`
       });
 

@@ -517,7 +517,7 @@ const Status = () => {
       // Get user's company_id
       const { data: profile } = await supabase
         .from("profiles")
-        .select("company_id")
+        .select("company_id, full_name")
         .eq("id", user?.id)
         .single();
 
@@ -551,7 +551,7 @@ const Status = () => {
           fil_storrelse: blob.size,
           company_id: profile.company_id,
           user_id: user?.id,
-          opprettet_av: user?.id
+          opprettet_av: profile?.full_name || user?.email || 'Ukjent'
         });
 
       if (dbError) throw dbError;
@@ -575,7 +575,7 @@ const Status = () => {
       // Get company name and company_id from profile
       const { data: profile } = await supabase
         .from("profiles")
-        .select("company_id, companies(navn)")
+        .select("company_id, full_name, companies(navn)")
         .eq("id", user?.id)
         .single();
 
@@ -950,7 +950,7 @@ const Status = () => {
           fil_storrelse: pdfBlob.size,
           company_id: companyId,
           user_id: user?.id,
-          opprettet_av: user?.id
+          opprettet_av: profile?.full_name || user?.email || 'Ukjent'
         });
 
       if (dbError) throw dbError;
