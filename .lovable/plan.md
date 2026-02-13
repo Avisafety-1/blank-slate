@@ -1,36 +1,31 @@
 
 
-# Fikse "Utsteder"-feltet i dokumenter
+# Legg til UAS operatornummer i profilen
 
-## Problem
-Når systemgenererte dokumenter (PDF-rapporter, KMZ-eksporter, statistikkrapporter) opprettes, settes `opprettet_av`-feltet til brukerens UUID (`user?.id`) i stedet for brukerens navn. Dokumentwidgeten viser dette feltet som "Utsteder", noe som gir et kryptisk UUID i stedet for et lesbart personnavn.
+## Hva skal gjores
 
-## Berørte filer og endringer
+Legge til et felt for UAS operatornummer (f.eks. NOR87astrdge12k) i "Min profil"-dialogen, slik at brukere kan registrere sitt operatornummer fra Luftfartstilsynets flydrone-tjeneste.
 
-### 1. `src/pages/Oppdrag.tsx` (2 steder)
-- **Linje ~604**: KMZ-eksport -- endre `opprettet_av: user?.id` til brukerens fulle navn
-- **Linje ~1239**: PDF-eksport -- samme endring
+## Endringer
 
-For begge steder: hent brukerens `full_name` fra `profiles`-tabellen og bruk det i stedet for UUID-en.
+### 1. Database: Ny kolonne i `profiles`-tabellen
+Legge til en ny nullable tekstkolonne `uas_operator_number` i `profiles`-tabellen via migrering.
 
-### 2. `src/pages/Status.tsx` (2 steder)
-- **Linje ~554**: Excel-rapport eksport
-- **Linje ~953**: PDF-rapport eksport
+### 2. Profilside: `src/components/ProfileDialog.tsx`
+- Utvide `Profile`-interfacet med `uas_operator_number: string | null`
+- Legge til et nytt felt i profilskjemaet (i "Basic Info"-grid-seksjonen, etter adresse-feltet) med label "UAS operatornummer"
+- Feltet skal vare redigerbart i redigeringsmodus og vise verdien i visningsmodus
+- Legge til en kort hjelpetekst under feltet som forklarer at dette er nummeret fra Luftfartstilsynets flydrone-tjeneste, og at de siste sifrene er hemmelige og ikke skal tas med i merkingen
+- Inkludere `uas_operator_number` i `handleSaveProfile`-funksjonen sin update-kall
 
-Samme fix: bruk `full_name` fra profilen i stedet for `user?.id`.
+### Tekniske detaljer
 
-### 3. `src/lib/incidentPdfExport.ts`
-- Denne filen setter ikke `opprettet_av` i det hele tatt ved dokument-insert (linje ~140-155). Legge til `opprettet_av` med brukerens navn. Siden funksjonen allerede mottar `userId`, hentes `full_name` fra profiltabellen.
+**SQL-migrering:**
+```sql
+ALTER TABLE profiles ADD COLUMN uas_operator_number text;
+```
 
-## Teknisk tilnærming
+**UI-plassering:** Feltet plasseres etter adresse-seksjonen og for signatur-seksjonen i profil-fanen, med en `Separator` mellom.
 
-I hver fil der `opprettet_av: user?.id` brukes, gjøres følgende:
-1. Spør `profiles`-tabellen med `supabase.from('profiles').select('full_name').eq('id', userId).single()`
-2. Bruk `profile?.full_name || user?.email || 'Ukjent'` som fallback-kjede
-3. Sett `opprettet_av` til dette navnet
-
-Dette følger eksisterende mønster i kodebasen (f.eks. `StartFlightDialog.tsx` linje 339-346 gjør allerede dette).
-
-## Eksisterende dokumenter
-Dokumenter som allerede er opprettet med UUID vil fortsatt vise UUID. For å fikse disse kan man eventuelt kjøre en engangs SQL-oppdatering, men det er valgfritt.
+**Lagring:** Feltet inkluderes i det eksisterende `supabase.from("profiles").update(...)` kallet i `handleSaveProfile`.
 
