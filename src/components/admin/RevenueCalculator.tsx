@@ -537,7 +537,7 @@ export const RevenueCalculator = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        {state.dronetagEnabled && <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label>Innkjøpspris (EUR)</Label>
@@ -666,7 +666,7 @@ export const RevenueCalculator = () => {
               />
             </div>
           </div>
-        </CardContent>
+        </CardContent>}
       </Card>
 
       {/* Section 5: Summary */}
