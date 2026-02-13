@@ -158,7 +158,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         user_id: userId,
         company_id: companyId,
         modell: modell || (formData.get("modell") as string),
-        serienummer: formData.get("serienummer") as string,
+        serienummer: (formData.get("serienummer") as string) || '',
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
         merknader: merknader || null,
@@ -241,7 +241,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           </div>
           <div>
             <Label htmlFor="serienummer">Serienummer</Label>
-            <Input id="serienummer" name="serienummer" required />
+            <Input id="serienummer" name="serienummer" />
           </div>
           <div>
             <Label htmlFor="klasse">Klasse</Label>
