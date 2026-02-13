@@ -171,6 +171,19 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
     setLoading(true);
 
+    // Auto-upgrade status from "Ikke startet" to "Under arbeid" if any data has been entered
+    let effectiveStatus = formData.sora_status;
+    if (effectiveStatus === "Ikke startet") {
+      const hasData = formData.environment || formData.conops_summary || formData.igrc || 
+        formData.ground_mitigations || formData.fgrc || formData.arc_initial || 
+        formData.airspace_mitigations || formData.arc_residual || formData.sail || 
+        formData.residual_risk_level || formData.residual_risk_comment || formData.operational_limits;
+      if (hasData) {
+        effectiveStatus = "Under arbeid";
+        setFormData(prev => ({ ...prev, sora_status: "Under arbeid" }));
+      }
+    }
+
     const soraData = {
       mission_id: selectedMissionId,
       company_id: companyId,
@@ -186,9 +199,9 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
       residual_risk_level: formData.residual_risk_level || null,
       residual_risk_comment: formData.residual_risk_comment || null,
       operational_limits: formData.operational_limits || null,
-      sora_status: formData.sora_status,
+      sora_status: effectiveStatus,
       approved_by: formData.approved_by || null,
-      approved_at: formData.sora_status === "Ferdig" && !existingSora?.approved_at 
+      approved_at: effectiveStatus === "Ferdig" && !existingSora?.approved_at 
         ? new Date().toISOString() 
         : existingSora?.approved_at || null,
       prepared_by: existingSora?.prepared_by || user.id,
