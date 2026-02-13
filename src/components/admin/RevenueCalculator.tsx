@@ -280,11 +280,13 @@ export const RevenueCalculator = () => {
     let monthlyDronetagCost = 0;
     let monthlyDronetagRevenue = 0;
     if (state.dronetagEnabled) {
-      monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
+      // Total customer revenue: count × customer price (one-time total)
+      monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
+      // Cost: spread over installment months if applicable
       if (dronetagPaymentType === "installment" && dronetagInstallmentMonths > 0) {
-        monthlyDronetagRevenue = (dronetagCustomerPrice * dronetagCount) / dronetagInstallmentMonths;
+        monthlyDronetagCost = (dronetagPurchaseNok * dronetagCount) / dronetagInstallmentMonths;
       } else {
-        monthlyDronetagRevenue = dronetagCustomerPrice * dronetagCount;
+        monthlyDronetagCost = dronetagPurchaseNok * dronetagCount;
       }
     }
 
