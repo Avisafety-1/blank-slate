@@ -723,7 +723,7 @@ export const RevenueCalculator = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Dronetag innkjøpskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
-                  <span className="font-medium text-destructive">−{fmt(Math.round(calc.monthlyDronetagCost))} NOK/mnd</span>
+                  <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm font-semibold">
