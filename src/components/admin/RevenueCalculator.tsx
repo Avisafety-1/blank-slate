@@ -265,8 +265,12 @@ export const RevenueCalculator = () => {
       }
     }
 
-    const monthlyNriCost = nriPurchaseCost * state.nriHours;
-    const monthlyNriRevenue = nriCustomerPrice * state.nriHours;
+    let monthlyNriCost = 0;
+    let monthlyNriRevenue = 0;
+    if (state.dronetagEnabled) {
+      monthlyNriCost = nriPurchaseCost * state.nriHours;
+      monthlyNriRevenue = nriCustomerPrice * state.nriHours;
+    }
 
     const totalRevenue = monthlyUserRevenue + monthlyDronetagRevenue + monthlyNriRevenue;
     const totalCost = monthlyDronetagCost + monthlyNriCost;
@@ -473,7 +477,7 @@ export const RevenueCalculator = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Package className="h-5 w-5 text-primary" />
-              Dronetag-kostnader
+              Dronetag &amp; NRI Hours
             </CardTitle>
             <div className="flex items-center gap-2">
               <Label htmlFor="dronetag-toggle" className="text-sm text-muted-foreground">Inkluder</Label>
@@ -558,18 +562,13 @@ export const RevenueCalculator = () => {
               />
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Section 4: NRI Hours */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <DollarSign className="h-5 w-5 text-primary" />
-            NRI Hours
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          <Separator />
+
+          {/* NRI Hours sub-section */}
+          <div>
+            <Label className="text-sm font-semibold">NRI Hours</Label>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label>Stipulert forbruk (timer)</Label>
