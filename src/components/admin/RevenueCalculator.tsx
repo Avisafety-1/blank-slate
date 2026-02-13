@@ -137,7 +137,7 @@ export const RevenueCalculator = () => {
         if (Array.isArray(parsed) && parsed.length === 3) {
           setScenarios(parsed.map((s: any, i: number) => ({
             name: s.name || `Scenario ${i + 1}`,
-            state: { ...defaultCalcState, ...s.state },
+            state: { ...defaultCalcState, ...s.state, showTiers: false },
           })));
         } else {
           setScenarios(loadScenarios(companyKey));
