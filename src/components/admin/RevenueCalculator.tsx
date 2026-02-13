@@ -26,6 +26,7 @@ interface CalcState {
     large: TierConfig;
   };
   totalUsers: number;
+  showTiers: boolean;
   dronetagEnabled: boolean;
   dronetagAcquisitionType: "leasing" | "purchase";
   dronetagLeasingCostPerMonth: number;
@@ -60,6 +61,7 @@ const defaultCalcState: CalcState = {
     large: { maxUsers: 999, pricePerUser: 199 },
   },
   totalUsers: 0,
+  showTiers: true,
   dronetagEnabled: true,
   dronetagAcquisitionType: "purchase",
   dronetagLeasingCostPerMonth: 0,
@@ -547,12 +549,22 @@ export const RevenueCalculator = () => {
       {/* Section 1: Tiers */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Users className="h-5 w-5 text-primary" />
-            Bedriftsstørrelser og priser
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Users className="h-5 w-5 text-primary" />
+              Bedriftsstørrelser og priser
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="tiers-toggle" className="text-sm text-muted-foreground">Vis</Label>
+              <Switch
+                id="tiers-toggle"
+                checked={state.showTiers}
+                onCheckedChange={(v) => updateState({ showTiers: v })}
+              />
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        {state.showTiers && <CardContent>
           <div className="grid gap-3">
             {tierRows.map(({ key, label }) => (
               <div key={key} className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
@@ -587,7 +599,7 @@ export const RevenueCalculator = () => {
               </div>
             ))}
           </div>
-        </CardContent>
+        </CardContent>}
       </Card>
 
       {/* Section 2: User calculation */}
