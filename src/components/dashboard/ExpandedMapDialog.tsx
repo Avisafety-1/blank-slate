@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
-import { fetchTerrainElevations, buildTerrainProfile, type TerrainPoint } from "@/lib/terrainElevation";
+import { fetchTerrainElevations, buildTerrainProfile, downsamplePositions, interpolateElevations, type TerrainPoint } from "@/lib/terrainElevation";
 
 interface RoutePoint {
   lat: number;
@@ -87,19 +87,50 @@ export const ExpandedMapDialog = ({
 
       console.log(`[Terrain] Starting fetch for ${allPositions.length} positions`);
 
-      // Retry the entire terrain fetch up to 2 times
+      // Check sessionStorage cache
+      const first = allPositions[0];
+      const last = allPositions[allPositions.length - 1];
+      const cacheKey = `terrain_${first.lat.toFixed(4)}_${first.lng.toFixed(4)}_${last.lat.toFixed(4)}_${last.lng.toFixed(4)}_${allPositions.length}`;
+      
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          console.log(`[Terrain] Cache hit for ${cacheKey}`);
+          const cachedElevations: (number | null)[] = JSON.parse(cached);
+          if (cachedElevations.length === allPositions.length) {
+            const elevMap = new globalThis.Map<string, number>();
+            allPositions.forEach((pos, i) => {
+              if (cachedElevations[i] != null) {
+                elevMap.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, cachedElevations[i]!);
+              }
+            });
+            terrainElevationsRef.current = elevMap;
+            const profile = buildTerrainProfile(allPositions, cachedElevations);
+            setTerrainData(profile);
+            setTerrainLoading(false);
+            return;
+          }
+        }
+      } catch {}
+
+      // Downsample to reduce API calls
+      const { sampled, indices } = downsamplePositions(allPositions, 80);
+      console.log(`[Terrain] Downsampled ${allPositions.length} -> ${sampled.length} positions`);
+
+      // Retry the entire terrain fetch up to 3 times
       let elevations: (number | null)[] | null = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         if (cancelled) return;
         if (attempt > 0) {
           console.log(`[Terrain] Top-level retry attempt ${attempt}`);
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise(r => setTimeout(r, 4000));
         }
-        const result = await fetchTerrainElevations(allPositions);
-        const validCount = result.filter(e => e != null).length;
-        console.log(`[Terrain] Attempt ${attempt}: got ${validCount}/${result.length} valid elevations`);
+        const sampledResult = await fetchTerrainElevations(sampled);
+        const validCount = sampledResult.filter(e => e != null).length;
+        console.log(`[Terrain] Attempt ${attempt}: got ${validCount}/${sampledResult.length} valid elevations`);
         if (validCount > 0) {
-          elevations = result;
+          // Interpolate back to full length
+          elevations = interpolateElevations(sampledResult, indices, allPositions.length);
           break;
         }
       }
@@ -111,6 +142,12 @@ export const ExpandedMapDialog = ({
         setTerrainLoading(false);
         return;
       }
+
+      // Save to sessionStorage cache
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(elevations));
+        console.log(`[Terrain] Cached elevations under ${cacheKey}`);
+      } catch {}
 
       // Store in ref for popup access
       const elevMap = new globalThis.Map<string, number>();

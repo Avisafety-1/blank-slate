@@ -32,14 +32,62 @@ function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Fetch terrain elevations from Open-Meteo in batches of 100, with retry */
+/** Downsample positions to at most maxPoints evenly spaced indices */
+export function downsamplePositions<T>(
+  positions: T[],
+  maxPoints = 80
+): { sampled: T[]; indices: number[] } {
+  if (positions.length <= maxPoints) {
+    return { sampled: [...positions], indices: positions.map((_, i) => i) };
+  }
+  const indices: number[] = [0];
+  const step = (positions.length - 1) / (maxPoints - 1);
+  for (let i = 1; i < maxPoints - 1; i++) {
+    indices.push(Math.round(step * i));
+  }
+  indices.push(positions.length - 1);
+  // Deduplicate (in case rounding produced duplicates)
+  const unique = [...new Set(indices)].sort((a, b) => a - b);
+  return { sampled: unique.map((i) => positions[i]), indices: unique };
+}
+
+/** Interpolate elevations back to full length from sampled indices */
+export function interpolateElevations(
+  sampledElevations: (number | null)[],
+  sampledIndices: number[],
+  totalCount: number
+): (number | null)[] {
+  const result: (number | null)[] = new Array(totalCount).fill(null);
+
+  // Place known values
+  sampledIndices.forEach((idx, i) => {
+    result[idx] = sampledElevations[i];
+  });
+
+  // Linear interpolation between known values
+  for (let s = 0; s < sampledIndices.length - 1; s++) {
+    const startIdx = sampledIndices[s];
+    const endIdx = sampledIndices[s + 1];
+    const startVal = sampledElevations[s];
+    const endVal = sampledElevations[s + 1];
+    if (startVal == null || endVal == null) continue;
+    for (let i = startIdx + 1; i < endIdx; i++) {
+      const t = (i - startIdx) / (endIdx - startIdx);
+      result[i] = startVal + t * (endVal - startVal);
+    }
+  }
+
+  return result;
+}
+
+/** Fetch terrain elevations from Open-Meteo in batches of 100, with exponential backoff retry */
 export async function fetchTerrainElevations(
   positions: { lat: number; lng: number }[]
 ): Promise<(number | null)[]> {
   if (positions.length === 0) return [];
 
   const BATCH_SIZE = 100;
-  const MAX_RETRIES = 2;
+  const MAX_RETRIES = 3;
   const elevations: (number | null)[] = [];
 
   for (let i = 0; i < positions.length; i += BATCH_SIZE) {
@@ -47,12 +95,18 @@ export async function fetchTerrainElevations(
     const lats = batch.map((p) => p.lat.toFixed(6)).join(",");
     const lngs = batch.map((p) => p.lng.toFixed(6)).join(",");
 
+    // Inter-batch delay (skip for first batch)
+    if (i > 0) {
+      await delay(1500);
+    }
+
     let success = false;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
-          console.log(`[Terrain] Retry attempt ${attempt} for batch starting at index ${i}`);
-          await delay(1000 * attempt);
+          const backoffMs = 3000 * Math.pow(2, attempt - 1); // 3s, 6s, 12s
+          console.log(`[Terrain] Retry attempt ${attempt} for batch ${i}, waiting ${backoffMs}ms`);
+          await delay(backoffMs);
         }
         const res = await fetch(
           `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`
@@ -64,6 +118,7 @@ export async function fetchTerrainElevations(
             elevations.push(elev[idx] ?? null);
           });
           success = true;
+          console.log(`[Terrain] Batch ${i} succeeded on attempt ${attempt}`);
           break;
         } else {
           console.warn(`[Terrain] Batch ${i} HTTP ${res.status}, attempt ${attempt}`);
