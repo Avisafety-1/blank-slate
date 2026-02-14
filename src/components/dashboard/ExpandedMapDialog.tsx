@@ -75,7 +75,13 @@ export const ExpandedMapDialog = ({
     setTerrainLoading(true);
 
     async function loadTerrain() {
-      const allPositions = flightTracks!.flatMap((t) => t.positions || []);
+      // Sort tracks chronologically before combining
+      const sortedTracks = [...flightTracks!].sort((a, b) => {
+        const dateA = a.flightDate || a.positions?.[0]?.timestamp || '';
+        const dateB = b.flightDate || b.positions?.[0]?.timestamp || '';
+        return dateA.localeCompare(dateB);
+      });
+      const allPositions = sortedTracks.flatMap((t) => t.positions || []);
       if (allPositions.length === 0) { setTerrainLoading(false); return; }
 
       const elevations = await fetchTerrainElevations(allPositions);
