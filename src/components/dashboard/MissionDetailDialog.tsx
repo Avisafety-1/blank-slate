@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2 } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2 } from "lucide-react";
 import { useState } from "react";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
+import { ExpandedMapDialog } from "./ExpandedMapDialog";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
@@ -68,6 +69,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
   const [soraDialogOpen, setSoraDialogOpen] = useState(false);
+  const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -195,8 +197,17 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           {mission.latitude && mission.longitude && (
             <div className="border-t border-border pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Kartvisning</p>
-              <div className="h-[200px] relative overflow-hidden rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
+                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
+                  Utvid
+                </Button>
+              </div>
+              <div 
+                className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                onClick={() => setExpandedMapOpen(true)}
+              >
                 <MissionMapPreview latitude={mission.latitude} longitude={mission.longitude} route={mission.route as any} />
               </div>
             </div>
@@ -277,6 +288,26 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       onOpenChange={setSoraDialogOpen}
       missionId={mission.id}
     />
+
+    {mission.latitude && mission.longitude && (
+      <ExpandedMapDialog
+        open={expandedMapOpen}
+        onOpenChange={setExpandedMapOpen}
+        latitude={mission.latitude}
+        longitude={mission.longitude}
+        route={mission.route as any}
+        flightTracks={
+          mission.flightLogs
+            ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+            .map((log: any) => ({
+              positions: log.flight_track.positions,
+              flightLogId: log.id,
+              flightDate: log.flight_date,
+            })) || null
+        }
+        missionTitle={mission.tittel}
+      />
+    )}
     </>
   );
 };
