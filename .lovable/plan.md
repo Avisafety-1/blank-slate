@@ -1,65 +1,78 @@
 
+# 3D Hoydeprofil og AGL-beregning for flyspor
 
-# Klikkbar flytur-rute: Vis data for naermeste punkt
+## Oversikt
+Legge til en hoydeprofil-visning (sidevisning) under kartet som viser flyturens hoyde over terrenget langs ruten. Terrenghoyden hentes fra Open-Meteo Elevation API (gratis, ingen noekkel nodvendig), og AGL (Above Ground Level) beregnes som MSL minus terrenghode. AGL vises ogsaa i telemetri-popupen naar man klikker paa flyruten.
 
-## Problem
-Flyspor-polylinjen paa kartet har ingen klikk-haandtering. Telemetridata vises kun via usynlige sirkelmarkorer (`fillOpacity: 0.01`, `radius: 4-5px`) plassert paa hvert 5. punkt. Brukeren maa treffe disse naesten usynlige punktene presist for aa se data.
+## Tilnaerming
 
-## Losning
-Legge til en klikk-haandterer paa selve polylinjen (og segmentene) som finner naermeste datapunkt og viser popup med telemetri. Dette gjelder begge komponentene som viser lagrede flyspor.
+### Hvorfor hoydeprofil i stedet for full 3D?
+En 2D hoydeprofil-graf (avstand langs ruten vs. hoyde) gir bedre lesbarhet enn et 3D-kart, krever ingen tunge biblioteker (bruker Recharts som allerede er installert), og viser tydelig forholdet mellom flyhoyde og terreng.
+
+### Terrenghoydedata
+Open-Meteo Elevation API (`https://api.open-meteo.com/v1/elevation?latitude=X,Y,Z&longitude=X,Y,Z`) aksepterer opptil 100 koordinater per kall og returnerer terrenghoyden for hvert punkt. For lengre spor deles posisjonene opp i batches.
 
 ## Endringer
 
-### 1. `src/components/dashboard/ExpandedMapDialog.tsx`
+### 1. Ny komponent: `FlightAltitudeProfile.tsx`
+En Recharts-basert hoydeprofil som viser:
+- **Blaa linje**: Flyhoyde (MSL)
+- **Brun/gronn fylt omraade**: Terrengnivaa
+- **X-akse**: Avstand langs ruten (km)
+- **Y-akse**: Hoyde (meter)
+- Hover/klikk paa grafen viser AGL, MSL, terrenghode og hastighet for det punktet
+- Visuelt tydelig avstand mellom flytur og terreng (dette er AGL)
 
-**Erstatt de usynlige circleMarker-ene (linje 276-293) med en klikk-haandterer paa hele polylinjen:**
+### 2. Oppdater `ExpandedMapDialog.tsx`
+- Legg til en toggelknapp (fanevalg) mellom "Kart" og "Hoydeprofil" under kartet
+- Naar hoydeprofil-fanen er valgt, vis `FlightAltitudeProfile` i stedet for (eller under) kartet
+- Hent terrenghoydedata fra Open-Meteo Elevation API ved aapning
+- Vis maks AGL og gjennomsnittlig AGL i statistikk-feltet nederst
 
-- Samle alle polyline-segmenter i en `L.featureGroup` med en felles klikk-haandterer
-- Ved klikk: beregn avstand fra klikk-koordinat til alle posisjoner i tracket
-- Finn naermeste punkt og vis popup med telemetridata (samme format som i dag)
-- Behold start/slutt-markorer som de er (de er synlige og fungerer)
-- Oek `weight` fra 4 til 6 for storre klikkbart omraade
+### 3. Oppdater telemetri-popup i begge kartkomponenter
+- Legg til "Hoyde (AGL)" i popup-innholdet naar terrenghoydedata er tilgjengelig
+- Format: `Hoyde (AGL): XX m` i tillegg til eksisterende MSL-verdi
 
-### 2. `src/components/dashboard/MissionMapPreview.tsx`
+### 4. Oppdater `MissionMapPreview.tsx`
+- Samme AGL-visning i popup naar terrenghoydedata er tilgjengelig
 
-**Samme endring:**
+## Tekniske detaljer
 
-- Legg til klikk-haandterer paa den gronne polylinjen (linje 149-153)
-- Ved klikk: finn naermeste punkt i `track.positions` og vis popup
-- Fjern de usynlige circleMarker-ene (linje 158-176)
-- Oek `weight` fra 3 til 5
-
-### Teknisk implementasjon
-
-Klikk-haandterer-funksjonen (brukes i begge filer):
-
+### Open-Meteo Elevation API
 ```text
-polyline.on('click', (e) => {
-  const clickLatLng = e.latlng;
-  let nearestIdx = 0;
-  let minDist = Infinity;
-  
-  track.positions.forEach((pos, idx) => {
-    const dist = clickLatLng.distanceTo(L.latLng(pos.lat, pos.lng));
-    if (dist < minDist) {
-      minDist = dist;
-      nearestIdx = idx;
-    }
-  });
-  
-  const pos = track.positions[nearestIdx];
-  // Bygg popup-innhold med telemetridata
-  L.popup()
-    .setLatLng([pos.lat, pos.lng])
-    .setContent(buildPopupContent(pos, nearestIdx, track.positions.length))
-    .openOn(map);
-});
+GET https://api.open-meteo.com/v1/elevation?latitude=61.0,61.1&longitude=11.0,11.1
+Response: { "elevation": [250.5, 310.2] }
+```
+- Gratis, ingen API-noekkel
+- Maks 100 punkter per kall, batches for lengre spor
+- Opplosning: ~90m (SRTM-data)
+
+### AGL-beregning
+```text
+AGL = alt_msl - terrain_elevation
 ```
 
-### Filer som endres
+### FlightAltitudeProfile-komponent (Recharts)
+- AreaChart med to datasett: flyhoyde (MSL) og terreng
+- Terreng som fylt omraade (brun/gronn) med flyhoyde som linje over
+- Mellomrommet mellom linjene representerer AGL visuelt
+- Tooltip viser MSL, AGL, terrenghode, hastighet og tid
+- Responsiv bredde, fast hoyde (~200px)
+
+### Dataflyt
+```text
+1. Dialog aapnes med flightTracks
+2. Samle alle lat/lng fra track.positions
+3. Batch-kall til Open-Meteo Elevation API
+4. Beregn kumulativ avstand langs ruten (Haversine)
+5. Kombiner: { distance, alt_msl, terrain_elevation, agl, speed, timestamp }
+6. Vis i Recharts AreaChart
+```
+
+### Filer som endres/opprettes
 
 | Fil | Endring |
 |-----|---------|
-| `src/components/dashboard/ExpandedMapDialog.tsx` | Klikk-haandterer paa polyline-segmenter, fjern usynlige markorer |
-| `src/components/dashboard/MissionMapPreview.tsx` | Klikk-haandterer paa polyline, fjern usynlige markorer |
-
+| `src/components/dashboard/FlightAltitudeProfile.tsx` | **Ny** - Recharts hoydeprofil-komponent |
+| `src/components/dashboard/ExpandedMapDialog.tsx` | Legg til profilvisning, terrenghoydedata-henting, AGL i popup |
+| `src/components/dashboard/MissionMapPreview.tsx` | AGL i popup naar data er tilgjengelig |
