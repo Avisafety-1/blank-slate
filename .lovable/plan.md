@@ -1,62 +1,90 @@
 
+# Utvid flyspor med komplett telemetridata og hoydevisning
 
-# Fiks: Komplett PDF-eksport av risikovurdering
+## Oversikt
+SafeSky gir allerede mer data enn det som lagres i flight_track. Tabellen `dronetag_positions` lagrer faktisk `alt_msl`, `speed`, `heading` og `vert_speed`, men nar flysporet hentes ved flyslutt brukes kun `lat, lng, alt_agl, timestamp`. Losningen er a inkludere alle tilgjengelige felter i flight_track og deretter vise dem interaktivt pa kartet.
 
-## Problem
-PDF-eksporten mangler mye innhold fordi:
-1. **Feil datastruktur**: Koden antar at `categories` er en array, men det er et objekt (`{ weather: {...}, airspace: {...}, ... }`)
-2. **Feil feltnavn**: Koden bruker `positive_factors` men dataen har `factors`
-3. **Manglende felter**: `actual_conditions`, `drone_status`, `experience_summary`, `complexity_factors` vises ikke
-4. **Manglende detaljer i anbefalinger**: `reason` og `risk_addressed` fra anbefalingene vises ikke
-5. **Kategorinavn**: Vises som "weather" istedenfor "Vaer"
+## Hva SafeSky gir oss (allerede lagret i dronetag_positions)
+| Felt | Kolonne | Status |
+|------|---------|--------|
+| Posisjon | lat, lng | Brukes i dag |
+| Hoyde MSL | alt_msl | Lagret, men ikke med i flight_track |
+| Hoyde AGL | alt_agl | Brukes i dag (men er alltid null/0 fra SafeSky) |
+| Hastighet | speed | Lagret, men ikke med i flight_track |
+| Retning | heading | Lagret, men ikke med i flight_track |
+| Vertikal hastighet | vert_speed | Lagret, men ikke med i flight_track |
+| Tidspunkt | timestamp | Brukes i dag |
 
-## Losning
-Skrive om `riskAssessmentPdfExport.ts` til a handtere den faktiske datastrukturen, slik at PDF-en inneholder alt som vises pa skjermen:
+**Merk**: SafeSky gir kun MSL-hoyde (over havet), ikke AGL (over bakken). Dagens kode henter `alt_agl` som typisk er null. Vi bor hente `alt_msl` i stedet og vise det som "hoyde (MSL)".
 
-### Endringer i `src/lib/riskAssessmentPdfExport.ts`
+## Endringer
 
-1. **Kategorier som objekt**: Iterere over `Object.entries(assessment.categories)` istedenfor array
-2. **Norske kategorinavn**: Mappe `weather` -> `Vaer`, `airspace` -> `Luftrom`, osv.
-3. **Riktige feltnavn**: Bruke `factors` og `concerns` (ikke `positive_factors`)
-4. **Kategori-detaljer**: Inkludere `actual_conditions`, `drone_status`, `experience_summary`, `complexity_factors` under hver kategori
-5. **Anbefalingsdetaljer**: Inkludere `reason` og `risk_addressed` for hver anbefaling
-6. **GO-beslutning**: Bruke `go_decision`-feltet riktig (strengverdier "GO", "BETINGET", "NO-GO")
+### 1. Utvid flight_track data ved lagring (`useFlightTimer.ts`)
+Endre `fetchFlightTrack`-funksjonen til a hente alle felter fra `dronetag_positions`:
 
-### Hva PDF-en vil inneholde (komplett)
-- Header med oppdragstittel og tidspunkt
-- Oppdragsoversikt
-- Vurderingsmetode
-- Samlet score og anbefaling (GO/BETINGET GO/NO-GO)
-- Hard stop-advarsel (hvis relevant)
-- Sammendrag/konklusjon
-- Kategoriscorer-tabell med pilotkommentarer
-- For hver kategori: detaljbeskrivelse, positive faktorer og bekymringer
-- Anbefalte tiltak med begrunnelse, gruppert etter prioritet
-- Forutsetninger
-- AI-forbehold
-
-### Teknisk detalj
-
-Kategoridata i appen:
+- Utvid select: `lat, lng, alt_msl, alt_agl, speed, heading, vert_speed, timestamp`
+- Lagre alle felter i flight_track-objektet:
 ```text
 {
-  weather: { score: 8.5, go_decision: "GO", factors: [...], concerns: [...], actual_conditions: "..." },
-  airspace: { score: 7.0, go_decision: "BETINGET", factors: [...], concerns: [...] },
-  pilot_experience: { ... },
-  mission_complexity: { ... },
-  equipment: { ... }
+  lat, lng,
+  alt_msl,     // hoyde over havet (fra SafeSky)
+  alt_agl,     // hoyde over bakken (hvis tilgjengelig)
+  speed,       // hastighet m/s
+  heading,     // retning i grader
+  vert_speed,  // vertikal hastighet m/s
+  timestamp
 }
 ```
 
-Kategorinavnmapping:
+### 2. Utvid FlightTrackPosition-interface
+Oppdatere `FlightTrackPosition` i bade `MissionMapPreview.tsx` og `ExpandedMapDialog.tsx`:
+
 ```text
-weather -> Vaer
-airspace -> Luftrom
-pilot_experience -> Piloterfaring
-mission_complexity -> Oppdragskompleksitet
-equipment -> Utstyr
+interface FlightTrackPosition {
+  lat: number;
+  lng: number;
+  alt?: number;          // bakoverkompatibel (legacy)
+  alt_msl?: number;      // hoyde over havet
+  alt_agl?: number;      // hoyde over bakken
+  speed?: number;        // m/s
+  heading?: number;      // grader
+  vert_speed?: number;   // m/s
+  timestamp?: string;
+}
 ```
 
-### Filer som endres
-Kun 1 fil: `src/lib/riskAssessmentPdfExport.ts`
+### 3. Interaktiv hoydevisning pa kartet (`ExpandedMapDialog.tsx` og `MissionMapPreview.tsx`)
 
+**a) Klikkbare punkter pa flyspor**
+Legge til usynlige sirkelmarkorer langs flysporet (ca. hvert 3.-5. punkt for ytelse) som viser en popup ved klikk:
+
+```text
+Punkt 14 av 87
+--------------
+Hoyde (MSL): 45 m
+Hastighet:   12.3 m/s
+Retning:     245deg
+Vert. hast.: -0.5 m/s
+Tidspunkt:   14:23:45
+```
+
+**b) Maks-hoyde badge i ExpandedMapDialog**
+Beregne og vise statistikk i bunnteksten:
+
+```text
+[--- Planlagt rute]  [--- Faktisk flytur]  |  Maks hoyde: 87m MSL  |  Maks hastighet: 15.2 m/s
+```
+
+**c) Fargegradient pa flyspor basert pa hoyde (kun ExpandedMapDialog)**
+I stedet for en ensfarget gronn linje, tegne flysporet som segmenter med farge fra gronn (lav hoyde) til rod (hoy hoyde). Dette gir umiddelbar visuell forstaelse av hoydeprofilet.
+
+### 4. Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `src/hooks/useFlightTimer.ts` | Utvid select og mapping i `fetchFlightTrack` |
+| `src/components/dashboard/ExpandedMapDialog.tsx` | Nytt interface, klikkbare punkter, hoydefargegradient, statistikk-footer |
+| `src/components/dashboard/MissionMapPreview.tsx` | Nytt interface, enkel hoydevisning ved klikk |
+
+### 5. Bakoverkompatibilitet
+Eksisterende flight_track-data som kun har `{ lat, lng, alt, timestamp }` vil fortsatt fungere. Det nye `alt`-feltet brukes som fallback nar `alt_msl` mangler. Nye flyturer far automatisk med all tilgjengelig data.
