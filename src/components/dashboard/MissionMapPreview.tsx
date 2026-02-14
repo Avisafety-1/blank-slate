@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
 import "leaflet/dist/leaflet.css";
+import { fetchTerrainElevations } from "@/lib/terrainElevation";
 
 interface RoutePoint {
   lat: number;
@@ -41,6 +42,7 @@ interface MissionMapPreviewProps {
 export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: MissionMapPreviewProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
+  const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
 
   useEffect(() => {
     if (!mapRef.current || !latitude || !longitude) return;
@@ -145,6 +147,16 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         map.getPane('popupPane')!.style.zIndex = '800';
       }
       const tracksLayer = L.layerGroup().addTo(map);
+
+      // Fetch terrain elevations for AGL display in popups
+      const allTrackPositions = flightTracks.flatMap(t => t.positions || []);
+      fetchTerrainElevations(allTrackPositions).then((elevations) => {
+        allTrackPositions.forEach((pos, i) => {
+          if (elevations[i] != null) {
+            terrainElevationsRef.current.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations[i]!);
+          }
+        });
+      }).catch(() => {});
       
       flightTracks.forEach((track, trackIndex) => {
         if (!track.positions || track.positions.length < 2) return;
@@ -172,10 +184,15 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           });
           const pos = track.positions[nearestIdx];
           const altitude = pos.alt_msl ?? pos.alt ?? null;
+          const terrainKey = `${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`;
+          const terrainElev = terrainElevationsRef.current.get(terrainKey);
+          const aglValue = altitude != null && terrainElev != null ? altitude - terrainElev : null;
           const content = `
             <div style="font-size:12px;line-height:1.5">
               <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
               ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
+              ${aglValue != null ? `<strong>Høyde (AGL): ${Math.round(aglValue)} m</strong><br/>` : ''}
+              ${terrainElev != null ? `Terreng: ${Math.round(terrainElev)} m<br/>` : ''}
               ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
               ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
               ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
@@ -184,6 +201,28 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
         });
 
+        // Add start marker (green circle)
+        const startPos = track.positions[0];
+        L.circleMarker([startPos.lat, startPos.lng], {
+          radius: 8,
+          fillColor: '#22c55e',
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 1,
+          pane: 'flightTrackPane',
+        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
+
+        // Add end marker (orange circle)
+        const endPos = track.positions[track.positions.length - 1];
+        L.circleMarker([endPos.lat, endPos.lng], {
+          radius: 8,
+          fillColor: '#f97316',
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 1,
+          pane: 'flightTrackPane',
+        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
+      });
         // Add start marker (green circle)
         const startPos = track.positions[0];
         L.circleMarker([startPos.lat, startPos.lng], {

@@ -8,6 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Map as MapIcon, BarChart3 } from "lucide-react";
+import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
+import { fetchTerrainElevations, buildTerrainProfile, type TerrainPoint } from "@/lib/terrainElevation";
 
 interface RoutePoint {
   lat: number;
@@ -60,11 +64,49 @@ export const ExpandedMapDialog = ({
   const leafletMapRef = useRef<L.Map | null>(null);
   const [mapKey, setMapKey] = useState(0);
   const [flightStats, setFlightStats] = useState<{ maxAlt: number; maxSpeed: number } | null>(null);
+  const [activeView, setActiveView] = useState<"map" | "profile">("map");
+  const [terrainData, setTerrainData] = useState<TerrainPoint[]>([]);
+  const [terrainLoading, setTerrainLoading] = useState(false);
+  const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
+
+  // Fetch terrain elevation data when dialog opens with flight tracks
+  useEffect(() => {
+    if (!open || !flightTracks || flightTracks.length === 0) return;
+
+    let cancelled = false;
+    setTerrainLoading(true);
+
+    async function loadTerrain() {
+      const allPositions = flightTracks!.flatMap((t) => t.positions || []);
+      if (allPositions.length === 0) { setTerrainLoading(false); return; }
+
+      const elevations = await fetchTerrainElevations(allPositions);
+      if (cancelled) return;
+
+      // Store in ref for popup access
+      const elevMap = new globalThis.Map<string, number>();
+      allPositions.forEach((pos, i) => {
+        if (elevations[i] != null) {
+          elevMap.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations[i]!);
+        }
+      });
+      terrainElevationsRef.current = elevMap;
+
+      // Build profile data for the first track (or all combined)
+      const profile = buildTerrainProfile(allPositions, elevations);
+      setTerrainData(profile);
+      setTerrainLoading(false);
+    }
+
+    loadTerrain();
+    return () => { cancelled = true; };
+  }, [open, flightTracks]);
 
   // Reset map key when dialog opens to force fresh initialization
   useEffect(() => {
     if (open) {
       setMapKey((prev) => prev + 1);
+      setActiveView("map");
     } else {
       // Clean up map when dialog closes
       if (leafletMapRef.current) {
@@ -286,10 +328,15 @@ export const ExpandedMapDialog = ({
               });
               const pos = track.positions[nearestIdx];
               const altitude = pos.alt_msl ?? pos.alt ?? null;
+              const terrainKey = `${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`;
+              const terrainElev = terrainElevationsRef.current.get(terrainKey);
+              const aglValue = altitude != null && terrainElev != null ? altitude - terrainElev : null;
               const content = `
                 <div style="font-size:12px;line-height:1.6">
                   <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
                   ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
+                  ${aglValue != null ? `<strong>Høyde (AGL): ${Math.round(aglValue)} m</strong><br/>` : ''}
+                  ${terrainElev != null ? `Terreng: ${Math.round(terrainElev)} m<br/>` : ''}
                   ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
                   ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
                   ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
@@ -479,34 +526,75 @@ export const ExpandedMapDialog = ({
     };
   }, [open, latitude, longitude, route, flightTracks, mapKey]);
 
+  // Compute AGL stats from terrain data
+  const aglValues = terrainData.filter((d) => d.agl != null).map((d) => d.agl!);
+  const maxAgl = aglValues.length > 0 ? Math.max(...aglValues) : null;
+  const avgAgl = aglValues.length > 0 ? aglValues.reduce((a, b) => a + b, 0) / aglValues.length : null;
+
+  const hasFlightTracks = flightTracks && flightTracks.length > 0 && flightTracks.some(t => t.positions?.length >= 2);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-4xl w-[95vw] h-[80vh] flex flex-col p-0"
         aria-describedby={undefined}
       >
-        <DialogHeader className="p-4 pb-2">
+        <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between">
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
+          {hasFlightTracks && (
+            <div className="flex gap-1">
+              <Button
+                variant={activeView === "map" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveView("map")}
+                className="h-7 px-2 text-xs gap-1"
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                Kart
+              </Button>
+              <Button
+                variant={activeView === "profile" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveView("profile")}
+                className="h-7 px-2 text-xs gap-1"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Høydeprofil
+              </Button>
+            </div>
+          )}
         </DialogHeader>
-        <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border">
-          <div key={mapKey} ref={mapRef} className="absolute inset-0" />
-        </div>
+
+        {activeView === "map" ? (
+          <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border">
+            <div key={mapKey} ref={mapRef} className="absolute inset-0" />
+          </div>
+        ) : (
+          <div className="flex-1 m-4 mt-0 rounded-lg overflow-hidden border border-border p-4 flex flex-col justify-center">
+            <FlightAltitudeProfile data={terrainData} loading={terrainLoading} />
+          </div>
+        )}
+
         <div className="p-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div
-              className="w-6 h-0.5"
-              style={{
-                borderStyle: "dashed",
-                borderWidth: "1px 0 0",
-                borderColor: "#3b82f6",
-              }}
-            />
-            <span>Planlagt rute</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
-            <span>Faktisk flytur (farge = høyde)</span>
-          </div>
+          {activeView === "map" && (
+            <>
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-6 h-0.5"
+                  style={{
+                    borderStyle: "dashed",
+                    borderWidth: "1px 0 0",
+                    borderColor: "#3b82f6",
+                  }}
+                />
+                <span>Planlagt rute</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
+                <span>Faktisk flytur (farge = høyde)</span>
+              </div>
+            </>
+          )}
           {flightStats && flightStats.maxAlt > 0 && (
             <>
               <div className="flex items-center gap-1 ml-auto">
@@ -515,6 +603,18 @@ export const ExpandedMapDialog = ({
               {flightStats.maxSpeed > 0 && (
                 <div className="flex items-center gap-1">
                   <span>Maks hastighet: <strong>{flightStats.maxSpeed.toFixed(1)} m/s</strong></span>
+                </div>
+              )}
+            </>
+          )}
+          {maxAgl != null && (
+            <>
+              <div className="flex items-center gap-1">
+                <span>Maks AGL: <strong>{Math.round(maxAgl)} m</strong></span>
+              </div>
+              {avgAgl != null && (
+                <div className="flex items-center gap-1">
+                  <span>Snitt AGL: <strong>{Math.round(avgAgl)} m</strong></span>
                 </div>
               )}
             </>
