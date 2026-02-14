@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +61,8 @@ export const ExpandedMapDialog = ({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const [mapKey, setMapKey] = useState(0);
+  const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [flightStats, setFlightStats] = useState<{ maxAlt: number; maxSpeed: number } | null>(null);
   const [terrainData, setTerrainData] = useState<TerrainPoint[]>([]);
   const highlightMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -188,9 +190,10 @@ export const ExpandedMapDialog = ({
         leafletMapRef.current = map;
 
         // Add base layer
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
+        tileLayerRef.current = tileLayer;
 
         // Add mission marker
         const icon = L.divIcon({
@@ -564,7 +567,7 @@ export const ExpandedMapDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0"
+        className="max-w-4xl w-full sm:w-[95vw] h-[100dvh] sm:h-[90vh] flex flex-col p-0 rounded-none sm:rounded-lg"
         aria-describedby={undefined}
       >
         <DialogHeader className="px-3 py-2">
@@ -573,6 +576,30 @@ export const ExpandedMapDialog = ({
 
         <div className="flex-1 relative overflow-hidden min-h-0">
           <div key={mapKey} ref={mapRef} className="absolute inset-0" />
+          <button
+            onClick={() => {
+              const map = leafletMapRef.current;
+              if (!map || !tileLayerRef.current) return;
+              const newType = mapType === 'standard' ? 'satellite' : 'standard';
+              setMapType(newType);
+              map.removeLayer(tileLayerRef.current);
+              const url = newType === 'satellite'
+                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+              const attr = newType === 'satellite'
+                ? '&copy; Esri'
+                : '&copy; OpenStreetMap contributors';
+              tileLayerRef.current = L.tileLayer(url, { attribution: attr }).addTo(map);
+            }}
+            className="absolute top-2 right-2 z-[1000] bg-background/80 backdrop-blur-sm border border-border rounded-md p-1.5 shadow-md hover:bg-background transition-colors"
+            title={mapType === 'standard' ? 'Satellitt' : 'Standard kart'}
+          >
+            {mapType === 'standard' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            )}
+          </button>
         </div>
 
         {hasFlightTracks && (
