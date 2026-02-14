@@ -73,7 +73,7 @@ export const ExpandedMapDialog = ({
   useEffect(() => {
     if (!open || !flightTracks || flightTracks.length === 0) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
     setTerrainLoading(true);
 
     async function loadTerrain() {
@@ -113,35 +113,28 @@ export const ExpandedMapDialog = ({
         }
       } catch {}
 
+      if (controller.signal.aborted) return;
+
       // Downsample to reduce API calls
       const { sampled, indices } = downsamplePositions(allPositions, 80);
       console.log(`[Terrain] Downsampled ${allPositions.length} -> ${sampled.length} positions`);
 
-      // Retry the entire terrain fetch up to 3 times
-      let elevations: (number | null)[] | null = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (cancelled) return;
-        if (attempt > 0) {
-          console.log(`[Terrain] Top-level retry attempt ${attempt}`);
-          await new Promise(r => setTimeout(r, 4000));
-        }
-        const sampledResult = await fetchTerrainElevations(sampled);
-        const validCount = sampledResult.filter(e => e != null).length;
-        console.log(`[Terrain] Attempt ${attempt}: got ${validCount}/${sampledResult.length} valid elevations`);
-        if (validCount > 0) {
-          // Interpolate back to full length
-          elevations = interpolateElevations(sampledResult, indices, allPositions.length);
-          break;
-        }
-      }
+      // Single attempt via edge function (which handles retries server-side)
+      const sampledResult = await fetchTerrainElevations(sampled, controller.signal);
 
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
 
-      if (!elevations || elevations.every(e => e == null)) {
+      const validCount = sampledResult.filter(e => e != null).length;
+      console.log(`[Terrain] Got ${validCount}/${sampledResult.length} valid elevations`);
+
+      if (validCount === 0) {
         console.error("[Terrain] All elevation fetches failed");
         setTerrainLoading(false);
         return;
       }
+
+      // Interpolate back to full length
+      const elevations = interpolateElevations(sampledResult, indices, allPositions.length);
 
       // Save to sessionStorage cache
       try {
@@ -152,8 +145,8 @@ export const ExpandedMapDialog = ({
       // Store in ref for popup access
       const elevMap = new globalThis.Map<string, number>();
       allPositions.forEach((pos, i) => {
-        if (elevations![i] != null) {
-          elevMap.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations![i]!);
+        if (elevations[i] != null) {
+          elevMap.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations[i]!);
         }
       });
       terrainElevationsRef.current = elevMap;
@@ -165,7 +158,7 @@ export const ExpandedMapDialog = ({
     }
 
     loadTerrain();
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [open, flightTracks]);
 
   // ── Map init effect (base layers, markers, route only) ──
