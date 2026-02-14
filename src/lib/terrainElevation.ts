@@ -27,13 +27,19 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** Fetch terrain elevations from Open-Meteo in batches of 100 */
+/** Small helper to wait ms */
+function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Fetch terrain elevations from Open-Meteo in batches of 100, with retry */
 export async function fetchTerrainElevations(
   positions: { lat: number; lng: number }[]
 ): Promise<(number | null)[]> {
   if (positions.length === 0) return [];
 
   const BATCH_SIZE = 100;
+  const MAX_RETRIES = 2;
   const elevations: (number | null)[] = [];
 
   for (let i = 0; i < positions.length; i += BATCH_SIZE) {
@@ -41,24 +47,38 @@ export async function fetchTerrainElevations(
     const lats = batch.map((p) => p.lat.toFixed(6)).join(",");
     const lngs = batch.map((p) => p.lng.toFixed(6)).join(",");
 
-    try {
-      const res = await fetch(
-        `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const elev: number[] = data.elevation ?? [];
-        batch.forEach((_, idx) => {
-          elevations.push(elev[idx] ?? null);
-        });
-      } else {
-        batch.forEach(() => elevations.push(null));
+    let success = false;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`[Terrain] Retry attempt ${attempt} for batch starting at index ${i}`);
+          await delay(1000 * attempt);
+        }
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const elev: number[] = data.elevation ?? [];
+          batch.forEach((_, idx) => {
+            elevations.push(elev[idx] ?? null);
+          });
+          success = true;
+          break;
+        } else {
+          console.warn(`[Terrain] Batch ${i} HTTP ${res.status}, attempt ${attempt}`);
+        }
+      } catch (err) {
+        console.warn(`[Terrain] Batch ${i} fetch error, attempt ${attempt}:`, err);
       }
-    } catch {
+    }
+    if (!success) {
+      console.error(`[Terrain] Batch ${i} failed after ${MAX_RETRIES + 1} attempts`);
       batch.forEach(() => elevations.push(null));
     }
   }
 
+  console.log(`[Terrain] Fetched ${elevations.filter(e => e != null).length}/${elevations.length} elevations`);
   return elevations;
 }
 
