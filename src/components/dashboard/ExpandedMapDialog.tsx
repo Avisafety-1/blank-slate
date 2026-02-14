@@ -233,6 +233,11 @@ export const ExpandedMapDialog = ({
         let maxAlt = 0;
         let maxSpeed = 0;
         if (flightTracks && flightTracks.length > 0) {
+          // Create a custom pane for flight tracks above all airspace layers
+          if (!map.getPane('flightTrackPane')) {
+            map.createPane('flightTrackPane');
+            map.getPane('flightTrackPane')!.style.zIndex = '700';
+          }
           const tracksLayer = L.layerGroup().addTo(map);
 
           flightTracks.forEach((track, trackIndex) => {
@@ -265,6 +270,7 @@ export const ExpandedMapDialog = ({
                 color,
                 weight: 6,
                 opacity: 0.9,
+                pane: 'flightTrackPane',
               }).addTo(segmentGroup);
             }
 
@@ -299,6 +305,7 @@ export const ExpandedMapDialog = ({
               color: "#fff",
               weight: 2,
               fillOpacity: 1,
+              pane: 'flightTrackPane',
             })
               .addTo(tracksLayer)
               .bindPopup(
@@ -313,6 +320,7 @@ export const ExpandedMapDialog = ({
               color: "#fff",
               weight: 2,
               fillOpacity: 1,
+              pane: 'flightTrackPane',
             })
               .addTo(tracksLayer)
               .bindPopup(`<strong>Flytur ${trackIndex + 1} - Slutt</strong>`);

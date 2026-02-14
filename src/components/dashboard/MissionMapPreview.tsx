@@ -138,6 +138,11 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
 
     // Display flight tracks if provided (green solid line) with clickable telemetry popups
     if (flightTracks && flightTracks.length > 0) {
+      // Create a custom pane for flight tracks above all airspace layers
+      if (!map.getPane('flightTrackPane')) {
+        map.createPane('flightTrackPane');
+        map.getPane('flightTrackPane')!.style.zIndex = '700';
+      }
       const tracksLayer = L.layerGroup().addTo(map);
       
       flightTracks.forEach((track, trackIndex) => {
@@ -150,6 +155,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           color: '#22c55e',
           weight: 5,
           opacity: 0.9,
+          pane: 'flightTrackPane',
         }).addTo(tracksLayer);
         
         latLngs.forEach(ll => allPoints.push(ll));
@@ -185,6 +191,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           color: '#fff',
           weight: 2,
           fillOpacity: 1,
+          pane: 'flightTrackPane',
         }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
 
         // Add end marker (orange circle)
@@ -195,6 +202,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           color: '#fff',
           weight: 2,
           fillOpacity: 1,
+          pane: 'flightTrackPane',
         }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
       });
     }
