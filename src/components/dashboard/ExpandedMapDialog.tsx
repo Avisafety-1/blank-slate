@@ -67,6 +67,7 @@ export const ExpandedMapDialog = ({
   const [terrainData, setTerrainData] = useState<TerrainPoint[]>([]);
   const highlightMarkerRef = useRef<L.Marker | null>(null);
   const [terrainLoading, setTerrainLoading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
   const flightTrackLayerRef = useRef<L.LayerGroup | null>(null);
 
@@ -206,6 +207,7 @@ export const ExpandedMapDialog = ({
         }).setView([latitude, longitude], 13);
 
         leafletMapRef.current = map;
+        setMapReady(true);
 
         const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
@@ -340,6 +342,7 @@ export const ExpandedMapDialog = ({
       setTerrainData([]);
       setFlightStats(null);
       setTerrainLoading(false);
+      setMapReady(false);
       terrainElevationsRef.current = new globalThis.Map();
     }
   }, [open]);
@@ -347,7 +350,7 @@ export const ExpandedMapDialog = ({
   // ── Flight track rendering effect (separate from map init) ──
   useEffect(() => {
     const map = leafletMapRef.current;
-    if (!map || !open) return;
+    if (!map || !open || !mapReady) return;
 
     // Remove previous flight track layer
     if (flightTrackLayerRef.current) {
@@ -459,7 +462,7 @@ export const ExpandedMapDialog = ({
     if (maxAlt > 0 || maxSpeed > 0) {
       setFlightStats({ maxAlt, maxSpeed });
     }
-  }, [open, flightTracks, terrainData]);
+  }, [open, mapReady, flightTracks, terrainData]);
 
   // Compute AGL stats
   const aglValues = terrainData.filter((d) => d.agl != null).map((d) => d.agl!);
