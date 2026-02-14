@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import {
   AreaChart,
   Area,
@@ -12,6 +13,7 @@ import type { TerrainPoint } from "@/lib/terrainElevation";
 interface FlightAltitudeProfileProps {
   data: TerrainPoint[];
   loading?: boolean;
+  onHoverIndex?: (index: number | null) => void;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -49,10 +51,24 @@ const CustomTooltip = ({ active, payload }: any) => {
 export const FlightAltitudeProfile = ({
   data,
   loading,
+  onHoverIndex,
 }: FlightAltitudeProfileProps) => {
+  const handleMouseMove = useCallback(
+    (state: any) => {
+      if (onHoverIndex && state?.activeTooltipIndex != null) {
+        onHoverIndex(state.activeTooltipIndex);
+      }
+    },
+    [onHoverIndex]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    onHoverIndex?.(null);
+  }, [onHoverIndex]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
+      <div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">
         Henter terrengdata...
       </div>
     );
@@ -60,7 +76,7 @@ export const FlightAltitudeProfile = ({
 
   if (!data || data.length < 2) {
     return (
-      <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
+      <div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">
         Ingen høydedata tilgjengelig
       </div>
     );
@@ -74,9 +90,14 @@ export const FlightAltitudeProfile = ({
   const maxY = Math.ceil((Math.max(...allAltitudes) + 20) / 10) * 10;
 
   return (
-    <div className="w-full h-[200px]">
+    <div className="w-full h-[180px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
           <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
           <XAxis
             dataKey="distance"
