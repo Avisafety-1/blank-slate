@@ -60,9 +60,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If no active viewers, skip API call to save quota
-    if (!activeViewers || activeViewers.length === 0) {
-      console.log('No active map viewers - skipping SafeSky API call');
+    // Also check if there are active flights with dronetag devices
+    // (need beacons for telemetry matching even if no one is viewing the map)
+    const { data: activeDronetagFlights, error: dronetagFlightsError } = await supabase
+      .from('active_flights')
+      .select('id')
+      .not('dronetag_device_id', 'is', null)
+      .limit(1);
+
+    if (dronetagFlightsError) {
+      console.error('Error checking for dronetag flights:', dronetagFlightsError);
+    }
+
+    const hasActiveViewers = activeViewers && activeViewers.length > 0;
+    const hasActiveDronetagFlights = activeDronetagFlights && activeDronetagFlights.length > 0;
+
+    // If no active viewers AND no active dronetag flights, skip API call to save quota
+    if (!hasActiveViewers && !hasActiveDronetagFlights) {
+      console.log('No active map viewers and no active dronetag flights - skipping SafeSky API call');
       
       // Still clean up old beacons
       const beaconCutoff = new Date(Date.now() - BEACON_MAX_AGE_MS).toISOString();
@@ -81,14 +96,17 @@ Deno.serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           skipped: true,
-          reason: 'No active map viewers',
+          reason: 'No active map viewers or dronetag flights',
           beaconsDeleted: deletedCount
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${activeViewers.length}+ active map viewer(s) - fetching beacons from SafeSky`);
+    const reason = hasActiveViewers ? 'active map viewer(s)' : 'active dronetag flight(s)';
+    console.log(`Fetching beacons from SafeSky (reason: ${reason})`);
+
+    // (log line replaced by reason-based log above)
 
     // Step 2: Fetch beacons from SafeSky Sandbox API with simple x-api-key header
     const SAFESKY_BEACONS_API_KEY = Deno.env.get('SAFESKY_BEACONS_API_KEY');
