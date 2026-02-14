@@ -72,11 +72,28 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [soraDialogOpen, setSoraDialogOpen] = useState(false);
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
+  const [liveMission, setLiveMission] = useState<any>(null);
 
-  // Fetch flight logs when expanded map opens (dashboard missions don't include them)
+  // Re-fetch mission data when dialog opens to get latest route etc.
+  useEffect(() => {
+    if (!open || !mission?.id) {
+      setLiveMission(null);
+      return;
+    }
+    const fetchLatest = async () => {
+      const { data } = await supabase
+        .from("missions")
+        .select("*")
+        .eq("id", mission.id)
+        .single();
+      if (data) setLiveMission(data);
+    };
+    fetchLatest();
+  }, [open, mission?.id]);
+
+  // Fetch flight logs when expanded map opens
   useEffect(() => {
     if (!expandedMapOpen || !mission?.id) return;
-    // If mission already has flightLogs (from /oppdrag), use those
     if (mission.flightLogs) {
       setFlightLogs(mission.flightLogs);
       return;
@@ -91,6 +108,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     };
     fetchLogs();
   }, [expandedMapOpen, mission?.id, mission?.flightLogs]);
+
+  // Use live data merged with prop data (live takes priority for fields like route)
+  const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -111,7 +131,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader className="space-y-3">
             <div className="flex items-start justify-between gap-2 pr-8">
-              <DialogTitle className="text-lg sm:text-xl">{mission.tittel}</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
               <Button size="sm" variant="outline" onClick={handleEditClick} className="flex-shrink-0">
                 <Pencil className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Rediger</span>
@@ -130,36 +150,36 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            <Badge className={`${statusColors[mission.status] || ""} border`}>
-              {mission.status}
+             <Badge className={`${statusColors[currentMission.status] || ""} border`}>
+              {currentMission.status}
             </Badge>
-            {mission.approval_status === 'pending_approval' && (
+            {currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter godkjenning
               </Badge>
             )}
-            {mission.approval_status === 'approved' && (
+            {currentMission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
-            {mission.approval_status === 'not_approved' && (
+            {currentMission.approval_status === 'not_approved' && (
               <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30">
                 Ikke godkjent
               </Badge>
             )}
-            {mission.aiRisk ? (
+            {currentMission.aiRisk ? (
               <Badge 
-                className={`${getAIRiskBadgeColor(mission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
+                className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
                 onClick={() => {
                   setRiskDialogShowHistory(true);
                   setRiskDialogOpen(true);
                 }}
               >
                 <Brain className="w-3 h-3 mr-1" />
-                AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({formatAIRiskScore(mission.aiRisk.overall_score)})
+                AI: {getAIRiskLabel(currentMission.aiRisk.recommendation)} ({formatAIRiskScore(currentMission.aiRisk.overall_score)})
               </Badge>
             ) : (
               <Badge className="bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 border">
@@ -174,16 +194,16 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
-                <p className="text-base">{mission.lokasjon}</p>
+                <p className="text-base">{currentMission.lokasjon}</p>
               </div>
             </div>
 
           {(() => {
-              const routeCoords = (mission.route as any)?.coordinates;
-              const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
-              const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
-              const isCompleted = mission.status === "Fullført";
-              const hasWeatherSnapshot = mission.weather_data_snapshot;
+              const routeCoords = (currentMission.route as any)?.coordinates;
+              const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
+              const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
+              const isCompleted = currentMission.status === "Fullført";
+              const hasWeatherSnapshot = currentMission.weather_data_snapshot;
               
               if (!effectiveLat || !effectiveLng) return null;
               
@@ -208,15 +228,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Tidspunkt</p>
                 <p className="text-base">
-                  {format(new Date(mission.tidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
+                  {format(new Date(currentMission.tidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
                 </p>
               </div>
           </div>
           </div>
 
-          <MissionResourceSections mission={mission} open={open} />
+          <MissionResourceSections mission={currentMission} open={open} />
 
-          {mission.latitude && mission.longitude && (
+          {currentMission.latitude && currentMission.longitude && (
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
@@ -229,36 +249,36 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={() => setExpandedMapOpen(true)}
               >
-                <MissionMapPreview latitude={mission.latitude} longitude={mission.longitude} route={mission.route as any} />
+                <MissionMapPreview latitude={currentMission.latitude} longitude={currentMission.longitude} route={currentMission.route as any} />
               </div>
             </div>
           )}
 
-          {mission.beskrivelse && (
+          {currentMission.beskrivelse && (
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">Beskrivelse</p>
-              <p className="text-base leading-relaxed whitespace-pre-wrap">{mission.beskrivelse}</p>
+              <p className="text-base leading-relaxed whitespace-pre-wrap">{currentMission.beskrivelse}</p>
             </div>
           )}
 
-          {mission.merknader && (
+          {currentMission.merknader && (
             <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
-                  <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">{mission.merknader}</p>
+                  <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">{currentMission.merknader}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Approver Comments */}
-          {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
+          {Array.isArray(currentMission.approver_comments) && currentMission.approver_comments.length > 0 && (
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">Kommentarer fra godkjenner</p>
               <div className="space-y-2">
-                {mission.approver_comments.map((c: any, i: number) => (
+                {currentMission.approver_comments.map((c: any, i: number) => (
                   <div key={i} className="text-sm bg-muted/50 rounded-md p-2">
                     <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
                     {c.comment}
@@ -278,7 +298,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       open={editDialogOpen}
       onOpenChange={setEditDialogOpen}
       onMissionAdded={handleMissionUpdated}
-      mission={mission}
+      mission={currentMission}
     />
 
     <RiskAssessmentTypeDialog
@@ -300,23 +320,23 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         setRiskDialogOpen(open);
         if (!open) setRiskDialogShowHistory(false);
       }}
-      mission={mission}
+      mission={currentMission}
       initialTab={riskDialogShowHistory ? 'history' : 'input'}
     />
 
     <SoraAnalysisDialog
       open={soraDialogOpen}
       onOpenChange={setSoraDialogOpen}
-      missionId={mission.id}
+      missionId={currentMission.id}
     />
 
-    {mission.latitude && mission.longitude && (
+    {currentMission.latitude && currentMission.longitude && (
       <ExpandedMapDialog
         open={expandedMapOpen}
         onOpenChange={setExpandedMapOpen}
-        latitude={mission.latitude}
-        longitude={mission.longitude}
-        route={mission.route as any}
+        latitude={currentMission.latitude}
+        longitude={currentMission.longitude}
+        route={currentMission.route as any}
         flightTracks={
           (flightLogs || [])
             .filter((log: any) => log.flight_track?.positions?.length > 0)
@@ -326,7 +346,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               flightDate: log.flight_date,
             })) || null
         }
-        missionTitle={mission.tittel}
+        missionTitle={currentMission.tittel}
       />
     )}
     </>
