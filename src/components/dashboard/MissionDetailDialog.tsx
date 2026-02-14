@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
@@ -111,6 +111,21 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
   // Use live data merged with prop data (live takes priority for fields like route)
   const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
+
+  // Memoize flightTracks to prevent re-creating array references on every render,
+  // which would cancel in-progress terrain elevation fetches in ExpandedMapDialog
+  const memoizedFlightTracks = useMemo(() => {
+    if (!flightLogs || flightLogs.length === 0) return null;
+    const tracks = flightLogs
+      .filter((log: any) => log.flight_track?.positions?.length > 0)
+      .map((log: any) => ({
+        positions: log.flight_track.positions,
+        flightLogId: log.id,
+        flightDate: log.flight_date,
+      }));
+    return tracks.length > 0 ? tracks : null;
+  }, [flightLogs]);
+
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -337,15 +352,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         latitude={currentMission.latitude}
         longitude={currentMission.longitude}
         route={currentMission.route as any}
-        flightTracks={
-          (flightLogs || [])
-            .filter((log: any) => log.flight_track?.positions?.length > 0)
-            .map((log: any) => ({
-              positions: log.flight_track.positions,
-              flightLogId: log.id,
-              flightDate: log.flight_date,
-            })) || null
-        }
+        flightTracks={memoizedFlightTracks}
         missionTitle={currentMission.tittel}
       />
     )}
