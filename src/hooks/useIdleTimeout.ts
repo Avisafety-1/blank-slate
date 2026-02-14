@@ -10,6 +10,12 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   "mousemove", "keydown", "scroll", "touchstart", "click"
 ];
 
+const LAST_ACTIVITY_KEY = "avisafe_last_activity";
+
+const saveLastActivity = () => {
+  try { localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString()); } catch {}
+};
+
 export function useIdleTimeout() {
   const { user, signOut } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
@@ -52,6 +58,7 @@ export function useIdleTimeout() {
     clearAllTimers();
     setShowWarning(false);
     setRemainingSeconds(COUNTDOWN_TOTAL_S);
+    saveLastActivity();
 
     warningTimerRef.current = setTimeout(() => {
       // Re-check before showing warning
@@ -65,6 +72,23 @@ export function useIdleTimeout() {
   const extendSession = useCallback(() => {
     resetTimers();
   }, [resetTimers]);
+
+  // Check on app startup if user has been idle too long (e.g. phone was off)
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const last = localStorage.getItem(LAST_ACTIVITY_KEY);
+      if (last) {
+        const elapsed = Date.now() - parseInt(last, 10);
+        if (elapsed > LOGOUT_TIME_MS) {
+          console.log('IdleTimeout: Logging out — inactive for', Math.round(elapsed / 60000), 'min');
+          handleLogout();
+        }
+      } else {
+        saveLastActivity(); // first time
+      }
+    } catch {}
+  }, [user, handleLogout]);
 
   // Check active flights periodically
   useEffect(() => {
