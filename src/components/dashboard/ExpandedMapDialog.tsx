@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -64,7 +65,7 @@ export const ExpandedMapDialog = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [flightStats, setFlightStats] = useState<{ maxAlt: number; maxSpeed: number } | null>(null);
   const [terrainData, setTerrainData] = useState<TerrainPoint[]>([]);
-  const highlightMarkerRef = useRef<L.CircleMarker | null>(null);
+  const highlightMarkerRef = useRef<L.Marker | null>(null);
   const [terrainLoading, setTerrainLoading] = useState(false);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
   const flightTrackLayerRef = useRef<L.LayerGroup | null>(null);
@@ -480,12 +481,16 @@ export const ExpandedMapDialog = ({
     if (index == null || !terrainData[index]) return;
 
     const point = terrainData[index];
-    highlightMarkerRef.current = L.circleMarker([point.lat, point.lng], {
-      radius: 8,
-      fillColor: "#ffffff",
-      color: "#3b82f6",
-      weight: 3,
-      fillOpacity: 0.9,
+    const heading = (point as any).heading;
+    const rotateStyle = typeof heading === 'number' ? `transform:rotate(${heading}deg);` : '';
+    const droneHighlightIcon = L.divIcon({
+      className: '',
+      html: `<img src="${droneAnimatedIcon}" style="width:48px;height:48px;${rotateStyle}" />`,
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+    });
+    highlightMarkerRef.current = L.marker([point.lat, point.lng], {
+      icon: droneHighlightIcon,
       pane: "flightTrackPane",
     }).addTo(map);
   }, [terrainData]);
