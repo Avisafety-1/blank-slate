@@ -252,45 +252,43 @@ export const ExpandedMapDialog = ({
             });
 
             // Draw segments with altitude-based color gradient (green=low, red=high)
+            // Collect segments in a featureGroup for shared click handler
+            const segmentGroup = L.featureGroup().addTo(tracksLayer);
             for (let i = 0; i < track.positions.length - 1; i++) {
               const p1 = track.positions[i];
               const p2 = track.positions[i + 1];
               const alt1 = p1.alt_msl ?? p1.alt ?? minTrackAlt;
               const ratio = (alt1 - minTrackAlt) / altRange;
-              // Interpolate green (120) -> red (0) in HSL
               const hue = Math.round(120 * (1 - ratio));
               const color = `hsl(${hue}, 80%, 45%)`;
               L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
                 color,
-                weight: 4,
+                weight: 6,
                 opacity: 0.9,
-              }).addTo(tracksLayer);
+              }).addTo(segmentGroup);
             }
 
-            const latLngs = track.positions.map(
-              (p) => [p.lat, p.lng] as [number, number]
-            );
-            latLngs.forEach((ll) => allPoints.push(ll));
-
-            // Add clickable telemetry points every 5th position
-            track.positions.forEach((pos, posIndex) => {
-              if (posIndex % 5 !== 0 && posIndex !== track.positions.length - 1) return;
+            // Click handler on the entire track polyline — find nearest point and show telemetry
+            segmentGroup.on('click', (e: L.LeafletMouseEvent) => {
+              const clickLatLng = e.latlng;
+              let nearestIdx = 0;
+              let minDist = Infinity;
+              track.positions.forEach((pos, idx) => {
+                const dist = clickLatLng.distanceTo(L.latLng(pos.lat, pos.lng));
+                if (dist < minDist) { minDist = dist; nearestIdx = idx; }
+              });
+              const pos = track.positions[nearestIdx];
               const altitude = pos.alt_msl ?? pos.alt ?? null;
-              const popupContent = `
+              const content = `
                 <div style="font-size:12px;line-height:1.6">
-                  <strong>Punkt ${posIndex + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
+                  <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
                   ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
                   ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
                   ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
                   ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
                   ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
                 </div>`;
-              L.circleMarker([pos.lat, pos.lng], {
-                radius: 5,
-                fillColor: '#22c55e',
-                color: 'transparent',
-                fillOpacity: 0.01,
-              }).addTo(tracksLayer).bindPopup(popupContent);
+              L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
             });
 
             // Add start marker (green circle)
