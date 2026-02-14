@@ -11,6 +11,7 @@ import { DomainGuard } from "@/components/DomainGuard";
 import { Header } from "@/components/Header";
 import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -68,6 +69,7 @@ const AuthenticatedLayout = () => {
       <div className="fixed inset-0 flex flex-col overflow-hidden">
         <Header />
         <OfflineBanner />
+        <IdleTimeoutWarning />
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <Outlet />
         </main>
@@ -80,6 +82,7 @@ const AuthenticatedLayout = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       <OfflineBanner />
+      <IdleTimeoutWarning />
       <main className="flex-1 flex flex-col">
         <Outlet />
       </main>
