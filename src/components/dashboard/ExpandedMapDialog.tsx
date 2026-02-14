@@ -491,7 +491,7 @@ export const ExpandedMapDialog = ({
     });
     highlightMarkerRef.current = L.marker([point.lat, point.lng], {
       icon: droneHighlightIcon,
-      pane: "flightTrackPane",
+      pane: "popupPane",
     }).addTo(map);
   }, [terrainData]);
 
