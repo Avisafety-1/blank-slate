@@ -223,28 +223,6 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
           pane: 'flightTrackPane',
         }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
       });
-        // Add start marker (green circle)
-        const startPos = track.positions[0];
-        L.circleMarker([startPos.lat, startPos.lng], {
-          radius: 8,
-          fillColor: '#22c55e',
-          color: '#fff',
-          weight: 2,
-          fillOpacity: 1,
-          pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
-
-        // Add end marker (orange circle)
-        const endPos = track.positions[track.positions.length - 1];
-        L.circleMarker([endPos.lat, endPos.lng], {
-          radius: 8,
-          fillColor: '#f97316',
-          color: '#fff',
-          weight: 2,
-          fillOpacity: 1,
-          pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
-      });
     }
 
     // Fit bounds to show everything (maxZoom prevents white tiles when points are very close)
