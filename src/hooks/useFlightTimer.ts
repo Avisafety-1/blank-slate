@@ -326,7 +326,7 @@ export const useFlightTimer = () => {
     dronetagDeviceId: string,
     startTime: Date,
     endTime: Date
-  ): Promise<Array<{ lat: number; lng: number; alt: number; timestamp: string }>> => {
+  ): Promise<Array<{ lat: number; lng: number; alt: number; alt_msl?: number; alt_agl?: number; speed?: number; heading?: number; vert_speed?: number; timestamp: string }>> => {
     try {
       // Fetch dronetag device to get the device_id (text identifier)
       const { data: device } = await supabase
@@ -339,7 +339,7 @@ export const useFlightTimer = () => {
 
       const { data: positions } = await supabase
         .from('dronetag_positions')
-        .select('lat, lng, alt_agl, timestamp')
+        .select('lat, lng, alt_msl, alt_agl, speed, heading, vert_speed, timestamp')
         .eq('device_id', device.device_id)
         .gte('timestamp', startTime.toISOString())
         .lte('timestamp', endTime.toISOString())
@@ -352,7 +352,12 @@ export const useFlightTimer = () => {
         .map(p => ({
           lat: p.lat!,
           lng: p.lng!,
-          alt: p.alt_agl || 0,
+          alt: p.alt_msl || p.alt_agl || 0,
+          alt_msl: p.alt_msl ?? undefined,
+          alt_agl: p.alt_agl ?? undefined,
+          speed: p.speed ?? undefined,
+          heading: p.heading ?? undefined,
+          vert_speed: p.vert_speed ?? undefined,
           timestamp: p.timestamp
         }));
     } catch (error) {

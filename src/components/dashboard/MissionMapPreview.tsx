@@ -17,6 +17,11 @@ interface FlightTrackPosition {
   lat: number;
   lng: number;
   alt?: number;
+  alt_msl?: number;
+  alt_agl?: number;
+  speed?: number;
+  heading?: number;
+  vert_speed?: number;
   timestamp?: string;
 }
 
@@ -131,7 +136,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
       });
     }
 
-    // Display flight tracks if provided (green solid line)
+    // Display flight tracks if provided (green solid line) with clickable telemetry popups
     if (flightTracks && flightTracks.length > 0) {
       const tracksLayer = L.layerGroup().addTo(map);
       
@@ -148,6 +153,27 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         }).addTo(tracksLayer);
         
         latLngs.forEach(ll => allPoints.push(ll));
+
+        // Add clickable telemetry points every 5th position
+        track.positions.forEach((pos, posIndex) => {
+          if (posIndex % 5 !== 0 && posIndex !== track.positions.length - 1) return;
+          const altitude = pos.alt_msl ?? pos.alt ?? null;
+          const popupContent = `
+            <div style="font-size:12px;line-height:1.5">
+              <strong>Punkt ${posIndex + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
+              ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
+              ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
+              ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
+              ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
+              ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+            </div>`;
+          L.circleMarker([pos.lat, pos.lng], {
+            radius: 4,
+            fillColor: '#22c55e',
+            color: 'transparent',
+            fillOpacity: 0.01,
+          }).addTo(tracksLayer).bindPopup(popupContent);
+        });
 
         // Add start marker (green circle)
         const startPos = track.positions[0];

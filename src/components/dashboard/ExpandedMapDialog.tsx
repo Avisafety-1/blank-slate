@@ -23,6 +23,11 @@ interface FlightTrackPosition {
   lat: number;
   lng: number;
   alt?: number;
+  alt_msl?: number;
+  alt_agl?: number;
+  speed?: number;
+  heading?: number;
+  vert_speed?: number;
   timestamp?: string;
 }
 
@@ -54,6 +59,7 @@ export const ExpandedMapDialog = ({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const [mapKey, setMapKey] = useState(0);
+  const [flightStats, setFlightStats] = useState<{ maxAlt: number; maxSpeed: number } | null>(null);
 
   // Reset map key when dialog opens to force fresh initialization
   useEffect(() => {
@@ -223,25 +229,69 @@ export const ExpandedMapDialog = ({
           });
         }
 
-        // Display flight tracks if provided (green solid line)
+        // Display flight tracks with altitude gradient and clickable telemetry popups
+        let maxAlt = 0;
+        let maxSpeed = 0;
         if (flightTracks && flightTracks.length > 0) {
           const tracksLayer = L.layerGroup().addTo(map);
 
           flightTracks.forEach((track, trackIndex) => {
             if (!track.positions || track.positions.length < 2) return;
 
+            // Calculate altitude range for gradient coloring
+            const altitudes = track.positions
+              .map(p => p.alt_msl ?? p.alt ?? null)
+              .filter((a): a is number => a != null);
+            const minTrackAlt = altitudes.length > 0 ? Math.min(...altitudes) : 0;
+            const maxTrackAlt = altitudes.length > 0 ? Math.max(...altitudes) : 0;
+            const altRange = maxTrackAlt - minTrackAlt || 1;
+
+            if (maxTrackAlt > maxAlt) maxAlt = maxTrackAlt;
+            track.positions.forEach(p => {
+              if (p.speed != null && p.speed > maxSpeed) maxSpeed = p.speed;
+            });
+
+            // Draw segments with altitude-based color gradient (green=low, red=high)
+            for (let i = 0; i < track.positions.length - 1; i++) {
+              const p1 = track.positions[i];
+              const p2 = track.positions[i + 1];
+              const alt1 = p1.alt_msl ?? p1.alt ?? minTrackAlt;
+              const ratio = (alt1 - minTrackAlt) / altRange;
+              // Interpolate green (120) -> red (0) in HSL
+              const hue = Math.round(120 * (1 - ratio));
+              const color = `hsl(${hue}, 80%, 45%)`;
+              L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+                color,
+                weight: 4,
+                opacity: 0.9,
+              }).addTo(tracksLayer);
+            }
+
             const latLngs = track.positions.map(
               (p) => [p.lat, p.lng] as [number, number]
             );
-
-            // Draw solid green polyline for actual flight track
-            L.polyline(latLngs, {
-              color: "#22c55e",
-              weight: 4,
-              opacity: 0.9,
-            }).addTo(tracksLayer);
-
             latLngs.forEach((ll) => allPoints.push(ll));
+
+            // Add clickable telemetry points every 5th position
+            track.positions.forEach((pos, posIndex) => {
+              if (posIndex % 5 !== 0 && posIndex !== track.positions.length - 1) return;
+              const altitude = pos.alt_msl ?? pos.alt ?? null;
+              const popupContent = `
+                <div style="font-size:12px;line-height:1.6">
+                  <strong>Punkt ${posIndex + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
+                  ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
+                  ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
+                  ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
+                  ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
+                  ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+                </div>`;
+              L.circleMarker([pos.lat, pos.lng], {
+                radius: 5,
+                fillColor: '#22c55e',
+                color: 'transparent',
+                fillOpacity: 0.01,
+              }).addTo(tracksLayer).bindPopup(popupContent);
+            });
 
             // Add start marker (green circle)
             const startPos = track.positions[0];
@@ -269,9 +319,12 @@ export const ExpandedMapDialog = ({
               .addTo(tracksLayer)
               .bindPopup(`<strong>Flytur ${trackIndex + 1} - Slutt</strong>`);
           });
+          // Update flight stats for footer display
+          if (maxAlt > 0 || maxSpeed > 0) {
+            setFlightStats({ maxAlt, maxSpeed });
+          }
         }
 
-        // Fit bounds to show everything (maxZoom prevents white tiles when points are very close)
         if (allPoints.length > 1) {
           const bounds = L.latLngBounds(allPoints);
           console.log("[ExpandedMap] Fitting bounds:", bounds.toBBoxString(), "points:", allPoints.length);
@@ -431,10 +484,10 @@ export const ExpandedMapDialog = ({
         <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border">
           <div key={mapKey} ref={mapRef} className="absolute inset-0" />
         </div>
-        <div className="p-4 pt-0 flex gap-4 text-xs text-muted-foreground">
+        <div className="p-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <div
-              className="w-6 h-0.5 bg-blue-500"
+              className="w-6 h-0.5"
               style={{
                 borderStyle: "dashed",
                 borderWidth: "1px 0 0",
@@ -444,9 +497,21 @@ export const ExpandedMapDialog = ({
             <span>Planlagt rute</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5 bg-green-500" />
-            <span>Faktisk flytur</span>
+            <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
+            <span>Faktisk flytur (farge = høyde)</span>
           </div>
+          {flightStats && flightStats.maxAlt > 0 && (
+            <>
+              <div className="flex items-center gap-1 ml-auto">
+                <span>Maks høyde: <strong>{Math.round(flightStats.maxAlt)} m MSL</strong></span>
+              </div>
+              {flightStats.maxSpeed > 0 && (
+                <div className="flex items-center gap-1">
+                  <span>Maks hastighet: <strong>{flightStats.maxSpeed.toFixed(1)} m/s</strong></span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
