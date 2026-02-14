@@ -378,9 +378,11 @@ Deno.serve(async (req) => {
     }
 
     // === PART 3: Store DroneTag telemetry for active flights ===
+    // Uses the safesky_beacons table (populated by safesky-beacons-fetch with full Norway viewport)
+    // instead of the local allBeacons array (limited to 20km radius from /v1/uav)
     let telemetryStored = 0;
-    if (allActiveFlights && allActiveFlights.length > 0 && allBeacons.length > 0) {
-      console.log('Checking for DroneTag telemetry matches...');
+    {
+      console.log('Checking for DroneTag telemetry matches in safesky_beacons table...');
       
       // Fetch active flights with dronetag_device_id
       const { data: flightsWithDronetag } = await supabase
@@ -402,13 +404,23 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Find matching beacon by callsign (case-insensitive)
-          const matchingBeacon = allBeacons.find(
-            b => b.callsign?.toLowerCase() === device.callsign?.toLowerCase()
-          );
+          // Look up matching beacon in safesky_beacons table (case-insensitive)
+          // This table covers all of Norway via /v1/beacons endpoint
+          const { data: matchingBeacon, error: beaconLookupError } = await supabase
+            .from('safesky_beacons')
+            .select('*')
+            .ilike('callsign', device.callsign)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (beaconLookupError) {
+            console.error(`Error looking up beacon for ${device.callsign}:`, beaconLookupError);
+            continue;
+          }
 
           if (matchingBeacon) {
-            console.log(`Found beacon match for DroneTag ${device.callsign}: lat=${matchingBeacon.latitude}, lng=${matchingBeacon.longitude}`);
+            console.log(`Found beacon match for DroneTag ${device.callsign}: lat=${matchingBeacon.latitude}, lng=${matchingBeacon.longitude}, alt=${matchingBeacon.altitude}`);
             
             // Insert into dronetag_positions
             const { error: insertError } = await supabase
@@ -432,7 +444,7 @@ Deno.serve(async (req) => {
               console.log(`Stored telemetry for DroneTag ${device.callsign}`);
             }
           } else {
-            console.log(`No beacon match found for DroneTag callsign: ${device.callsign}`);
+            console.log(`No beacon match found in safesky_beacons for callsign: ${device.callsign}`);
           }
         }
       }
