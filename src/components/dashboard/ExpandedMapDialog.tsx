@@ -564,20 +564,19 @@ export const ExpandedMapDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0"
+        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0"
         aria-describedby={undefined}
       >
-        <DialogHeader className="p-4 pb-2">
+        <DialogHeader className="px-3 py-2">
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border min-h-0">
+        <div className="flex-1 relative overflow-hidden min-h-0">
           <div key={mapKey} ref={mapRef} className="absolute inset-0" />
         </div>
 
         {hasFlightTracks && (
-          <div className="mx-4 rounded-lg border border-border p-3">
-            <div className="text-xs font-medium text-muted-foreground mb-1">Høydeprofil</div>
+          <div className="px-2 py-1">
             <FlightAltitudeProfile
               data={terrainData}
               loading={terrainLoading}
@@ -586,7 +585,7 @@ export const ExpandedMapDialog = ({
           </div>
         )}
 
-        <div className="p-4 pt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <div className="px-2 py-1 flex flex-wrap gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <div
               className="w-6 h-0.5"
