@@ -142,6 +142,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
       if (!map.getPane('flightTrackPane')) {
         map.createPane('flightTrackPane');
         map.getPane('flightTrackPane')!.style.zIndex = '700';
+        map.getPane('popupPane')!.style.zIndex = '800';
       }
       const tracksLayer = L.layerGroup().addTo(map);
       
