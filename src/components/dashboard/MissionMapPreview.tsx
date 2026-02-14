@@ -146,33 +146,35 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const latLngs = track.positions.map(p => [p.lat, p.lng] as [number, number]);
         
         // Draw solid green polyline for actual flight track
-        L.polyline(latLngs, {
+        const trackLine = L.polyline(latLngs, {
           color: '#22c55e',
-          weight: 3,
+          weight: 5,
           opacity: 0.9,
         }).addTo(tracksLayer);
         
         latLngs.forEach(ll => allPoints.push(ll));
 
-        // Add clickable telemetry points every 5th position
-        track.positions.forEach((pos, posIndex) => {
-          if (posIndex % 5 !== 0 && posIndex !== track.positions.length - 1) return;
+        // Click handler on polyline — find nearest point and show telemetry
+        trackLine.on('click', (e: L.LeafletMouseEvent) => {
+          const clickLatLng = e.latlng;
+          let nearestIdx = 0;
+          let minDist = Infinity;
+          track.positions.forEach((pos, idx) => {
+            const dist = clickLatLng.distanceTo(L.latLng(pos.lat, pos.lng));
+            if (dist < minDist) { minDist = dist; nearestIdx = idx; }
+          });
+          const pos = track.positions[nearestIdx];
           const altitude = pos.alt_msl ?? pos.alt ?? null;
-          const popupContent = `
+          const content = `
             <div style="font-size:12px;line-height:1.5">
-              <strong>Punkt ${posIndex + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
+              <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
               ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
               ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
               ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
               ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
               ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
             </div>`;
-          L.circleMarker([pos.lat, pos.lng], {
-            radius: 4,
-            fillColor: '#22c55e',
-            color: 'transparent',
-            fillOpacity: 0.01,
-          }).addTo(tracksLayer).bindPopup(popupContent);
+          L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
         });
 
         // Add start marker (green circle)
