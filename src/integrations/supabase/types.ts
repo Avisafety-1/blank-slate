@@ -2735,6 +2735,24 @@ export type Database = {
         }
         Relationships: []
       }
+      terrain_elevation_cache: {
+        Row: {
+          created_at: string | null
+          elevation: number
+          lat_lng_key: string
+        }
+        Insert: {
+          created_at?: string | null
+          elevation: number
+          lat_lng_key: string
+        }
+        Update: {
+          created_at?: string | null
+          elevation?: number
+          lat_lng_key?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

@@ -1,5 +1,7 @@
-// Utility for fetching terrain elevation data from Open-Meteo API
+// Utility for fetching terrain elevation data via Edge Function (with Open-Meteo fallback)
 // and computing AGL / cumulative distance for flight tracks
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface TerrainPoint {
   lat: number;
@@ -80,60 +82,81 @@ export function interpolateElevations(
   return result;
 }
 
-/** Fetch terrain elevations from Open-Meteo in batches of 100, with exponential backoff retry */
+/** Fetch terrain elevations via Edge Function, with direct API fallback */
 export async function fetchTerrainElevations(
-  positions: { lat: number; lng: number }[]
+  positions: { lat: number; lng: number }[],
+  signal?: AbortSignal
 ): Promise<(number | null)[]> {
   if (positions.length === 0) return [];
 
+  // Try edge function first
+  try {
+    console.log(`[Terrain] Calling edge function for ${positions.length} positions`);
+    const { data, error } = await supabase.functions.invoke("terrain-elevation", {
+      body: { positions },
+    });
+
+    if (signal?.aborted) return positions.map(() => null);
+
+    if (!error && data?.elevations) {
+      const elevations: (number | null)[] = data.elevations;
+      const validCount = elevations.filter((e) => e != null).length;
+      console.log(`[Terrain] Edge function returned ${validCount}/${elevations.length} elevations`);
+      if (validCount > 0) return elevations;
+    } else {
+      console.warn("[Terrain] Edge function error:", error);
+    }
+  } catch (err) {
+    console.warn("[Terrain] Edge function call failed:", err);
+  }
+
+  if (signal?.aborted) return positions.map(() => null);
+
+  // Fallback: direct Open-Meteo with long backoff
+  console.log("[Terrain] Falling back to direct Open-Meteo API");
   const BATCH_SIZE = 100;
   const MAX_RETRIES = 3;
   const elevations: (number | null)[] = [];
 
   for (let i = 0; i < positions.length; i += BATCH_SIZE) {
+    if (signal?.aborted) return positions.map(() => null);
+
     const batch = positions.slice(i, i + BATCH_SIZE);
     const lats = batch.map((p) => p.lat.toFixed(6)).join(",");
     const lngs = batch.map((p) => p.lng.toFixed(6)).join(",");
 
-    // Inter-batch delay (skip for first batch)
-    if (i > 0) {
-      await delay(1500);
-    }
+    if (i > 0) await delay(2000);
 
     let success = false;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (signal?.aborted) return positions.map(() => null);
+      if (attempt > 0) {
+        const backoffMs = 10000 * Math.pow(2, attempt - 1); // 10s, 20s, 40s
+        console.log(`[Terrain] Fallback retry ${attempt}, waiting ${backoffMs}ms`);
+        await delay(backoffMs);
+      }
       try {
-        if (attempt > 0) {
-          const backoffMs = 3000 * Math.pow(2, attempt - 1); // 3s, 6s, 12s
-          console.log(`[Terrain] Retry attempt ${attempt} for batch ${i}, waiting ${backoffMs}ms`);
-          await delay(backoffMs);
-        }
         const res = await fetch(
-          `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`
+          `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`,
+          { signal }
         );
         if (res.ok) {
           const data = await res.json();
           const elev: number[] = data.elevation ?? [];
-          batch.forEach((_, idx) => {
-            elevations.push(elev[idx] ?? null);
-          });
+          batch.forEach((_, idx) => elevations.push(elev[idx] ?? null));
           success = true;
-          console.log(`[Terrain] Batch ${i} succeeded on attempt ${attempt}`);
           break;
-        } else {
-          console.warn(`[Terrain] Batch ${i} HTTP ${res.status}, attempt ${attempt}`);
         }
       } catch (err) {
-        console.warn(`[Terrain] Batch ${i} fetch error, attempt ${attempt}:`, err);
+        if (signal?.aborted) return positions.map(() => null);
+        console.warn(`[Terrain] Fallback batch ${i} error:`, err);
       }
     }
     if (!success) {
-      console.error(`[Terrain] Batch ${i} failed after ${MAX_RETRIES + 1} attempts`);
       batch.forEach(() => elevations.push(null));
     }
   }
 
-  console.log(`[Terrain] Fetched ${elevations.filter(e => e != null).length}/${elevations.length} elevations`);
   return elevations;
 }
 
