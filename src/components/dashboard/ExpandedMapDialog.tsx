@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,8 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Map as MapIcon, BarChart3 } from "lucide-react";
 import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
 import { fetchTerrainElevations, buildTerrainProfile, type TerrainPoint } from "@/lib/terrainElevation";
 
@@ -64,8 +62,8 @@ export const ExpandedMapDialog = ({
   const leafletMapRef = useRef<L.Map | null>(null);
   const [mapKey, setMapKey] = useState(0);
   const [flightStats, setFlightStats] = useState<{ maxAlt: number; maxSpeed: number } | null>(null);
-  const [activeView, setActiveView] = useState<"map" | "profile">("map");
   const [terrainData, setTerrainData] = useState<TerrainPoint[]>([]);
+  const highlightMarkerRef = useRef<L.CircleMarker | null>(null);
   const [terrainLoading, setTerrainLoading] = useState(false);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
 
@@ -106,7 +104,7 @@ export const ExpandedMapDialog = ({
   useEffect(() => {
     if (open) {
       setMapKey((prev) => prev + 1);
-      setActiveView("map");
+      
     } else {
       // Clean up map when dialog closes
       if (leafletMapRef.current) {
@@ -533,68 +531,71 @@ export const ExpandedMapDialog = ({
 
   const hasFlightTracks = flightTracks && flightTracks.length > 0 && flightTracks.some(t => t.positions?.length >= 2);
 
+  // Handle hover on altitude profile — show/remove highlight marker on map
+  const handleProfileHover = useCallback((index: number | null) => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    // Remove existing highlight marker
+    if (highlightMarkerRef.current) {
+      highlightMarkerRef.current.remove();
+      highlightMarkerRef.current = null;
+    }
+
+    if (index == null || !terrainData[index]) return;
+
+    const point = terrainData[index];
+    highlightMarkerRef.current = L.circleMarker([point.lat, point.lng], {
+      radius: 8,
+      fillColor: "#ffffff",
+      color: "#3b82f6",
+      weight: 3,
+      fillOpacity: 0.9,
+      pane: "flightTrackPane",
+    }).addTo(map);
+  }, [terrainData]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[95vw] h-[80vh] flex flex-col p-0"
+        className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0"
         aria-describedby={undefined}
       >
-        <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+        <DialogHeader className="p-4 pb-2">
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
-          {hasFlightTracks && (
-            <div className="flex gap-1">
-              <Button
-                variant={activeView === "map" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveView("map")}
-                className="h-7 px-2 text-xs gap-1"
-              >
-                <MapIcon className="h-3.5 w-3.5" />
-                Kart
-              </Button>
-              <Button
-                variant={activeView === "profile" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveView("profile")}
-                className="h-7 px-2 text-xs gap-1"
-              >
-                <BarChart3 className="h-3.5 w-3.5" />
-                Høydeprofil
-              </Button>
-            </div>
-          )}
         </DialogHeader>
 
-        {activeView === "map" ? (
-          <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border">
-            <div key={mapKey} ref={mapRef} className="absolute inset-0" />
-          </div>
-        ) : (
-          <div className="flex-1 m-4 mt-0 rounded-lg overflow-hidden border border-border p-4 flex flex-col justify-center">
-            <FlightAltitudeProfile data={terrainData} loading={terrainLoading} />
+        <div className="flex-1 relative m-4 mt-0 rounded-lg overflow-hidden border border-border min-h-0">
+          <div key={mapKey} ref={mapRef} className="absolute inset-0" />
+        </div>
+
+        {hasFlightTracks && (
+          <div className="mx-4 rounded-lg border border-border p-3">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Høydeprofil</div>
+            <FlightAltitudeProfile
+              data={terrainData}
+              loading={terrainLoading}
+              onHoverIndex={handleProfileHover}
+            />
           </div>
         )}
 
-        <div className="p-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground">
-          {activeView === "map" && (
-            <>
-              <div className="flex items-center gap-1">
-                <div
-                  className="w-6 h-0.5"
-                  style={{
-                    borderStyle: "dashed",
-                    borderWidth: "1px 0 0",
-                    borderColor: "#3b82f6",
-                  }}
-                />
-                <span>Planlagt rute</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
-                <span>Faktisk flytur (farge = høyde)</span>
-              </div>
-            </>
-          )}
+        <div className="p-4 pt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <div
+              className="w-6 h-0.5"
+              style={{
+                borderStyle: "dashed",
+                borderWidth: "1px 0 0",
+                borderColor: "#3b82f6",
+              }}
+            />
+            <span>Planlagt rute</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
+            <span>Faktisk flytur (farge = høyde)</span>
+          </div>
           {flightStats && flightStats.maxAlt > 0 && (
             <>
               <div className="flex items-center gap-1 ml-auto">
