@@ -1,72 +1,104 @@
 
 
-# Fiks: Terrengdata blokkeres av rate-limiting (HTTP 429)
+# Fiks: Terrengdata feiler konsistent pga. rate-limiting og parallelle kall
 
-## Problem
-Open-Meteo Elevation API returnerer HTTP 429 (Too Many Requests) pa alle forsporslere. Gjeldende retry-logikk venter for kort (1-2 sek) og har ingen pause mellom batcher, sa rate-limiten aldri rekker a nullstilles.
+## Rotarsak
+
+Loggene viser to problemer:
+
+1. Terreng-effekten kjorer flere ganger parallelt (flere `Batch 100`-oppforinger pa samme tidspunkt). `cancelled`-flagget forhindrer bare state-oppdateringer, men stopper ikke pagaende fetch-kall.
+2. Open-Meteo har blokkert IP-en (selv forste forsok far 429), sa ingen mengde retries hjelper innen kort tid.
 
 ## Losning
 
-### 1. Downsample flyspor-posisjoner for terreng
-144 posisjoner gir 2 API-kall. Mange av posisjonene ligger svart nart hverandre. Ved a downsample til maks ~80 posisjoner (en batch) reduseres antall API-kall til 1, og resultatene interpoleres tilbake.
+### 1. Proxy terreng-kall via en Supabase Edge Function med server-side caching
 
-**Fil:** `src/lib/terrainElevation.ts`
-- Ny funksjon `downsamplePositions(positions, maxPoints)` som velger jevnt fordelte posisjoner
-- Ny funksjon `interpolateElevations(sampledElevations, sampledIndices, totalLength)` som fyller inn mellomverdier
+I stedet for a kalle Open-Meteo direkte fra nettleseren (som deler rate-limit med alle andre kall fra samme IP), opprettes en edge function som:
+- Tar imot lat/lng-arrays
+- Sjekker en Supabase-tabell for cached verdier
+- Kun henter manglende verdier fra Open-Meteo
+- Lagrer nye verdier i databasen for fremtidige oppslag
+- Returnerer resultatet
 
-### 2. Lengre ventetid mellom batcher og retries
-Oke retry-delay til eksponentiell backoff: 3s, 6s, 12s. Legg til 1.5s pause mellom hvert batch-kall (selv ved suksess).
+Dette gir serveren en annen IP (ikke rate-limited), og caching betyr at samme posisjon aldri hentes to ganger.
 
-**Fil:** `src/lib/terrainElevation.ts`
-- Endre `delay(1000 * attempt)` til `delay(3000 * (2 ** attempt))` i retry-lokken
-- Legg til `await delay(1500)` mellom batcher (etter suksess)
+**Nye filer:**
+- `supabase/functions/terrain-elevation/index.ts` - Edge function som proxyer og cacher
+- Ny tabell `terrain_elevation_cache` med kolonner: `lat_lng_key TEXT PRIMARY KEY, elevation REAL, created_at TIMESTAMPTZ`
 
-### 3. Cache terrengdata i minnet
-Nar terrengdata er hentet, lagre det i en sessionStorage-cache med en nokkel basert pa flyspor-ID. Neste gang dialogen apnes, bruk cachen i stedet for a hente pa nytt.
+### 2. Avbryt pågaende fetcher med AbortController
 
-**Fil:** `src/components/dashboard/ExpandedMapDialog.tsx`
-- For terreng-fetchen starter: sjekk om data finnes i sessionStorage
-- Etter vellykket henting: lagre i sessionStorage
-- Cache-nokkel: hash av forste og siste posisjon + antall posisjoner
-
-### 4. Oke top-level retries og ventetid
-I ExpandedMapDialog sin terreng-effekt: ok top-level retry fra 2 til 3 forsok med 4 sekunders pause.
+Erstatt `cancelled`-flagget med en ekte `AbortController` som avbryter fetch-kall nar effekten re-kjorer eller dialogen lukkes.
 
 **Fil:** `src/components/dashboard/ExpandedMapDialog.tsx`
-- Endre `for (let attempt = 0; attempt < 2; ...)` til `attempt < 3`
-- Endre `setTimeout(r, 2000)` til `setTimeout(r, 4000)`
+- Bruk `AbortController` i terreng-effekten
+- Send `signal` til fetch-kallene
+- I cleanup: `controller.abort()`
+
+### 3. Oppdater klienten til a bruke edge function
+
+**Fil:** `src/lib/terrainElevation.ts`
+- Endre `fetchTerrainElevations` til a kalle edge function i stedet for Open-Meteo direkte
+- Forenkle retry-logikk (edge function handterer retries server-side)
+- Behold downsampling og interpolering pa klientsiden
+
+### 4. Fallback til direkte API hvis edge function feiler
+
+Hvis edge function er utilgjengelig, fall tilbake til direkte Open-Meteo-kall med lengre backoff (10s, 20s, 40s).
 
 ## Tekniske detaljer
 
-### Endring i `src/lib/terrainElevation.ts`:
+### Edge Function: `supabase/functions/terrain-elevation/index.ts`
 
 ```text
-Ny eksportert funksjon:
-  downsamplePositions(positions, maxPoints = 80)
-    -> returnerer { sampled: positions[], indices: number[] }
+POST /terrain-elevation
+Body: { positions: [{ lat: number, lng: number }] }
+Response: { elevations: (number | null)[] }
 
-Ny eksportert funksjon:
-  interpolateElevations(elevations, indices, totalCount)
-    -> returnerer (number|null)[] med interpolerte verdier
-
-fetchTerrainElevations:
-  - retry delay: 3000 * 2^attempt (3s, 6s, 12s)
-  - mellom-batch delay: 1500ms
+Logikk:
+1. Generer cache-nokler fra posisjonene (avrundet til 4 desimaler)
+2. Sla opp i terrain_elevation_cache-tabellen
+3. For manglende verdier: kall Open-Meteo i batch pa 100
+4. Lagre nye verdier i cache-tabellen
+5. Returner komplett array
 ```
 
-### Endring i `src/components/dashboard/ExpandedMapDialog.tsx`:
+### Database: `terrain_elevation_cache`
 
 ```text
-Terreng-effekten (linje 79-113):
-  1. Generer cache-nokkel fra forste/siste posisjon
-  2. Sjekk sessionStorage for cached data
-  3. Hvis cache hit -> bruk direkte, hopp over API
-  4. Hvis cache miss -> downsample, fetch, interpoler, lagre i cache
-  5. Top-level retry: 3 forsok med 4s mellomrom
+CREATE TABLE terrain_elevation_cache (
+  lat_lng_key TEXT PRIMARY KEY,  -- f.eks. "60.1234,10.5678"
+  elevation REAL NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS: tillat lesing for alle autentiserte brukere
+-- Edge function bruker service_role_key for skriving
+```
+
+### Endring i `src/lib/terrainElevation.ts`
+
+```text
+fetchTerrainElevations:
+  1. Forsok edge function forst (POST med alle posisjoner)
+  2. Hvis det feiler: fallback til direkte Open-Meteo med lang backoff
+  3. Aksepter optional AbortSignal-parameter
+```
+
+### Endring i `src/components/dashboard/ExpandedMapDialog.tsx`
+
+```text
+Terreng-effekten:
+  1. Opprett AbortController
+  2. Send signal til fetchTerrainElevations
+  3. Cleanup: controller.abort()
+  4. Fjern top-level retry-lokke (edge function handterer dette)
 ```
 
 ## Resultat
-- Typisk 1 API-kall i stedet for 2+ (under rate-limit-terskel)
-- Lengre backoff gir API-en tid til a nullstille rate-limiten
-- Caching forhindrer gjentatte kall nar dialogen apnes pa nytt
-- Terrengprofil og AGL vises stabilt
+- Terreng-kall gar via server med egen IP (ikke rate-limited fra nettleseren)
+- Database-cache betyr at samme posisjoner aldri hentes to ganger fra Open-Meteo
+- AbortController forhindrer parallelle fetcher
+- Fallback sikrer at det fungerer selv om edge function er nede
+- Mye raskere for gjentatte oppslag (cache hit)
+
