@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
@@ -70,6 +71,26 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
   const [soraDialogOpen, setSoraDialogOpen] = useState(false);
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
+  const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
+
+  // Fetch flight logs when expanded map opens (dashboard missions don't include them)
+  useEffect(() => {
+    if (!expandedMapOpen || !mission?.id) return;
+    // If mission already has flightLogs (from /oppdrag), use those
+    if (mission.flightLogs) {
+      setFlightLogs(mission.flightLogs);
+      return;
+    }
+    const fetchLogs = async () => {
+      const { data } = await supabase
+        .from("flight_logs")
+        .select("id, flight_date, flight_track, flight_duration_minutes")
+        .eq("mission_id", mission.id)
+        .not("flight_track", "is", null);
+      setFlightLogs(data || []);
+    };
+    fetchLogs();
+  }, [expandedMapOpen, mission?.id, mission?.flightLogs]);
   if (!mission) return null;
 
   const handleEditClick = () => {
@@ -297,8 +318,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         longitude={mission.longitude}
         route={mission.route as any}
         flightTracks={
-          mission.flightLogs
-            ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+          (flightLogs || [])
+            .filter((log: any) => log.flight_track?.positions?.length > 0)
             .map((log: any) => ({
               positions: log.flight_track.positions,
               flightLogId: log.id,
