@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -57,6 +59,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(20);
+  const [hidden, setHidden] = useState(false);
 
   const fetchActivities = useCallback(async (fetchLimit: number) => {
     setLoading(true);
@@ -116,11 +119,19 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
 
   return (
     <GlassCard>
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="w-5 h-5 text-primary" />
-        <h3 className="font-semibold text-foreground">Aktivitetslogg</h3>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-foreground">Aktivitetslogg</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="hide-log" className="text-xs text-muted-foreground cursor-pointer">Skjul</Label>
+          <Switch id="hide-log" checked={hidden} onCheckedChange={setHidden} />
+        </div>
       </div>
 
+      {hidden ? null : (
+        <>
       {loading && activities.length === 0 ? (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -206,6 +217,8 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
               </Button>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </GlassCard>
