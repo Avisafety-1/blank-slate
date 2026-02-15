@@ -33,8 +33,6 @@ const StatusCard = ({
   counts: StatusCounts;
   onSegmentClick: (status: Status) => void;
 }) => {
-  const total = counts.Grønn + counts.Gul + counts.Rød;
-
   return (
     <div className="flex w-full gap-1.5 sm:gap-2 overflow-hidden">
       {statusSegments.map(({ key, bg, border }) =>
@@ -43,14 +41,11 @@ const StatusCard = ({
             key={key}
             type="button"
             style={{ flexGrow: counts[key] }}
-            className={`${bg} ${border} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex flex-col items-center overflow-hidden`}
+            className={`${bg} ${border} border-2 rounded px-2 py-1 sm:px-3 sm:py-1.5 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex items-center gap-2 sm:gap-3 overflow-hidden`}
             onClick={() => onSegmentClick(key)}
           >
-            <div className="flex items-center gap-1 sm:gap-2 mb-1 min-w-0 max-w-full overflow-hidden">
-              <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span className="font-semibold text-xs sm:text-sm truncate">{title}</span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold">{counts[key]}</div>
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="text-lg sm:text-xl font-bold">{counts[key]}</span>
           </button>
         ) : null
       )}
@@ -98,8 +93,8 @@ export const StatusPanel = () => {
   return (
     <>
       <GlassCard className="overflow-hidden">
-        <h2 className="text-sm sm:text-base font-semibold mb-3">{t('dashboard.status.title')}</h2>
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 w-full">
+        <h2 className="text-sm sm:text-base font-semibold mb-2">{t('dashboard.status.title')}</h2>
+        <div className="grid grid-cols-1 gap-1.5 sm:gap-2 w-full">
           {isLoading ? (
             <>
               <StatusCardSkeleton />
