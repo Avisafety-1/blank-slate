@@ -16,6 +16,7 @@ import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
+import { MissionStatusDropdown } from "./MissionStatusDropdown";
 
 type Mission = any;
 
@@ -165,9 +166,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-             <Badge className={`${statusColors[currentMission.status] || ""} border`}>
-              {currentMission.status}
-            </Badge>
+            <MissionStatusDropdown
+              missionId={currentMission.id}
+              currentStatus={currentMission.status}
+              onStatusChanged={() => {
+                onMissionUpdated?.();
+                // Re-fetch live mission
+                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                  if (data) setLiveMission(data);
+                });
+              }}
+              statusColors={statusColors}
+              className="border"
+            />
             {currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />

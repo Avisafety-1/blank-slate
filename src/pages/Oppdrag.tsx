@@ -53,6 +53,7 @@ import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentTypeDialog";
+import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { RiskAssessmentDialog } from "@/components/dashboard/RiskAssessmentDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1341,7 +1342,13 @@ const Oppdrag = () => {
                       <div className="space-y-2 flex-1 w-full">
                         <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
                         <div className="flex flex-wrap gap-2">
-                          <Badge className={`text-xs ${statusColors[mission.status] || ""}`}>{mission.status}</Badge>
+                          <MissionStatusDropdown
+                            missionId={mission.id}
+                            currentStatus={mission.status}
+                            onStatusChanged={fetchMissions}
+                            statusColors={statusColors}
+                            className="text-xs"
+                          />
                           {/* Approval status badge */}
                           {mission.approval_status === 'pending_approval' && (
                             <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">

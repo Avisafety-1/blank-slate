@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
+import { MissionStatusDropdown } from "./MissionStatusDropdown";
 
 type Mission = any;
 type MissionSora = any;
@@ -258,9 +259,13 @@ export const MissionsSection = () => {
                 <div className="mb-1 sm:mb-1.5">
                   <h3 className="font-semibold text-xs sm:text-sm truncate mb-1">{mission.tittel}</h3>
                   <div className="flex flex-wrap gap-1 items-center">
-                    <Badge className={`${statusColors[mission.status] || ""} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
-                      {mission.status}
-                    </Badge>
+                    <MissionStatusDropdown
+                      missionId={mission.id}
+                      currentStatus={mission.status}
+                      onStatusChanged={fetchMissions}
+                      statusColors={statusColors}
+                      className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap"
+                    />
                     {(() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
                       const approvalLabel = approvalStatus === 'approved' ? 'Godkjent' : approvalStatus === 'pending_approval' ? 'Venter' : 'Ikke godkjent';
