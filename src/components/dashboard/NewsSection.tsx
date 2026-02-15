@@ -92,7 +92,7 @@ export const NewsSection = () => {
 
   return (
     <>
-      <GlassCard className="h-auto overflow-hidden">
+      <GlassCard className="h-full overflow-hidden flex flex-col">
         <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
@@ -108,7 +108,7 @@ export const NewsSection = () => {
           </Button>
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:max-h-[120px] lg:overflow-y-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 flex-1 overflow-y-auto">
         {sortedNews.map((news) => (
           <div
             key={news.id}
