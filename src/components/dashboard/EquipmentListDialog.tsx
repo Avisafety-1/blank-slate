@@ -2,21 +2,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
+import { X } from "lucide-react";
 
 interface EquipmentListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   equipment: any[];
   onEquipmentUpdated?: () => void;
+  statusFilter?: Status | null;
+  onStatusFilterChange?: (filter: Status | null) => void;
 }
 
-export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated }: EquipmentListDialogProps) => {
+export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated, statusFilter, onStatusFilterChange }: EquipmentListDialogProps) => {
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  const filteredEquipment = useMemo(() => {
+    if (!statusFilter) return equipment;
+    return equipment.filter(e => {
+      const s = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
+      return s === statusFilter;
+    });
+  }, [equipment, statusFilter]);
 
   const handleEquipmentClick = (item: any) => {
     setSelectedEquipment(item);
@@ -39,15 +50,24 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
     }
   }, [equipment]);
 
+  const titleSuffix = statusFilter ? ` – ${statusFilter} (${filteredEquipment.length})` : ` (${equipment.length})`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="pb-2">
-          <DialogTitle>Utstyr ({equipment.length})</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            Utstyr{titleSuffix}
+            {statusFilter && (
+              <button type="button" onClick={() => onStatusFilterChange?.(null)} className="inline-flex items-center gap-0.5 text-xs bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80">
+                Vis alle <X className="w-3 h-3" />
+              </button>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-3">
-          {equipment.map((item) => (
+          {filteredEquipment.map((item) => (
             <div 
               key={item.id} 
               onClick={() => handleEquipmentClick(item)}

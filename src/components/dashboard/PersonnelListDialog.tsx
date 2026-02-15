@@ -7,15 +7,19 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { Status } from "@/types";
+import { X } from "lucide-react";
 
 interface PersonnelListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   personnel: any[];
   onPersonnelUpdated?: () => void;
+  statusFilter?: Status | null;
+  onStatusFilterChange?: (filter: Status | null) => void;
 }
 
-export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnelUpdated }: PersonnelListDialogProps) => {
+export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnelUpdated, statusFilter, onStatusFilterChange }: PersonnelListDialogProps) => {
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { isOnline } = usePresence();
@@ -30,6 +34,11 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
       )
     }));
   }, [personnel]);
+
+  const filteredPersonnel = useMemo(() => {
+    if (!statusFilter) return personnelWithStatus;
+    return personnelWithStatus.filter(p => p.calculatedStatus === statusFilter);
+  }, [personnelWithStatus, statusFilter]);
 
   const handlePersonClick = (person: any) => {
     setSelectedPerson(person);
@@ -52,15 +61,24 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
     }
   }, [personnel]);
 
+  const titleSuffix = statusFilter ? ` – ${statusFilter} (${filteredPersonnel.length})` : ` (${personnel.length})`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Personell ({personnel.length})</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            Personell{titleSuffix}
+            {statusFilter && (
+              <button type="button" onClick={() => onStatusFilterChange?.(null)} className="inline-flex items-center gap-0.5 text-xs bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80">
+                Vis alle <X className="w-3 h-3" />
+              </button>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          {personnelWithStatus.map((person) => (
+          {filteredPersonnel.map((person) => (
             <div 
               key={person.id} 
               onClick={() => handlePersonClick(person)}
