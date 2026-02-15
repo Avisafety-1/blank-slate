@@ -280,8 +280,8 @@ export function PersonCompetencyDialog({
             </Button>
           </DialogHeader>
 
-          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)]">
-            <div className="pr-2 sm:pr-4 overflow-hidden">
+          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)] w-full">
+            <div className="pr-3 sm:pr-4 w-full max-w-full overflow-hidden">
             {/* Existing Competencies */}
             <div className="space-y-3 mb-6 min-w-0">
               <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
