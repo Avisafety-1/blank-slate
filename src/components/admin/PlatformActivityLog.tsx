@@ -128,7 +128,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="overflow-auto max-h-[220px] -mx-4 sm:mx-0">
             <TooltipProvider>
               <Table>
                 <TableHeader>
