@@ -217,3 +217,7 @@ All colors MUST be HSL.
   }
 }
 
+/* Prevent horizontal scroll in Radix ScrollArea viewport */
+[data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+}
