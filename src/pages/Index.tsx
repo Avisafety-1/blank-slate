@@ -388,12 +388,12 @@ const Index = () => {
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
                 {/* Top Row - News and Status */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-                  <div className="lg:col-span-9">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:items-stretch">
+                  <div className="lg:col-span-9 flex flex-col">
                     {layout
                       .filter((item) => item.component === "news")
                       .map((item) => (
-                        <DraggableSection key={item.id} id={item.id}>
+                        <DraggableSection key={item.id} id={item.id} className="flex-1 flex flex-col">
                           {renderSection(item.component)}
                         </DraggableSection>
                       ))}
