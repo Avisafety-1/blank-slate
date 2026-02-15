@@ -1,80 +1,39 @@
 
 
-## Aktivitetslogg for plattformstatistikk
+## Fix: Kompetansekort og skjema flyter ut av skjermen på mobil
 
-### Oversikt
-Legge til en aktivitetslogg oeverst pa Statistikk-siden som viser de siste hendelsene pa tvers av alle selskaper. Loggen viser hva som skjedde, hvem som gjorde det (navn og firma), og nar.
+### Problem
+Kompetansekortene og "Legg til kompetanse"-skjemaet i PersonCompetencyDialog er for brede på mobil. Hovedårsakene er:
 
-### Aktivitetstyper som spores
-- Nytt oppdrag (missions)
-- Risikovurdering (mission_risk_assessments)
-- Ny hendelse (incidents)
-- Opplastet dokument (documents)
-- Ny bruker (profiles)
-- Ny drone (drones)
-- Nytt utstyr (equipment)
+1. **ScrollArea-viewport tillater horisontal scrolling** -- Radix ScrollArea sin viewport har `overflow: auto`, som lar innholdet utvide seg horisontalt i stedet for å begrenses
+2. **Dato-feltene i "Legg til"-skjemaet** bruker `grid-cols-2` uten `min-w-0` på barna, noe som gjor at date-inputs kan presse innholdet bredere enn skjermen
+3. **Manglende bredde-begrensninger** på skjema-containeren og kompetansekort-seksjonen
 
-### Sikkerhet
-Kun tilgjengelig for superadmins i Avisafe-selskapet (samme tilgangssjekk som eksisterende statistikk-endepunkt).
+### Losning
 
----
+**Fil: `src/components/ui/scroll-area.tsx`**
+- Legg til `overflow-x-hidden` pa ScrollArea Viewport slik at horisontalt innhold alltid klippes, ikke scrolles
 
-### Teknisk plan
+**Fil: `src/components/resources/PersonCompetencyDialog.tsx`**
+- Legg til `min-w-0` pa "Legg til kompetanse"-skjemaets container (`border-t pt-4 mt-4`)
+- Legg til `min-w-0` pa dato-grid-barna i bade "legg til"- og "rediger"-seksjonene
+- Endre dato-grid i "legg til"-skjemaet fra `grid-cols-2` til `grid-cols-1 sm:grid-cols-2` for a stable pa sma skjermer (konsistent med redigeringsmodus som allerede gjor dette)
+- Legg til `overflow-hidden` pa form-elementet
 
-**1. Ny edge function: `supabase/functions/platform-activity-log/index.ts`**
+### Tekniske detaljer
 
-- Gjenbruker samme autorisasjonslogikk som `platform-statistics` (superadmin + Avisafe-sjekk)
-- Bruker service role client for a hente data pa tvers av alle selskaper (RLS bypass)
-- Kjoerer 7 separate queries mot tabellene og merger resultatene:
-  - `missions` (opprettet_dato, user_id, tittel, company_id)
-  - `mission_risk_assessments` (created_at, pilot_id, mission_id, company_id)
-  - `incidents` (opprettet_dato, user_id, tittel, company_id)
-  - `documents` (opprettet_dato, user_id, tittel, company_id)
-  - `profiles` (created_at, full_name, company_id)
-  - `drones` (opprettet_dato, user_id, modell, company_id)
-  - `equipment` (opprettet_dato, user_id, navn, company_id)
-- For hver rad hentes brukerens `full_name` fra `profiles` og selskapets `navn` fra `companies`
-- Alle resultater sorteres etter tidsstempel (nyeste foerst), begrenset til de siste 50 hendelsene
-- Stotter `?limit=N` query-parameter (default 50, maks 200)
-- Stotter `?exclude_avisafe=true` for a filtrere bort Avisafe-aktivitet
-
-**2. Ny komponent: `src/components/admin/PlatformActivityLog.tsx`**
-
-- Henter data fra `/platform-activity-log` edge function
-- Viser en tabell med kolonner: Type (ikon + tekst), Beskrivelse, Person, Selskap, Tidspunkt
-- Hver aktivitetstype far sitt eget ikon og fargekode:
-  - Oppdrag: Target (bla)
-  - Risikovurdering: Shield (lilla)
-  - Hendelse: AlertTriangle (roed)
-  - Dokument: FileText (groen)
-  - Ny bruker: UserPlus (bla)
-  - Drone: Package (oransje)
-  - Utstyr: Wrench (gra)
-- Tidsstempel formateres relativt ("2 min siden", "1 time siden") med fullt tidsstempel i tooltip
-- "Vis mer"-knapp for a laste flere hendelser
-- Respekterer "Ekskluder Avisafe"-bryteren
-
-**3. Endring: `src/pages/Statistikk.tsx`**
-
-- Importerer og plasserer `PlatformActivityLog` oeverst, mellom header og KPI-kortene
-- Sender `excludeAvisafe`-state som prop til komponenten
-
-### Dataflyt
-
-```text
-Statistikk.tsx
-  |
-  +-- PlatformActivityLog (excludeAvisafe)
-  |     |
-  |     +-- fetch /platform-activity-log?exclude_avisafe=true&limit=50
-  |           |
-  |           +-- Edge function (service role)
-  |                 +-- Query 7 tabeller
-  |                 +-- Join profiles + companies for navn
-  |                 +-- Sort + limit
-  |                 +-- Return JSON array
-  |
-  +-- KPI Cards (eksisterende)
-  +-- Charts (eksisterende)
+Endring i `scroll-area.tsx` (linje 14):
 ```
+// Fra:
+<ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overflow-auto">
+
+// Til:
+<ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overflow-auto overflow-x-hidden">
+```
+
+Endringer i `PersonCompetencyDialog.tsx`:
+- Linje 465: Legg til `min-w-0 overflow-hidden` pa form-wrapperen
+- Linje 467: Legg til `min-w-0` pa form-elementet  
+- Linje 509: Endre `grid-cols-2` til `grid-cols-1 sm:grid-cols-2` for dato-feltene
+- Linje 510, 520: Legg til `min-w-0` pa grid-barna
 
