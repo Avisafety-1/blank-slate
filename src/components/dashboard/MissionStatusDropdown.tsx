@@ -51,13 +51,14 @@ export const MissionStatusDropdown = ({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Badge
-          className={`${statusColors[currentStatus] || ""} cursor-pointer hover:opacity-80 transition-opacity ${className}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {currentStatus}
-        </Badge>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="focus:outline-none">
+          <Badge
+            className={`${statusColors[currentStatus] || ""} cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+          >
+            {currentStatus}
+          </Badge>
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-40 p-1" align="start" onClick={(e) => e.stopPropagation()}>
         {statuses.map((s) => (
