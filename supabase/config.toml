@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.terrain-elevation]
 verify_jwt = false
+
+[functions.platform-activity-log]
+verify_jwt = false

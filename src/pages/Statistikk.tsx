@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, Users, Plane, Clock, AlertTriangle, Package, Target, Shield, CheckCircle, Activity, BarChart3 } from "lucide-react";
+import { PlatformActivityLog } from "@/components/admin/PlatformActivityLog";
 import {
   BarChart,
   Bar,
@@ -165,6 +166,9 @@ const Statistikk = () => {
             <div className="text-center py-20 text-muted-foreground">Laster statistikk...</div>
           ) : stats ? (
             <>
+              {/* Activity Log */}
+              <PlatformActivityLog excludeAvisafe={excludeAvisafe} />
+
               {/* KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                 <KPICard icon={Building2} label="Selskaper" value={stats.kpis.activeCompanies} />
