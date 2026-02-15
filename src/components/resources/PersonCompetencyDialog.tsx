@@ -462,9 +462,9 @@ export function PersonCompetencyDialog({
             </div>
 
             {/* Add New Competency Form */}
-            <div className="border-t pt-4 mt-4">
+            <div className="border-t pt-4 mt-4 min-w-0 overflow-hidden">
               <h3 className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
-              <form onSubmit={handleAddCompetency} className="space-y-3">
+              <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="new-type" className="text-xs">Type *</Label>
@@ -506,8 +506,8 @@ export function PersonCompetencyDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
                     <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
                     <Input
                       id="new-issue-date"
@@ -517,7 +517,7 @@ export function PersonCompetencyDialog({
                       className="h-9"
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
                     <Input
                       id="new-expiry-date"
