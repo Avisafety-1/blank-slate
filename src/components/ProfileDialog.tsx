@@ -982,8 +982,8 @@ export const ProfileDialog = () => {
 
               {/* Competencies Tab */}
               <TabsContent value="competencies" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
-                <Card>
-                  <CardHeader>
+                <Card className="border-0 shadow-none sm:border sm:shadow-sm">
+                  <CardHeader className="px-1 sm:px-6">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <CardTitle>{t('profile.myCompetencies')} ({competencies.length})</CardTitle>
                       <div className="flex gap-2 w-full sm:w-auto">
@@ -1006,7 +1006,7 @@ export const ProfileDialog = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-1 sm:px-6">
                     {competencies.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 overflow-hidden">
                         {competencies.map((comp) => {
