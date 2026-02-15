@@ -47,8 +47,8 @@ const StatusCard = ({
             onClick={() => onSegmentClick(key)}
           >
             <div className="flex items-center gap-1 sm:gap-2 mb-1">
-              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="font-semibold text-xs sm:text-sm truncate">{title}</span>
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="font-semibold text-xs sm:text-sm truncate hidden sm:inline">{title}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-bold">{counts[key]}</div>
           </button>
