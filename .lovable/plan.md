@@ -1,37 +1,80 @@
 
 
-## Automatisk utlogging ved inaktivitet
+## Aktivitetslogg for plattformstatistikk
 
-### Hva skal bygges
-En idle-timeout-funksjon som automatisk logger ut brukere etter 60 minutter uten aktivitet. En advarselsdialog vises 5 minutter for utlogging, slik at brukeren kan velge a forlenge sesjonen.
+### Oversikt
+Legge til en aktivitetslogg oeverst pa Statistikk-siden som viser de siste hendelsene pa tvers av alle selskaper. Loggen viser hva som skjedde, hvem som gjorde det (navn og firma), og nar.
 
-### Brukeropplevelse
-1. Brukeren jobber normalt i appen -- timeren nullstilles ved klikk, tastetrykk, scrolling og touch
-2. Etter 55 minutter uten aktivitet vises en advarselsdialog: "Du blir logget ut om 5 minutter pa grunn av inaktivitet"
-3. Brukeren kan klikke "Forleng sesjon" for a nullstille timeren
-4. Hvis brukeren ikke reagerer innen 5 minutter, logges de automatisk ut og sendes til innloggingssiden
-5. Under aktive flyturer (active_flights) deaktiveres idle-timeout midlertidig for a unnga utlogging midt i en operasjon
+### Aktivitetstyper som spores
+- Nytt oppdrag (missions)
+- Risikovurdering (mission_risk_assessments)
+- Ny hendelse (incidents)
+- Opplastet dokument (documents)
+- Ny bruker (profiles)
+- Ny drone (drones)
+- Nytt utstyr (equipment)
 
-### Unntak
-- Idle-timeout er deaktivert nar brukeren er offline (for a unnga utlogging uten nettilgang)
-- Idle-timeout er deaktivert under aktive flyturer knyttet til brukeren
+### Sikkerhet
+Kun tilgjengelig for superadmins i Avisafe-selskapet (samme tilgangssjekk som eksisterende statistikk-endepunkt).
 
 ---
 
 ### Teknisk plan
 
-**Ny fil: `src/hooks/useIdleTimeout.ts`**
-- Custom hook som lytter pa `mousemove`, `keydown`, `scroll`, `touchstart`, `click` events
-- Bruker `setTimeout` for advarsel (55 min) og utlogging (60 min)
-- Returnerer `{ showWarning, remainingSeconds, extendSession }`
-- Sjekker `navigator.onLine` -- hopper over timeout nar offline
-- Sjekker om brukeren har aktive flyturer via en enkel query mot `active_flights`-tabellen
+**1. Ny edge function: `supabase/functions/platform-activity-log/index.ts`**
 
-**Ny fil: `src/components/IdleTimeoutWarning.tsx`**
-- AlertDialog som viser nedtelling til utlogging
-- Knapper: "Forleng sesjon" og "Logg ut na"
-- Nedtelling vises i sanntid (sekunder)
+- Gjenbruker samme autorisasjonslogikk som `platform-statistics` (superadmin + Avisafe-sjekk)
+- Bruker service role client for a hente data pa tvers av alle selskaper (RLS bypass)
+- Kjoerer 7 separate queries mot tabellene og merger resultatene:
+  - `missions` (opprettet_dato, user_id, tittel, company_id)
+  - `mission_risk_assessments` (created_at, pilot_id, mission_id, company_id)
+  - `incidents` (opprettet_dato, user_id, tittel, company_id)
+  - `documents` (opprettet_dato, user_id, tittel, company_id)
+  - `profiles` (created_at, full_name, company_id)
+  - `drones` (opprettet_dato, user_id, modell, company_id)
+  - `equipment` (opprettet_dato, user_id, navn, company_id)
+- For hver rad hentes brukerens `full_name` fra `profiles` og selskapets `navn` fra `companies`
+- Alle resultater sorteres etter tidsstempel (nyeste foerst), begrenset til de siste 50 hendelsene
+- Stotter `?limit=N` query-parameter (default 50, maks 200)
+- Stotter `?exclude_avisafe=true` for a filtrere bort Avisafe-aktivitet
 
-**Endring: `src/App.tsx`**
-- Legge til `IdleTimeoutWarning`-komponenten inne i `AuthenticatedLayout`, slik at den kun er aktiv for innloggede brukere
+**2. Ny komponent: `src/components/admin/PlatformActivityLog.tsx`**
+
+- Henter data fra `/platform-activity-log` edge function
+- Viser en tabell med kolonner: Type (ikon + tekst), Beskrivelse, Person, Selskap, Tidspunkt
+- Hver aktivitetstype far sitt eget ikon og fargekode:
+  - Oppdrag: Target (bla)
+  - Risikovurdering: Shield (lilla)
+  - Hendelse: AlertTriangle (roed)
+  - Dokument: FileText (groen)
+  - Ny bruker: UserPlus (bla)
+  - Drone: Package (oransje)
+  - Utstyr: Wrench (gra)
+- Tidsstempel formateres relativt ("2 min siden", "1 time siden") med fullt tidsstempel i tooltip
+- "Vis mer"-knapp for a laste flere hendelser
+- Respekterer "Ekskluder Avisafe"-bryteren
+
+**3. Endring: `src/pages/Statistikk.tsx`**
+
+- Importerer og plasserer `PlatformActivityLog` oeverst, mellom header og KPI-kortene
+- Sender `excludeAvisafe`-state som prop til komponenten
+
+### Dataflyt
+
+```text
+Statistikk.tsx
+  |
+  +-- PlatformActivityLog (excludeAvisafe)
+  |     |
+  |     +-- fetch /platform-activity-log?exclude_avisafe=true&limit=50
+  |           |
+  |           +-- Edge function (service role)
+  |                 +-- Query 7 tabeller
+  |                 +-- Join profiles + companies for navn
+  |                 +-- Sort + limit
+  |                 +-- Return JSON array
+  |
+  +-- KPI Cards (eksisterende)
+  +-- Charts (eksisterende)
+```
 
