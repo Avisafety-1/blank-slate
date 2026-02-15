@@ -266,7 +266,7 @@ export function PersonCompetencyDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-3 sm:p-6 overflow-hidden">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-base sm:text-lg pr-8">{person.full_name}</DialogTitle>
             <Button
@@ -281,15 +281,16 @@ export function PersonCompetencyDialog({
           </DialogHeader>
 
           <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)]">
+            <div className="pr-2 sm:pr-4">
             {/* Existing Competencies */}
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-6 min-w-0">
               <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
               
               {(person.personnel_competencies || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
               ) : (
                 (person.personnel_competencies || []).map((competency) => (
-                  <div key={competency.id} className="border rounded-lg p-3 sm:p-4 space-y-2 bg-card">
+                  <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0 overflow-hidden">
                     {editingId === competency.id ? (
                       // Edit mode
                       <div className="space-y-3">
@@ -543,6 +544,7 @@ export function PersonCompetencyDialog({
                   Legg til
                 </Button>
               </form>
+            </div>
             </div>
           </ScrollArea>
         </DialogContent>
