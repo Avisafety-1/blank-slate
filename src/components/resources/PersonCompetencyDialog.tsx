@@ -290,7 +290,7 @@ export function PersonCompetencyDialog({
                 <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
               ) : (
                 (person.personnel_competencies || []).map((competency) => (
-                  <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0 overflow-hidden">
+                  <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0">
                     {editingId === competency.id ? (
                       // Edit mode
                       <div className="space-y-3">
@@ -374,17 +374,17 @@ export function PersonCompetencyDialog({
                     ) : (
                       // View mode
                       <>
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-1 min-w-0">
                           <div className="min-w-0 flex-1">
                             <h4 className="font-semibold text-sm sm:text-base truncate">{competency.navn}</h4>
                             <span className="text-xs text-muted-foreground">{competency.type}</span>
                           </div>
-                          <div className="flex gap-1 shrink-0">
+                          <div className="flex gap-0.5 shrink-0">
                             <Button
                               onClick={() => handleStartEdit(competency)}
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-7 w-7 sm:h-8 sm:w-8"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -392,7 +392,7 @@ export function PersonCompetencyDialog({
                               onClick={() => handleDeleteClick(competency.id)}
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-7 w-7 sm:h-8 sm:w-8"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
