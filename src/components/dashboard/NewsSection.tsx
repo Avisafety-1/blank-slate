@@ -113,7 +113,7 @@ export const NewsSection = () => {
           <div
             key={news.id}
             onClick={() => handleNewsClick(news)}
-            className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
+            className="p-3 sm:p-4 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer flex-1"
           >
             <div className="flex items-start gap-1.5 sm:gap-2">
               {news.pin_on_top && (
@@ -121,7 +121,7 @@ export const NewsSection = () => {
               )}
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-xs sm:text-sm mb-1">{news.tittel}</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2 mb-1 sm:mb-1.5">
+                <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-3 mb-1 sm:mb-1.5">
                   {news.innhold}
                 </p>
                 <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
