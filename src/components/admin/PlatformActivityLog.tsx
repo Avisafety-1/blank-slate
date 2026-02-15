@@ -128,43 +128,43 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
         </div>
       ) : (
         <>
-          <div className="overflow-auto max-h-[220px] -mx-4 sm:mx-0">
+          <div className="overflow-y-auto max-h-[220px] border rounded-md">
             <TooltipProvider>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[140px]">Type</TableHead>
-                    <TableHead>Beskrivelse</TableHead>
-                    <TableHead className="hidden sm:table-cell">Person</TableHead>
-                    <TableHead className="hidden md:table-cell">Selskap</TableHead>
-                    <TableHead className="text-right w-[120px]">Tidspunkt</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <table className="w-full caption-bottom text-[11px] sm:text-sm">
+                <thead className="[&_tr]:border-b sticky top-0 bg-card z-10">
+                  <tr className="border-b">
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Type</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Beskrivelse</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Person</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Selskap</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-right align-middle font-medium text-muted-foreground">Tid</th>
+                  </tr>
+                </thead>
+                <tbody className="[&_tr:last-child]:border-0">
                   {activities.map((item, i) => {
                     const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.equipment;
                     const Icon = config.icon;
                     return (
-                      <TableRow key={`${item.type}-${item.timestamp}-${i}`}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-4 h-4 flex-shrink-0 ${config.color}`} />
-                            <span className="text-xs whitespace-nowrap">{config.label}</span>
+                      <tr key={`${item.type}-${item.timestamp}-${i}`} className="border-b transition-colors hover:bg-muted/50">
+                        <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle">
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <Icon className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${config.color}`} />
+                            <span className="whitespace-nowrap">{config.label}</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-foreground">
+                        </td>
+                        <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle max-w-[80px] sm:max-w-[200px] truncate text-foreground">
                           {item.description}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        </td>
+                        <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle text-muted-foreground max-w-[60px] sm:max-w-none truncate">
                           {item.person}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                        </td>
+                        <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle text-muted-foreground max-w-[60px] sm:max-w-none truncate">
                           {item.company}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle text-right">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="text-xs text-muted-foreground cursor-default whitespace-nowrap">
+                              <span className="text-muted-foreground cursor-default whitespace-nowrap">
                                 {formatRelativeTime(item.timestamp)}
                               </span>
                             </TooltipTrigger>
@@ -172,19 +172,19 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
                               {formatFullTime(item.timestamp)}
                             </TooltipContent>
                           </Tooltip>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
                   })}
                   {activities.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <tr>
+                      <td colSpan={5} className="text-center text-muted-foreground py-8">
                         Ingen aktivitet funnet.
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   )}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </TooltipProvider>
           </div>
 
