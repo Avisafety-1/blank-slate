@@ -1008,14 +1008,15 @@ export const ProfileDialog = () => {
                   </CardHeader>
                   <CardContent>
                     {competencies.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-hidden">
+                      <div className="grid grid-cols-1 gap-3 overflow-hidden">
                         {competencies.map((comp) => {
                           const expired = isCompetencyExpired(comp.utloper_dato);
                           const expiring = isCompetencyExpiring(comp.utloper_dato);
                           return (
                             <div
                               key={comp.id}
-                              className={`p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.01] min-w-0 overflow-hidden ${
+                              onClick={() => setCompetencyDialogOpen(true)}
+                              className={`p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.01] min-w-0 overflow-hidden cursor-pointer ${
                                 expired
                                   ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
                                   : expiring
@@ -1670,7 +1671,6 @@ export const ProfileDialog = () => {
           person={{ id: user.id, full_name: profile?.full_name || user.email || 'Bruker', personnel_competencies: competencies }}
           onCompetencyUpdated={() => {
             fetchUserData();
-            setCompetencyDialogOpen(false);
           }}
         />
       )}
