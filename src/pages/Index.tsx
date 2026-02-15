@@ -438,7 +438,7 @@ const Index = () => {
                   </div>
 
                   {/* Center Column - Drone space and missions */}
-                  <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
+                  <div className="lg:col-span-7 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
                     <div className="flex flex-col gap-2">
                       <Button 
@@ -529,7 +529,7 @@ const Index = () => {
                   </div>
 
                   {/* Right Column */}
-                  <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
+                  <div className="lg:col-span-2 flex flex-col gap-3 sm:gap-4">
                     {layout
                       .filter((item) => item.component === "incidents")
                       .map((item) => (
