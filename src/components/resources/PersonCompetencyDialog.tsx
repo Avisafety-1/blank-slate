@@ -266,7 +266,7 @@ export function PersonCompetencyDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:w-[95vw] max-w-2xl max-h-[90vh] p-2.5 sm:p-6 overflow-hidden">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-[95vw] max-w-2xl max-h-[90vh] p-2 sm:p-6 overflow-hidden">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-base sm:text-lg pr-8">{person.full_name}</DialogTitle>
             <Button
