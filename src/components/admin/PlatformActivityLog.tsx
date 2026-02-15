@@ -58,17 +58,16 @@ interface Props {
 export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(20);
   const [hidden, setHidden] = useState(false);
 
-  const fetchActivities = useCallback(async (fetchLimit: number) => {
+  const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
       const { data: session } = await supabase.auth.getSession();
       const token = session?.session?.access_token;
       if (!token) return;
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platform-activity-log?exclude_avisafe=${excludeAvisafe}&limit=${fetchLimit}`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platform-activity-log?exclude_avisafe=${excludeAvisafe}&limit=200`;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -88,12 +87,8 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
   }, [excludeAvisafe]);
 
   useEffect(() => {
-    fetchActivities(limit);
-  }, [fetchActivities, limit]);
-
-  const handleLoadMore = () => {
-    setLimit((prev) => Math.min(prev + 30, 200));
-  };
+    fetchActivities();
+  }, [fetchActivities]);
 
   const formatRelativeTime = (ts: string) => {
     try {
@@ -199,24 +194,6 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
             </TooltipProvider>
           </div>
 
-          {activities.length >= limit && limit < 200 && (
-            <div className="flex justify-center mt-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLoadMore}
-                disabled={loading}
-                className="text-muted-foreground"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 mr-1" />
-                )}
-                Vis mer
-              </Button>
-            </div>
-          )}
         </>
       )}
         </>
