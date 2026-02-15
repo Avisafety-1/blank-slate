@@ -36,19 +36,19 @@ const StatusCard = ({
   const total = counts.Grønn + counts.Gul + counts.Rød;
 
   return (
-    <div className="flex w-full gap-1.5 sm:gap-2">
+    <div className="flex w-full gap-1.5 sm:gap-2 overflow-hidden">
       {statusSegments.map(({ key, bg, border }) =>
         counts[key] > 0 ? (
           <button
             key={key}
             type="button"
             style={{ flexGrow: counts[key] }}
-            className={`${bg} ${border} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex flex-col items-center`}
+            className={`${bg} ${border} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex flex-col items-center overflow-hidden`}
             onClick={() => onSegmentClick(key)}
           >
-            <div className="flex items-center gap-1 sm:gap-2 mb-1">
+            <div className="flex items-center gap-1 sm:gap-2 mb-1 min-w-0 max-w-full overflow-hidden">
               <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span className="font-semibold text-xs sm:text-sm truncate hidden sm:inline">{title}</span>
+              <span className="font-semibold text-xs sm:text-sm truncate">{title}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-bold">{counts[key]}</div>
           </button>
