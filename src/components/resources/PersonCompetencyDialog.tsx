@@ -376,7 +376,7 @@ export function PersonCompetencyDialog({
                       <>
                         <div className="flex items-start justify-between gap-1 min-w-0">
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-semibold text-sm sm:text-base truncate">{competency.navn}</h4>
+                            <h4 className="font-semibold text-sm sm:text-base break-words">{competency.navn}</h4>
                             <span className="text-xs text-muted-foreground">{competency.type}</span>
                           </div>
                           <div className="flex gap-0.5 shrink-0">
