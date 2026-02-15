@@ -16,10 +16,10 @@ interface StatusCounts {
   Rød: number;
 }
 
-const statusSegments: { key: Status; bg: string; text: string }[] = [
-  { key: "Grønn", bg: "bg-status-green", text: "text-green-950" },
-  { key: "Gul", bg: "bg-status-yellow", text: "text-yellow-950" },
-  { key: "Rød", bg: "bg-status-red", text: "text-red-950" },
+const statusSegments: { key: Status; bg: string; border: string }[] = [
+  { key: "Grønn", bg: "bg-status-green/20", border: "border-status-green" },
+  { key: "Gul", bg: "bg-status-yellow/20", border: "border-status-yellow" },
+  { key: "Rød", bg: "bg-status-red/20", border: "border-status-red" },
 ];
 
 const StatusCard = ({
@@ -36,39 +36,35 @@ const StatusCard = ({
   const total = counts.Grønn + counts.Gul + counts.Rød;
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden bg-card">
-      <div className="flex items-center gap-1.5 px-3 py-2">
-        <Icon className="w-4 h-4 text-muted-foreground" />
-        <h3 className="font-semibold text-xs sm:text-sm text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground ml-auto">({total})</span>
-      </div>
-
-      <div className="flex w-full h-12 sm:h-14">
-        {statusSegments.map(({ key, bg, text }) =>
-          counts[key] > 0 ? (
-            <button
-              key={key}
-              type="button"
-              style={{ flexGrow: counts[key] }}
-              className={`${bg} ${text} flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity min-w-0`}
-              onClick={() => onSegmentClick(key)}
-            >
-              <span className="text-lg sm:text-xl font-bold leading-tight">{counts[key]}</span>
-            </button>
-          ) : null
-        )}
-      </div>
+    <div className="flex w-full gap-1.5 sm:gap-2">
+      {statusSegments.map(({ key, bg, border }) =>
+        counts[key] > 0 ? (
+          <button
+            key={key}
+            type="button"
+            style={{ flexGrow: counts[key] }}
+            className={`${bg} ${border} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex flex-col items-center`}
+            onClick={() => onSegmentClick(key)}
+          >
+            <div className="flex items-center gap-1 sm:gap-2 mb-1">
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="font-semibold text-xs sm:text-sm truncate">{title}</span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold">{counts[key]}</div>
+          </button>
+        ) : null
+      )}
     </div>
   );
 };
 
 const StatusCardSkeleton = () => (
-  <div className="rounded-lg border border-border overflow-hidden bg-card">
-    <div className="flex items-center gap-1.5 px-3 py-2">
-      <Skeleton className="w-4 h-4 rounded" />
+  <div className="bg-muted/30 border-2 border-muted rounded p-2 sm:p-3">
+    <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+      <Skeleton className="w-4 h-4 sm:w-5 sm:h-5 rounded" />
       <Skeleton className="h-4 w-16" />
     </div>
-    <Skeleton className="h-12 sm:h-14 w-full rounded-none" />
+    <Skeleton className="h-8 w-12" />
   </div>
 );
 
