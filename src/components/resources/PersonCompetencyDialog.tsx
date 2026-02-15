@@ -266,7 +266,7 @@ export function PersonCompetencyDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-3 sm:p-6 overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-3 sm:p-6 overflow-hidden box-border">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-base sm:text-lg pr-8">{person.full_name}</DialogTitle>
             <Button
@@ -280,8 +280,8 @@ export function PersonCompetencyDialog({
             </Button>
           </DialogHeader>
 
-          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)] w-full">
-            <div className="pr-3 sm:pr-4 w-full max-w-full overflow-hidden">
+          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)] w-full max-w-full">
+            <div className="pr-3 sm:pr-4 max-w-full overflow-hidden">
             {/* Existing Competencies */}
             <div className="space-y-3 mb-6 min-w-0">
               <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
