@@ -230,7 +230,7 @@ const Resources = () => {
       <div className="relative z-10 w-full">
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-4 sm:py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
             {/* Droner/Fly Section */}
             <GlassCard>
               <div className="flex items-center justify-between mb-4">
@@ -487,7 +487,7 @@ const Resources = () => {
                   .map((person) => (
                   <div 
                     key={person.id} 
-                    className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer hover:bg-accent/20 hover:border-accent transition-all duration-200"
+                    className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer hover:bg-accent/20 hover:border-accent transition-all duration-200 min-w-0 overflow-hidden"
                     onClick={() => {
                       setSelectedPerson(person);
                       setPersonCompetencyDialogOpen(true);
@@ -529,7 +529,7 @@ const Resources = () => {
                             return (
                               <span 
                                 key={comp.id} 
-                                className={`text-xs px-2 py-0.5 rounded-full ${
+                                className={`text-xs px-2 py-0.5 rounded-full truncate max-w-[140px] ${
                                   isExpired 
                                     ? 'bg-destructive/20 text-destructive' 
                                     : isExpiringSoon
