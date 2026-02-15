@@ -16,71 +16,59 @@ interface StatusCounts {
   Rød: number;
 }
 
+const statusSegments: { key: Status; bg: string; text: string }[] = [
+  { key: "Grønn", bg: "bg-status-green", text: "text-green-950" },
+  { key: "Gul", bg: "bg-status-yellow", text: "text-yellow-950" },
+  { key: "Rød", bg: "bg-status-red", text: "text-red-950" },
+];
+
 const StatusCard = ({
   title,
   icon: Icon,
   counts,
-  onClick
+  onSegmentClick,
 }: {
   title: string;
   icon: any;
   counts: StatusCounts;
-  onClick: () => void;
+  onSegmentClick: (status: Status) => void;
 }) => {
   const total = counts.Grønn + counts.Gul + counts.Rød;
-  const primaryStatus = counts.Rød > 0 ? "Rød" : counts.Gul > 0 ? "Gul" : "Grønn";
-  const bgColors = {
-    Grønn: "bg-status-green/20",
-    Gul: "bg-status-yellow/20",
-    Rød: "bg-status-red/20"
-  };
-  const borderColors = {
-    Grønn: "border-status-green",
-    Gul: "border-status-yellow",
-    Rød: "border-status-red"
-  };
+
   return (
-    <div 
-      onClick={onClick} 
-      className={`${bgColors[primaryStatus]} ${borderColors[primaryStatus]} border-2 rounded p-2 sm:p-3 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200`}
-    >
-      <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-        <h3 className="font-semibold text-xs sm:text-sm">{title}</h3>
+    <div className="rounded-lg border border-border overflow-hidden bg-card">
+      <div className="flex items-center gap-1.5 px-3 py-2">
+        <Icon className="w-4 h-4 text-muted-foreground" />
+        <h3 className="font-semibold text-xs sm:text-sm text-foreground">{title}</h3>
+        <span className="text-xs text-muted-foreground ml-auto">({total})</span>
       </div>
-      
-      <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">{total}</div>
-      
-      <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs">
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-status-green flex-shrink-0" />
-          <span className="whitespace-nowrap">{counts.Grønn}</span>
-        </div>
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-status-yellow flex-shrink-0" />
-          <span className="whitespace-nowrap">{counts.Gul}</span>
-        </div>
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-status-red flex-shrink-0" />
-          <span className="whitespace-nowrap">{counts.Rød}</span>
-        </div>
+
+      <div className="flex w-full h-12 sm:h-14">
+        {statusSegments.map(({ key, bg, text }) =>
+          counts[key] > 0 ? (
+            <button
+              key={key}
+              type="button"
+              style={{ flexGrow: counts[key] }}
+              className={`${bg} ${text} flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity min-w-0`}
+              onClick={() => onSegmentClick(key)}
+            >
+              <span className="text-lg sm:text-xl font-bold leading-tight">{counts[key]}</span>
+            </button>
+          ) : null
+        )}
       </div>
     </div>
   );
 };
 
 const StatusCardSkeleton = () => (
-  <div className="bg-muted/30 border-2 border-muted rounded p-2 sm:p-3">
-    <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-      <Skeleton className="w-4 h-4 sm:w-5 sm:h-5 rounded" />
+  <div className="rounded-lg border border-border overflow-hidden bg-card">
+    <div className="flex items-center gap-1.5 px-3 py-2">
+      <Skeleton className="w-4 h-4 rounded" />
       <Skeleton className="h-4 w-16" />
     </div>
-    <Skeleton className="h-8 w-12 mb-1 sm:mb-2" />
-    <div className="flex gap-2">
-      <Skeleton className="h-3 w-8" />
-      <Skeleton className="h-3 w-8" />
-      <Skeleton className="h-3 w-8" />
-    </div>
+    <Skeleton className="h-12 sm:h-14 w-full rounded-none" />
   </div>
 );
 
@@ -90,6 +78,9 @@ export const StatusPanel = () => {
   const [droneDialogOpen, setDroneDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
   const [personnelDialogOpen, setPersonnelDialogOpen] = useState(false);
+  const [droneFilter, setDroneFilter] = useState<Status | null>(null);
+  const [equipmentFilter, setEquipmentFilter] = useState<Status | null>(null);
+  const [personnelFilter, setPersonnelFilter] = useState<Status | null>(null);
 
   const {
     isLoading,
@@ -104,6 +95,10 @@ export const StatusPanel = () => {
     refetchPersonnel,
   } = useStatusData();
 
+  const openDrone = (status: Status) => { setDroneFilter(status); setDroneDialogOpen(true); };
+  const openEquipment = (status: Status) => { setEquipmentFilter(status); setEquipmentDialogOpen(true); };
+  const openPersonnel = (status: Status) => { setPersonnelFilter(status); setPersonnelDialogOpen(true); };
+
   return (
     <>
       <GlassCard className="overflow-hidden">
@@ -117,9 +112,9 @@ export const StatusPanel = () => {
             </>
           ) : (
             <>
-              <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onClick={() => setDroneDialogOpen(true)} />
-              <StatusCard title={t('dashboard.status.equipment')} icon={Gauge} counts={equipmentStatus} onClick={() => setEquipmentDialogOpen(true)} />
-              <StatusCard title={t('dashboard.status.personnel')} icon={Users} counts={personnelStatus} onClick={() => setPersonnelDialogOpen(true)} />
+              <StatusCard title={terminology.vehicles} icon={Plane} counts={droneStatus} onSegmentClick={openDrone} />
+              <StatusCard title={t('dashboard.status.equipment')} icon={Gauge} counts={equipmentStatus} onSegmentClick={openEquipment} />
+              <StatusCard title={t('dashboard.status.personnel')} icon={Users} counts={personnelStatus} onSegmentClick={openPersonnel} />
             </>
           )}
         </div>
@@ -127,21 +122,27 @@ export const StatusPanel = () => {
       
       <DroneListDialog 
         open={droneDialogOpen} 
-        onOpenChange={setDroneDialogOpen} 
+        onOpenChange={(o) => { setDroneDialogOpen(o); if (!o) setDroneFilter(null); }}
         drones={drones}
         onDronesUpdated={refetchDrones}
+        statusFilter={droneFilter}
+        onStatusFilterChange={setDroneFilter}
       />
       <EquipmentListDialog 
         open={equipmentDialogOpen} 
-        onOpenChange={setEquipmentDialogOpen} 
+        onOpenChange={(o) => { setEquipmentDialogOpen(o); if (!o) setEquipmentFilter(null); }}
         equipment={equipment}
         onEquipmentUpdated={refetchEquipment}
+        statusFilter={equipmentFilter}
+        onStatusFilterChange={setEquipmentFilter}
       />
       <PersonnelListDialog 
         open={personnelDialogOpen} 
-        onOpenChange={setPersonnelDialogOpen} 
+        onOpenChange={(o) => { setPersonnelDialogOpen(o); if (!o) setPersonnelFilter(null); }}
         personnel={personnel}
         onPersonnelUpdated={refetchPersonnel}
+        statusFilter={personnelFilter}
+        onStatusFilterChange={setPersonnelFilter}
       />
     </>
   );

@@ -2,22 +2,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { Status } from "@/types";
+import { X } from "lucide-react";
 
 interface DroneListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   drones: any[];
   onDronesUpdated?: () => void;
+  statusFilter?: Status | null;
+  onStatusFilterChange?: (filter: Status | null) => void;
 }
 
-export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }: DroneListDialogProps) => {
+export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, statusFilter, onStatusFilterChange }: DroneListDialogProps) => {
   const [selectedDrone, setSelectedDrone] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const terminology = useTerminology();
+
+  const filteredDrones = useMemo(() => {
+    if (!statusFilter) return drones;
+    return drones.filter(d => d.status === statusFilter);
+  }, [drones, statusFilter]);
 
   const handleDroneClick = (drone: any) => {
     setSelectedDrone(drone);
@@ -40,15 +48,24 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated }:
     }
   }, [drones]);
 
+  const titleSuffix = statusFilter ? ` – ${statusFilter} (${filteredDrones.length})` : ` (${drones.length})`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>{terminology.vehicles} ({drones.length})</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            {terminology.vehicles}{titleSuffix}
+            {statusFilter && (
+              <button type="button" onClick={() => onStatusFilterChange?.(null)} className="inline-flex items-center gap-0.5 text-xs bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80">
+                Vis alle <X className="w-3 h-3" />
+              </button>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          {drones.map((drone) => (
+          {filteredDrones.map((drone) => (
             <div 
               key={drone.id} 
               onClick={() => handleDroneClick(drone)}
