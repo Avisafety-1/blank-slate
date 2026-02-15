@@ -1,39 +1,63 @@
 
+# Dynamiske statuskort med proporsjonale fargeseksjoner
 
-## Fix: Kompetansekort og skjema flyter ut av skjermen på mobil
+## Oversikt
+Statuskortene på dashbordet (Droner, Utstyr, Personell) redesignes slik at hver boks viser en visuell fordeling av grønn/gul/rød status med proporsjonale seksjoner. Klikk på en fargeseksjon åpner dialogen filtrert til kun elementer med den aktuelle statusen.
 
-### Problem
-Kompetansekortene og "Legg til kompetanse"-skjemaet i PersonCompetencyDialog er for brede på mobil. Hovedårsakene er:
+## Visuelt konsept
 
-1. **ScrollArea-viewport tillater horisontal scrolling** -- Radix ScrollArea sin viewport har `overflow: auto`, som lar innholdet utvide seg horisontalt i stedet for å begrenses
-2. **Dato-feltene i "Legg til"-skjemaet** bruker `grid-cols-2` uten `min-w-0` på barna, noe som gjor at date-inputs kan presse innholdet bredere enn skjermen
-3. **Manglende bredde-begrensninger** på skjema-containeren og kompetansekort-seksjonen
+```text
+Nåværende:
+┌──────────────┐
+│  Droner      │  (hele boksen én farge basert på "worst case")
+│     5        │
+│  ● 3  ● 1  ● 1 │
+└──────────────┘
 
-### Losning
-
-**Fil: `src/components/ui/scroll-area.tsx`**
-- Legg til `overflow-x-hidden` pa ScrollArea Viewport slik at horisontalt innhold alltid klippes, ikke scrolles
-
-**Fil: `src/components/resources/PersonCompetencyDialog.tsx`**
-- Legg til `min-w-0` pa "Legg til kompetanse"-skjemaets container (`border-t pt-4 mt-4`)
-- Legg til `min-w-0` pa dato-grid-barna i bade "legg til"- og "rediger"-seksjonene
-- Endre dato-grid i "legg til"-skjemaet fra `grid-cols-2` til `grid-cols-1 sm:grid-cols-2` for a stable pa sma skjermer (konsistent med redigeringsmodus som allerede gjor dette)
-- Legg til `overflow-hidden` pa form-elementet
-
-### Tekniske detaljer
-
-Endring i `scroll-area.tsx` (linje 14):
-```
-// Fra:
-<ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overflow-auto">
-
-// Til:
-<ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overflow-auto overflow-x-hidden">
+Nytt design:
+┌──────────────────────────┐
+│  Droner (5)              │
+├────────┬──────┬──────────┤
+│ GRØNN  │ GUL  │   RØD    │
+│   3    │  1   │    1     │
+│  60%   │ 20%  │   20%   │
+└────────┴──────┴──────────┘
+  (klikk på en seksjon = åpner dialog filtrert til den statusen)
 ```
 
-Endringer i `PersonCompetencyDialog.tsx`:
-- Linje 465: Legg til `min-w-0 overflow-hidden` pa form-wrapperen
-- Linje 467: Legg til `min-w-0` pa form-elementet  
-- Linje 509: Endre `grid-cols-2` til `grid-cols-1 sm:grid-cols-2` for dato-feltene
-- Linje 510, 520: Legg til `min-w-0` pa grid-barna
+Seksjonene er horisontalt fordelt proporsjonalt etter antall. Seksjoner med 0 elementer vises ikke.
 
+## Tekniske endringer
+
+### 1. StatusPanel.tsx - Redesign StatusCard
+- Erstatte nåværende `StatusCard`-komponent med ny versjon som har proporsjonale fargeseksjoner
+- Hver seksjon (grønn/gul/rød) får bredde basert på `flex-grow` med verdien lik antallet
+- Kun seksjoner med count > 0 vises
+- Hver seksjon er klikkbar med `onClick` som sender statusfilter til dialog-åpningen
+- Tittel og ikon vises over den proporsjonale baren
+
+### 2. StatusPanel.tsx - Statusfilter-state
+- Legge til state for `statusFilter: Status | null` per dialog (drone/equipment/personnel)
+- Når en fargeseksjon klikkes, settes filteret og riktig dialog åpnes
+- Filteret sendes som ny prop `statusFilter` til dialogene
+
+### 3. DroneListDialog.tsx - Filterstøtte
+- Ny valgfri prop: `statusFilter?: Status | null`
+- Filtrerer `drones`-arrayet basert på `statusFilter` før rendering
+- Viser filteret i dialog-tittelen, f.eks. "Droner - Rød (1)"
+- Mulighet for å fjerne filter inne i dialogen
+
+### 4. EquipmentListDialog.tsx - Filterstøtte
+- Samme mønster som DroneListDialog
+- Ny prop `statusFilter?: Status | null`
+- Filtrerer utstyrslisten tilsvarende
+
+### 5. PersonnelListDialog.tsx - Filterstøtte
+- Samme mønster
+- Filtrerer basert på `calculatedStatus` som allerede beregnes
+
+### Filer som endres:
+- `src/components/dashboard/StatusPanel.tsx` - Hovedendringen med nytt design
+- `src/components/dashboard/DroneListDialog.tsx` - Legge til filterlogikk
+- `src/components/dashboard/EquipmentListDialog.tsx` - Legge til filterlogikk
+- `src/components/dashboard/PersonnelListDialog.tsx` - Legge til filterlogikk
