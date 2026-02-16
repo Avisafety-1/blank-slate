@@ -1,21 +1,15 @@
 
-# Vertikal stabling av statuskort og mindre hendelser-seksjon
+## Begrense listehøyde på /ressurser
 
-## Oversikt
-Statuskortene (Droner, Utstyr, Personell) endres fra horisontal 3-kolonne layout til vertikal stabling - ett kort per rad. Hendelser-seksjonen gjores litt mindre for a gi plass.
+Listene for droner, utstyr og personell på ressurssiden viser i dag alle elementer uten noen høydebegrensning, noe som gjor at seksjonene kan bli veldig lange.
 
-## Endringer
+### Endring
 
-### 1. StatusPanel.tsx - Vertikal layout
-- Endre grid fra `grid-cols-1 sm:grid-cols-3` til `grid-cols-1` (alltid vertikal stabling)
-- Hver StatusCard vises som en full-bredde rad med proporsjonale fargesegmenter side om side
-- Beholde eksisterende stil med 20% opacity bakgrunn og 2px border
+Legge til en fast maksimalhøyde på listcontainerne (`div.space-y-3`) inne i hver av de tre GlassCard-seksjonene (Droner, Utstyr, Personell), slik at de viser ca. 5-6 elementer og resten kan nås ved scrolling.
 
-### 2. Index.tsx - Juster kolonnebredder
-- Endre statuspanelet fra `lg:col-span-3` til `lg:col-span-3` (beholde)
-- Endre hendelser-seksjonen fra `lg:col-span-3` til `lg:col-span-2` i hovedraden
-- Justere senterkolonnen fra `lg:col-span-6` til `lg:col-span-7` for a bruke den frigjorte plassen
+### Teknisk detalj
 
-### Filer som endres:
-- `src/components/dashboard/StatusPanel.tsx` - Grid til vertikal stabling
-- `src/pages/Index.tsx` - Kolonnejustering for hendelser
+I `src/pages/Resources.tsx` legges `max-h-[420px] overflow-y-auto` til pa de tre `<div className="space-y-3">` containerne som holder drone-, utstyr- og personell-kortene. 420px tilsvarer omtrent 5-6 kort med dagens kortstorrelse. Sokefeltet og overskriften forblir utenfor scroll-omradet slik at de alltid er synlige.
+
+Filer som endres:
+- `src/pages/Resources.tsx` (3 steder: drone-listen, utstyr-listen, personell-listen)
