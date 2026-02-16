@@ -218,6 +218,97 @@ serve(async (req) => {
       }
     }
 
+    // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
+    let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
+    if (lat && lng) {
+      try {
+        // Build bounding box from route coordinates or single point
+        const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
+          ? routeCoords
+          : [{ lat, lng }];
+
+        // Get SORA ground risk buffer distance if available
+        const soraData = mission.mission_sora?.[0];
+        const bufferMeters = soraData?.ground_risk_distance
+          ? (soraData.contingency_distance || 50) + soraData.ground_risk_distance
+          : allCoords.length === 1 ? 500 : 200;
+
+        // Calculate bounding box with buffer
+        const degPerMeterLat = 1 / 111320;
+        const avgLat = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
+        const degPerMeterLng = 1 / (111320 * Math.cos(avgLat * Math.PI / 180));
+
+        let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+        for (const c of allCoords) {
+          if (c.lat < minLat) minLat = c.lat;
+          if (c.lat > maxLat) maxLat = c.lat;
+          if (c.lng < minLng) minLng = c.lng;
+          if (c.lng > maxLng) maxLng = c.lng;
+        }
+        minLat -= bufferMeters * degPerMeterLat;
+        maxLat += bufferMeters * degPerMeterLat;
+        minLng -= bufferMeters * degPerMeterLng;
+        maxLng += bufferMeters * degPerMeterLng;
+
+        const wfsUrl = `https://wfs.geonorge.no/skwms1/wfs.arealbruk?service=WFS&version=2.0.0&request=GetFeature&typeName=arealbruk&outputFormat=application/json&srsName=EPSG:4326&bbox=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326&count=200`;
+        console.log(`Fetching SSB Arealbruk WFS: bbox=${minLat.toFixed(5)},${minLng.toFixed(5)},${maxLat.toFixed(5)},${maxLng.toFixed(5)}`);
+
+        const wfsResponse = await fetch(wfsUrl, { signal: AbortSignal.timeout(8000) });
+        if (wfsResponse.ok) {
+          const geoJson = await wfsResponse.json();
+          const features = geoJson.features || [];
+          console.log(`SSB Arealbruk: ${features.length} features returned`);
+
+          // Count categories
+          const featureCount: Record<string, number> = {};
+          for (const f of features) {
+            const cat = f.properties?.arealtype || f.properties?.arealbruktype || f.properties?.kategori || 'Ukjent';
+            featureCount[cat] = (featureCount[cat] || 0) + 1;
+          }
+
+          // Classify ground risk based on categories
+          const catLower = Object.keys(featureCount).map(k => k.toLowerCase());
+          const hasBolig = catLower.some(c => c.includes('bolig'));
+          const hasOffentlig = catLower.some(c => c.includes('offentlig') || c.includes('institusjon') || c.includes('skole') || c.includes('sykehus'));
+          const hasNaering = catLower.some(c => c.includes('næring') || c.includes('næringsbebyggelse') || c.includes('kontor') || c.includes('handel'));
+          const hasIndustri = catLower.some(c => c.includes('industri') || c.includes('lager'));
+          const hasTransport = catLower.some(c => c.includes('transport') || c.includes('veg') || c.includes('jernbane'));
+          const hasFritid = catLower.some(c => c.includes('fritid') || c.includes('park') || c.includes('sport') || c.includes('grønt'));
+
+          let groundRiskClassification = 'low';
+          let summary = 'Området inneholder hovedsakelig ubebygde/fritidsområder med lav befolkningstetthet.';
+
+          if (hasBolig || hasOffentlig) {
+            groundRiskClassification = 'high';
+            const types: string[] = [];
+            if (hasBolig) types.push('boligområder');
+            if (hasOffentlig) types.push('offentlige tjenester/institusjoner');
+            if (hasNaering) types.push('næringsbebyggelse');
+            summary = `Området inneholder ${types.join(', ')} — høy befolkningstetthet, forhøyet ground risk.`;
+          } else if (hasNaering || hasIndustri || hasTransport) {
+            groundRiskClassification = 'moderate';
+            const types: string[] = [];
+            if (hasNaering) types.push('næringsbebyggelse');
+            if (hasIndustri) types.push('industri');
+            if (hasTransport) types.push('transportinfrastruktur');
+            summary = `Området inneholder ${types.join(', ')} — moderat befolkningstetthet.`;
+          }
+
+          landUseData = {
+            categories: Object.keys(featureCount),
+            groundRiskClassification,
+            summary,
+            featureCount,
+          };
+          console.log(`Land use classification: ${groundRiskClassification}`, JSON.stringify(featureCount));
+        } else {
+          console.error('SSB Arealbruk WFS failed:', wfsResponse.status);
+        }
+      } catch (e) {
+        console.error('SSB Arealbruk fetch error (continuing without land use data):', e);
+      }
+    }
+
     // Use provided droneId or first assigned drone
     const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
     const droneData: any = effectiveDroneId 
@@ -322,6 +413,7 @@ serve(async (req) => {
         class: droneData.klasse,
       } : null,
       pilotInputs: pilotInputs || {},
+      landUse: landUseData,
     };
 
     // Professional SMS System Prompt
@@ -364,6 +456,14 @@ Anta alltid at piloten vil:
 Disse skal kommenteres som forutsetninger i prerequisites.
 
 ${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
+
+### AREALBRUK OG GROUND RISK (SSB-data)
+Hvis feltet "landUse" finnes i kontekstdataene, bruk dette som PRIMÆRKILDE for ground risk-vurdering i mission_complexity-kategorien:
+- groundRiskClassification "high": Boligområder eller offentlige institusjoner i operasjonsområdet. Reduser mission_complexity score med 2-3 poeng. List kategoriene i complexity_factors og legg til spesifikke concerns.
+- groundRiskClassification "moderate": Næring, industri eller transport i området. Reduser mission_complexity score med 1-2 poeng.
+- groundRiskClassification "low": Ubebodd/fritidsområde — ingen ekstra reduksjon.
+- Hvis landUse er null (data utilgjengelig), fall tilbake på pilotens manuelle input om "proximityToPeople".
+Arealbrukskategoriene og featureCount gir detaljert informasjon om hva som finnes i området — bruk dette til å gi konkrete anbefalinger i recommendations.
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
