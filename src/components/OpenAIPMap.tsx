@@ -742,6 +742,24 @@ export function OpenAIPMap({
       icon: "treePine",
     });
 
+    // SSB Arealbruk (befolkningstetthet)
+    const arealbrukLayer = L.tileLayer.wms(
+      "https://wms.geonorge.no/skwms1/wms.arealbruk?",
+      {
+        layers: "arealbruk",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.6,
+        attribution: "SSB Arealbruk",
+      }
+    );
+    layerConfigs.push({
+      id: "arealbruk",
+      name: "Befolkning / Arealbruk (SSB)",
+      layer: arealbrukLayer,
+      enabled: false,
+      icon: "users",
+    });
 
     // RPAS 5km soner
     const rpasLayer = L.layerGroup().addTo(map);
