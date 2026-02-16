@@ -250,30 +250,37 @@ serve(async (req) => {
         minLng -= bufferMeters * degPerMeterLng;
         maxLng += bufferMeters * degPerMeterLng;
 
-        const wfsUrl = `https://wfs.geonorge.no/skwms1/wfs.arealbruk?service=WFS&version=2.0.0&request=GetFeature&typeName=arealbruk&outputFormat=application/json&srsName=EPSG:4326&bbox=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326&count=200`;
-        console.log(`Fetching SSB Arealbruk WFS: bbox=${minLat.toFixed(5)},${minLng.toFixed(5)},${maxLat.toFixed(5)},${maxLng.toFixed(5)}`);
+        const wfsUrl = `https://wfs.geonorge.no/skwms1/wfs.arealbruk?service=WFS&version=2.0.0&request=GetFeature&typeName=app:SsbArealbrukFlate&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326&count=200`;
+        console.log(`Fetching SSB Arealbruk WFS: bbox=${minLng.toFixed(5)},${minLat.toFixed(5)},${maxLng.toFixed(5)},${maxLat.toFixed(5)}`);
 
         const wfsResponse = await fetch(wfsUrl, { signal: AbortSignal.timeout(8000) });
         if (wfsResponse.ok) {
-          const geoJson = await wfsResponse.json();
-          const features = geoJson.features || [];
-          console.log(`SSB Arealbruk: ${features.length} features returned`);
+          const xmlText = await wfsResponse.text();
+          
+          // Parse XML/GML response using regex to extract land use categories
+          const arealbrukMatches = [...xmlText.matchAll(/<app:arealbruksomrade>(.*?)<\/app:arealbruksomrade>/g)].map(m => m[1]);
+          const bebyggelseMatches = [...xmlText.matchAll(/<app:bebyggelsestype>(.*?)<\/app:bebyggelsestype>/g)].map(m => m[1]);
+          const allCategories = [...arealbrukMatches, ...bebyggelseMatches];
+          console.log(`SSB Arealbruk: ${arealbrukMatches.length} features returned, categories: ${[...new Set(allCategories)].join(', ')}`);
 
           // Count categories
           const featureCount: Record<string, number> = {};
-          for (const f of features) {
-            const cat = f.properties?.arealtype || f.properties?.arealbruktype || f.properties?.kategori || 'Ukjent';
+          for (const cat of arealbrukMatches) {
             featureCount[cat] = (featureCount[cat] || 0) + 1;
           }
+          for (const cat of bebyggelseMatches) {
+            const key = `Bebyggelse:${cat}`;
+            featureCount[key] = (featureCount[key] || 0) + 1;
+          }
 
-          // Classify ground risk based on categories
-          const catLower = Object.keys(featureCount).map(k => k.toLowerCase());
-          const hasBolig = catLower.some(c => c.includes('bolig'));
-          const hasOffentlig = catLower.some(c => c.includes('offentlig') || c.includes('institusjon') || c.includes('skole') || c.includes('sykehus'));
-          const hasNaering = catLower.some(c => c.includes('næring') || c.includes('næringsbebyggelse') || c.includes('kontor') || c.includes('handel'));
-          const hasIndustri = catLower.some(c => c.includes('industri') || c.includes('lager'));
-          const hasTransport = catLower.some(c => c.includes('transport') || c.includes('veg') || c.includes('jernbane'));
-          const hasFritid = catLower.some(c => c.includes('fritid') || c.includes('park') || c.includes('sport') || c.includes('grønt'));
+          // Classify ground risk based on SSB categories
+          const allCatsLower = allCategories.map(c => c.toLowerCase());
+          const hasBolig = allCatsLower.some(c => c === 'bolig' || c === 'beb' || c === 'frittliggende' || c === 'rekkehus' || c === 'blokk');
+          const hasOffentlig = allCatsLower.some(c => c === 'offentligprivattjenesteyting' || c === 'skole' || c === 'sykehus');
+          const hasNaering = allCatsLower.some(c => c === 'naering' || c === 'handel');
+          const hasIndustri = allCatsLower.some(c => c === 'industri' || c === 'lager');
+          const hasTransport = allCatsLower.some(c => c === 'transporttelek' || c === 'annenveg' || c === 'jernbane');
+          const hasFritid = allCatsLower.some(c => c === 'fritid' || c === 'idrett' || c === 'park');
 
           let groundRiskClassification = 'low';
           let summary = 'Området inneholder hovedsakelig ubebygde/fritidsområder med lav befolkningstetthet.';
