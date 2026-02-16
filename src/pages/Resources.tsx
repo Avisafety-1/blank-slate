@@ -255,7 +255,7 @@ const Resources = () => {
                 />
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {drones
                   .filter((drone) => {
                     if (!droneSearch) return true;
@@ -341,7 +341,7 @@ const Resources = () => {
                 />
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {equipment
                   .filter((item) => {
                     if (!equipmentSearch) return true;
@@ -472,7 +472,7 @@ const Resources = () => {
                 />
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {personnel
                   .filter((person) => {
                     if (!personnelSearch) return true;
