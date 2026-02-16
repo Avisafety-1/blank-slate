@@ -1,61 +1,51 @@
 
+## Fiks: SSB Arealbruk WFS-integrasjon i AI-risikovurdering
 
-## Selskapsadresse som kart-fallback + adresse-autosluttfor
+### Problemet
+WFS-kallet returnerer HTTP 400 fordi tre parametere er feil:
 
-### Hva dette gjor
-1. Adressefeltet i selskapsredigering (CompanyManagementDialog) far autosluttfor via Kartverket-API (gjenbruker eksisterende AddressAutocomplete-komponent), slik at kun gyldige norske adresser kan settes.
-2. Nar en gyldig adresse velges, lagres koordinatene (lat/lon) pa selskapet i databasen.
-3. Kartet bruker selskapets koordinater som fallback-posisjon dersom GPS-tilgang nektes eller er utilgjengelig, i stedet for hardkodet Trondheim-posisjon.
+1. **`typeName=arealbruk`** -- Korrekt verdi er **`app:SsbArealbrukFlate`**
+2. **`outputFormat=application/json`** -- Denne WFS-tjenesten stotter IKKE JSON-output. Den returnerer kun GML/XML (standard WFS 2.0-format)
+3. **Bbox-rekkefolgent** -- For WFS 2.0 med EPSG:4326 skal rekkefolgent vaere `lon,lat,lon,lat` (ikke `lat,lon,lat,lon`)
 
-### Prioritet/rekkefølge
+### Verifisert losning
+Jeg har testet direkte mot Geonorge WFS og bekreftet at folgende URL fungerer og returnerer data:
 
-1. **Database**: Legg til `adresse_lat` og `adresse_lon` kolonner pa `companies`-tabellen.
-2. **CompanyManagementDialog**: Bytt ut det vanlige adresse-inputfeltet med `AddressAutocomplete`-komponenten, og lagre lat/lon nar en adresse velges.
-3. **AuthContext**: Eksponer selskapets koordinater (hentes allerede fra profiles/companies) slik at kartet kan bruke dem.
-4. **OpenAIPMap**: Bruk selskapets koordinater som fallback nar geolokasjon nektes.
-
----
-
-### Tekniske detaljer
-
-#### 1. Database-migrasjon
-
-Legg til to nye kolonner pa `companies`:
-
-```sql
-ALTER TABLE companies ADD COLUMN adresse_lat double precision;
-ALTER TABLE companies ADD COLUMN adresse_lon double precision;
+```text
+https://wfs.geonorge.no/skwms1/wfs.arealbruk
+  ?service=WFS&version=2.0.0
+  &request=GetFeature
+  &typeName=app:SsbArealbrukFlate
+  &srsName=EPSG:4326
+  &bbox={minLng},{minLat},{maxLng},{maxLat},EPSG:4326
+  &count=200
 ```
 
-Ingen nye RLS-policyer trengs -- eksisterende policyer dekker allerede SELECT/UPDATE pa companies.
+Dataene kommer tilbake som XML/GML med folgende egenskaper per feature:
+- Arealbrukskategori (f.eks. "Uklassifisert", "TransportTelek", "Bolig", "Naering")
+- Bebyggelsestype (f.eks. "Beb", "AnnenVeg", "Frittliggende")
 
-#### 2. `src/components/admin/CompanyManagementDialog.tsx`
+### Endringer i `supabase/functions/ai-risk-assessment/index.ts`
 
-- Importer `AddressAutocomplete` fra `@/components/AddressAutocomplete`
-- Erstatt det vanlige `<Input>`-feltet for `adresse` med `<AddressAutocomplete>`
-- Legg til `adresse_lat` og `adresse_lon` i skjemaet (zod-skjema og form state)
-- Nar brukeren velger en adresse fra autosluttfor-listen, settes bade adressetekst og koordinater
-- Ved lagring sendes `adresse_lat` og `adresse_lon` med til Supabase
+#### 1. Rett WFS URL (linje 253)
+- Endre `typeName=arealbruk` til `typeName=app:SsbArealbrukFlate`
+- Fjern `outputFormat=application/json` (bruk standard GML/XML)
+- Bytt bbox-rekkefolgent til `minLng,minLat,maxLng,maxLat`
 
-#### 3. `src/contexts/AuthContext.tsx`
+#### 2. Parse XML i stedet for JSON (linje 257-266)
+Siden tjenesten returnerer GML/XML, ma vi:
+- Lese responsen som tekst
+- Bruke enkel regex-basert XML-parsing for a hente ut arealbrukskategori og bebyggelsestype fra `<app:arealbruksomrade>` og `<app:bebyggelsestype>` elementer
+- Telle kategorier som for
 
-- Utvid `AuthContextType` og `CachedProfile` med `companyLat: number | null` og `companyLon: number | null`
-- Hent `adresse_lat` og `adresse_lon` fra companies-tabellen i den eksisterende profile-fetch-logikken
-- Eksponer disse via context
-
-#### 4. `src/components/OpenAIPMap.tsx`
-
-- Hent `companyLat` og `companyLon` fra `useAuth()`
-- I geolokasjon-fallback-logikken (linje ~831): Dersom `initialCenter` ikke er satt og geolokasjon nektes, bruk selskapets koordinater i stedet for `DEFAULT_POS`
-- Fallback-kjede blir: `initialCenter` (prop) -> GPS -> selskapsadresse -> `DEFAULT_POS` (Trondheim)
-
-#### 5. `src/integrations/supabase/types.ts`
-
-- Oppdater types for companies-tabellen med de nye kolonnene (dette skjer automatisk via migrasjon, men manuell oppdatering kan trengs)
+#### 3. Oppdater kategori-matching (linje 270-276)
+Tilpass kategori-sjekken til de faktiske SSB-kodene:
+- **Bolig**: "Bolig", "Beb" (bebyggelse)
+- **Offentlig**: "OffentligPrivatTjenesteyting", "Skole", "Sykehus"
+- **Naering**: "Naering", "Handel"
+- **Industri**: "Industri", "Lager"
+- **Transport**: "TransportTelek", "AnnenVeg", "Jernbane"
+- **Fritid**: "Fritid", "Idrett", "Park"
 
 ### Filer som endres
-- Ny migrasjon (database)
-- `src/components/admin/CompanyManagementDialog.tsx`
-- `src/contexts/AuthContext.tsx`
-- `src/components/OpenAIPMap.tsx`
-- `src/integrations/supabase/types.ts`
+- `supabase/functions/ai-risk-assessment/index.ts` (linje 221-310)
