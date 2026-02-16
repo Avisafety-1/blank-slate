@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2 } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AddMissionDialog } from "./AddMissionDialog";
@@ -25,6 +25,7 @@ interface MissionDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   mission: Mission | null;
   onMissionUpdated?: () => void;
+  onEditRoute?: (mission: any) => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -65,7 +66,7 @@ const formatAIRiskScore = (score: unknown) => {
   return `${n.toFixed(1)}/10`;
 };
 
-export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated }: MissionDetailDialogProps) => {
+export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
@@ -148,10 +149,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           <DialogHeader className="space-y-3">
             <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
-              <Button size="sm" variant="outline" onClick={handleEditClick} className="flex-shrink-0">
-                <Pencil className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Rediger</span>
-              </Button>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {onEditRoute && (
+                  <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
+                    <Route className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Rediger rute</span>
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={handleEditClick}>
+                  <Pencil className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Rediger</span>
+                </Button>
+              </div>
             </div>
             <Button 
               size="sm" 
