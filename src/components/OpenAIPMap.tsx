@@ -71,6 +71,7 @@ export interface RouteData {
   pilotPosition?: RoutePoint;
   maxDistanceFromPilot?: number;
   pointsOutsideVLOS?: number;
+  soraSettings?: SoraSettings;
 }
 
 export interface SoraSettings {

@@ -92,11 +92,17 @@ export default function KartPage() {
   };
 
   const handleSaveRoute = () => {
+    // Attach SORA settings to route data before saving
+    const routeToSave: RouteData = {
+      ...currentRoute,
+      soraSettings: soraSettings.enabled ? soraSettings : undefined,
+    };
+
     if (routePlanningState) {
       // Coming from mission edit - go back there
       navigate(routePlanningState.returnTo, {
         state: {
-          routeData: currentRoute,
+          routeData: routeToSave,
           formData: routePlanningState.formData,
           selectedPersonnel: routePlanningState.selectedPersonnel,
           selectedEquipment: routePlanningState.selectedEquipment,
@@ -109,7 +115,7 @@ export default function KartPage() {
       // Started from /kart - go to new mission dialog
       navigate('/oppdrag', {
         state: {
-          routeData: currentRoute,
+          routeData: routeToSave,
           openDialog: true,
         }
       });
