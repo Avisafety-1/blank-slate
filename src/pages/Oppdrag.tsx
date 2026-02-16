@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   MapPin, 
@@ -124,6 +125,9 @@ const Oppdrag = () => {
   const [isLoadingActive, setIsLoadingActive] = useState(true);
   const [isLoadingCompleted, setIsLoadingCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [customerFilter, setCustomerFilter] = useState("alle");
+  const [pilotFilter, setPilotFilter] = useState("alle");
+  const [droneFilter, setDroneFilter] = useState("alle");
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
 
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
@@ -399,13 +403,30 @@ const Oppdrag = () => {
     fetchMissionsForTab('completed');
   };
 
+  // Compute unique filter options from current missions list
+  const uniqueCustomers = [...new Set(missions.map(m => m.customers?.navn).filter(Boolean))].sort();
+  const uniquePilots = [...new Set(missions.flatMap(m => (m.personnel || []).map((p: any) => p.profiles?.full_name).filter(Boolean)))].sort();
+  const uniqueDrones = [...new Set(missions.flatMap(m => (m.drones || []).map((d: any) => d.drones?.modell).filter(Boolean)))].sort();
+
   const filteredMissions = missions.filter((mission) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      mission.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mission.lokasjon?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mission.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!(
+        mission.tittel?.toLowerCase().includes(q) ||
+        mission.lokasjon?.toLowerCase().includes(q) ||
+        mission.beskrivelse?.toLowerCase().includes(q)
+      )) return false;
+    }
+    if (customerFilter !== "alle" && mission.customers?.navn !== customerFilter) return false;
+    if (pilotFilter !== "alle") {
+      const hasPilot = (mission.personnel || []).some((p: any) => p.profiles?.full_name === pilotFilter);
+      if (!hasPilot) return false;
+    }
+    if (droneFilter !== "alle") {
+      const hasDrone = (mission.drones || []).some((d: any) => d.drones?.modell === droneFilter);
+      if (!hasDrone) return false;
+    }
+    return true;
   });
 
   const handleEditMission = (mission: Mission) => {
@@ -1319,6 +1340,43 @@ const Oppdrag = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
+              </div>
+
+              {/* Filter dropdowns */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select value={customerFilter} onValueChange={setCustomerFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Kunde" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle kunder</SelectItem>
+                    {uniqueCustomers.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={pilotFilter} onValueChange={setPilotFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Pilot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle piloter</SelectItem>
+                    {uniquePilots.map(p => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={droneFilter} onValueChange={setDroneFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Drone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle droner</SelectItem>
+                    {uniqueDrones.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </GlassCard>
 
