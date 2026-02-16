@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type Mission = any;
 type MissionSora = any;
@@ -47,6 +48,7 @@ export const MissionsSection = () => {
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [aiRiskDialogOpen, setAIRiskDialogOpen] = useState(false);
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
+  const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
@@ -274,8 +276,15 @@ export const MissionsSection = () => {
                         : approvalStatus === 'pending_approval' 
                           ? 'bg-status-yellow/20 text-yellow-700 dark:text-yellow-300' 
                           : 'bg-status-red/20 text-red-700 dark:text-red-300';
+                      const isClickable = approvalStatus === 'not_approved' || !mission.approval_status;
                       return (
-                        <Badge className={`${approvalColor} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
+                        <Badge 
+                          className={`${approvalColor} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                          onClick={isClickable ? (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setApprovalConfirmMissionId(mission.id);
+                          } : undefined}
+                        >
                           {approvalLabel}
                         </Badge>
                       );
@@ -365,6 +374,31 @@ export const MissionsSection = () => {
         mission={selectedAIRiskMission}
         initialTab="history"
       />
+
+      <AlertDialog open={!!approvalConfirmMissionId} onOpenChange={(open) => !open && setApprovalConfirmMissionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil sende dette oppdraget til godkjenning?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!approvalConfirmMissionId) return;
+              await supabase
+                .from('missions')
+                .update({ approval_status: 'pending_approval' })
+                .eq('id', approvalConfirmMissionId);
+              setApprovalConfirmMissionId(null);
+              fetchMissions();
+            }}>
+              Send til godkjenning
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
