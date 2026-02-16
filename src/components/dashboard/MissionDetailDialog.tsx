@@ -75,20 +75,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
+  const [soraStatus, setSoraStatus] = useState<string | null>(null);
 
-  // Re-fetch mission data when dialog opens to get latest route etc.
+  // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
     if (!open || !mission?.id) {
       setLiveMission(null);
+      setSoraStatus(null);
       return;
     }
     const fetchLatest = async () => {
-      const { data } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("id", mission.id)
-        .single();
-      if (data) setLiveMission(data);
+      const [missionRes, soraRes] = await Promise.all([
+        supabase.from("missions").select("*").eq("id", mission.id).single(),
+        supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
+      ]);
+      if (missionRes.data) setLiveMission(missionRes.data);
+      setSoraStatus(soraRes.data?.sora_status ?? null);
     };
     fetchLatest();
   }, [open, mission?.id]);
@@ -222,6 +224,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 Risiko: Ikke vurdert
               </Badge>
             )}
+            <Badge 
+              className={`border cursor-pointer hover:opacity-80 transition-opacity ${
+                soraStatus === 'Ferdig' ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30' :
+                soraStatus === 'Under arbeid' ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30' :
+                soraStatus === 'Revidert' ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30' :
+                'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30'
+              }`}
+              onClick={() => setSoraDialogOpen(true)}
+            >
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              SORA: {soraStatus || 'Ikke startet'}
+            </Badge>
           </div>
 
           <div className="space-y-3">
