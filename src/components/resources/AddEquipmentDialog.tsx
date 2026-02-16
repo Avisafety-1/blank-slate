@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { addDays, format } from "date-fns";
 import { useChecklists } from "@/hooks/useChecklists";
+import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 
 interface AddEquipmentDialogProps {
   open: boolean;
@@ -24,7 +25,10 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   const [vedlikeholdsintervallDager, setVedlikeholdsintervallDager] = useState<string>("");
   const [nesteVedlikehold, setNesteVedlikehold] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [customType, setCustomType] = useState<string>("");
   const { checklists } = useChecklists();
+  const equipmentTypes = useEquipmentTypes(companyId, open);
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -72,6 +76,13 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
       setIsSubmitting(false);
       return;
     }
+
+    const typeValue = selectedType === "__other__" ? customType.trim() : selectedType;
+    if (!typeValue) {
+      toast.error("Du må velge eller skrive inn en type");
+      setIsSubmitting(false);
+      return;
+    }
     
     try {
       const vektValue = formData.get("vekt") as string;
@@ -79,7 +90,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         user_id: userId,
         company_id: companyId,
         navn: formData.get("navn") as string,
-        type: formData.get("type") as string,
+        type: selectedType === "__other__" ? customType : selectedType,
         serienummer: (formData.get("serienummer") as string) || '',
         status: (formData.get("status") as string) || "Grønn",
         merknader: (formData.get("merknader") as string) || null,
@@ -113,6 +124,8 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         setVedlikeholdsintervallDager("");
         setNesteVedlikehold("");
         setSelectedChecklistId("");
+        setSelectedType("");
+        setCustomType("");
         onEquipmentAdded();
         onOpenChange(false);
       }
@@ -135,7 +148,26 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
             </div>
             <div>
               <Label htmlFor="type">Type</Label>
-              <Input id="type" name="type" required />
+              <Select value={selectedType} onValueChange={(val) => { setSelectedType(val); if (val !== "__other__") setCustomType(""); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {equipmentTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                  <SelectItem value="__other__">Annet...</SelectItem>
+                </SelectContent>
+              </Select>
+              {selectedType === "__other__" && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny type"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  required
+                />
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
