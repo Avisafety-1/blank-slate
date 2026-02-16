@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
 
       const { data: mission, error: missionError } = await supabase
         .from('missions')
-        .select('id, tittel, route, latitude, longitude')
+        .select('id, tittel, route, latitude, longitude, company_id')
         .eq('id', missionId)
         .single();
 
@@ -405,13 +405,42 @@ Deno.serve(async (req) => {
       const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
       console.log(`Advisory AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
+      // Dynamic callsign: company name + sequential number
+      let callSign = 'avisafe01';
+      try {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('navn')
+          .eq('id', mission.company_id)
+          .single();
+
+        const companyName = company?.navn || 'avisafe';
+        const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
+
+        // Count active advisory flights for the same company to get sequential number
+        const { data: companyFlights } = await supabase
+          .from('active_flights')
+          .select('mission_id')
+          .eq('company_id', mission.company_id)
+          .eq('publish_mode', 'advisory')
+          .order('start_time', { ascending: true });
+
+        const index = companyFlights
+          ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
+          : 1;
+        callSign = sanitized + String(index > 0 ? index : 1).padStart(2, '0');
+        console.log(`Generated callsign: ${callSign} (company: ${companyName}, index: ${index})`);
+      } catch (err) {
+        console.warn('Callsign generation failed, using fallback:', err);
+      }
+
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [{
           type: "Feature",
           properties: {
             id: advisoryId,
-            call_sign: "Avisafe",
+            call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
             max_altitude: maxAltitudeAmsl,
             remarks: "Drone operation - planned route"

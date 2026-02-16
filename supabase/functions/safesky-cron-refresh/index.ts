@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
         try {
           const { data: mission, error: missionError } = await supabase
             .from('missions')
-            .select('id, tittel, route')
+            .select('id, tittel, route, company_id')
             .eq('id', missionId)
             .single();
 
@@ -199,13 +199,41 @@ Deno.serve(async (req) => {
           const advisoryId = `AVS_${missionId.substring(0, 8)}`;
           const polygonCoordinates = routeToPolygon(route);
 
+          // Dynamic callsign: company name + sequential number
+          let callSign = 'avisafe01';
+          try {
+            const { data: company } = await supabase
+              .from('companies')
+              .select('navn')
+              .eq('id', mission.company_id)
+              .single();
+
+            const companyName = company?.navn || 'avisafe';
+            const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
+
+            const { data: companyFlights } = await supabase
+              .from('active_flights')
+              .select('mission_id')
+              .eq('company_id', mission.company_id)
+              .eq('publish_mode', 'advisory')
+              .order('start_time', { ascending: true });
+
+            const index = companyFlights
+              ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
+              : 1;
+            callSign = sanitized + String(index > 0 ? index : 1).padStart(2, '0');
+            console.log(`Cron callsign: ${callSign} (company: ${companyName}, index: ${index})`);
+          } catch (err) {
+            console.warn('Cron callsign generation failed, using fallback:', err);
+          }
+
           const payload: GeoJSONFeatureCollection = {
             type: "FeatureCollection",
             features: [{
               type: "Feature",
               properties: {
                 id: advisoryId,
-                call_sign: "Avisafe",
+                call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
                 max_altitude: 120,
                 remarks: "Drone operation - planned route"
