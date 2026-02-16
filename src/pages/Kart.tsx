@@ -48,9 +48,9 @@ export default function KartPage() {
   const [soraSettings, setSoraSettings] = useState<SoraSettings>({
     enabled: false,
     flightAltitude: 120,
-    contingencyDistance: 10,
+    contingencyDistance: 50,
     contingencyHeight: 30,
-    groundRiskDistance: 20,
+    groundRiskDistance: 100,
   });
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function KartPage() {
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
-      setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 10, contingencyHeight: 30, groundRiskDistance: 20 });
+setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100 });
       return;
     }
 
@@ -165,7 +165,7 @@ export default function KartPage() {
     if (route?.soraSettings) {
       setSoraSettings(route.soraSettings);
     } else {
-      setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 10, contingencyHeight: 30, groundRiskDistance: 20 });
+      setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100 });
     }
   }, []);
 
