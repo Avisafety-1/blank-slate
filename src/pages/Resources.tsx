@@ -412,6 +412,7 @@ const Resources = () => {
                     {uniqueEquipmentTypes.map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
+                    {dronetags.length > 0 && <SelectItem value="__dronetag__">DroneTag</SelectItem>}
                   </SelectContent>
                 </Select>
                 <Select value={equipmentStatusFilter} onValueChange={setEquipmentStatusFilter}>
@@ -428,7 +429,7 @@ const Resources = () => {
               </div>
               
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                {equipment
+                {equipmentTypeFilter !== "__dronetag__" && equipment
                   .filter((item) => {
                     if (equipmentSearch) {
                       const searchLower = equipmentSearch.toLowerCase();
@@ -489,8 +490,8 @@ const Resources = () => {
                   </p>
                 )}
 
-                {/* DroneTag devices */}
-                {dronetags
+                {/* DroneTag devices - hidden when filtering by other category or status */}
+                {(equipmentTypeFilter === "alle" || equipmentTypeFilter === "__dronetag__") && equipmentStatusFilter === "alle" && dronetags
                   .filter((item) => {
                     if (!equipmentSearch) return true;
                     const searchLower = equipmentSearch.toLowerCase();
