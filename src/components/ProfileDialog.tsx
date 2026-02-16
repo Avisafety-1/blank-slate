@@ -72,6 +72,7 @@ interface Incident {
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
   incident_number: string | null;
+  bilde_url: string | null;
 }
 
 interface NotificationPreferences {

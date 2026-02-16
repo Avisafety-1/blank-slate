@@ -1710,6 +1710,7 @@ export type Database = {
         Row: {
           alvorlighetsgrad: string
           beskrivelse: string | null
+          bilde_url: string | null
           company_id: string
           hendelsestidspunkt: string
           hovedaarsak: string | null
@@ -1730,6 +1731,7 @@ export type Database = {
         Insert: {
           alvorlighetsgrad: string
           beskrivelse?: string | null
+          bilde_url?: string | null
           company_id: string
           hendelsestidspunkt: string
           hovedaarsak?: string | null
@@ -1750,6 +1752,7 @@ export type Database = {
         Update: {
           alvorlighetsgrad?: string
           beskrivelse?: string | null
+          bilde_url?: string | null
           company_id?: string
           hendelsestidspunkt?: string
           hovedaarsak?: string | null

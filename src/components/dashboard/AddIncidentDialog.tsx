@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
+import { ImagePlus, X } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -34,6 +35,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [causeTypes, setCauseTypes] = useState<Array<{ id: string; navn: string }>>([]);
   const [contributingCauses, setContributingCauses] = useState<Array<{ id: string; navn: string }>>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     tittel: "",
     beskrivelse: "",
@@ -77,6 +81,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           hovedaarsak: incidentToEdit.hovedaarsak || "",
           medvirkende_aarsak: incidentToEdit.medvirkende_aarsak || "",
         });
+        
+        // Show existing image if available
+        if ((incidentToEdit as any).bilde_url) {
+          setPreviewUrl((incidentToEdit as any).bilde_url);
+        }
       } else if (defaultDate) {
         // Format date to datetime-local format
         const year = defaultDate.getFullYear();
@@ -100,6 +109,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         hovedaarsak: "",
         medvirkende_aarsak: "",
       });
+      setSelectedFile(null);
+      setPreviewUrl(null);
     }
   }, [open, defaultDate, incidentToEdit]);
 
@@ -180,6 +191,21 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async () => {
     if (!formData.tittel || !formData.hendelsestidspunkt) {
       toast.error("Vennligst fyll ut alle påkrevde felt");
@@ -197,6 +223,35 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         return;
       }
 
+      // Upload image if selected
+      let bilde_url: string | null = previewUrl && !selectedFile ? previewUrl : null;
+      
+      if (selectedFile) {
+        const timestamp = Date.now();
+        const filePath = `${companyId}/${timestamp}-${selectedFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('incident-images')
+          .upload(filePath, selectedFile);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast.error("Kunne ikke laste opp bilde");
+          setSubmitting(false);
+          return;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('incident-images')
+          .getPublicUrl(filePath);
+
+        bilde_url = publicUrlData.publicUrl;
+      }
+
+      // If user removed existing image
+      if (!previewUrl && !selectedFile) {
+        bilde_url = null;
+      }
+
       const incidentData = {
         tittel: formData.tittel,
         beskrivelse: formData.beskrivelse || null,
@@ -210,6 +265,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         hovedaarsak: formData.hovedaarsak || null,
         medvirkende_aarsak: formData.medvirkende_aarsak || null,
         oppdatert_dato: new Date().toISOString(),
+        bilde_url,
       };
 
       // === OFFLINE PATH ===
@@ -490,6 +546,46 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
               placeholder="F.eks. Oslo, Hangar A, etc."
             />
+          </div>
+
+          {/* Bildeopplasting */}
+          <div className="space-y-2">
+            <Label>Bilde (valgfritt)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {previewUrl ? (
+              <div className="relative">
+                <img
+                  src={previewUrl}
+                  alt="Forhåndsvisning"
+                  className="w-full max-h-48 object-cover rounded-md border border-border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={handleRemoveImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImagePlus className="h-4 w-4" />
+                Legg til bilde
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">
