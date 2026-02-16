@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ interface Assessment {
   recommendation: string;
   ai_analysis: any;
   pilot_comments?: any;
+  sora_output?: any;
 }
 
 export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input' }: RiskAssessmentDialogProps) => {
@@ -699,9 +701,16 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                               <AlertOctagon className="w-4 h-4 text-destructive" />
                             )}
                             <div>
-                              <p className="text-sm font-medium">
-                                {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: nb })}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">
+                                  {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: nb })}
+                                </p>
+                                {assessment.sora_output && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30">
+                                    SORA
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground">
                                 {t('riskAssessment.score', 'Score')}: {assessment.overall_score.toFixed(1)}/10
                               </p>
