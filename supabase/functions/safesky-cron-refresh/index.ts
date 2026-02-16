@@ -21,9 +21,63 @@ interface RoutePoint {
   lng: number;
 }
 
+interface SoraSettings {
+  enabled: boolean;
+  flightAltitude: number;
+  contingencyDistance: number;
+  contingencyHeight: number;
+  groundRiskDistance: number;
+}
+
 interface MissionRoute {
   coordinates: RoutePoint[];
   totalDistance?: number;
+  soraSettings?: SoraSettings;
+}
+
+// Default SORA fallback values
+const DEFAULT_FLIGHT_ALTITUDE = 120; // meters AGL
+const DEFAULT_CONTINGENCY_HEIGHT = 30; // meters
+
+// --- Terrain elevation helpers ---
+
+async function fetchMaxTerrainElevation(coords: RoutePoint[]): Promise<number> {
+  if (coords.length === 0) return 0;
+
+  try {
+    const batchSize = 100;
+    let maxElevation = 0;
+
+    for (let i = 0; i < coords.length; i += batchSize) {
+      const batch = coords.slice(i, i + batchSize);
+      const lats = batch.map(c => c.lat.toFixed(4)).join(',');
+      const lngs = batch.map(c => c.lng.toFixed(4)).join(',');
+
+      const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.warn(`Open-Meteo elevation API error: ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const elevations: number[] = data.elevation;
+
+      if (elevations && elevations.length > 0) {
+        const batchMax = Math.max(...elevations);
+        if (batchMax > maxElevation) {
+          maxElevation = batchMax;
+        }
+      }
+    }
+
+    console.log(`Cron terrain elevation: max=${maxElevation}m from ${coords.length} points`);
+    return maxElevation;
+  } catch (error) {
+    console.error('Cron terrain elevation lookup failed, using 0:', error);
+    return 0;
+  }
 }
 
 interface GeoJSONPolygonFeature {
@@ -227,6 +281,15 @@ Deno.serve(async (req) => {
             console.warn('Cron callsign generation failed, using fallback:', err);
           }
 
+          // AMSL calculation: terrain + SORA settings
+          const sora = route.soraSettings;
+          const flightAltitude = sora?.flightAltitude ?? DEFAULT_FLIGHT_ALTITUDE;
+          const contingencyHeight = sora?.contingencyHeight ?? DEFAULT_CONTINGENCY_HEIGHT;
+
+          const maxTerrain = await fetchMaxTerrainElevation(route.coordinates);
+          const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
+          console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
+
           const payload: GeoJSONFeatureCollection = {
             type: "FeatureCollection",
             features: [{
@@ -235,7 +298,7 @@ Deno.serve(async (req) => {
                 id: advisoryId,
                 call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
-                max_altitude: 120,
+                max_altitude: maxAltitudeAmsl,
                 remarks: "Drone operation - planned route"
               },
               geometry: {
