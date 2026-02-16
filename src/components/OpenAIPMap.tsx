@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
+import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
@@ -2384,6 +2385,10 @@ export function OpenAIPMap({
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
+      )}
+
+      {layers.find(l => l.id === "arealbruk")?.enabled && (
+        <ArealbrukLegend />
       )}
     </div>
   );
