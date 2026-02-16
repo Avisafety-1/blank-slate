@@ -1,68 +1,38 @@
 
-
-## Dynamisk callsign for SafeSky Advisory: selskapsnavn + nummer
+## Fiks: Cron-refresh overstyrer AMSL med hardkodet 120m
 
 ### Problem
-Callsign er i dag hardkodet til "Avisafe" i alle advisory-publiseringer. Hvis flere selskaper publiserer advisory samtidig, vises alle med samme callsign. Onsket format er selskapsnavn + lopsende nummer, f.eks. "avisafe01", "norconsult01".
+`safesky-cron-refresh/index.ts` sender `max_altitude: 120` (hardkodet) i advisory payload ved hver refresh (hvert 5. sekund). Dette overskriver den korrekte AMSL-verdien som ble beregnet ved initial publisering. 120 meter = ca. 390 fot, som forklarer det du ser i SafeSky.
+
+`safesky-advisory/index.ts` beregner riktig: `terrain + flightAltitude + contingencyHeight`, men cron-jobben gjor det ikke.
 
 ### Losning
-Sla opp selskapets navn fra `companies`-tabellen via oppdragets `company_id`, og tell antall aktive advisory-flyvninger for samme selskap for a generere et unikt lopende nummer.
+Legg til samme AMSL-beregning i cron-refresh-funksjonen:
 
-**Formel:** `callSign = selskapsnavn_lowercase + zero-padded_nummer`
+#### `supabase/functions/safesky-cron-refresh/index.ts`
 
-### Endringer
+1. **Legg til `fetchMaxTerrainElevation`-funksjonen** (samme som allerede finnes i `safesky-advisory/index.ts`) -- Open-Meteo API-oppslag med batching.
 
-#### 1. `supabase/functions/safesky-advisory/index.ts`
+2. **Legg til SORA-interfaces** (`SoraSettings`, oppdater `MissionRoute` med `soraSettings?`-felt).
 
-I `publish_advisory` / `refresh_advisory`-blokken (linje 339-451):
-
-- Utvid mission-queryen til a inkludere `company_id`: `.select('id, tittel, route, latitude, longitude, company_id')`
-- Sla opp selskapsnavnet fra `companies`-tabellen basert pa `mission.company_id`
-- Tell antall aktive advisory-flyvninger for samme `company_id` i `active_flights`-tabellen (med `publish_mode = 'advisory'`)
-- Generer callsign: ta selskapsnavnet, gjor det lowercase, fjern spesialtegn/mellomrom, og legg til et null-paddet nummer basert pa plasseringen blant aktive flyvninger
-- Bruk det genererte callsignet i advisory payload i stedet for hardkodet "Avisafe"
-- Fallback: hvis selskap ikke finnes, bruk "avisafe01"
-
-Eksempel pa logikk:
+3. **Beregn AMSL i advisory-refreshen** (linje 230-246): Erstatt `max_altitude: 120` med:
 ```text
-const companyName = company?.navn || 'avisafe'
-const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '')
-// Tell aktive advisory-flyvninger for dette selskapet
-// Finn denne missionens posisjon i listen (sortert pa start_time)
-const index = sortedFlights.findIndex(f => f.mission_id === missionId) + 1
-const callSign = sanitized + String(index).padStart(2, '0')
-// Resultat: "avisafe01", "norconsult02" osv.
+const sora = route.soraSettings;
+const flightAltitude = sora?.flightAltitude ?? 120;
+const contingencyHeight = sora?.contingencyHeight ?? 30;
+const maxTerrain = await fetchMaxTerrainElevation(route.coordinates);
+const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
 ```
-
-#### 2. `supabase/functions/safesky-cron-refresh/index.ts`
-
-I cron-refreshen (linje 159-245) som republiserer advisory hvert 5. sekund:
-
-- Utvid mission-queryen til a inkludere `company_id`
-- Sla opp selskapsnavnet fra `companies`-tabellen
-- Tell aktive advisory-flyvninger for samme selskap for a beregne riktig nummer
-- Bruk det genererte callsignet i stedet for hardkodet "Avisafe"
-- Samme logikk og fallback som i safesky-advisory
-
-#### 3. Point advisory (publish_point_advisory)
-
-For punkt-advisory (pilotposisjon) er det ingen tilknyttet mission/selskap. Her beholdes "Pilot posisjon" som callsign, da dette representerer en enkeltpilots live-posisjon uten selskapstilknytning.
 
 ### Tekniske detaljer
 
-**Filer som endres:**
-- `supabase/functions/safesky-advisory/index.ts`
+**Fil som endres:**
 - `supabase/functions/safesky-cron-refresh/index.ts`
 
-**Databasesporringer som legges til:**
-1. `companies`-oppslag: `SELECT navn FROM companies WHERE id = mission.company_id`
-2. Aktive flyvninger per selskap: `SELECT mission_id FROM active_flights WHERE company_id = X AND publish_mode = 'advisory' ORDER BY start_time`
+**Endringspunkter:**
+- Legg til `fetchMaxTerrainElevation`-funksjon (ca. 30 linjer, identisk med safesky-advisory)
+- Legg til `SoraSettings`-interface og oppdater `MissionRoute`-interface
+- Erstatt `max_altitude: 120` (linje 238) med beregnet `maxAltitudeAmsl`
+- Legg til logging av AMSL-beregningen
 
-**Callsign-regler:**
-- Kun lowercase bokstaver og tall (a-z, 0-9)
-- Mellomrom og spesialtegn fjernes
-- Nummer er alltid 2 siffer (01, 02, ... 99)
-- Fallback til "avisafe01" hvis selskap ikke finnes
-
-**Ingen databaseendringer er nodvendige.** Alle nodvendige kolonner (`company_id` i `missions` og `active_flights`, `navn` i `companies`) finnes allerede.
-
+**Ingen databaseendringer.**
