@@ -285,6 +285,7 @@ export function OpenAIPMap({
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
+  const [routePointCount, setRoutePointCount] = useState(existingRoute?.coordinates?.length || 0);
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
   const pilotLayerRef = useRef<L.LayerGroup | null>(null);
@@ -630,6 +631,7 @@ export function OpenAIPMap({
   useEffect(() => {
     if (controlledRoute && controlledRoute.coordinates.length < routePointsRef.current.length) {
       routePointsRef.current = [...controlledRoute.coordinates];
+      setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
     }
   }, [controlledRoute?.coordinates.length, updateRouteDisplay]);
@@ -1663,6 +1665,7 @@ export function OpenAIPMap({
       if (modeRef.current === "routePlanning") {
         // Add point to route
         routePointsRef.current.push({ lat, lng });
+        setRoutePointCount(routePointsRef.current.length);
         updateRouteDisplay();
 
         const cb = onRouteChangeRef.current;
@@ -2251,6 +2254,7 @@ export function OpenAIPMap({
   // Method to clear route (exposed via ref if needed)
   const clearRoute = useCallback(() => {
     routePointsRef.current = [];
+    setRoutePointCount(0);
     updateRouteDisplay();
     if (onRouteChange) {
       onRouteChange({ coordinates: [], totalDistance: 0 });
@@ -2261,6 +2265,7 @@ export function OpenAIPMap({
   const undoLastPoint = useCallback(() => {
     if (routePointsRef.current.length > 0) {
       routePointsRef.current.pop();
+      setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
       if (onRouteChange) {
         const coords = [...routePointsRef.current];
@@ -2356,7 +2361,7 @@ export function OpenAIPMap({
       )}
 
       {/* Route planning instructions */}
-      {mode === "routePlanning" && controlledRoute && controlledRoute.coordinates.length === 0 && (
+      {mode === "routePlanning" && routePointCount === 0 && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
