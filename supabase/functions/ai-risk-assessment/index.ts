@@ -464,6 +464,20 @@ Disse skal kommenteres som forutsetninger i prerequisites.
 
 ${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
 
+### VLOS / BVLOS-VURDERING
+Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotInputs).
+
+Hvis BVLOS (isVlos = false):
+- Krev SORA-analyse (mission.sora). Hvis ingen SORA finnes, reduser overall_score med 3 og legg til NO-GO-anbefaling.
+- Krev spesifikke BVLOS-kompetanser (STS-02, BVLOS-sertifisering e.l.). Reduser pilot_experience score med 2 hvis mangler.
+- Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
+- Reduser mission_complexity score med 1-2 pga. økt operasjonell kompleksitet.
+- Legg til spesifikke BVLOS-anbefalinger i recommendations (kommunikasjonsplan, nødstopp-prosedyrer, lost-link-prosedyre).
+
+Hvis VLOS (isVlos = true):
+- Standard vurdering uten ekstra BVLOS-krav.
+- Observer-behov vurderes basert på observerCount.
+
 ### AREALBRUK OG GROUND RISK (SSB-data)
 Hvis feltet "landUse" finnes i kontekstdataene, bruk dette som PRIMÆRKILDE for ground risk-vurdering i mission_complexity-kategorien:
 - groundRiskClassification "high": Boligområder eller offentlige institusjoner i operasjonsområdet. Reduser mission_complexity score med 2-3 poeng. List kategoriene i complexity_factors og legg til spesifikke concerns.

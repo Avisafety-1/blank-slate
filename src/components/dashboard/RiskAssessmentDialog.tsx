@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -371,12 +372,27 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.isVlos', 'VLOS-operasjon')}</Label>
-                      <Switch
-                        checked={pilotInputs.isVlos}
-                        onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, isVlos: v }))}
-                      />
+                    <div className="space-y-2">
+                      <Label>{t('riskAssessment.flightMode', 'Flygemodus')}</Label>
+                      <RadioGroup
+                        value={pilotInputs.isVlos ? "vlos" : "bvlos"}
+                        onValueChange={(v) => setPilotInputs(prev => ({ ...prev, isVlos: v === "vlos" }))}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="vlos" id="vlos" />
+                          <Label htmlFor="vlos" className="font-normal cursor-pointer">VLOS</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="bvlos" id="bvlos" />
+                          <Label htmlFor="bvlos" className="font-normal cursor-pointer">BVLOS</Label>
+                        </div>
+                      </RadioGroup>
+                      <p className="text-xs text-muted-foreground">
+                        {pilotInputs.isVlos
+                          ? t('riskAssessment.vlosDesc', 'Visuell kontakt med dronen gjennom hele flygingen')
+                          : t('riskAssessment.bvlosDesc', 'Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA')}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
