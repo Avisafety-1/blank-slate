@@ -1,43 +1,49 @@
 
-
-## Save and Display SORA Buffer Zones on Mission Cards
+## Save SORA Zones from Map to Existing Missions
 
 ### Problem
-When a route is saved with SORA operational volume enabled, the buffer zones (flight geography, contingency area, ground risk buffer) are not persisted with the mission data. The mission card map (`MissionMapPreview`) therefore cannot display these zones.
+Currently, when route planning is started directly from `/kart`, the "Lagre" button always navigates to `/oppdrag` to create a **new** mission. There is no way to save a route (with SORA zones) directly to an **existing** mission from the map.
 
 ### Solution
-Persist the SORA settings inside the `RouteData` object so they are saved to the database alongside the route. Then render the buffer zones in `MissionMapPreview` using the same convex hull + buffer algorithm.
+Add the ability to save a planned route with SORA settings directly to an existing mission from the map. This involves two changes:
+
+1. **When clicking a mission marker on the map in view mode**, add a "Rediger rute" (Edit route) button in the mission popup/click handler that enters route planning mode for that specific mission, loading its existing route.
+
+2. **When saving a route in route planning mode linked to an existing mission**, update the mission's `route` JSONB column directly in Supabase (instead of navigating away), then show a success toast and exit route planning mode.
 
 ### Changes
 
-#### 1. `src/components/OpenAIPMap.tsx` -- Add `soraSettings` to `RouteData`
-- Add an optional `soraSettings?: SoraSettings` field to the `RouteData` interface
-- When reporting route changes via `onRouteChange`, include the current SORA settings if enabled
+#### 1. `src/pages/Kart.tsx`
+- Add a new state `editingMissionId` to track when route planning is for an existing mission
+- Modify `handleMissionClick`: instead of only opening `MissionDetailDialog`, also offer a way to enter route planning for that mission (load its existing route and SORA settings into the planner)
+- Add a new function `handleEditMissionRoute(mission)` that:
+  - Sets `isRoutePlanning = true`
+  - Loads the mission's existing route into `currentRoute`
+  - Loads existing SORA settings into `soraSettings`
+  - Stores the `editingMissionId`
+- Modify `handleSaveRoute`:
+  - If `editingMissionId` is set, perform a direct Supabase `update` on `missions.route` with the new route data (including SORA settings), show a toast, and exit route planning mode
+  - Otherwise, use the existing navigation flow
 
-#### 2. `src/pages/Kart.tsx` -- Attach SORA settings to route before saving
-- When `handleSaveRoute` is called, attach the current `soraSettings` to `currentRoute` before navigating (so it gets stored in the mission's `route` JSON column)
-
-#### 3. `src/components/dashboard/MissionMapPreview.tsx` -- Render SORA zones
-- Extract the `computeConvexHull` and `bufferPolygon` utility functions into a shared location (or duplicate the small functions inline in MissionMapPreview)
-- When `route.soraSettings?.enabled` is true, compute and render the three concentric buffer zones (green flight geography, yellow contingency, red ground risk) on the preview map
-- Use the same color scheme and opacity as the main map
+#### 2. `src/components/dashboard/MissionDetailDialog.tsx`
+- Add an "Rediger rute" button that navigates to `/kart` with the mission's route data and mission ID, entering route planning mode for that mission
 
 ### Technical Details
 
-**Data flow:**
-```text
-Route planner (OpenAIPMap) 
-  -> onRouteChange({ coordinates, totalDistance, areaKm2, soraSettings })
-  -> Kart.tsx saves to currentRoute state
-  -> handleSaveRoute navigates with routeData including soraSettings
-  -> AddMissionDialog saves routeData (with soraSettings) to missions.route column (JSONB)
-  -> MissionMapPreview reads route.soraSettings and renders zones
+**Save flow for existing mission from map:**
+```
+User clicks mission marker on map
+  -> MissionDetailDialog opens with "Rediger rute" button
+  -> Click navigates to /kart with route planning state (missionId, existing route, SORA settings)
+  -> User edits route / adjusts SORA zones
+  -> Click "Lagre"
+  -> Direct Supabase update: missions.route = routeToSave WHERE id = missionId
+  -> Toast: "Rute oppdatert"
+  -> Exit route planning mode, stay on /kart
 ```
 
-**Files changed:**
-- `src/components/OpenAIPMap.tsx` -- add `soraSettings` to RouteData, include in onRouteChange callback
-- `src/pages/Kart.tsx` -- ensure soraSettings is attached to currentRoute when saving
-- `src/components/dashboard/MissionMapPreview.tsx` -- render SORA buffer zones from saved soraSettings
+**Files to modify:**
+- `src/pages/Kart.tsx` -- add `editingMissionId` state, direct Supabase save logic in `handleSaveRoute`
+- `src/components/dashboard/MissionDetailDialog.tsx` -- add "Rediger rute" button that navigates to `/kart` in route planning mode with mission data
 
-**Shared geometry functions** (`computeConvexHull`, `bufferPolygon`) will be duplicated in MissionMapPreview to keep it self-contained (they are ~80 lines of pure math with no dependencies).
-
+**No database changes needed** -- the `missions.route` column is already JSONB and already stores `soraSettings` as part of the route object.
