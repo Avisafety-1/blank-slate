@@ -52,6 +52,7 @@ import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
 import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
@@ -148,6 +149,8 @@ const Oppdrag = () => {
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
+  const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
+  const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -1481,6 +1484,14 @@ const Oppdrag = () => {
                               Eksporter KMZ
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => {
+                            setReportIncidentMission(mission);
+                            setReportIncidentDialogOpen(true);
+                          }}>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Rapporter hendelse
+                          </DropdownMenuItem>
                           {isAdmin && (
                             <>
                               <DropdownMenuSeparator />
@@ -2194,6 +2205,18 @@ const Oppdrag = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Report Incident from Mission */}
+        <AddIncidentDialog
+          open={reportIncidentDialogOpen}
+          onOpenChange={(open) => {
+            setReportIncidentDialogOpen(open);
+            if (!open) setReportIncidentMission(null);
+          }}
+          defaultDate={reportIncidentMission?.tidspunkt ? new Date(reportIncidentMission.tidspunkt) : undefined}
+          defaultMissionId={reportIncidentMission?.id}
+          incidentToEdit={null}
+        />
       </div>
     </div>
   );
