@@ -14,6 +14,7 @@ import { useChecklists } from "@/hooks/useChecklists";
 import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList } from "lucide-react";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 
 interface Equipment {
   id: string;
@@ -49,6 +50,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [customType, setCustomType] = useState("");
+  const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [formData, setFormData] = useState({
     navn: "",
     type: "",
@@ -202,7 +205,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         .from("equipment")
         .update({
           navn: formData.navn,
-          type: formData.type,
+          type: formData.type === "__other__" ? customType : formData.type,
           serienummer: formData.serienummer,
           merknader: formData.merknader || null,
           sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
@@ -390,12 +393,32 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
                 <div>
                   <Label htmlFor="type" className="text-xs sm:text-sm">Type</Label>
-                  <Input
-                    id="type"
+                  <Select
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="text-sm"
-                  />
+                    onValueChange={(val) => {
+                      setFormData({ ...formData, type: val });
+                      if (val !== "__other__") setCustomType("");
+                    }}
+                  >
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Velg type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equipmentTypes.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                      <SelectItem value="__other__">Annet...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formData.type === "__other__" && (
+                    <Input
+                      className="mt-2 text-sm"
+                      placeholder="Skriv inn ny type"
+                      value={customType}
+                      onChange={(e) => setCustomType(e.target.value)}
+                      required
+                    />
+                  )}
                 </div>
               </div>
 
