@@ -202,9 +202,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 Godkjent
               </Badge>
             )}
-            {currentMission.approval_status === 'not_approved' && (
-              <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30">
-                Ikke godkjent
+            {(!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
+              <Badge 
+                variant="outline" 
+                className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from('missions')
+                    .update({ approval_status: 'pending_approval' })
+                    .eq('id', currentMission.id);
+                  if (!error) {
+                    setLiveMission({ ...currentMission, approval_status: 'pending_approval' });
+                    onMissionUpdated?.();
+                  }
+                }}
+              >
+                Ikke godkjent – Send til godkjenning
               </Badge>
             )}
             {currentMission.aiRisk ? (
