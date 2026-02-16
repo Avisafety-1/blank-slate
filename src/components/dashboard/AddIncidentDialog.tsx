@@ -14,7 +14,10 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -393,22 +396,41 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mission">Knytt til oppdrag (valgfritt)</Label>
-            <Select
-              value={formData.mission_id}
-              onValueChange={handleMissionSelect}
-            >
-              <SelectTrigger id="mission">
-                <SelectValue placeholder="Velg oppdrag..." />
-              </SelectTrigger>
-              <SelectContent>
-                {missions.map((mission) => (
-                  <SelectItem key={mission.id} value={mission.id}>
-                    {mission.tittel} ({mission.status})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Knytt til oppdrag (valgfritt)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  {formData.mission_id
+                    ? missions.find(m => m.id === formData.mission_id)?.tittel || "Velg oppdrag..."
+                    : "Velg oppdrag..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Søk i oppdrag..." />
+                  <CommandList>
+                    <CommandEmpty>Ingen oppdrag funnet.</CommandEmpty>
+                    <CommandGroup>
+                      {missions.map((mission) => (
+                        <CommandItem
+                          key={mission.id}
+                          value={`${mission.tittel} ${mission.status}`}
+                          onSelect={() => handleMissionSelect(mission.id)}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", formData.mission_id === mission.id ? "opacity-100" : "opacity-0")} />
+                          {mission.tittel} ({mission.status})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
