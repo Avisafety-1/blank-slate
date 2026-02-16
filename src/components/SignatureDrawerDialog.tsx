@@ -35,7 +35,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const rect = container.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
 
