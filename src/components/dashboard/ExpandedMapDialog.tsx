@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ interface ExpandedMapDialogProps {
   route?: RouteData | null;
   flightTracks?: FlightTrack[] | null;
   missionTitle?: string;
+  missionId?: string;
 }
 
 export const ExpandedMapDialog = ({
@@ -61,6 +63,7 @@ export const ExpandedMapDialog = ({
   route,
   flightTracks,
   missionTitle,
+  missionId,
 }: ExpandedMapDialogProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -77,10 +80,35 @@ export const ExpandedMapDialog = ({
 
   const defaultSora: SoraSettings = { enabled: false, flightAltitude: 120, contingencyDistance: 30, contingencyHeight: 15, groundRiskDistance: 50 };
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
+  const [soraDirty, setSoraDirty] = useState(false);
+  const [soraSaving, setSoraSaving] = useState(false);
+
+  const handleSoraChange = (newSettings: SoraSettings) => {
+    setSoraSettings(newSettings);
+    setSoraDirty(true);
+  };
+
+  const handleSaveSora = async () => {
+    if (!missionId || !route) return;
+    setSoraSaving(true);
+    const updatedRoute = { ...route, soraSettings };
+    const { error } = await supabase
+      .from("missions")
+      .update({ route: updatedRoute as any })
+      .eq("id", missionId);
+    setSoraSaving(false);
+    if (error) {
+      toast.error("Kunne ikke lagre SORA-innstillinger");
+    } else {
+      toast.success("SORA-innstillinger lagret");
+      setSoraDirty(false);
+    }
+  };
 
   // Reset SORA settings when route changes
   useEffect(() => {
     setSoraSettings(route?.soraSettings ?? defaultSora);
+    setSoraDirty(false);
   }, [route]);
 
   // Re-render SORA zones when settings change
@@ -536,7 +564,20 @@ export const ExpandedMapDialog = ({
         </DialogHeader>
 
         {route && route.coordinates.length >= 3 && (
-          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} />
+          <div>
+            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} />
+            {soraDirty && missionId && (
+              <div className="px-3 pb-2 sm:px-4">
+                <button
+                  onClick={handleSaveSora}
+                  disabled={soraSaving}
+                  className="w-full py-1.5 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {soraSaving ? "Lagrer…" : "Lagre SORA-innstillinger"}
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex-1 relative overflow-hidden min-h-0">

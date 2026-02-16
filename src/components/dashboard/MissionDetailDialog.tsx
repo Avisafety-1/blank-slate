@@ -374,6 +374,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         route={currentMission.route as any}
         flightTracks={memoizedFlightTracks}
         missionTitle={currentMission.tittel}
+        missionId={currentMission.id}
       />
     )}
     </>
