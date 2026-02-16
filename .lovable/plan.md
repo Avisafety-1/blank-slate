@@ -1,38 +1,51 @@
 
-## Fiks: Cron-refresh overstyrer AMSL med hardkodet 120m
 
-### Problem
-`safesky-cron-refresh/index.ts` sender `max_altitude: 120` (hardkodet) i advisory payload ved hver refresh (hvert 5. sekund). Dette overskriver den korrekte AMSL-verdien som ble beregnet ved initial publisering. 120 meter = ca. 390 fot, som forklarer det du ser i SafeSky.
+## Legg til SSB Arealbruk som kartlag for befolkningstetthet
 
-`safesky-advisory/index.ts` beregner riktig: `terrain + flightAltitude + contingencyHeight`, men cron-jobben gjor det ikke.
+### Hva dette gir
+Et nytt valgbart kartlag i MapLayerControl som viser SSBs arealbruksdata -- bebygde omrader klassifisert etter bruk (bolig, naering, industri, etc.). Dette gir en god visuell indikasjon pa befolkningstetthet og bebyggelse, noe som er relevant for SORA ground risk-vurdering.
 
-### Losning
-Legg til samme AMSL-beregning i cron-refresh-funksjonen:
+Laget er **avskrudd som standard** og kan slas pa via kartlag-panelet.
 
-#### `supabase/functions/safesky-cron-refresh/index.ts`
+### Endringer
 
-1. **Legg til `fetchMaxTerrainElevation`-funksjonen** (samme som allerede finnes i `safesky-advisory/index.ts`) -- Open-Meteo API-oppslag med batching.
+#### 1. `src/components/OpenAIPMap.tsx`
 
-2. **Legg til SORA-interfaces** (`SoraSettings`, oppdater `MissionRoute` med `soraSettings?`-felt).
+Legg til et nytt WMS-lag etter naturvernlaget (ca. linje 743), med samme monster som NRL og Naturvern:
 
-3. **Beregn AMSL i advisory-refreshen** (linje 230-246): Erstatt `max_altitude: 120` med:
 ```text
-const sora = route.soraSettings;
-const flightAltitude = sora?.flightAltitude ?? 120;
-const contingencyHeight = sora?.contingencyHeight ?? 30;
-const maxTerrain = await fetchMaxTerrainElevation(route.coordinates);
-const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
+const arealbrukLayer = L.tileLayer.wms(
+  "https://wms.geonorge.no/skwms1/wms.arealbruk?",
+  {
+    layers: "arealbruk",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.6,
+    attribution: "SSB Arealbruk",
+  }
+);
 ```
+
+Legg til i `layerConfigs` med:
+- id: `arealbruk`
+- name: "Befolkning / Arealbruk (SSB)"
+- enabled: false (avskrudd som standard)
+- icon: `users`
+
+#### 2. `src/components/MapLayerControl.tsx`
+
+Ingen endring nodvendig -- `users`-ikonet er allerede registrert i `iconMap`.
 
 ### Tekniske detaljer
 
-**Fil som endres:**
-- `supabase/functions/safesky-cron-refresh/index.ts`
+- **WMS-endepunkt:** `https://wms.geonorge.no/skwms1/wms.arealbruk`
+- **Lagnavn:** `arealbruk`
+- **Projeksjon:** EPSG:3857 (stottet, kompatibelt med Leaflet)
+- **Format:** PNG med transparens
+- **Kilde:** SSB (Statistisk sentralbyra) via Geonorge
+- Viser bebygde omrader fargelagt etter brukstype (bolig, naering, fritid, industri, etc.)
+- Ingen API-nokkel nødvendig -- tjenesten er apen
 
-**Endringspunkter:**
-- Legg til `fetchMaxTerrainElevation`-funksjon (ca. 30 linjer, identisk med safesky-advisory)
-- Legg til `SoraSettings`-interface og oppdater `MissionRoute`-interface
-- Erstatt `max_altitude: 120` (linje 238) med beregnet `maxAltitudeAmsl`
-- Legg til logging av AMSL-beregningen
+**Filer som endres:**
+- `src/components/OpenAIPMap.tsx` (legg til ~15 linjer)
 
-**Ingen databaseendringer.**
