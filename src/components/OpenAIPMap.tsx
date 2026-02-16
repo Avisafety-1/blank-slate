@@ -176,8 +176,18 @@ function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[]
     y: (p.lat - ref.lat) * latScale,
   }));
 
+  // Ensure CCW winding (positive signed area = CCW)
+  let signedArea = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    signedArea += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+  }
+  if (signedArea < 0) {
+    pts.reverse();
+  }
+
   const n = pts.length;
-  // Compute outward-offset edges
+  // Compute outward-offset edges (for CCW: left-hand normal = outward)
   const offsetEdges: { x1: number; y1: number; x2: number; y2: number }[] = [];
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
@@ -185,9 +195,9 @@ function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[]
     const dy = pts[j].y - pts[i].y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) continue;
-    // Outward normal (for CCW polygon: right-hand normal)
-    const nx = dy / len;
-    const ny = -dx / len;
+    // Outward normal for CCW polygon: (-dy, dx) / len
+    const nx = -dy / len;
+    const ny = dx / len;
     offsetEdges.push({
       x1: pts[i].x + nx * distanceMeters,
       y1: pts[i].y + ny * distanceMeters,
