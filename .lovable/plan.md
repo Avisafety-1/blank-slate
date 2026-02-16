@@ -1,77 +1,61 @@
 
 
-## Integrer SSB Arealbruk-data i AI-risikovurderingen
+## Selskapsadresse som kart-fallback + adresse-autosluttfor
 
 ### Hva dette gjor
-Nar AI-risikovurderingen kjores, henter edge-funksjonen automatisk arealbruksdata fra Geonorge WFS-tjenesten for oppdragets koordinater/rute. AI-en far da vite om flyomradet inneholder boligomrader, industri, offentlige tjenester osv., og bruker dette til a beregne ground risk-kategori (SORA-kompatibel) automatisk -- i stedet for a stole utelukkende pa pilotens manuelle input om "naerhet til mennesker".
+1. Adressefeltet i selskapsredigering (CompanyManagementDialog) far autosluttfor via Kartverket-API (gjenbruker eksisterende AddressAutocomplete-komponent), slik at kun gyldige norske adresser kan settes.
+2. Nar en gyldig adresse velges, lagres koordinatene (lat/lon) pa selskapet i databasen.
+3. Kartet bruker selskapets koordinater som fallback-posisjon dersom GPS-tilgang nektes eller er utilgjengelig, i stedet for hardkodet Trondheim-posisjon.
 
-### Tilnærming
+### Prioritet/rekkefølge
 
-SSB Arealbruk er tilgjengelig som WFS (Web Feature Service) pa `https://wfs.geonorge.no/skwms1/wfs.arealbruk`. Edge-funksjonen sender en `GetFeature`-forespørsel med et bounding box rundt oppdragets koordinater/rute, og far tilbake GeoJSON med arealbrukskategorier (bolig, naering, industri, fritid, offentlig, transport).
+1. **Database**: Legg til `adresse_lat` og `adresse_lon` kolonner pa `companies`-tabellen.
+2. **CompanyManagementDialog**: Bytt ut det vanlige adresse-inputfeltet med `AddressAutocomplete`-komponenten, og lagre lat/lon nar en adresse velges.
+3. **AuthContext**: Eksponer selskapets koordinater (hentes allerede fra profiles/companies) slik at kartet kan bruke dem.
+4. **OpenAIPMap**: Bruk selskapets koordinater som fallback nar geolokasjon nektes.
 
-Disse dataene mappes til en SORA-kompatibel befolkningstetthet-klassifisering:
-- **Lav** (ubebodd): Kun fritid/park, ingen bolig/naering
-- **Moderat**: Noe naering/offentlig, begrenset bolig
-- **Hoy** (tett befolket): Betydelig boligomrade eller offentlige tjenester
-
-Klassifiseringen sendes inn som en del av kontekst-dataene til AI-modellen, som bruker den i sin ground risk-vurdering og overall score-beregning.
-
-### Endringer
-
-#### 1. `supabase/functions/ai-risk-assessment/index.ts`
-
-Legg til et nytt steg (mellom airspace-sjekk og prompt-bygging):
-
-- **Beregn bounding box** fra oppdragets koordinater/rute (eller SORA ground risk buffer hvis tilgjengelig)
-- **Kall Geonorge WFS** med `GetFeature`-request og bounding box-filter
-- **Parse respons** og tell arealbrukskategorier (bolig, naering, industri, fritid, offentlig, transport)
-- **Klassifiser ground risk** basert pa fordelingen av kategorier
-- **Legg til i contextData** et nytt felt `landUse` med:
-  - `categories`: Liste over arealbrukskategorier funnet i omradet
-  - `groundRiskClassification`: "low" / "moderate" / "high"
-  - `summary`: Kort tekstbeskrivelse
-  - `featureCount`: Antall features per kategori
-- **Oppdater system-prompten** med instruksjoner om a bruke arealbruksdataene i ground risk-vurderingen, spesielt i `mission_complexity`-kategorien
-
-#### 2. Oppdatering av AI system-prompt
-
-Legg til en seksjon i system-prompten som instruerer AI-en til a:
-- Bruke arealbruksdata som primaerkilde for ground risk-klassifisering
-- Vekte boligomrader og offentlige tjenester hoyt i risiko
-- Redusere mission_complexity-score nar det er hoy befolkningstetthet
-- Flagge det tydelig i `mission_complexity.complexity_factors` og `concerns`
+---
 
 ### Tekniske detaljer
 
-**WFS-kall:**
-```text
-GET https://wfs.geonorge.no/skwms1/wfs.arealbruk
-  ?service=WFS
-  &version=2.0.0
-  &request=GetFeature
-  &typeName=arealbruk
-  &outputFormat=application/json
-  &srsName=EPSG:4326
-  &bbox={minLat},{minLng},{maxLat},{maxLng},EPSG:4326
-  &count=200
+#### 1. Database-migrasjon
+
+Legg til to nye kolonner pa `companies`:
+
+```sql
+ALTER TABLE companies ADD COLUMN adresse_lat double precision;
+ALTER TABLE companies ADD COLUMN adresse_lon double precision;
 ```
 
-**Bounding box:** Beregnes fra rutens koordinater med en buffer pa 200m (eller SORA ground risk buffer-avstand hvis konfigurert). For enkeltpunkt-oppdrag brukes 500m radius.
+Ingen nye RLS-policyer trengs -- eksisterende policyer dekker allerede SELECT/UPDATE pa companies.
 
-**Kategori-mapping:**
-| SSB-kode | Kategori | Risiko-vekt |
-|----------|----------|-------------|
-| Bolig | Boligomrade | Hoy |
-| Naeringsbebyggelse | Naering/kontor | Moderat-Hoy |
-| Offentlig / Institusjon | Offentlig tjeneste | Hoy |
-| Industri/lager | Industri | Moderat |
-| Fritid/sport/park | Fritid | Lav |
-| Transport | Transport | Moderat |
+#### 2. `src/components/admin/CompanyManagementDialog.tsx`
 
-**Feilhåndtering:** Hvis WFS-kallet feiler (timeout, utilgjengelig), logger funksjonen feilen og fortsetter uten arealbruksdata -- vurderingen gjennomfores da som for, basert pa pilotens manuelle input.
+- Importer `AddressAutocomplete` fra `@/components/AddressAutocomplete`
+- Erstatt det vanlige `<Input>`-feltet for `adresse` med `<AddressAutocomplete>`
+- Legg til `adresse_lat` og `adresse_lon` i skjemaet (zod-skjema og form state)
+- Nar brukeren velger en adresse fra autosluttfor-listen, settes bade adressetekst og koordinater
+- Ved lagring sendes `adresse_lat` og `adresse_lon` med til Supabase
 
-**Ingen nye dependencies eller database-endringer.** Alt skjer i edge-funksjonen.
+#### 3. `src/contexts/AuthContext.tsx`
+
+- Utvid `AuthContextType` og `CachedProfile` med `companyLat: number | null` og `companyLon: number | null`
+- Hent `adresse_lat` og `adresse_lon` fra companies-tabellen i den eksisterende profile-fetch-logikken
+- Eksponer disse via context
+
+#### 4. `src/components/OpenAIPMap.tsx`
+
+- Hent `companyLat` og `companyLon` fra `useAuth()`
+- I geolokasjon-fallback-logikken (linje ~831): Dersom `initialCenter` ikke er satt og geolokasjon nektes, bruk selskapets koordinater i stedet for `DEFAULT_POS`
+- Fallback-kjede blir: `initialCenter` (prop) -> GPS -> selskapsadresse -> `DEFAULT_POS` (Trondheim)
+
+#### 5. `src/integrations/supabase/types.ts`
+
+- Oppdater types for companies-tabellen med de nye kolonnene (dette skjer automatisk via migrasjon, men manuell oppdatering kan trengs)
 
 ### Filer som endres
-- `supabase/functions/ai-risk-assessment/index.ts`
-
+- Ny migrasjon (database)
+- `src/components/admin/CompanyManagementDialog.tsx`
+- `src/contexts/AuthContext.tsx`
+- `src/components/OpenAIPMap.tsx`
+- `src/integrations/supabase/types.ts`
