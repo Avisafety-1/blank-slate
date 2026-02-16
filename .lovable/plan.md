@@ -1,78 +1,68 @@
 
 
-## Bildeopplasting for hendelsesrapporter
+## SORA Operational Volume Visualization on Route Planner
 
-### Oversikt
-Legge til mulighet for a laste opp og vise bilder pa hendelsesrapporter, bade ved opprettelse og redigering.
+### Overview
+Add configurable SORA operational volume zones to the route planner on /kart. When a route is drawn, concentric buffer zones will be visualized around it with distinct colors and opacity, matching the SORA framework diagram.
 
-### Steg
+### Visual Zones (inside-out)
+1. **Flight Geography Area** (green, semi-transparent) -- the convex hull of the planned route
+2. **Contingency Area** (yellow, semi-transparent) -- buffer around flight geography, user-configurable distance in meters
+3. **Ground Risk Buffer** (red, semi-transparent) -- buffer outside contingency area, user-configurable width in meters
 
-1. **Database-migrasjon**
-   - Legge til en `bilde_url` (TEXT, nullable) kolonne pa `incidents`-tabellen
+### User Controls
+A collapsible settings panel in the route planning toolbar area with:
+- **Flight altitude (m)** -- number input, max actual flight height (used for labeling/export, not visual on 2D map)
+- **Contingency area (m)** -- slider/input for horizontal buffer distance (default: 10m)
+- **Contingency volume height (m)** -- height above flight altitude (for labeling/export)
+- **Ground risk buffer (m)** -- slider/input for outer buffer width (default: 20m)
+- Toggle to show/hide the zones
 
-2. **Storage-bucket**
-   - Opprette en `incident-images` storage bucket (public) med RLS-policyer:
-     - SELECT: Alle autentiserte brukere kan se bilder fra eget selskap
-     - INSERT: Godkjente brukere kan laste opp bilder i sin selskapskatalog
-     - UPDATE/DELETE: Brukere kan slette/overskrive egne opplastinger
+### Implementation
 
-3. **AddIncidentDialog.tsx - Opplasting ved opprettelse og redigering**
-   - Legge til state for valgt bildefil og forhåndsvisning (preview URL)
-   - Legge til file input med aksept for bildeformater (image/*)
-   - Vise forhåndsvisning av valgt bilde i dialogen
-   - Ved redigering: forhåndsutfylle med eksisterende `bilde_url` fra hendelsen
-   - I `handleSubmit`: laste opp bildet til `incident-images/{company_id}/{timestamp}-{filnavn}`, og lagre URL-en i `bilde_url`-kolonnen
-   - Knapp for a fjerne valgt/eksisterende bilde
+#### 1. Buffer Polygon Generation (utility function)
+Create a `bufferPolygon` helper that takes a set of convex hull points and a distance in meters, and returns an expanded polygon. This uses a simple offset approach:
+- Convert the convex hull to a local coordinate system (meters)
+- For each edge, compute an outward-offset parallel edge
+- Intersect consecutive offset edges to get new vertices
+- Convert back to lat/lng
 
-4. **IncidentDetailDialog.tsx - Visning av bilde**
-   - Hvis `incident.bilde_url` finnes, vise bildet i detalj-visningen
-   - Vise bildet med passende storrelse og mulighet for a klikke for a se i full storrelse
+This avoids adding a dependency like Turf.js by implementing a basic polygon buffer algorithm.
 
-5. **Supabase types**
-   - Regenereres automatisk etter migrasjonen
+#### 2. OpenAIPMap.tsx -- New props and rendering
+- Add new props: `soraSettings` (object with contingencyDistance, groundRiskDistance, flightAltitude, contingencyHeight, enabled)
+- In `updateRouteDisplay`, after drawing the route polyline, render three concentric polygons on the `routePane`:
+  - Green polygon (flight geography) -- convex hull of route points, `fillColor: '#22c55e'`, `fillOpacity: 0.2`
+  - Yellow polygon (contingency area) -- buffered hull by contingencyDistance, `fillColor: '#eab308'`, `fillOpacity: 0.15`
+  - Red polygon (ground risk buffer) -- buffered hull by contingencyDistance + groundRiskDistance, `fillColor: '#ef4444'`, `fillOpacity: 0.12`
+- Polygons drawn in order: red first, yellow second, green last (so green is on top)
 
-### Tekniske detaljer
+#### 3. Kart.tsx -- Settings panel UI
+- Add state for SORA settings: `soraEnabled`, `contingencyDistance` (default 10), `groundRiskDistance` (default 20), `flightAltitude` (default 120), `contingencyHeight` (default 30)
+- Add a collapsible panel (using Collapsible component) in the route planning controls bar
+- Contains number inputs/sliders for each parameter
+- Pass settings to OpenAIPMap as a prop
+- Settings are also saved into the RouteData when saving the route (for potential later use in mission details)
 
-**Migrasjon (SQL):**
-```sql
-ALTER TABLE incidents ADD COLUMN bilde_url TEXT;
+### Technical Details
 
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('incident-images', 'incident-images', true);
-
-CREATE POLICY "Users can view incident images from own company"
-ON storage.objects FOR SELECT USING (
-  bucket_id = 'incident-images' AND
-  (storage.foldername(name))[1] = (SELECT company_id::text FROM profiles WHERE id = auth.uid())
-);
-
-CREATE POLICY "Approved users can upload incident images"
-ON storage.objects FOR INSERT WITH CHECK (
-  bucket_id = 'incident-images' AND
-  (storage.foldername(name))[1] = (SELECT company_id::text FROM profiles WHERE id = auth.uid()) AND
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND approved = true)
-);
-
-CREATE POLICY "Users can delete own incident images"
-ON storage.objects FOR DELETE USING (
-  bucket_id = 'incident-images' AND
-  (storage.foldername(name))[1] = (SELECT company_id::text FROM profiles WHERE id = auth.uid())
-);
+**Buffer algorithm:**
+```text
+For each edge of the convex hull:
+  1. Compute normal vector (perpendicular, pointing outward)
+  2. Offset both endpoints by distance along normal
+  3. Intersect consecutive offset edges for new vertex
 ```
 
-**Filsti-format:** `{company_id}/{timestamp}-{original_filnavn}`
+**Files changed:**
+- `src/components/OpenAIPMap.tsx` -- new prop, buffer rendering in updateRouteDisplay
+- `src/pages/Kart.tsx` -- SORA settings state, collapsible UI panel, pass props
 
-**AddIncidentDialog.tsx endringer:**
-- Ny state: `selectedFile`, `previewUrl`
-- File input felt med `accept="image/*"`
-- Forhåndsvisning med `<img>` og fjern-knapp
-- Upload-logikk i `handleSubmit` for supabase.storage.from('incident-images')
-- Ved redigering: vise eksisterende bilde fra `incidentToEdit.bilde_url`
+**Color scheme:**
+- Flight geography: `#22c55e` (green), fill opacity 0.2, stroke opacity 0.5
+- Contingency area: `#eab308` (yellow), fill opacity 0.15, stroke opacity 0.4
+- Ground risk buffer: `#ef4444` (red), fill opacity 0.12, stroke opacity 0.35
+- All with dashed strokes for clarity
 
-**IncidentDetailDialog.tsx endringer:**
-- Vise bilde hvis `incident.bilde_url` finnes, med en `<img>`-tag i detalj-seksjonen
+**No new dependencies required** -- pure geometry math for polygon buffering.
 
-### Filer som endres
-- Ny migrasjonsfil (SQL)
-- `src/components/dashboard/AddIncidentDialog.tsx`
-- `src/components/dashboard/IncidentDetailDialog.tsx`
