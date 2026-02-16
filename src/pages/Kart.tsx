@@ -1,5 +1,6 @@
-import { OpenAIPMap, RouteData, RoutePoint } from "@/components/OpenAIPMap";
+import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/OpenAIPMap";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
+import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -38,6 +39,15 @@ export default function KartPage() {
   // Pilot position state for VLOS measurement
   const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
   const [isPlacingPilot, setIsPlacingPilot] = useState(false);
+  
+  // SORA settings
+  const [soraSettings, setSoraSettings] = useState<SoraSettings>({
+    enabled: false,
+    flightAltitude: 120,
+    contingencyDistance: 10,
+    contingencyHeight: 30,
+    groundRiskDistance: 20,
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -369,6 +379,9 @@ export default function KartPage() {
               </div>
             </div>
           </div>
+          
+          {/* SORA Settings Panel */}
+          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} />
         </div>
       )}
 
@@ -395,6 +408,7 @@ export default function KartPage() {
           isPlacingPilot={isPlacingPilot}
           focusFlightId={focusFlightId}
           onFocusFlightHandled={() => setFocusFlightId(null)}
+          soraSettings={soraSettings}
         />
       </div>
 
