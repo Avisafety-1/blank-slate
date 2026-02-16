@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import safeskyLogo from "@/assets/safesky-logo.png";
 
 interface RoutePlanningState {
@@ -39,6 +40,9 @@ export default function KartPage() {
   // Pilot position state for VLOS measurement
   const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
   const [isPlacingPilot, setIsPlacingPilot] = useState(false);
+  
+  // Editing existing mission route
+  const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
   
   // SORA settings
   const [soraSettings, setSoraSettings] = useState<SoraSettings>({
@@ -91,12 +95,34 @@ export default function KartPage() {
     setCurrentRoute({ coordinates: [], totalDistance: 0 });
   };
 
-  const handleSaveRoute = () => {
+  const handleSaveRoute = async () => {
     // Attach SORA settings to route data before saving
     const routeToSave: RouteData = {
       ...currentRoute,
       soraSettings: soraSettings.enabled ? soraSettings : undefined,
     };
+
+    if (editingMissionId) {
+      // Direct save to existing mission
+      const { error } = await supabase
+        .from("missions")
+        .update({ route: routeToSave as any })
+        .eq("id", editingMissionId);
+      
+      if (error) {
+        toast.error("Kunne ikke oppdatere ruten");
+        console.error("Route update error:", error);
+        return;
+      }
+      
+      toast.success("Rute og SORA-soner oppdatert");
+      setIsRoutePlanning(false);
+      setEditingMissionId(null);
+      setCurrentRoute({ coordinates: [], totalDistance: 0 });
+      setPilotPosition(undefined);
+      setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 10, contingencyHeight: 30, groundRiskDistance: 20 });
+      return;
+    }
 
     if (routePlanningState) {
       // Coming from mission edit - go back there
@@ -121,6 +147,27 @@ export default function KartPage() {
       });
     }
   };
+
+  // Edit route for an existing mission
+  const handleEditMissionRoute = useCallback((mission: any) => {
+    const route = mission.route as RouteData | null;
+    setEditingMissionId(mission.id);
+    setIsRoutePlanning(true);
+    setRoutePlanningState(null);
+    setMissionDialogOpen(false);
+    
+    if (route?.coordinates?.length) {
+      setCurrentRoute(route);
+    } else {
+      setCurrentRoute({ coordinates: [], totalDistance: 0 });
+    }
+    
+    if (route?.soraSettings) {
+      setSoraSettings(route.soraSettings);
+    } else {
+      setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 10, contingencyHeight: 30, groundRiskDistance: 20 });
+    }
+  }, []);
 
   const handleCancelRoute = () => {
     if (routePlanningState) {
@@ -424,6 +471,7 @@ export default function KartPage() {
           open={missionDialogOpen}
           onOpenChange={setMissionDialogOpen}
           mission={selectedMission}
+          onEditRoute={handleEditMissionRoute}
         />
       )}
     </div>
