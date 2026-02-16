@@ -1,8 +1,9 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GlassCard } from "@/components/GlassCard";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +53,12 @@ const Resources = () => {
   const [personnelSearch, setPersonnelSearch] = useState("");
   const [droneSearch, setDroneSearch] = useState("");
   const [equipmentSearch, setEquipmentSearch] = useState("");
+  const [droneStatusFilter, setDroneStatusFilter] = useState("alle");
+  const [droneModelFilter, setDroneModelFilter] = useState("alle");
+  const [equipmentStatusFilter, setEquipmentStatusFilter] = useState("alle");
+  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState("alle");
+  const [personnelStatusFilter, setPersonnelStatusFilter] = useState("alle");
+  const [personnelRoleFilter, setPersonnelRoleFilter] = useState("alle");
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
@@ -205,6 +212,26 @@ const Resources = () => {
 
 
 
+  // Compute unique categories for filters
+  const uniqueDroneModels = [...new Set(drones.map(d => d.modell).filter(Boolean))].sort();
+  const uniqueEquipmentTypes = [...new Set(equipment.map(e => e.type).filter(Boolean))].sort();
+  const uniquePersonnelRoles = [...new Set(personnel.map(p => p.tittel).filter(Boolean))].sort();
+
+  // Helper to get person's worst competency status
+  const getPersonStatus = (person: any): string => {
+    if (!person.personnel_competencies || person.personnel_competencies.length === 0) return "Grønn";
+    let worst = "Grønn";
+    for (const comp of person.personnel_competencies) {
+      if (!comp.utloper_dato) continue;
+      const expiry = new Date(comp.utloper_dato);
+      const now = new Date();
+      if (expiry < now) return "Rød";
+      const warningDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      if (expiry < warningDate) worst = "Gul";
+    }
+    return worst;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -254,17 +281,50 @@ const Resources = () => {
                   className="pl-9"
                 />
               </div>
+
+              {/* Filters */}
+              <div className="flex gap-2 mb-4">
+                <Select value={droneModelFilter} onValueChange={setDroneModelFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Modell" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle modeller</SelectItem>
+                    {uniqueDroneModels.map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={droneStatusFilter} onValueChange={setDroneStatusFilter}>
+                  <SelectTrigger className="h-8 text-xs w-[100px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle</SelectItem>
+                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
+                    <SelectItem value="Gul">🟡 Gul</SelectItem>
+                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {drones
                   .filter((drone) => {
-                    if (!droneSearch) return true;
-                    const searchLower = droneSearch.toLowerCase();
-                    return (
-                      drone.modell?.toLowerCase().includes(searchLower) ||
-                      drone.registrering?.toLowerCase().includes(searchLower) ||
-                      drone.merknader?.toLowerCase().includes(searchLower)
-                    );
+                    if (droneSearch) {
+                      const searchLower = droneSearch.toLowerCase();
+                      if (!(
+                        drone.modell?.toLowerCase().includes(searchLower) ||
+                        drone.registrering?.toLowerCase().includes(searchLower) ||
+                        drone.merknader?.toLowerCase().includes(searchLower)
+                      )) return false;
+                    }
+                    if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
+                    if (droneStatusFilter !== "alle") {
+                      const status = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
+                      if (status !== droneStatusFilter) return false;
+                    }
+                    return true;
                   })
                   .map((drone) => (
                   <div 
@@ -291,16 +351,16 @@ const Resources = () => {
                   </div>
                 ))}
                 {drones.filter((drone) => {
-                  if (!droneSearch) return true;
-                  const searchLower = droneSearch.toLowerCase();
-                  return (
-                    drone.modell?.toLowerCase().includes(searchLower) ||
-                    drone.registrering?.toLowerCase().includes(searchLower) ||
-                    drone.merknader?.toLowerCase().includes(searchLower)
-                  );
-                }).length === 0 && droneSearch && (
+                    if (droneSearch) {
+                      const searchLower = droneSearch.toLowerCase();
+                      if (!(drone.modell?.toLowerCase().includes(searchLower) || drone.registrering?.toLowerCase().includes(searchLower) || drone.merknader?.toLowerCase().includes(searchLower))) return false;
+                    }
+                    if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
+                    if (droneStatusFilter !== "alle" && calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) !== droneStatusFilter) return false;
+                    return true;
+                }).length === 0 && (droneSearch || droneModelFilter !== "alle" || droneStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    {t('common.noResults')} "{droneSearch}"
+                    Ingen treff med valgte filtre
                   </p>
                 )}
                 {drones.length === 0 && (
@@ -340,18 +400,51 @@ const Resources = () => {
                   className="pl-9"
                 />
               </div>
+
+              {/* Filters */}
+              <div className="flex gap-2 mb-4">
+                <Select value={equipmentTypeFilter} onValueChange={setEquipmentTypeFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle kategorier</SelectItem>
+                    {uniqueEquipmentTypes.map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={equipmentStatusFilter} onValueChange={setEquipmentStatusFilter}>
+                  <SelectTrigger className="h-8 text-xs w-[100px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle</SelectItem>
+                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
+                    <SelectItem value="Gul">🟡 Gul</SelectItem>
+                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {equipment
                   .filter((item) => {
-                    if (!equipmentSearch) return true;
-                    const searchLower = equipmentSearch.toLowerCase();
-                    return (
-                      item.navn?.toLowerCase().includes(searchLower) ||
-                      item.type?.toLowerCase().includes(searchLower) ||
-                      item.serienummer?.toLowerCase().includes(searchLower) ||
-                      item.merknader?.toLowerCase().includes(searchLower)
-                    );
+                    if (equipmentSearch) {
+                      const searchLower = equipmentSearch.toLowerCase();
+                      if (!(
+                        item.navn?.toLowerCase().includes(searchLower) ||
+                        item.type?.toLowerCase().includes(searchLower) ||
+                        item.serienummer?.toLowerCase().includes(searchLower) ||
+                        item.merknader?.toLowerCase().includes(searchLower)
+                      )) return false;
+                    }
+                    if (equipmentTypeFilter !== "alle" && item.type !== equipmentTypeFilter) return false;
+                    if (equipmentStatusFilter !== "alle") {
+                      const status = calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14);
+                      if (status !== equipmentStatusFilter) return false;
+                    }
+                    return true;
                   })
                   .map((item) => (
                   <div 
@@ -378,28 +471,19 @@ const Resources = () => {
                   </div>
                 ))}
                 {equipment.filter((item) => {
-                  if (!equipmentSearch) return true;
-                  const searchLower = equipmentSearch.toLowerCase();
-                  return (
-                    item.navn?.toLowerCase().includes(searchLower) ||
-                    item.type?.toLowerCase().includes(searchLower) ||
-                    item.serienummer?.toLowerCase().includes(searchLower) ||
-                    item.merknader?.toLowerCase().includes(searchLower)
-                  );
-                }).length === 0 && equipmentSearch && dronetags.filter((item) => {
-                  if (!equipmentSearch) return true;
-                  const searchLower = equipmentSearch.toLowerCase();
-                  return (
-                    item.name?.toLowerCase().includes(searchLower) ||
-                    item.callsign?.toLowerCase().includes(searchLower) ||
-                    item.device_id?.toLowerCase().includes(searchLower)
-                  );
-                }).length === 0 && (
+                    if (equipmentSearch) {
+                      const searchLower = equipmentSearch.toLowerCase();
+                      if (!(item.navn?.toLowerCase().includes(searchLower) || item.type?.toLowerCase().includes(searchLower) || item.serienummer?.toLowerCase().includes(searchLower) || item.merknader?.toLowerCase().includes(searchLower))) return false;
+                    }
+                    if (equipmentTypeFilter !== "alle" && item.type !== equipmentTypeFilter) return false;
+                    if (equipmentStatusFilter !== "alle" && calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) !== equipmentStatusFilter) return false;
+                    return true;
+                }).length === 0 && (equipmentSearch || equipmentTypeFilter !== "alle" || equipmentStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    {t('common.noResults')} "{equipmentSearch}"
+                    Ingen treff med valgte filtre
                   </p>
                 )}
-                {equipment.length === 0 && dronetags.length === 0 && !equipmentSearch && (
+                {equipment.length === 0 && dronetags.length === 0 && !equipmentSearch && equipmentTypeFilter === "alle" && equipmentStatusFilter === "alle" && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     {t('resources.noEquipment')}
                   </p>
@@ -471,18 +555,48 @@ const Resources = () => {
                   className="pl-9"
                 />
               </div>
+
+              {/* Filters */}
+              <div className="flex gap-2 mb-4">
+                <Select value={personnelRoleFilter} onValueChange={setPersonnelRoleFilter}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Rolle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle roller</SelectItem>
+                    {uniquePersonnelRoles.map(r => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={personnelStatusFilter} onValueChange={setPersonnelStatusFilter}>
+                  <SelectTrigger className="h-8 text-xs w-[100px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle</SelectItem>
+                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
+                    <SelectItem value="Gul">🟡 Gul</SelectItem>
+                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {personnel
                   .filter((person) => {
-                    if (!personnelSearch) return true;
-                    const searchLower = personnelSearch.toLowerCase();
-                    const nameMatch = person.full_name?.toLowerCase().includes(searchLower);
-                    const competencyMatch = person.personnel_competencies?.some((comp: any) =>
-                      comp.navn?.toLowerCase().includes(searchLower) ||
-                      comp.type?.toLowerCase().includes(searchLower)
-                    );
-                    return nameMatch || competencyMatch;
+                    if (personnelSearch) {
+                      const searchLower = personnelSearch.toLowerCase();
+                      const nameMatch = person.full_name?.toLowerCase().includes(searchLower);
+                      const competencyMatch = person.personnel_competencies?.some((comp: any) =>
+                        comp.navn?.toLowerCase().includes(searchLower) ||
+                        comp.type?.toLowerCase().includes(searchLower)
+                      );
+                      if (!nameMatch && !competencyMatch) return false;
+                    }
+                    if (personnelRoleFilter !== "alle" && person.tittel !== personnelRoleFilter) return false;
+                    if (personnelStatusFilter !== "alle" && getPersonStatus(person) !== personnelStatusFilter) return false;
+                    return true;
                   })
                   .map((person) => (
                   <div 
@@ -556,17 +670,20 @@ const Resources = () => {
                   </div>
                 ))}
                 {personnel.filter((person) => {
-                  if (!personnelSearch) return true;
-                  const searchLower = personnelSearch.toLowerCase();
-                  const nameMatch = person.full_name?.toLowerCase().includes(searchLower);
-                  const competencyMatch = person.personnel_competencies?.some((comp: any) =>
-                    comp.navn?.toLowerCase().includes(searchLower) ||
-                    comp.type?.toLowerCase().includes(searchLower)
-                  );
-                  return nameMatch || competencyMatch;
-                }).length === 0 && personnelSearch && (
+                    if (personnelSearch) {
+                      const searchLower = personnelSearch.toLowerCase();
+                      const nameMatch = person.full_name?.toLowerCase().includes(searchLower);
+                      const competencyMatch = person.personnel_competencies?.some((comp: any) =>
+                        comp.navn?.toLowerCase().includes(searchLower) || comp.type?.toLowerCase().includes(searchLower)
+                      );
+                      if (!nameMatch && !competencyMatch) return false;
+                    }
+                    if (personnelRoleFilter !== "alle" && person.tittel !== personnelRoleFilter) return false;
+                    if (personnelStatusFilter !== "alle" && getPersonStatus(person) !== personnelStatusFilter) return false;
+                    return true;
+                }).length === 0 && (personnelSearch || personnelRoleFilter !== "alle" || personnelStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    {t('common.noResults')} "{personnelSearch}"
+                    Ingen treff med valgte filtre
                   </p>
                 )}
                 {personnel.length === 0 && (
