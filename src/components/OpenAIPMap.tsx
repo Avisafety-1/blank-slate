@@ -195,9 +195,9 @@ function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[]
     const dy = pts[j].y - pts[i].y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) continue;
-    // Outward normal for CCW polygon: (-dy, dx) / len
-    const nx = -dy / len;
-    const ny = dx / len;
+    // Outward normal for CCW polygon: (dy, -dx) / len
+    const nx = dy / len;
+    const ny = -dx / len;
     offsetEdges.push({
       x1: pts[i].x + nx * distanceMeters,
       y1: pts[i].y + ny * distanceMeters,
