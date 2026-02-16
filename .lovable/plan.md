@@ -1,49 +1,44 @@
 
-## Save SORA Zones from Map to Existing Missions
+
+## Show SORA Zones and Settings Panel in Expanded Mission Map
 
 ### Problem
-Currently, when route planning is started directly from `/kart`, the "Lagre" button always navigates to `/oppdrag` to create a **new** mission. There is no way to save a route (with SORA zones) directly to an **existing** mission from the map.
+When opening the expanded map from a mission card on `/oppdrag`, the SORA buffer zones are not rendered even though they are saved in the route data. The SORA settings panel is also not available in this view.
 
 ### Solution
-Add the ability to save a planned route with SORA settings directly to an existing mission from the map. This involves two changes:
-
-1. **When clicking a mission marker on the map in view mode**, add a "Rediger rute" (Edit route) button in the mission popup/click handler that enters route planning mode for that specific mission, loading its existing route.
-
-2. **When saving a route in route planning mode linked to an existing mission**, update the mission's `route` JSONB column directly in Supabase (instead of navigating away), then show a success toast and exit route planning mode.
+Update `ExpandedMapDialog` to:
+1. Accept and render SORA zones from saved route data
+2. Include the `SoraSettingsPanel` so users can view/adjust the SORA parameters
+3. Re-render zones when settings change
 
 ### Changes
 
-#### 1. `src/pages/Kart.tsx`
-- Add a new state `editingMissionId` to track when route planning is for an existing mission
-- Modify `handleMissionClick`: instead of only opening `MissionDetailDialog`, also offer a way to enter route planning for that mission (load its existing route and SORA settings into the planner)
-- Add a new function `handleEditMissionRoute(mission)` that:
-  - Sets `isRoutePlanning = true`
-  - Loads the mission's existing route into `currentRoute`
-  - Loads existing SORA settings into `soraSettings`
-  - Stores the `editingMissionId`
-- Modify `handleSaveRoute`:
-  - If `editingMissionId` is set, perform a direct Supabase `update` on `missions.route` with the new route data (including SORA settings), show a toast, and exit route planning mode
-  - Otherwise, use the existing navigation flow
+#### 1. `src/components/dashboard/ExpandedMapDialog.tsx`
+- Add `SoraSettings` to the `RouteData` interface (matching `MissionMapPreview`)
+- Import and reuse the SORA geometry utilities (`computeConvexHull`, `bufferPolygon`, `renderSoraZones`) -- extract them from `MissionMapPreview` into a shared utility, or duplicate inline
+- Render SORA zones on the map during initialization when `route.soraSettings?.enabled` is true
+- Add the `SoraSettingsPanel` component below the map header, initialized with the route's saved SORA settings
+- When the user changes SORA settings in the panel, re-render the zones on the map in real-time (clear and redraw the SORA layer group)
 
 #### 2. `src/components/dashboard/MissionDetailDialog.tsx`
-- Add an "Rediger rute" button that navigates to `/kart` with the mission's route data and mission ID, entering route planning mode for that mission
+- Pass the full `route` object (which already contains `soraSettings`) to `ExpandedMapDialog` -- verify this is already happening (it is, via `currentMission.route`)
 
 ### Technical Details
 
-**Save flow for existing mission from map:**
+**SORA zone rendering in ExpandedMapDialog:**
+- A dedicated `soraLayerRef` (`L.LayerGroup`) will hold the SORA polygons
+- On settings change, the layer is cleared and zones are redrawn with updated distances
+- The same `computeConvexHull` + `bufferPolygon` math from `MissionMapPreview` will be reused
+- The `SoraSettingsPanel` will be placed between the dialog header and the map, matching the existing collapsible UX
+
+**State flow:**
 ```
-User clicks mission marker on map
-  -> MissionDetailDialog opens with "Rediger rute" button
-  -> Click navigates to /kart with route planning state (missionId, existing route, SORA settings)
-  -> User edits route / adjusts SORA zones
-  -> Click "Lagre"
-  -> Direct Supabase update: missions.route = routeToSave WHERE id = missionId
-  -> Toast: "Rute oppdatert"
-  -> Exit route planning mode, stay on /kart
+route.soraSettings (from DB)
+  -> Initialize local soraSettings state in ExpandedMapDialog
+  -> Pass to SoraSettingsPanel for display/editing
+  -> On change: update local state -> re-render zones on map
 ```
 
 **Files to modify:**
-- `src/pages/Kart.tsx` -- add `editingMissionId` state, direct Supabase save logic in `handleSaveRoute`
-- `src/components/dashboard/MissionDetailDialog.tsx` -- add "Rediger rute" button that navigates to `/kart` in route planning mode with mission data
-
-**No database changes needed** -- the `missions.route` column is already JSONB and already stores `soraSettings` as part of the route object.
+- `src/components/dashboard/ExpandedMapDialog.tsx` -- add SoraSettings interface, SORA geometry utils, SoraSettingsPanel integration, and zone rendering logic
+- No other files need changes (route data already flows correctly from MissionDetailDialog)
