@@ -2109,6 +2109,7 @@ const Oppdrag = () => {
               }
               missionTitle={expandedMapMission.tittel}
               missionId={expandedMapMission.id}
+              onSoraUpdated={fetchMissions}
             />
           );
         })()}

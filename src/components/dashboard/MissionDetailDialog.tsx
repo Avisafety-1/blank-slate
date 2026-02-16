@@ -375,6 +375,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         flightTracks={memoizedFlightTracks}
         missionTitle={currentMission.tittel}
         missionId={currentMission.id}
+        onSoraUpdated={onMissionUpdated}
       />
     )}
     </>
