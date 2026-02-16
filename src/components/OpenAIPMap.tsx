@@ -2356,7 +2356,7 @@ export function OpenAIPMap({
       )}
 
       {/* Route planning instructions */}
-      {mode === "routePlanning" && (
+      {mode === "routePlanning" && controlledRoute && controlledRoute.coordinates.length === 0 && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
