@@ -234,6 +234,8 @@ export type Database = {
       companies: {
         Row: {
           adresse: string | null
+          adresse_lat: number | null
+          adresse_lon: number | null
           aktiv: boolean
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
@@ -250,6 +252,8 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          adresse_lat?: number | null
+          adresse_lon?: number | null
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
@@ -266,6 +270,8 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          adresse_lat?: number | null
+          adresse_lon?: number | null
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
