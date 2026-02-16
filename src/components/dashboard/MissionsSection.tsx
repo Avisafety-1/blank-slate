@@ -387,12 +387,32 @@ export const MissionsSection = () => {
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
+              const missionToApprove = missions.find((m: any) => m.id === approvalConfirmMissionId);
               await supabase
                 .from('missions')
                 .update({ approval_status: 'pending_approval' })
                 .eq('id', approvalConfirmMissionId);
               setApprovalConfirmMissionId(null);
               fetchMissions();
+              // Send email notification to approvers
+              if (missionToApprove && companyId) {
+                try {
+                  await supabase.functions.invoke('send-notification-email', {
+                    body: {
+                      type: 'notify_mission_approval',
+                      companyId,
+                      mission: {
+                        tittel: missionToApprove.tittel,
+                        lokasjon: missionToApprove.lokasjon,
+                        tidspunkt: missionToApprove.tidspunkt,
+                        beskrivelse: missionToApprove.beskrivelse || '',
+                      }
+                    }
+                  });
+                } catch (emailError) {
+                  console.error('Error sending approval notification:', emailError);
+                }
+              }
             }}>
               Send til godkjenning
             </AlertDialogAction>

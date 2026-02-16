@@ -8,6 +8,7 @@ import { nb } from "date-fns/locale";
 import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
@@ -68,6 +69,7 @@ const formatAIRiskScore = (score: unknown) => {
 };
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
+  const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
@@ -417,6 +419,23 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             if (!error) {
               setLiveMission({ ...currentMission, approval_status: 'pending_approval' });
               onMissionUpdated?.();
+              // Send email notification to approvers
+              try {
+                await supabase.functions.invoke('send-notification-email', {
+                  body: {
+                    type: 'notify_mission_approval',
+                    companyId,
+                    mission: {
+                      tittel: currentMission.tittel,
+                      lokasjon: currentMission.lokasjon,
+                      tidspunkt: currentMission.tidspunkt,
+                      beskrivelse: currentMission.beskrivelse || '',
+                    }
+                  }
+                });
+              } catch (emailError) {
+                console.error('Error sending approval notification:', emailError);
+              }
             }
             setApprovalConfirmOpen(false);
           }}>
