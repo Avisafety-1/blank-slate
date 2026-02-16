@@ -29,9 +29,10 @@ interface AddIncidentDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
   incidentToEdit?: Incident | null;
+  defaultMissionId?: string;
 }
 
-export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit }: AddIncidentDialogProps) => {
+export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [missions, setMissions] = useState<Array<{ id: string; tittel: string; status: string; tidspunkt: string; lokasjon: string }>>([]);
@@ -89,13 +90,21 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         if ((incidentToEdit as any).bilde_url) {
           setPreviewUrl((incidentToEdit as any).bilde_url);
         }
-      } else if (defaultDate) {
-        // Format date to datetime-local format
-        const year = defaultDate.getFullYear();
-        const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
-        const day = String(defaultDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}T09:00`;
-        setFormData(prev => ({ ...prev, hendelsestidspunkt: dateStr }));
+      } else {
+        // Set defaults for new incident
+        const updates: Partial<typeof formData> = {};
+        if (defaultDate) {
+          const year = defaultDate.getFullYear();
+          const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
+          const day = String(defaultDate.getDate()).padStart(2, '0');
+          updates.hendelsestidspunkt = `${year}-${month}-${day}T09:00`;
+        }
+        if (defaultMissionId) {
+          updates.mission_id = defaultMissionId;
+        }
+        if (Object.keys(updates).length > 0) {
+          setFormData(prev => ({ ...prev, ...updates }));
+        }
       }
     } else {
       // Reset form when dialog closes
@@ -115,7 +124,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       setSelectedFile(null);
       setPreviewUrl(null);
     }
-  }, [open, defaultDate, incidentToEdit]);
+  }, [open, defaultDate, incidentToEdit, defaultMissionId]);
 
   const fetchMissions = async () => {
     try {
