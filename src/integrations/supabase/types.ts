@@ -1979,6 +1979,7 @@ export type Database = {
           pilot_id: string
           pilot_inputs: Json | null
           recommendation: string
+          sora_output: Json | null
           weather_data: Json | null
           weather_score: number | null
         }
@@ -1998,6 +1999,7 @@ export type Database = {
           pilot_id: string
           pilot_inputs?: Json | null
           recommendation: string
+          sora_output?: Json | null
           weather_data?: Json | null
           weather_score?: number | null
         }
@@ -2017,6 +2019,7 @@ export type Database = {
           pilot_id?: string
           pilot_inputs?: Json | null
           recommendation?: string
+          sora_output?: Json | null
           weather_data?: Json | null
           weather_score?: number | null
         }
