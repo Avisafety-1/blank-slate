@@ -2108,6 +2108,7 @@ const Oppdrag = () => {
                   })) || null
               }
               missionTitle={expandedMapMission.tittel}
+              missionId={expandedMapMission.id}
             />
           );
         })()}
