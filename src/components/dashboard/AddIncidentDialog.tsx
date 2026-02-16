@@ -119,8 +119,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       const { data, error } = await supabase
         .from('missions')
         .select('id, tittel, status, tidspunkt, lokasjon')
-        .in('status', ['Planlagt', 'Tildelt', 'Pågår'])
-        .order('tidspunkt', { ascending: true });
+        .order('tidspunkt', { ascending: false });
 
       if (error) throw error;
       setMissions(data || []);
