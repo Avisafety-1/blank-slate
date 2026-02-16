@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
 import { fetchTerrainElevations, buildTerrainProfile, downsamplePositions, interpolateElevations, type TerrainPoint } from "@/lib/terrainElevation";
+import { renderSoraZones, type SoraSettings } from "@/lib/soraGeometry";
+import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 
 interface RoutePoint {
   lat: number;
@@ -20,6 +22,7 @@ interface RoutePoint {
 interface RouteData {
   coordinates: RoutePoint[];
   totalDistance: number;
+  soraSettings?: SoraSettings;
 }
 
 interface FlightTrackPosition {
@@ -70,6 +73,29 @@ export const ExpandedMapDialog = ({
   const [mapReady, setMapReady] = useState(false);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
   const flightTrackLayerRef = useRef<L.LayerGroup | null>(null);
+  const soraLayerRef = useRef<L.LayerGroup | null>(null);
+
+  const defaultSora: SoraSettings = { enabled: false, flightAltitude: 120, contingencyDistance: 30, contingencyHeight: 15, groundRiskDistance: 50 };
+  const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
+
+  // Reset SORA settings when route changes
+  useEffect(() => {
+    setSoraSettings(route?.soraSettings ?? defaultSora);
+  }, [route]);
+
+  // Re-render SORA zones when settings change
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map || !mapReady || !route?.coordinates?.length) return;
+
+    if (soraLayerRef.current) {
+      soraLayerRef.current.clearLayers();
+    } else {
+      soraLayerRef.current = L.layerGroup().addTo(map);
+    }
+
+    renderSoraZones(route.coordinates, soraSettings, soraLayerRef.current);
+  }, [soraSettings, mapReady, route]);
 
   // ── Terrain fetch effect (independent of map lifecycle) ──
   useEffect(() => {
@@ -339,6 +365,7 @@ export const ExpandedMapDialog = ({
         leafletMapRef.current = null;
       }
       flightTrackLayerRef.current = null;
+      soraLayerRef.current = null;
       setTerrainData([]);
       setFlightStats(null);
       setTerrainLoading(false);
@@ -507,6 +534,10 @@ export const ExpandedMapDialog = ({
         <DialogHeader className="px-3 py-2">
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
         </DialogHeader>
+
+        {route && route.coordinates.length >= 3 && (
+          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} />
+        )}
 
         <div className="flex-1 relative overflow-hidden min-h-0">
           <div ref={mapRef} className="absolute inset-0" />
