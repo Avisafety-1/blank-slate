@@ -51,7 +51,7 @@ serve(async (req) => {
       });
     }
 
-    const { missionId, pilotInputs, droneId } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments } = await req.json();
 
     if (!missionId) {
       return new Response(JSON.stringify({ error: 'Mission ID is required' }), {
@@ -60,7 +60,176 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Starting risk assessment for mission ${missionId}`);
+    console.log(`Starting risk assessment for mission ${missionId}${soraReassessment ? ' (SORA re-assessment)' : ''}`);
+
+    // Handle SORA re-assessment mode
+    if (soraReassessment && previousAnalysis && pilotComments) {
+      console.log('Running SORA re-assessment with pilot comments');
+
+      const soraSystemPrompt = `Du er en SORA-spesialist (Specific Operations Risk Assessment) for UAS-operasjoner i henhold til EASA-rammeverket.
+
+Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
+Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
+
+### RESPONS-FORMAT
+Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.
+
+Returner denne JSON-strukturen:
+{
+  "environment": "<Tettbygd|Landlig|Sjø|Industriområde|Annet>",
+  "conops_summary": "<ConOps-beskrivelse basert på oppdragets data og mitigeringer>",
+  "igrc": <number 1-7>,
+  "ground_mitigations": "<beskrivelse av bakkemitigeringer basert på brukerens kommentarer og AI-analyse>",
+  "fgrc": <number 1-7>,
+  "arc_initial": "<ARC-A|ARC-B|ARC-C|ARC-D>",
+  "airspace_mitigations": "<beskrivelse av luftromsmitigeringer>",
+  "arc_residual": "<ARC-A|ARC-B|ARC-C|ARC-D>",
+  "sail": "<SAIL I|SAIL II|SAIL III|SAIL IV|SAIL V|SAIL VI>",
+  "residual_risk_level": "<Lav|Moderat|Høy>",
+  "residual_risk_comment": "<vurdering av rest-risiko etter alle mitigeringer>",
+  "operational_limits": "<operative begrensninger og betingelser>",
+  "overall_score": <number 1-10>,
+  "recommendation": "<go|caution|no-go>",
+  "summary": "<kort oppsummering av SORA-vurderingen>"
+}
+
+### VURDERINGSPRINSIPPER
+- iGRC bestemmes av operasjonsmiljø og dronens egenskaper (vekt, hastighet)
+- fGRC = iGRC justert ned basert på bakkemitigeringer (sperringer, ERP, fallskjerm)
+- ARC bestemmes av luftromstype og trafikktetthet
+- SAIL = kombinasjon av fGRC og residual ARC (SAIL-matrisen)
+- Vurder brukerens kommentarer som faktiske mitigeringer implementert av operatøren
+- Vær konservativ i vurderingen`;
+
+      const soraUserPrompt = `Generer en SORA-analyse basert på følgende data:
+
+### Opprinnelig AI-risikovurdering:
+${JSON.stringify(previousAnalysis, null, 2)}
+
+### Brukerens mitigeringer/kommentarer per kategori:
+${JSON.stringify(pilotComments, null, 2)}
+
+Analyser dataene og produser en komplett SORA-vurdering.`;
+
+      const soraAiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: soraSystemPrompt },
+            { role: 'user', content: soraUserPrompt },
+          ],
+        }),
+      });
+
+      if (!soraAiResponse.ok) {
+        const errorText = await soraAiResponse.text();
+        console.error('SORA AI gateway error:', soraAiResponse.status, errorText);
+        if (soraAiResponse.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (soraAiResponse.status === 402) {
+          return new Response(JSON.stringify({ error: 'AI credits exhausted' }), {
+            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        throw new Error(`AI gateway error: ${soraAiResponse.status}`);
+      }
+
+      const soraAiData = await soraAiResponse.json();
+      let soraContent = soraAiData.choices?.[0]?.message?.content;
+      if (!soraContent) throw new Error('No content in SORA AI response');
+
+      soraContent = soraContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let soraAnalysis;
+      try {
+        soraAnalysis = JSON.parse(soraContent);
+      } catch (e) {
+        console.error('Failed to parse SORA AI response:', soraContent);
+        throw new Error('Invalid SORA AI response format');
+      }
+
+      console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
+
+      // Get user's profile for company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      const companyId = profile?.company_id;
+
+      // Save SORA output to mission_risk_assessments
+      const { data: savedAssessment, error: saveError } = await supabase
+        .from('mission_risk_assessments')
+        .insert({
+          mission_id: missionId,
+          pilot_id: user.id,
+          company_id: companyId,
+          weather_score: previousAnalysis.categories?.weather?.score || null,
+          airspace_score: previousAnalysis.categories?.airspace?.score || null,
+          pilot_experience_score: previousAnalysis.categories?.pilot_experience?.score || null,
+          mission_complexity_score: previousAnalysis.categories?.mission_complexity?.score || null,
+          equipment_score: previousAnalysis.categories?.equipment?.score || null,
+          overall_score: soraAnalysis.overall_score || previousAnalysis.overall_score,
+          recommendation: soraAnalysis.recommendation || previousAnalysis.recommendation,
+          ai_analysis: previousAnalysis,
+          pilot_comments: pilotComments,
+          sora_output: soraAnalysis,
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('Save SORA assessment error:', saveError);
+      }
+
+      // Upsert to mission_sora table
+      if (companyId) {
+        const { error: soraUpsertError } = await supabase
+          .from('mission_sora')
+          .upsert({
+            mission_id: missionId,
+            company_id: companyId,
+            environment: soraAnalysis.environment || null,
+            conops_summary: soraAnalysis.conops_summary || null,
+            igrc: soraAnalysis.igrc || null,
+            ground_mitigations: soraAnalysis.ground_mitigations || null,
+            fgrc: soraAnalysis.fgrc || null,
+            arc_initial: soraAnalysis.arc_initial || null,
+            airspace_mitigations: soraAnalysis.airspace_mitigations || null,
+            arc_residual: soraAnalysis.arc_residual || null,
+            sail: soraAnalysis.sail || null,
+            residual_risk_level: soraAnalysis.residual_risk_level || null,
+            residual_risk_comment: soraAnalysis.residual_risk_comment || null,
+            operational_limits: soraAnalysis.operational_limits || null,
+            sora_status: 'Under arbeid',
+            prepared_by: user.id,
+            prepared_at: new Date().toISOString(),
+          }, { onConflict: 'mission_id', ignoreDuplicates: false });
+
+        if (soraUpsertError) {
+          console.error('SORA upsert error:', soraUpsertError);
+        } else {
+          console.log('SORA data synced to mission_sora table');
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        assessment: savedAssessment,
+        soraAnalysis,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // 1. Fetch mission data with related entities
     const { data: mission, error: missionError } = await supabase

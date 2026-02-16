@@ -12,19 +12,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3 } from "lucide-react";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { SoraResultView } from "./SoraResultView";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mission?: any;
   droneId?: string;
-  initialTab?: 'input' | 'result' | 'history';
+  initialTab?: 'input' | 'result' | 'history' | 'sora';
 }
 
 interface PilotInputs {
@@ -60,6 +61,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [savingComments, setSavingComments] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [currentAssessmentId, setCurrentAssessmentId] = useState<string | null>(null);
+  const [soraOutput, setSoraOutput] = useState<any>(null);
+  const [runningSora, setRunningSora] = useState(false);
   // Mission selector states
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
@@ -79,6 +82,57 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
+
+  const allCommentsComplete = ['weather', 'airspace', 'pilot_experience', 'mission_complexity', 'equipment']
+    .every(k => categoryComments[k]?.trim());
+
+  const runSoraReassessment = async () => {
+    if (!currentMissionId || !currentAssessment) return;
+    setRunningSora(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Du må være logget inn');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-risk-assessment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            missionId: currentMissionId,
+            soraReassessment: true,
+            previousAnalysis: currentAssessment,
+            pilotComments: categoryComments,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Unknown error');
+      }
+
+      const result = await response.json();
+      setSoraOutput(result.soraAnalysis);
+      if (result.assessment?.id) {
+        setCurrentAssessmentId(result.assessment.id);
+      }
+      setActiveTab('sora');
+      toast.success('SORA re-vurdering fullført');
+      loadPreviousAssessments();
+    } catch (error) {
+      console.error('SORA reassessment error:', error);
+      toast.error('Kunne ikke utføre SORA re-vurdering');
+    } finally {
+      setRunningSora(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -130,7 +184,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     try {
       const { data, error } = await supabase
         .from('mission_risk_assessments')
-        .select('id, created_at, overall_score, recommendation, ai_analysis, pilot_comments')
+        .select('id, created_at, overall_score, recommendation, ai_analysis, pilot_comments, sora_output')
         .eq('mission_id', currentMissionId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -151,6 +205,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         setCurrentAssessment(latest.ai_analysis);
         setCurrentAssessmentId(latest.id);
         setCategoryComments((latest.pilot_comments as Record<string, string>) || {});
+        setSoraOutput((latest as any).sora_output || null);
       }
     } catch (error) {
       console.error('Error loading assessments:', error);
@@ -216,11 +271,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
-  const viewPreviousAssessment = (assessment: Assessment) => {
+  const viewPreviousAssessment = (assessment: any) => {
     setCurrentAssessment(assessment.ai_analysis);
     setCurrentAssessmentId(assessment.id);
     setCategoryComments(assessment.pilot_comments || {});
-    setActiveTab('result');
+    setSoraOutput(assessment.sora_output || null);
+    setActiveTab(assessment.sora_output ? 'sora' : 'result');
   };
 
   const saveComments = async () => {
@@ -283,14 +339,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'input' | 'result' | 'history')} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'input' | 'result' | 'history' | 'sora')} className="flex-1 flex flex-col min-h-0">
+          <TabsList className={`grid w-full ${soraOutput ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="input">
               {t('riskAssessment.inputTab', 'Input')}
             </TabsTrigger>
             <TabsTrigger value="result" disabled={!currentAssessment}>
               {t('riskAssessment.resultTab', 'Resultat')}
             </TabsTrigger>
+            {soraOutput && (
+              <TabsTrigger value="sora">
+                <BarChart3 className="w-4 h-4 mr-1" />
+                SORA
+              </TabsTrigger>
+            )}
             <TabsTrigger value="history">
               <History className="w-4 h-4 mr-1" />
               {t('riskAssessment.historyTab', 'Historikk')}
@@ -559,6 +621,27 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       </div>
                     )}
 
+                    {/* SORA re-assessment button */}
+                    {currentAssessmentId && allCommentsComplete && (
+                      <Button
+                        onClick={runSoraReassessment}
+                        disabled={runningSora}
+                        className="w-full"
+                      >
+                        {runningSora ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Kjører SORA re-vurdering...
+                          </>
+                        ) : (
+                          <>
+                            <BarChart3 className="w-4 h-4 mr-2" />
+                            Kjør SORA-basert re-vurdering
+                          </>
+                        )}
+                      </Button>
+                    )}
+
                     {/* Recommendations with new SMS fields */}
                     <RiskRecommendations
                       recommendations={currentAssessment.recommendations || []}
@@ -567,6 +650,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       aiDisclaimer={currentAssessment.ai_disclaimer}
                     />
                   </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="sora" className="h-full m-0">
+              <ScrollArea className="h-[calc(90vh-220px)]">
+                {soraOutput ? (
+                  <div className="pr-4">
+                    <SoraResultView data={soraOutput} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Ingen SORA-analyse tilgjengelig
+                  </p>
                 )}
               </ScrollArea>
             </TabsContent>
