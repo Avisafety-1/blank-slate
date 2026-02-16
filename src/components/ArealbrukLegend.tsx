@@ -9,7 +9,7 @@ const categories = [
 
 export function ArealbrukLegend() {
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-lg border border-border z-[1000] max-w-[calc(100vw-2rem)]">
+    <div className="absolute bottom-4 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto bg-background/95 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-lg border border-border z-[1000]">
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Arealbruk:</span>
         {categories.map((c) => (
