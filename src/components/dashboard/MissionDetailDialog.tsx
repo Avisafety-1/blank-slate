@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
+  const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
 
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
@@ -206,16 +208,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <Badge 
                 variant="outline" 
                 className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from('missions')
-                    .update({ approval_status: 'pending_approval' })
-                    .eq('id', currentMission.id);
-                  if (!error) {
-                    setLiveMission({ ...currentMission, approval_status: 'pending_approval' });
-                    onMissionUpdated?.();
-                  }
-                }}
+                onClick={() => setApprovalConfirmOpen(true)}
               >
                 Ikke godkjent – Send til godkjenning
               </Badge>
@@ -405,6 +398,33 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         onSoraUpdated={onMissionUpdated}
       />
     )}
+
+    <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction onClick={async () => {
+            const { error } = await supabase
+              .from('missions')
+              .update({ approval_status: 'pending_approval' })
+              .eq('id', currentMission.id);
+            if (!error) {
+              setLiveMission({ ...currentMission, approval_status: 'pending_approval' });
+              onMissionUpdated?.();
+            }
+            setApprovalConfirmOpen(false);
+          }}>
+            Send til godkjenning
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 };
