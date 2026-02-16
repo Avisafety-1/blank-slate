@@ -23,12 +23,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, Plane, Radio } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 interface Company {
   id: string;
   navn: string;
   org_nummer: string | null;
   adresse: string | null;
+  adresse_lat?: number | null;
+  adresse_lon?: number | null;
   kontakt_epost: string | null;
   kontakt_telefon: string | null;
   aktiv: boolean;
@@ -58,6 +61,8 @@ const companySchema = z.object({
     .max(500, "Adresse må være under 500 tegn")
     .optional()
     .or(z.literal("")),
+  adresse_lat: z.number().nullable().optional(),
+  adresse_lon: z.number().nullable().optional(),
   kontakt_epost: z.string()
     .trim()
     .email("Ugyldig e-postadresse")
@@ -89,6 +94,8 @@ export const CompanyManagementDialog = ({
       selskapstype: "droneoperator",
       org_nummer: "",
       adresse: "",
+      adresse_lat: null,
+      adresse_lon: null,
       kontakt_epost: "",
       kontakt_telefon: "",
     },
@@ -102,6 +109,8 @@ export const CompanyManagementDialog = ({
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
           org_nummer: company.org_nummer || "",
           adresse: company.adresse || "",
+          adresse_lat: company.adresse_lat || null,
+          adresse_lon: company.adresse_lon || null,
           kontakt_epost: company.kontakt_epost || "",
           kontakt_telefon: company.kontakt_telefon || "",
         });
@@ -111,6 +120,8 @@ export const CompanyManagementDialog = ({
           selskapstype: "droneoperator",
           org_nummer: "",
           adresse: "",
+          adresse_lat: null,
+          adresse_lon: null,
           kontakt_epost: "",
           kontakt_telefon: "",
         });
@@ -127,6 +138,8 @@ export const CompanyManagementDialog = ({
         selskapstype: data.selskapstype,
         org_nummer: data.org_nummer || null,
         adresse: data.adresse || null,
+        adresse_lat: data.adresse_lat || null,
+        adresse_lon: data.adresse_lon || null,
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
       };
@@ -256,9 +269,20 @@ export const CompanyManagementDialog = ({
               name="adresse"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Adresse</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn adresse" />
+                    <AddressAutocomplete
+                      label="Adresse"
+                      value={field.value || ""}
+                      onChange={(val) => {
+                        field.onChange(val);
+                      }}
+                      onSelectLocation={(loc) => {
+                        field.onChange(loc.address);
+                        form.setValue("adresse_lat", loc.lat);
+                        form.setValue("adresse_lon", loc.lon);
+                      }}
+                      placeholder="Søk etter adresse..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

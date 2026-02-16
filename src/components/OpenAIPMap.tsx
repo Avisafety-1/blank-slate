@@ -277,7 +277,7 @@ export function OpenAIPMap({
   onFocusFlightHandled,
   soraSettings,
 }: OpenAIPMapProps) {
-  const { user } = useAuth();
+  const { user, companyLat, companyLon } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -848,7 +848,14 @@ export function OpenAIPMap({
             userMarkerRef.current.bindPopup("Din posisjon");
           }
         },
-        () => console.log("Geolokasjon nektet"),
+        () => {
+          console.log("Geolokasjon nektet");
+          // Fallback: use company address coordinates if available
+          if (companyLat && companyLon) {
+            map.setView([companyLat, companyLon], 10);
+            console.log("Bruker selskapets adresse som fallback-posisjon");
+          }
+        },
       );
     }
 

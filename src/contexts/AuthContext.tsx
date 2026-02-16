@@ -19,6 +19,8 @@ interface CachedProfile {
   companyId: string | null;
   companyName: string | null;
   companyType: CompanyType;
+  companyLat: number | null;
+  companyLon: number | null;
   isApproved: boolean;
   userRole: string | null;
   isAdmin: boolean;
@@ -32,6 +34,8 @@ interface AuthContextType {
   companyId: string | null;
   companyName: string | null;
   companyType: CompanyType;
+  companyLat: number | null;
+  companyLon: number | null;
   isSuperAdmin: boolean;
   isAdmin: boolean;
   isApproved: boolean;
@@ -47,6 +51,8 @@ const AuthContext = createContext<AuthContextType>({
   companyId: null,
   companyName: null,
   companyType: null,
+  companyLat: null,
+  companyLon: null,
   isSuperAdmin: false,
   isAdmin: false,
   isApproved: false,
@@ -70,6 +76,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
+  const [companyLat, setCompanyLat] = useState<number | null>(null);
+  const [companyLon, setCompanyLon] = useState<number | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -84,6 +92,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setCompanyId(cached.companyId);
       setCompanyName(cached.companyName);
       setCompanyType(cached.companyType);
+      setCompanyLat(cached.companyLat);
+      setCompanyLon(cached.companyLon);
       setIsApproved(cached.isApproved);
       setUserRole(cached.userRole);
       setIsAdmin(cached.isAdmin);
@@ -167,6 +177,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setCompanyId(null);
           setCompanyName(null);
           setCompanyType(null);
+          setCompanyLat(null);
+          setCompanyLon(null);
           setIsSuperAdmin(false);
           setIsAdmin(false);
           setIsApproved(false);
@@ -242,7 +254,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             companies (
               id,
               navn,
-              selskapstype
+              selskapstype,
+              adresse_lat,
+              adresse_lon
             )
           `)
           .eq('id', userId)
@@ -258,6 +272,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         companyId: null,
         companyName: null,
         companyType: 'droneoperator',
+        companyLat: null,
+        companyLon: null,
         isApproved: false,
         userRole: null,
         isAdmin: false,
@@ -279,6 +295,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const company = profile.companies as any;
         profileData.companyName = company?.navn || null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
+        profileData.companyLat = company?.adresse_lat || null;
+        profileData.companyLon = company?.adresse_lon || null;
       }
 
       if (roleResult.data) {
@@ -291,6 +309,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setCompanyId(profileData.companyId);
       setCompanyName(profileData.companyName);
       setCompanyType(profileData.companyType);
+      setCompanyLat(profileData.companyLat);
+      setCompanyLon(profileData.companyLon);
       setIsApproved(profileData.isApproved);
       setUserRole(profileData.userRole);
       setIsAdmin(profileData.isAdmin);
@@ -334,6 +354,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyId, 
       companyName, 
       companyType, 
+      companyLat,
+      companyLon,
       isSuperAdmin, 
       isAdmin,
       isApproved,
