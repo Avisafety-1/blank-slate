@@ -96,18 +96,6 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
             />
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 pt-1 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/60" /> Contingency
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> Ground risk
-            </span>
-          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
