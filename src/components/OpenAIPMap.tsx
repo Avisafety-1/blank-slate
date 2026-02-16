@@ -73,6 +73,14 @@ export interface RouteData {
   pointsOutsideVLOS?: number;
 }
 
+export interface SoraSettings {
+  enabled: boolean;
+  flightAltitude: number;
+  contingencyDistance: number;
+  contingencyHeight: number;
+  groundRiskDistance: number;
+}
+
 interface OpenAIPMapProps {
   onMissionClick?: (mission: any) => void;
   mode?: "view" | "routePlanning";
@@ -86,6 +94,7 @@ interface OpenAIPMapProps {
   isPlacingPilot?: boolean;
   focusFlightId?: string | null;
   onFocusFlightHandled?: () => void;
+  soraSettings?: SoraSettings;
 }
 
 // Calculate distance between two points using Haversine formula
@@ -152,6 +161,69 @@ function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
   return hull;
 }
 
+// Buffer a convex hull polygon outward by a distance in meters
+function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[] {
+  if (hull.length < 3 || distanceMeters <= 0) return hull;
+
+  const avgLat = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
+  const latScale = 111320;
+  const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
+
+  // Convert to local meters
+  const ref = hull[0];
+  const pts = hull.map(p => ({
+    x: (p.lng - ref.lng) * lngScale,
+    y: (p.lat - ref.lat) * latScale,
+  }));
+
+  const n = pts.length;
+  // Compute outward-offset edges
+  const offsetEdges: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const dx = pts[j].x - pts[i].x;
+    const dy = pts[j].y - pts[i].y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) continue;
+    // Outward normal (for CCW polygon: right-hand normal)
+    const nx = dy / len;
+    const ny = -dx / len;
+    offsetEdges.push({
+      x1: pts[i].x + nx * distanceMeters,
+      y1: pts[i].y + ny * distanceMeters,
+      x2: pts[j].x + nx * distanceMeters,
+      y2: pts[j].y + ny * distanceMeters,
+    });
+  }
+
+  // Intersect consecutive offset edges
+  const result: RoutePoint[] = [];
+  for (let i = 0; i < offsetEdges.length; i++) {
+    const j = (i + 1) % offsetEdges.length;
+    const e1 = offsetEdges[i];
+    const e2 = offsetEdges[j];
+    const ix = intersectLines(e1.x1, e1.y1, e1.x2, e1.y2, e2.x1, e2.y1, e2.x2, e2.y2);
+    if (ix) {
+      result.push({
+        lat: ref.lat + ix.y / latScale,
+        lng: ref.lng + ix.x / lngScale,
+      });
+    }
+  }
+
+  return result.length >= 3 ? result : hull;
+}
+
+function intersectLines(
+  x1: number, y1: number, x2: number, y2: number,
+  x3: number, y3: number, x4: number, y4: number
+): { x: number; y: number } | null {
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denom) < 1e-10) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+}
+
 // Calculate polygon area using Shoelace formula (returns km²)
 function calculatePolygonAreaKm2(points: RoutePoint[]): number {
   if (points.length < 3) return 0;
@@ -191,6 +263,7 @@ export function OpenAIPMap({
   isPlacingPilot,
   focusFlightId,
   onFocusFlightHandled,
+  soraSettings,
 }: OpenAIPMapProps) {
   const { user } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -206,6 +279,8 @@ export function OpenAIPMap({
   const pilotCircleRef = useRef<L.Circle | null>(null);
   const pilotLayerRef = useRef<L.LayerGroup | null>(null);
   const flightMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const soraSettingsRef = useRef(soraSettings);
+  const soraLayerRef = useRef<L.LayerGroup | null>(null);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
@@ -298,6 +373,7 @@ export function OpenAIPMap({
   useEffect(() => {
     onPilotPositionChangeRef.current = onPilotPositionChange;
   }, [onPilotPositionChange]);
+
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -433,7 +509,75 @@ export function OpenAIPMap({
         pane: 'routePane',
       }).addTo(routeLayerRef.current);
     }
+
+    // SORA operational volume zones
+    if (!soraLayerRef.current) {
+      soraLayerRef.current = L.layerGroup();
+      if (leafletMapRef.current) {
+        soraLayerRef.current.addTo(leafletMapRef.current);
+      }
+    }
+    soraLayerRef.current.clearLayers();
+
+    const sora = soraSettingsRef.current;
+    if (sora?.enabled && points.length >= 3) {
+      const hull = computeConvexHull(points);
+      if (hull.length >= 3) {
+        const contingencyHull = bufferPolygon(hull, sora.contingencyDistance);
+        const groundRiskHull = bufferPolygon(hull, sora.contingencyDistance + sora.groundRiskDistance);
+
+        // Draw red (ground risk buffer) first — bottom
+        L.polygon(
+          groundRiskHull.map(p => [p.lat, p.lng] as [number, number]),
+          {
+            fillColor: '#ef4444',
+            fillOpacity: 0.12,
+            color: '#ef4444',
+            weight: 1.5,
+            opacity: 0.35,
+            dashArray: '6, 4',
+            pane: 'routePane',
+          }
+        ).addTo(soraLayerRef.current);
+
+        // Yellow (contingency area)
+        L.polygon(
+          contingencyHull.map(p => [p.lat, p.lng] as [number, number]),
+          {
+            fillColor: '#eab308',
+            fillOpacity: 0.15,
+            color: '#eab308',
+            weight: 1.5,
+            opacity: 0.4,
+            dashArray: '6, 4',
+            pane: 'routePane',
+          }
+        ).addTo(soraLayerRef.current);
+
+        // Green (flight geography) on top
+        L.polygon(
+          hull.map(p => [p.lat, p.lng] as [number, number]),
+          {
+            fillColor: '#22c55e',
+            fillOpacity: 0.2,
+            color: '#22c55e',
+            weight: 1.5,
+            opacity: 0.5,
+            dashArray: '6, 4',
+            pane: 'routePane',
+          }
+        ).addTo(soraLayerRef.current);
+      }
+    }
   }, []);
+
+  // Sync soraSettings ref and redraw when settings change
+  useEffect(() => {
+    soraSettingsRef.current = soraSettings;
+    if (routeLayerRef.current && leafletMapRef.current) {
+      updateRouteDisplay();
+    }
+  }, [soraSettings, updateRouteDisplay]);
 
   // Sync mode ref and update route display when mode changes
   useEffect(() => {
