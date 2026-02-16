@@ -1,68 +1,43 @@
 
 
-## SORA Operational Volume Visualization on Route Planner
+## Save and Display SORA Buffer Zones on Mission Cards
 
-### Overview
-Add configurable SORA operational volume zones to the route planner on /kart. When a route is drawn, concentric buffer zones will be visualized around it with distinct colors and opacity, matching the SORA framework diagram.
+### Problem
+When a route is saved with SORA operational volume enabled, the buffer zones (flight geography, contingency area, ground risk buffer) are not persisted with the mission data. The mission card map (`MissionMapPreview`) therefore cannot display these zones.
 
-### Visual Zones (inside-out)
-1. **Flight Geography Area** (green, semi-transparent) -- the convex hull of the planned route
-2. **Contingency Area** (yellow, semi-transparent) -- buffer around flight geography, user-configurable distance in meters
-3. **Ground Risk Buffer** (red, semi-transparent) -- buffer outside contingency area, user-configurable width in meters
+### Solution
+Persist the SORA settings inside the `RouteData` object so they are saved to the database alongside the route. Then render the buffer zones in `MissionMapPreview` using the same convex hull + buffer algorithm.
 
-### User Controls
-A collapsible settings panel in the route planning toolbar area with:
-- **Flight altitude (m)** -- number input, max actual flight height (used for labeling/export, not visual on 2D map)
-- **Contingency area (m)** -- slider/input for horizontal buffer distance (default: 10m)
-- **Contingency volume height (m)** -- height above flight altitude (for labeling/export)
-- **Ground risk buffer (m)** -- slider/input for outer buffer width (default: 20m)
-- Toggle to show/hide the zones
+### Changes
 
-### Implementation
+#### 1. `src/components/OpenAIPMap.tsx` -- Add `soraSettings` to `RouteData`
+- Add an optional `soraSettings?: SoraSettings` field to the `RouteData` interface
+- When reporting route changes via `onRouteChange`, include the current SORA settings if enabled
 
-#### 1. Buffer Polygon Generation (utility function)
-Create a `bufferPolygon` helper that takes a set of convex hull points and a distance in meters, and returns an expanded polygon. This uses a simple offset approach:
-- Convert the convex hull to a local coordinate system (meters)
-- For each edge, compute an outward-offset parallel edge
-- Intersect consecutive offset edges to get new vertices
-- Convert back to lat/lng
+#### 2. `src/pages/Kart.tsx` -- Attach SORA settings to route before saving
+- When `handleSaveRoute` is called, attach the current `soraSettings` to `currentRoute` before navigating (so it gets stored in the mission's `route` JSON column)
 
-This avoids adding a dependency like Turf.js by implementing a basic polygon buffer algorithm.
-
-#### 2. OpenAIPMap.tsx -- New props and rendering
-- Add new props: `soraSettings` (object with contingencyDistance, groundRiskDistance, flightAltitude, contingencyHeight, enabled)
-- In `updateRouteDisplay`, after drawing the route polyline, render three concentric polygons on the `routePane`:
-  - Green polygon (flight geography) -- convex hull of route points, `fillColor: '#22c55e'`, `fillOpacity: 0.2`
-  - Yellow polygon (contingency area) -- buffered hull by contingencyDistance, `fillColor: '#eab308'`, `fillOpacity: 0.15`
-  - Red polygon (ground risk buffer) -- buffered hull by contingencyDistance + groundRiskDistance, `fillColor: '#ef4444'`, `fillOpacity: 0.12`
-- Polygons drawn in order: red first, yellow second, green last (so green is on top)
-
-#### 3. Kart.tsx -- Settings panel UI
-- Add state for SORA settings: `soraEnabled`, `contingencyDistance` (default 10), `groundRiskDistance` (default 20), `flightAltitude` (default 120), `contingencyHeight` (default 30)
-- Add a collapsible panel (using Collapsible component) in the route planning controls bar
-- Contains number inputs/sliders for each parameter
-- Pass settings to OpenAIPMap as a prop
-- Settings are also saved into the RouteData when saving the route (for potential later use in mission details)
+#### 3. `src/components/dashboard/MissionMapPreview.tsx` -- Render SORA zones
+- Extract the `computeConvexHull` and `bufferPolygon` utility functions into a shared location (or duplicate the small functions inline in MissionMapPreview)
+- When `route.soraSettings?.enabled` is true, compute and render the three concentric buffer zones (green flight geography, yellow contingency, red ground risk) on the preview map
+- Use the same color scheme and opacity as the main map
 
 ### Technical Details
 
-**Buffer algorithm:**
+**Data flow:**
 ```text
-For each edge of the convex hull:
-  1. Compute normal vector (perpendicular, pointing outward)
-  2. Offset both endpoints by distance along normal
-  3. Intersect consecutive offset edges for new vertex
+Route planner (OpenAIPMap) 
+  -> onRouteChange({ coordinates, totalDistance, areaKm2, soraSettings })
+  -> Kart.tsx saves to currentRoute state
+  -> handleSaveRoute navigates with routeData including soraSettings
+  -> AddMissionDialog saves routeData (with soraSettings) to missions.route column (JSONB)
+  -> MissionMapPreview reads route.soraSettings and renders zones
 ```
 
 **Files changed:**
-- `src/components/OpenAIPMap.tsx` -- new prop, buffer rendering in updateRouteDisplay
-- `src/pages/Kart.tsx` -- SORA settings state, collapsible UI panel, pass props
+- `src/components/OpenAIPMap.tsx` -- add `soraSettings` to RouteData, include in onRouteChange callback
+- `src/pages/Kart.tsx` -- ensure soraSettings is attached to currentRoute when saving
+- `src/components/dashboard/MissionMapPreview.tsx` -- render SORA buffer zones from saved soraSettings
 
-**Color scheme:**
-- Flight geography: `#22c55e` (green), fill opacity 0.2, stroke opacity 0.5
-- Contingency area: `#eab308` (yellow), fill opacity 0.15, stroke opacity 0.4
-- Ground risk buffer: `#ef4444` (red), fill opacity 0.12, stroke opacity 0.35
-- All with dashed strokes for clarity
-
-**No new dependencies required** -- pure geometry math for polygon buffering.
+**Shared geometry functions** (`computeConvexHull`, `bufferPolygon`) will be duplicated in MissionMapPreview to keep it self-contained (they are ~80 lines of pure math with no dependencies).
 
