@@ -1,51 +1,49 @@
 
 
-## Legg til SSB Arealbruk som kartlag for befolkningstetthet
+## Legg til tegnforklaring (legend) for SSB Arealbruk-laget
 
-### Hva dette gir
-Et nytt valgbart kartlag i MapLayerControl som viser SSBs arealbruksdata -- bebygde omrader klassifisert etter bruk (bolig, naering, industri, etc.). Dette gir en god visuell indikasjon pa befolkningstetthet og bebyggelse, noe som er relevant for SORA ground risk-vurdering.
+### Hva dette gjor
+Nar kartlaget "Befolkning / Arealbruk (SSB)" er aktivt, vises en kompakt tegnforklaring (legend) i bunnen av kartet som forklarer hva de ulike fargekodene betyr.
 
-Laget er **avskrudd som standard** og kan slas pa via kartlag-panelet.
+Legenden skjules automatisk nar laget slas av.
 
 ### Endringer
 
-#### 1. `src/components/OpenAIPMap.tsx`
+#### 1. Ny komponent: `src/components/ArealbrukLegend.tsx`
 
-Legg til et nytt WMS-lag etter naturvernlaget (ca. linje 743), med samme monster som NRL og Naturvern:
+En liten komponent som viser fargekodene:
 
-```text
-const arealbrukLayer = L.tileLayer.wms(
-  "https://wms.geonorge.no/skwms1/wms.arealbruk?",
-  {
-    layers: "arealbruk",
-    format: "image/png",
-    transparent: true,
-    opacity: 0.6,
-    attribution: "SSB Arealbruk",
-  }
-);
+| Farge | Kategori |
+|-------|----------|
+| Rod/Rosa | Bolig |
+| Bla/Lilla | Naering/Kontor |
+| Gra/Mork | Industri/Lager |
+| Gronn | Fritid/Sport/Park |
+| Gul/Oransje | Offentlig tjeneste |
+| Brun | Transport |
+
+Komponenten er en absolutt-posisjonert boks i bunnen av kartet med `z-[1000]`, halvgjennomsiktig bakgrunn og backdrop-blur -- samme stil som vaerhint og ruteinstruksjoner som allerede finnes i kartet.
+
+#### 2. `src/components/OpenAIPMap.tsx`
+
+Legg til legenden i JSX-returen (ca. linje 2387), betinget pa at arealbruk-laget er aktivt:
+
+```typescript
+{layers.find(l => l.id === "arealbruk")?.enabled && (
+  <ArealbrukLegend />
+)}
 ```
-
-Legg til i `layerConfigs` med:
-- id: `arealbruk`
-- name: "Befolkning / Arealbruk (SSB)"
-- enabled: false (avskrudd som standard)
-- icon: `users`
-
-#### 2. `src/components/MapLayerControl.tsx`
-
-Ingen endring nodvendig -- `users`-ikonet er allerede registrert i `iconMap`.
 
 ### Tekniske detaljer
 
-- **WMS-endepunkt:** `https://wms.geonorge.no/skwms1/wms.arealbruk`
-- **Lagnavn:** `arealbruk`
-- **Projeksjon:** EPSG:3857 (stottet, kompatibelt med Leaflet)
-- **Format:** PNG med transparens
-- **Kilde:** SSB (Statistisk sentralbyra) via Geonorge
-- Viser bebygde omrader fargelagt etter brukstype (bolig, naering, fritid, industri, etc.)
-- Ingen API-nokkel nødvendig -- tjenesten er apen
+- Legenden plasseres `absolute bottom-4 left-1/2 -translate-x-1/2` for a ligge sentrert i bunnen
+- Bruker Tailwind-klasser med `bg-background/95 backdrop-blur-sm` for konsistens med andre kart-overlays
+- Fargeprovene vises som sma fargede rundinger med tekst ved siden av, i en kompakt horisontal rad
+- Ingen nye avhengigheter
+
+**Filer som opprettes:**
+- `src/components/ArealbrukLegend.tsx`
 
 **Filer som endres:**
-- `src/components/OpenAIPMap.tsx` (legg til ~15 linjer)
+- `src/components/OpenAIPMap.tsx` (import + 3 linjer JSX)
 
