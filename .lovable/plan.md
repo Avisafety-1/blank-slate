@@ -1,44 +1,75 @@
 
 
-## Show SORA Zones and Settings Panel in Expanded Mission Map
+## Beregn AMSL-høyde for SafeSky Advisory basert på terreng og SORA-innstillinger
 
 ### Problem
-When opening the expanded map from a mission card on `/oppdrag`, the SORA buffer zones are not rendered even though they are saved in the route data. The SORA settings panel is also not available in this view.
+SafeSky advisory og UAV beacon bruker i dag hardkodet `max_altitude: 120` meter. Dette er feil fordi SafeSky forventer AMSL (Above Mean Sea Level), mens 120m representerer AGL (Above Ground Level). En drone som flyr 120m AGL over terreng på 500m MSL bor rapporteres som 620m AMSL.
 
-### Solution
-Update `ExpandedMapDialog` to:
-1. Accept and render SORA zones from saved route data
-2. Include the `SoraSettingsPanel` so users can view/adjust the SORA parameters
-3. Re-render zones when settings change
+### Losning
+Beregne den hoyeste terrengelevasjonen langs ruten via Open-Meteo (gjenbruke eksisterende `terrain-elevation` edge function / direkte API-kall), og legge til SORA flyhøyde + contingency height for a fa korrekt AMSL.
 
-### Changes
+**Formel:** `max_altitude_amsl = max_terrain_elevation + flightAltitude + contingencyHeight`
 
-#### 1. `src/components/dashboard/ExpandedMapDialog.tsx`
-- Add `SoraSettings` to the `RouteData` interface (matching `MissionMapPreview`)
-- Import and reuse the SORA geometry utilities (`computeConvexHull`, `bufferPolygon`, `renderSoraZones`) -- extract them from `MissionMapPreview` into a shared utility, or duplicate inline
-- Render SORA zones on the map during initialization when `route.soraSettings?.enabled` is true
-- Add the `SoraSettingsPanel` component below the map header, initialized with the route's saved SORA settings
-- When the user changes SORA settings in the panel, re-render the zones on the map in real-time (clear and redraw the SORA layer group)
+### Endringer
 
-#### 2. `src/components/dashboard/MissionDetailDialog.tsx`
-- Pass the full `route` object (which already contains `soraSettings`) to `ExpandedMapDialog` -- verify this is already happening (it is, via `currentMission.route`)
+#### 1. `supabase/functions/safesky-advisory/index.ts`
 
-### Technical Details
+**a) Legg til terrengelevasjon-oppslag (ny hjelpefunksjon)**
 
-**SORA zone rendering in ExpandedMapDialog:**
-- A dedicated `soraLayerRef` (`L.LayerGroup`) will hold the SORA polygons
-- On settings change, the layer is cleared and zones are redrawn with updated distances
-- The same `computeConvexHull` + `bufferPolygon` math from `MissionMapPreview` will be reused
-- The `SoraSettingsPanel` will be placed between the dialog header and the map, matching the existing collapsible UX
+Legg til en funksjon `fetchMaxTerrainElevation` som tar en liste med rutepunkter og henter elevasjon fra Open-Meteo API direkte (edge function til edge function er unodvendig overhead). Returnerer den hoyeste elevasjonen langs ruten.
 
-**State flow:**
-```
-route.soraSettings (from DB)
-  -> Initialize local soraSettings state in ExpandedMapDialog
-  -> Pass to SoraSettingsPanel for display/editing
-  -> On change: update local state -> re-render zones on map
+```text
+async function fetchMaxTerrainElevation(coords: RoutePoint[]): Promise<number>
+  - Batch coords i grupper pa 100
+  - Kall https://api.open-meteo.com/v1/elevation
+  - Returner Math.max(...alle elevasjoner), fallback til 0 ved feil
 ```
 
-**Files to modify:**
-- `src/components/dashboard/ExpandedMapDialog.tsx` -- add SoraSettings interface, SORA geometry utils, SoraSettingsPanel integration, and zone rendering logic
-- No other files need changes (route data already flows correctly from MissionDetailDialog)
+**b) Oppdater `publish_advisory` / `refresh_advisory` (linje 339-469)**
+
+- Les `soraSettings` fra `mission.route` (flightAltitude, contingencyHeight)
+- Kall `fetchMaxTerrainElevation` med rutepunktene
+- Beregn: `max_altitude = maxTerrain + flightAltitude + contingencyHeight`
+- Bruk denne verdien i advisory payload i stedet for hardkodet 120
+
+**c) Oppdater UAV beacon `publish` / `refresh` (linje 473-561)**
+
+- Les `soraSettings` fra `mission.route`
+- Kall `fetchMaxTerrainElevation` med forste rutepunkt (eller alle)
+- Beregn: `altitude = maxTerrain + flightAltitude`
+- Bruk denne verdien i stedet for hardkodet 120
+
+**d) Oppdater `publish_point_advisory` (linje 197-267)**
+
+- Denne bruker pilotposisjon uten rute, sa terrain-oppslag gjores for enkeltpunktet
+- Beregn: `max_altitude = terrainAtPoint + 120` (standard flyhøyde, ingen SORA-innstillinger tilgjengelig her)
+
+### Tekniske detaljer
+
+**Ny interface for soraSettings i edge function:**
+```typescript
+interface SoraSettings {
+  enabled: boolean;
+  flightAltitude: number;
+  contingencyDistance: number;
+  contingencyHeight: number;
+  groundRiskDistance: number;
+}
+```
+
+**MissionRoute interface utvides:**
+```typescript
+interface MissionRoute {
+  coordinates: RoutePoint[];
+  totalDistance?: number;
+  soraSettings?: SoraSettings;
+}
+```
+
+**Fallback-verdier** hvis soraSettings mangler: `flightAltitude = 120`, `contingencyHeight = 30`
+
+**Filer som endres:**
+- `supabase/functions/safesky-advisory/index.ts` -- hovedendringen
+
+Ingen databaseendringer er nodvendige.
+
