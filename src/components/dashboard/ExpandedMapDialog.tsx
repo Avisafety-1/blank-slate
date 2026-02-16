@@ -80,7 +80,7 @@ export const ExpandedMapDialog = ({
   const flightTrackLayerRef = useRef<L.LayerGroup | null>(null);
   const soraLayerRef = useRef<L.LayerGroup | null>(null);
 
-  const defaultSora: SoraSettings = { enabled: false, flightAltitude: 120, contingencyDistance: 30, contingencyHeight: 15, groundRiskDistance: 50 };
+  const defaultSora: SoraSettings = { enabled: false, flightAltitude: 120, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100 };
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);
