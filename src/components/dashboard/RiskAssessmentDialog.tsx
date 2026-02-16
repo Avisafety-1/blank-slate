@@ -622,24 +622,31 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     )}
 
                     {/* SORA re-assessment button */}
-                    {currentAssessmentId && allCommentsComplete && (
-                      <Button
-                        onClick={runSoraReassessment}
-                        disabled={runningSora}
-                        className="w-full"
-                      >
-                        {runningSora ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Kjører SORA re-vurdering...
-                          </>
-                        ) : (
-                          <>
-                            <BarChart3 className="w-4 h-4 mr-2" />
-                            Kjør SORA-basert re-vurdering
-                          </>
+                    {currentAssessmentId && (
+                      <div className="space-y-1">
+                        <Button
+                          onClick={runSoraReassessment}
+                          disabled={runningSora || !allCommentsComplete}
+                          className="w-full"
+                        >
+                          {runningSora ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Kjører SORA re-vurdering...
+                            </>
+                          ) : (
+                            <>
+                              <BarChart3 className="w-4 h-4 mr-2" />
+                              Kjør SORA-basert re-vurdering
+                            </>
+                          )}
+                        </Button>
+                        {!allCommentsComplete && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Kreves at alle manuelle felt er fylt inn
+                          </p>
                         )}
-                      </Button>
+                      </div>
                     )}
 
                     {/* Recommendations with new SMS fields */}
