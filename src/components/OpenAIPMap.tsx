@@ -752,7 +752,10 @@ export function OpenAIPMap({
         transparent: true,
         opacity: 0.6,
         attribution: "SSB Arealbruk",
-      }
+        minZoom: 0,
+        maxZoom: 20,
+        tiled: true,
+      } as any
     );
     layerConfigs.push({
       id: "arealbruk",
