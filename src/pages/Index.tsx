@@ -425,13 +425,13 @@ const Index = () => {
                 </div>
 
                 {/* Main Row - Sidebars with center content */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:items-stretch">
                   {/* Left Column */}
                   <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
                     {layout
                       .filter((item) => ["documents", "calendar"].includes(item.component))
                       .map((item) => (
-                        <DraggableSection key={item.id} id={item.id}>
+                        <DraggableSection key={item.id} id={item.id} className={item.component === "calendar" ? "flex-1 flex flex-col" : ""}>
                           {renderSection(item.component)}
                         </DraggableSection>
                       ))}

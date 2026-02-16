@@ -479,7 +479,7 @@ export const CalendarWidget = () => {
 
   return (
     <>
-      <GlassCard className="h-auto sm:h-[400px] flex flex-col overflow-hidden">
+      <GlassCard className="h-full flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 mb-3 min-w-0">
           <CalendarIcon className="w-5 h-5 text-primary flex-shrink-0" />
           <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.calendar.title')}</h2>
