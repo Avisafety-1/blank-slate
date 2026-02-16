@@ -3,7 +3,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText, Edit } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText, Edit, Image } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -528,6 +528,22 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">Beskrivelse</p>
               <p className="text-base leading-relaxed whitespace-pre-wrap">{incident.beskrivelse}</p>
+            </div>
+          )}
+
+          {(incident as any).bilde_url && (
+            <div className="border-t border-border pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Image className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-muted-foreground">Vedlagt bilde</p>
+              </div>
+              <a href={(incident as any).bilde_url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={(incident as any).bilde_url}
+                  alt="Hendelsesbilde"
+                  className="w-full max-h-64 object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                />
+              </a>
             </div>
           )}
 
