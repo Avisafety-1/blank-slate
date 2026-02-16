@@ -53,6 +53,7 @@ interface ExpandedMapDialogProps {
   flightTracks?: FlightTrack[] | null;
   missionTitle?: string;
   missionId?: string;
+  onSoraUpdated?: () => void;
 }
 
 export const ExpandedMapDialog = ({
@@ -64,6 +65,7 @@ export const ExpandedMapDialog = ({
   flightTracks,
   missionTitle,
   missionId,
+  onSoraUpdated,
 }: ExpandedMapDialogProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -102,6 +104,7 @@ export const ExpandedMapDialog = ({
     } else {
       toast.success("SORA-innstillinger lagret");
       setSoraDirty(false);
+      onSoraUpdated?.();
     }
   };
 
