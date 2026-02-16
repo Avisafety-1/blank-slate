@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { ChevronDown, Shield } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,6 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
     <Collapsible open={open} onOpenChange={setOpen} className="border-t border-border">
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 sm:px-4 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium text-foreground">SORA Operasjonelt volum</span>
         </div>
         <div className="flex items-center gap-2">
