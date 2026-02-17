@@ -1,72 +1,127 @@
 
-## Problem: «Utført av» viser alltid innlogget bruker, ikke den som opprettet SORA-analysen
+## Hvorfor du kastes ut ved første innlogging
 
-### Rot-årsak
+Det er to samvirkende feil som forårsaker dette:
 
-I `src/components/dashboard/SoraAnalysisDialog.tsx` linje 489–491 er «Utført av»-feltet hardkodet til å alltid vise den innloggede brukerens e-post:
+---
 
-```tsx
-<Label>Utført av</Label>
-<Input value={user?.email || ""} disabled />
+### Årsak 1: Race condition i AuthContext (primærfeil)
+
+Når du logger inn, skjer dette i feil rekkefølge:
+
+```text
+1. onAuthStateChange: SIGNED_IN → setLoading(false) ✓, setTimeout(fetchUserInfo) ✓
+2. getSession() → setLoading(false) ✓, fetchUserInfo() direkte kall ✓
+3. [Kort tid etterpå] — useIdleTimeout starter opp...
+4. useIdleTimeout leser avisafe_last_activity fra localStorage
+5. Hvis verdien er gammel (> 60 min) → handleLogout() kalles umiddelbart
+6. Du kastes ut før du er ferdig med å laste inn!
 ```
 
-Dette er feil — feltet skal vise e-posten til den brukeren som opprinnelig opprettet analysen (`prepared_by` UUID i databasen), ikke den som for øyeblikket har dialogboksen åpen.
+`useIdleTimeout` sin startup-sjekk (linje 76–91) kjøres når `user` først blir satt. Hvis `avisafe_last_activity` i localStorage er gammel nok (over 60 min siden forrige besøk) logger den deg ut med en gang — selv om du nettopp logget inn.
 
-Databasen lagrer `prepared_by` korrekt som en UUID (bruker-ID), men visningen slår ikke opp denne UUIDen for å hente riktig e-post/navn.
+**Andre forsøk fungerer** fordi `avisafe_last_activity` nå er fersk (oppdatert av `resetTimers()` på forrige forsøk), så startup-sjekken passerer.
 
-### Bevis fra databasen
+---
 
-Databasespørringen bekrefter at `prepared_by` er korrekt lagret for alle rader:
-- Norconsult-SORAer: `prepared_by = joakim.hoven@norconsult.com`
-- Det er kun visningen som er feil
+### Årsak 2: «Invalid Refresh Token» ved domeneskiftet
+
+Auth-loggene viser:
+```
+19:07:16 → 400: Invalid Refresh Token: Refresh Token Not Found
+19:10:03 → Token refreshed successfully
+```
+
+Siden appen bruker to domener (`login.avisafe.no` og `app.avisafe.no`), og localStorage er per-domene, kan det oppstå at refresh-token fra `login.avisafe.no` ikke er tilgjengelig på `app.avisafe.no`. Supabase prøver å refreshe og feiler → SIGNED_OUT → kastes ut. Andre forsøk fungerer fordi redirect-URL-en nå peker riktig.
+
+---
 
 ### Løsning
 
-Tre endringer i `src/components/dashboard/SoraAnalysisDialog.tsx`:
+**Fil: `src/hooks/useIdleTimeout.ts`**
 
-**1. Slå opp den opprinnelige skaperens profil**
+Startup-sjekken som logger ut ved gammel `avisafe_last_activity` må **nullstille tidsstempelet heller enn å logge ut** dersom brukeren nettopp logget inn (d.v.s. det ikke finnes en session fra før):
 
-Etter at `fetchExistingSora()` henter dataene, gjør en tilleggsforespørsel for å hente e-post/navn til brukeren lagret i `existingSora.prepared_by`:
-
+Slik er det nå:
 ```typescript
-const [preparedByProfile, setPreparedByProfile] = useState<{ email?: string; full_name?: string } | null>(null);
-
-// I fetchExistingSora(), etter at data er satt:
-if (data?.prepared_by) {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('email, full_name')
-    .eq('id', data.prepared_by)
-    .maybeSingle();
-  setPreparedByProfile(profile);
+// Logging out if elapsed > LOGOUT_TIME_MS
+if (elapsed > LOGOUT_TIME_MS) {
+  handleLogout();  // ← Kaster ut selv om du nettopp logget inn!
 }
 ```
 
-**2. Vis riktig «Utført av»**
-
-Endre «Utført av»-feltet til å vise den lagrede brukerens e-post/navn hvis SORA allerede eksisterer, og den innloggede brukerens e-post kun for nye analyser:
-
-```tsx
-<Input 
-  value={existingSora?.prepared_by 
-    ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
-    : (user?.email || "")
-  } 
-  disabled 
-/>
+Slik bør det være:
+```typescript
+// Bare logg ut hvis vi ikke nettopp fikk en ny sesjon
+// En ny innlogging betyr at activity-timestampet bør resettes, ikke brukes til å kaste ut
+if (elapsed > LOGOUT_TIME_MS) {
+  // Sjekk om session-tokenet i Supabase er nytt (under 2 min gammel)
+  // Hvis sesjon er ny → bare oppdater timestamp, ikke logg ut
+  const sessionAge = session ? Date.now() - new Date(session.expires_at! * 1000 - 3600000).getTime() : Infinity;
+  if (sessionAge < 2 * 60 * 1000) {
+    // Ny innlogging — reset timestamp i stedet for å logge ut
+    saveLastActivity();
+  } else {
+    handleLogout();
+  }
+}
 ```
 
-**3. Nullstill `preparedByProfile` ved ny analyse**
+Men en enklere og sikrere tilnærming er å **alltid resette `avisafe_last_activity` når brukeren logger inn**, direkte i `AuthContext` når `SIGNED_IN`-eventet mottas — før `useIdleTimeout` rekker å lese den gamle verdien.
 
-I `fetchExistingSora()`, i `else`-blokken der `existingSora` settes til `null`, også sette `setPreparedByProfile(null)`.
+---
 
 ### Tekniske endringer
 
-**Fil: `src/components/dashboard/SoraAnalysisDialog.tsx`**
+**Fil 1: `src/contexts/AuthContext.tsx`**
 
-- Legg til `preparedByProfile` state
-- Utvid `fetchExistingSora()` til å slå opp `prepared_by`-profilen
-- Oppdater «Utført av»-feltet til å vise riktig bruker
-- Nullstill `preparedByProfile` ved ny/tom analyse
+I `onAuthStateChange`-handleren, under `SIGNED_IN`-blokken (linje 149–162), legg til:
+```typescript
+// Reset idle timestamp on fresh login so useIdleTimeout
+// doesn't immediately log the user out due to a stale timestamp
+try {
+  localStorage.setItem('avisafe_last_activity', Date.now().toString());
+} catch {}
+```
 
-Dette er en ren UI-fix — ingen endringer i databaselogikk eller edge-funksjoner er nødvendig.
+Dette sikrer at `avisafe_last_activity` alltid er fersk ved en ny innlogging, og startup-sjekken i `useIdleTimeout` vil ikke feile.
+
+**Fil 2: `src/hooks/useIdleTimeout.ts`**
+
+Startup-sjekken (linje 77–91) bør også legges til et ekstra sikkerhetslag: Dersom tidsstempling mangler (første gang) **eller** er gammel, skriv ny aktivitet og ikke kast ut:
+
+```typescript
+useEffect(() => {
+  if (!user) return;
+  
+  // Skip the startup check in iframe/preview environments
+  const isIframe = window.self !== window.top;
+  if (isIframe) {
+    saveLastActivity();
+    return;
+  }
+  
+  try {
+    const last = localStorage.getItem(LAST_ACTIVITY_KEY);
+    if (last) {
+      const elapsed = Date.now() - parseInt(last, 10);
+      if (elapsed > LOGOUT_TIME_MS) {
+        console.log('IdleTimeout: Logging out — inactive for', Math.round(elapsed / 60000), 'min');
+        handleLogout();
+      }
+    } else {
+      saveLastActivity();
+    }
+  } catch {}
+}, [user, handleLogout]);
+```
+
+Nøkkelendringen er at `AuthContext` setter `avisafe_last_activity` umiddelbart ved `SIGNED_IN` — dette er den primære fiksen. Resultatet er at ved neste runde med `useIdleTimeout`-startup vil `elapsed` alltid være noen sekunder, aldri over 60 minutter.
+
+---
+
+### Oppsummert
+
+- **Primær fiks**: Sett `avisafe_last_activity = now()` i `AuthContext` under `SIGNED_IN`-event
+- **Sekundær fiks**: Legg til iframe-guard i `useIdleTimeout` startup-sjekken (som allerede er nevnt i arkitektur-minne)
+- **Berørte filer**: `src/contexts/AuthContext.tsx` og `src/hooks/useIdleTimeout.ts`
