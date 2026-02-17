@@ -76,6 +76,15 @@ export function useIdleTimeout() {
   // Check on app startup if user has been idle too long (e.g. phone was off)
   useEffect(() => {
     if (!user) return;
+
+    // Skip the startup check in iframe/preview environments
+    // (browsers block third-party cookies in iframes, causing false positives)
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      saveLastActivity();
+      return;
+    }
+
     try {
       const last = localStorage.getItem(LAST_ACTIVITY_KEY);
       if (last) {
