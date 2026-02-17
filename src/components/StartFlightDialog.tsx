@@ -33,7 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleCheck } from '@/hooks/useRoleCheck';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler, Plane } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler, Plane, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -52,6 +52,7 @@ interface DronetagDevice {
   id: string;
   name: string | null;
   callsign: string | null;
+  drone_id: string | null;
 }
 
 interface StartFlightDialogProps {
@@ -101,6 +102,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // DroneTag device selection for telemetry tracking
   const [dronetagDevices, setDronetagDevices] = useState<DronetagDevice[]>([]);
   const [selectedDronetagId, setSelectedDronetagId] = useState<string>('');
+  const [autoSelectedDronetag, setAutoSelectedDronetag] = useState(false);
   
   // Nearest air traffic info
   const [nearestTraffic, setNearestTraffic] = useState<{
@@ -171,7 +173,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       try {
         const { data, error } = await supabase
           .from('dronetag_devices')
-          .select('id, name, callsign')
+          .select('id, name, callsign, drone_id')
           .eq('company_id', companyId)
           .not('callsign', 'is', null);
 
@@ -193,6 +195,33 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchDronetagDevices();
   }, [companyId, open]);
 
+  // Auto-select dronetag when a mission is selected (based on mission → drone → dronetag link)
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none') return;
+
+    const autoSelectDronetag = async () => {
+      const { data: missionDrones } = await supabase
+        .from('mission_drones')
+        .select('drone_id')
+        .eq('mission_id', selectedMissionId);
+
+      if (!missionDrones || missionDrones.length === 0) return;
+
+      const droneIds = missionDrones.map(md => md.drone_id);
+
+      const matchingDevice = dronetagDevices.find(
+        device => device.drone_id && droneIds.includes(device.drone_id)
+      );
+
+      if (matchingDevice) {
+        setSelectedDronetagId(matchingDevice.id);
+        setAutoSelectedDronetag(true);
+      }
+    };
+
+    autoSelectDronetag();
+  }, [selectedMissionId, dronetagDevices]);
+
   // Reset session state when dialog closes
   useEffect(() => {
     if (!open) {
@@ -205,6 +234,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setGpsLoading(false);
       setPilotName('');
       setSelectedDronetagId('');
+      setAutoSelectedDronetag(false);
       setShowLargeAdvisoryWarning(false);
       setShowAdvisoryTooLarge(false);
       setAdvisoryAreaKm2(null);
@@ -808,7 +838,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 {dronetagDevices.length > 0 && (
                   <div className="space-y-2 pl-1">
                     <Label className="text-sm">{t('flight.dronetagDevice')} ({t('common.optional')})</Label>
-                    <Select value={selectedDronetagId} onValueChange={setSelectedDronetagId}>
+                    <Select
+                      value={selectedDronetagId}
+                      onValueChange={(val) => {
+                        setSelectedDronetagId(val);
+                        setAutoSelectedDronetag(false);
+                      }}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('flight.selectDronetag')} />
                       </SelectTrigger>
@@ -821,9 +857,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {t('flight.dronetagInfo')}
-                    </p>
+                    {autoSelectedDronetag ? (
+                      <p className="flex items-center gap-1 text-xs text-primary">
+                        <Info className="h-3 w-3" />
+                        Automatisk valgt fra oppdragets drone
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {t('flight.dronetagInfo')}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
