@@ -151,6 +151,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
+          // Reset idle timestamp on fresh login so useIdleTimeout
+          // doesn't immediately log the user out due to a stale timestamp
+          try {
+            localStorage.setItem('avisafe_last_activity', Date.now().toString());
+          } catch {}
           // Offline: use cached profile immediately instead of network call
           if (!navigator.onLine) {
             applyCachedProfile(session.user.id);
