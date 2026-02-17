@@ -1,127 +1,87 @@
 
-## Hvorfor du kastes ut ved første innlogging
+## Auto-velg dronetag basert på oppdrag
 
-Det er to samvirkende feil som forårsaker dette:
+### Problem
+Når en dronetag er tilknyttet en drone, og den dronen er tilknyttet et oppdrag, må brukeren fortsatt velge dronetagen manuelt i "Start flight"-dialogen. Dette bør skje automatisk.
 
----
-
-### Årsak 1: Race condition i AuthContext (primærfeil)
-
-Når du logger inn, skjer dette i feil rekkefølge:
-
+### Datamodell
+Koblingene i databasen er:
 ```text
-1. onAuthStateChange: SIGNED_IN → setLoading(false) ✓, setTimeout(fetchUserInfo) ✓
-2. getSession() → setLoading(false) ✓, fetchUserInfo() direkte kall ✓
-3. [Kort tid etterpå] — useIdleTimeout starter opp...
-4. useIdleTimeout leser avisafe_last_activity fra localStorage
-5. Hvis verdien er gammel (> 60 min) → handleLogout() kalles umiddelbart
-6. Du kastes ut før du er ferdig med å laste inn!
+mission_drones.mission_id → missions.id
+mission_drones.drone_id   → drones.id
+dronetag_devices.drone_id → drones.id
 ```
 
-`useIdleTimeout` sin startup-sjekk (linje 76–91) kjøres når `user` først blir satt. Hvis `avisafe_last_activity` i localStorage er gammel nok (over 60 min siden forrige besøk) logger den deg ut med en gang — selv om du nettopp logget inn.
-
-**Andre forsøk fungerer** fordi `avisafe_last_activity` nå er fersk (oppdatert av `resetTimers()` på forrige forsøk), så startup-sjekken passerer.
-
----
-
-### Årsak 2: «Invalid Refresh Token» ved domeneskiftet
-
-Auth-loggene viser:
-```
-19:07:16 → 400: Invalid Refresh Token: Refresh Token Not Found
-19:10:03 → Token refreshed successfully
-```
-
-Siden appen bruker to domener (`login.avisafe.no` og `app.avisafe.no`), og localStorage er per-domene, kan det oppstå at refresh-token fra `login.avisafe.no` ikke er tilgjengelig på `app.avisafe.no`. Supabase prøver å refreshe og feiler → SIGNED_OUT → kastes ut. Andre forsøk fungerer fordi redirect-URL-en nå peker riktig.
-
----
+Så når et oppdrag velges:
+1. Slå opp `mission_drones` for å finne tilknyttet drone
+2. Slå opp `dronetag_devices` for å finne dronetag koblet til den dronen
+3. Sett denne dronetagen som automatisk valgt
 
 ### Løsning
 
-**Fil: `src/hooks/useIdleTimeout.ts`**
+**Fil: `src/components/StartFlightDialog.tsx`**
 
-Startup-sjekken som logger ut ved gammel `avisafe_last_activity` må **nullstille tidsstempelet heller enn å logge ut** dersom brukeren nettopp logget inn (d.v.s. det ikke finnes en session fra før):
-
-Slik er det nå:
+**1. Oppdater `DronetagDevice`-interfacet** til å inkludere `drone_id`:
 ```typescript
-// Logging out if elapsed > LOGOUT_TIME_MS
-if (elapsed > LOGOUT_TIME_MS) {
-  handleLogout();  // ← Kaster ut selv om du nettopp logget inn!
+interface DronetagDevice {
+  id: string;
+  name: string | null;
+  callsign: string | null;
+  drone_id: string | null;
 }
 ```
 
-Slik bør det være:
+**2. Oppdater spørringen** som henter dronetag-enheter til å inkludere `drone_id`:
 ```typescript
-// Bare logg ut hvis vi ikke nettopp fikk en ny sesjon
-// En ny innlogging betyr at activity-timestampet bør resettes, ikke brukes til å kaste ut
-if (elapsed > LOGOUT_TIME_MS) {
-  // Sjekk om session-tokenet i Supabase er nytt (under 2 min gammel)
-  // Hvis sesjon er ny → bare oppdater timestamp, ikke logg ut
-  const sessionAge = session ? Date.now() - new Date(session.expires_at! * 1000 - 3600000).getTime() : Infinity;
-  if (sessionAge < 2 * 60 * 1000) {
-    // Ny innlogging — reset timestamp i stedet for å logge ut
-    saveLastActivity();
-  } else {
-    handleLogout();
-  }
-}
+.select('id, name, callsign, drone_id')
 ```
 
-Men en enklere og sikrere tilnærming er å **alltid resette `avisafe_last_activity` når brukeren logger inn**, direkte i `AuthContext` når `SIGNED_IN`-eventet mottas — før `useIdleTimeout` rekker å lese den gamle verdien.
-
----
-
-### Tekniske endringer
-
-**Fil 1: `src/contexts/AuthContext.tsx`**
-
-I `onAuthStateChange`-handleren, under `SIGNED_IN`-blokken (linje 149–162), legg til:
-```typescript
-// Reset idle timestamp on fresh login so useIdleTimeout
-// doesn't immediately log the user out due to a stale timestamp
-try {
-  localStorage.setItem('avisafe_last_activity', Date.now().toString());
-} catch {}
-```
-
-Dette sikrer at `avisafe_last_activity` alltid er fersk ved en ny innlogging, og startup-sjekken i `useIdleTimeout` vil ikke feile.
-
-**Fil 2: `src/hooks/useIdleTimeout.ts`**
-
-Startup-sjekken (linje 77–91) bør også legges til et ekstra sikkerhetslag: Dersom tidsstempling mangler (første gang) **eller** er gammel, skriv ny aktivitet og ikke kast ut:
+**3. Legg til en ny `useEffect`** som kjøres når `selectedMissionId` endres. Den skal:
+- Returnere tidlig hvis ingen oppdrag er valgt
+- Hente tilknyttede droner for oppdraget fra `mission_drones`
+- Finne om noen av de hentede dronetag-enhetene er koblet til en av disse dronene
+- Dersom en match finnes: sett `selectedDronetagId` automatisk
+- Dersom ingen match: ikke endre valget (la brukeren velge manuelt)
 
 ```typescript
 useEffect(() => {
-  if (!user) return;
-  
-  // Skip the startup check in iframe/preview environments
-  const isIframe = window.self !== window.top;
-  if (isIframe) {
-    saveLastActivity();
-    return;
-  }
-  
-  try {
-    const last = localStorage.getItem(LAST_ACTIVITY_KEY);
-    if (last) {
-      const elapsed = Date.now() - parseInt(last, 10);
-      if (elapsed > LOGOUT_TIME_MS) {
-        console.log('IdleTimeout: Logging out — inactive for', Math.round(elapsed / 60000), 'min');
-        handleLogout();
-      }
-    } else {
-      saveLastActivity();
+  if (!selectedMissionId || selectedMissionId === 'none') return;
+
+  const autoSelectDronetag = async () => {
+    // 1. Finn droner koblet til oppdraget
+    const { data: missionDrones } = await supabase
+      .from('mission_drones')
+      .select('drone_id')
+      .eq('mission_id', selectedMissionId);
+
+    if (!missionDrones || missionDrones.length === 0) return;
+
+    const droneIds = missionDrones.map(md => md.drone_id);
+
+    // 2. Finn dronetag koblet til en av disse dronene
+    const matchingDevice = dronetagDevices.find(
+      device => device.drone_id && droneIds.includes(device.drone_id)
+    );
+
+    if (matchingDevice) {
+      setSelectedDronetagId(matchingDevice.id);
     }
-  } catch {}
-}, [user, handleLogout]);
+  };
+
+  autoSelectDronetag();
+}, [selectedMissionId, dronetagDevices]);
 ```
 
-Nøkkelendringen er at `AuthContext` setter `avisafe_last_activity` umiddelbart ved `SIGNED_IN` — dette er den primære fiksen. Resultatet er at ved neste runde med `useIdleTimeout`-startup vil `elapsed` alltid være noen sekunder, aldri over 60 minutter.
+**4. Vis et informasjonsikon** i dronetag-velgeren når en dronetag er automatisk valgt, slik at brukeren vet at valget kom fra oppdraget:
+- Legg til en `autoSelectedDronetag`-tilstand (boolean) som settes til `true` etter auto-valg
+- Nullstill den når brukeren manuelt endrer valget
+- Vis en liten hjelpetekst "Automatisk valgt fra oppdragets drone" under select-feltet dersom `autoSelectedDronetag` er `true`
 
----
+### Berørte filer
+- `src/components/StartFlightDialog.tsx` — eneste fil som må endres
 
-### Oppsummert
-
-- **Primær fiks**: Sett `avisafe_last_activity = now()` i `AuthContext` under `SIGNED_IN`-event
-- **Sekundær fiks**: Legg til iframe-guard i `useIdleTimeout` startup-sjekken (som allerede er nevnt i arkitektur-minne)
-- **Berørte filer**: `src/contexts/AuthContext.tsx` og `src/hooks/useIdleTimeout.ts`
+### Viktige hensyn
+- Auto-valget skjer **kun** i `live_uav`-modus (dronetag-seksjonen vises bare da)
+- Dersom oppdraget har **flere droner** med dronetag, velges den første som matches
+- Dersom oppdraget ikke har noen drone med tilknyttet dronetag, skjer ingenting — brukeren kan fortsatt velge manuelt
+- Nullstilling ved lukking av dialog håndteres allerede av den eksisterende `useEffect` for `open === false`
