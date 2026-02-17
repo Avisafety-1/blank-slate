@@ -96,24 +96,6 @@ const DocumentsFilterBar = ({
         </Select>
       </div>
 
-      {/* Status filter badges */}
-      <div className="flex flex-wrap gap-2">
-        {STATUS_FILTERS.map(sf => {
-          const active = selectedStatuses.includes(sf.value);
-          return (
-            <Badge
-              key={sf.value}
-              variant={active ? "default" : "outline"}
-              onClick={() => toggleStatus(sf.value)}
-              className="cursor-pointer flex items-center gap-1.5"
-            >
-              <span className={`w-2 h-2 rounded-full ${sf.dot}`} />
-              {sf.label}
-            </Badge>
-          );
-        })}
-      </div>
-
       {/* Category filter badges */}
       <div className="flex flex-wrap gap-2">
         {CATEGORIES.map(category => (
