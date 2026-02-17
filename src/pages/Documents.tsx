@@ -15,6 +15,9 @@ import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 
 export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "annet";
+export type DocumentSortOption = "newest" | "oldest" | "expiry" | "alpha_asc" | "alpha_desc";
+export type DocumentStatusFilter = "expired" | "expiring_soon" | "valid" | "no_expiry";
+
 export interface Document {
   id: string;
   tittel: string;
@@ -29,50 +32,50 @@ export interface Document {
   oppdatert_dato: string | null;
   opprettet_av: string | null;
 }
+
+const getDocumentStatus = (doc: Document): DocumentStatusFilter => {
+  if (!doc.gyldig_til) return "no_expiry";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiryDate = new Date(doc.gyldig_til);
+  expiryDate.setHours(0, 0, 0, 0);
+  if (expiryDate < today) return "expired";
+  const warningDays = doc.varsel_dager_for_utløp ?? 30;
+  const warningDate = new Date(today);
+  warningDate.setDate(warningDate.getDate() + warningDays);
+  if (expiryDate <= warningDate) return "expiring_soon";
+  return "valid";
+};
+
 const Documents = () => {
-  const {
-    user,
-    loading,
-    companyId
-  } = useAuth();
+  const { user, loading, companyId } = useAuth();
   const navigate = useNavigate();
-  const {
-    isAdmin
-  } = useAdminCheck();
+  const { isAdmin } = useAdminCheck();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<DocumentCategory[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<DocumentStatusFilter[]>([]);
+  const [sortOption, setSortOption] = useState<DocumentSortOption>("newest");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
-  const [sortByExpiry, setSortByExpiry] = useState(false);
+
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
-      navigate("/auth", {
-        replace: true
-      });
+      navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
-  const {
-    data: documents,
-    isLoading,
-    refetch
-  } = useQuery({
+
+  const { data: documents, isLoading, refetch } = useQuery({
     queryKey: ["documents", companyId],
     queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("documents").select("*").order("opprettet_dato", {
-        ascending: false
-      });
+      const { data, error } = await supabase.from("documents").select("*").order("opprettet_dato", { ascending: false });
       if (error) throw error;
       return data as Document[];
     }
   });
 
-  // Real-time subscription for documents
   useEffect(() => {
     const channel = supabase.channel('documents-page-changes').on('postgres_changes', {
       event: '*',
@@ -81,67 +84,80 @@ const Documents = () => {
     }, () => {
       refetch();
     }).subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [refetch]);
+
   const filteredDocuments = documents?.filter(doc => {
-    const matchesSearch = searchQuery === "" || doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) || doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.fil_url?.toLowerCase().includes(searchQuery.toLowerCase()) || doc.nettside_url?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(doc.kategori.toLowerCase().trim() as DocumentCategory);
-    return matchesSearch && matchesCategory;
+    const matchesSearch = searchQuery === "" ||
+      doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.fil_url?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.nettside_url?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory = selectedCategories.length === 0 ||
+      selectedCategories.includes(doc.kategori.toLowerCase().trim() as DocumentCategory);
+
+    const matchesStatus = selectedStatuses.length === 0 ||
+      selectedStatuses.includes(getDocumentStatus(doc));
+
+    return matchesSearch && matchesCategory && matchesStatus;
   })?.sort((a, b) => {
-    if (sortByExpiry) {
-      // Sort by expiry date - nearest first, docs without expiry at the end
-      if (!a.gyldig_til && !b.gyldig_til) return 0;
-      if (!a.gyldig_til) return 1;
-      if (!b.gyldig_til) return -1;
-      return new Date(a.gyldig_til).getTime() - new Date(b.gyldig_til).getTime();
+    switch (sortOption) {
+      case "oldest":
+        return new Date(a.opprettet_dato).getTime() - new Date(b.opprettet_dato).getTime();
+      case "expiry":
+        if (!a.gyldig_til && !b.gyldig_til) return 0;
+        if (!a.gyldig_til) return 1;
+        if (!b.gyldig_til) return -1;
+        return new Date(a.gyldig_til).getTime() - new Date(b.gyldig_til).getTime();
+      case "alpha_asc":
+        return a.tittel.localeCompare(b.tittel, "nb");
+      case "alpha_desc":
+        return b.tittel.localeCompare(a.tittel, "nb");
+      case "newest":
+      default:
+        return new Date(b.opprettet_dato).getTime() - new Date(a.opprettet_dato).getTime();
     }
-    // Default: sort by creation date (newest first)
-    return new Date(b.opprettet_dato).getTime() - new Date(a.opprettet_dato).getTime();
   });
+
   const handleOpenDocument = (document: Document) => {
     setSelectedDocument(document);
     setIsCreating(false);
     setIsModalOpen(true);
   };
-  const handleCreateNew = () => {
-    setSelectedDocument(null);
-    setIsCreating(true);
-    setIsModalOpen(true);
-  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedDocument(null);
     setIsCreating(false);
   };
+
   const handleSaveSuccess = () => {
     refetch();
     handleCloseModal();
     toast.success(isCreating ? "Dokument opprettet" : "Dokument oppdatert");
   };
+
   const handleDeleteSuccess = () => {
     refetch();
     handleCloseModal();
     toast.success("Dokument slettet");
   };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-foreground">Laster...</p>
       </div>;
   }
-  return <div className="min-h-screen relative w-full overflow-x-hidden">
-      {/* Background with gradient overlay */}
-      <div className="fixed inset-0 z-0" style={{
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url(${droneBackground})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center center",
-      backgroundRepeat: "no-repeat"
-    }} />
 
-      {/* Content */}
+  return <div className="min-h-screen relative w-full overflow-x-hidden">
+      <div className="fixed inset-0 z-0" style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url(${droneBackground})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
+        backgroundRepeat: "no-repeat"
+      }} />
       <div className="relative z-10 w-full">
-        {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -160,33 +176,48 @@ const Documents = () => {
               )}
             </div>
 
-            <DocumentsFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} selectedCategories={selectedCategories} onCategoriesChange={setSelectedCategories} />
+            <DocumentsFilterBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedCategories={selectedCategories}
+              onCategoriesChange={setSelectedCategories}
+              selectedStatuses={selectedStatuses}
+              onStatusesChange={setSelectedStatuses}
+              sortOption={sortOption}
+              onSortChange={setSortOption}
+            />
 
-            <DocumentsList 
-              documents={filteredDocuments || []} 
-              isLoading={isLoading} 
+            <DocumentsList
+              documents={filteredDocuments || []}
+              isLoading={isLoading}
               onDocumentClick={handleOpenDocument}
-              sortByExpiry={sortByExpiry}
-              onToggleSortByExpiry={() => setSortByExpiry(!sortByExpiry)}
+              getDocumentStatus={getDocumentStatus}
             />
 
             <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
-            refetch();
-            toast.success("Dokument opprettet");
-          }} />
+              refetch();
+              toast.success("Dokument opprettet");
+            }} />
 
-            <CreateChecklistDialog 
-              open={createChecklistOpen} 
-              onOpenChange={setCreateChecklistOpen} 
-              onSuccess={() => {
-                refetch();
-              }} 
+            <CreateChecklistDialog
+              open={createChecklistOpen}
+              onOpenChange={setCreateChecklistOpen}
+              onSuccess={() => { refetch(); }}
             />
 
-            <DocumentCardModal document={selectedDocument} isOpen={isModalOpen} onClose={handleCloseModal} onSaveSuccess={handleSaveSuccess} onDeleteSuccess={handleDeleteSuccess} isAdmin={isAdmin} isCreating={isCreating} />
+            <DocumentCardModal
+              document={selectedDocument}
+              isOpen={isModalOpen}
+              onClose={handleCloseModal}
+              onSaveSuccess={handleSaveSuccess}
+              onDeleteSuccess={handleDeleteSuccess}
+              isAdmin={isAdmin}
+              isCreating={isCreating}
+            />
           </div>
         </main>
       </div>
     </div>;
 };
+
 export default Documents;
