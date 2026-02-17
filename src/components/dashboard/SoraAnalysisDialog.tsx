@@ -28,6 +28,7 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
   const [existingSora, setExistingSora] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [preparedByProfile, setPreparedByProfile] = useState<{ email?: string; full_name?: string } | null>(null);
 
   const [formData, setFormData] = useState({
     environment: "",
@@ -132,8 +133,20 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
         sora_status: data.sora_status || "Ikke startet",
         approved_by: data.approved_by || "",
       });
+
+      if (data.prepared_by) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("email, full_name")
+          .eq("id", data.prepared_by)
+          .maybeSingle();
+        setPreparedByProfile(profile);
+      } else {
+        setPreparedByProfile(null);
+      }
     } else {
       setExistingSora(null);
+      setPreparedByProfile(null);
       setFormData({
         environment: "",
         conops_summary: "",
@@ -487,8 +500,17 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
                 <div className="space-y-2">
                   <Label>Utført av</Label>
-                  <Input value={user?.email || ""} disabled />
-                  <p className="text-xs text-muted-foreground">Dette feltet settes automatisk til innlogget bruker</p>
+                  <Input
+                    value={
+                      existingSora?.prepared_by
+                        ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
+                        : (user?.email || "")
+                    }
+                    disabled
+                  />
+                  {!existingSora?.prepared_by && (
+                    <p className="text-xs text-muted-foreground">Dette feltet settes automatisk til innlogget bruker</p>
+                  )}
                 </div>
 
                 {existingSora?.prepared_at && (
