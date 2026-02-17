@@ -1,87 +1,90 @@
 
-## Auto-velg dronetag basert på oppdrag
+## Utvidet filtrering og sortering på /dokumenter
 
-### Problem
-Når en dronetag er tilknyttet en drone, og den dronen er tilknyttet et oppdrag, må brukeren fortsatt velge dronetagen manuelt i "Start flight"-dialogen. Dette bør skje automatisk.
+### Hva finnes i dag
+- Kategoribadger for å filtrere på type
+- Én sortering: klikk på "Utløpsdato"-kolonnen for å sortere etter utløpsdato (nærmest først)
+- Fritekst­søk
 
-### Datamodell
-Koblingene i databasen er:
-```text
-mission_drones.mission_id → missions.id
-mission_drones.drone_id   → drones.id
-dronetag_devices.drone_id → drones.id
-```
+### Hva som mangler
+Ingen filtrering på utløpsstatus (utgått, utgår snart, aktive), og ingen valg mellom flere sorteringsrekkefølger. All logikk er fordelt mellom `Documents.tsx` (filter/sort-logikk) og `DocumentsFilterBar.tsx` (UI).
 
-Så når et oppdrag velges:
-1. Slå opp `mission_drones` for å finne tilknyttet drone
-2. Slå opp `dronetag_devices` for å finne dronetag koblet til den dronen
-3. Sett denne dronetagen som automatisk valgt
+---
 
-### Løsning
+### Nye statusfiltre
 
-**Fil: `src/components/StartFlightDialog.tsx`**
+Tre smarte statusgrupper legges til som klikkbare badges øverst i filterlinjen:
 
-**1. Oppdater `DronetagDevice`-interfacet** til å inkludere `drone_id`:
+| Filter | Logikk |
+|---|---|
+| **Utgått** | `gyldig_til < i dag` |
+| **Utgår snart** | `gyldig_til` innen `varsel_dager_for_utløp` dager (standard 30 dager) |
+| **Gyldig** | `gyldig_til` satt og lenger enn varsel-vinduet i fremtiden |
+| **Uten utløp** | `gyldig_til` er null |
+
+---
+
+### Nye sorteringsvalg
+
+En liten sorteringsvelger (dropdown eller knapper) erstatter/supplerer den nåværende klikkbare kolonnen:
+
+| Sortering | Beskrivelse |
+|---|---|
+| **Nyeste først** (standard) | Etter `opprettet_dato` DESC |
+| **Eldste først** | Etter `opprettet_dato` ASC |
+| **Utgår snart** | `gyldig_til` ASC, null sist |
+| **Alfabetisk A–Å** | Etter `tittel` ASC |
+| **Alfabetisk Å–A** | Etter `tittel` DESC |
+
+---
+
+### Teknisk løsning
+
+#### Ny type for sortering i `Documents.tsx`
 ```typescript
-interface DronetagDevice {
-  id: string;
-  name: string | null;
-  callsign: string | null;
-  drone_id: string | null;
-}
+export type DocumentSortOption =
+  | "newest"
+  | "oldest"
+  | "expiry"
+  | "alpha_asc"
+  | "alpha_desc";
 ```
 
-**2. Oppdater spørringen** som henter dronetag-enheter til å inkludere `drone_id`:
+#### Ny type for statusfilter i `Documents.tsx`
 ```typescript
-.select('id, name, callsign, drone_id')
+export type DocumentStatusFilter = "expired" | "expiring_soon" | "valid" | "no_expiry";
 ```
 
-**3. Legg til en ny `useEffect`** som kjøres når `selectedMissionId` endres. Den skal:
-- Returnere tidlig hvis ingen oppdrag er valgt
-- Hente tilknyttede droner for oppdraget fra `mission_drones`
-- Finne om noen av de hentede dronetag-enhetene er koblet til en av disse dronene
-- Dersom en match finnes: sett `selectedDronetagId` automatisk
-- Dersom ingen match: ikke endre valget (la brukeren velge manuelt)
+#### Endringer i `Documents.tsx`
+- Erstatt `sortByExpiry: boolean` med `sortOption: DocumentSortOption` (defaulter til `"newest"`)
+- Legg til `selectedStatuses: DocumentStatusFilter[]` state
+- Oppdater `filteredDocuments`-logikken til å filtrere på statusgruppe i tillegg til kategori og søk
+- Oppdater sorteringslogikken til å bruke `sortOption`
+- Send ny props til `DocumentsFilterBar` og `DocumentsList`
 
-```typescript
-useEffect(() => {
-  if (!selectedMissionId || selectedMissionId === 'none') return;
+#### Endringer i `DocumentsFilterBar.tsx`
+- Legg til en ny rad med statusfilter-badges (Utgått 🔴, Utgår snart 🟡, Gyldig 🟢, Uten utløp ⚪)
+- Legg til sorteringsvelger — en `Select`-komponent med de fem alternativene
 
-  const autoSelectDronetag = async () => {
-    // 1. Finn droner koblet til oppdraget
-    const { data: missionDrones } = await supabase
-      .from('mission_drones')
-      .select('drone_id')
-      .eq('mission_id', selectedMissionId);
+#### Endringer i `DocumentsList.tsx`
+- Fjern `sortByExpiry`/`onToggleSortByExpiry` props (sortering håndteres nå i `Documents.tsx`)
+- Fjern klikkbar `ArrowUpDown`-header på utløpsdato-kolonnen
+- Legg til farget statusindikator i utløpsdato-cellen (rød = utgått, gul = utgår snart)
 
-    if (!missionDrones || missionDrones.length === 0) return;
+---
 
-    const droneIds = missionDrones.map(md => md.drone_id);
+### Statusindikator i tabellen
+Utløpsdato-cellen vises med farge-koding:
+- Rød tekst + ikon → utgått
+- Gul/oransje tekst + ikon → utgår snart
+- Normal tekst → gyldig
+- Grå kursiv → ingen utløpsdato
 
-    // 2. Finn dronetag koblet til en av disse dronene
-    const matchingDevice = dronetagDevices.find(
-      device => device.drone_id && droneIds.includes(device.drone_id)
-    );
-
-    if (matchingDevice) {
-      setSelectedDronetagId(matchingDevice.id);
-    }
-  };
-
-  autoSelectDronetag();
-}, [selectedMissionId, dronetagDevices]);
-```
-
-**4. Vis et informasjonsikon** i dronetag-velgeren når en dronetag er automatisk valgt, slik at brukeren vet at valget kom fra oppdraget:
-- Legg til en `autoSelectedDronetag`-tilstand (boolean) som settes til `true` etter auto-valg
-- Nullstill den når brukeren manuelt endrer valget
-- Vis en liten hjelpetekst "Automatisk valgt fra oppdragets drone" under select-feltet dersom `autoSelectedDronetag` er `true`
+---
 
 ### Berørte filer
-- `src/components/StartFlightDialog.tsx` — eneste fil som må endres
+1. `src/pages/Documents.tsx` — ny sort/filter-state og logikk
+2. `src/components/documents/DocumentsFilterBar.tsx` — ny UI for statusfiltre + sorteringsvelger
+3. `src/components/documents/DocumentsList.tsx` — fjern gammel sort-prop, legg til farget utløpsstatus
 
-### Viktige hensyn
-- Auto-valget skjer **kun** i `live_uav`-modus (dronetag-seksjonen vises bare da)
-- Dersom oppdraget har **flere droner** med dronetag, velges den første som matches
-- Dersom oppdraget ikke har noen drone med tilknyttet dronetag, skjer ingenting — brukeren kan fortsatt velge manuelt
-- Nullstilling ved lukking av dialog håndteres allerede av den eksisterende `useEffect` for `open === false`
+Ingen database­endringer er nødvendig — all logikk er ren frontend-filtrering.
