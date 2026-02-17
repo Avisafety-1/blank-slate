@@ -175,19 +175,19 @@ const DocumentsList = ({
                 )}
                 onClick={() => onDocumentClick(doc)}
               >
-                <TableCell className="font-medium bg-transparent text-foreground shadow-sm rounded-none max-w-[150px] md:max-w-none truncate">{doc.tittel}</TableCell>
-                <TableCell className="bg-transparent text-foreground px-2 md:px-4">
+                <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none truncate">{doc.tittel}</TableCell>
+                <TableCell className="bg-slate-200/50 text-slate-950 px-2 md:px-4">
                   <Badge variant="secondary" className="text-xs whitespace-nowrap">
                     {CATEGORY_LABELS[doc.kategori] || doc.kategori}
                   </Badge>
                 </TableCell>
-                <TableCell className="bg-transparent text-foreground hidden md:table-cell">
+                <TableCell className="bg-slate-200/50 text-slate-950 hidden md:table-cell">
                   <ExpiryCell doc={doc} status={status} />
                 </TableCell>
-                <TableCell className="bg-transparent text-foreground hidden lg:table-cell">
+                <TableCell className="bg-slate-200/50 text-slate-950 hidden lg:table-cell">
                   {format(new Date(doc.opprettet_dato), "dd.MM.yyyy", { locale: nb })}
                 </TableCell>
-                <TableCell className="bg-transparent text-foreground text-right pl-1 md:pl-4">
+                <TableCell className="bg-slate-200/50 text-slate-950 text-right pl-1 md:pl-4">
                   <TooltipProvider>
                     <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
                       {doc.nettside_url && (
