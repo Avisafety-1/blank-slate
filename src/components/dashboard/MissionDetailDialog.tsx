@@ -5,11 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, Upload } from "lucide-react";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { toast } from "@/hooks/use-toast";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
@@ -82,10 +81,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
-  const [importingKml, setImportingKml] = useState(false);
-  const [replaceRouteConfirmOpen, setReplaceRouteConfirmOpen] = useState(false);
-  const [pendingKmlFile, setPendingKmlFile] = useState<File | null>(null);
-  const kmlInputRef = useRef<HTMLInputElement>(null);
 
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
@@ -154,46 +149,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     onOpenChange(false);
   };
 
-  const doImportKml = async (file: File) => {
-    setImportingKml(true);
-    try {
-      const parsed = await parseKmlOrKmz(file);
-      const { error } = await supabase
-        .from('missions')
-        .update({ route: parsed as any })
-        .eq('id', currentMission.id);
-      if (error) throw error;
-      setLiveMission((prev: any) => ({ ...(prev ?? mission), route: parsed }));
-      const km = (parsed.totalDistance / 1000).toFixed(2);
-      toast({
-        title: 'Rute importert',
-        description: `${parsed.coordinates.length} punkter · ${km} km (${file.name})`,
-      });
-    } catch (err: any) {
-      toast({
-        title: 'Import feilet',
-        description: err?.message || 'Ukjent feil',
-        variant: 'destructive',
-      });
-    } finally {
-      setImportingKml(false);
-      setPendingKmlFile(null);
-      if (kmlInputRef.current) kmlInputRef.current.value = '';
-    }
-  };
-
-  const handleKmlFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const existingRoute = (currentMission.route as any)?.coordinates?.length > 0;
-    if (existingRoute) {
-      setPendingKmlFile(file);
-      setReplaceRouteConfirmOpen(true);
-    } else {
-      doImportKml(file);
-    }
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,17 +157,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <input
-                  ref={kmlInputRef}
-                  type="file"
-                  accept=".kml,.kmz"
-                  className="hidden"
-                  onChange={handleKmlFileSelected}
-                />
-                <Button size="sm" variant="outline" disabled={importingKml} onClick={() => kmlInputRef.current?.click()}>
-                  <Upload className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">{importingKml ? 'Importerer…' : 'Importer KML/KMZ'}</span>
-                </Button>
+                {onEditRoute && (
+                  <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
+                    <Route className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Rediger rute</span>
+                  </Button>
+                )}
                 {onEditRoute && (
                   <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
                     <Route className="w-4 h-4 sm:mr-2" />
@@ -502,28 +452,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       </AlertDialogContent>
     </AlertDialog>
 
-    <AlertDialog open={replaceRouteConfirmOpen} onOpenChange={setReplaceRouteConfirmOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Erstatte eksisterende rute?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Dette oppdraget har allerede en rute. Vil du erstatte den med koordinatene fra den importerte filen?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => {
-            setPendingKmlFile(null);
-            if (kmlInputRef.current) kmlInputRef.current.value = '';
-          }}>Avbryt</AlertDialogCancel>
-          <AlertDialogAction onClick={() => {
-            if (pendingKmlFile) doImportKml(pendingKmlFile);
-            setReplaceRouteConfirmOpen(false);
-          }}>
-            Erstatt rute
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
     </>
   );
 };
