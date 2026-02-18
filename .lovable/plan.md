@@ -1,140 +1,133 @@
 
-# Eksport-valg-dialog for PDF-rapport
+# Bildeopplasting i loggbok-oppføringer
 
-## Nåværende situasjon
+## Gjeldende situasjon
 
-Eksport-dialogen (linje 2319–2354 i `src/pages/Oppdrag.tsx`) er en enkel `AlertDialog` som:
-- Bare viser en enkelt checkbox for AI-risikovurdering **hvis oppdraget har `aiRisk`-data**
-- Viser ellers bare en tekst uten valgmuligheter
+De tre loggbokdialogene håndterer manuell oppføring slik:
 
-`exportToPDF`-funksjonen (linje 709–1395) inkluderer allerede disse seksjonene i rekkefølge:
-1. Kartutsnitt (canvas-basert)
-2. Luftromsadvarsler
-3. Rutekoordinater
-4. Grunnleggende informasjon
-5. Kundeinformasjon
-6. Personell
-7. Droner/fly
-8. Utstyr
-9. SORA-analyse
-10. AI Risikovurdering (kun hvis `includeRisk === true`)
-11. Tilknyttede hendelser
-12. Flyturer
-13. Beskrivelse & Merknader
+| Dialog | Tabell | Manuell oppføring |
+|---|---|---|
+| `DroneLogbookDialog` | `drone_log_entries` | Ja – type, dato, tittel, beskrivelse |
+| `EquipmentLogbookDialog` | `equipment_log_entries` | Ja – type, dato, tittel, beskrivelse |
+| `FlightLogbookDialog` (personell) | Kun `profiles.flyvetimer` | Kun timer/minutter – ingen logg-innlegg |
 
-## Endringer
+Ingen av tabellene har et `image_url`-felt, og personellets loggbok støtter ikke generelle logg-innlegg i det hele tatt.
 
-### 1. Nye state-variabler (erstatter `includeRiskAssessment`)
+## Endringer som kreves
 
-Erstatt den ene `includeRiskAssessment`-booleanen med et objekt `pdfSections` som holder alle valgene:
+### 1. Databasemigrasjoner
 
-```typescript
-const [pdfSections, setPdfSections] = useState({
-  map: true,
-  airspaceWarnings: true,
-  routeCoordinates: true,
-  basicInfo: true,
-  customerInfo: true,
-  personnel: true,
-  drones: true,
-  equipment: true,
-  sora: true,
-  riskAssessment: true,
-  incidents: true,
-  flightLogs: true,
-  descriptionNotes: true,
-});
+**a) Legg til `image_url`-kolonne i eksisterende tabeller:**
+```sql
+ALTER TABLE drone_log_entries ADD COLUMN image_url text;
+ALTER TABLE equipment_log_entries ADD COLUMN image_url text;
 ```
 
-Ved klikk på "Eksporter PDF" settes alle til `true` (default på), så brukeren kan skru av det de ikke vil ha.
-
-### 2. Oppdatert `handleExportPdfClick`
-
-```typescript
-const handleExportPdfClick = (mission: Mission) => {
-  setExportPdfMission(mission);
-  setPdfSections({
-    map: true,
-    airspaceWarnings: true,
-    routeCoordinates: true,
-    basicInfo: true,
-    customerInfo: true,
-    personnel: true,
-    drones: true,
-    equipment: true,
-    sora: true,
-    riskAssessment: true,
-    incidents: true,
-    flightLogs: true,
-    descriptionNotes: true,
-  });
-  setExportPdfDialogOpen(true);
-};
+**b) Opprett ny `personnel_log_entries`-tabell** (tilsvarende de to over, men for personell):
+```sql
+CREATE TABLE personnel_log_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  company_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  entry_date timestamptz NOT NULL,
+  entry_type text,
+  title text NOT NULL,
+  description text,
+  image_url text,
+  created_at timestamptz DEFAULT now()
+);
+-- RLS policies: company-level isolation
 ```
 
-### 3. Oppdatert `exportToPDF`-signatur
+**c) Opprett ny Storage-bøtte `logbook-images`** (offentlig, slik at bilder kan vises inline i dialogen):
+```sql
+INSERT INTO storage.buckets (id, name, public) VALUES ('logbook-images', 'logbook-images', true);
+-- RLS policies: autentiserte brukere kan laste opp i sin company-mappe
+```
 
-Funksjonen endres fra `(mission, includeRisk: boolean)` til `(mission, sections: typeof pdfSections)` og hvert avsnitt wrappes i en `if (sections.xxx)` sjekk.
+Filsti-mønster: `{company_id}/{table_prefix}-{entry_id}-{timestamp}.{ext}`
 
-### 4. Oppdatert dialog (erstatter `AlertDialog` med `Dialog`)
+### 2. Endringer i `DroneLogbookDialog`
 
-Siden vi nå har mange valg er en `AlertDialog` for liten. Vi bytter til en vanlig `Dialog` (samme komponent-bibliotek) med et pen layout.
+**Ny state:**
+```typescript
+const [imageFile, setImageFile] = useState<File | null>(null);
+const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+```
 
-Dialogen viser to grupper av checkbokser:
+**Nytt felt i skjemaet** — under "Beskrivelse"-feltet:
+```
+[ 📷 Last opp bilde (valgfritt) ]
+[ Forhåndsvisning av valgt bilde ]
+```
 
-**Kart og luftrom**
-- Kartutsnitt
-- Luftromsadvarsler
+**Opplastingslogikk i `handleAddEntry`:**
+1. Lagre innlegget i `drone_log_entries` og få tilbake `id`.
+2. Hvis et bilde er valgt: last opp til `logbook-images/{company_id}/drone-{id}-{timestamp}.{ext}`.
+3. Oppdater raden med `image_url = filePath`.
 
-**Oppdragsdetaljer**
-- Grunnleggende informasjon
-- Beskrivelse & merknader
-- Kundeinformasjon
+**Visning av bilde i logg-listen:**
+- Eksisterende innlegg som har `image_url` viser et lite klikkbart miniatyrbilde under beskrivelsen.
+- Klikk åpner bildet i full størrelse (via en enkel `<img>` i en dialog eller native browser).
 
-**Ressurser**
-- Personell
-- Droner/fly
-- Utstyr
+**Henting:** Legg til `image_url` i SELECT-spørringen for `drone_log_entries`.
 
-**Rute**
-- Rutekoordinater
-- SORA-analyse
+### 3. Endringer i `EquipmentLogbookDialog`
 
-**Vurderinger og logger**
-- AI Risikovurdering *(vises kun hvis `exportPdfMission?.aiRisk` finnes)*
-- Tilknyttede hendelser
-- Flyturer
+Identiske endringer som for drone-loggen, men mot `equipment_log_entries`-tabellen og med `equipment-` som filsti-prefiks.
 
-Hver gruppe vises med en liten seksjonstittel i grått, og checkboksene bruker den eksisterende `Checkbox`-komponenten som allerede er importert.
+### 4. Endringer i `FlightLogbookDialog` (personell)
 
-En "Velg alle / Fjern alle"-lenke øverst gjør det enkelt å toggle alt.
+**Problemet:** Personell-loggboken støtter kun manuell registrering av flytimer (oppdatering av `profiles.flyvetimer`), ikke generelle logg-innlegg.
 
-### 5. Seksjonene som skjules betinget
+**Løsning:** Legg til en ny "Logginnlegg"-seksjon i tillegg til den eksisterende "Legg til flytimer"-seksjonen:
+- Bruk den nye `personnel_log_entries`-tabellen.
+- Samme skjema som drone/utstyr: type (merknad, hendelse, reparasjon, annet), dato, tittel, beskrivelse, og bilde-opplasting.
+- Vis innleggene under flyturene i en kombinert liste (eller en ny fane).
 
-Checkboks-alternativene som er avhengig av at data faktisk finnes:
+### 5. Bildevisning i logglisten
 
-| Valg | Vises kun hvis |
-|---|---|
-| Kartutsnitt | `effectiveLat && effectiveLng` |
-| Luftromsadvarsler | alltid (hentes dynamisk) |
-| Rutekoordinater | `mission.route?.coordinates?.length > 0` |
-| Kundeinformasjon | `mission.customers` |
-| SORA-analyse | `mission.sora` |
-| AI Risikovurdering | `mission.aiRisk` |
-| Tilknyttede hendelser | `mission.incidents?.length > 0` |
-| Flyturer | `mission.flightLogs?.length > 0` |
-| Grunnleggende info | alltid |
-| Personell | `mission.personnel?.length > 0` |
-| Droner/fly | `mission.drones?.length > 0` |
-| Utstyr | `mission.equipment?.length > 0` |
-| Beskrivelse & merknader | `mission.beskrivelse \|\| mission.merknader` |
+For alle tre dialoger vises bilde-innlegg med et lite thumbnail:
 
-Seksjoner som ikke har data vises ikke i dialogen (ingen mening i å velge dem).
+```
+┌─────────────────────────────────────────────────────┐
+│ 📅 14. februar 2026          [Reparasjon]           │
+│ Motorbytte venstre arm                              │
+│ Erstattet defekt motor etter krasjlanding           │
+│ ┌────────────┐                                      │
+│ │            │  ← klikkbart miniatyrbilde (80×60px) │
+│ │   [bilde]  │                                      │
+│ └────────────┘                                      │
+│                                  Utført av: Ole N.  │
+└─────────────────────────────────────────────────────┘
+```
+
+### 6. Storage-bøtte og RLS
+
+Ny bøtte `logbook-images` med følgende RLS-policyer:
+- **SELECT (public read):** Alle kan lese (bøtten er offentlig – bilder vises inline uten autentisering).
+- **INSERT:** Kun autentiserte brukere kan laste opp filer i sin companies mappe (`{company_id}/*`).
+- **DELETE:** Kun brukere i samme selskap kan slette.
 
 ## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/pages/Oppdrag.tsx` | Erstatt `includeRiskAssessment` med `pdfSections`-objekt, oppdater dialog og `exportToPDF`-logikk |
+| DB-migrasjon | `ALTER TABLE drone_log_entries ADD COLUMN image_url text` |
+| DB-migrasjon | `ALTER TABLE equipment_log_entries ADD COLUMN image_url text` |
+| DB-migrasjon | Ny `personnel_log_entries`-tabell + RLS |
+| DB-migrasjon | Ny `logbook-images` Storage-bøtte + RLS |
+| `src/components/resources/DroneLogbookDialog.tsx` | Bildeopplasting i skjema, visning av bilde i liste |
+| `src/components/resources/EquipmentLogbookDialog.tsx` | Bildeopplasting i skjema, visning av bilde i liste |
+| `src/components/FlightLogbookDialog.tsx` | Ny "Logg innlegg"-seksjon med bilde-støtte |
 
-Ingen nye filer eller biblioteker trengs – alle komponenter (`Dialog`, `Checkbox`, `Button`) er allerede importert og i bruk.
+## Brukerflyt
+
+1. Bruker åpner loggboken for en drone/utstyr/person.
+2. Klikker "Legg til innlegg".
+3. Fyller inn type, dato, tittel og beskrivelse som før.
+4. Velger valgfritt et bilde fra enhet (kamera eller filvelger).
+5. Ser en forhåndsvisning av bildet i skjemaet.
+6. Klikker "Lagre" — innlegget og bildet lastes opp.
+7. Innlegget vises i listen med et klikkbart miniatyrbilde.
