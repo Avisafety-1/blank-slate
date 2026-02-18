@@ -67,32 +67,6 @@ import { toast } from "sonner";
 
 type Mission = any;
 
-type PdfSections = {
-  map: boolean;
-  airspaceWarnings: boolean;
-  routeInfo: boolean;
-  basicInfo: boolean;
-  personnel: boolean;
-  drones: boolean;
-  equipment: boolean;
-  incidents: boolean;
-  flightLogs: boolean;
-  riskAssessment: boolean;
-};
-
-const defaultPdfSections: PdfSections = {
-  map: true,
-  airspaceWarnings: true,
-  routeInfo: true,
-  basicInfo: true,
-  personnel: true,
-  drones: true,
-  equipment: true,
-  incidents: true,
-  flightLogs: true,
-  riskAssessment: false,
-};
-
 const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
   Pågående: "bg-green-500/20 text-green-900 border-green-500/30",
@@ -178,7 +152,6 @@ const Oppdrag = () => {
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
-  const [pdfSections, setPdfSections] = useState<PdfSections>(defaultPdfSections);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   
@@ -723,21 +696,17 @@ const Oppdrag = () => {
 
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
-    setPdfSections({
-      ...defaultPdfSections,
-      riskAssessment: !!mission.aiRisk,
-    });
+    setIncludeRiskAssessment(false);
     setExportPdfDialogOpen(true);
   };
 
   const handleConfirmExportPdf = async () => {
     if (!exportPdfMission) return;
     setExportPdfDialogOpen(false);
-    await exportToPDF(exportPdfMission, pdfSections);
+    await exportToPDF(exportPdfMission, includeRiskAssessment);
   };
 
-  const exportToPDF = async (mission: Mission, sections: PdfSections = defaultPdfSections) => {
-    const includeRisk = sections.riskAssessment;
+  const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
     try {
       // Fetch user's full name for opprettet_av
       const { data: pdfUserProfile } = await supabase
@@ -788,8 +757,7 @@ const Oppdrag = () => {
       let yPos = 50;
       
       // Add map snapshot (canvas-based: route, SORA zones, AIP zones)
-      if (sections.map) {
-        try {
+      try {
         const mapDataUrl = await generateMissionMapSnapshot({
           latitude: effectiveLat,
           longitude: effectiveLng,
@@ -847,13 +815,13 @@ const Oppdrag = () => {
           pdf.setLineDashPattern([], 0);
           pdf.setTextColor(0);
           yPos += 10;
-        } catch (mapError) {
-          console.error("Error generating map snapshot for PDF:", mapError);
         }
-      } // end sections.map
+      } catch (mapError) {
+        console.error("Error generating map snapshot for PDF:", mapError);
+      }
       
       // Airspace Warnings
-      if (sections.airspaceWarnings && airspaceWarnings.length > 0) {
+      if (airspaceWarnings.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Luftromsadvarsler", 15, yPos);
@@ -901,7 +869,7 @@ const Oppdrag = () => {
       }
       
       // Route info
-      if (sections.routeInfo && mission.route && (mission.route as any).coordinates?.length > 0) {
+      if (mission.route && (mission.route as any).coordinates?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Planlagt flyrute", 15, yPos);
@@ -948,7 +916,6 @@ const Oppdrag = () => {
       }
       
       // Basic info
-      if (sections.basicInfo) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
       pdf.text("Grunnleggende informasjon", 15, yPos);
@@ -1004,11 +971,10 @@ const Oppdrag = () => {
         });
         
         yPos = (pdf as any).lastAutoTable.finalY + 10;
-      } // end basicInfo
-      
+      }
       
       // Personnel
-      if (sections.personnel && mission.personnel?.length > 0) {
+      if (mission.personnel?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Personell", 15, yPos);
@@ -1030,7 +996,7 @@ const Oppdrag = () => {
       }
       
       // Drones
-      if (sections.drones && mission.drones?.length > 0) {
+      if (mission.drones?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Droner", 15, yPos);
@@ -1053,7 +1019,7 @@ const Oppdrag = () => {
       }
       
       // Equipment
-      if (sections.equipment && mission.equipment?.length > 0) {
+      if (mission.equipment?.length > 0) {
         if (yPos > 250) {
           pdf.addPage();
           yPos = 20;
@@ -1237,7 +1203,7 @@ const Oppdrag = () => {
       }
       
       // Incidents
-      if (sections.incidents && mission.incidents?.length > 0) {
+      if (mission.incidents?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
@@ -1275,7 +1241,7 @@ const Oppdrag = () => {
       }
       
       // Flight Logs
-      if (sections.flightLogs && mission.flightLogs?.length > 0) {
+      if (mission.flightLogs?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
@@ -2352,44 +2318,30 @@ const Oppdrag = () => {
 
         {/* Export PDF Dialog */}
         <AlertDialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
-          <AlertDialogContent className="max-w-md">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Eksporter oppdragsrapport</AlertDialogTitle>
-              <AlertDialogDescription asChild>
-                <div className="space-y-3 mt-2">
-                  <p className="text-sm text-muted-foreground">Velg hvilke seksjoner som skal inkluderes i PDF-rapporten:</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { key: "map" as const, label: "Kartutssnitt" },
-                      { key: "airspaceWarnings" as const, label: "Luftromsadvarsler" },
-                      { key: "routeInfo" as const, label: "Planlagt flyrute" },
-                      { key: "basicInfo" as const, label: "Grunnleggende informasjon" },
-                      { key: "personnel" as const, label: "Personell" },
-                      { key: "drones" as const, label: "Droner" },
-                      { key: "equipment" as const, label: "Utstyr" },
-                      { key: "incidents" as const, label: "Hendelser" },
-                      { key: "flightLogs" as const, label: "Flyturer" },
-                      ...(exportPdfMission?.aiRisk ? [{ key: "riskAssessment" as const, label: "AI-risikovurdering" }] : []),
-                    ].map(({ key, label }) => (
-                      <div key={key} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`pdf-section-${key}`}
-                          checked={pdfSections[key]}
-                          onCheckedChange={(checked) =>
-                            setPdfSections(prev => ({ ...prev, [key]: checked === true }))
-                          }
-                        />
-                        <label
-                          htmlFor={`pdf-section-${key}`}
-                          className="text-sm font-medium leading-none cursor-pointer select-none"
-                        >
-                          {label}
-                        </label>
-                      </div>
-                    ))}
+              <AlertDialogDescription>
+                {exportPdfMission?.aiRisk ? (
+                  <div className="space-y-4 mt-2">
+                    <p>Velg hva som skal inkluderes i rapporten:</p>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="includeRisk" 
+                        checked={includeRiskAssessment}
+                        onCheckedChange={(checked) => setIncludeRiskAssessment(checked === true)}
+                      />
+                      <label 
+                        htmlFor="includeRisk" 
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Inkluder siste AI-risikovurdering
+                      </label>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">Rapporten lagres i dokumenter etter eksport.</p>
-                </div>
+                ) : (
+                  <p>Oppdraget "{exportPdfMission?.tittel}" vil bli eksportert som PDF og lagret i dokumenter.</p>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -2400,9 +2352,6 @@ const Oppdrag = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-
-
 
         {/* Report Incident from Mission */}
         <AddIncidentDialog
