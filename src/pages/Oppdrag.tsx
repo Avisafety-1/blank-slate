@@ -67,6 +67,32 @@ import { toast } from "sonner";
 
 type Mission = any;
 
+type PdfSections = {
+  map: boolean;
+  airspaceWarnings: boolean;
+  routeInfo: boolean;
+  basicInfo: boolean;
+  personnel: boolean;
+  drones: boolean;
+  equipment: boolean;
+  incidents: boolean;
+  flightLogs: boolean;
+  riskAssessment: boolean;
+};
+
+const defaultPdfSections: PdfSections = {
+  map: true,
+  airspaceWarnings: true,
+  routeInfo: true,
+  basicInfo: true,
+  personnel: true,
+  drones: true,
+  equipment: true,
+  incidents: true,
+  flightLogs: true,
+  riskAssessment: false,
+};
+
 const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
   Pågående: "bg-green-500/20 text-green-900 border-green-500/30",
@@ -152,6 +178,7 @@ const Oppdrag = () => {
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
+  const [pdfSections, setPdfSections] = useState<PdfSections>(defaultPdfSections);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   
@@ -696,17 +723,21 @@ const Oppdrag = () => {
 
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
-    setIncludeRiskAssessment(false);
+    setPdfSections({
+      ...defaultPdfSections,
+      riskAssessment: !!mission.aiRisk,
+    });
     setExportPdfDialogOpen(true);
   };
 
   const handleConfirmExportPdf = async () => {
     if (!exportPdfMission) return;
     setExportPdfDialogOpen(false);
-    await exportToPDF(exportPdfMission, includeRiskAssessment);
+    await exportToPDF(exportPdfMission, pdfSections);
   };
 
-  const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
+  const exportToPDF = async (mission: Mission, sections: PdfSections = defaultPdfSections) => {
+    const includeRisk = sections.riskAssessment;
     try {
       // Fetch user's full name for opprettet_av
       const { data: pdfUserProfile } = await supabase
@@ -757,7 +788,8 @@ const Oppdrag = () => {
       let yPos = 50;
       
       // Add map snapshot (canvas-based: route, SORA zones, AIP zones)
-      try {
+      if (sections.map) {
+        try {
         const mapDataUrl = await generateMissionMapSnapshot({
           latitude: effectiveLat,
           longitude: effectiveLng,
@@ -819,9 +851,10 @@ const Oppdrag = () => {
       } catch (mapError) {
         console.error("Error generating map snapshot for PDF:", mapError);
       }
+      } // end sections.map
       
       // Airspace Warnings
-      if (airspaceWarnings.length > 0) {
+      if (sections.airspaceWarnings && airspaceWarnings.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Luftromsadvarsler", 15, yPos);
@@ -869,7 +902,7 @@ const Oppdrag = () => {
       }
       
       // Route info
-      if (mission.route && (mission.route as any).coordinates?.length > 0) {
+      if (sections.routeInfo && mission.route && (mission.route as any).coordinates?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Planlagt flyrute", 15, yPos);
@@ -916,6 +949,7 @@ const Oppdrag = () => {
       }
       
       // Basic info
+      if (sections.basicInfo) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
       pdf.text("Grunnleggende informasjon", 15, yPos);
@@ -971,10 +1005,11 @@ const Oppdrag = () => {
         });
         
         yPos = (pdf as any).lastAutoTable.finalY + 10;
-      }
+      } // end basicInfo
+      
       
       // Personnel
-      if (mission.personnel?.length > 0) {
+      if (sections.personnel && mission.personnel?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Personell", 15, yPos);
@@ -996,7 +1031,7 @@ const Oppdrag = () => {
       }
       
       // Drones
-      if (mission.drones?.length > 0) {
+      if (sections.drones && mission.drones?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Droner", 15, yPos);
@@ -1019,7 +1054,7 @@ const Oppdrag = () => {
       }
       
       // Equipment
-      if (mission.equipment?.length > 0) {
+      if (sections.equipment && mission.equipment?.length > 0) {
         if (yPos > 250) {
           pdf.addPage();
           yPos = 20;
@@ -1203,7 +1238,7 @@ const Oppdrag = () => {
       }
       
       // Incidents
-      if (mission.incidents?.length > 0) {
+      if (sections.incidents && mission.incidents?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
@@ -1241,7 +1276,7 @@ const Oppdrag = () => {
       }
       
       // Flight Logs
-      if (mission.flightLogs?.length > 0) {
+      if (sections.flightLogs && mission.flightLogs?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
