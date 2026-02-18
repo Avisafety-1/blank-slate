@@ -847,10 +847,9 @@ const Oppdrag = () => {
           pdf.setLineDashPattern([], 0);
           pdf.setTextColor(0);
           yPos += 10;
+        } catch (mapError) {
+          console.error("Error generating map snapshot for PDF:", mapError);
         }
-      } catch (mapError) {
-        console.error("Error generating map snapshot for PDF:", mapError);
-      }
       } // end sections.map
       
       // Airspace Warnings
@@ -2353,30 +2352,44 @@ const Oppdrag = () => {
 
         {/* Export PDF Dialog */}
         <AlertDialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Eksporter oppdragsrapport</AlertDialogTitle>
-              <AlertDialogDescription>
-                {exportPdfMission?.aiRisk ? (
-                  <div className="space-y-4 mt-2">
-                    <p>Velg hva som skal inkluderes i rapporten:</p>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="includeRisk" 
-                        checked={includeRiskAssessment}
-                        onCheckedChange={(checked) => setIncludeRiskAssessment(checked === true)}
-                      />
-                      <label 
-                        htmlFor="includeRisk" 
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        Inkluder siste AI-risikovurdering
-                      </label>
-                    </div>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 mt-2">
+                  <p className="text-sm text-muted-foreground">Velg hvilke seksjoner som skal inkluderes i PDF-rapporten:</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { key: "map" as const, label: "Kartutssnitt" },
+                      { key: "airspaceWarnings" as const, label: "Luftromsadvarsler" },
+                      { key: "routeInfo" as const, label: "Planlagt flyrute" },
+                      { key: "basicInfo" as const, label: "Grunnleggende informasjon" },
+                      { key: "personnel" as const, label: "Personell" },
+                      { key: "drones" as const, label: "Droner" },
+                      { key: "equipment" as const, label: "Utstyr" },
+                      { key: "incidents" as const, label: "Hendelser" },
+                      { key: "flightLogs" as const, label: "Flyturer" },
+                      ...(exportPdfMission?.aiRisk ? [{ key: "riskAssessment" as const, label: "AI-risikovurdering" }] : []),
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`pdf-section-${key}`}
+                          checked={pdfSections[key]}
+                          onCheckedChange={(checked) =>
+                            setPdfSections(prev => ({ ...prev, [key]: checked === true }))
+                          }
+                        />
+                        <label
+                          htmlFor={`pdf-section-${key}`}
+                          className="text-sm font-medium leading-none cursor-pointer select-none"
+                        >
+                          {label}
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <p>Oppdraget "{exportPdfMission?.tittel}" vil bli eksportert som PDF og lagret i dokumenter.</p>
-                )}
+                  <p className="text-xs text-muted-foreground mt-2">Rapporten lagres i dokumenter etter eksport.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -2387,6 +2400,9 @@ const Oppdrag = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+
+
 
         {/* Report Incident from Mission */}
         <AddIncidentDialog
