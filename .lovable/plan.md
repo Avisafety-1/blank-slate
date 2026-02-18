@@ -1,78 +1,60 @@
 
-## Import av KML/KMZ rutefiler til oppdrag
+## Flytt «Importer KML» til riktig sted og legg til i ruteplanlegger
 
-### Oversikt
-Brukere skal kunne laste opp en KML- eller KMZ-fil direkte på oppdragskortet (`MissionDetailDialog`). Koordinatene parses ut av filen og lagres i den eksisterende `route`-kolonnen (jsonb) i `missions`-tabellen — nøyaktig samme format som ruter tegnet manuelt på kartet. De importerte koordinatene vises deretter umiddelbart på kartet i dialogen.
+### Hva endres
 
-### Støttede filtyper og parsing
+**1. `MissionDetailDialog.tsx`** — Fjern KML-knappen fra topphodet
+- Fjern `<input ref={kmlInputRef}>` og `<Button>Importer KML/KMZ</Button>` fra header-seksjonen (linje 205–215)
+- Beholde all state (`importingKml`, `pendingKmlFile`, `kmlInputRef`, `doImportKml`, `handleKmlFileSelected`) fordi den samme logikken kan gjenbrukes fra `Oppdrag.tsx`-siden
 
-**KML** — XML-basert. Koordinater ligger typisk i:
-- `<LineString><coordinates>` (linje/rute)
-- `<Polygon><outerBoundaryIs><LinearRing><coordinates>` (polygon)
-- `<Placemark><Point><coordinates>` (individuelle punkter)
-- DJI-format med `<wpml:index>` og `<Point><coordinates>`
+Alternativt: Siden `Oppdrag.tsx` er der «Flere valg»-dropdown finnes, og den siden håndterer egne oppdragskort, flyttes hele KML-import-logikken dit. `MissionDetailDialog` trenger ikke lenger KML-logikk — den brukes bare som visningsdialog fra dashbordet.
 
-**KMZ** — En ZIP-fil som inneholder `doc.kml` (og ev. `wpmz/template.kml`, `wpmz/waylines.wpml`). JSZip er allerede installert og brukes i `kmzExport.ts`.
+**Valg:** Flytte KML-import *bort* fra `MissionDetailDialog` og inn i `Oppdrag.tsx` der «Flere valg»-dropdownen er. `MissionDetailDialog` ryddes for KML-kode (knapp, state, refs, handlers, `AlertDialog` for bekreftelse).
 
-### Koordinatformat internt (RouteData)
-```typescript
-interface RouteData {
-  coordinates: { lat: number; lng: number }[];
-  totalDistance: number;
-  soraSettings?: SoraSettings;
-  importedFileName?: string; // Ny: for å vise kildefil
-}
+---
+
+### Berørte filer
+
+#### `src/components/dashboard/MissionDetailDialog.tsx`
+- Fjern `Upload`-import fra lucide-react
+- Fjern `parseKmlOrKmz`-import
+- Fjern state: `importingKml`, `replaceRouteConfirmOpen`, `pendingKmlFile`, `kmlInputRef`
+- Fjern funksjoner: `doImportKml`, `handleKmlFileSelected`
+- Fjern knappen og hidden input fra header
+- Fjern `AlertDialog` for rutebekreftelse (den med "Erstatt rute?")
+
+#### `src/pages/Oppdrag.tsx`
+- Importer `parseKmlOrKmz` fra `@/lib/kmlImport`
+- Importer `Upload` fra lucide-react
+- Legg til state: `kmlImportMissionId: string | null`, `importingKml: boolean`, `replaceRouteConfirmOpen: boolean`, `pendingKmlFile: File | null`, og en `useRef<HTMLInputElement>` per fil
+- Siden det er én `<input type="file">` per dropdown-instans er ikke trivielt, bruker én delt hidden `<input>` plassert utenfor lista, med `kmlImportMissionId` for å vite hvilket oppdrag som importeres til
+- Legg til `doImportKml(file, missionId)` og `handleKmlFileSelected(e)` — disse oppdaterer `route`-kolonnen og setter `latitude`/`longitude` til første koordinat hvis oppdraget ikke har koordinater fra før
+- **Auto-startpunkt**: Etter vellykket import, hvis `mission.latitude` er null, kjøres en ekstra `update` med `latitude` og `longitude` fra `parsed.coordinates[0]`
+- Legg til nytt `DropdownMenuItem` mellom «Eksporter KMZ» og separator: «Importer KML/KMZ» — alltid synlig (ikke bare når rute finnes)
+- Legg til bekreftelsesdialog (AlertDialog) for "Erstatt eksisterende rute?" — gjenbruk samme mønster som ble fjernet fra MissionDetailDialog
+- Legg til `<input type="file" className="hidden" ref={kmlInputRef} accept=".kml,.kmz" onChange={handleKmlFileSelected}>` et sted i JSX utenfor lista
+
+#### `src/pages/Kart.tsx`
+- Importer `parseKmlOrKmz` fra `@/lib/kmlImport`
+- Importer `Upload` fra lucide-react
+- Legg til state: `importingKml: boolean`
+- Legg til en hidden `<input type="file">` og `useRef`
+- Legg til `handleKmlImport(file)`:
+  - Parser filen
+  - Setter `currentRoute` til parsede koordinater (samme format som manuell rute)
+  - **Auto-startpunkt**: Sett `pilotPosition` til første koordinat? Nei — «rutepunkt 1 som startpunkt» betyr at `initialCenter` settes til første koordinat så kartet zoomer dit. Alternativt: send `setCurrentRoute` med den parsede ruten slik at kartet viser ruten umiddelbart
+- Legg til «Importer KML/KMZ»-knapp i ruteplanlegger-toolbaren (i gruppen med Pilot og NOTAM)
+
+### Auto-startpunkt (koordinat 1 som rutestart)
+Ved import i `Oppdrag.tsx`: Hvis `mission.latitude` er null, oppdater også `latitude` og `longitude` i databasen med første koordinat, slik at kart og AirspaceWarnings vises.
+
+Ved import i `Kart.tsx` (ruteplanlegger): Ruten settes direkte i `currentRoute`-state. Kartet følger allerede ruten. Ingen database-lagring her — kartet er i planleggingsmodus og ruten lagres kun når brukeren trykker «Lagre».
+
+### Plassering av KML-knapp i Kart.tsx toolbar
+Legges inn mellom Pilot-knappen og NOTAM-knappen:
 ```
-KML-filer lagrer koordinater som `lng,lat,alt` — vi inverterer til `{ lat, lng }`.
-
-### Totalavstand beregnes
-Etter parsing kjøres samme Haversine-beregning som brukes i ruteplanlisten, så `totalDistance` er korrekt.
-
-### Endringer
-
-#### 1. Ny hjelpefunksjon: `src/lib/kmlImport.ts`
-Ren parse-funksjon (ingen UI-avhengigheter) som eksporterer:
-```typescript
-export async function parseKmlOrKmz(file: File): Promise<RouteData>
-```
-- Detekterer KMZ via MIME-type eller filextension → pakker ut med JSZip
-- Parser KML-streng med DOMParser → finner koordinater i prioritert rekkefølge:
-  1. `<LineString>` (mest vanlig for ruter)
-  2. DJI `<Placemark>` med `<wpml:index>` (DJI WPML-format)
-  3. `<Polygon>` ytre grense
-  4. Individuelle `<Point>` Placemarks
-- Beregner `totalDistance` med Haversine
-- Lagrer `importedFileName` for UI-indikasjon
-
-#### 2. Endringer i `MissionDetailDialog.tsx`
-- Legg til en skjult `<input type="file" accept=".kml,.kmz">` med en knapp "Importer KML/KMZ" i kartvisnings-seksjonen
-- Etter vellykket parse → `supabase.from("missions").update({ route: parsedRoute })` direkte
-- Oppdaterer `liveMission`-state lokalt så kartet vises uten reload
-- Viser toast med antall punkter og rutelengde ved suksess
-- Viser feilmelding dersom filen er ugyldig
-
-**Knappeplassering** i kartvisnings-seksjonen (der "Rediger rute"-knappen allerede finnes):
-```
-[Rediger rute]  [Importer KML/KMZ]  [Utvid]
+[Pilot]  [Importer KML]  [NOTAM]  |  [Angre]  [Nullstill]  |  [Avbryt]  [Lagre]
 ```
 
-#### 3. Ingen endringer nødvendig i `MissionMapPreview.tsx`
-Kartet bruker allerede `route`-prop direkte og renderer polylinjen automatisk. Når `liveMission.route` oppdateres i `MissionDetailDialog`, re-rendres `MissionMapPreview` med de nye koordinatene.
-
-### Håndtering av edge cases
-- Filen mangler koordinater → feilmelding "Ingen koordinater funnet i filen"
-- KMZ-fil som ikke inneholder KML → feilmelding "Fant ingen KML-fil i arkivet"
-- Feil filtype → validert via accept-attributt og dobbeltsjekk i parse-funksjonen
-- Eksisterende rute: brukeren advares med en bekreftelsesdialog dersom oppdraget allerede har en rute ("Vil du erstatte eksisterende rute?")
-- Kartet vises **kun** dersom `latitude`/`longitude` er satt på oppdraget. Koordinatene fra importert fil settes ikke som `latitude`/`longitude` — de lagres kun i `route`.
-
-### Filer som endres
-1. `src/lib/kmlImport.ts` — **ny fil**: KML/KMZ-parser
-2. `src/components/dashboard/MissionDetailDialog.tsx` — legg til import-knapp og opplastingslogikk
-
-### Avhengigheter
-- `jszip` — allerede installert (brukes i `kmzExport.ts`)
-- `DOMParser` — nettleser-innebygd, ingen ekstra pakker
-
-### Ingen databaseendringer nødvendig
-`route`-kolonnen er allerede `jsonb` og aksepterer det eksisterende formatet.
+### Ingen databasemigrasjoner nødvendig
+Alt er frontend-logikk og oppdatering av eksisterende kolonner (`route`, `latitude`, `longitude`).
