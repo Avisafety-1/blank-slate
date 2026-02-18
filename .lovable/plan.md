@@ -1,60 +1,85 @@
 
-## Flytt «Importer KML» til riktig sted og legg til i ruteplanlegger
+## Endre SORA-buffersoner til å følge rutens faktiske form
 
-### Hva endres
+### Problemet
+Dagens logikk i `soraGeometry.ts` (og duplikatlogikken i `MissionMapPreview.tsx`):
+1. Beregner **konveks skrog** av alle rutepunktene (ytterste triangel/polygon)
+2. Ekspanderer det skroget utover med `bufferPolygon`
 
-**1. `MissionDetailDialog.tsx`** — Fjern KML-knappen fra topphodet
-- Fjern `<input ref={kmlInputRef}>` og `<Button>Importer KML/KMZ</Button>` fra header-seksjonen (linje 205–215)
-- Beholde all state (`importingKml`, `pendingKmlFile`, `kmlInputRef`, `doImportKml`, `handleKmlFileSelected`) fordi den samme logikken kan gjenbrukes fra `Oppdrag.tsx`-siden
+Resultatet er det brukeren ser på bildet: en trekantet/polygonal sone som ignorerer rutens faktiske form og bare dekker ytterpunktene.
 
-Alternativt: Siden `Oppdrag.tsx` er der «Flere valg»-dropdown finnes, og den siden håndterer egne oppdragskort, flyttes hele KML-import-logikken dit. `MissionDetailDialog` trenger ikke lenger KML-logikk — den brukes bare som visningsdialog fra dashbordet.
+### Ønsket oppførsel
+Buffersonene skal følge selve **rutelinjen** — en kontinuerlig «pølseform» (rounded buffer/corridor) rundt hvert linjesegment og hvert rutepunkt. Dette kalles et **linje-buffer** eller **Minkowski-sum** av linjen.
 
-**Valg:** Flytte KML-import *bort* fra `MissionDetailDialog` og inn i `Oppdrag.tsx` der «Flere valg»-dropdownen er. `MissionDetailDialog` ryddes for KML-kode (knapp, state, refs, handlers, `AlertDialog` for bekreftelse).
+### Løsningen: Linje-buffer i stedet for konveks skrog
 
----
+Ny funksjon `bufferPolyline(points, distanceMeters)` som:
+1. For hvert linjesegment beregner to parallelle offsetlinjer (venstre og høyre side)
+2. I hjørnene (ved hvert rutepunkt) legger til en halvsirkel-buende overgang (rounded join) ved å generere punkter langs en sirkelbue
+3. Returnerer en lukket polygon som omslutter hele rutekorridoren
 
-### Berørte filer
-
-#### `src/components/dashboard/MissionDetailDialog.tsx`
-- Fjern `Upload`-import fra lucide-react
-- Fjern `parseKmlOrKmz`-import
-- Fjern state: `importingKml`, `replaceRouteConfirmOpen`, `pendingKmlFile`, `kmlInputRef`
-- Fjern funksjoner: `doImportKml`, `handleKmlFileSelected`
-- Fjern knappen og hidden input fra header
-- Fjern `AlertDialog` for rutebekreftelse (den med "Erstatt rute?")
-
-#### `src/pages/Oppdrag.tsx`
-- Importer `parseKmlOrKmz` fra `@/lib/kmlImport`
-- Importer `Upload` fra lucide-react
-- Legg til state: `kmlImportMissionId: string | null`, `importingKml: boolean`, `replaceRouteConfirmOpen: boolean`, `pendingKmlFile: File | null`, og en `useRef<HTMLInputElement>` per fil
-- Siden det er én `<input type="file">` per dropdown-instans er ikke trivielt, bruker én delt hidden `<input>` plassert utenfor lista, med `kmlImportMissionId` for å vite hvilket oppdrag som importeres til
-- Legg til `doImportKml(file, missionId)` og `handleKmlFileSelected(e)` — disse oppdaterer `route`-kolonnen og setter `latitude`/`longitude` til første koordinat hvis oppdraget ikke har koordinater fra før
-- **Auto-startpunkt**: Etter vellykket import, hvis `mission.latitude` er null, kjøres en ekstra `update` med `latitude` og `longitude` fra `parsed.coordinates[0]`
-- Legg til nytt `DropdownMenuItem` mellom «Eksporter KMZ» og separator: «Importer KML/KMZ» — alltid synlig (ikke bare når rute finnes)
-- Legg til bekreftelsesdialog (AlertDialog) for "Erstatt eksisterende rute?" — gjenbruk samme mønster som ble fjernet fra MissionDetailDialog
-- Legg til `<input type="file" className="hidden" ref={kmlInputRef} accept=".kml,.kmz" onChange={handleKmlFileSelected}>` et sted i JSX utenfor lista
-
-#### `src/pages/Kart.tsx`
-- Importer `parseKmlOrKmz` fra `@/lib/kmlImport`
-- Importer `Upload` fra lucide-react
-- Legg til state: `importingKml: boolean`
-- Legg til en hidden `<input type="file">` og `useRef`
-- Legg til `handleKmlImport(file)`:
-  - Parser filen
-  - Setter `currentRoute` til parsede koordinater (samme format som manuell rute)
-  - **Auto-startpunkt**: Sett `pilotPosition` til første koordinat? Nei — «rutepunkt 1 som startpunkt» betyr at `initialCenter` settes til første koordinat så kartet zoomer dit. Alternativt: send `setCurrentRoute` med den parsede ruten slik at kartet viser ruten umiddelbart
-- Legg til «Importer KML/KMZ»-knapp i ruteplanlegger-toolbaren (i gruppen med Pilot og NOTAM)
-
-### Auto-startpunkt (koordinat 1 som rutestart)
-Ved import i `Oppdrag.tsx`: Hvis `mission.latitude` er null, oppdater også `latitude` og `longitude` i databasen med første koordinat, slik at kart og AirspaceWarnings vises.
-
-Ved import i `Kart.tsx` (ruteplanlegger): Ruten settes direkte i `currentRoute`-state. Kartet følger allerede ruten. Ingen database-lagring her — kartet er i planleggingsmodus og ruten lagres kun når brukeren trykker «Lagre».
-
-### Plassering av KML-knapp i Kart.tsx toolbar
-Legges inn mellom Pilot-knappen og NOTAM-knappen:
+**Algoritme:**
 ```
-[Pilot]  [Importer KML]  [NOTAM]  |  [Angre]  [Nullstill]  |  [Avbryt]  [Lagre]
+For N punkter (P0, P1, ..., Pn-1):
+  - Venstre side: offset langs venstre av ruteretningen
+  - Høyre side: offset langs høyre av ruteretningen
+  - Start-halvkrets rundt P0
+  - Slutt-halvkrets rundt Pn-1
+  - Ellers: ved hvert indre punkt, beregn smooth join mellom segmenter
 ```
 
-### Ingen databasemigrasjoner nødvendig
-Alt er frontend-logikk og oppdatering av eksisterende kolonner (`route`, `latitude`, `longitude`).
+Siden vi kjører i lat/lng-koordinater bruker vi en lokal metrisk projeksjon (samme som eksisterende kode: `lngScale = 111320 * cos(lat)`, `latScale = 111320`).
+
+### Filer som endres
+
+#### 1. `src/lib/soraGeometry.ts`
+- **Behold** `computeConvexHull` og `bufferPolygon` (brukes eventuelt andre steder / fallback)
+- **Legg til** ny `bufferPolyline(points, distanceMeters, numCapSegments?)` som returnerer en polygon som er en «rounded corridor» rundt linjen
+- **Oppdater** `renderSoraZones`:
+  - Hvis ruten har 2+ punkter → bruk `bufferPolyline` (linjebuffer)
+  - Hvis ruten er lukket/polygon (første === siste punkt) → fallback til `bufferPolygon` med konveks skrog
+  - Flight Geography: buffer med `contingencyDistance` (gul), Contingency: buffer med `contingencyDistance` (gul), Ground Risk: buffer med `contingencyDistance + groundRiskDistance` (rød)
+  - Flight Geography-polygon (grønn) vises som selve rutekorridoren med `contingencyDistance = 0` — eller tegnes som rutens faktiske linje-buffer på 0m (bare polylinjen med fyll)
+
+**Detaljert algoritme for `bufferPolyline`:**
+
+```typescript
+function bufferPolyline(points, distanceMeters, numCapSegments = 16): RoutePoint[] {
+  // 1. Konverter til metrisk lokalt koordinatsystem
+  // 2. For hvert segment: beregn normalvektor (perpendikulær)
+  // 3. Bygg høyresiden fremover (p0..pn)
+  // 4. Legg til halvkrets rundt sluttpunktet (pn)
+  // 5. Bygg venstresiden bakover (pn..p0)
+  // 6. Legg til halvkrets rundt startpunktet (p0)
+  // 7. Konverter tilbake til lat/lng
+}
+```
+
+For glatt join i hjørnene: beregn gjennomsnittlig normalvektor i hvert knutepunkt (bisecting normal), eller tegn en bue ved bruk av vinkelinterpolasjon mellom to segmenters normaler.
+
+#### 2. `src/components/dashboard/MissionMapPreview.tsx`
+- Duplikatlogikken i denne filen (`computeConvexHull`, `bufferPolygon`, `renderSoraZones`) må også oppdateres til å bruke den nye `bufferPolyline`-funksjonen
+- Enten: importer `bufferPolyline` og `renderSoraZones` fra `soraGeometry.ts` (fjern duplikater), eller oppdater den lokale `renderSoraZones`-funksjonen her
+- **Anbefalt**: refaktorer `MissionMapPreview.tsx` til å importere `renderSoraZones` direkte fra `soraGeometry.ts` slik at logikken er på ett sted
+
+### Visualisering av ny oppførsel
+
+```text
+Gammel (konveks skrog):          Ny (linjebuffer/korridor):
+                                   
+    *---*                           ╭──────╮
+   / R / ← trekantet               │  R   │
+  / Y /   sone som dekker          │  Y   │ ← følger rutens
+ / G /    ytterpunktene            │  G   │   faktiske form
+*---*                              ╰──────╯
+                                         ↑ avrundede hjørner
+```
+
+### Ingen databaseendringer
+Kun geometriberegning i frontend. `soraSettings` lagres som før i `route.soraSettings`.
+
+### Edge cases
+- Kun 1 punkt: tegn en sirkel (radius = bufferDistance)
+- 2 punkter: tegn en «pølse» (to halvkretser + to parallelle linjer)
+- Svært tette punkter (< 1m avstand): skip segmentet (unngå divisjon på 0)
+- Lukkede ruter (første === siste punkt): sirkelbue i hjørnet behandles som vanlig indre punkt
