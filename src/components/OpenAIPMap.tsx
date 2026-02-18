@@ -9,6 +9,7 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
+import { renderSoraZones } from "@/lib/soraGeometry";
 // SafeSky beacon type SVG icons
 import dotSvg from "@/assets/safesky-icons/dot.svg";
 import gliderSvg from "@/assets/safesky-icons/glider.svg";
@@ -533,54 +534,8 @@ export function OpenAIPMap({
     soraLayerRef.current.clearLayers();
 
     const sora = soraSettingsRef.current;
-    if (sora?.enabled && points.length >= 3) {
-      const hull = computeConvexHull(points);
-      if (hull.length >= 3) {
-        const contingencyHull = bufferPolygon(hull, sora.contingencyDistance);
-        const groundRiskHull = bufferPolygon(hull, sora.contingencyDistance + sora.groundRiskDistance);
-
-        // Draw red (ground risk buffer) first — bottom
-        L.polygon(
-          groundRiskHull.map(p => [p.lat, p.lng] as [number, number]),
-          {
-            fillColor: '#ef4444',
-            fillOpacity: 0.12,
-            color: '#ef4444',
-            weight: 1.5,
-            opacity: 0.35,
-            dashArray: '6, 4',
-            pane: 'routePane',
-          }
-        ).addTo(soraLayerRef.current);
-
-        // Yellow (contingency area)
-        L.polygon(
-          contingencyHull.map(p => [p.lat, p.lng] as [number, number]),
-          {
-            fillColor: '#eab308',
-            fillOpacity: 0.15,
-            color: '#eab308',
-            weight: 1.5,
-            opacity: 0.4,
-            dashArray: '6, 4',
-            pane: 'routePane',
-          }
-        ).addTo(soraLayerRef.current);
-
-        // Green (flight geography) on top
-        L.polygon(
-          hull.map(p => [p.lat, p.lng] as [number, number]),
-          {
-            fillColor: '#22c55e',
-            fillOpacity: 0.2,
-            color: '#22c55e',
-            weight: 1.5,
-            opacity: 0.5,
-            dashArray: '6, 4',
-            pane: 'routePane',
-          }
-        ).addTo(soraLayerRef.current);
-      }
+    if (sora?.enabled && points.length >= 1) {
+      renderSoraZones(points, sora, soraLayerRef.current);
     }
   }, []);
 
