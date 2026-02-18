@@ -61,6 +61,7 @@ import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentT
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { RiskAssessmentDialog } from "@/components/dashboard/RiskAssessmentDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { toast } from "sonner";
@@ -119,6 +120,22 @@ const ChecklistBadges = ({ checklistIds }: { checklistIds: string[] }) => {
   );
 };
 
+const DEFAULT_PDF_SECTIONS = {
+  map: true,
+  airspaceWarnings: true,
+  routeCoordinates: true,
+  basicInfo: true,
+  customerInfo: true,
+  personnel: true,
+  drones: true,
+  equipment: true,
+  sora: true,
+  riskAssessment: true,
+  incidents: true,
+  flightLogs: true,
+  descriptionNotes: true,
+};
+
 const Oppdrag = () => {
   const { user, loading, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
@@ -151,7 +168,7 @@ const Oppdrag = () => {
   const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
-  const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
+  const [pdfSections, setPdfSections] = useState(DEFAULT_PDF_SECTIONS);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   
@@ -696,17 +713,17 @@ const Oppdrag = () => {
 
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
-    setIncludeRiskAssessment(false);
+    setPdfSections(DEFAULT_PDF_SECTIONS);
     setExportPdfDialogOpen(true);
   };
 
   const handleConfirmExportPdf = async () => {
     if (!exportPdfMission) return;
     setExportPdfDialogOpen(false);
-    await exportToPDF(exportPdfMission, includeRiskAssessment);
+    await exportToPDF(exportPdfMission, pdfSections);
   };
 
-  const exportToPDF = async (mission: Mission, includeRisk: boolean = false) => {
+  const exportToPDF = async (mission: Mission, sections: typeof DEFAULT_PDF_SECTIONS) => {
     try {
       // Fetch user's full name for opprettet_av
       const { data: pdfUserProfile } = await supabase
@@ -757,6 +774,7 @@ const Oppdrag = () => {
       let yPos = 50;
       
       // Add map snapshot (canvas-based: route, SORA zones, AIP zones)
+      if (sections.map) {
       try {
         const mapDataUrl = await generateMissionMapSnapshot({
           latitude: effectiveLat,
@@ -819,9 +837,10 @@ const Oppdrag = () => {
       } catch (mapError) {
         console.error("Error generating map snapshot for PDF:", mapError);
       }
+      } // end sections.map
       
       // Airspace Warnings
-      if (airspaceWarnings.length > 0) {
+      if (sections.airspaceWarnings && airspaceWarnings.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Luftromsadvarsler", 15, yPos);
@@ -869,7 +888,7 @@ const Oppdrag = () => {
       }
       
       // Route info
-      if (mission.route && (mission.route as any).coordinates?.length > 0) {
+      if (sections.routeCoordinates && mission.route && (mission.route as any).coordinates?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Planlagt flyrute", 15, yPos);
@@ -916,36 +935,38 @@ const Oppdrag = () => {
       }
       
       // Basic info
-      pdf.setFontSize(12);
-      setFontStyle(pdf, "bold");
-      pdf.text("Grunnleggende informasjon", 15, yPos);
-      yPos += 7;
-      
-      setFontStyle(pdf, "normal");
-      pdf.setFontSize(10);
-      
-      const basicInfo = [
-        ["Status", sanitizeForPdf(mission.status)],
-        ["Risikonivia", sanitizeForPdf(mission.risk_nivå)],
-        ["Lokasjon", sanitizeForPdf(mission.lokasjon)],
-        ["Dato/tid", formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
-        ...(mission.slutt_tidspunkt ? [["Sluttid", formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
-        ...(mission.latitude && mission.longitude ? [["Koordinater", `${mission.latitude.toFixed(5)}, ${mission.longitude.toFixed(5)}`]] : [])
-      ];
-      
-      autoTable(pdf, {
-        startY: yPos,
-        head: [],
-        body: basicInfo,
-        theme: "grid",
-        styles: { fontSize: 9 },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
-      });
-      
-      yPos = (pdf as any).lastAutoTable.finalY + 10;
-      
+      if (sections.basicInfo) {
+        pdf.setFontSize(12);
+        setFontStyle(pdf, "bold");
+        pdf.text("Grunnleggende informasjon", 15, yPos);
+        yPos += 7;
+        
+        setFontStyle(pdf, "normal");
+        pdf.setFontSize(10);
+        
+        const basicInfo = [
+          ["Status", sanitizeForPdf(mission.status)],
+          ["Risikonivia", sanitizeForPdf(mission.risk_nivå)],
+          ["Lokasjon", sanitizeForPdf(mission.lokasjon)],
+          ["Dato/tid", formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
+          ...(mission.slutt_tidspunkt ? [["Sluttid", formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
+          ...(mission.latitude && mission.longitude ? [["Koordinater", `${mission.latitude.toFixed(5)}, ${mission.longitude.toFixed(5)}`]] : [])
+        ];
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: basicInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 10;
+      } // end basicInfo
+
       // Customer info
-      if (mission.customers) {
+      if (sections.customerInfo && mission.customers) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Kundeinformasjon", 15, yPos);
@@ -974,7 +995,7 @@ const Oppdrag = () => {
       }
       
       // Personnel
-      if (mission.personnel?.length > 0) {
+      if (sections.personnel && mission.personnel?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Personell", 15, yPos);
@@ -996,7 +1017,7 @@ const Oppdrag = () => {
       }
       
       // Drones
-      if (mission.drones?.length > 0) {
+      if (sections.drones && mission.drones?.length > 0) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
         pdf.text("Droner", 15, yPos);
@@ -1019,7 +1040,7 @@ const Oppdrag = () => {
       }
       
       // Equipment
-      if (mission.equipment?.length > 0) {
+      if (sections.equipment && mission.equipment?.length > 0) {
         if (yPos > 250) {
           pdf.addPage();
           yPos = 20;
@@ -1047,7 +1068,7 @@ const Oppdrag = () => {
       }
       
       // SORA
-      if (mission.sora) {
+      if (sections.sora && mission.sora) {
         if (yPos > 250) {
           pdf.addPage();
           yPos = 20;
@@ -1078,7 +1099,7 @@ const Oppdrag = () => {
       }
       
       // AI Risk Assessment (if requested and available)
-      if (includeRisk && mission.aiRisk) {
+      if (sections.riskAssessment && mission.aiRisk) {
         try {
           if (yPos > 200) {
             pdf.addPage();
@@ -1203,7 +1224,7 @@ const Oppdrag = () => {
       }
       
       // Incidents
-      if (mission.incidents?.length > 0) {
+      if (sections.incidents && mission.incidents?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
@@ -1241,7 +1262,7 @@ const Oppdrag = () => {
       }
       
       // Flight Logs
-      if (mission.flightLogs?.length > 0) {
+      if (sections.flightLogs && mission.flightLogs?.length > 0) {
         if (yPos > 220) {
           pdf.addPage();
           yPos = 20;
@@ -1313,7 +1334,7 @@ const Oppdrag = () => {
       }
       
       // Description & Notes
-      if (mission.beskrivelse || mission.merknader) {
+      if (sections.descriptionNotes && (mission.beskrivelse || mission.merknader)) {
         if (yPos > 240) {
           pdf.addPage();
           yPos = 20;
@@ -2317,41 +2338,175 @@ const Oppdrag = () => {
         )}
 
         {/* Export PDF Dialog */}
-        <AlertDialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Eksporter oppdragsrapport</AlertDialogTitle>
-              <AlertDialogDescription>
-                {exportPdfMission?.aiRisk ? (
-                  <div className="space-y-4 mt-2">
-                    <p>Velg hva som skal inkluderes i rapporten:</p>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="includeRisk" 
-                        checked={includeRiskAssessment}
-                        onCheckedChange={(checked) => setIncludeRiskAssessment(checked === true)}
-                      />
-                      <label 
-                        htmlFor="includeRisk" 
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        Inkluder siste AI-risikovurdering
+        <Dialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Eksporter oppdragsrapport</DialogTitle>
+              <DialogDescription>
+                Velg hvilke seksjoner som skal inkluderes i PDF-rapporten for «{exportPdfMission?.tittel}».
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Select all / Deselect all */}
+            <div className="flex justify-end">
+              {(() => {
+                const mission = exportPdfMission;
+                const visibleKeys = [
+                  'basicInfo',
+                  'airspaceWarnings',
+                  ...(((mission?.latitude ?? (mission?.route as any)?.coordinates?.[0]?.lat)) ? ['map'] : []),
+                  ...((mission?.route as any)?.coordinates?.length > 0 ? ['routeCoordinates'] : []),
+                  ...(mission?.customers ? ['customerInfo'] : []),
+                  ...(mission?.personnel?.length > 0 ? ['personnel'] : []),
+                  ...(mission?.drones?.length > 0 ? ['drones'] : []),
+                  ...(mission?.equipment?.length > 0 ? ['equipment'] : []),
+                  ...(mission?.sora ? ['sora'] : []),
+                  ...(mission?.aiRisk ? ['riskAssessment'] : []),
+                  ...(mission?.incidents?.length > 0 ? ['incidents'] : []),
+                  ...(mission?.flightLogs?.length > 0 ? ['flightLogs'] : []),
+                  ...((mission?.beskrivelse || mission?.merknader) ? ['descriptionNotes'] : []),
+                ] as (keyof typeof DEFAULT_PDF_SECTIONS)[];
+                const allOn = visibleKeys.every(k => pdfSections[k]);
+                return (
+                  <button
+                    type="button"
+                    className="text-xs text-primary underline-offset-2 hover:underline"
+                    onClick={() => {
+                      const val = !allOn;
+                      const update = { ...pdfSections };
+                      visibleKeys.forEach(k => { update[k] = val; });
+                      setPdfSections(update);
+                    }}
+                  >
+                    {allOn ? 'Fjern alle' : 'Velg alle'}
+                  </button>
+                );
+              })()}
+            </div>
+
+            <div className="space-y-5">
+              {/* Kart og luftrom */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Kart og luftrom</p>
+                <div className="space-y-2">
+                  {(exportPdfMission?.latitude ?? (exportPdfMission?.route as any)?.coordinates?.[0]?.lat) && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={pdfSections.map} onCheckedChange={v => setPdfSections(s => ({ ...s, map: v === true }))} />
+                      <span className="text-sm">Kartutsnitt</span>
+                    </label>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={pdfSections.airspaceWarnings} onCheckedChange={v => setPdfSections(s => ({ ...s, airspaceWarnings: v === true }))} />
+                    <span className="text-sm">Luftromsadvarsler</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Oppdragsdetaljer */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Oppdragsdetaljer</p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={pdfSections.basicInfo} onCheckedChange={v => setPdfSections(s => ({ ...s, basicInfo: v === true }))} />
+                    <span className="text-sm">Grunnleggende informasjon</span>
+                  </label>
+                  {(exportPdfMission?.beskrivelse || exportPdfMission?.merknader) && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={pdfSections.descriptionNotes} onCheckedChange={v => setPdfSections(s => ({ ...s, descriptionNotes: v === true }))} />
+                      <span className="text-sm">Beskrivelse & merknader</span>
+                    </label>
+                  )}
+                  {exportPdfMission?.customers && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={pdfSections.customerInfo} onCheckedChange={v => setPdfSections(s => ({ ...s, customerInfo: v === true }))} />
+                      <span className="text-sm">Kundeinformasjon</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Ressurser */}
+              {(exportPdfMission?.personnel?.length > 0 || exportPdfMission?.drones?.length > 0 || exportPdfMission?.equipment?.length > 0) && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Ressurser</p>
+                  <div className="space-y-2">
+                    {exportPdfMission?.personnel?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.personnel} onCheckedChange={v => setPdfSections(s => ({ ...s, personnel: v === true }))} />
+                        <span className="text-sm">Personell</span>
                       </label>
-                    </div>
+                    )}
+                    {exportPdfMission?.drones?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.drones} onCheckedChange={v => setPdfSections(s => ({ ...s, drones: v === true }))} />
+                        <span className="text-sm">Droner/fly</span>
+                      </label>
+                    )}
+                    {exportPdfMission?.equipment?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.equipment} onCheckedChange={v => setPdfSections(s => ({ ...s, equipment: v === true }))} />
+                        <span className="text-sm">Utstyr</span>
+                      </label>
+                    )}
                   </div>
-                ) : (
-                  <p>Oppdraget "{exportPdfMission?.tittel}" vil bli eksportert som PDF og lagret i dokumenter.</p>
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Avbryt</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmExportPdf}>
-                Eksporter PDF
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                </div>
+              )}
+
+              {/* Rute */}
+              {((exportPdfMission?.route as any)?.coordinates?.length > 0 || exportPdfMission?.sora) && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Rute</p>
+                  <div className="space-y-2">
+                    {(exportPdfMission?.route as any)?.coordinates?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.routeCoordinates} onCheckedChange={v => setPdfSections(s => ({ ...s, routeCoordinates: v === true }))} />
+                        <span className="text-sm">Rutekoordinater</span>
+                      </label>
+                    )}
+                    {exportPdfMission?.sora && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.sora} onCheckedChange={v => setPdfSections(s => ({ ...s, sora: v === true }))} />
+                        <span className="text-sm">SORA-analyse</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Vurderinger og logger */}
+              {(exportPdfMission?.aiRisk || exportPdfMission?.incidents?.length > 0 || exportPdfMission?.flightLogs?.length > 0) && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Vurderinger og logger</p>
+                  <div className="space-y-2">
+                    {exportPdfMission?.aiRisk && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.riskAssessment} onCheckedChange={v => setPdfSections(s => ({ ...s, riskAssessment: v === true }))} />
+                        <span className="text-sm">AI Risikovurdering</span>
+                      </label>
+                    )}
+                    {exportPdfMission?.incidents?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.incidents} onCheckedChange={v => setPdfSections(s => ({ ...s, incidents: v === true }))} />
+                        <span className="text-sm">Tilknyttede hendelser</span>
+                      </label>
+                    )}
+                    {exportPdfMission?.flightLogs?.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={pdfSections.flightLogs} onCheckedChange={v => setPdfSections(s => ({ ...s, flightLogs: v === true }))} />
+                        <span className="text-sm">Flyturer</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setExportPdfDialogOpen(false)}>Avbryt</Button>
+              <Button onClick={handleConfirmExportPdf}>Eksporter PDF</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Report Incident from Mission */}
         <AddIncidentDialog
