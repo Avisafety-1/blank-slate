@@ -47,6 +47,7 @@ import { nb } from "date-fns/locale";
 import droneBackground from "@/assets/drone-background.png";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
@@ -755,22 +756,68 @@ const Oppdrag = () => {
       
       let yPos = 50;
       
-      // Add map image if coordinates exist
-      if (mission.latitude && mission.longitude) {
-        try {
-          // Generate static map URL (using OpenStreetMap static map service)
-          const mapWidth = 600;
-          const mapHeight = 300;
-          const zoom = 12;
-          const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${mission.latitude},${mission.longitude}&zoom=${zoom}&size=${mapWidth}x${mapHeight}&markers=${mission.latitude},${mission.longitude},red-pushpin`;
-          
-          // Add map image to PDF
-          pdf.addImage(mapUrl, 'PNG', 15, yPos, 180, 90);
-          yPos += 100;
-        } catch (mapError) {
-          console.error("Error adding map to PDF:", mapError);
-          // Continue without map if there's an error
+      // Add map snapshot (canvas-based: route, SORA zones, AIP zones)
+      try {
+        const mapDataUrl = await generateMissionMapSnapshot({
+          latitude: effectiveLat,
+          longitude: effectiveLng,
+          route: mission.route as any,
+        });
+
+        if (mapDataUrl) {
+          pdf.setFontSize(12);
+          setFontStyle(pdf, "bold");
+          pdf.setTextColor(0);
+          pdf.text("Kartutssnitt", 15, yPos);
+          yPos += 7;
+
+          // Map image (180mm wide, 90mm tall)
+          pdf.addImage(mapDataUrl, "PNG", 15, yPos, 180, 90);
+          yPos += 95;
+
+          // Legend
+          const soraSettings = (mission.route as any)?.soraSettings;
+          pdf.setFontSize(8);
+          setFontStyle(pdf, "normal");
+          pdf.setTextColor(60);
+
+          type RGB = [number, number, number];
+          const legendItems: Array<{ color: RGB; dash?: boolean; label: string }> = [
+            { color: [29, 78, 216], dash: true, label: "Planlagt flyrute" },
+          ];
+          if (soraSettings?.enabled) {
+            legendItems.push(
+              { color: [34, 197, 94], label: "Flight Geography (SORA)" },
+              { color: [234, 179, 8], dash: true, label: "Contingency Area (SORA)" },
+              { color: [239, 68, 68], dash: true, label: "Ground Risk Buffer (SORA)" }
+            );
+          }
+
+          let lx = 15;
+          for (const item of legendItems) {
+            pdf.setDrawColor(item.color[0], item.color[1], item.color[2]);
+            if (item.dash) {
+              pdf.setLineDashPattern([1, 1], 0);
+              pdf.setLineWidth(0.8);
+            } else {
+              pdf.setLineDashPattern([], 0);
+              pdf.setLineWidth(1.5);
+            }
+            pdf.line(lx, yPos + 2, lx + 8, yPos + 2);
+            pdf.setTextColor(60);
+            pdf.text(item.label, lx + 10, yPos + 3.5);
+            lx += 10 + pdf.getTextWidth(item.label) + 6;
+            if (lx > 175) {
+              lx = 15;
+              yPos += 7;
+            }
+          }
+          pdf.setLineDashPattern([], 0);
+          pdf.setTextColor(0);
+          yPos += 10;
         }
+      } catch (mapError) {
+        console.error("Error generating map snapshot for PDF:", mapError);
       }
       
       // Airspace Warnings
