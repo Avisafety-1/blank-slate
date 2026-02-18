@@ -112,31 +112,17 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
       fromName = emailSettings.from_name;
       fromEmail = emailSettings.from_email || emailSettings.smtp_user;
 
-      // If the host is the default AviSafe host, use the global credentials entirely.
-      // This ensures smtp_user, smtp_pass and fromEmail are all consistent with the
-      // authoritative global account (noreply@avisafe.no / EMAIL_PASS).
-      if (emailHost === 'send.one.com') {
+      // Only fall back to global credentials if the company has no password configured.
+      // Never override a company's own credentials, even if they use send.one.com.
+      if (!emailPass) {
         const secretPass = Deno.env.get('EMAIL_PASS');
         const secretUser = Deno.env.get('EMAIL_USER');
-        if (secretPass) {
-          emailPass = secretPass;
-          console.log("Using EMAIL_PASS secret for AviSafe SMTP");
-        }
+        if (secretPass) emailPass = secretPass;
         if (secretUser) {
           emailUser = secretUser;
-          // Only override fromEmail if it was set to the old kontakt address
-          if (!fromEmail || fromEmail !== secretUser) {
-            fromEmail = secretUser;
-          }
-          console.log("Using EMAIL_USER secret for AviSafe SMTP:", secretUser);
+          fromEmail = fromEmail || secretUser;
         }
-      } else if (!emailPass) {
-        // Non-AviSafe host but no password stored – try the global secret as fallback
-        const secretPass = Deno.env.get('EMAIL_PASS');
-        if (secretPass) {
-          emailPass = secretPass;
-          console.log("Using EMAIL_PASS secret as fallback for custom SMTP");
-        }
+        console.log("Company has no SMTP password – falling back to global credentials");
       }
     }
   }
