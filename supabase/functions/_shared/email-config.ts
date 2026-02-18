@@ -104,13 +104,23 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
 
     if (emailSettings) {
       console.log("Using email settings from database for company:", companyId);
-      emailHost = emailSettings.smtp_host?.toLowerCase(); // Ensure hostname is lowercase
+      emailHost = emailSettings.smtp_host?.toLowerCase();
       emailPort = emailSettings.smtp_port;
       emailUser = emailSettings.smtp_user;
       emailPass = emailSettings.smtp_pass;
       emailSecure = emailSettings.smtp_secure;
       fromName = emailSettings.from_name;
       fromEmail = emailSettings.from_email || emailSettings.smtp_user;
+
+      // If the stored password is empty/null or the host is the default AviSafe host,
+      // prefer the EMAIL_PASS secret (which is the authoritative credential)
+      if (!emailPass || emailHost === 'send.one.com') {
+        const secretPass = Deno.env.get('EMAIL_PASS');
+        if (secretPass) {
+          emailPass = secretPass;
+          console.log("Using EMAIL_PASS secret for AviSafe SMTP");
+        }
+      }
     }
   }
 
@@ -125,16 +135,20 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
     fromEmail = emailUser;
   }
 
-  // Final fallback to default AviSafe SMTP settings
+  // Final fallback to default AviSafe SMTP settings from secrets
   if (!emailHost || !emailUser || !emailPass) {
-    console.log("Using default AviSafe email settings");
-    emailHost = 'send.one.com';
-    emailPort = 465;
-    emailUser = 'noreply@avisafe.no';
-    emailPass = 'Avisafe!';
-    emailSecure = true;
-    fromEmail = 'noreply@avisafe.no';
+    console.log("Using default AviSafe email settings from secrets");
+    emailHost = Deno.env.get('EMAIL_HOST') || 'send.one.com';
+    emailPort = parseInt(Deno.env.get('EMAIL_PORT') || '465');
+    emailUser = Deno.env.get('EMAIL_USER') || 'noreply@avisafe.no';
+    emailPass = Deno.env.get('EMAIL_PASS');
+    emailSecure = Deno.env.get('EMAIL_SECURE') === 'true' || true;
+    fromEmail = emailUser;
     fromName = 'AviSafe';
+  }
+
+  if (!emailPass) {
+    throw new Error('No email password configured. Please set EMAIL_PASS secret.');
   }
 
   return {
