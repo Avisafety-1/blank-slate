@@ -5,15 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useEffect } from "react";
-import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+
 interface FlightLogbookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,7 +33,7 @@ interface FlightLog {
   flight_duration_minutes: number;
   movements: number;
   notes: string | null;
-drone: {
+  drone: {
     modell: string;
     serienummer: string;
   } | null;
@@ -38,23 +42,47 @@ drone: {
   } | null;
 }
 
+interface PersonnelLogEntry {
+  id: string;
+  entry_date: string;
+  entry_type: string | null;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  imagePublicUrl?: string;
+}
+
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
   const { user, companyId } = useAuth();
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
+  const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [profileFlyvetimer, setProfileFlyvetimer] = useState(0);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [showAddHours, setShowAddHours] = useState(false);
+  const [showAddEntry, setShowAddEntry] = useState(false);
   const [manualHours, setManualHours] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [isSavingEntry, setIsSavingEntry] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newEntry, setNewEntry] = useState({
+    entry_type: "merknad",
+    title: "",
+    description: "",
+    entry_date: new Date().toISOString().split('T')[0],
+  });
 
   useEffect(() => {
     if (open && personId) {
       fetchFlightLogs();
       fetchProfileData();
+      fetchPersonnelLogs();
     }
   }, [open, personId]);
 
@@ -66,13 +94,35 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       .single();
     setProfileFlyvetimer(Number(data?.flyvetimer) || 0);
     
-    // Fetch signature_url separately since it's a new column
     const { data: signatureData } = await (supabase as any)
       .from("profiles")
       .select("signature_url")
       .eq("id", personId)
       .single();
     setSignatureUrl(signatureData?.signature_url || null);
+  };
+
+  const fetchPersonnelLogs = async () => {
+    const { data, error } = await (supabase as any)
+      .from("personnel_log_entries")
+      .select("id, entry_date, entry_type, title, description, image_url")
+      .eq("profile_id", personId)
+      .order("entry_date", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching personnel logs:", error);
+      return;
+    }
+
+    const entries: PersonnelLogEntry[] = (data || []).map((e: any) => {
+      let imagePublicUrl: string | undefined;
+      if (e.image_url) {
+        const { data: urlData } = supabase.storage.from("logbook-images").getPublicUrl(e.image_url);
+        imagePublicUrl = urlData.publicUrl;
+      }
+      return { ...e, imagePublicUrl };
+    });
+    setPersonnelLogs(entries);
   };
 
   const handleConfirmAddHours = () => {
@@ -111,7 +161,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const fetchFlightLogs = async () => {
     setLoading(true);
     try {
-      // Get flight log IDs for this person
       const { data: personnelLogs } = await (supabase as any)
         .from("flight_log_personnel")
         .select("flight_log_id")
@@ -126,7 +175,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       const logIds = personnelLogs.map((p: any) => p.flight_log_id);
 
-      // Fetch full flight log details
       const { data: logs } = await (supabase as any)
         .from("flight_logs")
         .select(`
@@ -170,6 +218,91 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
   const totalFlytid = totalMinutes + (profileFlyvetimer * 60);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Bildet er for stort (maks 10 MB)");
+      return;
+    }
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleAddEntry = async () => {
+    if (!user || !companyId || !newEntry.title.trim()) {
+      toast.error("Fyll inn tittel");
+      return;
+    }
+    setIsSavingEntry(true);
+    try {
+      const { data: inserted, error } = await (supabase as any)
+        .from("personnel_log_entries")
+        .insert({
+          profile_id: personId,
+          company_id: companyId,
+          user_id: user.id,
+          entry_date: newEntry.entry_date,
+          entry_type: newEntry.entry_type,
+          title: newEntry.title.trim(),
+          description: newEntry.description.trim() || null,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      if (imageFile && inserted?.id) {
+        const ext = imageFile.name.split('.').pop();
+        const filePath = `${companyId}/personnel-${inserted.id}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("logbook-images")
+          .upload(filePath, imageFile, { contentType: imageFile.type });
+
+        if (uploadError) {
+          toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
+        } else {
+          await (supabase as any)
+            .from("personnel_log_entries")
+            .update({ image_url: filePath })
+            .eq("id", inserted.id);
+        }
+      }
+
+      toast.success("Innlegg lagt til");
+      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
+      clearImage();
+      setShowAddEntry(false);
+      fetchPersonnelLogs();
+    } catch (error: any) {
+      console.error("Error adding entry:", error);
+      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+    } finally {
+      setIsSavingEntry(false);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("personnel_log_entries")
+        .delete()
+        .eq("id", entryId);
+
+      if (error) throw error;
+      toast.success("Innlegg slettet");
+      fetchPersonnelLogs();
+    } catch (error: any) {
+      toast.error(`Kunne ikke slette: ${error.message}`);
+    }
+  };
+
   const handleExportPDF = async () => {
     if (!companyId || !user) {
       toast.error("Mangler bruker- eller bedriftsinformasjon");
@@ -180,7 +313,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     try {
       const doc = await createPdfDocument();
       
-      // Header
       doc.setFontSize(18);
       doc.text(sanitizeForPdf(`Loggbok - ${personName}`), 14, 20);
       
@@ -188,7 +320,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       doc.setTextColor(100);
       doc.text(formatDateForPdf(new Date(), "'Eksportert:' d. MMMM yyyy 'kl.' HH:mm"), 14, 28);
       
-      // Total flight time
       doc.setFontSize(12);
       doc.setTextColor(0);
       doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
@@ -199,7 +330,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         doc.text(`Manuelt lagt til: ${formatDurationForPdf(Math.round(profileFlyvetimer * 60))}`, 14, 54);
       }
       
-      // Flight logs table
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
         sanitizeForPdf(log.departure_location),
@@ -217,18 +347,15 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         headStyles: { fillColor: [59, 130, 246] }
       });
 
-      // Add signature if available
       if (signatureUrl) {
         const finalY = (doc as any).lastAutoTable?.finalY || 150;
         await addSignatureToPdf(doc, signatureUrl, finalY + 20, "Signatur:");
       }
       
-      // Generate filename
       const safeName = sanitizeFilenameForPdf(personName);
       const dateStr = format(new Date(), "yyyy-MM-dd");
       const fileName = `loggbok_${safeName}_${dateStr}.pdf`;
       
-      // Upload to storage
       const pdfBlob = doc.output("blob");
       const filePath = `${companyId}/${fileName}`;
       
@@ -238,7 +365,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       
       if (uploadError) throw uploadError;
       
-      // Create document record
       const { error: docError } = await supabase.from("documents").insert({
         company_id: companyId,
         user_id: user.id,
@@ -264,7 +390,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh]">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Book className="w-5 h-5 text-primary" />
@@ -284,7 +410,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               </Badge>
             </div>
 
-            {/* Breakdown */}
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground px-1">
               <span>Fra loggførte flyturer: {formatDuration(totalMinutes)}</span>
               {profileFlyvetimer > 0 && (
@@ -293,29 +418,38 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </div>
 
             {/* Actions */}
-            {!showAddHours ? (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddHours(true)}
-                  className="flex-1"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Legg til flytimer manuelt
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPDF}
-                  disabled={exporting}
-                  className="flex-1"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  {exporting ? "Eksporterer..." : "Eksporter PDF"}
-                </Button>
-              </div>
-            ) : (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowAddHours(!showAddHours); setShowAddEntry(false); }}
+                className="flex-1"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Legg til flytimer manuelt
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowAddEntry(!showAddEntry); setShowAddHours(false); }}
+                className="flex-1"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Legg til logginnlegg
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={exporting}
+                className="flex-1"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {exporting ? "Eksporterer..." : "Eksporter PDF"}
+              </Button>
+            </div>
+
+            {showAddHours && (
               <div className="p-3 bg-muted/50 rounded-lg border space-y-3">
                 <div className="flex gap-3">
                   <div className="flex-1">
@@ -346,11 +480,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setShowAddHours(false);
-                      setManualHours("");
-                      setManualMinutes("");
-                    }}
+                    onClick={() => { setShowAddHours(false); setManualHours(""); setManualMinutes(""); }}
                   >
                     Avbryt
                   </Button>
@@ -360,72 +490,237 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 </div>
               </div>
             )}
-          </div>
 
-          <ScrollArea className="h-[calc(90vh-18rem)]">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Laster...</div>
-              </div>
-            ) : flightLogs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Book className="w-12 h-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">Ingen loggførte flyturer</p>
-              </div>
-            ) : (
-              <div className="space-y-3 pr-4">
-                {flightLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="p-4 bg-card border border-border rounded-lg space-y-2"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {format(new Date(log.flight_date), "d. MMMM yyyy", { locale: nb })}
-                        </span>
-                      </div>
-                      <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {log.drone && (
-                        <div className="flex items-center gap-1">
-                          <Plane className="w-3 h-3" />
-                          <span>{log.drone.modell} (SN: {log.drone.serienummer})</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-3 h-3 text-muted-foreground" />
-                      <span>{log.departure_location}</span>
-                      <span className="text-muted-foreground">→</span>
-                      <span>{log.landing_location}</span>
-                      {log.movements > 1 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {log.movements} landinger
-                        </Badge>
-                      )}
-                    </div>
-
-                    {log.mission && (
-                      <div className="text-sm text-muted-foreground">
-                        Oppdrag: {log.mission.tittel}
-                      </div>
-                    )}
-
-                    {log.notes && (
-                      <p className="text-sm text-muted-foreground border-t border-border pt-2 mt-2">
-                        {log.notes}
-                      </p>
-                    )}
+            {showAddEntry && (
+              <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Type</Label>
+                    <Select
+                      value={newEntry.entry_type}
+                      onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="merknad">Merknad</SelectItem>
+                        <SelectItem value="hendelse">Hendelse</SelectItem>
+                        <SelectItem value="reparasjon">Reparasjon</SelectItem>
+                        <SelectItem value="annet">Annet</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
+                  <div>
+                    <Label className="text-xs">Dato</Label>
+                    <Input
+                      type="date"
+                      className="h-9"
+                      value={newEntry.entry_date}
+                      onChange={(e) => setNewEntry(prev => ({ ...prev, entry_date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Tittel *</Label>
+                  <Input
+                    value={newEntry.title}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Kort beskrivelse"
+                  />
+                </div>
+                <div>
+                  <Label>Beskrivelse</Label>
+                  <Textarea
+                    value={newEntry.description}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Utfyllende detaljer (valgfritt)"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Bilde (valgfritt)</Label>
+                  {imagePreviewUrl ? (
+                    <div className="relative inline-block mt-1">
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Forhåndsvisning"
+                        className="h-24 w-auto rounded-md border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={clearImage}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                      Last opp bilde
+                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleAddEntry} disabled={isSavingEntry}>
+                    {isSavingEntry ? "Lagrer..." : "Lagre"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                </div>
               </div>
             )}
-          </ScrollArea>
+          </div>
+
+          <Tabs defaultValue="flyturer" className="flex-1 flex flex-col min-h-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="flyturer" className="flex-1">Flyturer</TabsTrigger>
+              <TabsTrigger value="innlegg" className="flex-1">
+                Logginnlegg {personnelLogs.length > 0 && `(${personnelLogs.length})`}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="flyturer" className="flex-1 min-h-0 mt-2">
+              <ScrollArea className="h-[calc(90vh-26rem)]">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-muted-foreground">Laster...</div>
+                  </div>
+                ) : flightLogs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Book className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">Ingen loggførte flyturer</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pr-4">
+                    {flightLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-4 bg-card border border-border rounded-lg space-y-2"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {format(new Date(log.flight_date), "d. MMMM yyyy", { locale: nb })}
+                            </span>
+                          </div>
+                          <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {log.drone && (
+                            <div className="flex items-center gap-1">
+                              <Plane className="w-3 h-3" />
+                              <span>{log.drone.modell} (SN: {log.drone.serienummer})</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
+                          <span>{log.departure_location}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span>{log.landing_location}</span>
+                          {log.movements > 1 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {log.movements} landinger
+                            </Badge>
+                          )}
+                        </div>
+
+                        {log.mission && (
+                          <div className="text-sm text-muted-foreground">
+                            Oppdrag: {log.mission.tittel}
+                          </div>
+                        )}
+
+                        {log.notes && (
+                          <p className="text-sm text-muted-foreground border-t border-border pt-2 mt-2">
+                            {log.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="innlegg" className="flex-1 min-h-0 mt-2">
+              <ScrollArea className="h-[calc(90vh-26rem)]">
+                {personnelLogs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Edit className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">Ingen logginnlegg ennå</p>
+                    <p className="text-xs text-muted-foreground mt-1">Klikk «Legg til logginnlegg» for å legge til</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pr-4">
+                    {personnelLogs.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="p-3 bg-card border border-border rounded-lg"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="secondary" className="text-xs">
+                                {entry.entry_type || 'Merknad'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(entry.entry_date), "d. MMMM yyyy", { locale: nb })}
+                              </span>
+                            </div>
+                            <p className="font-medium text-sm mt-1">{entry.title}</p>
+                            {entry.description && (
+                              <p className="text-sm text-muted-foreground mt-0.5">{entry.description}</p>
+                            )}
+                            {entry.imagePublicUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setLightboxUrl(entry.imagePublicUrl!)}
+                                className="mt-2 relative group"
+                              >
+                                <img
+                                  src={entry.imagePublicUrl}
+                                  alt="Vedlegg"
+                                  className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
+                                  <ZoomIn className="w-4 h-4 text-white" />
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => handleDeleteEntry(entry.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
@@ -446,6 +741,19 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+          <DialogContent className="max-w-3xl p-2 bg-background/95">
+            <img
+              src={lightboxUrl}
+              alt="Bilde"
+              className="w-full h-auto rounded-md max-h-[80vh] object-contain"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

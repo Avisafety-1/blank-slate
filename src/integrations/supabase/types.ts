@@ -618,6 +618,7 @@ export type Database = {
           entry_date: string
           entry_type: string | null
           id: string
+          image_url: string | null
           title: string
           user_id: string
         }
@@ -629,6 +630,7 @@ export type Database = {
           entry_date: string
           entry_type?: string | null
           id?: string
+          image_url?: string | null
           title: string
           user_id: string
         }
@@ -640,6 +642,7 @@ export type Database = {
           entry_date?: string
           entry_type?: string | null
           id?: string
+          image_url?: string | null
           title?: string
           user_id?: string
         }
@@ -1314,6 +1317,7 @@ export type Database = {
           entry_type: string | null
           equipment_id: string
           id: string
+          image_url: string | null
           title: string
           user_id: string
         }
@@ -1325,6 +1329,7 @@ export type Database = {
           entry_type?: string | null
           equipment_id: string
           id?: string
+          image_url?: string | null
           title: string
           user_id: string
         }
@@ -1336,6 +1341,7 @@ export type Database = {
           entry_type?: string | null
           equipment_id?: string
           id?: string
+          image_url?: string | null
           title?: string
           user_id?: string
         }
@@ -2458,6 +2464,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "personnel_competencies_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_log_entries: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string | null
+          entry_date: string
+          entry_type: string | null
+          id: string
+          image_url: string | null
+          profile_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          entry_date: string
+          entry_type?: string | null
+          id?: string
+          image_url?: string | null
+          profile_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          entry_date?: string
+          entry_type?: string | null
+          id?: string
+          image_url?: string | null
+          profile_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_log_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_log_entries_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
