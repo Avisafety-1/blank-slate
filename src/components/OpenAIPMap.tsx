@@ -629,14 +629,26 @@ export function OpenAIPMap({
     }
   }, [mode, updateRouteDisplay, setGeoJsonInteractivity]);
 
-  // Sync with controlled route from parent (for clear/undo operations)
+  // Sync with controlled route from parent (for clear/undo operations and KML import)
   useEffect(() => {
-    if (controlledRoute && controlledRoute.coordinates.length < routePointsRef.current.length) {
-      routePointsRef.current = [...controlledRoute.coordinates];
+    if (!controlledRoute) return;
+    const controlled = controlledRoute.coordinates;
+    const current = routePointsRef.current;
+    // Sync if length differs OR if the first coordinate changed (e.g. KML import replaced the route)
+    const firstChanged =
+      controlled.length > 0 &&
+      current.length > 0 &&
+      (controlled[0].lat !== current[0].lat || controlled[0].lng !== current[0].lng);
+    if (controlled.length < current.length || controlled.length === 0 || firstChanged || (controlled.length > 0 && current.length === 0)) {
+      routePointsRef.current = [...controlled];
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
+      // Pan map to first point if route was imported (more points than before and no existing points)
+      if (controlled.length > 0 && leafletMapRef.current && (current.length === 0 || firstChanged)) {
+        leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
+      }
     }
-  }, [controlledRoute?.coordinates.length, updateRouteDisplay]);
+  }, [controlledRoute?.coordinates.length, controlledRoute?.coordinates[0]?.lat, controlledRoute?.coordinates[0]?.lng, updateRouteDisplay]);
 
   useEffect(() => {
     if (!mapRef.current) return;
