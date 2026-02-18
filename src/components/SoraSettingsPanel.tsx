@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,25 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
               onChange={(e) => update({ flightAltitude: Number(e.target.value) || 0 })}
               className="h-8 text-sm"
             />
+          </div>
+
+          {/* Buffer mode */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Buffermetode</Label>
+            <RadioGroup
+              value={settings.bufferMode ?? "corridor"}
+              onValueChange={(v) => update({ bufferMode: v as "corridor" | "convexHull" })}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="corridor" id="mode-corridor" />
+                <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="convexHull" id="mode-hull" />
+                <Label htmlFor="mode-hull" className="text-xs cursor-pointer">Konveks område</Label>
+              </div>
+            </RadioGroup>
           </div>
 
           {/* Contingency area */}

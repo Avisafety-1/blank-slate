@@ -82,6 +82,7 @@ export interface SoraSettings {
   contingencyDistance: number;
   contingencyHeight: number;
   groundRiskDistance: number;
+  bufferMode?: "corridor" | "convexHull";
 }
 
 interface OpenAIPMapProps {
