@@ -1,15 +1,16 @@
 import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/OpenAIPMap";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import safeskyLogo from "@/assets/safesky-logo.png";
+import { parseKmlOrKmz } from "@/lib/kmlImport";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -43,6 +44,10 @@ export default function KartPage() {
   
   // Editing existing mission route
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
+  
+  // KML import
+  const kmlInputRef = useRef<HTMLInputElement>(null);
+  const [importingKml, setImportingKml] = useState(false);
   
   // SORA settings
   const [soraSettings, setSoraSettings] = useState<SoraSettings>({
@@ -87,6 +92,21 @@ export default function KartPage() {
   const handleRouteChange = useCallback((route: RouteData) => {
     setCurrentRoute(route);
   }, []);
+
+  // KML import handler
+  const handleKmlImport = async (file: File) => {
+    setImportingKml(true);
+    try {
+      const parsed = await parseKmlOrKmz(file);
+      setCurrentRoute(parsed);
+      toast.success(`KML importert: ${parsed.coordinates.length} punkter · ${(parsed.totalDistance / 1000).toFixed(2)} km`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Import feilet');
+    } finally {
+      setImportingKml(false);
+      if (kmlInputRef.current) kmlInputRef.current.value = '';
+    }
+  };
 
   // Start route planning directly from /kart
   const handleStartRoutePlanning = () => {
@@ -366,6 +386,29 @@ setSoraSettings({ enabled: false, flightAltitude: 120, contingencyDistance: 50, 
                   <span className="hidden sm:inline ml-1">
                     {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
                   </span>
+                </Button>
+
+                {/* KML Import */}
+                <input
+                  ref={kmlInputRef}
+                  type="file"
+                  accept=".kml,.kmz"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleKmlImport(file);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => kmlInputRef.current?.click()}
+                  disabled={importingKml}
+                  className="h-8 px-2 sm:px-3"
+                  title="Importer KML/KMZ-fil"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'Importer KML'}</span>
                 </Button>
 
                 {/* NOTAM link */}

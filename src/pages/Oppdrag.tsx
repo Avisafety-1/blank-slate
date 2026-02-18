@@ -1,5 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +35,8 @@ import {
   ChevronDown,
   Info,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  Upload
 } from "lucide-react";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
@@ -151,6 +153,13 @@ const Oppdrag = () => {
   const [includeRiskAssessment, setIncludeRiskAssessment] = useState(false);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
+  
+  // KML import state
+  const [kmlImportMissionId, setKmlImportMissionId] = useState<string | null>(null);
+  const [importingKml, setImportingKml] = useState(false);
+  const [replaceRouteConfirmOpen, setReplaceRouteConfirmOpen] = useState(false);
+  const [pendingKmlFile, setPendingKmlFile] = useState<File | null>(null);
+  const kmlInputRef = useRef<HTMLInputElement>(null);
   
   // State for route planner navigation
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
@@ -578,6 +587,44 @@ const Oppdrag = () => {
       toast.error('Kunne ikke slette oppdraget');
     } finally {
       setDeletingMission(null);
+    }
+  };
+
+  const doImportKml = async (file: File, missionId: string) => {
+    setImportingKml(true);
+    try {
+      const parsed = await parseKmlOrKmz(file);
+      const updatePayload: any = { route: parsed };
+      // Set start coords from first point if mission lacks them
+      const mission = [...activeMissions, ...completedMissions].find(m => m.id === missionId);
+      if (mission && !mission.latitude && parsed.coordinates.length > 0) {
+        updatePayload.latitude = parsed.coordinates[0].lat;
+        updatePayload.longitude = parsed.coordinates[0].lng;
+      }
+      const { error } = await supabase.from('missions').update(updatePayload).eq('id', missionId);
+      if (error) throw error;
+      toast.success(`Rute importert: ${parsed.coordinates.length} punkter · ${(parsed.totalDistance / 1000).toFixed(2)} km`);
+      fetchMissions();
+    } catch (err: any) {
+      toast.error(err?.message || 'Import feilet');
+    } finally {
+      setImportingKml(false);
+      setPendingKmlFile(null);
+      setKmlImportMissionId(null);
+      if (kmlInputRef.current) kmlInputRef.current.value = '';
+    }
+  };
+
+  const handleKmlFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !kmlImportMissionId) return;
+    const mission = [...activeMissions, ...completedMissions].find(m => m.id === kmlImportMissionId);
+    const hasRoute = (mission?.route as any)?.coordinates?.length > 0;
+    if (hasRoute) {
+      setPendingKmlFile(file);
+      setReplaceRouteConfirmOpen(true);
+    } else {
+      doImportKml(file, kmlImportMissionId);
     }
   };
 
@@ -1484,6 +1531,13 @@ const Oppdrag = () => {
                               Eksporter KMZ
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => {
+                            setKmlImportMissionId(mission.id);
+                            setTimeout(() => kmlInputRef.current?.click(), 0);
+                          }} disabled={importingKml}>
+                            <Upload className="h-4 w-4 mr-2" />
+                            {importingKml && kmlImportMissionId === mission.id ? 'Importerer…' : 'Importer KML/KMZ'}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => {
                             setReportIncidentMission(mission);
@@ -2127,6 +2181,39 @@ const Oppdrag = () => {
               <AlertDialogCancel>Avbryt</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteMission} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Slett oppdrag
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* KML Import: hidden file input */}
+        <input
+          ref={kmlInputRef}
+          type="file"
+          accept=".kml,.kmz"
+          className="hidden"
+          onChange={handleKmlFileSelected}
+        />
+
+        {/* KML Replace Route Confirmation */}
+        <AlertDialog open={replaceRouteConfirmOpen} onOpenChange={setReplaceRouteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Erstatte eksisterende rute?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Dette oppdraget har allerede en rute. Vil du erstatte den med koordinatene fra den importerte filen?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setPendingKmlFile(null);
+                if (kmlInputRef.current) kmlInputRef.current.value = '';
+              }}>Avbryt</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (pendingKmlFile && kmlImportMissionId) doImportKml(pendingKmlFile, kmlImportMissionId);
+                setReplaceRouteConfirmOpen(false);
+              }}>
+                Erstatt rute
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
