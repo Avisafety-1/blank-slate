@@ -13,6 +13,148 @@ export interface SoraSettings {
   groundRiskDistance: number;
 }
 
+/**
+ * Builds a rounded corridor polygon around a polyline.
+ * Uses a local metric projection for accurate meter-based offsets.
+ */
+export function bufferPolyline(
+  points: RoutePoint[],
+  distanceMeters: number,
+  numCapSegments = 16
+): RoutePoint[] {
+  if (points.length === 0 || distanceMeters <= 0) return points;
+
+  const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const latScale = 111320;
+  const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
+  const ref = points[0];
+
+  // Convert to local metric coords
+  const pts = points.map(p => ({
+    x: (p.lng - ref.lng) * lngScale,
+    y: (p.lat - ref.lat) * latScale,
+  }));
+
+  // Handle single point → circle
+  if (pts.length === 1) {
+    const result: RoutePoint[] = [];
+    const segs = numCapSegments * 2;
+    for (let i = 0; i < segs; i++) {
+      const angle = (2 * Math.PI * i) / segs;
+      result.push({
+        lat: ref.lat + (pts[0].y + Math.sin(angle) * distanceMeters) / latScale,
+        lng: ref.lng + (pts[0].x + Math.cos(angle) * distanceMeters) / lngScale,
+      });
+    }
+    return result;
+  }
+
+  // Compute per-segment normal vectors (pointing left = outward for right-hand side)
+  const segNormals: { nx: number; ny: number }[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = pts[i + 1].x - pts[i].x;
+    const dy = pts[i + 1].y - pts[i].y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-6) {
+      segNormals.push(segNormals.length > 0 ? segNormals[segNormals.length - 1] : { nx: 0, ny: 1 });
+    } else {
+      // Perpendicular (rotate 90° CCW): left side
+      segNormals.push({ nx: -dy / len, ny: dx / len });
+    }
+  }
+
+  // Helper: add a semicircular arc around a center point,
+  // sweeping from startAngle to endAngle (CCW)
+  function addArc(
+    cx: number, cy: number,
+    startAngle: number, endAngle: number,
+    out: { x: number; y: number }[]
+  ) {
+    // Normalize sweep to go CCW (positive direction)
+    let sweep = endAngle - startAngle;
+    while (sweep < 0) sweep += 2 * Math.PI;
+    if (sweep > 2 * Math.PI) sweep = 2 * Math.PI;
+    const steps = Math.max(2, Math.round((numCapSegments * sweep) / Math.PI));
+    for (let i = 0; i <= steps; i++) {
+      const a = startAngle + (sweep * i) / steps;
+      out.push({ x: cx + Math.cos(a) * distanceMeters, y: cy + Math.sin(a) * distanceMeters });
+    }
+  }
+
+  const rightSide: { x: number; y: number }[] = [];
+  const leftSide: { x: number; y: number }[] = [];
+
+  // Build right side (forward, normal pointing outward right = -normal)
+  // and left side (reversed, normal pointing outward left = +normal)
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+
+    if (i === 0) {
+      // Start: use first segment normal only
+      const n = segNormals[0];
+      rightSide.push({ x: p.x - n.nx * distanceMeters, y: p.y - n.ny * distanceMeters });
+      leftSide.push({ x: p.x + n.nx * distanceMeters, y: p.y + n.ny * distanceMeters });
+    } else if (i === pts.length - 1) {
+      // End: use last segment normal only
+      const n = segNormals[segNormals.length - 1];
+      rightSide.push({ x: p.x - n.nx * distanceMeters, y: p.y - n.ny * distanceMeters });
+      leftSide.push({ x: p.x + n.nx * distanceMeters, y: p.y + n.ny * distanceMeters });
+    } else {
+      // Interior join: average adjacent normals (bisecting)
+      const n1 = segNormals[i - 1];
+      const n2 = segNormals[i];
+      const bx = n1.nx + n2.nx;
+      const by = n1.ny + n2.ny;
+      const blen = Math.sqrt(bx * bx + by * by);
+      if (blen < 1e-6) {
+        // Parallel segments — just use one normal
+        rightSide.push({ x: p.x - n1.nx * distanceMeters, y: p.y - n1.ny * distanceMeters });
+        leftSide.push({ x: p.x + n1.nx * distanceMeters, y: p.y + n1.ny * distanceMeters });
+      } else {
+        // Scale bisector so perpendicular distance = distanceMeters
+        const cos_half = (n1.nx * n2.nx + n1.ny * n2.ny + 1) / 2;
+        const scale = cos_half > 0.05 ? distanceMeters / Math.sqrt(cos_half * 2) : distanceMeters * 3;
+        const nbx = (bx / blen) * Math.min(scale, distanceMeters * 3);
+        const nby = (by / blen) * Math.min(scale, distanceMeters * 3);
+        rightSide.push({ x: p.x - nbx, y: p.y - nby });
+        leftSide.push({ x: p.x + nbx, y: p.y + nby });
+      }
+    }
+  }
+
+  // Build the final polygon:
+  // 1. Right side forward (p0 → pn)
+  // 2. End cap semicircle around last point
+  // 3. Left side backward (pn → p0)
+  // 4. Start cap semicircle around first point
+
+  const polygon: { x: number; y: number }[] = [];
+
+  // Right side forward
+  for (const p of rightSide) polygon.push(p);
+
+  // End cap: from right-side last point sweeping CCW to left-side last point
+  const lastN = segNormals[segNormals.length - 1];
+  const endAngleRight = Math.atan2(-lastN.ny, -lastN.nx); // angle of right offset from last pt
+  const endAngleLeft = Math.atan2(lastN.ny, lastN.nx);   // angle of left offset
+  addArc(pts[pts.length - 1].x, pts[pts.length - 1].y, endAngleRight, endAngleLeft, polygon);
+
+  // Left side backward
+  for (let i = leftSide.length - 1; i >= 0; i--) polygon.push(leftSide[i]);
+
+  // Start cap: from left-side first point sweeping CCW to right-side first point
+  const firstN = segNormals[0];
+  const startAngleLeft = Math.atan2(firstN.ny, firstN.nx);
+  const startAngleRight = Math.atan2(-firstN.ny, -firstN.nx);
+  addArc(pts[0].x, pts[0].y, startAngleLeft, startAngleRight, polygon);
+
+  // Convert back to lat/lng
+  return polygon.map(p => ({
+    lat: ref.lat + p.y / latScale,
+    lng: ref.lng + p.x / lngScale,
+  }));
+}
+
 export function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
   if (points.length < 3) return points;
   let start = points[0];
@@ -106,29 +248,47 @@ export function renderSoraZones(
   sora: SoraSettings,
   layer: L.LayerGroup
 ) {
-  if (!sora.enabled || coordinates.length < 3) return;
+  if (!sora.enabled || coordinates.length < 1) return;
 
-  const hull = computeConvexHull(coordinates);
-  if (hull.length < 3) return;
+  // Use line buffer (corridor) for open polylines, polygon buffer for closed routes
+  const isClosedRoute =
+    coordinates.length >= 3 &&
+    coordinates[0].lat === coordinates[coordinates.length - 1].lat &&
+    coordinates[0].lng === coordinates[coordinates.length - 1].lng;
 
-  const contingencyHull = bufferPolygon(hull, sora.contingencyDistance);
-  const groundRiskHull = bufferPolygon(hull, sora.contingencyDistance + sora.groundRiskDistance);
+  function makeBuffer(dist: number): RoutePoint[] {
+    if (dist <= 0) return coordinates;
+    if (isClosedRoute) {
+      const hull = computeConvexHull(coordinates);
+      return bufferPolygon(hull, dist);
+    }
+    return bufferPolyline(coordinates, dist);
+  }
 
-  // Red ground risk buffer (outermost)
-  L.polygon(
-    groundRiskHull.map(p => [p.lat, p.lng] as [number, number]),
-    { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' }
-  ).bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
+  // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
+  const flightGeo = bufferPolyline(coordinates, 1);
+  if (flightGeo.length >= 3) {
+    L.polygon(
+      flightGeo.map(p => [p.lat, p.lng] as [number, number]),
+      { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.20 }
+    ).bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
+  }
 
   // Yellow contingency area
-  L.polygon(
-    contingencyHull.map(p => [p.lat, p.lng] as [number, number]),
-    { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' }
-  ).bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
+  const contingencyZone = makeBuffer(sora.contingencyDistance);
+  if (contingencyZone.length >= 3) {
+    L.polygon(
+      contingencyZone.map(p => [p.lat, p.lng] as [number, number]),
+      { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' }
+    ).bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
+  }
 
-  // Green flight geography (hull)
-  L.polygon(
-    hull.map(p => [p.lat, p.lng] as [number, number]),
-    { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.20 }
-  ).bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
+  // Red ground risk buffer (outermost)
+  const groundRiskZone = makeBuffer(sora.contingencyDistance + sora.groundRiskDistance);
+  if (groundRiskZone.length >= 3) {
+    L.polygon(
+      groundRiskZone.map(p => [p.lat, p.lng] as [number, number]),
+      { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' }
+    ).bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
+  }
 }
