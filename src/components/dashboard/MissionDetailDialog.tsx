@@ -202,6 +202,17 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                <input
+                  ref={kmlInputRef}
+                  type="file"
+                  accept=".kml,.kmz"
+                  className="hidden"
+                  onChange={handleKmlFileSelected}
+                />
+                <Button size="sm" variant="outline" disabled={importingKml} onClick={() => kmlInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{importingKml ? 'Importerer…' : 'Importer KML/KMZ'}</span>
+                </Button>
                 {onEditRoute && (
                   <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
                     <Route className="w-4 h-4 sm:mr-2" />
@@ -343,30 +354,11 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
-                <div className="flex items-center gap-1">
-                  <input
-                    ref={kmlInputRef}
-                    type="file"
-                    accept=".kml,.kmz"
-                    className="hidden"
-                    onChange={handleKmlFileSelected}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    disabled={importingKml}
-                    onClick={() => kmlInputRef.current?.click()}
-                  >
-                    <Upload className="w-3.5 h-3.5 mr-1" />
-                    {importingKml ? 'Importerer…' : 'Importer KML/KMZ'}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
-                    <Maximize2 className="w-3.5 h-3.5 mr-1" />
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
+                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
                   Utvid
                 </Button>
               </div>
-            </div>
               <div 
                 className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={() => setExpandedMapOpen(true)}
