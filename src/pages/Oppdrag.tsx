@@ -829,16 +829,27 @@ const Oppdrag = () => {
         
         const levelLabels: Record<string, string> = {
           warning: "ADVARSEL",
+          WARNING: "ADVARSEL",
           caution: "FORSIKTIGHET",
-          note: "INFORMASJON"
+          CAUTION: "FORSIKTIGHET",
+          note: "INFORMASJON",
+          NOTE: "INFORMASJON",
         };
         
-        const airspaceData = airspaceWarnings.map((w: any) => [
-          sanitizeForPdf(levelLabels[w.level] || w.level),
-          sanitizeForPdf(w.zone_name) || "-",
-          w.is_inside ? "Innenfor sone" : `${Math.round(w.distance_meters)}m unna`,
-          sanitizeForPdf(w.message) || "-"
-        ]);
+        const airspaceData = airspaceWarnings.map((w: any) => {
+          const level = w.level ?? w.severity ?? "";
+          const zoneName = w.zone_name ?? w.z_name ?? "-";
+          const isInside = w.is_inside ?? w.route_inside ?? false;
+          const distanceM = w.distance_meters ?? w.min_distance ?? NaN;
+          const zoneType = w.zone_type ?? w.z_type ?? "";
+          const msg = w.message ?? (zoneType ? `Sone type: ${zoneType}` : "-");
+          return [
+            sanitizeForPdf(levelLabels[level] || level || "-"),
+            sanitizeForPdf(zoneName),
+            isInside ? "Innenfor sone" : (isNaN(distanceM) ? "-" : `${Math.round(distanceM)}m unna`),
+            sanitizeForPdf(msg),
+          ];
+        });
         
         autoTable(pdf, {
           startY: yPos,
