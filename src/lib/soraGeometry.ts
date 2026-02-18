@@ -11,6 +11,7 @@ export interface SoraSettings {
   contingencyDistance: number;
   contingencyHeight: number;
   groundRiskDistance: number;
+  bufferMode?: "corridor" | "convexHull";
 }
 
 /**
@@ -258,7 +259,8 @@ export function renderSoraZones(
 
   function makeBuffer(dist: number): RoutePoint[] {
     if (dist <= 0) return coordinates;
-    if (isClosedRoute) {
+    const mode = sora.bufferMode ?? "corridor";
+    if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(coordinates);
       return bufferPolygon(hull, dist);
     }
