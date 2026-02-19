@@ -25,6 +25,7 @@ export function bufferPolyline(
   numCapSegments = 16
 ): RoutePoint[] {
   if (points.length === 0 || distanceMeters <= 0) return points;
+  if (points.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return points;
 
   const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
   const latScale = 111320;
@@ -198,6 +199,7 @@ function intersectLines(
 
 export function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[] {
   if (hull.length < 3 || distanceMeters <= 0) return hull;
+  if (hull.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return hull;
   const avgLat = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
@@ -251,6 +253,7 @@ export function renderSoraZones(
   layer: L.LayerGroup
 ) {
   if (!sora.enabled || coordinates.length < 1) return;
+  if (coordinates.some(p => !p || !isFinite(p.lat) || !isFinite(p.lng))) return;
 
   // Use line buffer (corridor) for open polylines, polygon buffer for closed routes
   const isClosedRoute =
