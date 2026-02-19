@@ -256,10 +256,10 @@ const Resources = () => {
       {/* Content */}
       <div className="relative z-10 w-full">
         {/* Main Content */}
-        <main className="w-full px-3 sm:px-4 py-4 sm:py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+        <main className="w-full px-3 sm:px-4 py-4 sm:py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 flex-1 lg:items-stretch">
             {/* Droner/Fly Section */}
-            <GlassCard>
+            <GlassCard className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Plane className="w-5 h-5 text-primary" />
@@ -308,7 +308,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
                 {drones
                   .filter((drone) => {
                     if (droneSearch) {
@@ -372,7 +372,7 @@ const Resources = () => {
             </GlassCard>
 
             {/* Utstyr Section */}
-            <GlassCard>
+            <GlassCard className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Gauge className="w-5 h-5 text-primary" />
@@ -428,7 +428,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
                 {equipmentTypeFilter !== "__dronetag__" && equipment
                   .filter((item) => {
                     if (equipmentSearch) {
@@ -530,7 +530,7 @@ const Resources = () => {
             </GlassCard>
 
             {/* Personell Section */}
-            <GlassCard>
+            <GlassCard className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
@@ -583,7 +583,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
                 {personnel
                   .filter((person) => {
                     if (personnelSearch) {
