@@ -485,6 +485,125 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
+    // 9c. Fetch SSB population density (befolkning_paa_rutenett) via WFS
+    let populationData: {
+      maxDensity: number;
+      avgDensity: number;
+      cellCount: number;
+      grcImpact: 'none' | 'moderate' | 'high' | 'very_high';
+      grcIncrement: number;
+      summary: string;
+    } | null = null;
+
+    if (lat && lng) {
+      try {
+        const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
+          ? routeCoords
+          : [{ lat, lng }];
+
+        const degPerMeterLat = 1 / 111320;
+        const avgLatPop = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
+        const degPerMeterLng = 1 / (111320 * Math.cos(avgLatPop * Math.PI / 180));
+        const bufferM = 1000; // 1km buffer for population grid (matches 1km² cell size)
+
+        let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+        for (const c of allCoords) {
+          if (c.lat < minLat) minLat = c.lat;
+          if (c.lat > maxLat) maxLat = c.lat;
+          if (c.lng < minLng) minLng = c.lng;
+          if (c.lng > maxLng) maxLng = c.lng;
+        }
+        minLat -= bufferM * degPerMeterLat;
+        maxLat += bufferM * degPerMeterLat;
+        minLng -= bufferM * degPerMeterLng;
+        maxLng += bufferM * degPerMeterLng;
+
+        // SSB befolkning_paa_rutenett WFS — 1km² grid cells with population count
+        const popWfsUrl = `https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WFSServer?service=WFS&version=2.0.0&request=GetFeature&typeName=befolkning_paa_rutenett_1000m&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326&outputFormat=application/json&count=100`;
+        console.log(`Fetching SSB population WFS: bbox=${minLng.toFixed(5)},${minLat.toFixed(5)},${maxLng.toFixed(5)},${maxLat.toFixed(5)}`);
+
+        const popResponse = await fetch(popWfsUrl, { signal: AbortSignal.timeout(8000) });
+        if (popResponse.ok) {
+          const popJson = await popResponse.json();
+          const features = popJson.features || [];
+          console.log(`SSB population WFS: ${features.length} cells returned`);
+
+          const densities: number[] = features
+            .map((f: any) => {
+              // Try common field names for population count
+              const props = f.properties || {};
+              return props.befolkning ?? props.pop ?? props.total ?? props.count ?? props.value ?? null;
+            })
+            .filter((v: any) => v !== null && v !== undefined && !isNaN(Number(v)))
+            .map(Number);
+
+          if (densities.length > 0) {
+            const maxDensity = Math.max(...densities);
+            const avgDensity = densities.reduce((s, v) => s + v, 0) / densities.length;
+
+            // GRC thresholds per SORA: 500+/km² = populated, 1500+/km² = dense urban
+            let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
+            let grcIncrement = 0;
+            let summary = '';
+
+            if (maxDensity >= 1500) {
+              grcImpact = 'very_high';
+              grcIncrement = 2;
+              summary = `Tett befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +2 (iGRC).`;
+            } else if (maxDensity >= 500) {
+              grcImpact = 'high';
+              grcIncrement = 1;
+              summary = `Befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +1 (iGRC).`;
+            } else if (maxDensity >= 100) {
+              grcImpact = 'moderate';
+              grcIncrement = 0;
+              summary = `Spredt bebyggelse: ${Math.round(maxDensity)} personer/km² (maks). Ingen ekstra GRC-økning.`;
+            } else {
+              grcImpact = 'none';
+              grcIncrement = 0;
+              summary = `Lav befolkningstetthet: ${Math.round(maxDensity)} personer/km² (maks). Lav bakkerisiko.`;
+            }
+
+            populationData = { maxDensity, avgDensity, cellCount: densities.length, grcImpact, grcIncrement, summary };
+            console.log(`Population data: max=${maxDensity}, avg=${avgDensity.toFixed(0)}, grcImpact=${grcImpact}, grcIncrement=+${grcIncrement}`);
+          } else {
+            console.log('SSB population WFS: no density values parsed from features');
+            // Try alternative GeoServer endpoint
+            const altUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?service=WFS&version=2.0.0&request=GetFeature&typeName=befolkning_1km_2025&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326&outputFormat=application/json&count=50`;
+            const altResponse = await fetch(altUrl, { signal: AbortSignal.timeout(6000) });
+            if (altResponse.ok) {
+              const altJson = await altResponse.json();
+              const altFeatures = altJson.features || [];
+              const altDensities: number[] = altFeatures
+                .map((f: any) => {
+                  const props = f.properties || {};
+                  return props.befolkning ?? props.pop ?? props.total ?? props.count ?? null;
+                })
+                .filter((v: any) => v !== null && !isNaN(Number(v)))
+                .map(Number);
+              if (altDensities.length > 0) {
+                const maxDensity = Math.max(...altDensities);
+                const avgDensity = altDensities.reduce((s, v) => s + v, 0) / altDensities.length;
+                let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
+                let grcIncrement = 0;
+                let summary = '';
+                if (maxDensity >= 1500) { grcImpact = 'very_high'; grcIncrement = 2; summary = `Tett befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +2 (iGRC).`; }
+                else if (maxDensity >= 500) { grcImpact = 'high'; grcIncrement = 1; summary = `Befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +1 (iGRC).`; }
+                else if (maxDensity >= 100) { grcImpact = 'moderate'; grcIncrement = 0; summary = `Spredt bebyggelse: ${Math.round(maxDensity)} personer/km² (maks).`; }
+                else { grcImpact = 'none'; grcIncrement = 0; summary = `Lav befolkningstetthet: ${Math.round(maxDensity)} personer/km².`; }
+                populationData = { maxDensity, avgDensity, cellCount: altDensities.length, grcImpact, grcIncrement, summary };
+                console.log(`Population (alt endpoint): max=${maxDensity}, grcImpact=${grcImpact}`);
+              }
+            }
+          }
+        } else {
+          console.error('SSB population WFS failed:', popResponse.status, await popResponse.text().catch(() => ''));
+        }
+      } catch (e) {
+        console.error('SSB population fetch error (continuing without data):', e);
+      }
+    }
+
     // Use provided droneId or first assigned drone
     const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
     const droneData: any = effectiveDroneId 
@@ -590,6 +709,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       } : null,
       pilotInputs: pilotInputs || {},
       landUse: landUseData,
+      populationDensity: populationData,
     };
 
     // Professional SMS System Prompt
@@ -654,6 +774,17 @@ Hvis feltet "landUse" finnes i kontekstdataene, bruk dette som PRIMÆRKILDE for 
 - groundRiskClassification "low": Ubebodd/fritidsområde — ingen ekstra reduksjon.
 - Hvis landUse er null (data utilgjengelig), fall tilbake på pilotens manuelle input om "proximityToPeople".
 Arealbrukskategoriene og featureCount gir detaljert informasjon om hva som finnes i området — bruk dette til å gi konkrete anbefalinger i recommendations.
+
+### BEFOLKNINGSTETTHET OG SORA GRC (SSB befolkningsgitter-data)
+Feltet "populationDensity" inneholder faktiske personantall per km² hentet fra SSBs befolkningsgitter. Dette er OBLIGATORISK input for SORA Ground Risk Class (GRC):
+
+- grcImpact "very_high" (1500+ pers/km²): Tett bybebyggelse. Legg til grcIncrement (+2) på baseline iGRC. Angi environment som "Tettbygd". Reduser mission_complexity score med 3 poeng. Krev spesifikke tiltak: sperringer, beredskapsplan, koordinering med grunneier/politi.
+- grcImpact "high" (500–1499 pers/km²): Befolket område. Legg til grcIncrement (+1) på baseline iGRC. Reduser mission_complexity score med 2 poeng. Krev tiltak: buffersoner, kommunikasjon med berørte.
+- grcImpact "moderate" (100–499 pers/km²): Spredt bebyggelse. Ingen GRC-økning, men noter i concerns. Reduser mission_complexity score med 1 poeng.
+- grcImpact "none" (<100 pers/km²): Lav tetthet — ingen ekstra GRC-tillegg.
+- Hvis populationDensity er null (data utilgjengelig): bruk landUse og pilotInput som fallback.
+
+VIKTIG: Oppgi alltid befolkningstettheten (maxDensity) i "actual_conditions" for mission_complexity, og nevn GRC-påvirkningen eksplisitt i complexity_factors.
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
