@@ -1,23 +1,86 @@
 
-# Rotårsak og fix: Scroll i CommandList inne i Popover/Dialog
+# Fix: Musehjul og touch-scroll i CommandList
 
-## Den faktiske rotårsaken
+## Rotårsak (nå bekreftet)
 
-Etter å ha lest gjennom hele `cmdk`-biblioteket, `dialog.tsx`, `popover.tsx` og `AddMissionDialog.tsx` er rotårsaken nå klar:
+Det er to separate problemer som begge må fikses:
 
-`CommandList` stopper ikke wheel-events fra å propagere opp i DOM-treet. Når brukeren scroller i lista, bobler wheel-eventen opp fra:
+### Problem 1: `onWheel` — `stopPropagation` alene er ikke nok
 
+`e.stopPropagation()` hindrer eventen i å boble opp, men Radix UI blokkerer scroll på en annen måte: det setter `overflow: hidden` direkte på `body` via inline style. Wheel-events som treffer elementer inne i en portal (Popover er portaled til `body`) trenger ikke bare `stopPropagation` — de trenger `preventDefault` for å hindre at nettleseren videresender scroll til `body`.
+
+Løsningen er å endre `handleWheel` til å kalle `e.preventDefault()` i tillegg til `e.stopPropagation()`, og deretter manuelt scrolle listen selv:
+
+```typescript
+const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const el = listRef.current;
+  if (!el) return;
+  
+  const { scrollTop, scrollHeight, clientHeight } = el;
+  const isScrollable = scrollHeight > clientHeight;
+  
+  if (!isScrollable) return;
+  
+  const atTop = scrollTop === 0 && e.deltaY < 0;
+  const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+  
+  if (!atTop && !atBottom) {
+    e.preventDefault();
+    e.stopPropagation();
+    el.scrollTop += e.deltaY;
+  }
+};
 ```
-CommandList → PopoverContent (portal i body) → body
+
+`el.scrollTop += e.deltaY` scroller listen manuelt, siden `preventDefault()` hindrer nettleserens native scroll.
+
+For at `preventDefault()` skal fungere på wheel-events, må event listeneren registreres som **non-passive**. React legger til wheel-handlers som passive som standard i nyere versjoner, noe som betyr at `preventDefault()` ignoreres. Løsningen er å bruke `useEffect` med `addEventListener` og `{ passive: false }`:
+
+```typescript
+useEffect(() => {
+  const el = listRef.current;
+  if (!el) return;
+  
+  const handler = (e: WheelEvent) => {
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const isScrollable = scrollHeight > clientHeight;
+    if (!isScrollable) return;
+    const atTop = scrollTop === 0 && e.deltaY < 0;
+    const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+    if (!atTop && !atBottom) {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+    }
+  };
+  
+  el.addEventListener('wheel', handler, { passive: false });
+  return () => el.removeEventListener('wheel', handler);
+}, []);
 ```
 
-Radix setter `overflow: hidden` (og noen ganger `pointer-events: none`) på `body` mens en Dialog er åpen — dette er standard oppførsel for å hindre bakgrunnscrolling under modaler. Wheel-events som treffer `body` blir dermed ikke stoppet og fordi `body` ikke kan scrolle, "forsvinner" de og `CommandList` scroller aldri.
+### Problem 2: Touch-scroll fungerer ikke
 
-Løsningen er å stoppe wheel-event-propagasjonen direkte på `CommandList`-elementet, slik at scroll-eventen aldri når `body`.
+Touch-scroll krever:
+1. CSS `touch-action: pan-y` på listen — dette forteller nettleseren at vertikal touch-scroll skal tillates
+2. En `onTouchMove`-handler som kaller `e.stopPropagation()` for å hindre at touch-events propagerer til dialog/body-laget
 
-## Løsningen: `onWheel` stopper propagasjon i CommandList
+```typescript
+const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+  e.stopPropagation();
+};
+```
 
-I `src/components/ui/command.tsx` legger vi til en `onWheel`-handler på `CommandList` som stopper propagasjonen hvis lista faktisk kan scrolle (dvs. innholdet er høyere enn synlig område):
+Og i className legges `[touch-action:pan-y]` til:
+
+```typescript
+className={cn(
+  "max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden [touch-action:pan-y]",
+  className
+)}
+```
+
+## Komplett løsning for `CommandList`
 
 ```typescript
 const CommandList = React.forwardRef<
@@ -26,72 +89,51 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const listRef = React.useRef<HTMLDivElement>(null);
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  React.useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const atTop = scrollTop === 0 && e.deltaY < 0;
-    const atBottom = scrollTop + clientHeight >= scrollHeight && e.deltaY > 0;
-    if (!atTop && !atBottom) {
-      e.stopPropagation();
-    }
-  };
+    
+    const handler = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isScrollable = scrollHeight > clientHeight;
+      if (!isScrollable) return;
+      const atTop = scrollTop === 0 && e.deltaY < 0;
+      const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+      if (!atTop && !atBottom) {
+        e.preventDefault();
+        e.stopPropagation();
+        el.scrollTop += e.deltaY;
+      }
+    };
+    
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
 
   return (
     <CommandPrimitive.List
       ref={composeRefs(listRef, ref)}
       className={cn(
-        "max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden",
+        "max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden [touch-action:pan-y]",
         className
       )}
-      onWheel={handleWheel}
+      onTouchMove={(e) => e.stopPropagation()}
       {...props}
     />
   );
 });
 ```
 
-Logikken er:
-- Hvis lista er scrollet til toppen og brukeren scroller opp → la eventen propagere (naturlig oppførsel)
-- Hvis lista er scrollet til bunnen og brukeren scroller ned → la eventen propagere (naturlig oppførsel)
-- Ellers (lista KAN scrolle) → stopp propagasjonen med `e.stopPropagation()`
-
-Dette betyr at scroll inne i lista alltid fungerer, og scroll som "ville ha gått ut av lista" propagerer normalt.
-
-## Behov for `composeRefs`
-
-`CommandList` bruker nå to refs: en intern (`listRef`) og den videresendte (`ref`). Vi bruker `@radix-ui/react-compose-refs` som allerede er tilgjengelig som en transitiv avhengighet via `cmdk`. Alternativt kan vi bruke en enkel callback ref-sammensetning direkte i React uten ekstra import.
-
-For å unngå ny avhengighet bruker vi en enkel hjelpefunksjon:
-
-```typescript
-function composeRefs<T>(...refs: React.Ref<T>[]) {
-  return (node: T) => {
-    refs.forEach(ref => {
-      if (typeof ref === 'function') ref(node);
-      else if (ref) (ref as React.MutableRefObject<T>).current = node;
-    });
-  };
-}
-```
-
 ## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/ui/command.tsx` | Legg til `onWheel`-handler i `CommandList` som stopper scroll-propagasjon |
+| `src/components/ui/command.tsx` | Erstatt `onWheel`-handler med `useEffect`-basert native event listener (passive: false), legg til `touch-action: pan-y` og `onTouchMove` stopper |
 
-## Hva endres i brukeropplevelsen
+## Hvorfor denne løsningen er riktig
 
-| Situasjon | Før | Etter |
+| Problem | Tidligere forsøk | Nå |
 |---|---|---|
-| Scroll i dokumentlisten | Wheel-event propagerer til body og blokkeres av Radix | Stopper i CommandList, lista scroller normalt |
-| Lista er i topp/bunn | Propagerer (normal oppførsel) | Propagerer (uendret) |
-| Touch-scroll på mobil | Samme problem | Fungerer (touch-events er separate fra wheel) |
-| Alle andre Popover+Command-lister | Samme problem | Fikset globalt for hele appen |
-
-## Hvorfor ingen andre endringer trengs
-
-- `dialog.tsx`: Ingen endring — de eksisterende fixene der er korrekte
-- `popover.tsx`: `overflow-hidden` er allerede på plass
-- `AddMissionDialog.tsx`: Ingen endring — `setOpenDocumentPopover(false)` etter valg er ønsket oppførsel (brukeren vil at dialogen lukkes etter valg)
+| Musehjul | `e.stopPropagation()` via React `onWheel` — men React registrerer passive handlers, `preventDefault()` ignoreres | Native `addEventListener` med `{ passive: false }` + manuell scroll |
+| Touch | Ingen håndtering | `touch-action: pan-y` + `onTouchMove` stopper propagasjon |
+| Synlig scrollbar men ikke scroll | Scroll DOM-noden selv med `el.scrollTop += e.deltaY` | Direkte scrollmanipulasjon |
