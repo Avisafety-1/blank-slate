@@ -1,139 +1,43 @@
 
-# Fix: Musehjul og touch-scroll i CommandList
+# Fix: Dagsdialogen lukkes ikke etter vedlikehold i kalenderen
 
-## Rotårsak (nå bekreftet)
+## Problemet
 
-Det er to separate problemer som begge må fikses:
-
-### Problem 1: `onWheel` — `stopPropagation` alene er ikke nok
-
-`e.stopPropagation()` hindrer eventen i å boble opp, men Radix UI blokkerer scroll på en annen måte: det setter `overflow: hidden` direkte på `body` via inline style. Wheel-events som treffer elementer inne i en portal (Popover er portaled til `body`) trenger ikke bare `stopPropagation` — de trenger `preventDefault` for å hindre at nettleseren videresender scroll til `body`.
-
-Løsningen er å endre `handleWheel` til å kalle `e.preventDefault()` i tillegg til `e.stopPropagation()`, og deretter manuelt scrolle listen selv:
+I `src/pages/Kalender.tsx`, linje 544, kaller `performMaintenanceUpdate` alltid `setDialogOpen(false)` etter at vedlikeholdet er fullført. Dette lukker dagsdialogen umiddelbart, selv om det er flere vedlikeholdselementer på samme dag.
 
 ```typescript
-const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-  const el = listRef.current;
-  if (!el) return;
-  
-  const { scrollTop, scrollHeight, clientHeight } = el;
-  const isScrollable = scrollHeight > clientHeight;
-  
-  if (!isScrollable) return;
-  
-  const atTop = scrollTop === 0 && e.deltaY < 0;
-  const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
-  
-  if (!atTop && !atBottom) {
-    e.preventDefault();
-    e.stopPropagation();
-    el.scrollTop += e.deltaY;
-  }
-};
+// Linje 544 — dette er problemet:
+setDialogOpen(false);
+fetchCustomEvents();
 ```
 
-`el.scrollTop += e.deltaY` scroller listen manuelt, siden `preventDefault()` hindrer nettleserens native scroll.
+Brukeren vil at dialogen forblir åpen slik at de kan huke av for alle vedlikeholdsoppgaver på én og samme dag.
 
-For at `preventDefault()` skal fungere på wheel-events, må event listeneren registreres som **non-passive**. React legger til wheel-handlers som passive som standard i nyere versjoner, noe som betyr at `preventDefault()` ignoreres. Løsningen er å bruke `useEffect` med `addEventListener` og `{ passive: false }`:
+## Løsningen
+
+### 1. Fjern `setDialogOpen(false)` fra `performMaintenanceUpdate`
+
+Den enkleste og mest korrekte løsningen er å fjerne `setDialogOpen(false)` fra `performMaintenanceUpdate`. Dialogen skal kun lukkes manuelt av brukeren.
 
 ```typescript
-useEffect(() => {
-  const el = listRef.current;
-  if (!el) return;
-  
-  const handler = (e: WheelEvent) => {
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const isScrollable = scrollHeight > clientHeight;
-    if (!isScrollable) return;
-    const atTop = scrollTop === 0 && e.deltaY < 0;
-    const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
-    if (!atTop && !atBottom) {
-      e.preventDefault();
-      e.stopPropagation();
-      el.scrollTop += e.deltaY;
-    }
-  };
-  
-  el.addEventListener('wheel', handler, { passive: false });
-  return () => el.removeEventListener('wheel', handler);
-}, []);
+// Etter:
+toast.success('Vedlikehold registrert som utført');
+// (ingen setDialogOpen(false) her)
+fetchCustomEvents();
 ```
 
-### Problem 2: Touch-scroll fungerer ikke
+### 2. Oppdater vedlikeholdsknapper visuelt etter fullføring
 
-Touch-scroll krever:
-1. CSS `touch-action: pan-y` på listen — dette forteller nettleseren at vertikal touch-scroll skal tillates
-2. En `onTouchMove`-handler som kaller `e.stopPropagation()` for å hindre at touch-events propagerer til dialog/body-laget
+Siden `fetchCustomEvents()` henter ferske data og re-renderer listen, vil vedlikeholdselementer som er utført (og dermed har fått ny `neste_vedlikehold`-dato) forsvinne fra listen for den valgte dagen automatisk. Dette er riktig oppførsel — listen oppdateres selv, og brukeren kan se at vedlikeholdet ble registrert via toast-meldingen.
 
-```typescript
-const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-  e.stopPropagation();
-};
-```
+### Hva skjer med checklist-flyten?
 
-Og i className legges `[touch-action:pan-y]` til:
+`handleChecklistComplete` kaller `performMaintenanceUpdate` som igjen ikke lenger lukker dagsdialogen. Men vi må også sørge for at checklistdialogen lukkes etter fullføring (dette gjøres allerede av `ChecklistExecutionDialog` internt via `onOpenChange(false)` — det er OK).
 
-```typescript
-className={cn(
-  "max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden [touch-action:pan-y]",
-  className
-)}
-```
+### Endringer
 
-## Komplett løsning for `CommandList`
-
-```typescript
-const CommandList = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => {
-  const listRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    
-    const handler = (e: WheelEvent) => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const isScrollable = scrollHeight > clientHeight;
-      if (!isScrollable) return;
-      const atTop = scrollTop === 0 && e.deltaY < 0;
-      const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
-      if (!atTop && !atBottom) {
-        e.preventDefault();
-        e.stopPropagation();
-        el.scrollTop += e.deltaY;
-      }
-    };
-    
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, []);
-
-  return (
-    <CommandPrimitive.List
-      ref={composeRefs(listRef, ref)}
-      className={cn(
-        "max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden [touch-action:pan-y]",
-        className
-      )}
-      onTouchMove={(e) => e.stopPropagation()}
-      {...props}
-    />
-  );
-});
-```
-
-## Fil som endres
-
-| Fil | Endring |
-|---|---|
-| `src/components/ui/command.tsx` | Erstatt `onWheel`-handler med `useEffect`-basert native event listener (passive: false), legg til `touch-action: pan-y` og `onTouchMove` stopper |
-
-## Hvorfor denne løsningen er riktig
-
-| Problem | Tidligere forsøk | Nå |
+| Fil | Linje | Endring |
 |---|---|---|
-| Musehjul | `e.stopPropagation()` via React `onWheel` — men React registrerer passive handlers, `preventDefault()` ignoreres | Native `addEventListener` med `{ passive: false }` + manuell scroll |
-| Touch | Ingen håndtering | `touch-action: pan-y` + `onTouchMove` stopper propagasjon |
-| Synlig scrollbar men ikke scroll | Scroll DOM-noden selv med `el.scrollTop += e.deltaY` | Direkte scrollmanipulasjon |
+| `src/pages/Kalender.tsx` | ~544 | Fjern `setDialogOpen(false)` fra `performMaintenanceUpdate` |
+
+Det er én linje som fjernes. Ingen andre endringer er nødvendig — `fetchCustomEvents()` oppdaterer allerede listen dynamisk, og elementer som er fullført forsvinner fra listen for den aktuelle dagen.
