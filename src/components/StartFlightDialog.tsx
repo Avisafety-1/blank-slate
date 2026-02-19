@@ -505,21 +505,35 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
   const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
 
-  const handleStartFlightClick = () => {
-    if (isFetchingMissionChecklists) {
-      toast.info('Laster sjekkliste-status, prøv igjen...');
-      return;
+  const validateMissionChecklists = async (missionId: string | undefined): Promise<boolean> => {
+    if (!missionId || missionId === 'none') return true;
+
+    const { data } = await supabase
+      .from('missions')
+      .select('checklist_ids, checklist_completed_ids')
+      .eq('id', missionId)
+      .maybeSingle();
+
+    if (!data) return true;
+
+    const checklistIds: string[] = (data as any).checklist_ids || [];
+    const completedIds: string[] = (data as any).checklist_completed_ids || [];
+
+    const hasIncomplete = checklistIds.some(id => !completedIds.includes(id));
+    if (hasIncomplete) {
+      setShowMissionChecklistWarning(true);
+      return false;
     }
+    return true;
+  };
+
+  const handleStartFlightClick = () => {
     if (hasIncompleteChecklists) {
       setShowChecklistWarning(true);
       return;
     }
-    // Sjekk om valgt oppdrag har uutførte sjekklister
-    const hasMissionIncompleteChecklists = missionChecklistIds.some(
-      id => !missionCompletedChecklistIds.includes(id)
-    );
-    if (hasMissionIncompleteChecklists) {
-      setShowMissionChecklistWarning(true);
+    if (isFetchingMissionChecklists) {
+      toast.info('Laster sjekkliste-status, prøv igjen...');
       return;
     }
     handleStartFlight();
@@ -533,6 +547,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
+
+      // Fresh DB validation of mission checklists — covers all code paths
+      const checklistsOk = await validateMissionChecklists(missionId);
+      if (!checklistsOk) {
+        setLoading(false);
+        return;
+      }
       
       // For advisory mode, check for large advisory warning first
       if (publishMode === 'advisory' && missionId && !forcePublish) {
