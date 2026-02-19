@@ -256,10 +256,10 @@ const Resources = () => {
       {/* Content */}
       <div className="relative z-10 w-full">
         {/* Main Content */}
-        <main className="w-full px-3 sm:px-4 py-4 sm:py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 lg:flex-1 lg:items-stretch">
+        <main className="w-full px-3 sm:px-4 py-4 sm:py-6 flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 lg:flex-1 lg:items-stretch lg:overflow-hidden">
             {/* Droner/Fly Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full">
+            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Plane className="w-5 h-5 text-primary" />
@@ -372,7 +372,7 @@ const Resources = () => {
             </GlassCard>
 
             {/* Utstyr Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full">
+            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Gauge className="w-5 h-5 text-primary" />
@@ -530,7 +530,7 @@ const Resources = () => {
             </GlassCard>
 
             {/* Personell Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full">
+            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
