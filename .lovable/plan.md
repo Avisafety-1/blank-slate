@@ -1,133 +1,84 @@
 
-# Bildeopplasting i loggbok-oppføringer
+# Fiks: Dialog lukkes ikke utilsiktet ved klikk utenfor
 
-## Gjeldende situasjon
+## Problemet
 
-De tre loggbokdialogene håndterer manuell oppføring slik:
+Alle dialoger i appen (sjekklisteopprettelse, oppdragsdialog, loggbok, osv.) bruker `DialogContent` fra `src/components/ui/dialog.tsx`. Radix UI sin standard oppførsel er å lukke dialogen ved ethvert klikk utenfor dens DOM-tre — inkludert:
 
-| Dialog | Tabell | Manuell oppføring |
-|---|---|---|
-| `DroneLogbookDialog` | `drone_log_entries` | Ja – type, dato, tittel, beskrivelse |
-| `EquipmentLogbookDialog` | `equipment_log_entries` | Ja – type, dato, tittel, beskrivelse |
-| `FlightLogbookDialog` (personell) | Kun `profiles.flyvetimer` | Kun timer/minutter – ingen logg-innlegg |
+- Klikk på native OS-datovelger (iPad)
+- Utilsiktet treff på overlay ved scrolling på touch-enheter
+- Klikk på elementer som er portaled ut (andre Radix-komponenter)
 
-Ingen av tabellene har et `image_url`-felt, og personellets loggbok støtter ikke generelle logg-innlegg i det hele tatt.
+Den eksisterende koden har allerede en guard for Radix Select, men ingen generell beskyttelse mot vanlig "fat finger"-lukking.
 
-## Endringer som kreves
+## Løsning — én linje i `dialog.tsx`
 
-### 1. Databasemigrasjoner
+Den enkleste og mest robuste løsningen er å legge til `onPointerDownOutside={(e) => e.preventDefault()}` som en **standard prop på `DialogContent`**. Dette blokkerer all utilsiktet lukking via klikk utenfor, men beholder X-knappen og `Escape`-tasten som gyldige lukkeveier.
 
-**a) Legg til `image_url`-kolonne i eksisterende tabeller:**
-```sql
-ALTER TABLE drone_log_entries ADD COLUMN image_url text;
-ALTER TABLE equipment_log_entries ADD COLUMN image_url text;
-```
+I tillegg legges det til den manglende dato/tid-input-guarden fra den tidligere planlagte iPad-tidsvelger-fiksen.
 
-**b) Opprett ny `personnel_log_entries`-tabell** (tilsvarende de to over, men for personell):
-```sql
-CREATE TABLE personnel_log_entries (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  company_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  entry_date timestamptz NOT NULL,
-  entry_type text,
-  title text NOT NULL,
-  description text,
-  image_url text,
-  created_at timestamptz DEFAULT now()
-);
--- RLS policies: company-level isolation
-```
+### Oppdatert `onInteractOutside` + ny `onPointerDownOutside`
 
-**c) Opprett ny Storage-bøtte `logbook-images`** (offentlig, slik at bilder kan vises inline i dialogen):
-```sql
-INSERT INTO storage.buckets (id, name, public) VALUES ('logbook-images', 'logbook-images', true);
--- RLS policies: autentiserte brukere kan laste opp i sin company-mappe
-```
-
-Filsti-mønster: `{company_id}/{table_prefix}-{entry_id}-{timestamp}.{ext}`
-
-### 2. Endringer i `DroneLogbookDialog`
-
-**Ny state:**
 ```typescript
-const [imageFile, setImageFile] = useState<File | null>(null);
-const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+// I DialogContent (src/components/ui/dialog.tsx)
+
+onPointerDownOutside={(e) => {
+  // Blokker lukking ved klikk/tap utenfor dialogen som standard.
+  // Brukere kan fortsatt lukke via X-knapp eller Escape.
+  e.preventDefault();
+}}
+onInteractOutside={(e) => {
+  const target = e.target as HTMLElement | null;
+
+  // Eksisterende: Radix Select åpen
+  const hasOpenSelect = !!document.querySelector(
+    '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
+  );
+
+  // Nytt: Native dato/tid-input aktiv (iPad tidsvelger-problem)
+  const activeDateInput = document.activeElement as HTMLInputElement | null;
+  const isDateTimeInput =
+    activeDateInput?.tagName === 'INPUT' &&
+    (activeDateInput.type === 'datetime-local' ||
+     activeDateInput.type === 'date' ||
+     activeDateInput.type === 'time');
+
+  if (
+    hasOpenSelect ||
+    isDateTimeInput ||
+    target?.closest('[data-radix-select-content]') ||
+    target?.closest('[role="listbox"]')
+  ) {
+    e.preventDefault();
+  }
+
+  onInteractOutside?.(e);
+}}
 ```
 
-**Nytt felt i skjemaet** — under "Beskrivelse"-feltet:
-```
-[ 📷 Last opp bilde (valgfritt) ]
-[ Forhåndsvisning av valgt bilde ]
-```
+## Hva endres i brukeropplevelsen
 
-**Opplastingslogikk i `handleAddEntry`:**
-1. Lagre innlegget i `drone_log_entries` og få tilbake `id`.
-2. Hvis et bilde er valgt: last opp til `logbook-images/{company_id}/drone-{id}-{timestamp}.{ext}`.
-3. Oppdater raden med `image_url = filePath`.
+| Situasjon | Før | Etter |
+|---|---|---|
+| Klikker tilfeldig utenfor dialog | Dialog lukkes, arbeid mistes | Dialog forblir åpen |
+| iPad tidsvelger | Dialog lukkes | Dialog forblir åpen |
+| Klikker X-knappen | Dialog lukkes | Dialog lukkes (uendret) |
+| Trykker Escape | Dialog lukkes | Dialog lukkes (uendret) |
+| Radix Select åpen + klikk utenfor | Dialog lukkes (feil) | Dialog forblir åpen (allerede fikset) |
 
-**Visning av bilde i logg-listen:**
-- Eksisterende innlegg som har `image_url` viser et lite klikkbart miniatyrbilde under beskrivelsen.
-- Klikk åpner bildet i full størrelse (via en enkel `<img>` i en dialog eller native browser).
+## Berørte dialoger (alle fikses automatisk)
 
-**Henting:** Legg til `image_url` i SELECT-spørringen for `drone_log_entries`.
+Alle komponenter som bruker `DialogContent` fra `@/components/ui/dialog`:
+- `CreateChecklistDialog` (sjekkliste-opprettelse)
+- `AddMissionDialog` (ny oppdrag + iPad tidsvelger)
+- `DroneLogbookDialog`, `EquipmentLogbookDialog`, `FlightLogbookDialog`
+- `AddIncidentDialog`, `RiskAssessmentDialog`, `SoraAnalysisDialog`
+- Alle øvrige dialoger i appen
 
-### 3. Endringer i `EquipmentLogbookDialog`
-
-Identiske endringer som for drone-loggen, men mot `equipment_log_entries`-tabellen og med `equipment-` som filsti-prefiks.
-
-### 4. Endringer i `FlightLogbookDialog` (personell)
-
-**Problemet:** Personell-loggboken støtter kun manuell registrering av flytimer (oppdatering av `profiles.flyvetimer`), ikke generelle logg-innlegg.
-
-**Løsning:** Legg til en ny "Logginnlegg"-seksjon i tillegg til den eksisterende "Legg til flytimer"-seksjonen:
-- Bruk den nye `personnel_log_entries`-tabellen.
-- Samme skjema som drone/utstyr: type (merknad, hendelse, reparasjon, annet), dato, tittel, beskrivelse, og bilde-opplasting.
-- Vis innleggene under flyturene i en kombinert liste (eller en ny fane).
-
-### 5. Bildevisning i logglisten
-
-For alle tre dialoger vises bilde-innlegg med et lite thumbnail:
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 📅 14. februar 2026          [Reparasjon]           │
-│ Motorbytte venstre arm                              │
-│ Erstattet defekt motor etter krasjlanding           │
-│ ┌────────────┐                                      │
-│ │            │  ← klikkbart miniatyrbilde (80×60px) │
-│ │   [bilde]  │                                      │
-│ └────────────┘                                      │
-│                                  Utført av: Ole N.  │
-└─────────────────────────────────────────────────────┘
-```
-
-### 6. Storage-bøtte og RLS
-
-Ny bøtte `logbook-images` med følgende RLS-policyer:
-- **SELECT (public read):** Alle kan lese (bøtten er offentlig – bilder vises inline uten autentisering).
-- **INSERT:** Kun autentiserte brukere kan laste opp filer i sin companies mappe (`{company_id}/*`).
-- **DELETE:** Kun brukere i samme selskap kan slette.
-
-## Filer som endres
+## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| DB-migrasjon | `ALTER TABLE drone_log_entries ADD COLUMN image_url text` |
-| DB-migrasjon | `ALTER TABLE equipment_log_entries ADD COLUMN image_url text` |
-| DB-migrasjon | Ny `personnel_log_entries`-tabell + RLS |
-| DB-migrasjon | Ny `logbook-images` Storage-bøtte + RLS |
-| `src/components/resources/DroneLogbookDialog.tsx` | Bildeopplasting i skjema, visning av bilde i liste |
-| `src/components/resources/EquipmentLogbookDialog.tsx` | Bildeopplasting i skjema, visning av bilde i liste |
-| `src/components/FlightLogbookDialog.tsx` | Ny "Logg innlegg"-seksjon med bilde-støtte |
+| `src/components/ui/dialog.tsx` | Legg til `onPointerDownOutside` + dato/tid-guard i `onInteractOutside` |
 
-## Brukerflyt
-
-1. Bruker åpner loggboken for en drone/utstyr/person.
-2. Klikker "Legg til innlegg".
-3. Fyller inn type, dato, tittel og beskrivelse som før.
-4. Velger valgfritt et bilde fra enhet (kamera eller filvelger).
-5. Ser en forhåndsvisning av bildet i skjemaet.
-6. Klikker "Lagre" — innlegget og bildet lastes opp.
-7. Innlegget vises i listen med et klikkbart miniatyrbilde.
+Én fil, én endring — global effekt for hele appen.
