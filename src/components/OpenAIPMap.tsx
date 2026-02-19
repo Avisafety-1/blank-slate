@@ -737,9 +737,9 @@ export function OpenAIPMap({
 
     // SSB Befolkning 1km² rutenett
     const befolkningLayer = L.tileLayer.wms(
-      "https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WMSServer?",
+      "https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett",
       {
-        layers: "befolkning_paa_rutenett_1000m",
+        layers: "befolkning_1km_2025",
         format: "image/png",
         transparent: true,
         opacity: 0.65,
