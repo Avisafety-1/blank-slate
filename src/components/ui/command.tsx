@@ -69,22 +69,32 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const listRef = React.useRef<HTMLDivElement>(null);
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  React.useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const atTop = scrollTop === 0 && e.deltaY < 0;
-    const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
-    if (!atTop && !atBottom) {
-      e.stopPropagation();
-    }
-  };
+
+    const handler = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isScrollable = scrollHeight > clientHeight;
+      if (!isScrollable) return;
+      const atTop = scrollTop === 0 && e.deltaY < 0;
+      const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+      if (!atTop && !atBottom) {
+        e.preventDefault();
+        e.stopPropagation();
+        el.scrollTop += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
 
   return (
     <CommandPrimitive.List
       ref={composeRefs(listRef, ref)}
-      className={cn("max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden", className)}
-      onWheel={handleWheel}
+      className={cn("max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden [touch-action:pan-y]", className)}
+      onTouchMove={(e) => e.stopPropagation()}
       {...props}
     />
   );
