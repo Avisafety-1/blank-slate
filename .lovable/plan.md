@@ -1,123 +1,107 @@
 
-# Fix: Sjekkliste-blokkering i StartFlightDialog
+# Fix: Database-level validering ved flystart
 
-## Problemet
+## Rotårsaken
 
-Brukeren klarte å starte en flytur uten å ha utført sjekklisten som var tilknyttet oppdraget. Årsaken er en **race condition** i `StartFlightDialog.tsx`.
+Selv med `isFetchingMissionChecklists`-loading-guard er det fortsatt mulig å starte flytur uten å ha utført sjekklistene. Årsaken er at **valideringen stoler på React-state** (`missionChecklistIds`, `missionCompletedChecklistIds`) som ble hentet asynkront da oppdraget ble valgt — ikke på ferske data fra databasen i det øyeblikket brukeren klikker «Start flytur».
 
-Flyten er:
-1. Brukeren velger et oppdrag i dropdown-en
-2. En `useEffect` trigges og henter `checklist_ids` og `checklist_completed_ids` fra Supabase **asynkront**
-3. Brukeren klikker «Start flytur» raskt — **før** `fetchChecklistState()` er ferdig
-4. `missionChecklistIds` er fortsatt `[]` (tomt array fra initialverdien)
-5. `missionChecklistIds.some(...)` returnerer `false` siden det er ingen ID-er å iterere over
-6. Blokkering skjer ikke — flytur starter
+Det finnes to steder der valideringen kan omgås:
 
-## To problemer som må fikses
+1. **`handleStartFlightClick`**: Selv om `isFetchingMissionChecklists` er `false` og data er lastet, kan state være utdatert dersom sjekkliste-status på oppdraget har endret seg siden oppdraget ble valgt.
 
-**Problem 1 — Race condition:** `missionChecklistIds` er `[]` mens data lastes. Valideringen sjekker dette tomme arrayet og lar flystart gå gjennom.
+2. **`handleConfirmLargeAdvisory` (linje 612)**: Denne funksjonen kaller `onStartFlight(...)` direkte — **uten å sjekke sjekkliste-status overhodet**. Dette er et fullstendig hull i valideringen.
 
-**Problem 2 — Ingen loading-guard:** Det er ingen tilstand som sier «vi venter på sjekkliste-data» — og «Start flytur»-knappen er aktiv mens data lastes.
+## Løsning: Fersk DB-sjekk rett før flystart
 
-## Løsning
+I stedet for å stole på React-state, gjøres en ny Supabase-spørring mot `missions`-tabellen rett før flystart faktisk iverksettes. Dette er det eneste pålitelige stedet å validere, siden det skjer synkront i samme klik-handling.
 
-### 1. Legg til `isFetchingMissionChecklists`-tilstand
+### Ny hjelpefunksjon `validateMissionChecklists`
 
 ```tsx
-const [isFetchingMissionChecklists, setIsFetchingMissionChecklists] = useState(false);
-```
+const validateMissionChecklists = async (missionId: string | undefined): Promise<boolean> => {
+  if (!missionId || missionId === 'none') return true; // Ingen oppdrag valgt — OK
 
-### 2. Oppdater `useEffect` som henter sjekkliste-data
+  const { data } = await supabase
+    .from('missions')
+    .select('checklist_ids, checklist_completed_ids')
+    .eq('id', missionId)
+    .maybeSingle();
 
-Sett `isFetchingMissionChecklists = true` før fetch starter, og `false` når den er ferdig (også ved tom misjon):
+  if (!data) return true; // Kan ikke hente data — tillat ikke blokkering
 
-```tsx
-useEffect(() => {
-  if (!selectedMissionId || selectedMissionId === 'none') {
-    setMissionChecklistIds([]);
-    setMissionCompletedChecklistIds([]);
-    setIsFetchingMissionChecklists(false);
-    return;
+  const checklistIds: string[] = (data as any).checklist_ids || [];
+  const completedIds: string[] = (data as any).checklist_completed_ids || [];
+
+  const hasIncomplete = checklistIds.some(id => !completedIds.includes(id));
+  if (hasIncomplete) {
+    setShowMissionChecklistWarning(true);
+    return false;
   }
-  const fetchChecklistState = async () => {
-    setIsFetchingMissionChecklists(true);
-    try {
-      const { data } = await supabase
-        .from('missions')
-        .select('checklist_ids, checklist_completed_ids')
-        .eq('id', selectedMissionId)
-        .single();
-      if (data) {
-        setMissionChecklistIds((data as any).checklist_ids || []);
-        setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
-      } else {
-        setMissionChecklistIds([]);
-        setMissionCompletedChecklistIds([]);
-      }
-    } finally {
-      setIsFetchingMissionChecklists(false);
-    }
-  };
-  fetchChecklistState();
-}, [selectedMissionId]);
+  return true;
+};
 ```
 
-### 3. Oppdater `handleStartFlightClick` med dobbel guard
+### Oppdater `handleStartFlight` til å kalle `validateMissionChecklists`
+
+`handleStartFlight` er den sentrale funksjonen som faktisk starter flyturen. Den kalles fra:
+- `handleStartFlightClick`
+- `handleConfirmLargeAdvisory`
+
+Ved å legge valideringen **inn i `handleStartFlight`** dekkes begge kodestier:
+
+```tsx
+const handleStartFlight = async (forcePublish = false) => {
+  setLoading(true);
+
+  try {
+    const missionId = selectedMissionId && selectedMissionId !== 'none' 
+      ? selectedMissionId 
+      : undefined;
+
+    // ← NY: Fersk DB-validering av oppdrags-sjekklister
+    const checklistsOk = await validateMissionChecklists(missionId);
+    if (!checklistsOk) {
+      setLoading(false);
+      return;
+    }
+
+    // ... resten av eksisterende logikk (advisory-sjekk, GPS, onStartFlight)
+  } finally {
+    setLoading(false);
+    setPendingFlightStart(false);
+  }
+};
+```
+
+### Fjern overflødig state-basert sjekk fra `handleStartFlightClick`
+
+Siden `handleStartFlight` nå gjør en fersk DB-sjekk, kan `isFetchingMissionChecklists`-guarden og state-sjekken i `handleStartFlightClick` forenkles (men beholdes som rask pre-check for UX):
 
 ```tsx
 const handleStartFlightClick = () => {
-  // Vent til sjekkliste-data er hentet
-  if (isFetchingMissionChecklists) {
-    toast.info('Laster sjekkliste-status, prøv igjen...');
-    return;
-  }
-
   if (hasIncompleteChecklists) {
     setShowChecklistWarning(true);
     return;
   }
-
-  const hasMissionIncompleteChecklists = missionChecklistIds.some(
-    id => !missionCompletedChecklistIds.includes(id)
-  );
-  if (hasMissionIncompleteChecklists) {
-    setShowMissionChecklistWarning(true);
+  // isFetchingMissionChecklists-guard beholdes som rask UX-sjekk
+  if (isFetchingMissionChecklists) {
+    toast.info('Laster sjekkliste-status, prøv igjen...');
     return;
   }
-
+  // DB-validering skjer inne i handleStartFlight
   handleStartFlight();
 };
-```
-
-### 4. Deaktiver «Start flytur»-knappen mens data lastes
-
-I JSX-en, legg til `isFetchingMissionChecklists` som en ekstra `disabled`-betingelse på «Start flytur»-knappen:
-
-```tsx
-<Button
-  onClick={handleStartFlightClick}
-  disabled={loading || isFetchingMissionChecklists}
-  ...
->
-  {isFetchingMissionChecklists ? 'Laster...' : t('flight.start')}
-</Button>
-```
-
-### 5. Nullstill ved dialog-lukking
-
-I `useEffect` som kjøres når `open` blir `false`, legg til:
-```tsx
-setIsFetchingMissionChecklists(false);
 ```
 
 ## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/StartFlightDialog.tsx` | Legg til `isFetchingMissionChecklists`-tilstand, oppdater fetch-useEffect, oppdater `handleStartFlightClick`, deaktiver knapp under loading |
+| `src/components/StartFlightDialog.tsx` | Legg til `validateMissionChecklists`, kall den fra `handleStartFlight` |
 
 ## Visuell effekt
 
-- Mens oppdrags-sjekkliste-data lastes: «Start flytur»-knappen viser «Laster...» og er deaktivert
-- Når data er lastet og sjekklister er ufullstendige: advarselsdialog vises som planlagt
-- Race condition elimineres — det er ikke lenger mulig å komme seg forbi sjekkliste-sjekken
+- Ingen visuell endring for brukeren
+- Valideringen skjer nå alltid rett før flytur starter, uavhengig av React-state
+- Begge kodestier (`handleStartFlightClick` og `handleConfirmLargeAdvisory`) er nå beskyttet
+- Race condition er eliminert — det er ikke mulig å omgå sjekkliste-valideringen
