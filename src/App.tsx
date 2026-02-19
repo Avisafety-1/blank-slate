@@ -27,6 +27,7 @@ import Installer from "./pages/Installer";
 import UserManualDownload from "./pages/UserManualDownload";
 import Statistikk from "./pages/Statistikk";
 import NotFound from "./pages/NotFound";
+import SoraProcess from "./pages/SoraProcess";
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -106,6 +107,7 @@ const App = () => {
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                 <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
                 <Route path="/installer" element={<Installer />} />
+                <Route path="/sora-prosess" element={<SoraProcess />} />
                 <Route path="/bruksanvisning" element={<UserManualDownload />} />
                 
                 {/* Protected routes with shared Header - app domain */}
