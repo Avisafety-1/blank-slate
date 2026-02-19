@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Circle, ClipboardCheck } from "lucide-react";
@@ -14,87 +14,128 @@ interface ChecklistItem {
 interface ChecklistExecutionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  checklistId: string;
+  /** Array of checklist IDs (multi-tab mode) */
+  checklistIds?: string[];
+  /** Already-completed checklist IDs */
+  completedIds?: string[];
+  /** Backward-compat: single checklist ID */
+  checklistId?: string;
   itemName: string;
-  onComplete: () => void | Promise<void>;
+  /** Called with the completed checklistId */
+  onComplete: (checklistId: string) => void | Promise<void>;
 }
 
-export const ChecklistExecutionDialog = ({ 
-  open, 
-  onOpenChange, 
-  checklistId, 
-  itemName,
-  onComplete 
-}: ChecklistExecutionDialogProps) => {
-  const [checklistTitle, setChecklistTitle] = useState<string>("");
+export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) => {
+  const { open, onOpenChange, itemName, onComplete, completedIds = [] } = props;
+
+  // Resolve IDs — support both old single-ID and new array prop
+  const checklistIds: string[] = props.checklistIds ?? (props.checklistId ? [props.checklistId] : []);
+
+  const [activeChecklistId, setActiveChecklistId] = useState<string>("");
+  const [checklistTitles, setChecklistTitles] = useState<Record<string, string>>({});
   const [items, setItems] = useState<ChecklistItem[]>([]);
-  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [checkedByTab, setCheckedByTab] = useState<Record<string, Set<string>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  useEffect(() => {
-    if (open && checklistId) {
-      fetchChecklist();
-    }
-  }, [open, checklistId]);
+  const completedChecklistIds = new Set(completedIds);
 
+  // Derived checked items for active tab
+  const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
+
+  // When dialog opens, initialise active tab to first incomplete checklist
   const prevOpenRef = useRef(false);
   useEffect(() => {
-    // Only reset when dialog actually opens (false → true transition)
-    if (open && !prevOpenRef.current) {
-      setCheckedItems(new Set());
+    if (open && !prevOpenRef.current && checklistIds.length > 0) {
+      const firstIncomplete =
+        checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
+      setActiveChecklistId(firstIncomplete);
+      setCheckedByTab({});
     }
     prevOpenRef.current = open;
   }, [open]);
 
-  const fetchChecklist = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
+  // Fetch all checklist titles once when IDs are known
+  useEffect(() => {
+    if (!open || checklistIds.length === 0) return;
+    const fetchTitles = async () => {
+      const { data } = await supabase
         .from("documents")
-        .select("tittel, beskrivelse")
-        .eq("id", checklistId)
-        .single();
+        .select("id, tittel")
+        .in("id", checklistIds);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((d) => { map[d.id] = d.tittel; });
+        setChecklistTitles(map);
+      }
+    };
+    fetchTitles();
+  }, [open, checklistIds.join(",")]);
 
-      if (error) throw error;
-
-      setChecklistTitle(data.tittel);
-      
-      if (data.beskrivelse) {
-        try {
-          const parsedItems = JSON.parse(data.beskrivelse) as ChecklistItem[];
-          setItems(parsedItems);
-        } catch {
+  // Fetch items for the active checklist whenever it changes
+  useEffect(() => {
+    if (!open || !activeChecklistId) return;
+    const fetchItems = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("documents")
+          .select("beskrivelse")
+          .eq("id", activeChecklistId)
+          .single();
+        if (error) throw error;
+        if (data?.beskrivelse) {
+          try {
+            setItems(JSON.parse(data.beskrivelse) as ChecklistItem[]);
+          } catch {
+            setItems([]);
+          }
+        } else {
           setItems([]);
         }
+      } catch {
+        setItems([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching checklist:", error);
-      setItems([]);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    fetchItems();
+  }, [open, activeChecklistId]);
+
+  const handleTabChange = (newId: string) => {
+    setActiveChecklistId(newId);
   };
 
   const handleToggleItem = (itemId: string) => {
-    setCheckedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
+    setCheckedByTab((prev) => {
+      const current = new Set(prev[activeChecklistId] ?? []);
+      if (current.has(itemId)) current.delete(itemId);
+      else current.add(itemId);
+      return { ...prev, [activeChecklistId]: current };
     });
   };
 
   const allItemsChecked = items.length > 0 && checkedItems.size === items.length;
+  const checkedCount = checkedItems.size;
+  const totalCount = items.length;
+  const progressPercentage = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
 
   const handleComplete = async () => {
     setIsCompleting(true);
     try {
-      await onComplete();
-      onOpenChange(false);
+      await onComplete(activeChecklistId);
+
+      // Mark this tab as completed in local state so the icon updates immediately
+      const nowCompleted = new Set([...completedChecklistIds, activeChecklistId]);
+
+      // Find the next incomplete tab
+      const nextIncomplete = checklistIds.find((id) => !nowCompleted.has(id));
+      if (nextIncomplete) {
+        setActiveChecklistId(nextIncomplete);
+      } else {
+        // All done — close dialog
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error("Error completing:", error);
     } finally {
@@ -102,38 +143,65 @@ export const ChecklistExecutionDialog = ({
     }
   };
 
-  const checkedCount = checkedItems.size;
-  const totalCount = items.length;
-  const progressPercentage = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
+  const showTabs = checklistIds.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-primary" />
-            <span className="truncate">{checklistTitle || "Sjekkliste"}</span>
+            <span className="truncate">
+              {showTabs
+                ? itemName || "Sjekklister"
+                : checklistTitles[activeChecklistId] || "Sjekkliste"}
+            </span>
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {itemName}
-          </p>
+          {showTabs && (
+            <p className="text-sm text-muted-foreground">
+              {checklistTitles[activeChecklistId] || ""}
+            </p>
+          )}
+          {!showTabs && itemName && (
+            <p className="text-sm text-muted-foreground">{itemName}</p>
+          )}
         </DialogHeader>
 
+        {/* Tab navigation — only shown when multiple checklists */}
+        {showTabs && (
+          <Tabs value={activeChecklistId} onValueChange={handleTabChange}>
+            <TabsList className="w-full">
+              {checklistIds.map((id) => (
+                <TabsTrigger
+                  key={id}
+                  value={id}
+                  className="flex-1 gap-1.5 text-xs"
+                >
+                  {completedChecklistIds.has(id) && (
+                    <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                  )}
+                  <span className="truncate">{checklistTitles[id] || "…"}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+
         {/* Progress bar */}
-        <div className="space-y-1">
+        <div className="space-y-1 flex-shrink-0">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Fremgang</span>
             <span className="font-medium">{checkedCount} av {totalCount}</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-primary transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 220px)' }}>
+        <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 260px)' }}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Laster sjekkliste...</p>
@@ -147,14 +215,14 @@ export const ChecklistExecutionDialog = ({
               {items.map((item, index) => {
                 const isChecked = checkedItems.has(item.id);
                 return (
-                  <div 
+                  <div
                     key={item.id}
                     role="checkbox"
                     aria-checked={isChecked}
                     tabIndex={0}
                     className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                      isChecked 
-                        ? 'bg-primary/10 border-primary/30' 
+                      isChecked
+                        ? 'bg-primary/10 border-primary/30'
                         : 'bg-background/50 border-border hover:bg-muted/50'
                     }`}
                     onClick={() => handleToggleItem(item.id)}
@@ -182,14 +250,14 @@ export const ChecklistExecutionDialog = ({
               })}
             </div>
           )}
-          </div>
+        </div>
 
-          <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
+        <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Avbryt
           </Button>
-          <Button 
-            onClick={handleComplete} 
+          <Button
+            onClick={handleComplete}
             disabled={!allItemsChecked || isCompleting}
             className="gap-2"
           >
