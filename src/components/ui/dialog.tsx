@@ -40,27 +40,32 @@ const DialogContent = React.forwardRef<
         className,
       )}
       onPointerDownOutside={(e) => {
-        const target = e.target as HTMLElement | null;
+        // Hent faktisk DOM-target (Radix wrapper originalEvent)
+        const originalTarget = (e.detail as any)?.originalEvent?.target as HTMLElement | null;
+        const target = (e.target as HTMLElement | null) ?? originalTarget;
 
-        // Ikke blokker pointer-events for Radix Select-innhold
-        // (portalet ut av dialog-DOM og bruker pointer-events for scroll)
-        if (
-          target?.closest('[data-radix-select-content]') ||
-          target?.closest('[role="listbox"]') ||
-          target?.closest('[data-radix-popper-content-wrapper]')
-        ) {
-          return; // La Radix Select håndtere dette selv
+        // Ikke blokker pointer-events for portaled Radix-innhold
+        // (Select, Popover/Command-lister, Dropdown etc.)
+        const isInsidePopper = !!(
+          target?.closest('[data-radix-popper-content-wrapper]') ||
+          originalTarget?.closest('[data-radix-popper-content-wrapper]')
+        );
+
+        if (isInsidePopper) {
+          return; // La Radix håndtere dette selv
         }
 
         // Blokker ellers utilsiktet lukking
         e.preventDefault();
       }}
       onInteractOutside={(e) => {
-        const target = e.target as HTMLElement | null;
+        // Hent faktisk DOM-target (Radix wrapper originalEvent)
+        const originalTarget = (e.detail as any)?.originalEvent?.target as HTMLElement | null;
+        const target = (e.target as HTMLElement | null) ?? originalTarget;
 
-        // Eksisterende: Radix Select åpen
-        const hasOpenSelect = !!document.querySelector(
-          '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
+        // Sjekk om noe portaled Radix-innhold er åpent
+        const hasOpenPortaledContent = !!document.querySelector(
+          '[data-radix-popper-content-wrapper] [data-state="open"], [data-radix-popper-content-wrapper]',
         );
 
         // Native dato/tid-input aktiv (iPad tidsvelger-problem)
@@ -71,13 +76,16 @@ const DialogContent = React.forwardRef<
             activeDateInput.type === "date" ||
             activeDateInput.type === "time");
 
-        if (
-          hasOpenSelect ||
-          isDateTimeInput ||
-          target?.closest('[data-radix-select-content]') ||
-          target?.closest('[role="listbox"]') ||
+        // Er target inne i en popper-wrapper?
+        const isInsidePopper = !!(
           target?.closest('[data-radix-popper-content-wrapper]') ||
-          target?.closest('[data-radix-popover-content]')
+          originalTarget?.closest('[data-radix-popper-content-wrapper]')
+        );
+
+        if (
+          hasOpenPortaledContent ||
+          isDateTimeInput ||
+          isInsidePopper
         ) {
           e.preventDefault();
         }
