@@ -1,128 +1,202 @@
 
-# Ny slider: Flight Geography Area i SORA-panelet
+# Sjekkliste tilknyttet oppdrag («Tilknytt sjekkliste»)
 
-## Bakgrunn
+## Oversikt
 
-Bildet viser den korrekte SORA-strukturen med fire konsentriske lag (fra innenfor og ut):
-1. **Flight Geography Area** (lys grønn, innerst) — brukerdefinerbar buffer rundt selve ruten
-2. **Flight Geography** (mørkere grønn) — den ytre grensen for selve flygeografien
-3. **Contingency Area** (gul) — utenfor Flight Geography
-4. **Ground Risk Buffer** (rød) — ytterst
+Brukeren vil kunne knytte sjekklister direkte til et oppdrag (ikke til en bedrift globalt), slik at:
+1. En sjekkliste velges fra «Flere valg»-menyen på oppdragskortet
+2. En badge vises på oppdragskortet: grå «Utfør sjekkliste» → grønn «Sjekkliste utført» etter fullføring
+3. StartFlightDialog blokkerer flystart hvis sjekkliste er tilknyttet men ikke utført, med en tydelig feilmelding
 
-I dag mangler "Flight Geography Area"-laget. Contingency og Ground Risk regnes fra ruten direkte, ikke fra en egen Flight Geography Area-radius.
+## Datamodell
 
-## Endringer
+`missions`-tabellen har ikke et sjekkliste-felt enda. Vi legger til:
+- `checklist_ids uuid[]` — liste over tilknyttede sjekklistId-er
+- `checklist_completed_ids uuid[]` — liste over fullførte sjekklisteId-er (persistert per oppdrag)
 
-### 1. `src/components/OpenAIPMap.tsx` — utvide `SoraSettings`-interface
-
-Legge til ett nytt felt:
-
-```ts
-export interface SoraSettings {
-  enabled: boolean;
-  flightAltitude: number;
-  flightGeographyDistance: number;   // NY — default 0
-  contingencyDistance: number;
-  contingencyHeight: number;
-  groundRiskDistance: number;
-  bufferMode?: "corridor" | "convexHull";
-}
-```
-
-### 2. `src/lib/soraGeometry.ts` — oppdatere interface og `renderSoraZones`
-
-Tilsvarende tillegg av `flightGeographyDistance` i det lokale `SoraSettings`-interface.
-
-Ny `renderSoraZones`-logikk:
-
-```
-flightGeographyDistance (ny, grønn, innerst)  →  offset = flightGeographyDistance
-Flight Geography (eksisterende, grønn)         →  offset = 1m (alltid, som nå)
-Contingency Area (gul)                         →  offset = flightGeographyDistance + contingencyDistance
-Ground Risk Buffer (rød)                       →  offset = flightGeographyDistance + contingencyDistance + groundRiskDistance
-```
-
-- Når `flightGeographyDistance === 0`: Flight Geography Area rendres ikke (buffer = 0 er usynlig), og Contingency/Ground Risk regnes fra ruten slik de gjør i dag
-- Når `flightGeographyDistance > 0`: et eget lys-grønt fylt polygon vises, og Contingency/Ground Risk skyves utover tilsvarende
-
-```ts
-// Flight Geography Area (ny, innerst)
-if (sora.flightGeographyDistance > 0) {
-  const fgaZone = makeBuffer(sora.flightGeographyDistance);
-  L.polygon(..., { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.25 })
-    .bindPopup('Flight Geography Area').addTo(layer);
-}
-
-// Flight Geography (eksisterende linje, 1m buffer)
-const flightGeo = bufferPolyline(coordinates, 1);
-L.polygon(..., { color: '#22c55e', weight: 2, fillOpacity: 0.10 })...
-
-// Contingency — nå fra flightGeographyDistance + contingencyDistance
-const contingencyZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance);
-
-// Ground Risk — nå fra flightGeographyDistance + contingencyDistance + groundRiskDistance
-const groundRiskZone = makeBuffer(
-  sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance
-);
-```
-
-### 3. `src/components/SoraSettingsPanel.tsx` — ny slider
-
-Legge til en grønn slider mellom "Flyhøyde" og "Buffermetode":
-
-```tsx
-{/* Flight Geography Area */}
-<div className="space-y-1.5">
-  <div className="flex items-center justify-between">
-    <Label className="text-xs text-muted-foreground">Flight Geography Area (m)</Label>
-    <span className="text-xs font-mono text-green-600 dark:text-green-400">
-      {settings.flightGeographyDistance}m
-    </span>
-  </div>
-  <Slider
-    min={0}
-    max={200}
-    step={1}
-    value={[settings.flightGeographyDistance]}
-    onValueChange={([v]) => update({ flightGeographyDistance: v })}
-    className="[&_[role=slider]]:bg-green-600"
-  />
-</div>
-```
-
-Oppdatere legenden med en egen post for Flight Geography Area:
-
-```tsx
-<span className="flex items-center gap-1">
-  <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> Flight geography area
-</span>
-<span className="flex items-center gap-1">
-  <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
-</span>
-```
-
-### 4. Oppdatere alle standard-verdier
-
-Alle steder der `SoraSettings` initialiseres med hardkodede verdier, legge til `flightGeographyDistance: 0`:
-
-| Fil | Linje |
-|---|---|
-| `src/pages/Kart.tsx` | ~144 og ~189 |
-| `src/components/dashboard/ExpandedMapDialog.tsx` | ~83 |
-
-## Visuell effekt
-
-| Innstilling | Resultat på kartet |
-|---|---|
-| `flightGeographyDistance = 0` (default) | Ingen endring fra nå — ruten er Flight Geography, gult og rødt buffer fra ruten |
-| `flightGeographyDistance = 50` | Lys grønt område 50m rundt ruten, gult buffer starter 50m fra ruten, rødt 50m + `contingencyDistance` fra ruten |
+En ny migrering legger til begge kolonner med default `'{}'::uuid[]`.
 
 ## Filer som endres
 
-| Fil | Endring |
+| Fil | Hva |
 |---|---|
-| `src/components/OpenAIPMap.tsx` | Legg til `flightGeographyDistance: number` i `SoraSettings` |
-| `src/lib/soraGeometry.ts` | Legg til felt i interface + ny renderingslogikk |
-| `src/components/SoraSettingsPanel.tsx` | Ny slider + utvidet legende |
-| `src/pages/Kart.tsx` | Legg til `flightGeographyDistance: 0` i default-verdier |
-| `src/components/dashboard/ExpandedMapDialog.tsx` | Legg til `flightGeographyDistance: 0` i default |
+| `supabase/migrations/[ny].sql` | Legg til `checklist_ids` og `checklist_completed_ids` på `missions` |
+| `src/pages/Oppdrag.tsx` | Dropdown-valg + badge + sjekkliste-dialog |
+| `src/components/StartFlightDialog.tsx` | Blokkering + ny dialog ved forsøk på flystart med utestående sjekkliste |
+
+## Detaljert implementasjon
+
+### 1. Database-migrering
+
+```sql
+ALTER TABLE missions
+  ADD COLUMN IF NOT EXISTS checklist_ids uuid[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS checklist_completed_ids uuid[] NOT NULL DEFAULT '{}';
+```
+
+### 2. `src/pages/Oppdrag.tsx`
+
+#### 2a. Ny state
+
+```tsx
+const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
+const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
+const [executingChecklistId, setExecutingChecklistId] = useState<string | null>(null);
+const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
+```
+
+#### 2b. «Tilknytt sjekkliste» i dropdown-menyen
+
+Etter «Ny risikovurdering»-valget, legg til:
+
+```tsx
+<DropdownMenuItem onClick={() => {
+  setChecklistMission(mission);
+  setChecklistPickerOpen(true);
+}}>
+  <ClipboardCheck className="h-4 w-4 mr-2" />
+  Tilknytt sjekkliste
+</DropdownMenuItem>
+```
+
+#### 2c. Sjekkliste-badge på oppdragskortet
+
+Direkte under de eksisterende badge-ene (SORA, AI-risk), vis en badge dersom `mission.checklist_ids?.length > 0`:
+
+```tsx
+{mission.checklist_ids?.length > 0 && (
+  <Badge
+    variant="outline"
+    className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
+      mission.checklist_ids.every((id: string) =>
+        mission.checklist_completed_ids?.includes(id)
+      )
+        ? 'bg-green-500/20 text-green-900 border-green-500/30'
+        : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    }`}
+    onClick={(e) => {
+      e.stopPropagation();
+      // Åpne første ufullstendige sjekkliste
+      const nextId = mission.checklist_ids.find(
+        (id: string) => !mission.checklist_completed_ids?.includes(id)
+      ) || mission.checklist_ids[0];
+      setExecutingChecklistId(nextId);
+      setExecutingChecklistMissionId(mission.id);
+    }}
+  >
+    <ClipboardCheck className="h-3 w-3 mr-1" />
+    {mission.checklist_ids.every((id: string) =>
+      mission.checklist_completed_ids?.includes(id)
+    )
+      ? 'Sjekkliste utført'
+      : 'Utfør sjekkliste/r'}
+  </Badge>
+)}
+```
+
+#### 2d. Dialog for å velge sjekkliste («ChecklistPickerDialog»)
+
+En ny enkel dialog (inline i Oppdrag.tsx) som viser alle tilgjengelige sjekklister. Bruker eksisterende `useChecklists`-hook. Når bruker velger en sjekkliste:
+- Lagre `checklist_ids` på mission: `supabase.from('missions').update({ checklist_ids: [...existing, id] })`
+- Oppdater lokal state / kall `fetchMissions()`
+
+Dialogen viser også hvilke sjekklister som allerede er tilknyttet, med mulighet til å fjerne dem.
+
+#### 2e. ChecklistExecutionDialog for oppdrag
+
+Når badgen klikkes (state `executingChecklistId` er satt), åpnes den eksisterende `ChecklistExecutionDialog`.
+
+`onComplete`-handler:
+```tsx
+const handleMissionChecklistComplete = async () => {
+  if (!executingChecklistId || !executingChecklistMissionId) return;
+  const mission = missions.find(m => m.id === executingChecklistMissionId);
+  const existing = mission?.checklist_completed_ids || [];
+  if (!existing.includes(executingChecklistId)) {
+    await supabase.from('missions').update({
+      checklist_completed_ids: [...existing, executingChecklistId]
+    }).eq('id', executingChecklistMissionId);
+  }
+  fetchMissions();
+};
+```
+
+### 3. `src/components/StartFlightDialog.tsx` — blokkering
+
+Når bruker velger et oppdrag i StartFlightDialog, sjekkes om det har uutførte sjekklister:
+
+```tsx
+// Fetch mission checklist state when mission is selected
+useEffect(() => {
+  if (!selectedMissionId || selectedMissionId === 'none') {
+    setMissionChecklistIds([]);
+    setMissionCompletedChecklistIds([]);
+    return;
+  }
+  const fetchChecklistState = async () => {
+    const { data } = await supabase
+      .from('missions')
+      .select('checklist_ids, checklist_completed_ids')
+      .eq('id', selectedMissionId)
+      .single();
+    if (data) {
+      setMissionChecklistIds(data.checklist_ids || []);
+      setMissionCompletedChecklistIds(data.checklist_completed_ids || []);
+    }
+  };
+  fetchChecklistState();
+}, [selectedMissionId]);
+```
+
+I `handleStartFlightClick`:
+```tsx
+const hasMissionIncompleteChecklists = missionChecklistIds.some(
+  id => !missionCompletedChecklistIds.includes(id)
+);
+if (hasMissionIncompleteChecklists) {
+  setShowMissionChecklistWarning(true);
+  return;
+}
+```
+
+Ny AlertDialog vises:
+```
+«Utfør sjekkliste fra oppdragskortet»
+Dette oppdraget har en sjekkliste som må utføres fra oppdragskortet 
+(/oppdrag) før du kan starte en flytur.
+[Avbryt]
+```
+
+## Brukerflyt
+
+```text
+Oppdragskort → Flere valg → Tilknytt sjekkliste
+  → Dialog: velg sjekkliste fra liste
+  → Sjekkliste tilknyttet
+
+Oppdragskort viser nå grå badge «Utfør sjekkliste/r»
+  → Klikk badge → ChecklistExecutionDialog åpnes
+  → Kryss av alle punkter → Fullfør
+  → Badge blir grønn: «Sjekkliste utført»
+
+StartFlightDialog → Velg oppdrag med sjekkliste som ikke er utført
+  → Klikk «Start flytur»
+  → Dialog: «Utfør sjekkliste fra oppdragskortet»
+  → Flystart blokkeres
+```
+
+## Viktige detaljer
+
+- `checklist_completed_ids` persisteres i databasen slik at status beholdes mellom sesjoner og enheter
+- Dersom et oppdrag har flere sjekklister, åpner badgeklikk den første ufullstendige
+- Sjekklisten kan fjernes fra oppdraget via samme «Tilknytt sjekkliste»-dialog (toggle-funksjon)
+- Alle eksisterende sjekkliste-funksjoner (bedriftsnivå i StartFlightDialog) er upåvirket
+- `fetchMissionsForTab` allerede henter alle kolonner (`select('*')`), så de nye kolonnene plukkes opp automatisk
+
+## Filer som opprettes/endres
+
+| Fil | Handling |
+|---|---|
+| `supabase/migrations/[ny].sql` | Opprett — legger til `checklist_ids` og `checklist_completed_ids` på `missions` |
+| `src/pages/Oppdrag.tsx` | Endre — dropdown-valg, badge, picker-dialog, execution-dialog |
+| `src/components/StartFlightDialog.tsx` | Endre — sjekk oppdragets sjekkliste-status, ny blokkerings-dialog |
