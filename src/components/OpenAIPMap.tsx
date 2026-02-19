@@ -79,6 +79,7 @@ export interface RouteData {
 export interface SoraSettings {
   enabled: boolean;
   flightAltitude: number;
+  flightGeographyDistance: number;
   contingencyDistance: number;
   contingencyHeight: number;
   groundRiskDistance: number;

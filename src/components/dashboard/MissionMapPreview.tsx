@@ -103,7 +103,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
     // Display SORA buffer zones if present (before route so route draws on top)
     const soraLayer = L.layerGroup().addTo(map);
     if (route?.soraSettings) {
-      renderSoraZones(route.coordinates, route.soraSettings, soraLayer);
+      renderSoraZones(route.coordinates, { flightGeographyDistance: 0, ...route.soraSettings }, soraLayer);
     }
 
     // Display planned route if provided (blue dashed line)

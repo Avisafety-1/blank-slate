@@ -8,6 +8,7 @@ interface RoutePoint {
 export interface SoraSettings {
   enabled: boolean;
   flightAltitude: number;
+  flightGeographyDistance: number;
   contingencyDistance: number;
   contingencyHeight: number;
   groundRiskDistance: number;
@@ -267,17 +268,28 @@ export function renderSoraZones(
     return bufferPolyline(coordinates, dist);
   }
 
+  // Flight Geography Area (new innermost layer, only when > 0)
+  if (sora.flightGeographyDistance > 0) {
+    const fgaZone = makeBuffer(sora.flightGeographyDistance);
+    if (fgaZone.length >= 3) {
+      L.polygon(
+        fgaZone.map(p => [p.lat, p.lng] as [number, number]),
+        { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 }
+      ).bindPopup(`<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`).addTo(layer);
+    }
+  }
+
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
   const flightGeo = bufferPolyline(coordinates, 1);
   if (flightGeo.length >= 3) {
     L.polygon(
       flightGeo.map(p => [p.lat, p.lng] as [number, number]),
-      { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.20 }
+      { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 }
     ).bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
   }
 
-  // Yellow contingency area
-  const contingencyZone = makeBuffer(sora.contingencyDistance);
+  // Yellow contingency area — offset from flightGeographyDistance
+  const contingencyZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance);
   if (contingencyZone.length >= 3) {
     L.polygon(
       contingencyZone.map(p => [p.lat, p.lng] as [number, number]),
@@ -285,8 +297,8 @@ export function renderSoraZones(
     ).bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
   }
 
-  // Red ground risk buffer (outermost)
-  const groundRiskZone = makeBuffer(sora.contingencyDistance + sora.groundRiskDistance);
+  // Red ground risk buffer — offset from flightGeographyDistance + contingencyDistance
+  const groundRiskZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance);
   if (groundRiskZone.length >= 3) {
     L.polygon(
       groundRiskZone.map(p => [p.lat, p.lng] as [number, number]),

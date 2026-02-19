@@ -51,6 +51,22 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
             />
           </div>
 
+          {/* Flight Geography Area */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Flight Geography Area (m)</Label>
+              <span className="text-xs font-mono text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</span>
+            </div>
+            <Slider
+              min={0}
+              max={200}
+              step={1}
+              value={[settings.flightGeographyDistance]}
+              onValueChange={([v]) => update({ flightGeographyDistance: v })}
+              className="[&_[role=slider]]:bg-green-600"
+            />
+          </div>
+
           {/* Buffer mode */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Buffermetode</Label>
@@ -117,6 +133,9 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
 
           {/* Legend */}
           <div className="flex flex-wrap gap-3 pt-1 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> Flight geography area
+            </span>
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
             </span>
