@@ -39,16 +39,30 @@ const DialogContent = React.forwardRef<
         "fixed left-[50%] top-[50%] z-[1200] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         className,
       )}
+      onPointerDownOutside={(e) => {
+        // Blokker lukking ved klikk/tap utenfor dialogen som standard.
+        // Brukere kan fortsatt lukke via X-knapp eller Escape.
+        e.preventDefault();
+      }}
       onInteractOutside={(e) => {
-        // Prevent dialog from closing when any Radix Select is open.
-        // On touch devices, tapping outside a scrolled Select list can otherwise close the parent dialog.
         const target = e.target as HTMLElement | null;
+
+        // Eksisterende: Radix Select åpen
         const hasOpenSelect = !!document.querySelector(
           '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
         );
 
+        // Native dato/tid-input aktiv (iPad tidsvelger-problem)
+        const activeDateInput = document.activeElement as HTMLInputElement | null;
+        const isDateTimeInput =
+          activeDateInput?.tagName === "INPUT" &&
+          (activeDateInput.type === "datetime-local" ||
+            activeDateInput.type === "date" ||
+            activeDateInput.type === "time");
+
         if (
           hasOpenSelect ||
+          isDateTimeInput ||
           target?.closest('[data-radix-select-content]') ||
           target?.closest('[role="listbox"]')
         ) {
