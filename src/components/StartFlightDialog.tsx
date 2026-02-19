@@ -85,6 +85,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
+
+  // Mission-level checklist state
+  const [missionChecklistIds, setMissionChecklistIds] = useState<string[]>([]);
+  const [missionCompletedChecklistIds, setMissionCompletedChecklistIds] = useState<string[]>([]);
+  const [showMissionChecklistWarning, setShowMissionChecklistWarning] = useState(false);
   
   // Large advisory warning (50-150 km²)
   const [showLargeAdvisoryWarning, setShowLargeAdvisoryWarning] = useState(false);
@@ -195,6 +200,27 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchDronetagDevices();
   }, [companyId, open]);
 
+  // Fetch mission checklist state when mission is selected
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none') {
+      setMissionChecklistIds([]);
+      setMissionCompletedChecklistIds([]);
+      return;
+    }
+    const fetchChecklistState = async () => {
+      const { data } = await supabase
+        .from('missions')
+        .select('checklist_ids, checklist_completed_ids')
+        .eq('id', selectedMissionId)
+        .single();
+      if (data) {
+        setMissionChecklistIds((data as any).checklist_ids || []);
+        setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
+      }
+    };
+    fetchChecklistState();
+  }, [selectedMissionId]);
+
   // Auto-select dronetag when a mission is selected (based on mission → drone → dronetag link)
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') return;
@@ -241,6 +267,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setPendingFlightStart(false);
       setNearestTraffic(null);
       setTrafficLoading(false);
+      setMissionChecklistIds([]);
+      setMissionCompletedChecklistIds([]);
+      setShowMissionChecklistWarning(false);
     }
   }, [open]);
 
@@ -468,6 +497,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const handleStartFlightClick = () => {
     if (hasIncompleteChecklists) {
       setShowChecklistWarning(true);
+      return;
+    }
+    // Sjekk om valgt oppdrag har uutførte sjekklister
+    const hasMissionIncompleteChecklists = missionChecklistIds.some(
+      id => !missionCompletedChecklistIds.includes(id)
+    );
+    if (hasMissionIncompleteChecklists) {
+      setShowMissionChecklistWarning(true);
       return;
     }
     handleStartFlight();
@@ -972,6 +1009,26 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <AlertDialogAction onClick={() => setShowAdvisoryTooLarge(false)}>
               OK
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mission Checklist Warning Dialog */}
+      <AlertDialog open={showMissionChecklistWarning} onOpenChange={setShowMissionChecklistWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-amber-500" />
+              Utfør sjekkliste fra oppdragskortet
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Dette oppdraget har en sjekkliste som må utføres fra oppdragskortet (/oppdrag) før du kan starte en flytur.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowMissionChecklistWarning(false)}>
+              Avbryt
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -64,6 +64,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { useChecklists } from "@/hooks/useChecklists";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { toast } from "sonner";
 
 type Mission = any;
@@ -139,6 +141,7 @@ const DEFAULT_PDF_SECTIONS = {
 const Oppdrag = () => {
   const { user, loading, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
+  const { checklists } = useChecklists();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeMissions, setActiveMissions] = useState<Mission[]>([]);
@@ -172,6 +175,12 @@ const Oppdrag = () => {
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   
+  // Checklist-tilknytning til oppdrag
+  const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
+  const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
+  const [executingChecklistId, setExecutingChecklistId] = useState<string | null>(null);
+  const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
+
   // KML import state
   const [kmlImportMissionId, setKmlImportMissionId] = useState<string | null>(null);
   const [importingKml, setImportingKml] = useState(false);
@@ -508,6 +517,41 @@ const Oppdrag = () => {
     fetchMissions();
     setRiskDialogOpen(false);
     setRiskAssessmentMission(null);
+  };
+
+  // Tilknytt/fjern sjekkliste fra oppdrag
+  const handleToggleMissionChecklist = async (checklistId: string) => {
+    if (!checklistMission) return;
+    const existing: string[] = checklistMission.checklist_ids || [];
+    const isLinked = existing.includes(checklistId);
+    const newIds = isLinked
+      ? existing.filter((id: string) => id !== checklistId)
+      : [...existing, checklistId];
+    const { error } = await supabase
+      .from('missions')
+      .update({ checklist_ids: newIds })
+      .eq('id', checklistMission.id);
+    if (error) {
+      toast.error('Kunne ikke oppdatere sjekkliste');
+      return;
+    }
+    fetchMissions();
+    setChecklistMission(prev => prev ? { ...prev, checklist_ids: newIds } : null);
+  };
+
+  // Merk sjekkliste som utført på oppdrag
+  const handleMissionChecklistComplete = async () => {
+    if (!executingChecklistId || !executingChecklistMissionId) return;
+    const mission = [...activeMissions, ...completedMissions].find(m => m.id === executingChecklistMissionId);
+    const existing: string[] = mission?.checklist_completed_ids || [];
+    if (!existing.includes(executingChecklistId)) {
+      await supabase.from('missions').update({
+        checklist_completed_ids: [...existing, executingChecklistId]
+      }).eq('id', executingChecklistMissionId);
+    }
+    setExecutingChecklistId(null);
+    setExecutingChecklistMissionId(null);
+    fetchMissions();
   };
 
   const getAIRiskBadgeColor = (recommendation: string) => {
@@ -1575,6 +1619,34 @@ const Oppdrag = () => {
                               SORA: {mission.sora.sora_status}
                             </Badge>
                           )}
+                          {/* Sjekkliste-badge */}
+                          {(mission.checklist_ids?.length > 0) && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
+                                mission.checklist_ids.every((id: string) =>
+                                  mission.checklist_completed_ids?.includes(id)
+                                )
+                                  ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                                  : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const nextId = mission.checklist_ids.find(
+                                  (id: string) => !mission.checklist_completed_ids?.includes(id)
+                                ) || mission.checklist_ids[0];
+                                setExecutingChecklistId(nextId);
+                                setExecutingChecklistMissionId(mission.id);
+                              }}
+                            >
+                              <ClipboardCheck className="h-3 w-3 mr-1" />
+                              {mission.checklist_ids.every((id: string) =>
+                                mission.checklist_completed_ids?.includes(id)
+                              )
+                                ? 'Sjekkliste utført'
+                                : 'Utfør sjekkliste/r'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <DropdownMenu>
@@ -1592,6 +1664,13 @@ const Oppdrag = () => {
                           <DropdownMenuItem onClick={() => handleNewRiskAssessment(mission)}>
                             <ShieldCheck className="h-4 w-4 mr-2" />
                             Ny risikovurdering
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setChecklistMission(mission);
+                            setChecklistPickerOpen(true);
+                          }}>
+                            <ClipboardCheck className="h-4 w-4 mr-2" />
+                            Tilknytt sjekkliste
                           </DropdownMenuItem>
                           {mission.approval_status === 'not_approved' && (
                             <DropdownMenuItem onClick={() => handleSubmitForApproval(mission)}>
@@ -2519,6 +2598,66 @@ const Oppdrag = () => {
           defaultMissionId={reportIncidentMission?.id}
           incidentToEdit={null}
         />
+
+        {/* Checklist Picker Dialog — velg sjekkliste å tilknytte oppdraget */}
+        <Dialog open={checklistPickerOpen} onOpenChange={(open) => {
+          setChecklistPickerOpen(open);
+          if (!open) setChecklistMission(null);
+        }}>
+          <DialogContent className="w-[95vw] max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                Tilknytt sjekkliste
+              </DialogTitle>
+              <DialogDescription>
+                {checklistMission?.tittel} – velg sjekklister å knytte til oppdraget
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {checklists.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Ingen sjekklister funnet</p>
+              ) : (
+                checklists.map((cl) => {
+                  const isLinked = checklistMission?.checklist_ids?.includes(cl.id);
+                  return (
+                    <div
+                      key={cl.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        isLinked
+                          ? 'bg-primary/10 border-primary/30'
+                          : 'border-border hover:bg-muted/50'
+                      }`}
+                      onClick={() => handleToggleMissionChecklist(cl.id)}
+                    >
+                      <span className="text-sm font-medium">{cl.tittel}</span>
+                      {isLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setChecklistPickerOpen(false)}>Ferdig</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ChecklistExecutionDialog for oppdrag */}
+        {executingChecklistId && (
+          <ChecklistExecutionDialog
+            open={!!executingChecklistId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setExecutingChecklistId(null);
+                setExecutingChecklistMissionId(null);
+              }
+            }}
+            checklistId={executingChecklistId}
+            itemName={[...activeMissions, ...completedMissions].find(m => m.id === executingChecklistMissionId)?.tittel || ''}
+            onComplete={handleMissionChecklistComplete}
+          />
+        )}
       </div>
     </div>
   );
