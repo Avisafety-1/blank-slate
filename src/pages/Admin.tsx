@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyManagementSection } from "@/components/admin/CompanyManagementSection";
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
+import { CompanySoraConfigSection } from "@/components/admin/CompanySoraConfigSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
@@ -443,7 +444,7 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid grid-cols-2 sm:inline-flex h-auto sm:h-10 w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary rounded-xl">
+          <TabsList className="grid grid-cols-2 sm:inline-flex h-auto sm:h-10 w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary rounded-xl flex-wrap">
             <TabsTrigger value="users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.users')}</span>
@@ -455,6 +456,10 @@ const Admin = () => {
             <TabsTrigger value="email-templates" className={`flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors ${!isSuperAdmin ? 'col-span-2' : ''}`}>
               <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="company-config" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="max-w-[80px] sm:max-w-none truncate">{companyName || "Selskapet"}</span>
             </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
@@ -746,6 +751,14 @@ const Admin = () => {
           <TabsContent value="email-templates" className="mt-4 sm:mt-8">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
             <BulkEmailSender />
+          </TabsContent>
+
+          <TabsContent value="company-config" className="mt-4 sm:mt-8">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
+              <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
+            </div>
+            <CompanySoraConfigSection />
           </TabsContent>
 
           {isSuperAdmin && (

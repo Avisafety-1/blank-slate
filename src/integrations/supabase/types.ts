@@ -296,6 +296,62 @@ export type Database = {
           },
         ]
       }
+      company_sora_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          linked_document_ids: string[]
+          max_flight_altitude_m: number
+          max_visibility_km: number
+          max_wind_gust_ms: number
+          max_wind_speed_ms: number
+          operative_restrictions: string | null
+          policy_notes: string | null
+          require_backup_battery: boolean
+          require_observer: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          linked_document_ids?: string[]
+          max_flight_altitude_m?: number
+          max_visibility_km?: number
+          max_wind_gust_ms?: number
+          max_wind_speed_ms?: number
+          operative_restrictions?: string | null
+          policy_notes?: string | null
+          require_backup_battery?: boolean
+          require_observer?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          linked_document_ids?: string[]
+          max_flight_altitude_m?: number
+          max_visibility_km?: number
+          max_wind_gust_ms?: number
+          max_wind_speed_ms?: number
+          operative_restrictions?: string | null
+          policy_notes?: string | null
+          require_backup_battery?: boolean
+          require_observer?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_sora_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           adresse: string | null
