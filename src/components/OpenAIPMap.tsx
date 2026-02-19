@@ -6,6 +6,7 @@ import { openAipConfig } from "@/lib/openaip";
 import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { ArealbrukLegend } from "@/components/ArealbrukLegend";
+import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
@@ -730,6 +731,29 @@ export function OpenAIPMap({
       id: "arealbruk",
       name: "Befolkning / Arealbruk (SSB)",
       layer: arealbrukLayer,
+      enabled: false,
+      icon: "users",
+    });
+
+    // SSB Befolkning 1km² rutenett
+    const befolkningLayer = L.tileLayer.wms(
+      "https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WMSServer?",
+      {
+        layers: "befolkning_paa_rutenett_1000m",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.65,
+        attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>',
+        minZoom: 0,
+        maxZoom: 20,
+        tiled: true,
+        version: "1.3.0",
+      } as any
+    );
+    layerConfigs.push({
+      id: "befolkning1km",
+      name: "Befolkning 1km² (SSB)",
+      layer: befolkningLayer,
       enabled: false,
       icon: "users",
     });
@@ -2368,6 +2392,9 @@ export function OpenAIPMap({
 
       {layers.find(l => l.id === "arealbruk")?.enabled && (
         <ArealbrukLegend />
+      )}
+      {layers.find(l => l.id === "befolkning1km")?.enabled && (
+        <BefolkningLegend />
       )}
     </div>
   );
