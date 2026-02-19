@@ -547,7 +547,7 @@ export default function SoraProcess() {
                   "Komplett revisjonsspor",
                   "Alle inputs og outputs lagret",
                   "Pilot-signatur på hver vurdering",
-                  "Eksport til PDF og ECCAIRS",
+                  "Eksport til PDF",
                 ],
               },
               {
