@@ -1,69 +1,128 @@
 
-# Fix: Ressursbokser vokser ikke lenger med innholdet
+# Ny slider: Flight Geography Area i SORA-panelet
 
-## Problemet
+## Bakgrunn
 
-`main`-elementet har `minHeight: calc(100vh - 64px)` — dette setter en minimumshøyde, men lar elementet vokse ubegrenset når innholdet er mer enn skjermen. Grid og kort vokser da tilsvarende, noe som betyr at `lg:flex-1 lg:min-h-0` på scroll-containerne ikke fungerer som forventet — fordi foreldreelementet ikke har en fast høyde å forholde seg til.
+Bildet viser den korrekte SORA-strukturen med fire konsentriske lag (fra innenfor og ut):
+1. **Flight Geography Area** (lys grønn, innerst) — brukerdefinerbar buffer rundt selve ruten
+2. **Flight Geography** (mørkere grønn) — den ytre grensen for selve flygeografien
+3. **Contingency Area** (gul) — utenfor Flight Geography
+4. **Ground Risk Buffer** (rød) — ytterst
 
-For at `flex-1 min-h-0` skal begrense scroll-containerne til skjermhøyden, må hele kjeden fra `main` ned ha **fast høyde** (ikke bare min-høyde).
+I dag mangler "Flight Geography Area"-laget. Contingency og Ground Risk regnes fra ruten direkte, ikke fra en egen Flight Geography Area-radius.
 
-## Løsningen
+## Endringer
 
-### 1. `main` — bruk `height` i stedet for `minHeight`
+### 1. `src/components/OpenAIPMap.tsx` — utvide `SoraSettings`-interface
 
-```tsx
-// Fra:
-style={{ minHeight: 'calc(100vh - 64px)' }}
+Legge til ett nytt felt:
 
-// Til:
-style={{ height: 'calc(100vh - 64px)' }}
+```ts
+export interface SoraSettings {
+  enabled: boolean;
+  flightAltitude: number;
+  flightGeographyDistance: number;   // NY — default 0
+  contingencyDistance: number;
+  contingencyHeight: number;
+  groundRiskDistance: number;
+  bufferMode?: "corridor" | "convexHull";
+}
 ```
 
-Med en fast høyde på `main` kan `flex-1` på grid-elementet fylle nøyaktig den gjenværende plassen — ikke mer.
+### 2. `src/lib/soraGeometry.ts` — oppdatere interface og `renderSoraZones`
 
-### 2. Grid — legg tilbake `flex-1` uten `lg:`-prefix
+Tilsvarende tillegg av `flightGeographyDistance` i det lokale `SoraSettings`-interface.
 
-Grid-elementet trenger `flex-1` (uten `lg:`-prefix) for at det skal vokse til å fylle `main` sin faste høyde:
+Ny `renderSoraZones`-logikk:
 
-```tsx
-// Fra:
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 lg:flex-1 lg:items-stretch">
-
-// Til:
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 lg:flex-1 lg:items-stretch lg:overflow-hidden">
+```
+flightGeographyDistance (ny, grønn, innerst)  →  offset = flightGeographyDistance
+Flight Geography (eksisterende, grønn)         →  offset = 1m (alltid, som nå)
+Contingency Area (gul)                         →  offset = flightGeographyDistance + contingencyDistance
+Ground Risk Buffer (rød)                       →  offset = flightGeographyDistance + contingencyDistance + groundRiskDistance
 ```
 
-Legg til `lg:overflow-hidden` på grid-elementet for å hindre at det vokser utover `main`.
+- Når `flightGeographyDistance === 0`: Flight Geography Area rendres ikke (buffer = 0 er usynlig), og Contingency/Ground Risk regnes fra ruten slik de gjør i dag
+- Når `flightGeographyDistance > 0`: et eget lys-grønt fylt polygon vises, og Contingency/Ground Risk skyves utover tilsvarende
 
-### 3. GlassCard — legg til `lg:overflow-hidden`
+```ts
+// Flight Geography Area (ny, innerst)
+if (sora.flightGeographyDistance > 0) {
+  const fgaZone = makeBuffer(sora.flightGeographyDistance);
+  L.polygon(..., { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.25 })
+    .bindPopup('Flight Geography Area').addTo(layer);
+}
 
-Hver `GlassCard` med `lg:flex lg:flex-col lg:h-full` trenger også `lg:overflow-hidden` slik at kortet ikke vokser utover sin tildelte høyde:
+// Flight Geography (eksisterende linje, 1m buffer)
+const flightGeo = bufferPolyline(coordinates, 1);
+L.polygon(..., { color: '#22c55e', weight: 2, fillOpacity: 0.10 })...
 
-```tsx
-// Fra:
-<GlassCard className="lg:flex lg:flex-col lg:h-full">
+// Contingency — nå fra flightGeographyDistance + contingencyDistance
+const contingencyZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance);
 
-// Til:
-<GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
+// Ground Risk — nå fra flightGeographyDistance + contingencyDistance + groundRiskDistance
+const groundRiskZone = makeBuffer(
+  sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance
+);
 ```
 
-Dette er den manglende lenken — uten `overflow-hidden` kan kortet vokse utenfor grid-cellens høyde, og `flex-1 min-h-0` på scroll-containeren har ingen effekt.
+### 3. `src/components/SoraSettingsPanel.tsx` — ny slider
 
-## Oppsummering av endringer
+Legge til en grønn slider mellom "Flyhøyde" og "Buffermetode":
 
-| Fil | Element | Fra | Til |
-|---|---|---|---|
-| `src/pages/Resources.tsx` | `<main>` style | `minHeight: 'calc(100vh - 64px)'` | `height: 'calc(100vh - 64px)'` |
-| `src/pages/Resources.tsx` | Grid-div | `lg:items-stretch` | `lg:items-stretch lg:overflow-hidden` |
-| `src/pages/Resources.tsx` | Drones GlassCard | `lg:flex lg:flex-col lg:h-full` | `lg:flex lg:flex-col lg:h-full lg:overflow-hidden` |
-| `src/pages/Resources.tsx` | Equipment GlassCard | `lg:flex lg:flex-col lg:h-full` | `lg:flex lg:flex-col lg:h-full lg:overflow-hidden` |
-| `src/pages/Resources.tsx` | Personnel GlassCard | `lg:flex lg:flex-col lg:h-full` | `lg:flex lg:flex-col lg:h-full lg:overflow-hidden` |
+```tsx
+{/* Flight Geography Area */}
+<div className="space-y-1.5">
+  <div className="flex items-center justify-between">
+    <Label className="text-xs text-muted-foreground">Flight Geography Area (m)</Label>
+    <span className="text-xs font-mono text-green-600 dark:text-green-400">
+      {settings.flightGeographyDistance}m
+    </span>
+  </div>
+  <Slider
+    min={0}
+    max={200}
+    step={1}
+    value={[settings.flightGeographyDistance]}
+    onValueChange={([v]) => update({ flightGeographyDistance: v })}
+    className="[&_[role=slider]]:bg-green-600"
+  />
+</div>
+```
 
-## Visuelt resultat
+Oppdatere legenden med en egen post for Flight Geography Area:
 
-| Enhet | Før | Etter |
-|---|---|---|
-| Mobil | Boksene vokste med innhold | Maks 420px per boks, intern scroll |
-| PC/Nettbrett (lg+) | Boksene vokste med innhold utover skjermen | Boksene er låst til skjermhøyden, intern scroll |
+```tsx
+<span className="flex items-center gap-1">
+  <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> Flight geography area
+</span>
+<span className="flex items-center gap-1">
+  <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
+</span>
+```
 
-Kun `src/pages/Resources.tsx` endres.
+### 4. Oppdatere alle standard-verdier
+
+Alle steder der `SoraSettings` initialiseres med hardkodede verdier, legge til `flightGeographyDistance: 0`:
+
+| Fil | Linje |
+|---|---|
+| `src/pages/Kart.tsx` | ~144 og ~189 |
+| `src/components/dashboard/ExpandedMapDialog.tsx` | ~83 |
+
+## Visuell effekt
+
+| Innstilling | Resultat på kartet |
+|---|---|
+| `flightGeographyDistance = 0` (default) | Ingen endring fra nå — ruten er Flight Geography, gult og rødt buffer fra ruten |
+| `flightGeographyDistance = 50` | Lys grønt område 50m rundt ruten, gult buffer starter 50m fra ruten, rødt 50m + `contingencyDistance` fra ruten |
+
+## Filer som endres
+
+| Fil | Endring |
+|---|---|
+| `src/components/OpenAIPMap.tsx` | Legg til `flightGeographyDistance: number` i `SoraSettings` |
+| `src/lib/soraGeometry.ts` | Legg til felt i interface + ny renderingslogikk |
+| `src/components/SoraSettingsPanel.tsx` | Ny slider + utvidet legende |
+| `src/pages/Kart.tsx` | Legg til `flightGeographyDistance: 0` i default-verdier |
+| `src/components/dashboard/ExpandedMapDialog.tsx` | Legg til `flightGeographyDistance: 0` i default |
