@@ -604,6 +604,36 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
+    // 9d. Fetch company-specific SORA config
+    let companySoraConfig: any = null;
+    let linkedDocumentSummary = '';
+    if (companyId) {
+      try {
+        const { data: soraConfigData } = await supabase
+          .from('company_sora_config' as any)
+          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, operative_restrictions, policy_notes, linked_document_ids')
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        companySoraConfig = soraConfigData;
+
+        if (companySoraConfig?.linked_document_ids?.length > 0) {
+          const { data: linkedDocs } = await supabase
+            .from('documents')
+            .select('tittel, beskrivelse, kategori')
+            .in('id', companySoraConfig.linked_document_ids);
+          linkedDocumentSummary = linkedDocs
+            ?.map((d: any) => `- ${d.tittel} (${d.kategori})${d.beskrivelse ? ': ' + d.beskrivelse : ''}`)
+            .join('\n') || '';
+        }
+        if (companySoraConfig) {
+          console.log(`Company SORA config loaded: maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m`);
+        }
+      } catch (e) {
+        console.error('Error fetching company SORA config (using defaults):', e);
+      }
+    }
+
     // Use provided droneId or first assigned drone
     const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
     const droneData: any = effectiveDroneId 
@@ -710,6 +740,19 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       pilotInputs: pilotInputs || {},
       landUse: landUseData,
       populationDensity: populationData,
+      companyConfig: companySoraConfig ? {
+        hardStops: {
+          maxWindSpeedMs: companySoraConfig.max_wind_speed_ms,
+          maxWindGustMs: companySoraConfig.max_wind_gust_ms,
+          maxVisibilityKm: companySoraConfig.max_visibility_km,
+          maxFlightAltitudeM: companySoraConfig.max_flight_altitude_m,
+          requireBackupBattery: companySoraConfig.require_backup_battery,
+          requireObserver: companySoraConfig.require_observer,
+        },
+        operativeRestrictions: companySoraConfig.operative_restrictions || null,
+        policyNotes: companySoraConfig.policy_notes || null,
+        linkedDocuments: linkedDocumentSummary || null,
+      } : null,
     };
 
     // Professional SMS System Prompt
@@ -739,10 +782,31 @@ LAV SCORE = DÅRLIG (høy risiko, farlig)
 
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
-1. VÆR: Vindstyrke (middelvind) > 10 m/s ELLER vindkast > 15 m/s ELLER sikt < 1 km ELLER kraftig nedbør
+1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km ELLER kraftig nedbør
 2. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet)
 3. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
+${companySoraConfig?.require_backup_battery ? '4. RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
+${companySoraConfig?.require_observer ? `${companySoraConfig?.require_backup_battery ? '5' : '4'}. OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.` : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
+
+${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
+Feltet "companyConfig" inneholder selskapets egne krav som ALLTID gjelder:
+
+HARDSTOP-GRENSER (absolutte, ikke forhandlingsbare):
+- Max vindstyrke: ${companySoraConfig.max_wind_speed_ms} m/s
+- Max vindkast: ${companySoraConfig.max_wind_gust_ms} m/s
+- Min sikt: ${companySoraConfig.max_visibility_km} km
+- Max flyhøyde: ${companySoraConfig.max_flight_altitude_m} m AGL
+- Krev reservebatteri: ${companySoraConfig.require_backup_battery ? 'JA — OBLIGATORISK' : 'Nei'}
+- Krev observatør: ${companySoraConfig.require_observer ? 'JA — OBLIGATORISK' : 'Nei'}
+
+Hvis flyhøyde i oppdraget overstiger ${companySoraConfig.max_flight_altitude_m} m AGL, SKAL recommendation="no-go" og hard_stop_triggered=true returneres.
+
+${companySoraConfig.operative_restrictions ? `OPERATIVE BEGRENSNINGER FRA SELSKAPET:\n${companySoraConfig.operative_restrictions}` : ''}
+
+${companySoraConfig.policy_notes ? `SELSKAPETS OPERASJONSMANUAL — NØKKELPUNKTER (les og bruk aktivt):\n${companySoraConfig.policy_notes}\n\nVurder om oppdraget er i tråd med disse reglene. Nevn avvik eksplisitt i concerns.` : ''}
+
+${linkedDocumentSummary ? `TILKNYTTEDE POLICYDOKUMENTER (referanse for AI):\n${linkedDocumentSummary}` : ''}` : ''}
 
 ### FORUTSETNINGER
 Anta alltid at piloten vil:
