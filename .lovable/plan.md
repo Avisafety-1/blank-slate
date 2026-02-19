@@ -1,43 +1,77 @@
 
-# Fix: Dagsdialogen lukkes ikke etter vedlikehold i kalenderen
+# Ressursbokser fyller høyden vertikalt på /ressurser
 
-## Problemet
+## Nåværende problem
 
-I `src/pages/Kalender.tsx`, linje 544, kaller `performMaintenanceUpdate` alltid `setDialogOpen(false)` etter at vedlikeholdet er fullført. Dette lukker dagsdialogen umiddelbart, selv om det er flere vedlikeholdselementer på samme dag.
+Alle tre kolonnene (droner, utstyr, personell) har hardkodet `max-h-[420px]` på sine scroll-containere. Det betyr at listene aldri kan bli høyere enn 420px, uavhengig av skjermstørrelse.
 
-```typescript
-// Linje 544 — dette er problemet:
-setDialogOpen(false);
-fetchCustomEvents();
+For å la boksene strekke seg til full tilgjengelig høyde må hele kjeden fra ytterkontaineren ned til listen ha riktige flex/height-egenskaper.
+
+## Endringer som trengs
+
+### Kjeden som må fikses
+
+```text
+div.min-h-screen (rot)
+└── div.relative.z-10 (content wrapper)
+    └── main                              ← trenger "flex flex-col" og "min-h-screen pt-[...]"
+        └── div.grid.lg:grid-cols-3       ← trenger "flex-1" og "items-stretch"
+            └── GlassCard (×3)            ← trenger "flex flex-col h-full"
+                └── div.space-y-3        ← fjern max-h-[420px], legg til "flex-1 min-h-0 overflow-y-auto"
 ```
 
-Brukeren vil at dialogen forblir åpen slik at de kan huke av for alle vedlikeholdsoppgaver på én og samme dag.
+### 1. `src/pages/Resources.tsx` — ytre container
 
-## Løsningen
+`main`-elementet må strekke seg til full høyde og sende den videre til grid:
 
-### 1. Fjern `setDialogOpen(false)` fra `performMaintenanceUpdate`
+```tsx
+// Fra:
+<main className="w-full px-3 sm:px-4 py-4 sm:py-6">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
 
-Den enkleste og mest korrekte løsningen er å fjerne `setDialogOpen(false)` fra `performMaintenanceUpdate`. Dialogen skal kun lukkes manuelt av brukeren.
-
-```typescript
-// Etter:
-toast.success('Vedlikehold registrert som utført');
-// (ingen setDialogOpen(false) her)
-fetchCustomEvents();
+// Til:
+<main className="w-full px-3 sm:px-4 py-4 sm:py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 flex-1 lg:items-stretch">
 ```
 
-### 2. Oppdater vedlikeholdsknapper visuelt etter fullføring
+`calc(100vh - 64px)` kompenserer for header-høyden slik at `main` fyller resten av skjermen.
 
-Siden `fetchCustomEvents()` henter ferske data og re-renderer listen, vil vedlikeholdselementer som er utført (og dermed har fått ny `neste_vedlikehold`-dato) forsvinne fra listen for den valgte dagen automatisk. Dette er riktig oppførsel — listen oppdateres selv, og brukeren kan se at vedlikeholdet ble registrert via toast-meldingen.
+### 2. `src/pages/Resources.tsx` — alle tre GlassCard
 
-### Hva skjer med checklist-flyten?
+Hvert av de tre `GlassCard`-elementene (droner, utstyr, personell) trenger `flex flex-col h-full`:
 
-`handleChecklistComplete` kaller `performMaintenanceUpdate` som igjen ikke lenger lukker dagsdialogen. Men vi må også sørge for at checklistdialogen lukkes etter fullføring (dette gjøres allerede av `ChecklistExecutionDialog` internt via `onOpenChange(false)` — det er OK).
+```tsx
+// Fra:
+<GlassCard>
 
-### Endringer
+// Til:
+<GlassCard className="flex flex-col h-full">
+```
 
-| Fil | Linje | Endring |
+### 3. `src/pages/Resources.tsx` — de indre scroll-containerne
+
+Alle tre `div`-elementene med `max-h-[420px] overflow-y-auto` erstattes med `flex-1 min-h-0 overflow-y-auto`:
+
+```tsx
+// Fra (×3):
+<div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+
+// Til:
+<div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
+```
+
+`min-h-0` er nødvendig fordi flex-barn som standard ikke kan krympe under sitt naturlige innhold — `min-h-0` overstyrer dette og lar flex-barnet faktisk ta `flex-1` som høyde.
+
+## Visuelt resultat
+
+| Enhet | Før | Etter |
 |---|---|---|
-| `src/pages/Kalender.tsx` | ~544 | Fjern `setDialogOpen(false)` fra `performMaintenanceUpdate` |
+| Mobil | Kompakt (uendret) | Kompakt (uendret, stablet vertikalt) |
+| Nettbrett / PC | Boksene er maks 420px høye | Boksene strekker seg til full skjermhøyde |
+| Scroll | Starter etter 420px | Starter etter full tilgjengelig høyde |
 
-Det er én linje som fjernes. Ingen andre endringer er nødvendig — `fetchCustomEvents()` oppdaterer allerede listen dynamisk, og elementer som er fullført forsvinner fra listen for den aktuelle dagen.
+## Filer som endres
+
+| Fil | Endringer |
+|---|---|
+| `src/pages/Resources.tsx` | 1) `main` får `flex flex-col` og `minHeight: calc(100vh - 64px)` — 2) Grid får `flex-1 lg:items-stretch` — 3) Alle tre `GlassCard` får `flex flex-col h-full` — 4) Alle tre scroll-containere: fjern `max-h-[420px]`, legg til `flex-1 min-h-0` |
