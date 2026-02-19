@@ -821,7 +821,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     );
                   })}
                 </SelectContent>
-              </Select>
+            </Select>
+
+            {missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id)) && (
+              <div className="flex items-start gap-2 rounded-lg bg-orange-500/10 border border-orange-500/30 p-3 text-sm mt-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                <p className="text-orange-600 dark:text-orange-400">
+                  Dette oppdraget har sjekkliste/r som må utføres fra oppdragskortet før du kan starte flytur.
+                </p>
+              </div>
+            )}
             </div>
 
             <div className="space-y-3">
@@ -962,7 +971,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading || isFetchingMissionChecklists || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
+              disabled={loading || isFetchingMissionChecklists || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
@@ -1049,25 +1058,6 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Mission Checklist Warning Dialog */}
-      <AlertDialog open={showMissionChecklistWarning} onOpenChange={setShowMissionChecklistWarning}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-amber-500" />
-              Utfør sjekkliste fra oppdragskortet
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Dette oppdraget har en sjekkliste som må utføres fra oppdragskortet (/oppdrag) før du kan starte en flytur.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowMissionChecklistWarning(false)}>
-              Avbryt
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Checklist Execution Dialog */}
       {activeChecklistId && (
