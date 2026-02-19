@@ -1,70 +1,70 @@
 
-# Fiks: Scroll i mission-liste fungerer ikke i StartFlightDialog
+# Fiks: Scroll i dokumentlisten i oppdragsdialogen
 
-## Rotårsaken
+## Rotårsak
 
-Det er to sammenkoblede problemer:
+Dokumentlisten i `AddMissionDialog` er bygget med `Popover` + `Command`/`CommandList`, ikke `Select`. Begge portales ut av dialog-DOM-treet via Radix sin popper-mekanisme, men de har ulike data-attributter:
 
-**Problem 1 — `onPointerDownOutside` blokkerer Select-scroll:**
-Fiksen vi nettopp implementerte i `dialog.tsx` legger til `onPointerDownOutside={(e) => e.preventDefault()}` globalt. Radix Select portaler `SelectContent` ut av dialog-DOM-treet og plasserer det i `document.body`. Når brukeren prøver å scrolle i listen via touch/mus, sender Radix Select en `pointerdown`-event som dialog-komponenten oppfatter som "utenfor dialogen" og kaller `e.preventDefault()` — dette blokkerer Radix sin interne scroll-mekanisme (`ScrollUpButton`/`ScrollDownButton`) og touch-scrolling.
+- Radix Select: `[data-radix-select-content]` og `[role="listbox"]`
+- Radix Popover: `[data-radix-popper-content-wrapper]` (wrapper-div) og `[data-radix-popover-content]` (innholds-div)
 
-**Problem 2 — SelectViewport høyde i "popper"-modus:**
-I `select.tsx` er `SelectViewport` satt til `h-[var(--radix-select-trigger-height)]` i popper-modus, som begrenser listen til å være like høy som knappen (ca. 40px). Den burde ikke ha noen fast høydebegrensning i viewport for å tillate fri scrolling opp til `max-h-96` på Content-elementet.
+Eksisterende guard i `onPointerDownOutside` dekker allerede `[data-radix-popper-content-wrapper]`, så dialogen lukkes ikke ved klikk. Men **`onInteractOutside` mangler tilsvarende guard for Popover/popper-innhold** — den sjekker bare `[data-radix-select-content]` og `[role="listbox"]`. Dette betyr at scroll- og touch-events inne i `PopoverContent` trigger `onInteractOutside`, som kan forstyrre scrolling.
 
-## Løsninger
+I tillegg bruker `CommandList` `overflow-y-auto` for scroll, men `onPointerDownOutside` som nå returnerer tidlig for `[data-radix-popper-content-wrapper]` fungerer som forventet. Problemet er utelukkende i `onInteractOutside`.
 
-### Fix 1 — `dialog.tsx`: Ikke blokker pointer-events for portaled Select
+## Løsning
 
-`onPointerDownOutside` bør sjekke om `pointerdown`-eventet stammer fra et Radix Select-innhold eller annet portaled UI, og kun da la det passere:
+Én endring i `src/components/ui/dialog.tsx`:
+
+Utvid `onInteractOutside`-guarden til også å inkludere Radix Popover sine portaling-attributter:
 
 ```typescript
-onPointerDownOutside={(e) => {
+onInteractOutside={(e) => {
   const target = e.target as HTMLElement | null;
-  
-  // Ikke blokker pointer-events for Radix Select-innhold
-  // (portalet ut av dialog-DOM og bruker pointer-events for scroll)
+
+  const hasOpenSelect = !!document.querySelector(
+    '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
+  );
+
+  const activeDateInput = document.activeElement as HTMLInputElement | null;
+  const isDateTimeInput =
+    activeDateInput?.tagName === "INPUT" &&
+    (activeDateInput.type === "datetime-local" ||
+      activeDateInput.type === "date" ||
+      activeDateInput.type === "time");
+
   if (
+    hasOpenSelect ||
+    isDateTimeInput ||
     target?.closest('[data-radix-select-content]') ||
     target?.closest('[role="listbox"]') ||
-    target?.closest('[data-radix-popper-content-wrapper]')
+    target?.closest('[data-radix-popper-content-wrapper]') ||   // ← NY
+    target?.closest('[data-radix-popover-content]')             // ← NY
   ) {
-    return; // La Radix Select håndtere dette selv
+    e.preventDefault();
   }
-  
-  // Blokker ellers utilsiktet lukking
-  e.preventDefault();
+
+  onInteractOutside?.(e);
 }}
 ```
 
-### Fix 2 — `select.tsx`: Fjern høydebegrensning på Viewport i popper-modus
+## Hva de nye linjene gjør
 
-Endre `SelectViewport` i `select.tsx` fra:
-```typescript
-position === "popper" &&
-  "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-```
-til:
-```typescript
-position === "popper" &&
-  "w-full min-w-[var(--radix-select-trigger-width)]"
-```
+| Guard | Hva den dekker |
+|---|---|
+| `[data-radix-popper-content-wrapper]` | Ytre wrapper som Radix Popover portaler til `body` |
+| `[data-radix-popover-content]` | Selve `PopoverContent`-elementet |
 
-Dette lar `SelectContent` sin `max-h-96` begrense høyden, og Radix sin interne scroll-mekanisme (ScrollUpButton/ScrollDownButton) tar seg av scrollingen.
+Disse to selektorene sikrer at alle interaksjoner (scroll, klikk, touch) inne i `PopoverContent` — inkludert `CommandList`-scrolling — ikke lenger trigger dialog-lukking via `onInteractOutside`.
 
-## Hva endres
+## Hvorfor påvirker ikke dette "tilfeldig lukking"-beskyttelsen?
 
-| Situasjon | Før | Etter |
-|---|---|---|
-| Scroll i mission-liste (StartFlightDialog) | Ikke mulig | Fungerer normalt |
-| Scroll i alle andre Select-lister inne i dialoger | Ikke mulig | Fungerer normalt |
-| Utilsiktet lukking av dialog ved klikk utenfor | Dialog lukkes | Dialog forblir åpen (beholdes) |
-| Klikk på Select-innhold | Blokkert av dialog | Passerer gjennom normalt |
+`onInteractOutside` har aldri vært den primære mekanismen som lukker dialogen ved klikk utenfor — det gjør `onPointerDownOutside`. Guard-logikken i `onInteractOutside` er utelukkende for å blokkere stale-events fra portaled UI, og er ikke involvert i den ordinære "klikk utenfor"-lukking. Endringen er dermed trygg.
 
-## Filer som endres
+## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/ui/dialog.tsx` | Legg til guard i `onPointerDownOutside` for portaled Select-innhold |
-| `src/components/ui/select.tsx` | Fjern `h-[var(--radix-select-trigger-height)]` fra Viewport i popper-modus |
+| `src/components/ui/dialog.tsx` | Legg til to selektorer i `onInteractOutside`-guard |
 
-To enkle endringer — global effekt for alle Select-lister inne i dialoger.
+Én liten endring med global effekt for alle dialoger som bruker `Popover` + `Command`/`CommandList` (dokument-, personell-, utstyr- og dronesøk i oppdragsdialogen).
