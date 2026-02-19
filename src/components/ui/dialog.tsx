@@ -75,7 +75,9 @@ const DialogContent = React.forwardRef<
           hasOpenSelect ||
           isDateTimeInput ||
           target?.closest('[data-radix-select-content]') ||
-          target?.closest('[role="listbox"]')
+          target?.closest('[role="listbox"]') ||
+          target?.closest('[data-radix-popper-content-wrapper]') ||
+          target?.closest('[data-radix-popover-content]')
         ) {
           e.preventDefault();
         }
