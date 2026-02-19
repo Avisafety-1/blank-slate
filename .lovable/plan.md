@@ -1,41 +1,56 @@
 
-## Korrigere regulatorisk tekst på /sora-prosess
+## Fiks: Invalid LatLng (NaN, NaN) ved SORA-sonerendering
 
-### Problem
-Markedsføringssiden bruker "EASA U-space" feil 4 steder. U-space (EU 2021/664) er et separat digitalt luftrom-regime for UTM/UAS-trafikkstyring. Avisafe implementerer SORA — Specific Operations Risk Assessment — som er EASA sin metodikk for risikovurdering i «Specific»-kategorien.
+### Rotårsak
 
-### Korrekte begrep å bruke
-- ❌ "EASA U-space regelverket" → ✅ "EASA SORA-metodikken"
-- ❌ "EASA U-space · AI-drevet · SORA-sertifisert" → ✅ "EASA SORA · AI-drevet · AMC 1 AMC1 UAS.STS"
-- ❌ "EASA JO-3.1" (finnes ikke) → ✅ "EASA SORA-metodikk"
-- ❌ "U-space regelverkssamsvar" → ✅ "SORA-metodikk for Specific-kategori"
-- ❌ "Norske myndighetskrav ivaretatt" → ✅ "Norske CAA-krav ivaretatt" (Luftfartstilsynet)
+Feilen oppstår i `renderSoraZones` i `src/lib/soraGeometry.ts` når Leaflet forsøker å tegne SORA-soner for et oppdrag (f.eks. "safesky test 2") som enten:
 
-### Alle steder i SoraProcess.tsx som endres
+1. Har koordinater der `lat` eller `lng` er `null`, `undefined`, eller `0` (som oppfyller `isFinite`-sjekken men produserer `NaN` i den lokale metriske projeksjonen)
+2. Eller der bufferfunksjonene (`bufferPolyline`, `bufferPolygon`) returnerer koordinater med `NaN` fordi `lngScale` eller `latScale` gir 0 ved ekstremalverdier
 
-**Linje ~201:** (hero-badge)
-- Fra: `EASA U-space · AI-drevet · SORA-sertifisert`
-- Til: `EASA SORA · AI-drevet · Specific-kategori`
+Den eksisterende tidlig-exit-sjekken (`coordinates.some(p => !p || !isFinite(p.lat) || !isFinite(p.lng))`) validerer input, men **ikke output** fra bufferfunksjonene. Koordinater som `{ lat: 0, lng: 0 }` er `isFinite`, men kan gi meningsløse buffer-resultater. Og etter at bufferberegning er ferdig, sendes resulterende polygonpunkter direkte til `L.polygon()` uten noen ny NaN-sjekk.
 
-**Linje ~219:** (hero-undertittel)
-- Fra: `Automatisert risikovurdering etter EASA U-space regelverket`
-- Til: `Automatisert risikovurdering etter EASA SORA-metodikken`
+### Løsning
 
-**Linje ~374:** (Fase 7 subtitle)
-- Fra: `Strukturert SORA-beregning etter EASA JO-3.1`
-- Til: `Strukturert SORA-beregning etter EASA SORA AMC-rammeverket`
+Legg til en **post-buffer NaN-filter** på alle koordinat-arrays like før de sendes til `L.polygon()` i `renderSoraZones`.
 
-**Linje ~418:** (output-header)
-- Fra: `Komplett SORA-rapport etter EASA JO-3.1 metodikk`
-- Til: `Komplett SORA-rapport etter EASA SORA-metodikken`
+Konkret endres tre steder i `renderSoraZones` (linje ~270–305 i `soraGeometry.ts`):
 
-**Linje ~560:** (feature-highlight, "Regulatorisk klar")
-- Fra: `U-space regelverkssamsvar`
-- Til: `SORA-metodikk for Specific-kategori`
+1. `fgaZone` — Flight Geography Area polygon
+2. `contingencyZone` — Contingency Area polygon  
+3. `groundRiskZone` — Ground Risk Buffer polygon
+4. `flightGeo` — den 1m-buffered flightgeography baseline
 
-**Linje ~607:** (footer)
-- Fra: `Powered by AviSafe · EASA SORA · AI-drevet droneoperasjonsplattform`
-- Til beholdes nesten likt, men EASA SORA er korrekt her — ingen endring nødvendig
+For hvert av disse, filtrer ut punkter der `lat` eller `lng` er NaN **etter** buffer-beregning, og hopp over `L.polygon()`-kallet hvis resulterende array har færre enn 3 gyldige punkter.
 
-### Kun én fil endres
-`src/pages/SoraProcess.tsx` — 5 tekstjusteringer, ingen strukturelle endringer.
+### Teknisk implementasjon
+
+I `renderSoraZones`, bytt ut direkte `L.polygon(zone.map(p => [p.lat, p.lng]))` med en helper:
+
+```typescript
+function safeLatLngs(zone: RoutePoint[]): [number, number][] {
+  return zone
+    .map(p => [p.lat, p.lng] as [number, number])
+    .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
+}
+```
+
+Og bruk denne i stedet for `.map(p => [p.lat, p.lng])` for hvert polygon-kall. Sjekk `safeLatLngs.length >= 3` før `L.polygon()` kalles.
+
+I tillegg legges en ekstra guard i starten av `renderSoraZones` som sjekker at koordinatene har faktiske verdier (ikke `0,0` som er et «null island»-problem):
+
+```typescript
+// Filtrer bort nulløy-koordinater
+const validCoords = coordinates.filter(
+  p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+);
+if (validCoords.length < 1) return;
+```
+
+### Filer som endres
+
+| Fil | Endring |
+|---|---|
+| `src/lib/soraGeometry.ts` | Legg til `safeLatLngs`-helper og bruk den i alle `L.polygon()`-kall i `renderSoraZones`. Legg til null-island-guard øverst i funksjonen. |
+
+Ingen andre filer trenger endring — selve buffer-beregningslogikken er korrekt, problemet er kun mangel på output-validering før Leaflet-kallet.
