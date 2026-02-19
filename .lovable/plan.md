@@ -1,159 +1,123 @@
 
-# Faner i sjekkliste-dialog for oppdrag
+# Fix: Sjekkliste-blokkering i StartFlightDialog
 
 ## Problemet
 
-Når et oppdrag har flere tilknyttede sjekklister, åpnes kun én sjekkliste om gangen via `executingChecklistId`. Det finnes ingen måte å navigere til de andre sjekklistene uten å lukke dialogen og klikke badgen på nytt. Brukeren vil ha faner øverst i dialogen slik at man kan bytte mellom sjekklistene direkte.
+Brukeren klarte å starte en flytur uten å ha utført sjekklisten som var tilknyttet oppdraget. Årsaken er en **race condition** i `StartFlightDialog.tsx`.
+
+Flyten er:
+1. Brukeren velger et oppdrag i dropdown-en
+2. En `useEffect` trigges og henter `checklist_ids` og `checklist_completed_ids` fra Supabase **asynkront**
+3. Brukeren klikker «Start flytur» raskt — **før** `fetchChecklistState()` er ferdig
+4. `missionChecklistIds` er fortsatt `[]` (tomt array fra initialverdien)
+5. `missionChecklistIds.some(...)` returnerer `false` siden det er ingen ID-er å iterere over
+6. Blokkering skjer ikke — flytur starter
+
+## To problemer som må fikses
+
+**Problem 1 — Race condition:** `missionChecklistIds` er `[]` mens data lastes. Valideringen sjekker dette tomme arrayet og lar flystart gå gjennom.
+
+**Problem 2 — Ingen loading-guard:** Det er ingen tilstand som sier «vi venter på sjekkliste-data» — og «Start flytur»-knappen er aktiv mens data lastes.
 
 ## Løsning
 
-Modifisere `ChecklistExecutionDialog` til å støtte et array av sjekkliste-ID-er (`checklistIds: string[]`) i tillegg til en liste over allerede utførte ID-er (`completedIds: string[]`). En fane vises per sjekkliste, med et grønt hakemerke-ikon på faner som er fullstendig utført. Nedre del av dialogen viser innholdet i den valgte fanens sjekkliste.
-
-Kallet fra `Oppdrag.tsx` endres til å sende alle sjekkliste-ID-ene for oppdraget, slik at alle er tilgjengelige via faner i én og samme dialog.
-
-## Detaljert implementasjon
-
-### 1. `src/components/resources/ChecklistExecutionDialog.tsx`
-
-#### Ny props-interface
-
-```ts
-interface ChecklistExecutionDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  checklistIds: string[];           // Array — alle sjekkliste-ID-er
-  completedIds?: string[];          // Allerede fullførte
-  itemName: string;
-  onComplete: (checklistId: string) => void | Promise<void>;
-  // Bakoverkompatibilitet: gammel enkelt-ID-prop beholdes som alias
-  checklistId?: string;
-}
-```
-
-#### Ny intern state
-
-- `activeChecklistId: string` — den aktive fanen
-- `checklistTitles: Record<string, string>` — tittel per sjekkliste-ID (for fanelabels)
-- `items: ChecklistItem[]` — punkter i den valgte sjekklisten (endres når fane byttes)
-- `checkedItems: Set<string>` — per fane, lagres i `checkedByTab: Record<string, Set<string>>`
-
-Når bruker bytter fane:
-- `activeChecklistId` settes til ny ID
-- `items` hentes for den nye sjekklisten
-- `checkedItems` hentes fra `checkedByTab[newId]` (bevares mellom fanebytt)
-
-#### Fane-header
-
-Mellom `DialogHeader` og fremdriftslinjen, vis en `TabsList` med én `TabsTrigger` per sjekkliste. Bruker Radix Tabs (allerede importert i prosjektet):
+### 1. Legg til `isFetchingMissionChecklists`-tilstand
 
 ```tsx
-{checklistIds.length > 1 && (
-  <Tabs value={activeChecklistId} onValueChange={handleTabChange}>
-    <TabsList className="w-full">
-      {checklistIds.map((id) => (
-        <TabsTrigger key={id} value={id} className="flex-1 gap-1.5 text-xs">
-          {completedChecklistIds.has(id) && (
-            <CheckCircle2 className="h-3 w-3 text-green-600" />
-          )}
-          {checklistTitles[id] || '...'}
-        </TabsTrigger>
-      ))}
-    </TabsList>
-  </Tabs>
-)}
+const [isFetchingMissionChecklists, setIsFetchingMissionChecklists] = useState(false);
 ```
 
-#### Fremdriftslinje
+### 2. Oppdater `useEffect` som henter sjekkliste-data
 
-Viser fremgang for den aktive fanen (slik som i dag).
-
-#### Fullfør-knapp
-
-`onComplete(activeChecklistId)` kalles i stedet for `onComplete()`. Etter fullføring:
-- Hopper automatisk til neste ufullstendige fane (hvis noen)
-- Hvis alle faner er fullstendige — lukker dialogen
-
-#### Bakoverkompatibilitet
-
-Eksisterende bruk av `ChecklistExecutionDialog` (utstyr, drone-vedlikehold) sender fortsatt `checklistId` (enkelt streng). Wrapping:
-```ts
-const ids = props.checklistIds ?? (props.checklistId ? [props.checklistId] : []);
-```
-Dermed trengs ingen endringer i de andre stedene som bruker komponenten.
-
-### 2. `src/pages/Oppdrag.tsx`
-
-#### State-endring
-
-Fjern `executingChecklistId` (enkelt-ID). Behold `executingChecklistMissionId`. Legg til:
-```ts
-const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
-```
-
-Badge-klikk trenger ikke lenger velge én spesifikk ID — den åpner dialogen med **alle** sjekklister for oppdraget:
-```tsx
-onClick={(e) => {
-  e.stopPropagation();
-  setExecutingChecklistMissionId(mission.id);
-}}
-```
-
-#### Ny `onComplete`-handler
+Sett `isFetchingMissionChecklists = true` før fetch starter, og `false` når den er ferdig (også ved tom misjon):
 
 ```tsx
-const handleMissionChecklistComplete = async (checklistId: string) => {
-  if (!executingChecklistMissionId) return;
-  const mission = [...activeMissions, ...completedMissions]
-    .find(m => m.id === executingChecklistMissionId);
-  const existing: string[] = mission?.checklist_completed_ids || [];
-  if (!existing.includes(checklistId)) {
-    await supabase.from('missions').update({
-      checklist_completed_ids: [...existing, checklistId]
-    }).eq('id', executingChecklistMissionId);
+useEffect(() => {
+  if (!selectedMissionId || selectedMissionId === 'none') {
+    setMissionChecklistIds([]);
+    setMissionCompletedChecklistIds([]);
+    setIsFetchingMissionChecklists(false);
+    return;
   }
-  fetchMissions();
+  const fetchChecklistState = async () => {
+    setIsFetchingMissionChecklists(true);
+    try {
+      const { data } = await supabase
+        .from('missions')
+        .select('checklist_ids, checklist_completed_ids')
+        .eq('id', selectedMissionId)
+        .single();
+      if (data) {
+        setMissionChecklistIds((data as any).checklist_ids || []);
+        setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
+      } else {
+        setMissionChecklistIds([]);
+        setMissionCompletedChecklistIds([]);
+      }
+    } finally {
+      setIsFetchingMissionChecklists(false);
+    }
+  };
+  fetchChecklistState();
+}, [selectedMissionId]);
+```
+
+### 3. Oppdater `handleStartFlightClick` med dobbel guard
+
+```tsx
+const handleStartFlightClick = () => {
+  // Vent til sjekkliste-data er hentet
+  if (isFetchingMissionChecklists) {
+    toast.info('Laster sjekkliste-status, prøv igjen...');
+    return;
+  }
+
+  if (hasIncompleteChecklists) {
+    setShowChecklistWarning(true);
+    return;
+  }
+
+  const hasMissionIncompleteChecklists = missionChecklistIds.some(
+    id => !missionCompletedChecklistIds.includes(id)
+  );
+  if (hasMissionIncompleteChecklists) {
+    setShowMissionChecklistWarning(true);
+    return;
+  }
+
+  handleStartFlight();
 };
 ```
 
-#### Oppdatert dialog-kall
+### 4. Deaktiver «Start flytur»-knappen mens data lastes
+
+I JSX-en, legg til `isFetchingMissionChecklists` som en ekstra `disabled`-betingelse på «Start flytur»-knappen:
 
 ```tsx
-{executingChecklistMissionId && (() => {
-  const mission = [...activeMissions, ...completedMissions]
-    .find(m => m.id === executingChecklistMissionId);
-  return (
-    <ChecklistExecutionDialog
-      open={!!executingChecklistMissionId}
-      onOpenChange={(open) => {
-        if (!open) setExecutingChecklistMissionId(null);
-      }}
-      checklistIds={mission?.checklist_ids || []}
-      completedIds={mission?.checklist_completed_ids || []}
-      itemName={mission?.tittel || ''}
-      onComplete={handleMissionChecklistComplete}
-    />
-  );
-})()}
+<Button
+  onClick={handleStartFlightClick}
+  disabled={loading || isFetchingMissionChecklists}
+  ...
+>
+  {isFetchingMissionChecklists ? 'Laster...' : t('flight.start')}
+</Button>
 ```
 
-## Brukerflyt
+### 5. Nullstill ved dialog-lukking
 
+I `useEffect` som kjøres når `open` blir `false`, legg til:
+```tsx
+setIsFetchingMissionChecklists(false);
 ```
-Badge «Utfør sjekkliste/r» klikkes
-  → Dialog åpnes med faner øverst (én fane per tilknyttet sjekkliste)
-  → Første ufullstendige sjekkliste er aktiv fane
-  → Bruker krysser av punkter → klikker «Fullfør»
-    → Fane får grønt hakemerke-ikon
-    → Dialog hopper automatisk til neste ufullstendige fane
-  → Alle faner fullstendig → dialog lukkes
-  → Badge endres til grønn «Sjekkliste utført»
-```
-
-Dersom det kun er én sjekkliste tilknyttet oppdraget, vises ingen fane-header — dialogen ser identisk ut med dagens dialog.
 
 ## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/resources/ChecklistExecutionDialog.tsx` | Refaktoreres til å støtte faner med flere sjekklister |
-| `src/pages/Oppdrag.tsx` | Badge-klikk og dialog-kall oppdateres til multi-sjekkliste |
+| `src/components/StartFlightDialog.tsx` | Legg til `isFetchingMissionChecklists`-tilstand, oppdater fetch-useEffect, oppdater `handleStartFlightClick`, deaktiver knapp under loading |
+
+## Visuell effekt
+
+- Mens oppdrags-sjekkliste-data lastes: «Start flytur»-knappen viser «Laster...» og er deaktivert
+- Når data er lastet og sjekklister er ufullstendige: advarselsdialog vises som planlagt
+- Race condition elimineres — det er ikke lenger mulig å komme seg forbi sjekkliste-sjekken
