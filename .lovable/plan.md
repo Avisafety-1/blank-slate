@@ -1,107 +1,94 @@
 
-# Fix: Database-level validering ved flystart
+# Erstatt advarselsdialog med inline oransje blokkering i StartFlightDialog
 
-## Rotårsaken
+## Hva skal endres
 
-Selv med `isFetchingMissionChecklists`-loading-guard er det fortsatt mulig å starte flytur uten å ha utført sjekklistene. Årsaken er at **valideringen stoler på React-state** (`missionChecklistIds`, `missionCompletedChecklistIds`) som ble hentet asynkront da oppdraget ble valgt — ikke på ferske data fra databasen i det øyeblikket brukeren klikker «Start flytur».
+I dag vises en `AlertDialog` (modal) når brukeren klikker «Start flytur» med ufullstendige sjekklister på oppdraget. Brukeren ønsker i stedet at:
 
-Det finnes to steder der valideringen kan omgås:
+1. **«Start flytur»-knappen er deaktivert** (grå, ikke klikkbar) når det valgte oppdraget har ufullstendige sjekklister
+2. **En oransje advarselsboks** vises inline i dialogen (under oppdragsvelgeren) som forklarer at sjekkliste/r må utføres fra oppdragskortet
 
-1. **`handleStartFlightClick`**: Selv om `isFetchingMissionChecklists` er `false` og data er lastet, kan state være utdatert dersom sjekkliste-status på oppdraget har endret seg siden oppdraget ble valgt.
+`AlertDialog` for mission-sjekkliste-advarsel fjernes helt — den erstattes av inline-varselet og deaktivert knapp.
 
-2. **`handleConfirmLargeAdvisory` (linje 612)**: Denne funksjonen kaller `onStartFlight(...)` direkte — **uten å sjekke sjekkliste-status overhodet**. Dette er et fullstendig hull i valideringen.
+## Detaljert implementasjon
 
-## Løsning: Fersk DB-sjekk rett før flystart
+### Fil: `src/components/StartFlightDialog.tsx`
 
-I stedet for å stole på React-state, gjøres en ny Supabase-spørring mot `missions`-tabellen rett før flystart faktisk iverksettes. Dette er det eneste pålitelige stedet å validere, siden det skjer synkront i samme klik-handling.
+#### 1. Beregn om valgt oppdrag har ufullstendige sjekklister (fra lastet state)
 
-### Ny hjelpefunksjon `validateMissionChecklists`
-
-```tsx
-const validateMissionChecklists = async (missionId: string | undefined): Promise<boolean> => {
-  if (!missionId || missionId === 'none') return true; // Ingen oppdrag valgt — OK
-
-  const { data } = await supabase
-    .from('missions')
-    .select('checklist_ids, checklist_completed_ids')
-    .eq('id', missionId)
-    .maybeSingle();
-
-  if (!data) return true; // Kan ikke hente data — tillat ikke blokkering
-
-  const checklistIds: string[] = (data as any).checklist_ids || [];
-  const completedIds: string[] = (data as any).checklist_completed_ids || [];
-
-  const hasIncomplete = checklistIds.some(id => !completedIds.includes(id));
-  if (hasIncomplete) {
-    setShowMissionChecklistWarning(true);
-    return false;
-  }
-  return true;
-};
-```
-
-### Oppdater `handleStartFlight` til å kalle `validateMissionChecklists`
-
-`handleStartFlight` er den sentrale funksjonen som faktisk starter flyturen. Den kalles fra:
-- `handleStartFlightClick`
-- `handleConfirmLargeAdvisory`
-
-Ved å legge valideringen **inn i `handleStartFlight`** dekkes begge kodestier:
+Ny beregnet variabel basert på allerede eksisterende state:
 
 ```tsx
-const handleStartFlight = async (forcePublish = false) => {
-  setLoading(true);
-
-  try {
-    const missionId = selectedMissionId && selectedMissionId !== 'none' 
-      ? selectedMissionId 
-      : undefined;
-
-    // ← NY: Fersk DB-validering av oppdrags-sjekklister
-    const checklistsOk = await validateMissionChecklists(missionId);
-    if (!checklistsOk) {
-      setLoading(false);
-      return;
-    }
-
-    // ... resten av eksisterende logikk (advisory-sjekk, GPS, onStartFlight)
-  } finally {
-    setLoading(false);
-    setPendingFlightStart(false);
-  }
-};
+const hasMissionIncompleteChecklists =
+  missionChecklistIds.length > 0 &&
+  missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
 ```
 
-### Fjern overflødig state-basert sjekk fra `handleStartFlightClick`
+Denne brukes til å:
+- Deaktivere «Start flytur»-knappen
+- Vise oransje advarsel i UI
 
-Siden `handleStartFlight` nå gjør en fersk DB-sjekk, kan `isFetchingMissionChecklists`-guarden og state-sjekken i `handleStartFlightClick` forenkles (men beholdes som rask pre-check for UX):
+#### 2. Legg til oransje inline advarsel under oppdragsvelgeren
+
+Etter `<div className="space-y-2">` der mission-select er, legges dette til rett under Select-komponenten:
 
 ```tsx
-const handleStartFlightClick = () => {
-  if (hasIncompleteChecklists) {
-    setShowChecklistWarning(true);
-    return;
-  }
-  // isFetchingMissionChecklists-guard beholdes som rask UX-sjekk
-  if (isFetchingMissionChecklists) {
-    toast.info('Laster sjekkliste-status, prøv igjen...');
-    return;
-  }
-  // DB-validering skjer inne i handleStartFlight
-  handleStartFlight();
-};
+{hasMissionIncompleteChecklists && (
+  <div className="flex items-start gap-2 rounded-lg bg-orange-500/10 border border-orange-500/30 p-3 text-sm">
+    <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+    <p className="text-orange-600 dark:text-orange-400">
+      Dette oppdraget har sjekkliste/r som må utføres fra oppdragskortet før du kan starte flytur.
+    </p>
+  </div>
+)}
 ```
+
+#### 3. Deaktiver «Start flytur»-knappen
+
+Legg til `hasMissionIncompleteChecklists` i `disabled`-prop på knappen (linje ~965):
+
+```tsx
+<Button 
+  onClick={handleStartFlightClick} 
+  disabled={
+    loading || 
+    isFetchingMissionChecklists || 
+    hasMissionIncompleteChecklists ||
+    (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))
+  }
+  className="bg-green-600 hover:bg-green-700"
+>
+  {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : ...)}
+</Button>
+```
+
+#### 4. Fjern `AlertDialog` for mission-sjekkliste-advarsel
+
+`AlertDialog` med `open={showMissionChecklistWarning}` (linje 1052–1070) fjernes helt — den erstattes av den nye inline-boksen.
+
+`showMissionChecklistWarning`-state og `setShowMissionChecklistWarning`-kall i `validateMissionChecklists` kan fjernes, men siden `validateMissionChecklists` nå er en dobbel-sikkerhet i `handleStartFlight`, kan vi beholde den som en no-op (knappen er allerede deaktivert så den aldri trigges).
+
+#### 5. `handleStartFlightClick` — ingen endring nødvendig
+
+Siden knappen er deaktivert når `hasMissionIncompleteChecklists` er `true`, vil `handleStartFlightClick` aldri nås i dette tilfellet. `validateMissionChecklists` i `handleStartFlight` fungerer fortsatt som en siste-linje-forsvar.
 
 ## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/StartFlightDialog.tsx` | Legg til `validateMissionChecklists`, kall den fra `handleStartFlight` |
+| `src/components/StartFlightDialog.tsx` | Legg til `hasMissionIncompleteChecklists`, oransje inline-advarsel under oppdragsvelger, deaktiver knapp, fjern `AlertDialog` for mission-sjekkliste |
 
-## Visuell effekt
+## Brukeropplevelse
 
-- Ingen visuell endring for brukeren
-- Valideringen skjer nå alltid rett før flytur starter, uavhengig av React-state
-- Begge kodestier (`handleStartFlightClick` og `handleConfirmLargeAdvisory`) er nå beskyttet
-- Race condition er eliminert — det er ikke mulig å omgå sjekkliste-valideringen
+```
+Bruker velger et oppdrag med ufullstendige sjekklister
+  → Oransje boks vises umiddelbart under oppdragsvelgeren:
+    "Dette oppdraget har sjekkliste/r som må utføres fra
+     oppdragskortet før du kan starte flytur."
+  → «Start flytur»-knappen er grå og ikke klikkbar
+  → Brukeren går til Oppdrag-siden, utfører sjekklistene
+  → Kommer tilbake, velger oppdraget igjen
+  → Oransje boks forsvinner, knappen er grønn og klikkbar igjen
+```
+
+Dersom ingen sjekklister er knyttet til oppdraget, eller alle er fullstendige — ingen endring i opplevelsen.
