@@ -1,84 +1,70 @@
 
-# Fiks: Dialog lukkes ikke utilsiktet ved klikk utenfor
+# Fiks: Scroll i mission-liste fungerer ikke i StartFlightDialog
 
-## Problemet
+## Rotårsaken
 
-Alle dialoger i appen (sjekklisteopprettelse, oppdragsdialog, loggbok, osv.) bruker `DialogContent` fra `src/components/ui/dialog.tsx`. Radix UI sin standard oppførsel er å lukke dialogen ved ethvert klikk utenfor dens DOM-tre — inkludert:
+Det er to sammenkoblede problemer:
 
-- Klikk på native OS-datovelger (iPad)
-- Utilsiktet treff på overlay ved scrolling på touch-enheter
-- Klikk på elementer som er portaled ut (andre Radix-komponenter)
+**Problem 1 — `onPointerDownOutside` blokkerer Select-scroll:**
+Fiksen vi nettopp implementerte i `dialog.tsx` legger til `onPointerDownOutside={(e) => e.preventDefault()}` globalt. Radix Select portaler `SelectContent` ut av dialog-DOM-treet og plasserer det i `document.body`. Når brukeren prøver å scrolle i listen via touch/mus, sender Radix Select en `pointerdown`-event som dialog-komponenten oppfatter som "utenfor dialogen" og kaller `e.preventDefault()` — dette blokkerer Radix sin interne scroll-mekanisme (`ScrollUpButton`/`ScrollDownButton`) og touch-scrolling.
 
-Den eksisterende koden har allerede en guard for Radix Select, men ingen generell beskyttelse mot vanlig "fat finger"-lukking.
+**Problem 2 — SelectViewport høyde i "popper"-modus:**
+I `select.tsx` er `SelectViewport` satt til `h-[var(--radix-select-trigger-height)]` i popper-modus, som begrenser listen til å være like høy som knappen (ca. 40px). Den burde ikke ha noen fast høydebegrensning i viewport for å tillate fri scrolling opp til `max-h-96` på Content-elementet.
 
-## Løsning — én linje i `dialog.tsx`
+## Løsninger
 
-Den enkleste og mest robuste løsningen er å legge til `onPointerDownOutside={(e) => e.preventDefault()}` som en **standard prop på `DialogContent`**. Dette blokkerer all utilsiktet lukking via klikk utenfor, men beholder X-knappen og `Escape`-tasten som gyldige lukkeveier.
+### Fix 1 — `dialog.tsx`: Ikke blokker pointer-events for portaled Select
 
-I tillegg legges det til den manglende dato/tid-input-guarden fra den tidligere planlagte iPad-tidsvelger-fiksen.
-
-### Oppdatert `onInteractOutside` + ny `onPointerDownOutside`
+`onPointerDownOutside` bør sjekke om `pointerdown`-eventet stammer fra et Radix Select-innhold eller annet portaled UI, og kun da la det passere:
 
 ```typescript
-// I DialogContent (src/components/ui/dialog.tsx)
-
 onPointerDownOutside={(e) => {
-  // Blokker lukking ved klikk/tap utenfor dialogen som standard.
-  // Brukere kan fortsatt lukke via X-knapp eller Escape.
-  e.preventDefault();
-}}
-onInteractOutside={(e) => {
   const target = e.target as HTMLElement | null;
-
-  // Eksisterende: Radix Select åpen
-  const hasOpenSelect = !!document.querySelector(
-    '[data-radix-select-content][data-state="open"], [role="listbox"][data-state="open"]',
-  );
-
-  // Nytt: Native dato/tid-input aktiv (iPad tidsvelger-problem)
-  const activeDateInput = document.activeElement as HTMLInputElement | null;
-  const isDateTimeInput =
-    activeDateInput?.tagName === 'INPUT' &&
-    (activeDateInput.type === 'datetime-local' ||
-     activeDateInput.type === 'date' ||
-     activeDateInput.type === 'time');
-
+  
+  // Ikke blokker pointer-events for Radix Select-innhold
+  // (portalet ut av dialog-DOM og bruker pointer-events for scroll)
   if (
-    hasOpenSelect ||
-    isDateTimeInput ||
     target?.closest('[data-radix-select-content]') ||
-    target?.closest('[role="listbox"]')
+    target?.closest('[role="listbox"]') ||
+    target?.closest('[data-radix-popper-content-wrapper]')
   ) {
-    e.preventDefault();
+    return; // La Radix Select håndtere dette selv
   }
-
-  onInteractOutside?.(e);
+  
+  // Blokker ellers utilsiktet lukking
+  e.preventDefault();
 }}
 ```
 
-## Hva endres i brukeropplevelsen
+### Fix 2 — `select.tsx`: Fjern høydebegrensning på Viewport i popper-modus
+
+Endre `SelectViewport` i `select.tsx` fra:
+```typescript
+position === "popper" &&
+  "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+```
+til:
+```typescript
+position === "popper" &&
+  "w-full min-w-[var(--radix-select-trigger-width)]"
+```
+
+Dette lar `SelectContent` sin `max-h-96` begrense høyden, og Radix sin interne scroll-mekanisme (ScrollUpButton/ScrollDownButton) tar seg av scrollingen.
+
+## Hva endres
 
 | Situasjon | Før | Etter |
 |---|---|---|
-| Klikker tilfeldig utenfor dialog | Dialog lukkes, arbeid mistes | Dialog forblir åpen |
-| iPad tidsvelger | Dialog lukkes | Dialog forblir åpen |
-| Klikker X-knappen | Dialog lukkes | Dialog lukkes (uendret) |
-| Trykker Escape | Dialog lukkes | Dialog lukkes (uendret) |
-| Radix Select åpen + klikk utenfor | Dialog lukkes (feil) | Dialog forblir åpen (allerede fikset) |
+| Scroll i mission-liste (StartFlightDialog) | Ikke mulig | Fungerer normalt |
+| Scroll i alle andre Select-lister inne i dialoger | Ikke mulig | Fungerer normalt |
+| Utilsiktet lukking av dialog ved klikk utenfor | Dialog lukkes | Dialog forblir åpen (beholdes) |
+| Klikk på Select-innhold | Blokkert av dialog | Passerer gjennom normalt |
 
-## Berørte dialoger (alle fikses automatisk)
-
-Alle komponenter som bruker `DialogContent` fra `@/components/ui/dialog`:
-- `CreateChecklistDialog` (sjekkliste-opprettelse)
-- `AddMissionDialog` (ny oppdrag + iPad tidsvelger)
-- `DroneLogbookDialog`, `EquipmentLogbookDialog`, `FlightLogbookDialog`
-- `AddIncidentDialog`, `RiskAssessmentDialog`, `SoraAnalysisDialog`
-- Alle øvrige dialoger i appen
-
-## Fil som endres
+## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/ui/dialog.tsx` | Legg til `onPointerDownOutside` + dato/tid-guard i `onInteractOutside` |
+| `src/components/ui/dialog.tsx` | Legg til guard i `onPointerDownOutside` for portaled Select-innhold |
+| `src/components/ui/select.tsx` | Fjern `h-[var(--radix-select-trigger-height)]` fra Viewport i popper-modus |
 
-Én fil, én endring — global effekt for hele appen.
+To enkle endringer — global effekt for alle Select-lister inne i dialoger.
