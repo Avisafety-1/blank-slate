@@ -90,6 +90,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [missionChecklistIds, setMissionChecklistIds] = useState<string[]>([]);
   const [missionCompletedChecklistIds, setMissionCompletedChecklistIds] = useState<string[]>([]);
   const [showMissionChecklistWarning, setShowMissionChecklistWarning] = useState(false);
+  const [isFetchingMissionChecklists, setIsFetchingMissionChecklists] = useState(false);
   
   // Large advisory warning (50-150 km²)
   const [showLargeAdvisoryWarning, setShowLargeAdvisoryWarning] = useState(false);
@@ -205,17 +206,26 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     if (!selectedMissionId || selectedMissionId === 'none') {
       setMissionChecklistIds([]);
       setMissionCompletedChecklistIds([]);
+      setIsFetchingMissionChecklists(false);
       return;
     }
     const fetchChecklistState = async () => {
-      const { data } = await supabase
-        .from('missions')
-        .select('checklist_ids, checklist_completed_ids')
-        .eq('id', selectedMissionId)
-        .single();
-      if (data) {
-        setMissionChecklistIds((data as any).checklist_ids || []);
-        setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
+      setIsFetchingMissionChecklists(true);
+      try {
+        const { data } = await supabase
+          .from('missions')
+          .select('checklist_ids, checklist_completed_ids')
+          .eq('id', selectedMissionId)
+          .single();
+        if (data) {
+          setMissionChecklistIds((data as any).checklist_ids || []);
+          setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
+        } else {
+          setMissionChecklistIds([]);
+          setMissionCompletedChecklistIds([]);
+        }
+      } finally {
+        setIsFetchingMissionChecklists(false);
       }
     };
     fetchChecklistState();
@@ -270,6 +280,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setMissionChecklistIds([]);
       setMissionCompletedChecklistIds([]);
       setShowMissionChecklistWarning(false);
+      setIsFetchingMissionChecklists(false);
     }
   }, [open]);
 
@@ -495,6 +506,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
 
   const handleStartFlightClick = () => {
+    if (isFetchingMissionChecklists) {
+      toast.info('Laster sjekkliste-status, prøv igjen...');
+      return;
+    }
     if (hasIncompleteChecklists) {
       setShowChecklistWarning(true);
       return;
@@ -926,10 +941,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
+              disabled={loading || isFetchingMissionChecklists || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
               className="bg-green-600 hover:bg-green-700"
             >
-              {loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight'))}
+              {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
             </Button>
           </DialogFooter>
         </DialogContent>
