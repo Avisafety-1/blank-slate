@@ -2151,6 +2151,8 @@ export type Database = {
           approved_by: string | null
           approver_comments: Json
           beskrivelse: string | null
+          checklist_completed_ids: string[]
+          checklist_ids: string[]
           company_id: string
           customer_id: string | null
           id: string
@@ -2177,6 +2179,8 @@ export type Database = {
           approved_by?: string | null
           approver_comments?: Json
           beskrivelse?: string | null
+          checklist_completed_ids?: string[]
+          checklist_ids?: string[]
           company_id: string
           customer_id?: string | null
           id?: string
@@ -2203,6 +2207,8 @@ export type Database = {
           approved_by?: string | null
           approver_comments?: Json
           beskrivelse?: string | null
+          checklist_completed_ids?: string[]
+          checklist_ids?: string[]
           company_id?: string
           customer_id?: string | null
           id?: string
