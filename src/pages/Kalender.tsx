@@ -541,7 +541,6 @@ export default function Kalender() {
         toast.success('Vedlikehold registrert som utført');
       }
       
-      setDialogOpen(false);
       fetchCustomEvents();
     } catch (error: any) {
       console.error('Error marking maintenance complete:', error);
