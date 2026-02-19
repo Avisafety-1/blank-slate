@@ -1,94 +1,95 @@
 
-# Erstatt advarselsdialog med inline oransje blokkering i StartFlightDialog
+# Nytt kartlag: Befolkning 1km² (SSB) med fargeskala-tegnforklaring
 
-## Hva skal endres
+## Hva som skal gjøres
 
-I dag vises en `AlertDialog` (modal) når brukeren klikker «Start flytur» med ufullstendige sjekklister på oppdraget. Brukeren ønsker i stedet at:
+Brukerens bilde viser SSBs offisielle tegnforklaring for befolkning på rutenett 1km²:
 
-1. **«Start flytur»-knappen er deaktivert** (grå, ikke klikkbar) når det valgte oppdraget har ufullstendige sjekklister
-2. **En oransje advarselsboks** vises inline i dialogen (under oppdragsvelgeren) som forklarer at sjekkliste/r må utføres fra oppdragskortet
+- 1–9 bosatte per km²
+- 10–19 bosatte per km²
+- 20–99 bosatte per km²
+- 100–499 bosatte per km²
+- 500–1 999 bosatte per km²
+- 2 000–4 999 bosatte per km²
+- 5 000 eller flere bosatte per km²
 
-`AlertDialog` for mission-sjekkliste-advarsel fjernes helt — den erstattes av inline-varselet og deaktivert knapp.
+Dette implementeres som et nytt WMS-kartlag + en tilhørende tegnforklaring med nøyaktig samme fargeskala og kategorier som SSB bruker.
 
-## Detaljert implementasjon
+## Teknisk plan
 
-### Fil: `src/components/StartFlightDialog.tsx`
+### 1. Nytt WMS-lag i `OpenAIPMap.tsx`
 
-#### 1. Beregn om valgt oppdrag har ufullstendige sjekklister (fra lastet state)
-
-Ny beregnet variabel basert på allerede eksisterende state:
+Etter det eksisterende `arealbrukLayer`-blokken (linje 735) legges et nytt SSB WMS-lag til:
 
 ```tsx
-const hasMissionIncompleteChecklists =
-  missionChecklistIds.length > 0 &&
-  missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
+// SSB Befolkning 1km² rutenett
+const befolkningLayer = L.tileLayer.wms(
+  "https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WMSServer?",
+  {
+    layers: "befolkning_paa_rutenett_1000m",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.65,
+    attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>',
+    minZoom: 0,
+    maxZoom: 20,
+    tiled: true,
+    version: "1.3.0",
+  } as any
+);
+layerConfigs.push({
+  id: "befolkning1km",
+  name: "Befolkning 1km² (SSB)",
+  layer: befolkningLayer,
+  enabled: false,
+  icon: "users",
+});
 ```
 
-Denne brukes til å:
-- Deaktivere «Start flytur»-knappen
-- Vise oransje advarsel i UI
+### 2. Ny komponent `BefolkningLegend.tsx`
 
-#### 2. Legg til oransje inline advarsel under oppdragsvelgeren
+En tegnforklaring identisk med SSBs fargeskala (YlOrRd — gul → oransje → rød → mørk rød → nesten svart):
 
-Etter `<div className="space-y-2">` der mission-select er, legges dette til rett under Select-komponenten:
+```
+Farge      Kategori
+#ffffb2    1–9 bosatte per km²
+#fecc5c    10–19 bosatte per km²
+#fd8d3c    20–99 bosatte per km²
+#f03b20    100–499 bosatte per km²
+#bd0026    500–1 999 bosatte per km²
+#800026    2 000–4 999 bosatte per km²
+#400010    5 000 eller flere bosatte per km²
+```
+
+Komponenten posisjoneres på samme måte som `ArealbrukLegend` — horisontalt sentrert nederst — men viser kategorier vertikalt i en kompakt boks siden det er 7 klasser (ikke 6 horisontale chips som Arealbruk).
+
+### 3. Registrer i `OpenAIPMap.tsx`
+
+Legg til import øverst og vis tegnforklaringen betinget:
 
 ```tsx
-{hasMissionIncompleteChecklists && (
-  <div className="flex items-start gap-2 rounded-lg bg-orange-500/10 border border-orange-500/30 p-3 text-sm">
-    <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-    <p className="text-orange-600 dark:text-orange-400">
-      Dette oppdraget har sjekkliste/r som må utføres fra oppdragskortet før du kan starte flytur.
-    </p>
-  </div>
+import { BefolkningLegend } from "@/components/BefolkningLegend";
+
+// ...i JSX etter ArealbrukLegend:
+{layers.find(l => l.id === "befolkning1km")?.enabled && (
+  <BefolkningLegend />
 )}
 ```
 
-#### 3. Deaktiver «Start flytur»-knappen
+## Filer som endres/opprettes
 
-Legg til `hasMissionIncompleteChecklists` i `disabled`-prop på knappen (linje ~965):
-
-```tsx
-<Button 
-  onClick={handleStartFlightClick} 
-  disabled={
-    loading || 
-    isFetchingMissionChecklists || 
-    hasMissionIncompleteChecklists ||
-    (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))
-  }
-  className="bg-green-600 hover:bg-green-700"
->
-  {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : ...)}
-</Button>
-```
-
-#### 4. Fjern `AlertDialog` for mission-sjekkliste-advarsel
-
-`AlertDialog` med `open={showMissionChecklistWarning}` (linje 1052–1070) fjernes helt — den erstattes av den nye inline-boksen.
-
-`showMissionChecklistWarning`-state og `setShowMissionChecklistWarning`-kall i `validateMissionChecklists` kan fjernes, men siden `validateMissionChecklists` nå er en dobbel-sikkerhet i `handleStartFlight`, kan vi beholde den som en no-op (knappen er allerede deaktivert så den aldri trigges).
-
-#### 5. `handleStartFlightClick` — ingen endring nødvendig
-
-Siden knappen er deaktivert når `hasMissionIncompleteChecklists` er `true`, vil `handleStartFlightClick` aldri nås i dette tilfellet. `validateMissionChecklists` i `handleStartFlight` fungerer fortsatt som en siste-linje-forsvar.
-
-## Filer som endres
-
-| Fil | Endring |
+| Fil | Handling |
 |---|---|
-| `src/components/StartFlightDialog.tsx` | Legg til `hasMissionIncompleteChecklists`, oransje inline-advarsel under oppdragsvelger, deaktiver knapp, fjern `AlertDialog` for mission-sjekkliste |
+| `src/components/BefolkningLegend.tsx` | Ny fil — tegnforklaring med SSBs 7 kategorier og farger |
+| `src/components/OpenAIPMap.tsx` | Legg til WMS-lag + import + betinget rendering av legend |
 
 ## Brukeropplevelse
 
-```
-Bruker velger et oppdrag med ufullstendige sjekklister
-  → Oransje boks vises umiddelbart under oppdragsvelgeren:
-    "Dette oppdraget har sjekkliste/r som må utføres fra
-     oppdragskortet før du kan starte flytur."
-  → «Start flytur»-knappen er grå og ikke klikkbar
-  → Brukeren går til Oppdrag-siden, utfører sjekklistene
-  → Kommer tilbake, velger oppdraget igjen
-  → Oransje boks forsvinner, knappen er grønn og klikkbar igjen
-```
+- Laget vises i «Kartlag»-panelet som «Befolkning 1km² (SSB)»
+- Deaktivert som standard
+- Når aktivert: fargekodet rutenett på kartet med tegnforklaring nederst (identisk med SSBs eget kart)
+- Tegnforklaringen er responsiv — kompakt på mobil, litt bredere på desktop
 
-Dersom ingen sjekklister er knyttet til oppdraget, eller alle er fullstendige — ingen endring i opplevelsen.
+## Merknad om WMS-tilgjengelighet
+
+SSBs WMS-tjeneste er åpent tilgjengelig uten API-nøkkel. Dersom SSBs WMS-endepunkt ikke svarer, vil laget rett og slett ikke vise noe — ingen feil for brukeren. Vi kan ev. fallback-teste endepunktet ved første aktivering.
