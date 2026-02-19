@@ -54,16 +54,41 @@ const CommandInput = React.forwardRef<
 
 CommandInput.displayName = CommandPrimitive.Input.displayName;
 
+function composeRefs<T>(...refs: React.Ref<T>[]) {
+  return (node: T) => {
+    refs.forEach(ref => {
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<T>).current = node;
+    });
+  };
+}
+
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = listRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const atTop = scrollTop === 0 && e.deltaY < 0;
+    const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+    if (!atTop && !atBottom) {
+      e.stopPropagation();
+    }
+  };
+
+  return (
+    <CommandPrimitive.List
+      ref={composeRefs(listRef, ref)}
+      className={cn("max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden", className)}
+      onWheel={handleWheel}
+      {...props}
+    />
+  );
+});
 
 CommandList.displayName = CommandPrimitive.List.displayName;
 
