@@ -198,7 +198,7 @@ export default function SoraProcess() {
             style={{ background: C.primaryDim, borderColor: C.borderPrimary, color: C.primaryLight }}
           >
             <Activity size={12} />
-            EASA U-space · AI-drevet · SORA-sertifisert
+            EASA SORA · AI-drevet · Specific-kategori
           </div>
 
           <h1
@@ -216,7 +216,7 @@ export default function SoraProcess() {
           </h1>
 
           <p className="text-lg mb-2" style={{ color: C.textMuted }}>
-            Automatisert risikovurdering etter EASA U-space regelverket
+            Automatisert risikovurdering etter EASA SORA-metodikken
           </p>
           <p className="text-sm font-semibold tracking-wide" style={{ color: C.primaryLight }}>
             Norges mest avanserte droneoperasjonsplattform
@@ -371,7 +371,7 @@ export default function SoraProcess() {
             phase={7}
             icon={<Zap size={20} />}
             title="AI Re-vurdering — SORA-modus"
-            subtitle="Ny AI-analyse med alle mitigeringer. Strukturert SORA-beregning etter EASA JO-3.1"
+            subtitle="Ny AI-analyse med alle mitigeringer. Strukturert SORA-beregning etter EASA SORA AMC-rammeverket"
             accentColor={C.purple}
             dimColor={C.purpleDim}
             midColor={C.purpleMid}
@@ -415,7 +415,7 @@ export default function SoraProcess() {
                   Strukturert risikovurdering
                 </h3>
                 <p className="text-sm mt-1" style={{ color: C.textMuted }}>
-                  Komplett SORA-rapport etter EASA JO-3.1 metodikk
+                  Komplett SORA-rapport etter EASA SORA-metodikken
                 </p>
               </div>
 
@@ -556,10 +556,10 @@ export default function SoraProcess() {
                 icon: <Shield size={26} />,
                 title: "Regulatorisk klar",
                 points: [
-                  "EASA SORA JO-3.1 metodikk",
-                  "U-space regelverkssamsvar",
+                  "EASA SORA AMC-rammeverket",
+                  "SORA-metodikk for Specific-kategori",
                   "Automatisk SAIL-beregning",
-                  "Norske myndighetskrav ivaretatt",
+                  "Norske CAA-krav ivaretatt",
                 ],
               },
             ].map((col) => (
