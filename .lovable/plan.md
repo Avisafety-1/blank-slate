@@ -1,55 +1,75 @@
 
-# Fiks: Scroll i dokumentlisten i AddMissionDialog
+# Fiks: Rotårsak til at scroll ikke fungerer i dokumentlisten
 
-## Rotårsak — faktisk kilde til problemet
+## Den faktiske rotårsaken
 
-Etter grundig analyse er problemet **ikke** lenger i `dialog.tsx`. De tidligere fiksen der er riktige. Rotårsaken er i **`PopoverContent`** (`src/components/ui/popover.tsx`) kombinert med at `cmdk`-bibliotekets `CommandList` begrenses av `--radix-popper-available-height`.
-
-Radix Popover setter CSS-variabelen `--radix-popper-available-height` på popper-wrapper-elementet, som representerer tilgjengelig piksel-høyde over eller under trigger-knappen. `CommandList` i cmdk-biblioteket bruker `max-h-[300px]`, men dette er et absolutt tak — den bruker ikke `--radix-popper-available-height`. Det betyr:
-
-- Hvis det er lite plass under knappen (f.eks. knappen er nær bunnen av dialogen), klipper Radix selve `PopoverContent`-elementet fordi det ikke har `overflow: hidden` eller noen relasjon til tilgjengelig høyde
-- `CommandList`-scrollbaren rendres visuelt, men `touch`/`wheel`-events som starter utenfor det scrollbare elementet sendes opp i DOM-treet og "spises" av popover-wrapperen
-
-## To konkrete fikser
-
-### Fix 1 — `popover.tsx`: Legg til `overflow-hidden` på `PopoverContent`
-
-`PopoverContent` mangler `overflow-hidden`, som gjør at innhold som strekker seg lengre enn popoveren kan dukke opp utenfor den avrundede rammen, og at scroll-events ikke er korrekt "containet". Legg til `overflow-hidden` i default className:
+Problemet er i `onInteractOutside`-guarden i `dialog.tsx`. CSS-selektoren som sjekker om portaled innhold er åpent:
 
 ```typescript
-// Fra:
-"z-[1250] w-72 rounded-md border bg-popover p-4 ..."
-
-// Til:
-"z-[1250] w-72 overflow-hidden rounded-md border bg-popover p-4 ..."
+const hasOpenPortaledContent = !!document.querySelector(
+  '[data-radix-popper-content-wrapper] [data-state="open"], [data-radix-popper-content-wrapper]',
+);
 ```
 
-### Fix 2 — `command.tsx`: La `CommandList` respektere tilgjengelig høyde
+Den andre delen av selektoren — `'[data-radix-popper-content-wrapper]'` — matcher **alltid** et element i DOM, fordi Radix monterer popper-wrappers i `body` og holder dem der selv når de er lukket. Dette betyr at `hasOpenPortaledContent` alltid er `true`, og `e.preventDefault()` kalles på **hvert eneste** `onInteractOutside`-event — inkludert scroll-events inne i `CommandList`.
 
-`CommandList` bruker `max-h-[300px]` som et absolutt tak. Men inne i en Popover bør den heller bruke Radix sin `--radix-popper-available-height` CSS-variabel for å tilpasse seg dynamisk til tilgjengelig plass. Legg til en ekstra `max-h`-verdi som respekterer Radix:
+Radix sender `onInteractOutside` ikke bare ved klikk utenfor, men også ved visse scroll- og touch-events. Når `e.preventDefault()` alltid kjøres, blokkeres disse events fra å nå `CommandList`'s scroll-mekanisme.
+
+## Løsning
+
+Fiks selektoren så den bare matcher åpne popper-wrappere:
 
 ```typescript
-// Fra:
-"max-h-[300px] overflow-y-auto overflow-x-hidden"
+// Fra (matcher alltid):
+'[data-radix-popper-content-wrapper] [data-state="open"], [data-radix-popper-content-wrapper]'
 
-// Til:
-"max-h-[min(300px,var(--radix-popper-available-height,300px))] overflow-y-auto overflow-x-hidden"
+// Til (matcher kun åpne):
+'[data-radix-popper-content-wrapper] [data-state="open"]'
 ```
 
-Dette gjør at lista aldri blir høyere enn hva Radix har beregnet som tilgjengelig plass, og scrollbaren er alltid synlig og funksjonell.
+Den fulle `onInteractOutside` etter endringen:
 
-## Filer som endres
+```typescript
+onInteractOutside={(e) => {
+  const originalTarget = (e.detail as any)?.originalEvent?.target as HTMLElement | null;
+  const target = (e.target as HTMLElement | null) ?? originalTarget;
+
+  // Sjekk om noe portaled Radix-innhold er ÅPENT (ikke bare montert)
+  const hasOpenPortaledContent = !!document.querySelector(
+    '[data-radix-popper-content-wrapper] [data-state="open"]',  // ← Fjernet ", [data-radix-popper-content-wrapper]"
+  );
+
+  const activeDateInput = document.activeElement as HTMLInputElement | null;
+  const isDateTimeInput =
+    activeDateInput?.tagName === "INPUT" &&
+    (activeDateInput.type === "datetime-local" ||
+      activeDateInput.type === "date" ||
+      activeDateInput.type === "time");
+
+  const isInsidePopper = !!(
+    target?.closest('[data-radix-popper-content-wrapper]') ||
+    originalTarget?.closest('[data-radix-popper-content-wrapper]')
+  );
+
+  if (hasOpenPortaledContent || isDateTimeInput || isInsidePopper) {
+    e.preventDefault();
+  }
+
+  onInteractOutside?.(e);
+}}
+```
+
+## Hvorfor dette er trygt
+
+- Dialog lukkes fortsatt ikke ved klikk utenfor (det håndteres av `onPointerDownOutside`, ikke `onInteractOutside`)
+- iPad-datepicker-beskyttelsen (`isDateTimeInput`) er intakt
+- Klikk inne i åpne popovere/selecter blokkerer fortsatt dialog-lukking (`isInsidePopper` og `hasOpenPortaledContent` når en faktisk er åpen)
+- `onInteractOutside` er en sekundær hendelse — den primære lukkemekanismen er `onPointerDownOutside`
+
+## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/ui/popover.tsx` | Legg til `overflow-hidden` i `PopoverContent` sin default className |
-| `src/components/ui/command.tsx` | Oppdater `CommandList` sin `max-h` til å bruke `--radix-popper-available-height` |
+| `src/components/ui/dialog.tsx` | Fjern `, [data-radix-popper-content-wrapper]` fra querySelector-selektoren |
 
-## Hva endres i brukeropplevelsen
-
-| Situasjon | Før | Etter |
-|---|---|---|
-| Scroll i dokumentlisten | Ikke mulig | Fungerer normalt |
-| Lista klipper innhold utenfor popoveren | Skjer når plass er begrenset | Forhindres med overflow-hidden |
-| Lista tilpasser seg tilgjengelig plass | Fast 300px uansett | Dynamisk tilpasning til skjermposisjon |
-| Alle andre Popover+Command-lister i appen | Samme problem potensielt | Fikset globalt |
+En én-linje endring som løser det underliggende problemet som har vært rotårsaken hele veien.
