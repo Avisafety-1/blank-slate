@@ -255,57 +255,66 @@ export function renderSoraZones(
   if (!sora.enabled || coordinates.length < 1) return;
   if (coordinates.some(p => !p || !isFinite(p.lat) || !isFinite(p.lng))) return;
 
+  // Filter out null-island (0,0) coordinates which produce meaningless buffers
+  const validCoords = coordinates.filter(
+    p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+  );
+  if (validCoords.length < 1) return;
+
+  // Helper: filter NaN coordinates from buffered output before passing to Leaflet
+  function safeLatLngs(zone: RoutePoint[]): [number, number][] {
+    return zone
+      .map(p => [p.lat, p.lng] as [number, number])
+      .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
+  }
+
   // Use line buffer (corridor) for open polylines, polygon buffer for closed routes
   const isClosedRoute =
-    coordinates.length >= 3 &&
-    coordinates[0].lat === coordinates[coordinates.length - 1].lat &&
-    coordinates[0].lng === coordinates[coordinates.length - 1].lng;
+    validCoords.length >= 3 &&
+    validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
+    validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
   function makeBuffer(dist: number): RoutePoint[] {
-    if (dist <= 0) return coordinates;
+    if (dist <= 0) return validCoords;
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
-      const hull = computeConvexHull(coordinates);
+      const hull = computeConvexHull(validCoords);
       return bufferPolygon(hull, dist);
     }
-    return bufferPolyline(coordinates, dist);
+    return bufferPolyline(validCoords, dist);
   }
 
   // Flight Geography Area (new innermost layer, only when > 0)
   if (sora.flightGeographyDistance > 0) {
     const fgaZone = makeBuffer(sora.flightGeographyDistance);
-    if (fgaZone.length >= 3) {
-      L.polygon(
-        fgaZone.map(p => [p.lat, p.lng] as [number, number]),
-        { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 }
-      ).bindPopup(`<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`).addTo(layer);
+    const fgaLatLngs = safeLatLngs(fgaZone);
+    if (fgaLatLngs.length >= 3) {
+      L.polygon(fgaLatLngs, { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 })
+        .bindPopup(`<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`).addTo(layer);
     }
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  const flightGeo = bufferPolyline(coordinates, 1);
-  if (flightGeo.length >= 3) {
-    L.polygon(
-      flightGeo.map(p => [p.lat, p.lng] as [number, number]),
-      { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 }
-    ).bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
+  const flightGeo = bufferPolyline(validCoords, 1);
+  const flightGeoLatLngs = safeLatLngs(flightGeo);
+  if (flightGeoLatLngs.length >= 3) {
+    L.polygon(flightGeoLatLngs, { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 })
+      .bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
   }
 
   // Yellow contingency area — offset from flightGeographyDistance
   const contingencyZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance);
-  if (contingencyZone.length >= 3) {
-    L.polygon(
-      contingencyZone.map(p => [p.lat, p.lng] as [number, number]),
-      { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' }
-    ).bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
+  const contingencyLatLngs = safeLatLngs(contingencyZone);
+  if (contingencyLatLngs.length >= 3) {
+    L.polygon(contingencyLatLngs, { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' })
+      .bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
   }
 
   // Red ground risk buffer — offset from flightGeographyDistance + contingencyDistance
   const groundRiskZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance);
-  if (groundRiskZone.length >= 3) {
-    L.polygon(
-      groundRiskZone.map(p => [p.lat, p.lng] as [number, number]),
-      { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' }
-    ).bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
+  const groundRiskLatLngs = safeLatLngs(groundRiskZone);
+  if (groundRiskLatLngs.length >= 3) {
+    L.polygon(groundRiskLatLngs, { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' })
+      .bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
   }
 }
