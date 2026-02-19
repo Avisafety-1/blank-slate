@@ -40,8 +40,19 @@ const DialogContent = React.forwardRef<
         className,
       )}
       onPointerDownOutside={(e) => {
-        // Blokker lukking ved klikk/tap utenfor dialogen som standard.
-        // Brukere kan fortsatt lukke via X-knapp eller Escape.
+        const target = e.target as HTMLElement | null;
+
+        // Ikke blokker pointer-events for Radix Select-innhold
+        // (portalet ut av dialog-DOM og bruker pointer-events for scroll)
+        if (
+          target?.closest('[data-radix-select-content]') ||
+          target?.closest('[role="listbox"]') ||
+          target?.closest('[data-radix-popper-content-wrapper]')
+        ) {
+          return; // La Radix Select håndtere dette selv
+        }
+
+        // Blokker ellers utilsiktet lukking
         e.preventDefault();
       }}
       onInteractOutside={(e) => {
