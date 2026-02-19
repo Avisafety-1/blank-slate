@@ -298,14 +298,20 @@ export type Database = {
       }
       company_sora_config: {
         Row: {
+          allow_bvlos: boolean
+          allow_night_flight: boolean
           company_id: string
           created_at: string
           id: string
           linked_document_ids: string[]
           max_flight_altitude_m: number
+          max_pilot_inactivity_days: number | null
+          max_population_density_per_km2: number | null
+          max_temp_c: number | null
           max_visibility_km: number
           max_wind_gust_ms: number
           max_wind_speed_ms: number
+          min_temp_c: number | null
           operative_restrictions: string | null
           policy_notes: string | null
           require_backup_battery: boolean
@@ -313,14 +319,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_bvlos?: boolean
+          allow_night_flight?: boolean
           company_id: string
           created_at?: string
           id?: string
           linked_document_ids?: string[]
           max_flight_altitude_m?: number
+          max_pilot_inactivity_days?: number | null
+          max_population_density_per_km2?: number | null
+          max_temp_c?: number | null
           max_visibility_km?: number
           max_wind_gust_ms?: number
           max_wind_speed_ms?: number
+          min_temp_c?: number | null
           operative_restrictions?: string | null
           policy_notes?: string | null
           require_backup_battery?: boolean
@@ -328,14 +340,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_bvlos?: boolean
+          allow_night_flight?: boolean
           company_id?: string
           created_at?: string
           id?: string
           linked_document_ids?: string[]
           max_flight_altitude_m?: number
+          max_pilot_inactivity_days?: number | null
+          max_population_density_per_km2?: number | null
+          max_temp_c?: number | null
           max_visibility_km?: number
           max_wind_gust_ms?: number
           max_wind_speed_ms?: number
+          min_temp_c?: number | null
           operative_restrictions?: string | null
           policy_notes?: string | null
           require_backup_battery?: boolean

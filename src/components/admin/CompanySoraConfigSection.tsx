@@ -29,6 +29,11 @@ import {
   Save,
   X,
   Info,
+  Thermometer,
+  Plane,
+  Moon,
+  Clock,
+  Users,
 } from "lucide-react";
 
 interface Document {
@@ -45,6 +50,12 @@ interface SoraConfig {
   max_flight_altitude_m: number;
   require_backup_battery: boolean;
   require_observer: boolean;
+  min_temp_c: number;
+  max_temp_c: number;
+  allow_bvlos: boolean;
+  allow_night_flight: boolean;
+  max_pilot_inactivity_days: number | null;
+  max_population_density_per_km2: number | null;
   operative_restrictions: string;
   policy_notes: string;
   linked_document_ids: string[];
@@ -57,6 +68,12 @@ const DEFAULT_CONFIG: SoraConfig = {
   max_flight_altitude_m: 120,
   require_backup_battery: false,
   require_observer: false,
+  min_temp_c: -10,
+  max_temp_c: 40,
+  allow_bvlos: false,
+  allow_night_flight: false,
+  max_pilot_inactivity_days: null,
+  max_population_density_per_km2: null,
   operative_restrictions: "",
   policy_notes: "",
   linked_document_ids: [],
@@ -103,6 +120,12 @@ export const CompanySoraConfigSection = () => {
           max_flight_altitude_m: Number(d.max_flight_altitude_m) || DEFAULT_CONFIG.max_flight_altitude_m,
           require_backup_battery: Boolean(d.require_backup_battery),
           require_observer: Boolean(d.require_observer),
+          min_temp_c: d.min_temp_c != null ? Number(d.min_temp_c) : DEFAULT_CONFIG.min_temp_c,
+          max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
+          allow_bvlos: Boolean(d.allow_bvlos),
+          allow_night_flight: Boolean(d.allow_night_flight),
+          max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
+          max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
           operative_restrictions: d.operative_restrictions || "",
           policy_notes: d.policy_notes || "",
           linked_document_ids: (d.linked_document_ids as string[]) || [],
@@ -146,6 +169,12 @@ export const CompanySoraConfigSection = () => {
             max_flight_altitude_m: config.max_flight_altitude_m,
             require_backup_battery: config.require_backup_battery,
             require_observer: config.require_observer,
+            min_temp_c: config.min_temp_c,
+            max_temp_c: config.max_temp_c,
+            allow_bvlos: config.allow_bvlos,
+            allow_night_flight: config.allow_night_flight,
+            max_pilot_inactivity_days: config.max_pilot_inactivity_days,
+            max_population_density_per_km2: config.max_population_density_per_km2,
             operative_restrictions: config.operative_restrictions || null,
             policy_notes: config.policy_notes || null,
             linked_document_ids: config.linked_document_ids,
@@ -389,6 +418,137 @@ export const CompanySoraConfigSection = () => {
                       setConfig((p) => ({ ...p, require_observer: v }))
                     }
                   />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Plane className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">Tillat BVLOS</p>
+                      <p className="text-xs text-muted-foreground">Flyging utenfor visuell rekkevidde er tillatt. Hvis av → HARD STOP ved BVLOS-oppdrag</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={config.allow_bvlos}
+                    onCheckedChange={(v) =>
+                      setConfig((p) => ({ ...p, allow_bvlos: v }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Moon className="h-4 w-4 text-indigo-500" />
+                    <div>
+                      <p className="text-sm font-medium">Tillat nattflyging</p>
+                      <p className="text-xs text-muted-foreground">Flyging i mørket er tillatt. Hvis av → HARD STOP ved nattoppdrag</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={config.allow_night_flight}
+                    onCheckedChange={(v) =>
+                      setConfig((p) => ({ ...p, allow_night_flight: v }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Temperaturgrenser */}
+              <div className="space-y-3 pt-2 border-t border-border">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <Thermometer className="h-4 w-4 text-red-500" />
+                  Temperaturgrenser (°C)
+                </Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Minimum temperatur</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={config.min_temp_c}
+                        onChange={(e) =>
+                          setConfig((p) => ({ ...p, min_temp_c: Number(e.target.value) }))
+                        }
+                        className="w-24 h-9"
+                        min={-40}
+                        max={0}
+                      />
+                      <span className="text-xs text-muted-foreground">°C (std: -10)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Maksimum temperatur</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={config.max_temp_c}
+                        onChange={(e) =>
+                          setConfig((p) => ({ ...p, max_temp_c: Number(e.target.value) }))
+                        }
+                        className="w-24 h-9"
+                        min={20}
+                        max={55}
+                      />
+                      <span className="text-xs text-muted-foreground">°C (std: 40)</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Kritisk for LiPo-batterier. Fyring utenfor disse grensene utløser HARD STOP.</p>
+              </div>
+
+              {/* Pilotinaktivitet og befolkningstetthet */}
+              <div className="space-y-4 pt-2 border-t border-border">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Clock className="h-4 w-4 text-orange-500" />
+                    Maks pilotinaktivitet (dager)
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={config.max_pilot_inactivity_days ?? ""}
+                      onChange={(e) =>
+                        setConfig((p) => ({
+                          ...p,
+                          max_pilot_inactivity_days: e.target.value === "" ? null : Number(e.target.value),
+                        }))
+                      }
+                      placeholder="Ingen grense"
+                      className="w-36 h-9"
+                      min={1}
+                      max={365}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {config.max_pilot_inactivity_days
+                        ? `HARD STOP hvis pilot ikke har flydd på >${config.max_pilot_inactivity_days} dager`
+                        : "La stå tomt for ingen grense"}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Users className="h-4 w-4 text-teal-500" />
+                    Maks befolkningstetthet (pers/km²)
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={config.max_population_density_per_km2 ?? ""}
+                      onChange={(e) =>
+                        setConfig((p) => ({
+                          ...p,
+                          max_population_density_per_km2: e.target.value === "" ? null : Number(e.target.value),
+                        }))
+                      }
+                      placeholder="Ingen grense"
+                      className="w-36 h-9"
+                      min={1}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {config.max_population_density_per_km2
+                        ? `HARD STOP over ${config.max_population_density_per_km2} pers/km²`
+                        : "La stå tomt for ingen grense"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">SORA-referanse: 500/km² = befolket, 1500/km² = tett bybebyggelse.</p>
                 </div>
               </div>
             </CardContent>

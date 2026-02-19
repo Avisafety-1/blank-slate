@@ -611,7 +611,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       try {
         const { data: soraConfigData } = await supabase
           .from('company_sora_config' as any)
-          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, operative_restrictions, policy_notes, linked_document_ids')
+          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
           .eq('company_id', companyId)
           .maybeSingle();
 
@@ -627,7 +627,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
             .join('\n') || '';
         }
         if (companySoraConfig) {
-          console.log(`Company SORA config loaded: maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m`);
+          console.log(`Company SORA config loaded: maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m, allowBvlos=${companySoraConfig.allow_bvlos}, allowNight=${companySoraConfig.allow_night_flight}`);
         }
       } catch (e) {
         console.error('Error fetching company SORA config (using defaults):', e);
@@ -748,6 +748,12 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           maxFlightAltitudeM: companySoraConfig.max_flight_altitude_m,
           requireBackupBattery: companySoraConfig.require_backup_battery,
           requireObserver: companySoraConfig.require_observer,
+          minTempC: companySoraConfig.min_temp_c ?? -10,
+          maxTempC: companySoraConfig.max_temp_c ?? 40,
+          allowBvlos: companySoraConfig.allow_bvlos ?? false,
+          allowNightFlight: companySoraConfig.allow_night_flight ?? false,
+          maxPilotInactivityDays: companySoraConfig.max_pilot_inactivity_days ?? null,
+          maxPopulationDensityPerKm2: companySoraConfig.max_population_density_per_km2 ?? null,
         },
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
@@ -783,10 +789,15 @@ LAV SCORE = DÅRLIG (høy risiko, farlig)
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km ELLER kraftig nedbør
-2. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet)
-3. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
-${companySoraConfig?.require_backup_battery ? '4. RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
-${companySoraConfig?.require_observer ? `${companySoraConfig?.require_backup_battery ? '5' : '4'}. OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.` : ''}
+2. VÆR - TEMPERATUR: Temperatur < ${companySoraConfig?.min_temp_c ?? -10}°C ELLER > ${companySoraConfig?.max_temp_c ?? 40}°C (kritisk for LiPo-batterier)
+3. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet)
+4. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
+${companySoraConfig?.max_pilot_inactivity_days ? `5. PILOT - INAKTIVITET: Pilot har ikke flydd på mer enn ${companySoraConfig.max_pilot_inactivity_days} dager → HARD STOP for å sikre recency.` : ''}
+${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_inactivity_days ? '6' : '5'}. BVLOS FORBUDT: Selskapet tillater IKKE BVLOS-flyging — oppdrag utenfor visuell rekkevidde er HARD STOP.` : ''}
+${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selskapet tillater IKKE nattflyging — oppdrag i mørket er HARD STOP.` : ''}
+${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
+${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
+${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.' : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
@@ -797,6 +808,11 @@ HARDSTOP-GRENSER (absolutte, ikke forhandlingsbare):
 - Max vindkast: ${companySoraConfig.max_wind_gust_ms} m/s
 - Min sikt: ${companySoraConfig.max_visibility_km} km
 - Max flyhøyde: ${companySoraConfig.max_flight_altitude_m} m AGL
+- Temperaturvindu: ${companySoraConfig.min_temp_c ?? -10}°C til ${companySoraConfig.max_temp_c ?? 40}°C
+- BVLOS tillatt: ${companySoraConfig.allow_bvlos ? 'Ja' : 'NEI — HARD STOP ved BVLOS'}
+- Nattflyging tillatt: ${companySoraConfig.allow_night_flight ? 'Ja' : 'NEI — HARD STOP ved nattoppdrag'}
+${companySoraConfig.max_pilot_inactivity_days ? `- Maks pilotinaktivitet: ${companySoraConfig.max_pilot_inactivity_days} dager` : ''}
+${companySoraConfig.max_population_density_per_km2 ? `- Maks befolkningstetthet: ${companySoraConfig.max_population_density_per_km2} pers/km²` : ''}
 - Krev reservebatteri: ${companySoraConfig.require_backup_battery ? 'JA — OBLIGATORISK' : 'Nei'}
 - Krev observatør: ${companySoraConfig.require_observer ? 'JA — OBLIGATORISK' : 'Nei'}
 
