@@ -65,7 +65,7 @@ const DialogContent = React.forwardRef<
 
         // Sjekk om noe portaled Radix-innhold er åpent
         const hasOpenPortaledContent = !!document.querySelector(
-          '[data-radix-popper-content-wrapper] [data-state="open"], [data-radix-popper-content-wrapper]',
+          '[data-radix-popper-content-wrapper] [data-state="open"]',
         );
 
         // Native dato/tid-input aktiv (iPad tidsvelger-problem)
