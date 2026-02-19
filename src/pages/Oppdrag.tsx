@@ -178,7 +178,6 @@ const Oppdrag = () => {
   // Checklist-tilknytning til oppdrag
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
   const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
-  const [executingChecklistId, setExecutingChecklistId] = useState<string | null>(null);
   const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
 
   // KML import state
@@ -540,17 +539,15 @@ const Oppdrag = () => {
   };
 
   // Merk sjekkliste som utført på oppdrag
-  const handleMissionChecklistComplete = async () => {
-    if (!executingChecklistId || !executingChecklistMissionId) return;
+  const handleMissionChecklistComplete = async (checklistId: string) => {
+    if (!checklistId || !executingChecklistMissionId) return;
     const mission = [...activeMissions, ...completedMissions].find(m => m.id === executingChecklistMissionId);
     const existing: string[] = mission?.checklist_completed_ids || [];
-    if (!existing.includes(executingChecklistId)) {
+    if (!existing.includes(checklistId)) {
       await supabase.from('missions').update({
-        checklist_completed_ids: [...existing, executingChecklistId]
+        checklist_completed_ids: [...existing, checklistId]
       }).eq('id', executingChecklistMissionId);
     }
-    setExecutingChecklistId(null);
-    setExecutingChecklistMissionId(null);
     fetchMissions();
   };
 
@@ -1632,10 +1629,6 @@ const Oppdrag = () => {
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const nextId = mission.checklist_ids.find(
-                                  (id: string) => !mission.checklist_completed_ids?.includes(id)
-                                ) || mission.checklist_ids[0];
-                                setExecutingChecklistId(nextId);
                                 setExecutingChecklistMissionId(mission.id);
                               }}
                             >
@@ -2644,20 +2637,21 @@ const Oppdrag = () => {
         </Dialog>
 
         {/* ChecklistExecutionDialog for oppdrag */}
-        {executingChecklistId && (
-          <ChecklistExecutionDialog
-            open={!!executingChecklistId}
-            onOpenChange={(open) => {
-              if (!open) {
-                setExecutingChecklistId(null);
-                setExecutingChecklistMissionId(null);
-              }
-            }}
-            checklistId={executingChecklistId}
-            itemName={[...activeMissions, ...completedMissions].find(m => m.id === executingChecklistMissionId)?.tittel || ''}
-            onComplete={handleMissionChecklistComplete}
-          />
-        )}
+        {executingChecklistMissionId && (() => {
+          const execMission = [...activeMissions, ...completedMissions].find(m => m.id === executingChecklistMissionId);
+          return (
+            <ChecklistExecutionDialog
+              open={!!executingChecklistMissionId}
+              onOpenChange={(open) => {
+                if (!open) setExecutingChecklistMissionId(null);
+              }}
+              checklistIds={execMission?.checklist_ids || []}
+              completedIds={execMission?.checklist_completed_ids || []}
+              itemName={execMission?.tittel || ''}
+              onComplete={handleMissionChecklistComplete}
+            />
+          );
+        })()}
       </div>
     </div>
   );
