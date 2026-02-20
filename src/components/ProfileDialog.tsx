@@ -661,7 +661,7 @@ export const ProfileDialog = () => {
                   <Bell className="h-3 w-3" />
                   <span>{t('profile.notifications')}</span>
                 </TabsTrigger>
-                {(canApproveMissions || canBeIncidentResponsible) && (
+                {canBeIncidentResponsible && (
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
