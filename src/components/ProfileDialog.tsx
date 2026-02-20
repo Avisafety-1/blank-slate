@@ -113,6 +113,7 @@ export const ProfileDialog = () => {
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
@@ -226,12 +227,13 @@ export const ProfileDialog = () => {
       // Check if user can approve missions
       const { data: profileApproval } = await supabase
         .from("profiles")
-        .select("can_approve_missions")
+        .select("can_approve_missions, can_be_incident_responsible")
         .eq("id", user.id)
         .single();
 
       const userCanApprove = profileApproval?.can_approve_missions === true;
       setCanApproveMissions(userCanApprove);
+      setCanBeIncidentResponsible(profileApproval?.can_be_incident_responsible === true);
 
       // Fetch pending approval missions if user can approve
       if (userCanApprove && profileData?.company_id) {
@@ -659,6 +661,7 @@ export const ProfileDialog = () => {
                   <Bell className="h-3 w-3" />
                   <span>{t('profile.notifications')}</span>
                 </TabsTrigger>
+                {(canApproveMissions || canBeIncidentResponsible) && (
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
@@ -671,6 +674,7 @@ export const ProfileDialog = () => {
                     </Badge>
                   )}
                 </TabsTrigger>
+                )}
               </TabsList>
 
               {activeTab === "profile" && (
