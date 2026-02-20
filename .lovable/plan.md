@@ -1,81 +1,63 @@
 
-## Fix: Nettleseren timer ut — Edge Function må svare umiddelbart og sende i bakgrunnen
+## Rotårsak bekreftet: Én delt SMTPClient for alle mottakere — One.com kutter tilkoblingen
 
-### Rotårsak (bekreftet via network-logger)
-- Dry run (`dry_run: true`) returnerte 200 på under 1 sekund — OK
-- Ekte send (`dry_run: false`) fikk "Load failed" — nettleseren droppet TCP-forbindelsen etter ~60-90 sekunder
-- 22 sekvensielle SMTP-kall tar for lang tid til at nettleseren venter
+### Hva databasen viser
+- `all_users_dry_run` (22 mottakere): `emails_sent: 22`, `failed_emails: []` — DRY RUN fungerer
+- `all_users` (22 mottakere): `emails_sent: 0`, `failed_emails: [22 e-poster]` — ALLE feiler
 
-Supabase Edge Functions støtter `EdgeRuntime.waitUntil()` — dette lar funksjonen returnere HTTP-respons umiddelbart, mens SMTP-utsendelsen fortsetter i bakgrunnen.
+Dry run sender ingen SMTP-kall og funker. Ekte sending feiler for alle 22. Konklusjonen er entydig: SMTP-klienten er problemet, ikke `waitUntil`.
 
-### Ny arkitektur
-
-```
-1. Motta forespørsel
-2. Hent mottakere fra DB
-3. INSERT kampanje til bulk_email_campaigns (status = "sending")
-4. Returner HTTP 200 umiddelbart med campaignId
-5. I bakgrunnen (waitUntil): send alle e-poster sekvensielt
-6. UPDATE kampanje med faktisk antall sendt (status = "completed")
+### Hva koden gjør nå (feil)
+```typescript
+const client = new SMTPClient({ connection: smtpConnection }); // Én delt klient
+for (const u of validUsers) {
+  await client.send({ to: u.email, ... }); // One.com kutter tilkobling etter første send
+  // -> alle påfølgende kall feiler
+}
 ```
 
-### Konkret kodeendring
+### Hva som skal gjøres (ny klient per e-post)
 
-Alle tre bulk-handlere (`bulk_email_users`, `bulk_email_customers`, `bulk_email_all_users`) får følgende struktur:
+Den første e-posten fungerer trolig — men One.com lukker tilkoblingen etter sending (vanlig SMTP-atferd for mange providers). Påfølgende `client.send()`-kall på en lukket tilkobling kaster en feil og legges i `failedEmails`.
+
+Løsningen er å opprette, bruke og lukke en ny `SMTPClient` for **hver enkelt e-post** — nøyaktig slik enkelt-e-poster (f.eks. "gi tilbakemelding") fungerer:
 
 ```typescript
-// 1. Hent mottakere
-const validProfiles = ...; 
-
-// 2. Lag kampanjelogg
-const { data: campaign } = await supabase.from('bulk_email_campaigns')
-  .insert({ ..., emails_sent: 0 }).select('id').single();
-
-// 3. Svar umiddelbart
-const sendPromise = (async () => {
-  const client = new SMTPClient({ ... });
+for (const u of validUsers) {
+  const client = new SMTPClient({ connection: smtpConnection });
   try {
-    for (const p of validProfiles) {
-      try {
-        await client.send({ ... });
-        sentToEmails.push(p.email);
-      } catch (e) {
-        failedEmails.push(p.email);
-      }
-    }
+    await client.send({ to: u.email, ... });
+    sentToEmails.push(u.email!);
+  } catch (e) {
+    failedEmails.push(u.email!);
   } finally {
-    await client.close();
-    // Oppdater kampanje med faktisk resultat
-    await supabase.from('bulk_email_campaigns').update({
-      emails_sent: sentToEmails.length,
-      sent_to_emails: sentToEmails,
-      failed_emails: failedEmails,
-    }).eq('id', campaign.id);
+    try { await client.close(); } catch (_) {}
   }
-})();
-
-// 4. Returner med en gang
-EdgeRuntime.waitUntil(sendPromise);
-return new Response(JSON.stringify({ 
-  success: true, 
-  emailsSent: validProfiles.length, // estimert
-  campaignId: campaign.id 
-}), { headers: corsHeaders, status: 200 });
+}
 ```
 
-### UI-konsekvens
-Når UI mottar respons umiddelbart, vises toast med "E-post sendes til X mottakere..." og kampanjen dukker opp i historikken med `emails_sent: 0` umiddelbart. Etter noen sekunder kan brukeren refreshe historikken og se det faktiske antallet.
+### Nettleser og timeout — bekreftelse
+`EdgeRuntime.waitUntil()` er allerede på plass. Når funksjonen returnerer HTTP 200 til nettleseren (umiddelbart), er nettleserforbindelsen FERDIG — det spiller ingen rolle om du lukker nettleseren. SMTP-loopen kjører videre på Supabase sine servere. Dette er korrekt implementert.
 
-For å gjøre dette ryddig, endres toast-meldingen til "Sender e-post til {estimert} mottakere — kampanje opprettet" (istedenfor å vise 0).
+Med ny klient per e-post og `waitUntil` vil flyten bli:
+```
+1. Nettleser sender forespørsel
+2. Supabase henter mottakere fra DB (< 1 sek)
+3. Kampanje INSERT til DB (emails_sent = estimert antall)
+4. HTTP 200 sendes tilbake til nettleseren — FERDIG for nettleseren
+5. I bakgrunnen (usynlig for bruker):
+   - For hver mottaker: ny klient, send, lukk klient
+   - DB UPDATE med faktisk antall sendt
+6. Historikken oppdateres i DB etter sending
+```
 
 ### Filer som endres
 | Fil | Endring |
-|-----|---------|
-| `supabase/functions/send-notification-email/index.ts` | Bruk `EdgeRuntime.waitUntil()` for alle tre bulk-handlere; svar umiddelbart med estimert antall |
-| `src/components/admin/BulkEmailSender.tsx` | Oppdater toast-melding for å tydeliggjøre at sending pågår i bakgrunnen |
+|---|---|
+| `supabase/functions/send-notification-email/index.ts` | Erstatt én delt `SMTPClient` med ny klient per e-post i ALLE tre bulk-handlere: `bulk_email_users`, `bulk_email_customers`, `bulk_email_all_users`. `send_to_missed`-handleren får samme fix. |
 
-### Resultat
-- Ingen timeout — UI får svar på under 1 sekund
-- Kampanje lagres alltid i historikken
-- E-poster sendes stille i bakgrunnen
-- Kampanjelogg oppdateres automatisk med faktisk antall etter sending
+### Forventet resultat etter fix
+- Alle 22 e-poster sendes vellykket
+- `sent_to_emails` fylles korrekt med alle 22 adresser
+- `failed_emails` forblir tom (med mindre en adresse er ugyldig)
+- Kan verifiseres med dry run (fungerer allerede) og deretter ekte sending
