@@ -77,7 +77,7 @@ const Admin = () => {
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
-  
+  const [eccairsEnabled, setEccairsEnabled] = useState(false);
 
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletingByEmail, setDeletingByEmail] = useState(false);
@@ -127,16 +127,17 @@ const Admin = () => {
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      // Fetch company registration code
+      // Fetch company registration code and eccairs_enabled
       if (companyId) {
         const { data: companyData } = await supabase
           .from("companies")
-          .select("registration_code")
+          .select("registration_code, eccairs_enabled")
           .eq("id", companyId)
           .single();
         
         if (companyData) {
           setRegistrationCode(companyData.registration_code);
+          setEccairsEnabled(companyData.eccairs_enabled === true);
         }
       }
 
@@ -697,14 +698,16 @@ const Admin = () => {
                                         className="scale-75"
                                       />
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
-                                      <Switch
-                                        checked={profile.can_access_eccairs === true}
-                                        onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
-                                        className="scale-75"
-                                      />
-                                    </div>
+                                    {eccairsEnabled && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
+                                        <Switch
+                                          checked={profile.can_access_eccairs === true}
+                                          onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
+                                          className="scale-75"
+                                        />
+                                      </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Oppfølgingsansvarlig (hendelser)</span>
                                       <Switch
@@ -765,14 +768,16 @@ const Admin = () => {
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
                               </div>
-                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
-                                <Switch
-                                  checked={profile.can_access_eccairs === true}
-                                  onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
-                                  className="scale-75"
-                                />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
-                              </div>
+                              {eccairsEnabled && (
+                                <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                  <Switch
+                                    checked={profile.can_access_eccairs === true}
+                                    onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
+                                    className="scale-75"
+                                  />
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
                                   checked={profile.can_be_incident_responsible === true}
