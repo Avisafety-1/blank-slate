@@ -235,7 +235,7 @@ export const BulkEmailSender = () => {
       if (dryRun) {
         toast.success(`[DRY RUN] ${sentCount} mottakere ville ha fått e-post — kampanjen er lagret i historikken`);
       } else {
-        toast.success(`E-post sendt til ${sentCount} mottaker${sentCount !== 1 ? "e" : ""}`);
+        toast.success(`Sender e-post til ${sentCount} mottaker${sentCount !== 1 ? "e" : ""} — kampanje opprettet. Sjekk historikken om noen minutter for faktisk status.`);
         // Reset form only on real send
         setSubject("");
         setContent("");
