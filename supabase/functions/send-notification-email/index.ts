@@ -333,9 +333,9 @@ serve(async (req: Request): Promise<Response> => {
         const sendPromise = (async () => {
           const sentToEmails: string[] = [];
           const failedEmails: string[] = [];
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
             for (const p of validProfiles) {
+              const client = new SMTPClient({ connection: smtpConnection });
               try {
                 const emailHeaders = getEmailHeaders();
                 await client.send({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
@@ -344,10 +344,11 @@ serve(async (req: Request): Promise<Response> => {
               } catch (e) {
                 failedEmails.push(p.email!);
                 console.error(`bulk_email_users: ✗ failed for ${p.email}`, e);
+              } finally {
+                try { await client.close(); } catch (_) { /* ignore */ }
               }
             }
           } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
             if (campaign?.id) {
               await supabase.from('bulk_email_campaigns').update({
                 emails_sent: sentToEmails.length,
@@ -403,9 +404,9 @@ serve(async (req: Request): Promise<Response> => {
         const sendPromise = (async () => {
           const sentToEmails: string[] = [];
           const failedEmails: string[] = [];
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
             for (const c of validCustomers) {
+              const client = new SMTPClient({ connection: smtpConnection });
               try {
                 const emailHeaders = getEmailHeaders();
                 await client.send({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
@@ -414,10 +415,11 @@ serve(async (req: Request): Promise<Response> => {
               } catch (e) {
                 failedEmails.push(c.epost!);
                 console.error(`bulk_email_customers: ✗ failed for ${c.epost}`, e);
+              } finally {
+                try { await client.close(); } catch (_) { /* ignore */ }
               }
             }
           } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
             if (campaign?.id) {
               await supabase.from('bulk_email_campaigns').update({
                 emails_sent: sentToEmails.length,
@@ -484,9 +486,9 @@ serve(async (req: Request): Promise<Response> => {
         const sendPromise = (async () => {
           const sentToEmails: string[] = [];
           const failedEmails: string[] = [];
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
             for (const u of validUsers) {
+              const client = new SMTPClient({ connection: smtpConnection });
               try {
                 const emailHeaders = getEmailHeaders();
                 await client.send({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
@@ -495,10 +497,11 @@ serve(async (req: Request): Promise<Response> => {
               } catch (e) {
                 failedEmails.push(u.email!);
                 console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
+              } finally {
+                try { await client.close(); } catch (_) { /* ignore */ }
               }
             }
           } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
             if (campaign?.id) {
               await supabase.from('bulk_email_campaigns').update({
                 emails_sent: sentToEmails.length,
@@ -589,22 +592,20 @@ serve(async (req: Request): Promise<Response> => {
       const newlySentEmails: string[] = [];
       const newlyFailedEmails: string[] = [];
 
-      // Use a single shared SMTP connection for all recipients to avoid timeout
-      const missedClient = new SMTPClient({ connection: smtpConnection });
-      try {
-        for (const email of missedEmails) {
-          try {
-            const emailHeaders = getEmailHeaders();
-            await missedClient.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-            emailsSent++;
-            newlySentEmails.push(email);
-          } catch (e) {
-            newlyFailedEmails.push(email);
-            console.error(`send_to_missed: failed for ${email}`, e);
-          }
+      // New SMTP client per recipient to avoid connection drops
+      for (const email of missedEmails) {
+        const missedClient = new SMTPClient({ connection: smtpConnection });
+        try {
+          const emailHeaders = getEmailHeaders();
+          await missedClient.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          emailsSent++;
+          newlySentEmails.push(email);
+        } catch (e) {
+          newlyFailedEmails.push(email);
+          console.error(`send_to_missed: failed for ${email}`, e);
+        } finally {
+          try { await missedClient.close(); } catch (_) { /* ignore */ }
         }
-      } finally {
-        try { await missedClient.close(); } catch (_) { /* ignore */ }
       }
 
       // Update campaign with new recipients
