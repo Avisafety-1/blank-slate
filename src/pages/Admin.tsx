@@ -29,7 +29,7 @@ import { CustomerManagementSection } from "@/components/admin/CustomerManagement
 import { CompanySoraConfigSection } from "@/components/admin/CompanySoraConfigSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
-import { BulkEmailSender } from "@/components/admin/BulkEmailSender";
+import { BulkEmailSenderWithHistory } from "@/components/admin/BulkEmailSender";
 import { RevenueCalculator } from "@/components/admin/RevenueCalculator";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -750,7 +750,7 @@ const Admin = () => {
 
           <TabsContent value="email-templates" className="mt-4 sm:mt-8">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
-            <BulkEmailSender />
+            <BulkEmailSenderWithHistory />
           </TabsContent>
 
           <TabsContent value="company-config" className="mt-4 sm:mt-8">

@@ -18,6 +18,8 @@ interface EmailRequest {
   type?: string;
   companyId?: string;
   missionId?: string;
+  sentBy?: string;
+  campaignId?: string;
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   mission?: { tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
@@ -33,7 +35,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment }: EmailRequest = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -156,7 +158,6 @@ serve(async (req: Request): Promise<Response> => {
     // Handle mission approval notification
     if (type === 'notify_mission_approval' && companyId && (mission || approvalMission)) {
       const missionData = mission || approvalMission;
-      // Find users who can approve and have email_mission_approval enabled
       const { data: approvers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true).eq('can_approve_missions', true);
       if (!approvers?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
@@ -192,7 +193,6 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle pilot comment notification
     if (type === 'notify_pilot_comment' && companyId && missionId && pilotComment) {
-      // Fetch personnel linked to this mission
       const { data: personnel } = await supabase
         .from('mission_personnel')
         .select('profile_id')
@@ -240,7 +240,6 @@ serve(async (req: Request): Promise<Response> => {
     if (type === 'notify_mission_approved' && (companyId || true)) {
       if (!missionId) throw new Error('Missing missionId');
 
-      // Fetch mission data
       const { data: missionData, error: missionError } = await supabase
         .from('missions')
         .select('*')
@@ -250,7 +249,6 @@ serve(async (req: Request): Promise<Response> => {
 
       const effectiveCompanyId = companyId || missionData.company_id;
 
-      // Fetch personnel linked to this mission
       const { data: personnel } = await supabase
         .from('mission_personnel')
         .select('profile_id')
@@ -260,7 +258,6 @@ serve(async (req: Request): Promise<Response> => {
         return new Response(JSON.stringify({ success: true, message: 'No personnel' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
 
-      // Build comments section HTML
       const comments = Array.isArray(missionData.approver_comments) ? missionData.approver_comments : [];
       let commentsHtml = '';
       if (comments.length > 0) {
@@ -302,9 +299,11 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
-    // Handle bulk emails
+    // ============================================================
+    // BULK EMAIL HANDLERS (with campaign logging)
+    // ============================================================
+
     if (type === 'bulk_email_users' && companyId && subject && htmlContent) {
-      // Fetch profile IDs for approved users in this company
       const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
       if (!profiles?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
@@ -313,10 +312,12 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-      // Fix images in the HTML content
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
       let emailsSent = 0;
+      const sentToEmails: string[] = [];
+      const failedEmails: string[] = [];
+
       for (const p of profiles) {
         try {
           const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
@@ -324,10 +325,31 @@ serve(async (req: Request): Promise<Response> => {
           const emailHeaders = getEmailHeaders();
           await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-        } catch (e) { console.error(`Failed for profile ${p.id}`, e); }
+          sentToEmails.push(user.email);
+        } catch (e) {
+          console.error(`Failed for profile ${p.id}`, e);
+          // Try to get email for failed list
+          try {
+            const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
+            if (user?.email) failedEmails.push(user.email);
+          } catch (_) { /* ignore */ }
+        }
       }
       await client.close();
-      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // Save campaign log
+      const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
+        company_id: companyId,
+        recipient_type: 'users',
+        subject,
+        html_content: htmlContent,
+        sent_by: sentBy || null,
+        emails_sent: emailsSent,
+        sent_to_emails: sentToEmails,
+        failed_emails: failedEmails,
+      }).select('id').single();
+
+      return new Response(JSON.stringify({ success: true, emailsSent, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     if (type === 'bulk_email_customers' && companyId && subject && htmlContent) {
@@ -339,25 +361,42 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-      // Fix images in the HTML content
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
       let emailsSent = 0;
+      const sentToEmails: string[] = [];
+      const failedEmails: string[] = [];
+
       for (const c of customers) {
         if (!c.epost) continue;
         try {
           const emailHeaders = getEmailHeaders();
           await client.send({ from: senderAddress, to: c.epost, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-        } catch (e) { console.error(`Failed: ${c.epost}`, e); }
+          sentToEmails.push(c.epost);
+        } catch (e) {
+          console.error(`Failed: ${c.epost}`, e);
+          failedEmails.push(c.epost);
+        }
       }
       await client.close();
-      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // Save campaign log
+      const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
+        company_id: companyId,
+        recipient_type: 'customers',
+        subject,
+        html_content: htmlContent,
+        sent_by: sentBy || null,
+        emails_sent: emailsSent,
+        sent_to_emails: sentToEmails,
+        failed_emails: failedEmails,
+      }).select('id').single();
+
+      return new Response(JSON.stringify({ success: true, emailsSent, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     if (type === 'bulk_email_all_users' && subject && htmlContent) {
-      // Use auth.admin.listUsers() to get all users with emails (bypasses RLS and profiles.email issue)
-      // Paginate through all users (max 1000 per page)
       let allAuthUsers: Array<{ email?: string }> = [];
       let page = 1;
       const perPage = 1000;
@@ -372,43 +411,189 @@ serve(async (req: Request): Promise<Response> => {
 
       if (!allAuthUsers.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      // Always use global SMTP settings for system-wide bulk emails — never a single company's config
       const emailConfig = await getEmailConfig();
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
 
-      // Fix images in the HTML content
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
       console.info(`bulk_email_all_users: starting send to ${allAuthUsers.filter(u => u.email).length} users with emails`);
 
       let emailsSent = 0;
-      const sentTo: string[] = [];
-      const failedTo: string[] = [];
+      const sentToEmails: string[] = [];
+      const failedEmails: string[] = [];
 
       for (const u of allAuthUsers) {
         if (!u.email) continue;
-        // Use a fresh SMTP client per message to avoid connection timeouts
         const client = new SMTPClient({ connection: smtpConnection });
         try {
           const emailHeaders = getEmailHeaders();
           await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-          sentTo.push(u.email);
+          sentToEmails.push(u.email);
           console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
         } catch (e) {
-          failedTo.push(u.email);
+          failedEmails.push(u.email);
           console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
         } finally {
           try { await client.close(); } catch (_) { /* ignore */ }
         }
       }
 
-      console.info(`bulk_email_all_users: complete — sent: ${emailsSent}, failed: ${failedTo.length}`);
-      if (failedTo.length > 0) console.warn(`bulk_email_all_users: failed recipients: ${failedTo.join(', ')}`);
+      console.info(`bulk_email_all_users: complete — sent: ${emailsSent}, failed: ${failedEmails.length}`);
 
-      return new Response(JSON.stringify({ success: true, emailsSent, sentTo, failedTo }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      // Save campaign log (company_id null = system-wide)
+      const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
+        company_id: null,
+        recipient_type: 'all_users',
+        subject,
+        html_content: htmlContent,
+        sent_by: sentBy || null,
+        emails_sent: emailsSent,
+        sent_to_emails: sentToEmails,
+        failed_emails: failedEmails,
+      }).select('id').single();
+
+      return new Response(JSON.stringify({ success: true, emailsSent, sentTo: sentToEmails, failedTo: failedEmails, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // ============================================================
+    // SEND TO MISSED — send campaign only to new/missed recipients
+    // ============================================================
+    if (type === 'send_to_missed' && campaignId) {
+      // Fetch the original campaign
+      const { data: campaign, error: campaignError } = await supabase
+        .from('bulk_email_campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaignError || !campaign) {
+        return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const alreadySentEmails = new Set<string>((campaign.sent_to_emails || []).map((e: string) => e.toLowerCase()));
+      const fixedHtmlContent = fixEmailImages(campaign.html_content);
+
+      let eligibleEmails: string[] = [];
+
+      if (campaign.recipient_type === 'all_users') {
+        // Fetch all auth users
+        let allAuthUsers: Array<{ email?: string }> = [];
+        let page = 1;
+        const perPage = 1000;
+        while (true) {
+          const { data: { users: pageUsers }, error: listError } = await supabase.auth.admin.listUsers({ page, perPage });
+          if (listError) break;
+          if (!pageUsers?.length) break;
+          allAuthUsers = allAuthUsers.concat(pageUsers);
+          if (pageUsers.length < perPage) break;
+          page++;
+        }
+        eligibleEmails = allAuthUsers.filter(u => u.email).map(u => u.email!);
+      } else if (campaign.recipient_type === 'users' && campaign.company_id) {
+        const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', campaign.company_id).eq('approved', true);
+        for (const p of (profiles || [])) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
+          if (user?.email) eligibleEmails.push(user.email);
+        }
+      } else if (campaign.recipient_type === 'customers' && campaign.company_id) {
+        const { data: customers } = await supabase.from('customers').select('epost').eq('company_id', campaign.company_id).eq('aktiv', true).not('epost', 'is', null);
+        eligibleEmails = (customers || []).map(c => c.epost).filter(Boolean) as string[];
+      }
+
+      // Filter to only those NOT already in sent_to_emails
+      const missedEmails = eligibleEmails.filter(email => !alreadySentEmails.has(email.toLowerCase()));
+
+      if (missedEmails.length === 0) {
+        return new Response(JSON.stringify({ success: true, emailsSent: 0, message: 'No new recipients' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      // Set up SMTP
+      const emailConfig = campaign.recipient_type === 'all_users'
+        ? await getEmailConfig()
+        : await getEmailConfig(campaign.company_id || undefined);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
+
+      let emailsSent = 0;
+      const newlySentEmails: string[] = [];
+      const newlyFailedEmails: string[] = [];
+
+      for (const email of missedEmails) {
+        const client = new SMTPClient({ connection: smtpConnection });
+        try {
+          const emailHeaders = getEmailHeaders();
+          await client.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          emailsSent++;
+          newlySentEmails.push(email);
+        } catch (e) {
+          newlyFailedEmails.push(email);
+          console.error(`send_to_missed: failed for ${email}`, e);
+        } finally {
+          try { await client.close(); } catch (_) { /* ignore */ }
+        }
+      }
+
+      // Update campaign with new recipients
+      const updatedSentEmails = [...(campaign.sent_to_emails || []), ...newlySentEmails];
+      const updatedFailedEmails = [...(campaign.failed_emails || []), ...newlyFailedEmails];
+      await supabase.from('bulk_email_campaigns').update({
+        sent_to_emails: updatedSentEmails,
+        failed_emails: updatedFailedEmails,
+        emails_sent: updatedSentEmails.length,
+      }).eq('id', campaignId);
+
+      return new Response(JSON.stringify({ success: true, emailsSent, newlySentEmails, newlyFailedEmails }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // ============================================================
+    // PREVIEW MISSED COUNT — count how many recipients would receive the campaign
+    // ============================================================
+    if (type === 'preview_missed_count' && campaignId) {
+      const { data: campaign, error: campaignError } = await supabase
+        .from('bulk_email_campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaignError || !campaign) {
+        return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const alreadySentEmails = new Set<string>((campaign.sent_to_emails || []).map((e: string) => e.toLowerCase()));
+
+      let eligibleEmails: string[] = [];
+
+      if (campaign.recipient_type === 'all_users') {
+        let allAuthUsers: Array<{ email?: string }> = [];
+        let page = 1;
+        const perPage = 1000;
+        while (true) {
+          const { data: { users: pageUsers }, error: listError } = await supabase.auth.admin.listUsers({ page, perPage });
+          if (listError) break;
+          if (!pageUsers?.length) break;
+          allAuthUsers = allAuthUsers.concat(pageUsers);
+          if (pageUsers.length < perPage) break;
+          page++;
+        }
+        eligibleEmails = allAuthUsers.filter(u => u.email).map(u => u.email!);
+      } else if (campaign.recipient_type === 'users' && campaign.company_id) {
+        const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', campaign.company_id).eq('approved', true);
+        for (const p of (profiles || [])) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
+          if (user?.email) eligibleEmails.push(user.email);
+        }
+      } else if (campaign.recipient_type === 'customers' && campaign.company_id) {
+        const { data: customers } = await supabase.from('customers').select('epost').eq('company_id', campaign.company_id).eq('aktiv', true).not('epost', 'is', null);
+        eligibleEmails = (customers || []).map(c => c.epost).filter(Boolean) as string[];
+      }
+
+      const missedCount = eligibleEmails.filter(email => !alreadySentEmails.has(email.toLowerCase())).length;
+
+      return new Response(JSON.stringify({ success: true, missedCount, totalEligible: eligibleEmails.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Single recipient flow
@@ -427,7 +612,6 @@ serve(async (req: Request): Promise<Response> => {
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
     const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-    // Fix images in the HTML content
     const fixedHtmlContent = fixEmailImages(htmlContent);
 
     const emailHeaders = getEmailHeaders();

@@ -149,6 +149,53 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_email_campaigns: {
+        Row: {
+          company_id: string | null
+          emails_sent: number
+          failed_emails: string[]
+          html_content: string
+          id: string
+          recipient_type: string
+          sent_at: string
+          sent_by: string | null
+          sent_to_emails: string[]
+          subject: string
+        }
+        Insert: {
+          company_id?: string | null
+          emails_sent?: number
+          failed_emails?: string[]
+          html_content: string
+          id?: string
+          recipient_type: string
+          sent_at?: string
+          sent_by?: string | null
+          sent_to_emails?: string[]
+          subject: string
+        }
+        Update: {
+          company_id?: string | null
+          emails_sent?: number
+          failed_emails?: string[]
+          html_content?: string
+          id?: string
+          recipient_type?: string
+          sent_at?: string
+          sent_by?: string | null
+          sent_to_emails?: string[]
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_email_campaigns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           company_id: string
