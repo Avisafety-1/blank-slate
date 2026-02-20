@@ -158,7 +158,12 @@ serve(async (req: Request): Promise<Response> => {
     // Handle mission approval notification
     if (type === 'notify_mission_approval' && companyId && (mission || approvalMission)) {
       const missionData = mission || approvalMission;
-      const { data: approvers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true).eq('can_approve_missions', true);
+
+      // Only administrator and superadmin can approve missions — fetch their user IDs first
+      const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
+      if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      const { data: approvers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true).in('id', adminRolesForApproval.map(r => r.user_id));
       if (!approvers?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', approvers.map(u => u.id)).eq('email_mission_approval', true);
