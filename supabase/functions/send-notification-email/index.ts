@@ -334,37 +334,32 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_users: queued ${dryRun ? '[DRY RUN] ' : ''}${validProfiles.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        // Send in background — browser gets response immediately
-        const sendPromise = (async () => {
-          const sentToEmails: string[] = [];
-          const failedEmails: string[] = [];
+        // Send synchronously — wait for all emails before returning response
+        const sentToEmails: string[] = [];
+        const failedEmails: string[] = [];
+        for (const p of validProfiles) {
+          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            for (const p of validProfiles) {
-              const client = new SMTPClient({ connection: smtpConnection });
-              try {
-                const emailHeaders = getEmailHeaders();
-                await client.send({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-                sentToEmails.push(p.email!);
-                console.info(`bulk_email_users: ✓ sent to ${p.email}`);
-              } catch (e) {
-                failedEmails.push(p.email!);
-                console.error(`bulk_email_users: ✗ failed for ${p.email}`, e);
-              } finally {
-                try { await client.close(); } catch (_) { /* ignore */ }
-              }
-            }
+            const emailHeaders = getEmailHeaders();
+            await client.send({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            sentToEmails.push(p.email!);
+            console.info(`bulk_email_users: ✓ sent to ${p.email}`);
+          } catch (e) {
+            failedEmails.push(p.email!);
+            console.error(`bulk_email_users: ✗ failed for ${p.email}`, e);
           } finally {
-            if (campaign?.id) {
-              await supabase.from('bulk_email_campaigns').update({
-                emails_sent: sentToEmails.length,
-                sent_to_emails: sentToEmails,
-                failed_emails: failedEmails,
-              }).eq('id', campaign.id);
-            }
-            console.info(`bulk_email_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+            try { await client.close(); } catch (_) { /* ignore */ }
           }
-        })();
-        EdgeRuntime.waitUntil(sendPromise);
+        }
+        if (campaign?.id) {
+          await supabase.from('bulk_email_campaigns').update({
+            emails_sent: sentToEmails.length,
+            sent_to_emails: sentToEmails,
+            failed_emails: failedEmails,
+          }).eq('id', campaign.id);
+        }
+        console.info(`bulk_email_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+        return new Response(JSON.stringify({ success: true, emailsSent: sentToEmails.length, failedEmails, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       } else {
         // Dry run: just update with all recipients as "sent"
         const dryRunEmails = validProfiles.map(p => p.email!);
@@ -375,9 +370,8 @@ serve(async (req: Request): Promise<Response> => {
             failed_emails: [],
           }).eq('id', campaign.id);
         }
+        return new Response(JSON.stringify({ success: true, emailsSent: dryRunEmails.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
-
-      return new Response(JSON.stringify({ success: true, emailsSent: validProfiles.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     if (type === 'bulk_email_customers' && companyId && subject && htmlContent) {
@@ -391,14 +385,14 @@ serve(async (req: Request): Promise<Response> => {
       const fixedHtmlContent = fixEmailImages(htmlContent);
       const validCustomers = customers.filter(c => c.epost);
 
-      // Pre-insert campaign — returned immediately to browser
+      // Pre-insert campaign
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: companyId,
         recipient_type: dryRun ? 'customers_dry_run' : 'customers',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
-        emails_sent: validCustomers.length, // estimert
+        emails_sent: validCustomers.length,
         sent_to_emails: [],
         failed_emails: [],
       }).select('id').single();
@@ -406,36 +400,32 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_customers: queued ${dryRun ? '[DRY RUN] ' : ''}${validCustomers.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        const sendPromise = (async () => {
-          const sentToEmails: string[] = [];
-          const failedEmails: string[] = [];
+        // Send synchronously — wait for all emails before returning response
+        const sentToEmails: string[] = [];
+        const failedEmails: string[] = [];
+        for (const c of validCustomers) {
+          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            for (const c of validCustomers) {
-              const client = new SMTPClient({ connection: smtpConnection });
-              try {
-                const emailHeaders = getEmailHeaders();
-                await client.send({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-                sentToEmails.push(c.epost!);
-                console.info(`bulk_email_customers: ✓ sent to ${c.epost}`);
-              } catch (e) {
-                failedEmails.push(c.epost!);
-                console.error(`bulk_email_customers: ✗ failed for ${c.epost}`, e);
-              } finally {
-                try { await client.close(); } catch (_) { /* ignore */ }
-              }
-            }
+            const emailHeaders = getEmailHeaders();
+            await client.send({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            sentToEmails.push(c.epost!);
+            console.info(`bulk_email_customers: ✓ sent to ${c.epost}`);
+          } catch (e) {
+            failedEmails.push(c.epost!);
+            console.error(`bulk_email_customers: ✗ failed for ${c.epost}`, e);
           } finally {
-            if (campaign?.id) {
-              await supabase.from('bulk_email_campaigns').update({
-                emails_sent: sentToEmails.length,
-                sent_to_emails: sentToEmails,
-                failed_emails: failedEmails,
-              }).eq('id', campaign.id);
-            }
-            console.info(`bulk_email_customers: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+            try { await client.close(); } catch (_) { /* ignore */ }
           }
-        })();
-        EdgeRuntime.waitUntil(sendPromise);
+        }
+        if (campaign?.id) {
+          await supabase.from('bulk_email_campaigns').update({
+            emails_sent: sentToEmails.length,
+            sent_to_emails: sentToEmails,
+            failed_emails: failedEmails,
+          }).eq('id', campaign.id);
+        }
+        console.info(`bulk_email_customers: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+        return new Response(JSON.stringify({ success: true, emailsSent: sentToEmails.length, failedEmails, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       } else {
         const dryRunEmails = validCustomers.map(c => c.epost!);
         if (campaign?.id) {
@@ -445,9 +435,8 @@ serve(async (req: Request): Promise<Response> => {
             failed_emails: [],
           }).eq('id', campaign.id);
         }
+        return new Response(JSON.stringify({ success: true, emailsSent: dryRunEmails.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
-
-      return new Response(JSON.stringify({ success: true, emailsSent: validCustomers.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     if (type === 'bulk_email_all_users' && subject && htmlContent) {
@@ -488,36 +477,32 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_all_users: queued ${dryRun ? '[DRY RUN] ' : ''}${validUsers.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        const sendPromise = (async () => {
-          const sentToEmails: string[] = [];
-          const failedEmails: string[] = [];
+        // Send synchronously — wait for all emails before returning response
+        const sentToEmails: string[] = [];
+        const failedEmails: string[] = [];
+        for (const u of validUsers) {
+          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            for (const u of validUsers) {
-              const client = new SMTPClient({ connection: smtpConnection });
-              try {
-                const emailHeaders = getEmailHeaders();
-                await client.send({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-                sentToEmails.push(u.email!);
-                console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
-              } catch (e) {
-                failedEmails.push(u.email!);
-                console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
-              } finally {
-                try { await client.close(); } catch (_) { /* ignore */ }
-              }
-            }
+            const emailHeaders = getEmailHeaders();
+            await client.send({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            sentToEmails.push(u.email!);
+            console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
+          } catch (e) {
+            failedEmails.push(u.email!);
+            console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
           } finally {
-            if (campaign?.id) {
-              await supabase.from('bulk_email_campaigns').update({
-                emails_sent: sentToEmails.length,
-                sent_to_emails: sentToEmails,
-                failed_emails: failedEmails,
-              }).eq('id', campaign.id);
-            }
-            console.info(`bulk_email_all_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+            try { await client.close(); } catch (_) { /* ignore */ }
           }
-        })();
-        EdgeRuntime.waitUntil(sendPromise);
+        }
+        if (campaign?.id) {
+          await supabase.from('bulk_email_campaigns').update({
+            emails_sent: sentToEmails.length,
+            sent_to_emails: sentToEmails,
+            failed_emails: failedEmails,
+          }).eq('id', campaign.id);
+        }
+        console.info(`bulk_email_all_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
+        return new Response(JSON.stringify({ success: true, emailsSent: sentToEmails.length, failedEmails, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       } else {
         const dryRunEmails = validUsers.map(u => u.email!);
         if (campaign?.id) {
@@ -527,9 +512,8 @@ serve(async (req: Request): Promise<Response> => {
             failed_emails: [],
           }).eq('id', campaign.id);
         }
+        return new Response(JSON.stringify({ success: true, emailsSent: dryRunEmails.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
-
-      return new Response(JSON.stringify({ success: true, emailsSent: validUsers.length, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // ============================================================
