@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { CampaignHistorySection } from "@/components/admin/CampaignHistorySection";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import "react-quill/dist/quill.snow.css";
 type RecipientType = "users" | "customers" | "all_users";
 
 export const BulkEmailSender = () => {
-  const { companyId } = useAuth();
+  const { companyId, user } = useAuth();
   const { isSuperAdmin } = useRoleCheck();
   const isMobile = useIsMobile();
   const [recipientType, setRecipientType] = useState<RecipientType>("users");
@@ -223,6 +224,7 @@ export const BulkEmailSender = () => {
           companyId,
           subject,
           htmlContent: content,
+          sentBy: user?.id,
         },
       });
 
@@ -444,3 +446,10 @@ export const BulkEmailSender = () => {
     </>
   );
 };
+
+export const BulkEmailSenderWithHistory = () => (
+  <>
+    <BulkEmailSender />
+    <CampaignHistorySection />
+  </>
+);
