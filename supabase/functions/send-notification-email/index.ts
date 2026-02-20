@@ -496,11 +496,12 @@ serve(async (req: Request): Promise<Response> => {
         }
         eligibleEmails = allAuthUsers.filter(u => u.email).map(u => u.email!);
       } else if (campaign.recipient_type === 'users' && campaign.company_id) {
-        const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', campaign.company_id).eq('approved', true);
-        for (const p of (profiles || [])) {
-          const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
-          if (user?.email) eligibleEmails.push(user.email);
-        }
+        const { data: profiles } = await supabase.from('profiles')
+          .select('email')
+          .eq('company_id', campaign.company_id)
+          .eq('approved', true)
+          .not('email', 'is', null);
+        eligibleEmails = (profiles || []).map((p: { email: string | null }) => p.email).filter(Boolean) as string[];
       } else if (campaign.recipient_type === 'customers' && campaign.company_id) {
         const { data: customers } = await supabase.from('customers').select('epost').eq('company_id', campaign.company_id).eq('aktiv', true).not('epost', 'is', null);
         eligibleEmails = (customers || []).map(c => c.epost).filter(Boolean) as string[];
