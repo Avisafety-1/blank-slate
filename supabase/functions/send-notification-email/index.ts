@@ -304,7 +304,7 @@ serve(async (req: Request): Promise<Response> => {
     // ============================================================
 
     if (type === 'bulk_email_users' && companyId && subject && htmlContent) {
-      const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
+      const { data: profiles } = await supabase.from('profiles').select('id, email').eq('company_id', companyId).eq('approved', true).not('email', 'is', null);
       if (!profiles?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const emailConfig = await getEmailConfig(companyId);
@@ -319,20 +319,15 @@ serve(async (req: Request): Promise<Response> => {
       const failedEmails: string[] = [];
 
       for (const p of profiles) {
+        if (!p.email) continue;
         try {
-          const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
-          if (!user?.email) continue;
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: p.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-          sentToEmails.push(user.email);
+          sentToEmails.push(p.email);
         } catch (e) {
           console.error(`Failed for profile ${p.id}`, e);
-          // Try to get email for failed list
-          try {
-            const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
-            if (user?.email) failedEmails.push(user.email);
-          } catch (_) { /* ignore */ }
+          failedEmails.push(p.email);
         }
       }
       await client.close();
