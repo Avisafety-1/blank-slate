@@ -1,41 +1,47 @@
 
-## Forbedre feilhåndtering i send_to_missed for users-type
+## Fix: bulk_email_users timer ut pga. per-bruker auth-kall
 
-### Problem
-I `send_to_missed`-blokken hentes e-poster for `recipient_type === 'users'` via en loop som kaller `supabase.auth.admin.getUserById(p.id)` for hver bruker (linje 500-503). Denne loopen mangler:
-1. `try/catch` rundt `getUserById` — én feil stopper hele hentingen
-2. Henter e-post fra auth i stedet for `profiles.email` som allerede finnes
+### Rotårsak
+`bulk_email_users`-handleren henter bruker-IDs fra `profiles`, og kaller deretter `auth.admin.getUserById()` for hver bruker inne i loopen for å hente e-postadresse. Med mange brukere (f.eks. 20 brukere × 300ms = 6 sekunder bare på auth-kall) timer Edge-funksjonen ut.
 
 ### Løsning
+Samme fix som ble gjort for `send_to_missed`: endre `select('id')` til `select('id, email')` og bruk `p.email` direkte. Dette eliminerer alle per-bruker auth-kall.
 
-#### Fix 1 — Bruk `profiles.email` direkte (eliminerer per-bruker auth-kall)
-I stedet for:
+### Fil som endres
+| Fil | Linje | Endring |
+|-----|-------|---------|
+| `supabase/functions/send-notification-email/index.ts` | 307 | `select('id')` → `select('id, email')` |
+| `supabase/functions/send-notification-email/index.ts` | 321-336 | Erstatt `getUserById`-kall med direkte `p.email` |
+
+### Konkret kodeendring
+
+Før (linje 307):
 ```typescript
-const { data: profiles } = await supabase.from('profiles').select('id')...
-for (const p of profiles) {
-  const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
-  if (user?.email) eligibleEmails.push(user.email);
-}
+const { data: profiles } = await supabase.from('profiles').select('id').eq(...)
 ```
 
-Gjøres det slik:
+Etter:
 ```typescript
-const { data: profiles } = await supabase.from('profiles')
-  .select('email')
-  .eq('company_id', campaign.company_id)
-  .eq('approved', true)
-  .not('email', 'is', null);
-eligibleEmails = (profiles || []).map(p => p.email).filter(Boolean);
+const { data: profiles } = await supabase.from('profiles').select('id, email').eq(...)
 ```
 
-Dette er raskere, enklere og feiler ikke per bruker.
+Og inne i loopen, erstatt:
+```typescript
+const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
+if (!user?.email) continue;
+await client.send({ ...to: user.email... });
+sentToEmails.push(user.email);
+```
 
-### Filer som endres
-| Fil | Endring |
-|-----|---------|
-| `supabase/functions/send-notification-email/index.ts` | Erstatt `getUserById`-loop med direkte `profiles.email`-spørring i `send_to_missed`-blokken |
+Med:
+```typescript
+if (!p.email) continue;
+await client.send({ ...to: p.email... });
+sentToEmails.push(p.email);
+```
 
 ### Resultat
-- Ingen enkelt ugyldig e-post kan stoppe kjeden noe sted i koden
-- `send_to_missed` for `users`-type blir like robust og rask som `bulk_email_users`
-- Eliminerer unødvendige auth-API-kall
+- Ingen per-bruker auth-kall = dramatisk raskere utsending
+- Konsistent med den eksisterende fiksen i `send_to_missed`
+- Edge-funksjonen vil ikke lenger time ut ved mange mottakere
+- En ugyldig e-post stopper ikke resten av kjeden (fortsatt `try/catch` per bruker)
