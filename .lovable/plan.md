@@ -1,67 +1,142 @@
 
-## Legge til brytervalg for ECCAIRS-tilgang og oppfølgingsansvarlig på personell
+# Forenkling av roller: 3 roller i stedet for 5
 
-### Hva som skal endres
+## Bakgrunn og nåværende situasjon
 
-Tre ting håndteres i denne leveransen:
+I dag er det 5 roller i hierarkiet:
+```text
+superadmin > admin > saksbehandler > operatør > lesetilgang
+```
 
-**1. Database — to nye kolonner på profiles**
+Rollene `saksbehandler`, `operatør` og `lesetilgang` er i praksis redundante nå som spesialtilganger (ECCAIRS, oppfølgingsansvarlig, oppdragsgodkjenner) er lagt på personen som individuelle brytervalg.
+
+## Ny rollestruktur
+
+```text
+superadmin > administrator > bruker
+```
+
+| Rolle | Tilgang | Hvem tildeler |
+|---|---|---|
+| superadmin | Alt, inkludert selskapsstyring | Kan kun settes av eksisterende superadmin |
+| administrator | Alt bortsett fra superadmin-funksjoner. Kan se tannhjul/admin-side. Kan IKKE tildele superadmin | Administrator eller superadmin |
+| bruker | Samme som saksbehandler i dag: full tilgang til data, men kan IKKE se tannhjulet/admin-siden | Administrator eller superadmin |
+
+Nye brukere som registrerer seg får automatisk rollen `bruker` (i dag: `lesetilgang`).
+
+## Hva som endres
+
+### 1. Database — ny migrasjon
+
+Oppdaterer `app_role`-enumen med 3 nye verdier og fjerner de gamle:
+
 ```sql
-ALTER TABLE profiles
-  ADD COLUMN can_access_eccairs boolean NOT NULL DEFAULT false,
-  ADD COLUMN can_be_incident_responsible boolean NOT NULL DEFAULT false;
+-- Legg til nye roller
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'bruker';
+
+-- Migrer eksisterende brukere:
+-- operatør og lesetilgang -> bruker
+-- saksbehandler -> bruker
+-- admin -> administrator (admin beholdes som alias for bakoverkompatibilitet med RLS)
+UPDATE user_roles SET role = 'bruker'
+  WHERE role IN ('lesetilgang', 'operatør', 'saksbehandler');
 ```
 
-**2. Admin.tsx — UI og logikk**
+Merk: Selve enum-verdiene `lesetilgang`, `operatør` og `saksbehandler` kan ikke droppes fra enum-typen uten å ta ned hele databasen, men de vil ikke lenger brukes eller vises i UI. RLS-policyer som refererer til `saksbehandler` og `operatør` oppdateres til å bruke `bruker`.
 
-- `Profile`-interfacet utvides med to nye felt
-- To nye toggle-funksjoner: `toggleEccairs()` og `toggleIncidentResponsible()`
-- Desktop/Pad: Switch-boksen som i dag viser «Godkjenner» endres til «Godkjenner for oppdrag» (forklarende tekst), og to nye Switch-bokser legges til
-- Mobil (Popover-kort): To nye Switch-rader legges til under eksisterende «Kan godkjenne oppdrag»
+### 2. RLS-policyer — oppdatering
 
-Desktop-rad (fra venstre): Navn/e-post — [Godkjenner for oppdrag ⚡] — [ECCAIRS-tilgang 📋] — [Oppfølgingsansvarlig 🔔] — [Rollevalg] — [Slett]
+Alle policyer som i dag sjekker `has_role(..., 'saksbehandler')` eller `has_role(..., 'operatør')` oppdateres til å sjekke `has_role(..., 'bruker')`. Dette gjelder tabeller som:
+- `drones` (UPDATE-policy)
+- `documents` (UPDATE-policy)
+- `customers` (UPDATE-policy)
+- `calendar_events` (UPDATE-policy)
+- og andre relevante tabeller
 
-Mobil-popover:
+### 3. `has_role()`-funksjonen — nytt hierarki
+
+Funksjonen oppdateres slik at `bruker` arvger ingenting, `administrator` arver `bruker`, og `superadmin` arver alle:
+
+```sql
+-- Nytt hierarki: superadmin >= administrator >= bruker
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean AS $$
+  SELECT CASE _role
+    WHEN 'superadmin' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role = 'superadmin')
+    WHEN 'administrator' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role IN ('superadmin', 'administrator'))
+    WHEN 'bruker' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role IN ('superadmin', 'administrator', 'bruker'))
+    ELSE false
+  END
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 ```
-Kan godkjenne oppdrag          [Switch]
-ECCAIRS-tilgang                [Switch]
-Oppfølgingsansvarlig (hendelser) [Switch]
-Rolle:                         [Rollevalg]
-[Slett bruker]
-```
 
-**3. IncidentDetailDialog.tsx — filtrering av nedtrekksliste**
+### 4. `AuthContext.tsx` — `isAdmin` logikk
 
-I `fetchUsers`-funksjonen endres spørringen fra å hente alle godkjente brukere til å hente kun de med `can_be_incident_responsible = true`:
+Oppdateres slik at `isAdmin` (som kontrollerer tilgang til tannhjulet) settes til `true` kun for `administrator` og `superadmin`:
 
 ```typescript
 // Før:
-.from('profiles')
-.select('id, full_name')
-.eq('approved', true)
+profileData.isAdmin = role === 'admin' || role === 'superadmin';
 
 // Etter:
-.from('profiles')
-.select('id, full_name')
-.eq('approved', true)
-.eq('can_be_incident_responsible', true)
+profileData.isAdmin = role === 'administrator' || role === 'superadmin';
 ```
 
-Dette betyr at kun brukere med bryteren aktiv dukker opp i valglisten «Oppfølgingsansvarlig (Admin)» i hendelses-dialogen.
+### 5. `useRoleCheck.ts` — forenklet hierarki
 
-### Filer som endres
+```typescript
+const roleHierarchy = ['bruker', 'administrator', 'superadmin'];
+// isSaksbehandler og isOperator fjernes
+// isAdmin vil nå sjekke 'administrator'
+```
+
+### 6. `Admin.tsx` — UI-endringer
+
+- `availableRoles`-listen endres til å kun vise 3 valg:
+  - Superadmin (kun synlig for superadmins)
+  - Administrator
+  - Bruker
+- Rollevalget for `superadmin` skjules for vanlige administratorer (kun superadmin kan tildele superadmin)
+- Teksten og fargekodingen i rollebadges oppdateres
+
+### 7. `Auth.tsx` — standardrolle for nye brukere
+
+```typescript
+// Før:
+role: 'lesetilgang'
+
+// Etter:
+role: 'bruker'
+```
+
+### 8. `ProfileDialog.tsx` — rollevisning
+
+Rollebadges og rollenavn i profilvisningen oppdateres til å reflektere de nye rollene.
+
+### 9. `types.ts` og i18n-filer
+
+- `src/integrations/supabase/types.ts` oppdateres med `bruker` og `administrator`
+- `src/i18n/locales/no.json` og `en.json` oppdateres:
+  - `roles.bruker` = "Bruker" / "User"
+  - `roles.administrator` = "Administrator" / "Administrator"
+  - De gamle rollenøklene (`saksbehandler`, `operator`, `readonly`) kan beholdes for bakoverkompatibilitet i oversettelsesfilene
+
+## Hva som IKKE endres
+
+- Selve RLS-sikkerhetsmodellen (company isolation, profil-level permissions) forblir uendret
+- Spesialtilgangene på personen (`can_approve_missions`, `can_access_eccairs`, `can_be_incident_responsible`) forblir uendret
+- Eksisterende data mistes ikke — kun roller migreres
+
+## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `supabase/migrations/[ts]_add_profile_permission_flags.sql` | Ny migrering: legg til `can_access_eccairs` og `can_be_incident_responsible` på profiles |
-| `src/integrations/supabase/types.ts` | Legg til de to nye feltene i profiles Row/Insert/Update-typer |
-| `src/pages/Admin.tsx` | Oppdater `Profile`-interface, legg til to toggle-funksjoner, oppdater desktop og mobil UI |
-| `src/components/dashboard/IncidentDetailDialog.tsx` | Filtrer `fetchUsers` på `can_be_incident_responsible = true` |
-
-### Forventet resultat
-
-- Admin kan sette ECCAIRS-tilgang og oppfølgingsansvarlig-rolle direkte på personkortet
-- På mobil: via Popover-kortet med tre brytervalg
-- På desktop/pad: tre Switch-bokser inline i brukerlisten med forklarende tekst
-- I hendelsesdialogen: kun brukere med «Oppfølgingsansvarlig»-bryteren aktiv vises i nedtrekkslisten
-- Eksisterende «Godkjenner»-tekst på desktop rettes til «Godkjenner for oppdrag»
+| `supabase/migrations/[ts]_simplify_roles.sql` | Ny migrasjon: legg til `bruker`/`administrator`, migrer eksisterende brukere, oppdater `has_role()`, oppdater RLS-policyer |
+| `src/integrations/supabase/types.ts` | Legg til `bruker` og `administrator` i enum |
+| `src/contexts/AuthContext.tsx` | `isAdmin` sjekker nå `administrator` i stedet for `admin` |
+| `src/hooks/useRoleCheck.ts` | Forenkle hierarki til 3 roller |
+| `src/pages/Admin.tsx` | Oppdater `availableRoles`, skjul superadmin for administratorer |
+| `src/pages/Auth.tsx` | Standardrolle: `bruker` i stedet for `lesetilgang` |
+| `src/components/ProfileDialog.tsx` | Oppdater rollebadges og rollenavn |
+| `src/i18n/locales/no.json` | Legg til `roles.bruker` og `roles.administrator` |
+| `src/i18n/locales/en.json` | Legg til `roles.bruker` og `roles.administrator` |
