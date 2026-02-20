@@ -304,8 +304,9 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle bulk emails
     if (type === 'bulk_email_users' && companyId && subject && htmlContent) {
-      const { data: users } = await supabase.from('profiles').select('email').eq('company_id', companyId).eq('approved', true).not('email', 'is', null);
-      if (!users?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      // Fetch profile IDs for approved users in this company
+      const { data: profiles } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
+      if (!profiles?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -316,13 +317,14 @@ serve(async (req: Request): Promise<Response> => {
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
       let emailsSent = 0;
-      for (const u of users) {
-        if (!u.email) continue;
+      for (const p of profiles) {
         try {
+          const { data: { user } } = await supabase.auth.admin.getUserById(p.id);
+          if (!user?.email) continue;
           const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-        } catch (e) { console.error(`Failed: ${u.email}`, e); }
+        } catch (e) { console.error(`Failed for profile ${p.id}`, e); }
       }
       await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
@@ -354,10 +356,24 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (type === 'bulk_email_all_users' && subject && htmlContent) {
-      const { data: allUsers } = await supabase.from('profiles').select('email').eq('approved', true).not('email', 'is', null);
-      if (!allUsers?.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      // Use auth.admin.listUsers() to get all users with emails (bypasses RLS and profiles.email issue)
+      // Paginate through all users (max 1000 per page)
+      let allAuthUsers: Array<{ email?: string }> = [];
+      let page = 1;
+      const perPage = 1000;
+      while (true) {
+        const { data: { users: pageUsers }, error: listError } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (listError) { console.error('Error listing users:', listError); break; }
+        if (!pageUsers?.length) break;
+        allAuthUsers = allAuthUsers.concat(pageUsers);
+        if (pageUsers.length < perPage) break;
+        page++;
+      }
 
-      const emailConfig = await getEmailConfig(companyId);
+      if (!allAuthUsers.length) return new Response(JSON.stringify({ success: true, emailsSent: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // Always use global SMTP settings for system-wide bulk emails — never a single company's config
+      const emailConfig = await getEmailConfig();
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
@@ -366,7 +382,7 @@ serve(async (req: Request): Promise<Response> => {
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
       let emailsSent = 0;
-      for (const u of allUsers) {
+      for (const u of allAuthUsers) {
         if (!u.email) continue;
         try {
           const emailHeaders = getEmailHeaders();
