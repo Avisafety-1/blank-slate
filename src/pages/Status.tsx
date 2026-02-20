@@ -1275,7 +1275,6 @@ const Status = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.name}: ${entry.value}`}
                   outerRadius={80}
                   fill={COLORS.destructive}
                   dataKey="value"
@@ -1293,6 +1292,15 @@ const Status = () => {
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
+                  formatter={(value, name) => [value, name]}
+                />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  formatter={(value) => (
+                    <span style={{ fontSize: 12, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 120, display: 'inline-block' }}>{value}</span>
+                  )}
                 />
               </PieChart>
             </ResponsiveContainer>
