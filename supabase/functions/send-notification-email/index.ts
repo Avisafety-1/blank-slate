@@ -376,22 +376,39 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig();
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
+      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
 
       // Fix images in the HTML content
       const fixedHtmlContent = fixEmailImages(htmlContent);
 
+      console.info(`bulk_email_all_users: starting send to ${allAuthUsers.filter(u => u.email).length} users with emails`);
+
       let emailsSent = 0;
+      const sentTo: string[] = [];
+      const failedTo: string[] = [];
+
       for (const u of allAuthUsers) {
         if (!u.email) continue;
+        // Use a fresh SMTP client per message to avoid connection timeouts
+        const client = new SMTPClient({ connection: smtpConnection });
         try {
           const emailHeaders = getEmailHeaders();
           await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
           emailsSent++;
-        } catch (e) { console.error(`Failed: ${u.email}`, e); }
+          sentTo.push(u.email);
+          console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
+        } catch (e) {
+          failedTo.push(u.email);
+          console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
+        } finally {
+          try { await client.close(); } catch (_) { /* ignore */ }
+        }
       }
-      await client.close();
-      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      console.info(`bulk_email_all_users: complete — sent: ${emailsSent}, failed: ${failedTo.length}`);
+      if (failedTo.length > 0) console.warn(`bulk_email_all_users: failed recipients: ${failedTo.join(', ')}`);
+
+      return new Response(JSON.stringify({ success: true, emailsSent, sentTo, failedTo }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Single recipient flow
