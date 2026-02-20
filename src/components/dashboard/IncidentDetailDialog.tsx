@@ -91,6 +91,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           .from('profiles')
           .select('id, full_name')
           .eq('approved', true)
+          .eq('can_be_incident_responsible', true)
           .order('full_name', { ascending: true });
 
         if (error) throw error;

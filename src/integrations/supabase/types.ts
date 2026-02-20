@@ -2659,7 +2659,9 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           avatar_url: string | null
+          can_access_eccairs: boolean
           can_approve_missions: boolean
+          can_be_incident_responsible: boolean
           company_id: string
           created_at: string | null
           email: string | null
@@ -2680,7 +2682,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          can_access_eccairs?: boolean
           can_approve_missions?: boolean
+          can_be_incident_responsible?: boolean
           company_id: string
           created_at?: string | null
           email?: string | null
@@ -2701,7 +2705,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          can_access_eccairs?: boolean
           can_approve_missions?: boolean
+          can_be_incident_responsible?: boolean
           company_id?: string
           created_at?: string | null
           email?: string | null

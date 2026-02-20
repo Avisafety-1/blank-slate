@@ -47,6 +47,8 @@ interface Profile {
   created_at: string;
   updated_at: string;
   can_approve_missions?: boolean;
+  can_access_eccairs?: boolean;
+  can_be_incident_responsible?: boolean;
 }
 
 interface UserRole {
@@ -359,6 +361,44 @@ const Admin = () => {
     }
   };
 
+  const toggleEccairs = async (userId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ can_access_eccairs: !currentValue } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, can_access_eccairs: !currentValue } : p
+      ));
+      toast.success(!currentValue ? 'ECCAIRS-tilgang aktivert' : 'ECCAIRS-tilgang fjernet');
+    } catch (error) {
+      console.error("Error toggling ECCAIRS:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const toggleIncidentResponsible = async (userId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ can_be_incident_responsible: !currentValue } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, can_be_incident_responsible: !currentValue } : p
+      ));
+      toast.success(!currentValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
+    } catch (error) {
+      console.error("Error toggling incident responsible:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -657,6 +697,22 @@ const Admin = () => {
                                         className="scale-75"
                                       />
                                     </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
+                                      <Switch
+                                        checked={profile.can_access_eccairs === true}
+                                        onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
+                                        className="scale-75"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Oppfølgingsansvarlig (hendelser)</span>
+                                      <Switch
+                                        checked={profile.can_be_incident_responsible === true}
+                                        onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
+                                        className="scale-75"
+                                      />
+                                    </div>
                                     <div>
                                       <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
                                       <Select 
@@ -700,14 +756,30 @@ const Admin = () => {
                           </div>
                           
                           {!isMobile && (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1.5 border border-foreground rounded-md px-2 py-1">
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
                                   checked={profile.can_approve_missions === true}
                                   onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                   className="scale-75"
                                 />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                <Switch
+                                  checked={profile.can_access_eccairs === true}
+                                  onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
+                                  className="scale-75"
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                <Switch
+                                  checked={profile.can_be_incident_responsible === true}
+                                  onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
+                                  className="scale-75"
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
                               </div>
                               <Select 
                                 value={userRole?.role || ""} 
