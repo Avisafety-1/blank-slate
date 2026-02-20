@@ -102,7 +102,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle new user notification to admins
     if (type === 'notify_admins_new_user' && companyId && newUser) {
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['admin', 'superadmin']);
+      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
       if (!adminRoles?.length) return new Response(JSON.stringify({ message: 'No admins' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('company_id', companyId).in('id', adminRoles.map(r => r.user_id));
