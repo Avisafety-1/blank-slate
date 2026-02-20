@@ -1,57 +1,60 @@
 
-# Begrens godkjenning av nye brukere til kun administrator og superadmin
+# Fiks bulk-e-post: sender synkront i stedet for med waitUntil
 
-## Nåværende situasjon og problemet
+## Rotsårsak bekreftet
 
-Det er én gjenværende feil etter rolleforenklingen: **edge-funksjonen `send-notification-email`** bruker fortsatt en hardkodet SQL-spørring med de gamle rollene:
+Fra databasen ser vi at den siste kampanjen (`all_users`, 22 mottakere) resulterte i:
+- `emails_sent: 0`
+- `sent_to_emails: []`
+- `failed_emails: [alle 22 adresser]`
 
-```javascript
-// Linje 105 i send-notification-email/index.ts — FEIL (gammel rollenavn)
-const { data: adminRoles } = await supabase
-  .from('user_roles')
-  .select('user_id')
-  .in('role', ['admin', 'superadmin']);  // ← bruker gammel rolle 'admin'
+Dette betyr at SMTP-tilkoblingene ble forsøkt opprettet, men alle feilet. `EdgeRuntime.waitUntil()` er ikke pålitelig for langvarige SMTP-operasjoner i Supabase Edge Functions — bakgrunnsprosessen drepes når HTTP-responsen er sendt, og alle tilkoblinger mislykkes.
+
+Notifikasjons-e-poster (oppdrag til godkjenning, oppfølgingsansvar) fungerer fordi de sender e-postene **synkront** — SMTP åpnes, e-post sendes til 1-3 mottakere, deretter returneres respons. Ingen `waitUntil`.
+
+## Løsning
+
+Gjør bulk-e-post synkron, akkurat som notifikasjons-e-postene. Siden det bare er 22 mottakere, og hvert SMTP-kall tar ca. 1-2 sekunder, vil 22 e-poster ta ca. 22-44 sekunder totalt — noe Edge Functions kan håndtere (timeout er 150 sekunder som standard i Supabase).
+
+Alle tre bulk-typer endres likt:
+- `bulk_email_users`
+- `bulk_email_customers`  
+- `bulk_email_all_users`
+
+### Hva som endres i koden
+
+**Fjern `waitUntil`-mønsteret** og send e-postene direkte i samme asynkrone flyt, men returner HTTP-respons **etter** at alle er sendt.
+
+```typescript
+// FØR (ødelagt mønster):
+const sendPromise = (async () => {
+  for (const p of validProfiles) {
+    // ... send email
+  }
+})();
+EdgeRuntime.waitUntil(sendPromise);  // <-- drepes etter respons sendes
+return new Response(...);            // <-- respons sendes før e-poster er sent
+
+// ETTER (synkront, pålitelig):
+for (const p of validProfiles) {
+  // ... send email
+}
+await supabase.from('bulk_email_campaigns').update({ ... });
+return new Response(...);            // <-- respons sendes ETTER alle e-poster er sent
 ```
 
-Siden alle brukere med rollen `admin` er migrert til `administrator`, vil denne spørringen nå returnere **null** — ingen admins vil bli funnet, og dermed sendes det ingen e-postvarsling når nye brukere registrerer seg.
+### Konsekvens for brukeropplevelsen
 
-De andre delene er allerede riktige:
-- `PendingApprovalsBadge` bruker `isAdmin` fra `AuthContext`, som allerede sjekker `administrator | superadmin`
-- `ProfileDialog.tsx` viser `email_new_user_pending`-bryteren kun for admin (sjekker `administrator || superadmin`, linje 201)
-- `Admin.tsx` er allerede beskyttet via `has_role(..., 'administrator')` i `checkAdminStatus()`
-- `has_role()`-funksjonen har legacy-alias slik at RLS-policyer som bruker `'admin'::app_role` fortsatt fungerer
+Nettleseren venter nå i noen sekunder (ca. 1-2 sek per mottaker) før den får svar. For 22 mottakere betyr det ca. 22-44 sekunder. UI-en viser allerede en spinner med `sending: true`-tilstand, så dette er håndterbart. Alternativet (som nå) er at ingen e-poster sendes i det hele tatt.
 
-## Hva som endres
-
-### 1. Edge-funksjon: `send-notification-email/index.ts`
-
-Oppdaterer linje 105 til å hente brukere med enten `administrator` eller `superadmin`:
-
-```javascript
-// FØR:
-.in('role', ['admin', 'superadmin'])
-
-// ETTER:
-.in('role', ['administrator', 'superadmin'])
-```
-
-Dette sikrer at alle med riktig rolle mottar e-postvarsling når nye brukere registrerer seg, og at ingen med den utdaterte `admin`-rollen (som ikke lenger brukes) feilaktig inkluderes.
-
-### 2. Database RLS-policy: `profiles` — "Admins can approve users in own company"
-
-Den eksisterende policyen bruker `has_role(auth.uid(), 'admin'::app_role)`, noe som allerede fungerer korrekt takket være legacy-aliaset i `has_role()`-funksjonen. Ingen endring nødvendig her.
-
-## Hva som IKKE endres
-
-- `PendingApprovalsBadge` — allerede korrekt (bruker `isAdmin` fra `AuthContext`)
-- `ProfileDialog.tsx` — allerede korrekt (`isAdmin` settes til `administrator || superadmin`)
-- `Admin.tsx` — allerede korrekt (bruker `has_role(..., 'administrator')`)
-- RLS-policyer — allerede korrekt via legacy-alias i `has_role()`
-
-## Fil som endres
+### Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `supabase/functions/send-notification-email/index.ts` | Oppdater linje 105: `'admin'` → `'administrator'` i rolle-filteret |
+| `supabase/functions/send-notification-email/index.ts` | Fjern `waitUntil`-mønsteret fra `bulk_email_users`, `bulk_email_customers` og `bulk_email_all_users`. Send synkront og returner respons etter at alle e-poster er forsøkt. |
 
-Funksjonen vil automatisk re-deployes etter endringen.
+### Ingen andre endringer nødvendig
+
+- Kampanjelogging i `bulk_email_campaigns` beholdes som den er
+- Dry Run-funksjonalitet beholdes uendret
+- UI-kode i `BulkEmailSender.tsx` trenger ingen endringer
