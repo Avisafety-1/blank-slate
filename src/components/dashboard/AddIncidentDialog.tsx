@@ -146,6 +146,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         .from('profiles')
         .select('id, full_name')
         .eq('approved', true)
+        .eq('can_be_incident_responsible', true)
         .order('full_name', { ascending: true });
 
       if (error) throw error;
