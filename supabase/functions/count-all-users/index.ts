@@ -26,22 +26,17 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify the user's JWT using getClaims (compatible with verify_jwt = false)
+    // Verify the user's JWT using service role client
     const token = authHeader.replace("Bearer ", "");
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims?.sub) {
+    if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     // Check if user is superadmin
     const { data: roleData, error: roleError } = await supabase
