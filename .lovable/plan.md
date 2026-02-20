@@ -1,142 +1,57 @@
 
-# Forenkling av roller: 3 roller i stedet for 5
+# Begrens godkjenning av nye brukere til kun administrator og superadmin
 
-## Bakgrunn og nåværende situasjon
+## Nåværende situasjon og problemet
 
-I dag er det 5 roller i hierarkiet:
-```text
-superadmin > admin > saksbehandler > operatør > lesetilgang
+Det er én gjenværende feil etter rolleforenklingen: **edge-funksjonen `send-notification-email`** bruker fortsatt en hardkodet SQL-spørring med de gamle rollene:
+
+```javascript
+// Linje 105 i send-notification-email/index.ts — FEIL (gammel rollenavn)
+const { data: adminRoles } = await supabase
+  .from('user_roles')
+  .select('user_id')
+  .in('role', ['admin', 'superadmin']);  // ← bruker gammel rolle 'admin'
 ```
 
-Rollene `saksbehandler`, `operatør` og `lesetilgang` er i praksis redundante nå som spesialtilganger (ECCAIRS, oppfølgingsansvarlig, oppdragsgodkjenner) er lagt på personen som individuelle brytervalg.
+Siden alle brukere med rollen `admin` er migrert til `administrator`, vil denne spørringen nå returnere **null** — ingen admins vil bli funnet, og dermed sendes det ingen e-postvarsling når nye brukere registrerer seg.
 
-## Ny rollestruktur
-
-```text
-superadmin > administrator > bruker
-```
-
-| Rolle | Tilgang | Hvem tildeler |
-|---|---|---|
-| superadmin | Alt, inkludert selskapsstyring | Kan kun settes av eksisterende superadmin |
-| administrator | Alt bortsett fra superadmin-funksjoner. Kan se tannhjul/admin-side. Kan IKKE tildele superadmin | Administrator eller superadmin |
-| bruker | Samme som saksbehandler i dag: full tilgang til data, men kan IKKE se tannhjulet/admin-siden | Administrator eller superadmin |
-
-Nye brukere som registrerer seg får automatisk rollen `bruker` (i dag: `lesetilgang`).
+De andre delene er allerede riktige:
+- `PendingApprovalsBadge` bruker `isAdmin` fra `AuthContext`, som allerede sjekker `administrator | superadmin`
+- `ProfileDialog.tsx` viser `email_new_user_pending`-bryteren kun for admin (sjekker `administrator || superadmin`, linje 201)
+- `Admin.tsx` er allerede beskyttet via `has_role(..., 'administrator')` i `checkAdminStatus()`
+- `has_role()`-funksjonen har legacy-alias slik at RLS-policyer som bruker `'admin'::app_role` fortsatt fungerer
 
 ## Hva som endres
 
-### 1. Database — ny migrasjon
+### 1. Edge-funksjon: `send-notification-email/index.ts`
 
-Oppdaterer `app_role`-enumen med 3 nye verdier og fjerner de gamle:
+Oppdaterer linje 105 til å hente brukere med enten `administrator` eller `superadmin`:
 
-```sql
--- Legg til nye roller
-ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'bruker';
+```javascript
+// FØR:
+.in('role', ['admin', 'superadmin'])
 
--- Migrer eksisterende brukere:
--- operatør og lesetilgang -> bruker
--- saksbehandler -> bruker
--- admin -> administrator (admin beholdes som alias for bakoverkompatibilitet med RLS)
-UPDATE user_roles SET role = 'bruker'
-  WHERE role IN ('lesetilgang', 'operatør', 'saksbehandler');
+// ETTER:
+.in('role', ['administrator', 'superadmin'])
 ```
 
-Merk: Selve enum-verdiene `lesetilgang`, `operatør` og `saksbehandler` kan ikke droppes fra enum-typen uten å ta ned hele databasen, men de vil ikke lenger brukes eller vises i UI. RLS-policyer som refererer til `saksbehandler` og `operatør` oppdateres til å bruke `bruker`.
+Dette sikrer at alle med riktig rolle mottar e-postvarsling når nye brukere registrerer seg, og at ingen med den utdaterte `admin`-rollen (som ikke lenger brukes) feilaktig inkluderes.
 
-### 2. RLS-policyer — oppdatering
+### 2. Database RLS-policy: `profiles` — "Admins can approve users in own company"
 
-Alle policyer som i dag sjekker `has_role(..., 'saksbehandler')` eller `has_role(..., 'operatør')` oppdateres til å sjekke `has_role(..., 'bruker')`. Dette gjelder tabeller som:
-- `drones` (UPDATE-policy)
-- `documents` (UPDATE-policy)
-- `customers` (UPDATE-policy)
-- `calendar_events` (UPDATE-policy)
-- og andre relevante tabeller
-
-### 3. `has_role()`-funksjonen — nytt hierarki
-
-Funksjonen oppdateres slik at `bruker` arvger ingenting, `administrator` arver `bruker`, og `superadmin` arver alle:
-
-```sql
--- Nytt hierarki: superadmin >= administrator >= bruker
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
-RETURNS boolean AS $$
-  SELECT CASE _role
-    WHEN 'superadmin' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role = 'superadmin')
-    WHEN 'administrator' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role IN ('superadmin', 'administrator'))
-    WHEN 'bruker' THEN EXISTS (SELECT 1 FROM user_roles WHERE user_id = _user_id AND role IN ('superadmin', 'administrator', 'bruker'))
-    ELSE false
-  END
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
-```
-
-### 4. `AuthContext.tsx` — `isAdmin` logikk
-
-Oppdateres slik at `isAdmin` (som kontrollerer tilgang til tannhjulet) settes til `true` kun for `administrator` og `superadmin`:
-
-```typescript
-// Før:
-profileData.isAdmin = role === 'admin' || role === 'superadmin';
-
-// Etter:
-profileData.isAdmin = role === 'administrator' || role === 'superadmin';
-```
-
-### 5. `useRoleCheck.ts` — forenklet hierarki
-
-```typescript
-const roleHierarchy = ['bruker', 'administrator', 'superadmin'];
-// isSaksbehandler og isOperator fjernes
-// isAdmin vil nå sjekke 'administrator'
-```
-
-### 6. `Admin.tsx` — UI-endringer
-
-- `availableRoles`-listen endres til å kun vise 3 valg:
-  - Superadmin (kun synlig for superadmins)
-  - Administrator
-  - Bruker
-- Rollevalget for `superadmin` skjules for vanlige administratorer (kun superadmin kan tildele superadmin)
-- Teksten og fargekodingen i rollebadges oppdateres
-
-### 7. `Auth.tsx` — standardrolle for nye brukere
-
-```typescript
-// Før:
-role: 'lesetilgang'
-
-// Etter:
-role: 'bruker'
-```
-
-### 8. `ProfileDialog.tsx` — rollevisning
-
-Rollebadges og rollenavn i profilvisningen oppdateres til å reflektere de nye rollene.
-
-### 9. `types.ts` og i18n-filer
-
-- `src/integrations/supabase/types.ts` oppdateres med `bruker` og `administrator`
-- `src/i18n/locales/no.json` og `en.json` oppdateres:
-  - `roles.bruker` = "Bruker" / "User"
-  - `roles.administrator` = "Administrator" / "Administrator"
-  - De gamle rollenøklene (`saksbehandler`, `operator`, `readonly`) kan beholdes for bakoverkompatibilitet i oversettelsesfilene
+Den eksisterende policyen bruker `has_role(auth.uid(), 'admin'::app_role)`, noe som allerede fungerer korrekt takket være legacy-aliaset i `has_role()`-funksjonen. Ingen endring nødvendig her.
 
 ## Hva som IKKE endres
 
-- Selve RLS-sikkerhetsmodellen (company isolation, profil-level permissions) forblir uendret
-- Spesialtilgangene på personen (`can_approve_missions`, `can_access_eccairs`, `can_be_incident_responsible`) forblir uendret
-- Eksisterende data mistes ikke — kun roller migreres
+- `PendingApprovalsBadge` — allerede korrekt (bruker `isAdmin` fra `AuthContext`)
+- `ProfileDialog.tsx` — allerede korrekt (`isAdmin` settes til `administrator || superadmin`)
+- `Admin.tsx` — allerede korrekt (bruker `has_role(..., 'administrator')`)
+- RLS-policyer — allerede korrekt via legacy-alias i `has_role()`
 
-## Filer som endres
+## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `supabase/migrations/[ts]_simplify_roles.sql` | Ny migrasjon: legg til `bruker`/`administrator`, migrer eksisterende brukere, oppdater `has_role()`, oppdater RLS-policyer |
-| `src/integrations/supabase/types.ts` | Legg til `bruker` og `administrator` i enum |
-| `src/contexts/AuthContext.tsx` | `isAdmin` sjekker nå `administrator` i stedet for `admin` |
-| `src/hooks/useRoleCheck.ts` | Forenkle hierarki til 3 roller |
-| `src/pages/Admin.tsx` | Oppdater `availableRoles`, skjul superadmin for administratorer |
-| `src/pages/Auth.tsx` | Standardrolle: `bruker` i stedet for `lesetilgang` |
-| `src/components/ProfileDialog.tsx` | Oppdater rollebadges og rollenavn |
-| `src/i18n/locales/no.json` | Legg til `roles.bruker` og `roles.administrator` |
-| `src/i18n/locales/en.json` | Legg til `roles.bruker` og `roles.administrator` |
+| `supabase/functions/send-notification-email/index.ts` | Oppdater linje 105: `'admin'` → `'administrator'` i rolle-filteret |
+
+Funksjonen vil automatisk re-deployes etter endringen.
