@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.platform-activity-log]
 verify_jwt = false
+
+[functions.resend-confirmation-email]
+verify_jwt = false
