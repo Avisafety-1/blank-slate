@@ -361,7 +361,7 @@ const Auth = () => {
         .from('user_roles')
         .insert({
           user_id: googleUser.id,
-          role: 'lesetilgang'
+          role: 'bruker'
         });
 
       // Send notifications to admins

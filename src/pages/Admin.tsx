@@ -58,11 +58,9 @@ interface UserRole {
 }
 
 const availableRoles = [
-  { value: "superadmin", labelKey: "roles.superadmin" },
-  { value: "admin", labelKey: "roles.admin" },
-  { value: "saksbehandler", labelKey: "roles.saksbehandler" },
-  { value: "operatør", labelKey: "roles.operator" },
-  { value: "lesetilgang", labelKey: "roles.readonly" },
+  { value: "superadmin", labelKey: "roles.superadmin", superadminOnly: true },
+  { value: "administrator", labelKey: "roles.administrator" },
+  { value: "bruker", labelKey: "roles.bruker" },
 ];
 
 const Admin = () => {
@@ -105,7 +103,7 @@ const Admin = () => {
     try {
       const { data, error } = await supabase.rpc('has_role', {
         _user_id: user?.id,
-        _role: 'admin'
+        _role: 'administrator'
       });
 
       if (error) throw error;
@@ -726,7 +724,7 @@ const Admin = () => {
                                           <SelectValue placeholder={t('admin.selectRole')} />
                                         </SelectTrigger>
                                         <SelectContent className="z-[1300]">
-                                          {availableRoles.map((role) => (
+                                          {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
                                             <SelectItem key={role.value} value={role.value}>
                                               {t(role.labelKey)}
                                             </SelectItem>
@@ -794,7 +792,7 @@ const Admin = () => {
                                   <SelectValue placeholder={t('admin.selectRole')} />
                                 </SelectTrigger>
                                 <SelectContent className="z-50">
-                                  {availableRoles.map((role) => (
+                                  {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
                                     <SelectItem key={role.value} value={role.value}>
                                       {t(role.labelKey)}
                                     </SelectItem>

@@ -19,7 +19,7 @@ export const useAdminCheck = () => {
       try {
         const { data, error } = await supabase.rpc('has_role', {
           _user_id: user.id,
-          _role: 'admin'
+          _role: 'administrator'
         });
 
         if (error) throw error;
