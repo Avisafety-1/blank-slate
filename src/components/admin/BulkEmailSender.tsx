@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe } from "lucide-react";
+import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe, FlaskConical } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -204,7 +204,7 @@ export const BulkEmailSender = () => {
     setConfirmOpen(true);
   };
 
-  const handleSend = async () => {
+  const sendEmail = async (dryRun: boolean) => {
     if (!companyId) {
       toast.error("Feil: Ingen bedrift valgt");
       return;
@@ -225,17 +225,21 @@ export const BulkEmailSender = () => {
           subject,
           htmlContent: content,
           sentBy: user?.id,
+          dry_run: dryRun,
         },
       });
 
       if (error) throw error;
 
       const sentCount = data?.emailsSent || 0;
-      toast.success(`E-post sendt til ${sentCount} mottaker${sentCount !== 1 ? "e" : ""}`);
-      
-      // Reset form
-      setSubject("");
-      setContent("");
+      if (dryRun) {
+        toast.success(`[DRY RUN] ${sentCount} mottakere ville ha fått e-post — kampanjen er lagret i historikken`);
+      } else {
+        toast.success(`E-post sendt til ${sentCount} mottaker${sentCount !== 1 ? "e" : ""}`);
+        // Reset form only on real send
+        setSubject("");
+        setContent("");
+      }
     } catch (error: any) {
       console.error("Error sending bulk email:", error);
       toast.error("Kunne ikke sende e-post: " + error.message);
@@ -243,6 +247,13 @@ export const BulkEmailSender = () => {
       setSending(false);
       setConfirmOpen(false);
     }
+  };
+
+  const handleSend = () => sendEmail(false);
+  const handleDryRun = async () => {
+    if (!subject.trim()) { toast.error("Vennligst skriv inn et emne"); return; }
+    if (!content.trim()) { toast.error("Vennligst skriv inn innhold"); return; }
+    await sendEmail(true);
   };
 
   const recipientCount = recipientType === "users" ? userCount : recipientType === "customers" ? customerCount : allUsersCount;
@@ -265,6 +276,20 @@ export const BulkEmailSender = () => {
             >
               <Eye className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
               {isMobile ? "Vis" : "Forhåndsvis"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDryRun}
+              disabled={sending || recipientCount === 0}
+              size={isMobile ? "sm" : "default"}
+              className={isMobile ? "flex-1" : ""}
+            >
+              {sending ? (
+                <Loader2 className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} animate-spin`} />
+              ) : (
+                <FlaskConical className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
+              )}
+              {isMobile ? "Test" : "Test (dry run)"}
             </Button>
             <Button
               onClick={handleSendClick}

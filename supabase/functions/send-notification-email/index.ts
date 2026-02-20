@@ -35,7 +35,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment }: EmailRequest = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, dry_run: dryRun }: EmailRequest & { dry_run?: boolean } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -315,7 +315,7 @@ serve(async (req: Request): Promise<Response> => {
       // Pre-insert campaign so it's always logged even on timeout
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: companyId,
-        recipient_type: 'users',
+        recipient_type: dryRun ? 'users_dry_run' : 'users',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
@@ -326,26 +326,27 @@ serve(async (req: Request): Promise<Response> => {
 
       const sentToEmails: string[] = [];
       const failedEmails: string[] = [];
+      const validProfiles = profiles.filter(p => p.email);
+
+      console.info(`bulk_email_users: starting ${dryRun ? '[DRY RUN] ' : ''}send to ${validProfiles.length} users`);
 
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
       try {
-        const validProfiles = profiles.filter(p => p.email);
-        const batchSize = 5;
-        for (let i = 0; i < validProfiles.length; i += batchSize) {
-          const batch = validProfiles.slice(i, i + batchSize);
-          await Promise.allSettled(batch.map(async (p) => {
-            try {
+        for (const p of validProfiles) {
+          try {
+            if (!dryRun) {
               const emailHeaders = getEmailHeaders();
               await client.send({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-              sentToEmails.push(p.email!);
-            } catch (e) {
-              console.error(`Failed for profile ${p.id}`, e);
-              failedEmails.push(p.email!);
             }
-          }));
+            sentToEmails.push(p.email!);
+            console.info(`✓ ${dryRun ? '[DRY RUN] ' : ''}sent to ${p.email}`);
+          } catch (e) {
+            console.error(`✗ failed for ${p.email}`, e);
+            failedEmails.push(p.email!);
+          }
         }
       } finally {
-        try { await client.close(); } catch (_) { /* ignore */ }
+        if (!dryRun) { try { await client.close(); } catch (_) { /* ignore */ } }
       }
 
       // Update campaign with actual results
@@ -372,7 +373,7 @@ serve(async (req: Request): Promise<Response> => {
       // Pre-insert campaign so it's always logged even on timeout
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: companyId,
-        recipient_type: 'customers',
+        recipient_type: dryRun ? 'customers_dry_run' : 'customers',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
@@ -383,26 +384,27 @@ serve(async (req: Request): Promise<Response> => {
 
       const sentToEmails: string[] = [];
       const failedEmails: string[] = [];
+      const validCustomers = customers.filter(c => c.epost);
+
+      console.info(`bulk_email_customers: starting ${dryRun ? '[DRY RUN] ' : ''}send to ${validCustomers.length} customers`);
 
       const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
       try {
-        const validCustomers = customers.filter(c => c.epost);
-        const batchSize = 5;
-        for (let i = 0; i < validCustomers.length; i += batchSize) {
-          const batch = validCustomers.slice(i, i + batchSize);
-          await Promise.allSettled(batch.map(async (c) => {
-            try {
+        for (const c of validCustomers) {
+          try {
+            if (!dryRun) {
               const emailHeaders = getEmailHeaders();
               await client.send({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-              sentToEmails.push(c.epost!);
-            } catch (e) {
-              console.error(`Failed: ${c.epost}`, e);
-              failedEmails.push(c.epost!);
             }
-          }));
+            sentToEmails.push(c.epost!);
+            console.info(`✓ ${dryRun ? '[DRY RUN] ' : ''}sent to ${c.epost}`);
+          } catch (e) {
+            console.error(`✗ failed for ${c.epost}`, e);
+            failedEmails.push(c.epost!);
+          }
         }
       } finally {
-        try { await client.close(); } catch (_) { /* ignore */ }
+        if (!dryRun) { try { await client.close(); } catch (_) { /* ignore */ } }
       }
 
       // Update campaign with actual results
@@ -445,7 +447,7 @@ serve(async (req: Request): Promise<Response> => {
       // Pre-insert campaign so it's always logged even on timeout
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: null,
-        recipient_type: 'all_users',
+        recipient_type: dryRun ? 'all_users_dry_run' : 'all_users',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
@@ -457,26 +459,24 @@ serve(async (req: Request): Promise<Response> => {
       const sentToEmails: string[] = [];
       const failedEmails: string[] = [];
 
-      // Send in parallel batches of 5 to stay well within the 150s timeout
+      // Sequential sending — SMTPClient is not thread-safe for parallel use
       const client = new SMTPClient({ connection: smtpConnection });
       try {
-        const batchSize = 5;
-        for (let i = 0; i < validUsers.length; i += batchSize) {
-          const batch = validUsers.slice(i, i + batchSize);
-          await Promise.allSettled(batch.map(async (u) => {
-            try {
+        for (const u of validUsers) {
+          try {
+            if (!dryRun) {
               const emailHeaders = getEmailHeaders();
               await client.send({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-              sentToEmails.push(u.email!);
-              console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
-            } catch (e) {
-              failedEmails.push(u.email!);
-              console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
             }
-          }));
+            sentToEmails.push(u.email!);
+            console.info(`bulk_email_all_users: ✓ ${dryRun ? '[DRY RUN] ' : ''}sent to ${u.email}`);
+          } catch (e) {
+            failedEmails.push(u.email!);
+            console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
+          }
         }
       } finally {
-        try { await client.close(); } catch (_) { /* ignore */ }
+        if (!dryRun) { try { await client.close(); } catch (_) { /* ignore */ } }
       }
 
       console.info(`bulk_email_all_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
