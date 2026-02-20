@@ -44,6 +44,7 @@ export const IncidentsSection = () => {
   const { t, i18n } = useTranslation();
   const { companyId, user } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
+  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,19 @@ export const IncidentsSection = () => {
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   // Fetch incidents from database
+  useEffect(() => {
+    const fetchFlag = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('can_be_incident_responsible')
+        .eq('id', user.id)
+        .single();
+      setCanBeIncidentResponsible(data?.can_be_incident_responsible === true);
+    };
+    fetchFlag();
+  }, [user]);
+
   useEffect(() => {
     fetchIncidents();
   }, [companyId]);
@@ -262,9 +276,11 @@ export const IncidentsSection = () => {
           <TabsTrigger value="incidents" className="flex-1 text-xs sm:text-sm">
             {t('dashboard.incidents.title')} ({incidents.length})
           </TabsTrigger>
-          <TabsTrigger value="followups" className="flex-1 text-xs sm:text-sm">
-            {t('dashboard.incidents.followUp')} ({myFollowUpIncidents.length})
-          </TabsTrigger>
+          {canBeIncidentResponsible && (
+            <TabsTrigger value="followups" className="flex-1 text-xs sm:text-sm">
+              {t('dashboard.incidents.followUp')} ({myFollowUpIncidents.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="incidents" className="mt-2 sm:mt-3 flex-1">
