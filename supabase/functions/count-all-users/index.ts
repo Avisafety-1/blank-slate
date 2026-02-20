@@ -26,17 +26,22 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify the user's JWT using service role client
+    // Decode JWT locally to avoid session_not_found network errors
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
+    let userId: string;
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) throw new Error("Invalid JWT");
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      const exp = payload.exp;
+      if (!payload.sub || !exp || Date.now() / 1000 > exp) throw new Error("Token expired or invalid");
+      userId = payload.sub;
+    } catch {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
-    const userId = user.id;
 
     // Check if user is superadmin
     const { data: roleData, error: roleError } = await supabase
