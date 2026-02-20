@@ -424,21 +424,24 @@ serve(async (req: Request): Promise<Response> => {
       const sentToEmails: string[] = [];
       const failedEmails: string[] = [];
 
-      for (const u of allAuthUsers) {
-        if (!u.email) continue;
-        const client = new SMTPClient({ connection: smtpConnection });
-        try {
-          const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-          emailsSent++;
-          sentToEmails.push(u.email);
-          console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
-        } catch (e) {
-          failedEmails.push(u.email);
-          console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
-        } finally {
-          try { await client.close(); } catch (_) { /* ignore */ }
+      // Use a single shared SMTP connection for all recipients to avoid timeout
+      const client = new SMTPClient({ connection: smtpConnection });
+      try {
+        for (const u of allAuthUsers) {
+          if (!u.email) continue;
+          try {
+            const emailHeaders = getEmailHeaders();
+            await client.send({ from: senderAddress, to: u.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            emailsSent++;
+            sentToEmails.push(u.email);
+            console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
+          } catch (e) {
+            failedEmails.push(u.email);
+            console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
+          }
         }
+      } finally {
+        try { await client.close(); } catch (_) { /* ignore */ }
       }
 
       console.info(`bulk_email_all_users: complete — sent: ${emailsSent}, failed: ${failedEmails.length}`);
@@ -522,19 +525,22 @@ serve(async (req: Request): Promise<Response> => {
       const newlySentEmails: string[] = [];
       const newlyFailedEmails: string[] = [];
 
-      for (const email of missedEmails) {
-        const client = new SMTPClient({ connection: smtpConnection });
-        try {
-          const emailHeaders = getEmailHeaders();
-          await client.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-          emailsSent++;
-          newlySentEmails.push(email);
-        } catch (e) {
-          newlyFailedEmails.push(email);
-          console.error(`send_to_missed: failed for ${email}`, e);
-        } finally {
-          try { await client.close(); } catch (_) { /* ignore */ }
+      // Use a single shared SMTP connection for all recipients to avoid timeout
+      const missedClient = new SMTPClient({ connection: smtpConnection });
+      try {
+        for (const email of missedEmails) {
+          try {
+            const emailHeaders = getEmailHeaders();
+            await missedClient.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            emailsSent++;
+            newlySentEmails.push(email);
+          } catch (e) {
+            newlyFailedEmails.push(email);
+            console.error(`send_to_missed: failed for ${email}`, e);
+          }
         }
+      } finally {
+        try { await missedClient.close(); } catch (_) { /* ignore */ }
       }
 
       // Update campaign with new recipients

@@ -253,7 +253,7 @@ export const BulkEmailSender = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Send className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">Send e-post til grupper</h2>
+            <h2 className="text-base sm:text-xl font-semibold">Send e-post til grupper <span className="text-xs text-muted-foreground font-normal">v.2</span></h2>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
