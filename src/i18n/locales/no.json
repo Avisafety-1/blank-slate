@@ -479,10 +479,12 @@
   },
   "roles": {
     "superadmin": "Super Administrator",
+    "administrator": "Administrator",
+    "bruker": "Bruker",
     "admin": "Administrator",
-    "saksbehandler": "Saksbehandler",
-    "operator": "Operatør",
-    "readonly": "Lesetilgang"
+    "saksbehandler": "Bruker",
+    "operator": "Bruker",
+    "readonly": "Bruker"
   },
   "admin": {
     "title": "SMS Admin",

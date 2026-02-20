@@ -198,7 +198,7 @@ export const ProfileDialog = () => {
 
       if (roleData) {
         setUserRole(roleData.role);
-        setIsAdmin(roleData.role === 'admin' || roleData.role === 'superadmin');
+        setIsAdmin(roleData.role === 'administrator' || roleData.role === 'superadmin');
       }
 
       // Fetch competencies
@@ -440,24 +440,26 @@ export const ProfileDialog = () => {
   const getRoleBadgeVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
       case "superadmin":
-      case "admin":
         return "destructive";
-      case "saksbehandler":
+      case "administrator":
+      case "admin": // legacy
         return "default";
-      case "operatør":
-        return "secondary";
+      case "bruker":
       default:
-        return "outline";
+        return "secondary";
     }
   };
 
   const getRoleDisplayName = (role: string): string => {
     const roleMap: { [key: string]: string } = {
       superadmin: t('roles.superadmin'),
-      admin: t('roles.admin'),
-      saksbehandler: t('roles.saksbehandler'),
-      operatør: t('roles.operator'),
-      lesetilgang: t('roles.readonly'),
+      administrator: t('roles.administrator'),
+      bruker: t('roles.bruker'),
+      // Legacy aliases
+      admin: t('roles.administrator'),
+      saksbehandler: t('roles.bruker'),
+      operatør: t('roles.bruker'),
+      lesetilgang: t('roles.bruker'),
     };
     return roleMap[role] || role;
   };

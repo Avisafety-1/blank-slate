@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 
-const roleHierarchy = ['lesetilgang', 'operatør', 'saksbehandler', 'admin', 'superadmin'];
+const roleHierarchy = ['bruker', 'administrator', 'superadmin'];
 
 export const useRoleCheck = () => {
   const { userRole } = useAuth();
@@ -15,9 +15,7 @@ export const useRoleCheck = () => {
   return { 
     userRole, 
     hasRole, 
-    isAdmin: hasRole('admin'), 
+    isAdmin: hasRole('administrator'), 
     isSuperAdmin: hasRole('superadmin'),
-    isSaksbehandler: hasRole('saksbehandler'),
-    isOperator: hasRole('operatør')
   };
 };
