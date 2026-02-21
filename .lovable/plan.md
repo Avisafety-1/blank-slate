@@ -1,60 +1,53 @@
 
-# Fiks bulk-e-post: sender synkront i stedet for med waitUntil
 
-## Rotsårsak bekreftet
+# Pristilbud-fane i kalkulatoren
 
-Fra databasen ser vi at den siste kampanjen (`all_users`, 22 mottakere) resulterte i:
-- `emails_sent: 0`
-- `sent_to_emails: []`
-- `failed_emails: [alle 22 adresser]`
+## Oversikt
 
-Dette betyr at SMTP-tilkoblingene ble forsøkt opprettet, men alle feilet. `EdgeRuntime.waitUntil()` er ikke pålitelig for langvarige SMTP-operasjoner i Supabase Edge Functions — bakgrunnsprosessen drepes når HTTP-responsen er sendt, og alle tilkoblinger mislykkes.
+Legge til en ny fane nederst i kalkulatoren (ved siden av oppsummeringen) som genererer et kundevendt pristilbud basert på verdiene i skjemaet. Denne viser KUN kundepriser -- ingen innkjøpskostnader, marginer eller intern informasjon.
 
-Notifikasjons-e-poster (oppdrag til godkjenning, oppfølgingsansvar) fungerer fordi de sender e-postene **synkront** — SMTP åpnes, e-post sendes til 1-3 mottakere, deretter returneres respons. Ingen `waitUntil`.
+## Implementering
 
-## Løsning
+### Ny Tab-struktur rundt oppsummeringen
 
-Gjør bulk-e-post synkron, akkurat som notifikasjons-e-postene. Siden det bare er 22 mottakere, og hvert SMTP-kall tar ca. 1-2 sekunder, vil 22 e-poster ta ca. 22-44 sekunder totalt — noe Edge Functions kan håndtere (timeout er 150 sekunder som standard i Supabase).
+Erstatter det navaerende oppsummerings-kortet (Section 5, linje 844-1053) med en `Tabs`-komponent som har to faner:
 
-Alle tre bulk-typer endres likt:
-- `bulk_email_users`
-- `bulk_email_customers`  
-- `bulk_email_all_users`
+| Fane | Innhold |
+|---|---|
+| **Oppsummering** | Eksisterende intern oppsummering (uendret) |
+| **Pristilbud** | Kundevendt prissammendrag uten interne kostnader |
 
-### Hva som endres i koden
+### Innhold i Pristilbud-fanen
 
-**Fjern `waitUntil`-mønsteret** og send e-postene direkte i samme asynkrone flyt, men returner HTTP-respons **etter** at alle er sendt.
+Pristilbudet viser kun det kunden skal betale:
 
-```typescript
-// FØR (ødelagt mønster):
-const sendPromise = (async () => {
-  for (const p of validProfiles) {
-    // ... send email
-  }
-})();
-EdgeRuntime.waitUntil(sendPromise);  // <-- drepes etter respons sendes
-return new Response(...);            // <-- respons sendes før e-poster er sent
+- **Brukerlisens**: Antall brukere x pris per bruker/mnd (inkl. MVA)
+- **Dronetag** (hvis aktivert):
+  - Leasing: pris per enhet/mnd (inkl. MVA)
+  - Kjop: totalpris per enhet (inkl. MVA), med eventuell nedbetalingsplan
+- **Avisafe-integrasjon**: pris per Dronetag/mnd (inkl. MVA)
+- **NRI Hours**: pris per time (inkl. MVA), stipulert forbruk
+- **Total manedlig kostnad for kunden** (inkl. MVA)
+- Eventuell engangskostnad (Dronetag hardware ved kjop)
 
-// ETTER (synkront, pålitelig):
-for (const p of validProfiles) {
-  // ... send email
-}
-await supabase.from('bulk_email_campaigns').update({ ... });
-return new Response(...);            // <-- respons sendes ETTER alle e-poster er sent
-```
+Ingenting om innkjopspriser, avslag, marginer, nedbetalingstid for oss, eller netto overskudd.
 
-### Konsekvens for brukeropplevelsen
+### Valgfri kundenavn-felt
 
-Nettleseren venter nå i noen sekunder (ca. 1-2 sek per mottaker) før den får svar. For 22 mottakere betyr det ca. 22-44 sekunder. UI-en viser allerede en spinner med `sending: true`-tilstand, så dette er håndterbart. Alternativet (som nå) er at ingen e-poster sendes i det hele tatt.
+Et enkelt tekstfelt overst i pristilbud-fanen der man kan skrive kundenavn, som vises i tilbudet.
 
-### Filer som endres
+## Teknisk detaljer
+
+### Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `supabase/functions/send-notification-email/index.ts` | Fjern `waitUntil`-mønsteret fra `bulk_email_users`, `bulk_email_customers` og `bulk_email_all_users`. Send synkront og returner respons etter at alle e-poster er forsøkt. |
+| `src/components/admin/RevenueCalculator.tsx` | Wrap oppsummeringsseksjonen (linje 844-1053) i en `Tabs`-komponent. Legg til ny `TabsContent` for pristilbudet. Legg til `customerName`-state og felt i `CalcState`. |
 
-### Ingen andre endringer nødvendig
+### Kodestruktur
 
-- Kampanjelogging i `bulk_email_campaigns` beholdes som den er
-- Dry Run-funksjonalitet beholdes uendret
-- UI-kode i `BulkEmailSender.tsx` trenger ingen endringer
+- Importerer `Tabs, TabsList, TabsTrigger, TabsContent` fra `@/components/ui/tabs`
+- Bruker eksisterende `calc`-verdier og `state`-verdier for a beregne kundepriser
+- Alt beregnes fra allerede eksisterende data -- ingen nye API-kall eller database-endringer
+- `customerName` legges til i `CalcState` slik at det lagres med scenarioet
+
