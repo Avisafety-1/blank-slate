@@ -1,53 +1,62 @@
 
 
-# Pristilbud-fane i kalkulatoren
+# Fiks Pristilbud-fane og legg til nye funksjoner
 
-## Oversikt
+## Problem
 
-Legge til en ny fane nederst i kalkulatoren (ved siden av oppsummeringen) som genererer et kundevendt pristilbud basert på verdiene i skjemaet. Denne viser KUN kundepriser -- ingen innkjøpskostnader, marginer eller intern informasjon.
+Tabs-komponenten ble importert men aldri brukt i JSX-en. Oppsummeringskortet (linje 848-1056) er fortsatt en vanlig Card uten faner.
 
-## Implementering
+## Endringer
 
-### Ny Tab-struktur rundt oppsummeringen
+### 1. Wrap oppsummeringen i Tabs
 
-Erstatter det navaerende oppsummerings-kortet (Section 5, linje 844-1053) med en `Tabs`-komponent som har to faner:
+Inne i det eksisterende Card-elementet (linje 855, CardContent), legger vi til en Tabs-komponent med to faner:
+- **Oppsummering** -- eksisterende intern oversikt (uendret)
+- **Pristilbud** -- kundevendt prissammendrag
 
-| Fane | Innhold |
-|---|---|
-| **Oppsummering** | Eksisterende intern oppsummering (uendret) |
-| **Pristilbud** | Kundevendt prissammendrag uten interne kostnader |
+### 2. Nytt state-felt: `quoteSavedDate`
 
-### Innhold i Pristilbud-fanen
+Legges til i `CalcState` som `quoteSavedDate: string | null`. Settes til dagens dato (lokal, ikke UTC) nar lagre-knappen trykkes. Brukes til a vise "Pristilbud gyldig i 14 dager fra [dato]".
 
-Pristilbudet viser kun det kunden skal betale:
+### 3. Pristilbud-fanen viser
 
-- **Brukerlisens**: Antall brukere x pris per bruker/mnd (inkl. MVA)
-- **Dronetag** (hvis aktivert):
-  - Leasing: pris per enhet/mnd (inkl. MVA)
-  - Kjop: totalpris per enhet (inkl. MVA), med eventuell nedbetalingsplan
-- **Avisafe-integrasjon**: pris per Dronetag/mnd (inkl. MVA)
-- **NRI Hours**: pris per time (inkl. MVA), stipulert forbruk
-- **Total manedlig kostnad for kunden** (inkl. MVA)
-- Eventuell engangskostnad (Dronetag hardware ved kjop)
+**Topp:**
+- "Pristilbud gyldig i 14 dager fra DD.MM.YYYY" (basert pa `quoteSavedDate`, eller "ikke lagret enna" om null)
+- Kundenavn-felt (tekstinput, lagres i `state.customerName`)
 
-Ingenting om innkjopspriser, avslag, marginer, nedbetalingstid for oss, eller netto overskudd.
+**Selskapsstorrelse og prismodell:**
+- Viser ALLE tre tier-nivaer som en tabell:
 
-### Valgfri kundenavn-felt
+| Selskapsstorrelse | Maks brukere | Pris per bruker/mnd (inkl. MVA) |
+|---|---|---|
+| Liten | Opptil 5 | 299 x 1.25 = 373,75 NOK |
+| Medium | Opptil 15 | 249 x 1.25 = 311,25 NOK |
+| Stor | Over 15 | 199 x 1.25 = 248,75 NOK |
 
-Et enkelt tekstfelt overst i pristilbud-fanen der man kan skrive kundenavn, som vises i tilbudet.
+- Markerer gjeldende tier basert pa antall brukere valgt
+- Forklarende tekst: "En automatisk beregning basert pa brukere i systemet blir gjort"
 
-## Teknisk detaljer
+**Prisdetaljer for dette scenarioet:**
+- Brukerlisens: antall x pris inkl. MVA
+- Dronetag (leasing eller kjop, avhengig av valgt modus) inkl. MVA
+- Avisafe-integrasjon inkl. MVA
+- NRI Hours inkl. MVA
+- **Total manedlig kostnad inkl. MVA**
+- Eventuell engangskostnad for Dronetag hardware
+
+Ingen innkjopskostnader, marginer eller intern info.
+
+## Tekniske detaljer
 
 ### Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/admin/RevenueCalculator.tsx` | Wrap oppsummeringsseksjonen (linje 844-1053) i en `Tabs`-komponent. Legg til ny `TabsContent` for pristilbudet. Legg til `customerName`-state og felt i `CalcState`. |
+| `src/components/admin/RevenueCalculator.tsx` | Legg til `quoteSavedDate` i CalcState og defaultCalcState. Sett `quoteSavedDate` i saveToDatabase-funksjonen. Wrap CardContent innhold (linje 856-1054) i Tabs. Legg til pristilbud TabsContent. |
 
-### Kodestruktur
-
-- Importerer `Tabs, TabsList, TabsTrigger, TabsContent` fra `@/components/ui/tabs`
-- Bruker eksisterende `calc`-verdier og `state`-verdier for a beregne kundepriser
-- Alt beregnes fra allerede eksisterende data -- ingen nye API-kall eller database-endringer
-- `customerName` legges til i `CalcState` slik at det lagres med scenarioet
+### quoteSavedDate logikk
+- Lagres som string i format "YYYY-MM-DD" (lokal dato)
+- Settes med: `const d = new Date(); const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');`
+- Vises som DD.MM.YYYY i pristilbudet
+- Gyldighet beregnes ved a legge til 14 dager
 
