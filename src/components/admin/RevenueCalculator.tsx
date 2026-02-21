@@ -1076,6 +1076,19 @@ export const RevenueCalculator = () => {
             {/* === PRISTILBUD TAB === */}
             <TabsContent value="quote">
               <div className="space-y-4">
+                {/* Modell-tittel */}
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <p className="text-sm font-bold text-primary">
+                    {!state.dronetagEnabled
+                      ? "Plattformlisens"
+                      : state.dronetagAcquisitionType === "leasing"
+                        ? "Plattformlisens + Dronetag leasing og administrasjon"
+                        : state.dronetagPaymentType === "installment"
+                          ? "Plattformlisens + Dronetag nedbetaling"
+                          : "Plattformlisens + Dronetag kjøp"}
+                  </p>
+                </div>
+
                 {/* Gyldighet */}
                 <div className="rounded-lg bg-muted p-3 text-sm">
                   {state.quoteSavedDate ? (() => {
