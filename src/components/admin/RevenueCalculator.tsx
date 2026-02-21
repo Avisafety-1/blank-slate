@@ -45,6 +45,10 @@ interface CalcState {
   dronetagIntegrationCostPerUnit: number;
   customerName: string;
   quoteSavedDate: string | null;
+  eccairsEnabled: boolean;
+  eccairsPrice: number;
+  soraAdminEnabled: boolean;
+  soraAdminPrice: number;
 }
 
 interface Scenario {
@@ -82,6 +86,10 @@ const defaultCalcState: CalcState = {
   dronetagIntegrationCostPerUnit: 0,
   customerName: "",
   quoteSavedDate: null,
+  eccairsEnabled: false,
+  eccairsPrice: 0,
+  soraAdminEnabled: false,
+  soraAdminPrice: 0,
 };
 
 const defaultScenarios: Scenario[] = [
@@ -417,8 +425,12 @@ export const RevenueCalculator = () => {
       monthlyNriRevenue = nriCustomerPrice * state.nriHours;
     }
 
+    // Tilleggsmoduler
+    const monthlyEccairsRevenue = state.eccairsEnabled ? state.eccairsPrice : 0;
+    const monthlySoraAdminRevenue = state.soraAdminEnabled ? state.soraAdminPrice : 0;
+
     // Recurring revenue (continues after installment period)
-    const recurringRevenue = monthlyUserRevenue + monthlyNriRevenue + monthlyIntegrationRevenue + monthlyLeasingRevenue;
+    const recurringRevenue = monthlyUserRevenue + monthlyNriRevenue + monthlyIntegrationRevenue + monthlyLeasingRevenue + monthlyEccairsRevenue + monthlySoraAdminRevenue;
     // Recurring costs (continues after installment period)
     const recurringCost = monthlyNriCost + monthlyLeasingCost;
 
@@ -446,6 +458,8 @@ export const RevenueCalculator = () => {
       monthlyIntegrationRevenue,
       monthlyNriCost,
       monthlyNriRevenue,
+      monthlyEccairsRevenue,
+      monthlySoraAdminRevenue,
       recurringRevenue,
       recurringCost,
       totalRevenue,
@@ -856,6 +870,57 @@ export const RevenueCalculator = () => {
         </CardContent>}
       </Card>
 
+      {/* Section 4: Tilleggsmoduler */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <FileText className="h-5 w-5 text-primary" />
+            Tilleggsmoduler
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* ECCAIRS */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="eccairs-toggle"
+                checked={state.eccairsEnabled}
+                onCheckedChange={(v) => updateState({ eccairsEnabled: v })}
+              />
+              <Label htmlFor="eccairs-toggle" className="text-sm font-semibold cursor-pointer">ECCAIRS-integrasjon</Label>
+            </div>
+            <div className="max-w-xs">
+              <Label className="text-xs">Pris per måned (NOK)</Label>
+              <Input
+                type="number"
+                value={state.eccairsPrice || ""}
+                onChange={(e) => updateState({ eccairsPrice: num(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          {/* SORA Admin */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="sora-toggle"
+                checked={state.soraAdminEnabled}
+                onCheckedChange={(v) => updateState({ soraAdminEnabled: v })}
+              />
+              <Label htmlFor="sora-toggle" className="text-sm font-semibold cursor-pointer">SORA Admin</Label>
+            </div>
+            <div className="max-w-xs">
+              <Label className="text-xs">Pris per måned (NOK)</Label>
+              <Input
+                type="number"
+                value={state.soraAdminPrice || ""}
+                onChange={(e) => updateState({ soraAdminPrice: num(e.target.value) })}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Section 5: Summary */}
       <Card className="border-primary/30">
         <CardHeader className="pb-3">
@@ -891,6 +956,18 @@ export const RevenueCalculator = () => {
                   <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
                     <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing-inntekt ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK)</span>
                     <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK</span>
+                  </div>
+                )}
+                {calc.monthlyEccairsRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">ECCAIRS-integrasjon</span>
+                    <span className="font-medium">{fmt(calc.monthlyEccairsRevenue)} NOK</span>
+                  </div>
+                )}
+                {calc.monthlySoraAdminRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">SORA Admin</span>
+                    <span className="font-medium">{fmt(calc.monthlySoraAdminRevenue)} NOK</span>
                   </div>
                 )}
                 <Separator />
@@ -1028,6 +1105,18 @@ export const RevenueCalculator = () => {
                   <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
                     <span>Månedlig innbetaling inkl. MVA</span>
                     <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+                {calc.monthlyEccairsRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">ECCAIRS-integrasjon</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyEccairsRevenue * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+                {calc.monthlySoraAdminRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">SORA Admin</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlySoraAdminRevenue * 1.25))} NOK/mnd</span>
                   </div>
                 )}
 
@@ -1207,6 +1296,20 @@ export const RevenueCalculator = () => {
                     </div>
                   )}
 
+                  {/* Tilleggsmoduler (aktiverte) */}
+                  {state.eccairsEnabled && state.eccairsPrice > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                      <span className="text-muted-foreground text-xs sm:text-sm">ECCAIRS-integrasjon</span>
+                      <span className="font-medium">{fmt(state.eccairsPrice)} NOK/mnd</span>
+                    </div>
+                  )}
+                  {state.soraAdminEnabled && state.soraAdminPrice > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                      <span className="text-muted-foreground text-xs sm:text-sm">SORA Admin</span>
+                      <span className="font-medium">{fmt(state.soraAdminPrice)} NOK/mnd</span>
+                    </div>
+                  )}
+
                   {/* Total */}
                   <div className="pt-2" />
                   <Separator className="bg-primary/30" />
@@ -1221,6 +1324,8 @@ export const RevenueCalculator = () => {
                         totalMonthly += calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths;
                       }
                     }
+                    totalMonthly += calc.monthlyEccairsRevenue;
+                    totalMonthly += calc.monthlySoraAdminRevenue;
                     return (
                       <div className="flex justify-between text-base font-bold">
                         <span>Total månedlig kostnad eks. MVA</span>
@@ -1234,6 +1339,25 @@ export const RevenueCalculator = () => {
                     <div className="flex justify-between text-sm font-semibold mt-2">
                       <span>Engangskostnad Dronetag hardware eks. MVA</span>
                       <span>{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                    </div>
+                  )}
+
+                  {/* Tilgjengelige tilleggsmoduler (ikke aktivert) */}
+                  {((!state.eccairsEnabled || state.eccairsPrice === 0) || (!state.soraAdminEnabled || state.soraAdminPrice === 0)) && (
+                    <div className="mt-4 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-3 space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tilgjengelige tilleggsmoduler</p>
+                      {(!state.eccairsEnabled || state.eccairsPrice === 0) && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">ECCAIRS-integrasjon</span>
+                          <span className="text-muted-foreground italic">{state.eccairsPrice > 0 ? `${fmt(state.eccairsPrice)} NOK/mnd` : "Pris ikke satt"}</span>
+                        </div>
+                      )}
+                      {(!state.soraAdminEnabled || state.soraAdminPrice === 0) && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">SORA Admin</span>
+                          <span className="text-muted-foreground italic">{state.soraAdminPrice > 0 ? `${fmt(state.soraAdminPrice)} NOK/mnd` : "Pris ikke satt"}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
