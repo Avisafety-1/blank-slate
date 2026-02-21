@@ -1154,10 +1154,13 @@ export const RevenueCalculator = () => {
 
                   {/* Dronetag */}
                    {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
-                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth))} NOK)</span>
-                      <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK/mnd</span>
-                    </div>
+                    <>
+                      <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth))} NOK)</span>
+                        <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK/mnd</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">Inkluderer oppsett og administrasjon av enhetene</p>
+                    </>
                   )}
                   {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && calc.monthlyDronetagRevenue > 0 && (
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
