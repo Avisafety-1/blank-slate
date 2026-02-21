@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check, Save } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check, Save, FileText } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +42,7 @@ interface CalcState {
   nriCustomerPrice: number;
   nriHours: number;
   dronetagIntegrationCostPerUnit: number;
+  customerName: string;
 }
 
 interface Scenario {
@@ -76,6 +78,7 @@ const defaultCalcState: CalcState = {
   nriCustomerPrice: 0,
   nriHours: 0,
   dronetagIntegrationCostPerUnit: 0,
+  customerName: "",
 };
 
 const defaultScenarios: Scenario[] = [
