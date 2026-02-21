@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Users, Package, Pencil, Check, Save, FileText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +44,7 @@ interface CalcState {
   nriHours: number;
   dronetagIntegrationCostPerUnit: number;
   customerName: string;
+  quoteSavedDate: string | null;
 }
 
 interface Scenario {
@@ -79,6 +81,7 @@ const defaultCalcState: CalcState = {
   nriHours: 0,
   dronetagIntegrationCostPerUnit: 0,
   customerName: "",
+  quoteSavedDate: null,
 };
 
 const defaultScenarios: Scenario[] = [
@@ -237,6 +240,15 @@ export const RevenueCalculator = () => {
         if (error) throw error;
       }
 
+      // Set quoteSavedDate on all scenarios
+      const dateStr = (() => {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      })();
+      setScenarios(prev => prev.map(s => ({
+        ...s,
+        state: { ...s.state, quoteSavedDate: dateStr }
+      })));
       setHasUnsavedChanges(false);
       toast.success("Scenarioer lagret");
     } catch (err) {
@@ -853,205 +865,368 @@ export const RevenueCalculator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {/* === Løpende inntekter === */}
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende inntekter</p>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-              <span className="text-muted-foreground text-xs sm:text-sm">Brukerlisensinntekt ({state.totalUsers} × {fmt(calc.pricePerUser)} NOK)</span>
-              <span className="font-medium">{fmt(calc.monthlyUserRevenue)} NOK</span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-              <span className="text-muted-foreground text-xs sm:text-sm">Inntekt NRI Hours</span>
-              <span className="font-medium">{fmt(calc.monthlyNriRevenue)} NOK</span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-              <span className="text-muted-foreground text-xs sm:text-sm">Inntekt Avisafe-integrasjon</span>
-              <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue))} NOK</span>
-            </div>
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing-inntekt ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK)</span>
-                <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK</span>
-              </div>
-            )}
-            <Separator />
-            <div className="flex justify-between text-sm font-semibold">
-              <span>Sum løpende inntekter</span>
-              <span className="text-primary">{fmt(Math.round(calc.recurringRevenue))} NOK</span>
-            </div>
+          <Tabs defaultValue="summary">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="summary">Oppsummering (Intern)</TabsTrigger>
+              <TabsTrigger value="quote">Pristilbud (Kunde)</TabsTrigger>
+            </TabsList>
 
-            {/* === Løpende kostnader === */}
-            <div className="pt-2" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende kostnader</p>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-              <span className="text-muted-foreground text-xs sm:text-sm">Kostnad NRI Hours</span>
-              <span className="font-medium text-destructive">−{fmt(calc.monthlyNriCost)} NOK</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between text-sm font-semibold">
-              <span>Sum løpende kostnader</span>
-              <span className="text-destructive">−{fmt(Math.round(calc.recurringCost))} NOK</span>
-            </div>
-
-            {/* === Dronetag leasing info === */}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && state.dronetagCount > 0 && state.dronetagLeasingCustomerPricePerMonth > 0 && dronetagPurchaseNok > 0 && (
-              <>
-                <div className="pt-2" />
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dronetag leasing — informasjon</p>
+            {/* === OPPSUMMERING TAB === */}
+            <TabsContent value="summary">
+              <div className="space-y-3">
+                {/* === Løpende inntekter === */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende inntekter</p>
                 <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                  <span className="text-muted-foreground text-xs sm:text-sm">Innkjøpspris per enhet (etter avslag)</span>
-                  <span className="font-medium">{fmt(Math.round(dronetagPurchaseNok))} NOK</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm">Brukerlisensinntekt ({state.totalUsers} × {fmt(calc.pricePerUser)} NOK)</span>
+                  <span className="font-medium">{fmt(calc.monthlyUserRevenue)} NOK</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                  <span className="text-muted-foreground text-xs sm:text-sm">Månedlig leasinginntekt per enhet</span>
-                  <span className="font-medium">{fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm">Inntekt NRI Hours</span>
+                  <span className="font-medium">{fmt(calc.monthlyNriRevenue)} NOK</span>
                 </div>
-                <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
-                  <span>Enheten er nedbetalt etter ca. {Math.ceil(dronetagPurchaseNok / state.dronetagLeasingCustomerPricePerMonth)} mnd</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                  <span className="text-muted-foreground text-xs sm:text-sm">Inntekt Avisafe-integrasjon</span>
+                  <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue))} NOK</span>
                 </div>
-              </>
-            )}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing-inntekt ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK)</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue))} NOK</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Sum løpende inntekter</span>
+                  <span className="text-primary">{fmt(Math.round(calc.recurringRevenue))} NOK</span>
+                </div>
 
-            {/* === Dronetag hardware (purchase mode only) === */}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && (
-              <>
+                {/* === Løpende kostnader === */}
                 <div className="pt-2" />
-                {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 ? (
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Løpende kostnader</p>
+                <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                  <span className="text-muted-foreground text-xs sm:text-sm">Kostnad NRI Hours</span>
+                  <span className="font-medium text-destructive">−{fmt(calc.monthlyNriCost)} NOK</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Sum løpende kostnader</span>
+                  <span className="text-destructive">−{fmt(Math.round(calc.recurringCost))} NOK</span>
+                </div>
+
+                {/* === Dronetag leasing info === */}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && state.dronetagCount > 0 && state.dronetagLeasingCustomerPricePerMonth > 0 && dronetagPurchaseNok > 0 && (
                   <>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Dronetag hardware — nedbetaling ({state.dronetagInstallmentMonths} mnd)
-                    </p>
+                    <div className="pt-2" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dronetag leasing — informasjon</p>
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Vår engangskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
-                      <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
+                      <span className="text-muted-foreground text-xs sm:text-sm">Innkjøpspris per enhet (etter avslag)</span>
+                      <span className="font-medium">{fmt(Math.round(dronetagPurchaseNok))} NOK</span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Kundens totalpris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
-                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-sm font-semibold">
-                      <span>Margin på hardware (engangs)</span>
-                      <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
-                        {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
-                      </span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5 mt-1">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Månedlig innbetaling fra kunde</span>
-                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} NOK/mnd</span>
+                      <span className="text-muted-foreground text-xs sm:text-sm">Månedlig leasinginntekt per enhet</span>
+                      <span className="font-medium">{fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
-                      <span>Tilbakebetalt etter ca. {Math.ceil((dronetagPurchaseNok * state.dronetagCount) / (calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} mnd</span>
+                      <span>Enheten er nedbetalt etter ca. {Math.ceil(dronetagPurchaseNok / state.dronetagLeasingCustomerPricePerMonth)} mnd</span>
                     </div>
                   </>
-                ) : (
+                )}
+
+                {/* === Dronetag hardware (purchase mode only) === */}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && (
                   <>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Dronetag hardware — engangsbetaling
-                    </p>
+                    <div className="pt-2" />
+                    {state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 ? (
+                      <>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Dronetag hardware — nedbetaling ({state.dronetagInstallmentMonths} mnd)
+                        </p>
+                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Vår engangskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+                          <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Kundens totalpris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
+                          <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span>Margin på hardware (engangs)</span>
+                          <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
+                            {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
+                          </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5 mt-1">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Månedlig innbetaling fra kunde</span>
+                          <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} NOK/mnd</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
+                          <span>Tilbakebetalt etter ca. {Math.ceil((dronetagPurchaseNok * state.dronetagCount) / (calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths))} mnd</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Dronetag hardware — engangsbetaling
+                        </p>
+                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Kundepris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
+                          <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Innkjøpskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
+                          <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span>Margin på hardware (engangs)</span>
+                          <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
+                            {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* === Kostnad til kunde inkl. MVA === */}
+                <div className="pt-2" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kostnad til kunde inkl. 25% MVA</p>
+                <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                  <span className="text-muted-foreground text-xs sm:text-sm">Brukerlisens ({state.totalUsers} × {fmt(Math.round(calc.pricePerUser * 1.25))} NOK)</span>
+                  <span className="font-medium">{fmt(Math.round(calc.monthlyUserRevenue * 1.25))} NOK/mnd</span>
+                </div>
+                {state.dronetagEnabled && calc.monthlyNriRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">NRI Hours ({state.nriHours} t × {fmt(Math.round(state.nriCustomerPrice * 1.25))} NOK)</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyNriRevenue * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+                {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth * 1.25))} NOK)</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && calc.monthlyDronetagRevenue > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">
+                      Dronetag hardware ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice * 1.25))} NOK)
+                    </span>
+                    <span className="font-medium">
+                      {fmt(Math.round(calc.monthlyDronetagRevenue * 1.25))} NOK
+                      {state.dronetagPaymentType === "installment" ? "" : " (engang)"}
+                    </span>
+                  </div>
+                )}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
+                  <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
+                    <span>Månedlig innbetaling inkl. MVA</span>
+                    <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
+                  </div>
+                )}
+
+                {/* === Totalt === */}
+                <div className="pt-2" />
+                <Separator className="bg-primary/30" />
+                <div className="flex flex-col sm:flex-row sm:justify-between text-base sm:text-lg font-bold gap-1">
+                  <span className="flex items-center gap-2">
+                    {calc.netResult >= 0 ? (
+                      <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
+                    )}
+                    <span className="text-sm sm:text-lg">
+                      {!state.dronetagEnabled
+                        ? "Netto overskudd"
+                        : state.dronetagAcquisitionType === "leasing"
+                          ? "Netto månedlig"
+                          : "Netto månedlig (i nedbetalingsperioden)"}
+                    </span>
+                  </span>
+                  <span className={`text-right ${calc.netResult >= 0 ? "text-green-500" : "text-destructive"}`}>
+                    {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
+                  </span>
+                </div>
+
+                {/* === Etter nedbetaling (purchase + installment only) === */}
+                {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-base sm:text-lg font-bold gap-1">
+                    <span className="flex items-center gap-2">
+                      {calc.netAfterInstallment >= 0 ? (
+                        <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
+                      )}
+                      <span className="text-sm sm:text-lg">Netto månedlig (etter nedbetaling)</span>
+                    </span>
+                    <span className={`text-right ${calc.netAfterInstallment >= 0 ? "text-green-500" : "text-destructive"}`}>
+                      {calc.netAfterInstallment >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netAfterInstallment)))} NOK
+                    </span>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* === PRISTILBUD TAB === */}
+            <TabsContent value="quote">
+              <div className="space-y-4">
+                {/* Gyldighet */}
+                <div className="rounded-lg bg-muted p-3 text-sm">
+                  {state.quoteSavedDate ? (() => {
+                    const [y, m, d] = state.quoteSavedDate.split('-').map(Number);
+                    const saved = new Date(y, m - 1, d);
+                    const expires = new Date(y, m - 1, d + 14);
+                    const fmtDate = (dt: Date) => String(dt.getDate()).padStart(2, '0') + '.' + String(dt.getMonth() + 1).padStart(2, '0') + '.' + dt.getFullYear();
+                    return (
+                      <p className="font-medium">
+                        Pristilbud gyldig i 14 dager fra {fmtDate(saved)} (til {fmtDate(expires)})
+                      </p>
+                    );
+                  })() : (
+                    <p className="text-muted-foreground italic">Pristilbud ikke lagret ennå — trykk «Lagre» for å sette gyldighetsdato.</p>
+                  )}
+                </div>
+
+                {/* Kundenavn */}
+                <div className="max-w-sm">
+                  <Label>Kundenavn</Label>
+                  <Input
+                    placeholder="Skriv inn kundenavn..."
+                    value={state.customerName}
+                    onChange={(e) => updateState({ customerName: e.target.value })}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Selskapsstørrelse og prismodell */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">Selskapsstørrelse og prismodell</p>
+                  <p className="text-xs text-muted-foreground mb-3">En automatisk beregning basert på brukere i systemet blir gjort</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Selskapsstørrelse</TableHead>
+                        <TableHead>Maks brukere</TableHead>
+                        <TableHead className="text-right">Pris per bruker/mnd (inkl. MVA)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[
+                        { label: "Liten", max: state.tiers.small.maxUsers, price: state.tiers.small.pricePerUser, tierKey: "Liten" },
+                        { label: "Medium", max: state.tiers.medium.maxUsers, price: state.tiers.medium.pricePerUser, tierKey: "Medium" },
+                        { label: "Stor", max: state.tiers.large.maxUsers, price: state.tiers.large.pricePerUser, tierKey: "Stor" },
+                      ].map((row) => (
+                        <TableRow key={row.label} className={calc.tierLabel === row.tierKey ? "bg-primary/10 font-semibold" : ""}>
+                          <TableCell>
+                            {row.label}
+                            {calc.tierLabel === row.tierKey && (
+                              <span className="ml-2 text-xs text-primary">(gjeldende)</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{row.label === "Stor" ? `Over ${state.tiers.medium.maxUsers}` : `Opptil ${row.max}`}</TableCell>
+                          <TableCell className="text-right">{fmt(Math.round(row.price * 1.25))} NOK</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <Separator />
+
+                {/* Prisdetaljer for dette scenarioet */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">Prisdetaljer for dette scenarioet</p>
+                </div>
+
+                <div className="space-y-2">
+                  {/* Brukerlisens */}
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                    <span className="text-muted-foreground text-xs sm:text-sm">Brukerlisens ({state.totalUsers} × {fmt(Math.round(calc.pricePerUser * 1.25))} NOK)</span>
+                    <span className="font-medium">{fmt(Math.round(calc.monthlyUserRevenue * 1.25))} NOK/mnd</span>
+                  </div>
+
+                  {/* Dronetag */}
+                  {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Kundepris ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice))} NOK)</span>
-                      <span className="font-medium">{fmt(Math.round(calc.monthlyDronetagRevenue))} NOK</span>
+                      <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth * 1.25))} NOK)</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue * 1.25))} NOK/mnd</span>
                     </div>
+                  )}
+                  {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && calc.monthlyDronetagRevenue > 0 && (
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Innkjøpskostnad ({state.dronetagCount} stk × {fmt(Math.round(dronetagPurchaseNok))} NOK)</span>
-                      <span className="font-medium text-destructive">−{fmt(Math.round(dronetagPurchaseNok * state.dronetagCount))} NOK</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-sm font-semibold">
-                      <span>Margin på hardware (engangs)</span>
-                      <span className={calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount >= 0 ? "text-primary" : "text-destructive"}>
-                        {fmt(Math.round(calc.monthlyDronetagRevenue - dronetagPurchaseNok * state.dronetagCount))} NOK
+                      <span className="text-muted-foreground text-xs sm:text-sm">
+                        Dronetag hardware ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice * 1.25))} NOK)
+                      </span>
+                      <span className="font-medium">
+                        {fmt(Math.round(calc.monthlyDronetagRevenue * 1.25))} NOK
+                        {state.dronetagPaymentType === "oneoff" && " (engangskostnad)"}
                       </span>
                     </div>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* === Kostnad til kunde inkl. MVA === */}
-            <div className="pt-2" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kostnad til kunde inkl. 25% MVA</p>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-              <span className="text-muted-foreground text-xs sm:text-sm">Brukerlisens ({state.totalUsers} × {fmt(Math.round(calc.pricePerUser * 1.25))} NOK)</span>
-              <span className="font-medium">{fmt(Math.round(calc.monthlyUserRevenue * 1.25))} NOK/mnd</span>
-            </div>
-            {state.dronetagEnabled && calc.monthlyNriRevenue > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                <span className="text-muted-foreground text-xs sm:text-sm">NRI Hours ({state.nriHours} t × {fmt(Math.round(state.nriCustomerPrice * 1.25))} NOK)</span>
-                <span className="font-medium">{fmt(Math.round(calc.monthlyNriRevenue * 1.25))} NOK/mnd</span>
-              </div>
-            )}
-            {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
-                <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
-              </div>
-            )}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagLeasingCustomerPricePerMonth * 1.25))} NOK)</span>
-                <span className="font-medium">{fmt(Math.round(calc.monthlyLeasingRevenue * 1.25))} NOK/mnd</span>
-              </div>
-            )}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && calc.monthlyDronetagRevenue > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                <span className="text-muted-foreground text-xs sm:text-sm">
-                  Dronetag hardware ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagCustomerPrice * 1.25))} NOK)
-                </span>
-                <span className="font-medium">
-                  {fmt(Math.round(calc.monthlyDronetagRevenue * 1.25))} NOK
-                  {state.dronetagPaymentType === "installment" ? "" : " (engang)"}
-                </span>
-              </div>
-            )}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
-              <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
-                <span>Månedlig innbetaling inkl. MVA</span>
-                <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
-              </div>
-            )}
-
-            {/* === Totalt === */}
-            <div className="pt-2" />
-            <Separator className="bg-primary/30" />
-            <div className="flex flex-col sm:flex-row sm:justify-between text-base sm:text-lg font-bold gap-1">
-              <span className="flex items-center gap-2">
-                {calc.netResult >= 0 ? (
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
-                )}
-                <span className="text-sm sm:text-lg">
-                  {!state.dronetagEnabled
-                    ? "Netto overskudd"
-                    : state.dronetagAcquisitionType === "leasing"
-                      ? "Netto månedlig"
-                      : "Netto månedlig (i nedbetalingsperioden)"}
-                </span>
-              </span>
-              <span className={`text-right ${calc.netResult >= 0 ? "text-green-500" : "text-destructive"}`}>
-                {calc.netResult >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netResult)))} NOK
-              </span>
-            </div>
-
-            {/* === Etter nedbetaling (purchase + installment only) === */}
-            {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && (
-              <div className="flex flex-col sm:flex-row sm:justify-between text-base sm:text-lg font-bold gap-1">
-                <span className="flex items-center gap-2">
-                  {calc.netAfterInstallment >= 0 ? (
-                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
                   )}
-                  <span className="text-sm sm:text-lg">Netto månedlig (etter nedbetaling)</span>
-                </span>
-                <span className={`text-right ${calc.netAfterInstallment >= 0 ? "text-green-500" : "text-destructive"}`}>
-                  {calc.netAfterInstallment >= 0 ? "" : "−"}{fmt(Math.abs(Math.round(calc.netAfterInstallment)))} NOK
-                </span>
+                  {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0 && calc.monthlyDronetagRevenue > 0 && (
+                    <div className="flex justify-between text-sm text-muted-foreground text-xs italic">
+                      <span>Månedlig innbetaling inkl. MVA</span>
+                      <span>{fmt(Math.round((calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25))} NOK/mnd</span>
+                    </div>
+                  )}
+
+                  {/* Avisafe-integrasjon */}
+                  {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                      <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
+                    </div>
+                  )}
+
+                  {/* NRI Hours */}
+                  {state.dronetagEnabled && calc.monthlyNriRevenue > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
+                      <span className="text-muted-foreground text-xs sm:text-sm">NRI Hours ({state.nriHours} t × {fmt(Math.round(state.nriCustomerPrice * 1.25))} NOK)</span>
+                      <span className="font-medium">{fmt(Math.round(calc.monthlyNriRevenue * 1.25))} NOK/mnd</span>
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="pt-2" />
+                  <Separator className="bg-primary/30" />
+                  {(() => {
+                    let totalMonthly = calc.monthlyUserRevenue * 1.25;
+                    if (state.dronetagEnabled) {
+                      totalMonthly += calc.monthlyNriRevenue * 1.25;
+                      totalMonthly += calc.monthlyIntegrationRevenue * 1.25;
+                      if (state.dronetagAcquisitionType === "leasing") {
+                        totalMonthly += calc.monthlyLeasingRevenue * 1.25;
+                      } else if (state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0) {
+                        totalMonthly += (calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths) * 1.25;
+                      }
+                    }
+                    return (
+                      <div className="flex justify-between text-base font-bold">
+                        <span>Total månedlig kostnad inkl. MVA</span>
+                        <span className="text-primary">{fmt(Math.round(totalMonthly))} NOK/mnd</span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Engangskostnad */}
+                  {state.dronetagEnabled && state.dronetagAcquisitionType === "purchase" && state.dronetagPaymentType === "oneoff" && calc.monthlyDronetagRevenue > 0 && (
+                    <div className="flex justify-between text-sm font-semibold mt-2">
+                      <span>Engangskostnad Dronetag hardware inkl. MVA</span>
+                      <span>{fmt(Math.round(calc.monthlyDronetagRevenue * 1.25))} NOK</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
