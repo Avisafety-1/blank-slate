@@ -42,6 +42,7 @@ interface CalcState {
   nriPurchaseCost: number;
   nriCustomerPrice: number;
   nriHours: number;
+  dronetagIntegrationEnabled: boolean;
   dronetagIntegrationCostPerUnit: number;
   customerName: string;
   quoteSavedDate: string | null;
@@ -83,6 +84,7 @@ const defaultCalcState: CalcState = {
   nriPurchaseCost: 0,
   nriCustomerPrice: 0,
   nriHours: 0,
+  dronetagIntegrationEnabled: false,
   dronetagIntegrationCostPerUnit: 0,
   customerName: "",
   quoteSavedDate: null,
@@ -414,7 +416,7 @@ export const RevenueCalculator = () => {
     }
 
     let monthlyIntegrationRevenue = 0;
-    if (state.dronetagEnabled) {
+    if (state.dronetagIntegrationEnabled) {
       monthlyIntegrationRevenue = state.dronetagIntegrationCostPerUnit * dronetagCount;
     }
 
@@ -817,26 +819,6 @@ export const RevenueCalculator = () => {
 
           <Separator />
 
-          {/* Dronetag Avisafe integrasjon sub-section */}
-          <div>
-            <Label className="text-sm font-semibold">Dronetag Avisafe-integrasjon</Label>
-          </div>
-          <div className="max-w-xs">
-            <Label>Inntekt per Dronetag/mnd (NOK)</Label>
-            <Input
-              type="number"
-              value={state.dronetagIntegrationCostPerUnit || ""}
-              onChange={(e) => updateState({ dronetagIntegrationCostPerUnit: num(e.target.value) })}
-            />
-            {state.dronetagCount > 0 && state.dronetagIntegrationCostPerUnit > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {state.dronetagCount} stk × {fmt(state.dronetagIntegrationCostPerUnit)} NOK = {fmt(state.dronetagIntegrationCostPerUnit * state.dronetagCount)} NOK/mnd
-              </p>
-            )}
-          </div>
-
-          <Separator />
-
           {/* NRI Hours sub-section */}
           <div>
             <Label className="text-sm font-semibold">NRI Hours</Label>
@@ -879,6 +861,31 @@ export const RevenueCalculator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Avisafe-Dronetag-Integrasjon */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="dronetag-integration-toggle"
+                checked={state.dronetagIntegrationEnabled}
+                onCheckedChange={(v) => updateState({ dronetagIntegrationEnabled: v })}
+              />
+              <Label htmlFor="dronetag-integration-toggle" className="text-sm font-semibold cursor-pointer">Avisafe-Dronetag-Integrasjon</Label>
+            </div>
+            <div className="max-w-xs">
+              <Label className="text-xs">Pris per Dronetag/mnd (NOK)</Label>
+              <Input
+                type="number"
+                value={state.dronetagIntegrationCostPerUnit || ""}
+                onChange={(e) => updateState({ dronetagIntegrationCostPerUnit: num(e.target.value) })}
+              />
+              {state.dronetagIntegrationEnabled && state.dronetagCount > 0 && state.dronetagIntegrationCostPerUnit > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {state.dronetagCount} stk × {fmt(state.dronetagIntegrationCostPerUnit)} NOK = {fmt(state.dronetagIntegrationCostPerUnit * state.dronetagCount)} NOK/mnd
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* ECCAIRS */}
           <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
             <div className="flex items-center gap-3">
@@ -948,10 +955,12 @@ export const RevenueCalculator = () => {
                   <span className="text-muted-foreground text-xs sm:text-sm">Inntekt NRI Hours</span>
                   <span className="font-medium">{fmt(calc.monthlyNriRevenue)} NOK</span>
                 </div>
+                {calc.monthlyIntegrationRevenue > 0 && (
                 <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                  <span className="text-muted-foreground text-xs sm:text-sm">Inntekt Avisafe-integrasjon</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm">Inntekt Avisafe-Dronetag-Integrasjon ({state.dronetagCount} stk × {fmt(state.dronetagIntegrationCostPerUnit)} NOK)</span>
                   <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue))} NOK</span>
                 </div>
+                )}
                 {state.dronetagEnabled && state.dronetagAcquisitionType === "leasing" && calc.monthlyLeasingRevenue > 0 && (
                   <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
                     <span className="text-muted-foreground text-xs sm:text-sm">Dronetag leasing-inntekt ({state.dronetagCount} stk × {fmt(state.dronetagLeasingCustomerPricePerMonth)} NOK)</span>
@@ -1078,9 +1087,9 @@ export const RevenueCalculator = () => {
                     <span className="font-medium">{fmt(Math.round(calc.monthlyNriRevenue * 1.25))} NOK/mnd</span>
                   </div>
                 )}
-                {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
+                {calc.monthlyIntegrationRevenue > 0 && (
                   <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                    <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
+                    <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-Dronetag-Integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit * 1.25))} NOK)</span>
                     <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue * 1.25))} NOK/mnd</span>
                   </div>
                 )}
@@ -1280,10 +1289,10 @@ export const RevenueCalculator = () => {
                     </div>
                   )}
 
-                  {/* Avisafe-integrasjon */}
-                   {state.dronetagEnabled && calc.monthlyIntegrationRevenue > 0 && (
+                  {/* Avisafe-Dronetag-Integrasjon */}
+                   {state.dronetagIntegrationEnabled && calc.monthlyIntegrationRevenue > 0 && (
                     <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-0.5">
-                      <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit))} NOK)</span>
+                      <span className="text-muted-foreground text-xs sm:text-sm">Avisafe-Dronetag-Integrasjon ({state.dronetagCount} stk × {fmt(Math.round(state.dronetagIntegrationCostPerUnit))} NOK)</span>
                       <span className="font-medium">{fmt(Math.round(calc.monthlyIntegrationRevenue))} NOK/mnd</span>
                     </div>
                   )}
@@ -1317,13 +1326,13 @@ export const RevenueCalculator = () => {
                     let totalMonthly = calc.monthlyUserRevenue;
                     if (state.dronetagEnabled) {
                       totalMonthly += calc.monthlyNriRevenue;
-                      totalMonthly += calc.monthlyIntegrationRevenue;
                       if (state.dronetagAcquisitionType === "leasing") {
                         totalMonthly += calc.monthlyLeasingRevenue;
                       } else if (state.dronetagPaymentType === "installment" && state.dronetagInstallmentMonths > 0) {
                         totalMonthly += calc.monthlyDronetagRevenue / state.dronetagInstallmentMonths;
                       }
                     }
+                    totalMonthly += calc.monthlyIntegrationRevenue;
                     totalMonthly += calc.monthlyEccairsRevenue;
                     totalMonthly += calc.monthlySoraAdminRevenue;
                     return (
@@ -1343,9 +1352,15 @@ export const RevenueCalculator = () => {
                   )}
 
                   {/* Tilgjengelige tilleggsmoduler (ikke aktivert) */}
-                  {((!state.eccairsEnabled || state.eccairsPrice === 0) || (!state.soraAdminEnabled || state.soraAdminPrice === 0)) && (
+                  {((!state.dronetagIntegrationEnabled || state.dronetagIntegrationCostPerUnit === 0) || (!state.eccairsEnabled || state.eccairsPrice === 0) || (!state.soraAdminEnabled || state.soraAdminPrice === 0)) && (
                     <div className="mt-4 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-3 space-y-1">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tilgjengelige tilleggsmoduler</p>
+                      {(!state.dronetagIntegrationEnabled || state.dronetagIntegrationCostPerUnit === 0) && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Avisafe-Dronetag-Integrasjon</span>
+                          <span className="text-muted-foreground italic">{state.dronetagIntegrationCostPerUnit > 0 ? `${fmt(state.dronetagIntegrationCostPerUnit)} NOK/enhet/mnd` : "Pris ikke satt"}</span>
+                        </div>
+                      )}
                       {(!state.eccairsEnabled || state.eccairsPrice === 0) && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">ECCAIRS-integrasjon</span>
