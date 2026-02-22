@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.resend-confirmation-email]
 verify_jwt = false
+
+[functions.drone-regulations-ai]
+verify_jwt = true

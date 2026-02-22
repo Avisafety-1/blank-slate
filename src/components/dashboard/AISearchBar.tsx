@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, Loader2, Bot, Database } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
@@ -17,6 +17,11 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import ReactMarkdown from "react-markdown";
+
+type ChatMessage = { role: "user" | "assistant"; content: string };
 
 interface SearchResults {
   summary: string;
@@ -41,6 +46,10 @@ export const AISearchBar = () => {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
+  const [searchMode, setSearchMode] = useState<"internal" | "regulations">("internal");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
@@ -52,13 +61,26 @@ export const AISearchBar = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() && searchMode === "internal") {
       setResults(null);
     }
-  }, [query]);
+  }, [query, searchMode]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const handleModeChange = (checked: boolean) => {
+    setSearchMode(checked ? "regulations" : "internal");
+    setResults(null);
+    setChatMessages([]);
+    setQuery("");
+  };
   const handleSearch = async () => {
     if (!query.trim() || !user) return;
+    if (searchMode === "regulations") {
+      return handleRegulationsSearch();
+    }
     setIsSearching(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-search", {
@@ -74,6 +96,86 @@ export const AISearchBar = () => {
       toast.error(t('dashboard.search.couldNotSearch'));
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleRegulationsSearch = async () => {
+    if (!query.trim()) return;
+    const userMsg: ChatMessage = { role: "user", content: query.trim() };
+    const newMessages = [...chatMessages, userMsg];
+    setChatMessages(newMessages);
+    setQuery("");
+    setIsStreaming(true);
+
+    let assistantSoFar = "";
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drone-regulations-ai`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ messages: newMessages }),
+        }
+      );
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || "AI-feil");
+      }
+
+      if (!resp.body) throw new Error("Ingen respons");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantSoFar += content;
+              setChatMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant") {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                }
+                return [...prev, { role: "assistant", content: assistantSoFar }];
+              });
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error("Regulations AI error:", e);
+      toast.error(e.message || "Kunne ikke kontakte AI-assistenten");
+      setChatMessages(prev => prev.filter(m => m !== userMsg));
+    } finally {
+      setIsStreaming(false);
     }
   };
 
@@ -191,21 +293,75 @@ export const AISearchBar = () => {
   return (
     <div className="space-y-4">
       <GlassCard className="p-4">
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1"
-            placeholder={t('dashboard.search.placeholder')}
-          />
-          <Button onClick={handleSearch} disabled={isSearching || !query.trim()}>
-            {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="search-mode" className="text-xs text-muted-foreground whitespace-nowrap">
+                {searchMode === "internal" ? "Internt søk" : "Droneregelverk AI"}
+              </Label>
+              <Switch
+                id="search-mode"
+                checked={searchMode === "regulations"}
+                onCheckedChange={handleModeChange}
+              />
+              <Bot className={`h-4 w-4 ${searchMode === "regulations" ? "text-primary" : "text-muted-foreground"}`} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="flex-1"
+              placeholder={
+                searchMode === "regulations"
+                  ? "Spør om droneregelverk, teori, regler..."
+                  : t('dashboard.search.placeholder')
+              }
+            />
+            <Button onClick={handleSearch} disabled={(isSearching || isStreaming) || !query.trim()}>
+              {(isSearching || isStreaming) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </GlassCard>
 
-      {results && (
+      {searchMode === "regulations" && chatMessages.length > 0 && (
+        <GlassCard className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
+          <div className="space-y-4">
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[85%] rounded-lg px-4 py-3 ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm">{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {isStreaming && chatMessages[chatMessages.length - 1]?.role === "user" && (
+              <div className="flex justify-start">
+                <div className="bg-muted rounded-lg px-4 py-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </GlassCard>
+      )}
+
+      {searchMode === "internal" && results && (
         <GlassCard className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
           <div className="space-y-2">
             <h3 className="font-semibold text-lg">{t('dashboard.search.results')} ({getTotalResults()})</h3>
