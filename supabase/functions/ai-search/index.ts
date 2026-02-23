@@ -26,7 +26,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's company_id
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_id')
@@ -57,42 +56,42 @@ serve(async (req) => {
       flightLogs,
       calendarEvents
     ] = await Promise.all([
-      // Missions - search in tittel, beskrivelse, lokasjon
+      // Missions - added merknader
       supabase
         .from('missions')
         .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
         .eq('company_id', companyId)
-        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%`)
+        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%,merknader.ilike.%${query}%`)
         .limit(5),
-      // Incidents
+      // Incidents - added lokasjon
       supabase
         .from('incidents')
         .select('id, tittel, beskrivelse, kategori, alvorlighetsgrad, status')
         .eq('company_id', companyId)
-        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%`)
+        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%`)
         .limit(5),
       // Documents
       supabase
         .from('documents')
         .select('id, tittel, beskrivelse, kategori')
         .eq('company_id', companyId)
-        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%`)
+        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,kategori.ilike.%${query}%`)
         .limit(5),
-      // Equipment
+      // Equipment - added merknader, type
       supabase
         .from('equipment')
         .select('id, navn, type, serienummer, status')
         .eq('company_id', companyId)
-        .or(`navn.ilike.%${query}%,serienummer.ilike.%${query}%`)
+        .or(`navn.ilike.%${query}%,serienummer.ilike.%${query}%,merknader.ilike.%${query}%,type.ilike.%${query}%`)
         .limit(5),
-      // Drones - fixed: use serienummer not registrering
+      // Drones - added merknader
       supabase
         .from('drones')
         .select('id, modell, serienummer, status')
         .eq('company_id', companyId)
-        .or(`modell.ilike.%${query}%,serienummer.ilike.%${query}%`)
+        .or(`modell.ilike.%${query}%,serienummer.ilike.%${query}%,merknader.ilike.%${query}%`)
         .limit(5),
-      // Competencies - with company filter via profile join
+      // Competencies
       supabase
         .from('personnel_competencies')
         .select('id, navn, type, beskrivelse, profile_id, profiles!inner(company_id)')
@@ -106,35 +105,35 @@ serve(async (req) => {
         .eq('company_id', companyId)
         .or(`conops_summary.ilike.%${query}%,operational_limits.ilike.%${query}%`)
         .limit(5),
-      // Personnel/Profiles - NEW
+      // Personnel
       supabase
         .from('profiles')
         .select('id, full_name, email, tittel')
         .eq('company_id', companyId)
         .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,tittel.ilike.%${query}%`)
         .limit(5),
-      // Customers - NEW
+      // Customers
       supabase
         .from('customers')
         .select('id, navn, kontaktperson, epost, adresse')
         .eq('company_id', companyId)
         .or(`navn.ilike.%${query}%,kontaktperson.ilike.%${query}%,epost.ilike.%${query}%,adresse.ilike.%${query}%`)
         .limit(5),
-      // News - NEW
+      // News
       supabase
         .from('news')
         .select('id, tittel, innhold, publisert, forfatter')
         .eq('company_id', companyId)
         .or(`tittel.ilike.%${query}%,innhold.ilike.%${query}%`)
         .limit(5),
-      // Flight Logs - NEW
+      // Flight Logs
       supabase
         .from('flight_logs')
         .select('id, departure_location, landing_location, notes, flight_date, flight_duration_minutes')
         .eq('company_id', companyId)
         .or(`departure_location.ilike.%${query}%,landing_location.ilike.%${query}%,notes.ilike.%${query}%`)
         .limit(5),
-      // Calendar Events - NEW
+      // Calendar Events
       supabase
         .from('calendar_events')
         .select('id, title, description, event_date, event_time, type')
@@ -143,12 +142,75 @@ serve(async (req) => {
         .limit(5),
     ]);
 
-    // Use AI to generate a summary of results
+    // Relational search: find missions linked to matching personnel or customers
+    let allMissions = missions.data || [];
+
+    const personnelIds = (personnel.data || []).map(p => p.id);
+    const customerIds = (customers.data || []).map(c => c.id);
+
+    const relationalQueries = [];
+    if (personnelIds.length > 0) {
+      relationalQueries.push(
+        supabase
+          .from('mission_personnel')
+          .select('mission_id')
+          .in('profile_id', personnelIds)
+      );
+    }
+    if (customerIds.length > 0) {
+      relationalQueries.push(
+        supabase
+          .from('missions')
+          .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
+          .eq('company_id', companyId)
+          .in('customer_id', customerIds)
+          .limit(10)
+      );
+    }
+
+    if (relationalQueries.length > 0) {
+      const relResults = await Promise.all(relationalQueries);
+      let idx = 0;
+
+      // Personnel -> mission_personnel -> missions
+      if (personnelIds.length > 0) {
+        const missionPersonnelRows = relResults[idx]?.data || [];
+        idx++;
+        const missionIds = [...new Set(missionPersonnelRows.map((r: any) => r.mission_id))];
+        const existingIds = new Set(allMissions.map(m => m.id));
+        const newIds = missionIds.filter(id => !existingIds.has(id));
+        if (newIds.length > 0) {
+          const { data: linkedMissions } = await supabase
+            .from('missions')
+            .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
+            .eq('company_id', companyId)
+            .in('id', newIds)
+            .limit(10);
+          if (linkedMissions) {
+            allMissions = [...allMissions, ...linkedMissions];
+          }
+        }
+      }
+
+      // Customer -> missions
+      if (customerIds.length > 0) {
+        const customerMissions = relResults[idx]?.data || [];
+        const existingIds = new Set(allMissions.map(m => m.id));
+        for (const m of customerMissions) {
+          if (!existingIds.has(m.id)) {
+            allMissions.push(m);
+            existingIds.add(m.id);
+          }
+        }
+      }
+    }
+
+    // Build AI summary
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     const resultsContext = `
 Søkeresultater for "${query}":
 
-Oppdrag (${missions.data?.length || 0}): ${missions.data?.map(m => m.tittel).join(', ') || 'Ingen'}
+Oppdrag (${allMissions.length}): ${allMissions.map(m => m.tittel).join(', ') || 'Ingen'}
 Hendelser (${incidents.data?.length || 0}): ${incidents.data?.map(i => i.tittel).join(', ') || 'Ingen'}
 Dokumenter (${documents.data?.length || 0}): ${documents.data?.map(d => d.tittel).join(', ') || 'Ingen'}
 Utstyr (${equipment.data?.length || 0}): ${equipment.data?.map(e => e.navn).join(', ') || 'Ingen'}
@@ -193,7 +255,7 @@ Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map(c => 
       JSON.stringify({
         summary: aiSummary,
         results: {
-          missions: missions.data || [],
+          missions: allMissions,
           incidents: incidents.data || [],
           documents: documents.data || [],
           equipment: equipment.data || [],
