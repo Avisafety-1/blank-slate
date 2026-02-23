@@ -687,7 +687,6 @@ export const AddMissionDialog = ({
         ? prev.filter(id => id !== profileId)
         : [...prev, profileId]
     );
-    setOpenPersonnelPopover(false);
   };
 
   const removePersonnel = (profileId: string) => {
@@ -700,7 +699,6 @@ export const AddMissionDialog = ({
         ? prev.filter(id => id !== equipmentId)
         : [...prev, equipmentId]
     );
-    setOpenEquipmentPopover(false);
   };
 
   const removeEquipment = (equipmentId: string) => {
@@ -713,7 +711,6 @@ export const AddMissionDialog = ({
         ? prev.filter(id => id !== droneId)
         : [...prev, droneId]
     );
-    setOpenDronePopover(false);
   };
 
   const removeDrone = (droneId: string) => {
@@ -726,7 +723,6 @@ export const AddMissionDialog = ({
         ? prev.filter(id => id !== documentId)
         : [...prev, documentId]
     );
-    setOpenDocumentPopover(false);
   };
 
   const removeDocument = (documentId: string) => {
