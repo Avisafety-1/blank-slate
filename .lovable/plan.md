@@ -1,65 +1,50 @@
 
 
-# Drone-regelverk AI-assistent i sokebaren
+# Lagre DroneLog API-dokumentasjon i prosjektet
 
 ## Oversikt
 
-Legge til en switch/toggle i sokebaren som lar brukeren veksle mellom:
-- **Internt sok** (dagens funksjonalitet) - soker i AviSafe-systemets data
-- **Droneregelverk AI** - en AI-assistent som svarer pa sporsmal om droneregelverk, droneteori, flyging og regler (EASA, Luftfartstilsynet, etc.)
+Opprette en ryddig referansefil med DroneLog API-dokumentasjonen under `docs/`-mappen, slik at den er tilgjengelig for fremtidig bruk og integrasjon.
 
-AI-assistenten bruker Lovable AI (gratis inkludert) og er strengt begrenset til drone-relaterte emner.
+## Hva dokumentasjonen dekker
 
-## Endringer
+DroneLog API (https://dronelogapi.com) er en REST API for parsing og behandling av DJI drone-flylogger. Den har folgende endepunkter:
 
-### 1. Frontend: AISearchBar.tsx
+### Autentisering
+- Bearer token via `Authorization`-header
 
-- Legge til en `searchMode` state: `"internal"` | `"regulations"`
-- Vise en Switch-komponent med label "Internt sok" / "Droneregelverk AI"
-- Nar modus er "regulations":
-  - Kalle en ny edge function `drone-regulations-ai` i stedet for `ai-search`
-  - Vise AI-svaret som ren tekst (markdown-formatert) i stedet for resultat-griddet
-  - Endre placeholder-teksten til "Spor om droneregelverk, teori, regler..."
-- Nar modus er "internal": beholde alt som i dag
+### Endepunkter
 
-### 2. Ny Edge Function: `drone-regulations-ai`
+| Endepunkt | Metode | Beskrivelse |
+|---|---|---|
+| `api/v1/keys` | GET | Liste API-nokler |
+| `api/v1/keys` | POST | Opprett API-nokkel |
+| `api/v1/keys/{key}` | DELETE | Slett API-nokkel |
+| `api/v1/accounts/dji` | POST | Hent DJI-konto-ID (e-post/passord sendes til DJI, lagres ikke) |
+| `api/v1/fields` | GET | Liste alle tilgjengelige flylogg-felter |
+| `api/v1/fields/{fieldName}` | GET | Hent metadata for ett felt |
+| `api/v1/logs` | POST | Prosesser flylogg fra URL (returnerer CSV) |
+| `api/v1/logs/upload` | POST | Last opp flylogg-fil (returnerer CSV) |
+| `api/v1/logs/{id}` | GET | Liste flylogger for en DJI-konto-ID (paginert) |
+| `api/v1/usage` | GET | Hent API-bruksstatistikk |
 
-Opprette `supabase/functions/drone-regulations-ai/index.ts` som:
-- Mottar `query` fra brukeren
-- Kaller Lovable AI Gateway med en streng system-prompt som begrenser svar til:
-  - EASA-regelverk (EU-forordninger for droner)
-  - Luftfartstilsynets regler og veiledninger
-  - Droneteori (A1/A2/A3, STS, SORA)
-  - Flyregler, luftrom, restriksjoner
-  - Praktiske tips for droneoperatorer
-- Avviser sporsmal utenfor disse rammene med en hoflig melding
-- Returnerer AI-svaret som tekst
+### Viktige detaljer
+- Flylogger ma vaere i TXT- eller ZIP-format (DJI-format)
+- Man kan spesifisere hvilke felter man vil ha i CSV-output (f.eks. `OSD.latitude`, `OSD.longitude`, `OSD.flyTimeMilliseconds`)
+- Responser folger monsteret `{ statusCode, message, result }`
+- Usage-endepunktet stotter filtrering pa dato og paginering
 
-### 3. Visning av AI-svar
+## Plan
 
-Nar i "Droneregelverk AI"-modus:
-- Vises svaret i et GlassCard med markdown-formatering
-- Enkel chat-lignende visning (sporsmal + svar)
-- Mulighet for a stille oppfolgingssporsmal (beholder historikk i session)
+Opprette en ny fil `docs/dronelog-api-reference.md` som inneholder:
+- Komplett API-referanse med alle endepunkter
+- Eksempler pa request/response i JavaScript
+- Feltbeskrivelser
+- Autentiseringsinformasjon
 
-## Tekniske detaljer
+### Fil som opprettes
 
-### Filer som endres/opprettes
-
-| Fil | Endring |
+| Fil | Beskrivelse |
 |---|---|
-| `src/components/dashboard/AISearchBar.tsx` | Legge til switch, searchMode state, ny handleRegulationsSearch funksjon, betinget rendering av resultater |
-| `supabase/functions/drone-regulations-ai/index.ts` | Ny edge function med Lovable AI og streng system-prompt |
-
-### System-prompt for AI (edge function)
-
-AI-en far en detaljert system-prompt pa norsk som:
-- Definerer rollen som droneregelverk-ekspert
-- Lister opp tillatte emner (EASA, Luftfartstilsynet, dronekategorier, STS, SORA, luftrom, etc.)
-- Eksplisitt instruerer om a avvise sporsmal utenfor dronerelaterte emner
-- Ber om svar pa norsk med referanser til relevant regelverk
-
-### Frontend-logikk
-
-Sokebaren far to moduser via en Switch-komponent plassert til hoyre for input-feltet. Nar "Droneregelverk AI" er aktiv, sendes sporsmalet til den nye edge function i stedet for den eksisterende ai-search. Svaret vises som formatert tekst med en enkel samtalehistorikk som nullstilles nar brukeren bytter modus.
+| `docs/dronelog-api-reference.md` | Komplett DroneLog API-dokumentasjon for fremtidig referanse |
 
