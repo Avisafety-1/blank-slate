@@ -75,8 +75,8 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-base sm:text-lg truncate">{item.navn}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.type}</p>
+                  <h3 className="font-semibold text-base sm:text-lg break-words hyphens-auto">{item.navn}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground break-words hyphens-auto">{item.type}</p>
                 </div>
                 <StatusBadge status={calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status} />
               </div>
