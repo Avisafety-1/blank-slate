@@ -41,50 +41,41 @@ serve(async (req) => {
 
     const companyId = profile.company_id;
 
-    // Search across all relevant tables
+    // Search across all relevant tables in parallel
     const [
-      missions,
-      incidents,
-      documents,
-      equipment,
-      drones,
-      competencies,
-      sora,
-      personnel,
-      customers,
-      news,
-      flightLogs,
-      calendarEvents
+      missions, incidents, documents, equipment, drones,
+      competencies, sora, personnel, customers, news,
+      flightLogs, calendarEvents
     ] = await Promise.all([
-      // Missions - added merknader
+      // Missions - includes merknader
       supabase
         .from('missions')
         .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
         .eq('company_id', companyId)
         .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%,merknader.ilike.%${query}%`)
         .limit(5),
-      // Incidents - added lokasjon
+      // Incidents - includes lokasjon, rapportert_av
       supabase
         .from('incidents')
-        .select('id, tittel, beskrivelse, kategori, alvorlighetsgrad, status')
+        .select('id, tittel, beskrivelse, kategori, alvorlighetsgrad, status, lokasjon, rapportert_av')
         .eq('company_id', companyId)
-        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%`)
+        .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,lokasjon.ilike.%${query}%,rapportert_av.ilike.%${query}%`)
         .limit(5),
-      // Documents
+      // Documents - includes kategori
       supabase
         .from('documents')
         .select('id, tittel, beskrivelse, kategori')
         .eq('company_id', companyId)
         .or(`tittel.ilike.%${query}%,beskrivelse.ilike.%${query}%,kategori.ilike.%${query}%`)
         .limit(5),
-      // Equipment - added merknader, type
+      // Equipment - includes merknader, type
       supabase
         .from('equipment')
         .select('id, navn, type, serienummer, status')
         .eq('company_id', companyId)
         .or(`navn.ilike.%${query}%,serienummer.ilike.%${query}%,merknader.ilike.%${query}%,type.ilike.%${query}%`)
         .limit(5),
-      // Drones - added merknader
+      // Drones - includes merknader
       supabase
         .from('drones')
         .select('id, modell, serienummer, status')
@@ -98,7 +89,7 @@ serve(async (req) => {
         .eq('profiles.company_id', companyId)
         .or(`navn.ilike.%${query}%,type.ilike.%${query}%,beskrivelse.ilike.%${query}%`)
         .limit(5),
-      // SORA
+      // SORA - direct text search
       supabase
         .from('mission_sora')
         .select('id, mission_id, sora_status, conops_summary')
@@ -142,64 +133,122 @@ serve(async (req) => {
         .limit(5),
     ]);
 
-    // Relational search: find missions linked to matching personnel or customers
-    let allMissions = missions.data || [];
-
+    // Gather matching personnel and customer IDs for relational lookups
     const personnelIds = (personnel.data || []).map(p => p.id);
     const customerIds = (customers.data || []).map(c => c.id);
 
-    const relationalQueries = [];
-    if (personnelIds.length > 0) {
-      relationalQueries.push(
-        supabase
-          .from('mission_personnel')
-          .select('mission_id')
-          .in('profile_id', personnelIds)
-      );
-    }
-    if (customerIds.length > 0) {
-      relationalQueries.push(
-        supabase
-          .from('missions')
-          .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
-          .eq('company_id', companyId)
-          .in('customer_id', customerIds)
-          .limit(10)
-      );
-    }
+    let allMissions = missions.data || [];
+    let allIncidents = incidents.data || [];
+    let allSora = sora.data || [];
 
-    if (relationalQueries.length > 0) {
-      const relResults = await Promise.all(relationalQueries);
+    // Relational lookups when personnel or customers matched
+    if (personnelIds.length > 0 || customerIds.length > 0) {
+      const relQueries: Promise<any>[] = [];
+
+      // Find missions linked to matching personnel
+      if (personnelIds.length > 0) {
+        relQueries.push(
+          supabase
+            .from('mission_personnel')
+            .select('mission_id')
+            .in('profile_id', personnelIds)
+        );
+        // Find incidents where matching personnel is oppfolgingsansvarlig or user_id
+        relQueries.push(
+          supabase
+            .from('incidents')
+            .select('id, tittel, beskrivelse, kategori, alvorlighetsgrad, status, lokasjon, rapportert_av')
+            .eq('company_id', companyId)
+            .in('oppfolgingsansvarlig_id', personnelIds)
+            .limit(10)
+        );
+        relQueries.push(
+          supabase
+            .from('incidents')
+            .select('id, tittel, beskrivelse, kategori, alvorlighetsgrad, status, lokasjon, rapportert_av')
+            .eq('company_id', companyId)
+            .in('user_id', personnelIds)
+            .limit(10)
+        );
+      }
+
+      // Find missions linked to matching customers
+      if (customerIds.length > 0) {
+        relQueries.push(
+          supabase
+            .from('missions')
+            .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
+            .eq('company_id', companyId)
+            .in('customer_id', customerIds)
+            .limit(10)
+        );
+      }
+
+      const relResults = await Promise.all(relQueries);
       let idx = 0;
 
-      // Personnel -> mission_personnel -> missions
       if (personnelIds.length > 0) {
+        // Mission personnel -> missions
         const missionPersonnelRows = relResults[idx]?.data || [];
         idx++;
         const missionIds = [...new Set(missionPersonnelRows.map((r: any) => r.mission_id))];
-        const existingIds = new Set(allMissions.map(m => m.id));
-        const newIds = missionIds.filter(id => !existingIds.has(id));
-        if (newIds.length > 0) {
+        const existingMissionIds = new Set(allMissions.map(m => m.id));
+        const newMissionIds = missionIds.filter(id => !existingMissionIds.has(id));
+        if (newMissionIds.length > 0) {
           const { data: linkedMissions } = await supabase
             .from('missions')
             .select('id, tittel, beskrivelse, lokasjon, status, tidspunkt')
             .eq('company_id', companyId)
-            .in('id', newIds)
+            .in('id', newMissionIds)
             .limit(10);
-          if (linkedMissions) {
-            allMissions = [...allMissions, ...linkedMissions];
+          if (linkedMissions) allMissions = [...allMissions, ...linkedMissions];
+        }
+
+        // Incidents by oppfolgingsansvarlig_id
+        const incByOppfolging = relResults[idx]?.data || [];
+        idx++;
+        // Incidents by user_id
+        const incByUser = relResults[idx]?.data || [];
+        idx++;
+
+        const existingIncidentIds = new Set(allIncidents.map(i => i.id));
+        for (const inc of [...incByOppfolging, ...incByUser]) {
+          if (!existingIncidentIds.has(inc.id)) {
+            allIncidents.push(inc);
+            existingIncidentIds.add(inc.id);
           }
         }
       }
 
-      // Customer -> missions
       if (customerIds.length > 0) {
+        // Customer -> missions
         const customerMissions = relResults[idx]?.data || [];
-        const existingIds = new Set(allMissions.map(m => m.id));
+        idx++;
+        const existingMissionIds = new Set(allMissions.map(m => m.id));
         for (const m of customerMissions) {
-          if (!existingIds.has(m.id)) {
+          if (!existingMissionIds.has(m.id)) {
             allMissions.push(m);
-            existingIds.add(m.id);
+            existingMissionIds.add(m.id);
+          }
+        }
+      }
+
+      // SORA: find SORA analyses for all matched missions
+      const allMissionIds = allMissions.map(m => m.id);
+      if (allMissionIds.length > 0) {
+        const existingSoraIds = new Set(allSora.map(s => s.id));
+        const { data: linkedSora } = await supabase
+          .from('mission_sora')
+          .select('id, mission_id, sora_status, conops_summary')
+          .eq('company_id', companyId)
+          .in('mission_id', allMissionIds)
+          .limit(10);
+        if (linkedSora) {
+          for (const s of linkedSora) {
+            if (!existingSoraIds.has(s.id)) {
+              allSora.push(s);
+              existingSoraIds.add(s.id);
+            }
           }
         }
       }
@@ -211,12 +260,12 @@ serve(async (req) => {
 Søkeresultater for "${query}":
 
 Oppdrag (${allMissions.length}): ${allMissions.map(m => m.tittel).join(', ') || 'Ingen'}
-Hendelser (${incidents.data?.length || 0}): ${incidents.data?.map(i => i.tittel).join(', ') || 'Ingen'}
+Hendelser (${allIncidents.length}): ${allIncidents.map(i => i.tittel).join(', ') || 'Ingen'}
 Dokumenter (${documents.data?.length || 0}): ${documents.data?.map(d => d.tittel).join(', ') || 'Ingen'}
 Utstyr (${equipment.data?.length || 0}): ${equipment.data?.map(e => e.navn).join(', ') || 'Ingen'}
 Droner (${drones.data?.length || 0}): ${drones.data?.map(d => d.modell).join(', ') || 'Ingen'}
 Kompetanse (${competencies.data?.length || 0}): ${competencies.data?.map(c => c.navn).join(', ') || 'Ingen'}
-SORA-analyser (${sora.data?.length || 0})
+SORA-analyser (${allSora.length}): ${allSora.map(s => s.conops_summary || s.sora_status).join(', ') || 'Ingen'}
 Personell (${personnel.data?.length || 0}): ${personnel.data?.map(p => p.full_name).join(', ') || 'Ingen'}
 Kunder (${customers.data?.length || 0}): ${customers.data?.map(c => c.navn).join(', ') || 'Ingen'}
 Nyheter (${news.data?.length || 0}): ${news.data?.map(n => n.tittel).join(', ') || 'Ingen'}
@@ -256,12 +305,12 @@ Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map(c => 
         summary: aiSummary,
         results: {
           missions: allMissions,
-          incidents: incidents.data || [],
+          incidents: allIncidents,
           documents: documents.data || [],
           equipment: equipment.data || [],
           drones: drones.data || [],
           competencies: competencies.data || [],
-          sora: sora.data || [],
+          sora: allSora,
           personnel: personnel.data || [],
           customers: customers.data || [],
           news: news.data || [],
