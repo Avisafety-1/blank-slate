@@ -11,6 +11,40 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Health check – verify DroneLog API key without uploading a file
+  if (req.method === "GET") {
+    try {
+      const dronelogKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
+      if (!dronelogKey) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "DRONELOG_AVISAFE_KEY not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const res = await fetch("https://dronelogapi.com/api/v1/fields", {
+        headers: { Authorization: `Bearer ${dronelogKey}` },
+      });
+      const body = await res.text();
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ ok: false, status: res.status, error: body.substring(0, 500) }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      let data;
+      try { data = JSON.parse(body); } catch { data = body.substring(0, 500); }
+      return new Response(
+        JSON.stringify({ ok: true, fields: typeof data === "object" && data.result ? data.result : data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (err) {
+      return new Response(
+        JSON.stringify({ ok: false, error: String(err) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   try {
     // Auth check
     const authHeader = req.headers.get("Authorization");
