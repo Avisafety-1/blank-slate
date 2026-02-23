@@ -1,0 +1,553 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useTerminology } from "@/hooks/useTerminology";
+import { format } from "date-fns";
+
+interface DroneLogResult {
+  positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }>;
+  durationMinutes: number;
+  durationMs: number;
+  maxSpeed: number;
+  minBattery: number;
+  batteryReadings: number[];
+  startPosition: { lat: number; lng: number } | null;
+  endPosition: { lat: number; lng: number } | null;
+  totalRows: number;
+  sampledPositions: number;
+  warnings: Array<{ type: string; message: string; value?: number }>;
+}
+
+interface MatchedFlightLog {
+  id: string;
+  flight_date: string;
+  flight_duration_minutes: number;
+  drone_id: string | null;
+  departure_location: string;
+  landing_location: string;
+  mission_id: string | null;
+  missions?: { tittel: string } | null;
+}
+
+interface Drone {
+  id: string;
+  modell: string;
+  serienummer: string;
+}
+
+interface UploadDroneLogDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
+  const { t } = useTranslation();
+  const { user, companyId } = useAuth();
+  const terminology = useTerminology();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [step, setStep] = useState<'upload' | 'result' | 'confirm'>('upload');
+  const [file, setFile] = useState<File | null>(null);
+  const [selectedDroneId, setSelectedDroneId] = useState("");
+  const [drones, setDrones] = useState<Drone[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [result, setResult] = useState<DroneLogResult | null>(null);
+  const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open && companyId) {
+      fetchDrones();
+      setStep('upload');
+      setFile(null);
+      setResult(null);
+      setMatchedLog(null);
+      setSelectedDroneId("");
+    }
+  }, [open, companyId]);
+
+  const fetchDrones = async () => {
+    const { data } = await supabase
+      .from("drones")
+      .select("id, modell, serienummer")
+      .eq("aktiv", true)
+      .order("modell");
+    if (data) setDrones(data);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      const validTypes = ['.txt', '.zip'];
+      const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
+      if (!validTypes.includes(ext)) {
+        toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
+        return;
+      }
+      setFile(f);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) return;
+
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error(t('errors.generic'));
+        return;
+      }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/process-dronelog`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || err.details || 'Upload failed');
+      }
+
+      const data: DroneLogResult = await response.json();
+      setResult(data);
+
+      // Try to match existing flight logs
+      await findMatchingFlightLog(data);
+
+      setStep('result');
+    } catch (error: any) {
+      console.error('DroneLog upload error:', error);
+      toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const findMatchingFlightLog = async (data: DroneLogResult) => {
+    if (!companyId) return;
+
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    let query = supabase
+      .from('flight_logs')
+      .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel)')
+      .eq('company_id', companyId)
+      .gte('flight_date', weekAgo.toISOString().split('T')[0])
+      .order('flight_date', { ascending: false });
+
+    if (selectedDroneId) {
+      query = query.eq('drone_id', selectedDroneId);
+    }
+
+    const { data: logs } = await query;
+    if (!logs || logs.length === 0) return;
+
+    // Find a log where duration is within 20% of the uploaded log
+    for (const log of logs) {
+      const diff = Math.abs(log.flight_duration_minutes - data.durationMinutes);
+      const threshold = data.durationMinutes * 0.2;
+      if (diff <= Math.max(threshold, 2)) {
+        setMatchedLog(log as any);
+        return;
+      }
+    }
+  };
+
+  const handleUpdateExisting = async () => {
+    if (!result || !matchedLog || !companyId || !user) return;
+    setIsSubmitting(true);
+
+    try {
+      // Update flight log with flight_track data
+      const flightTrack = result.positions.map(p => ({
+        lat: p.lat,
+        lng: p.lng,
+        alt: p.alt,
+        timestamp: p.timestamp,
+      }));
+
+      await supabase
+        .from('flight_logs')
+        .update({
+          flight_track: flightTrack as any,
+          flight_duration_minutes: result.durationMinutes,
+        })
+        .eq('id', matchedLog.id);
+
+      // Update drone flight hours if drone selected
+      if (selectedDroneId) {
+        await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
+      }
+
+      // Handle warnings (set drone status to yellow, add log entry)
+      if (result.warnings.length > 0 && selectedDroneId) {
+        await handleWarnings(selectedDroneId, result.warnings);
+      }
+
+      // Update mission route if linked
+      if (matchedLog.mission_id && result.positions.length > 0) {
+        await updateMissionRoute(matchedLog.mission_id, result.positions);
+      }
+
+      toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Update error:', error);
+      toast.error(t('dronelog.updateError', 'Kunne ikke oppdatere flyloggen'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateNew = async () => {
+    if (!result || !companyId || !user) return;
+    setIsSubmitting(true);
+
+    try {
+      const flightTrack = result.positions.map(p => ({
+        lat: p.lat,
+        lng: p.lng,
+        alt: p.alt,
+        timestamp: p.timestamp,
+      }));
+
+      // Create a new mission
+      const { data: mission, error: missionError } = await supabase
+        .from('missions')
+        .insert({
+          company_id: companyId,
+          user_id: user.id,
+          tittel: `DJI-flylogg ${format(new Date(), 'dd.MM.yyyy HH:mm')}`,
+          lokasjon: result.startPosition
+            ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}`
+            : 'Ukjent',
+          tidspunkt: new Date().toISOString(),
+          status: 'Fullført',
+          risk_level: 'Lav',
+          beskrivelse: `Importert fra DJI flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
+        })
+        .select('id')
+        .single();
+
+      if (missionError) throw missionError;
+
+      // Update mission route
+      if (mission && result.positions.length > 0) {
+        await updateMissionRoute(mission.id, result.positions);
+      }
+
+      // Link drone to mission
+      if (mission && selectedDroneId) {
+        await supabase.from('mission_drones').insert({
+          mission_id: mission.id,
+          drone_id: selectedDroneId,
+        });
+      }
+
+      // Create flight log
+      const { error: logError } = await supabase.from('flight_logs').insert({
+        company_id: companyId,
+        user_id: user.id,
+        drone_id: selectedDroneId || null,
+        mission_id: mission?.id || null,
+        flight_date: new Date().toISOString().split('T')[0],
+        flight_duration_minutes: result.durationMinutes,
+        departure_location: result.startPosition
+          ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}`
+          : 'Ukjent',
+        landing_location: result.endPosition
+          ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}`
+          : 'Ukjent',
+        movements: 1,
+        flight_track: flightTrack as any,
+        notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery}%`,
+      });
+
+      if (logError) throw logError;
+
+      // Update drone flight hours
+      if (selectedDroneId) {
+        await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
+      }
+
+      // Handle warnings
+      if (result.warnings.length > 0 && selectedDroneId) {
+        await handleWarnings(selectedDroneId, result.warnings);
+      }
+
+      toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Create error:', error);
+      toast.error(t('dronelog.createError', 'Kunne ikke opprette oppdrag'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateDroneFlightHours = async (droneId: string, minutes: number) => {
+    const { data: drone } = await supabase
+      .from('drones')
+      .select('flyvetimer')
+      .eq('id', droneId)
+      .single();
+
+    if (drone) {
+      const hoursToAdd = minutes / 60;
+      await supabase
+        .from('drones')
+        .update({ flyvetimer: drone.flyvetimer + hoursToAdd })
+        .eq('id', droneId);
+    }
+  };
+
+  const updateMissionRoute = async (
+    missionId: string,
+    positions: Array<{ lat: number; lng: number }>
+  ) => {
+    const route = positions.map((p) => [p.lat, p.lng]);
+    await supabase
+      .from('missions')
+      .update({ route: route as any })
+      .eq('id', missionId);
+  };
+
+  const handleWarnings = async (
+    droneId: string,
+    warnings: Array<{ type: string; message: string; value?: number }>
+  ) => {
+    if (!companyId || !user) return;
+
+    // Set drone status to yellow
+    await supabase
+      .from('drones')
+      .update({ status: 'Gul' })
+      .eq('id', droneId);
+
+    // Add log entries for each warning
+    for (const warning of warnings) {
+      await supabase.from('drone_log_entries').insert({
+        company_id: companyId,
+        user_id: user.id,
+        drone_id: droneId,
+        entry_date: new Date().toISOString().split('T')[0],
+        entry_type: 'Advarsel',
+        title: warning.type === 'low_battery'
+          ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur')
+          : t('dronelog.warningAltitude', 'Uventet høydeendring registrert'),
+        description: warning.message,
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5" />
+            {t('dronelog.title', 'Last opp DJI-flylogg')}
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === 'upload' && (
+          <div className="space-y-4">
+            {/* File selection */}
+            <div className="space-y-2">
+              <Label>{t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
+              <div
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {file ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-medium">{file.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({(file.size / 1024).toFixed(0)} KB)
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {t('dronelog.dropOrClick', 'Klikk for å velge fil (TXT eller ZIP)')}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.zip"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+
+            {/* Drone selection */}
+            <div className="space-y-2">
+              <Label>{terminology.vehicle}</Label>
+              <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={terminology.selectVehicle} />
+                </SelectTrigger>
+                <SelectContent>
+                  {drones.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.modell} ({d.serienummer})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                {t('actions.cancel')}
+              </Button>
+              <Button onClick={handleUpload} disabled={!file || isProcessing}>
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('common.processing')}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {t('dronelog.process', 'Behandle flylogg')}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 'result' && result && (
+          <div className="space-y-4">
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  {t('dronelog.flightDuration', 'Flytid')}
+                </div>
+                <p className="font-semibold">{result.durationMinutes} min</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Zap className="w-3 h-3" />
+                  {t('dronelog.maxSpeed', 'Maks hastighet')}
+                </div>
+                <p className="font-semibold">{result.maxSpeed} m/s</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Battery className="w-3 h-3" />
+                  {t('dronelog.minBattery', 'Min. batteri')}
+                </div>
+                <p className={`font-semibold ${result.minBattery < 20 ? 'text-destructive' : ''}`}>
+                  {result.minBattery}%
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="w-3 h-3" />
+                  {t('dronelog.dataPoints', 'Datapunkter')}
+                </div>
+                <p className="font-semibold">{result.totalRows}</p>
+              </div>
+            </div>
+
+            {/* Warnings */}
+            {result.warnings.length > 0 && (
+              <div className="space-y-2">
+                {result.warnings.map((w, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                        {w.type === 'low_battery'
+                          ? t('dronelog.warningLowBattery', 'Lavt batterinivå')
+                          : t('dronelog.warningAltitude', 'Uventet høydeendring')}
+                      </p>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-400">{w.message}</p>
+                    </div>
+                  </div>
+                ))}
+                {selectedDroneId && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('dronelog.warningDroneStatus', 'Dronens status settes til gul. Du kan kvittere ut advarselen i dronekortet.')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Match info */}
+            {matchedLog ? (
+              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                      {t('dronelog.matchFound', 'Eksisterende flylogg funnet!')}
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-400">
+                      {matchedLog.flight_date} — {matchedLog.flight_duration_minutes} min
+                      {matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  {t('dronelog.noMatch', 'Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag.')}
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => { setStep('upload'); setResult(null); setMatchedLog(null); }}>
+                {t('actions.back')}
+              </Button>
+              {matchedLog ? (
+                <Button onClick={handleUpdateExisting} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {t('dronelog.updateExisting', 'Oppdater flylogg')}
+                </Button>
+              ) : (
+                <Button onClick={handleCreateNew} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {t('dronelog.createMission', 'Opprett nytt oppdrag')}
+                </Button>
+              )}
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

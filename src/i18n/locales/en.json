@@ -615,5 +615,31 @@
     "flightHours": "Flight hours",
     "lastInspection": "Last inspection",
     "nextInspection": "Next inspection"
+  },
+  "dronelog": {
+    "title": "Upload DJI flight log",
+    "logOrUpload": "Log flight time / Upload flight log",
+    "logManually": "Log flight time manually",
+    "uploadDjiLog": "Upload DJI flight log",
+    "selectFile": "Select flight log file",
+    "dropOrClick": "Click to select file (TXT or ZIP)",
+    "invalidFileType": "Invalid file type. Use TXT or ZIP (DJI format).",
+    "process": "Process flight log",
+    "uploadError": "Could not process flight log: ",
+    "flightDuration": "Flight duration",
+    "maxSpeed": "Max speed",
+    "minBattery": "Min. battery",
+    "dataPoints": "Data points",
+    "warningLowBattery": "Low battery level during flight",
+    "warningAltitude": "Unexpected altitude change detected",
+    "warningDroneStatus": "Drone status will be set to yellow. You can acknowledge the warning in the drone card.",
+    "matchFound": "Existing flight log found!",
+    "noMatch": "No existing flight log matches. You can create a new mission.",
+    "updateExisting": "Update flight log",
+    "createMission": "Create new mission",
+    "logUpdated": "Flight log updated with DJI data!",
+    "updateError": "Could not update flight log",
+    "missionCreated": "New mission created from DJI flight log!",
+    "createError": "Could not create mission"
   }
 }

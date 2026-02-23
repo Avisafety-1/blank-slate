@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.drone-regulations-ai]
 verify_jwt = true
+
+[functions.process-dronelog]
+verify_jwt = false
