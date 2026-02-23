@@ -492,7 +492,7 @@ const Admin = () => {
               <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.customers')}</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className={`flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors ${!isSuperAdmin ? 'col-span-2' : ''}`}>
+            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
