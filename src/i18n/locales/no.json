@@ -615,5 +615,31 @@
     "flightHours": "Flyvetimer",
     "lastInspection": "Siste inspeksjon",
     "nextInspection": "Neste inspeksjon"
+  },
+  "dronelog": {
+    "title": "Last opp DJI-flylogg",
+    "logOrUpload": "Logg flytid / Last opp flylogg",
+    "logManually": "Logg flytid manuelt",
+    "uploadDjiLog": "Last opp DJI-flylogg",
+    "selectFile": "Velg flylogg-fil",
+    "dropOrClick": "Klikk for å velge fil (TXT eller ZIP)",
+    "invalidFileType": "Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).",
+    "process": "Behandle flylogg",
+    "uploadError": "Kunne ikke behandle flyloggen: ",
+    "flightDuration": "Flytid",
+    "maxSpeed": "Maks hastighet",
+    "minBattery": "Min. batteri",
+    "dataPoints": "Datapunkter",
+    "warningLowBattery": "Lavt batterinivå under flytur",
+    "warningAltitude": "Uventet høydeendring registrert",
+    "warningDroneStatus": "Dronens status settes til gul. Du kan kvittere ut advarselen i dronekortet.",
+    "matchFound": "Eksisterende flylogg funnet!",
+    "noMatch": "Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag.",
+    "updateExisting": "Oppdater flylogg",
+    "createMission": "Opprett nytt oppdrag",
+    "logUpdated": "Flylogg oppdatert med DJI-data!",
+    "updateError": "Kunne ikke oppdatere flyloggen",
+    "missionCreated": "Nytt oppdrag opprettet fra DJI-flylogg!",
+    "createError": "Kunne ikke opprette oppdrag"
   }
 }

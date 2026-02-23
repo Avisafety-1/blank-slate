@@ -9,8 +9,10 @@ import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
 import { ActiveFlightsSection } from "@/components/dashboard/ActiveFlightsSection";
-import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle } from "lucide-react";
+import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, ChevronDown } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
+import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -47,11 +49,12 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved } = useAuth();
+  const { user, loading, isApproved, companyName } = useAuth();
   const navigate = useNavigate();
   const dashboardRealtime = useDashboardRealtime();
   const [layout, setLayout] = useState(defaultLayout);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
+  const [uploadDroneLogOpen, setUploadDroneLogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   const [pendingFlightData, setPendingFlightData] = useState<{
@@ -313,14 +316,37 @@ const Index = () => {
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           {/* Mobile-only flight buttons */}
           <div className="flex flex-col gap-2 mb-3 lg:hidden">
-            <Button 
-              onClick={() => setLogFlightDialogOpen(true)}
-              className="w-full gap-2"
-              variant="secondary"
-            >
-              <Clock className="w-4 h-4" />
-              {t('actions.logFlightTime')}
-            </Button>
+            {/* Mobile-only: log flight / upload dropdown */}
+            {companyName?.toLowerCase().includes('avisafe') ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="w-full gap-2" variant="secondary">
+                    <Clock className="w-4 h-4" />
+                    {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
+                    <ChevronDown className="w-4 h-4 ml-auto" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)}>
+                    <Clock className="w-4 h-4 mr-2" />
+                    {t('dronelog.logManually', 'Logg flytid manuelt')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {t('dronelog.uploadDjiLog', 'Last opp DJI-flylogg')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                onClick={() => setLogFlightDialogOpen(true)}
+                className="w-full gap-2"
+                variant="secondary"
+              >
+                <Clock className="w-4 h-4" />
+                {t('actions.logFlightTime')}
+              </Button>
+            )}
             
             {/* Active flight timer indicator */}
             {isActive && (
@@ -441,14 +467,36 @@ const Index = () => {
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
                     <div className="flex flex-col gap-2">
-                      <Button 
-                        onClick={() => setLogFlightDialogOpen(true)}
-                        className="w-full gap-2 hidden lg:flex"
-                        variant="secondary"
-                      >
-                        <Clock className="w-4 h-4" />
-                        {t('actions.logFlightTime')}
-                      </Button>
+                      {companyName?.toLowerCase().includes('avisafe') ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button className="w-full gap-2 hidden lg:flex" variant="secondary">
+                              <Clock className="w-4 h-4" />
+                              {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
+                              <ChevronDown className="w-4 h-4 ml-auto" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)}>
+                              <Clock className="w-4 h-4 mr-2" />
+                              {t('dronelog.logManually', 'Logg flytid manuelt')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)}>
+                              <Upload className="w-4 h-4 mr-2" />
+                              {t('dronelog.uploadDjiLog', 'Last opp DJI-flylogg')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <Button 
+                          onClick={() => setLogFlightDialogOpen(true)}
+                          className="w-full gap-2 hidden lg:flex"
+                          variant="secondary"
+                        >
+                          <Clock className="w-4 h-4" />
+                          {t('actions.logFlightTime')}
+                        </Button>
+                      )}
                       
                       {/* Active flight timer indicator - Desktop */}
                       {isActive && (
@@ -573,6 +621,12 @@ const Index = () => {
           setPendingFlightData(null);
           toast.info(t('flight.flightEndedWithoutLog', 'Flytur avsluttet uten logging'));
         }}
+      />
+
+      {/* Upload DJI DroneLog Dialog */}
+      <UploadDroneLogDialog
+        open={uploadDroneLogOpen}
+        onOpenChange={setUploadDroneLogOpen}
       />
 
       {/* Start Flight Dialog */}
