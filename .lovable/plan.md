@@ -1,31 +1,23 @@
 
 
-# Legg til helsesjekk for DroneLog API
+# Oppdater DroneLog API-nøkkel og test tilkobling
 
-## Problem
-Vi kan ikke teste om DroneLog API-nøkkelen fungerer uten å laste opp en faktisk DJI-flylogg. Vi trenger en enkel helsesjekk.
+## Trinn
 
-## Losning
-Legge til stotte for GET-foresporsler i `process-dronelog`-funksjonen som en helsesjekk. Denne kaller DroneLog sitt `GET /api/v1/fields`-endepunkt for a verifisere at API-nokkelen er gyldig og API-et svarer.
+1. **Oppdater secret** -- Erstatt `DRONELOG_AVISAFE_KEY` med den nye nøkkelen `Lu6aSSEH...Gjn8H`.
 
-### Endring i `supabase/functions/process-dronelog/index.ts`
+2. **Kjør helsesjekk** -- Send en GET-forespørsel til `process-dronelog` edge-funksjonen for å verifisere at den nye nøkkelen autoriseres mot DroneLog API.
 
-Legg til en GET-handler for linje 12 (etter OPTIONS-sjekken):
+3. **Evaluer resultat**
+   - Hvis vi får JSON tilbake med feltlisten: nøkkelen fungerer.
+   - Hvis vi fortsatt får HTML: nøkkelen er ugyldig eller DroneLog API har et annet problem.
 
-```text
-Hvis req.method === "GET":
-  1. Hent DRONELOG_AVISAFE_KEY fra secrets
-  2. Kall GET https://dronelogapi.com/api/v1/fields med Bearer-token
-  3. Returner { ok: true, fields: [...] } ved suksess
-  4. Returner { ok: false, error: "..." } ved feil
-```
+### Tekniske detaljer
 
-Ingen auth-sjekk pa GET (helsesjekk), slik at vi kan teste direkte med curl-verktøyet.
+| Steg | Verktøy | Detaljer |
+|------|---------|---------|
+| Oppdater secret | `add_secret` | `DRONELOG_AVISAFE_KEY` = ny nøkkel |
+| Test tilkobling | `curl_edge_functions` | `GET /process-dronelog` |
 
-### Fil som endres
+Ingen kodeendringer er nødvendig -- bare secret-oppdatering og test.
 
-| Fil | Endring |
-|---|---|
-| `supabase/functions/process-dronelog/index.ts` | Legg til GET-handler for helsesjekk mot DroneLog API |
-
-Etter implementering kjorer vi helsesjekken umiddelbart for a verifisere at API-nokkelen fungerer.
