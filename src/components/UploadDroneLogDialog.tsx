@@ -12,6 +12,22 @@ import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { format } from "date-fns";
 
+const parseFlightDate = (raw: string): Date | null => {
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d;
+  const m = raw.match(
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
+  );
+  if (m) {
+    const [, month, day, year, hours, mins, secs, , ampm] = m;
+    let h = parseInt(hours);
+    if (ampm?.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (ampm?.toUpperCase() === 'AM' && h === 12) h = 0;
+    return new Date(`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${String(h).padStart(2,'0')}:${mins}:${secs}Z`);
+  }
+  return null;
+};
+
 // ── Types ──
 
 interface DroneLogResult {
@@ -383,9 +399,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const step = Math.ceil(rawTrack.length / maxPoints);
         flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
       }
-      const flightDate = result.startTime ? new Date(result.startTime) : new Date();
-      const isValidDate = !isNaN(flightDate.getTime());
-      const effectiveDate = isValidDate ? flightDate : new Date();
+      const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
         tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
@@ -637,10 +651,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {result.startTime ? (
                   <p className="text-sm font-medium">
                     {(() => {
-                      try {
-                        const d = new Date(result.startTime!);
-                        return !isNaN(d.getTime()) ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
-                      } catch { return result.startTime; }
+                      const d = parseFlightDate(result.startTime!);
+                      return d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
                     })()}
                   </p>
                 ) : matchedLog ? (

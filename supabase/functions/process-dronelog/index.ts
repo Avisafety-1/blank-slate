@@ -136,6 +136,28 @@ function parseCsvToResult(csvText: string) {
 
   // Determine flight start dateTime — prioritized fallback chain
   let flightStartTime = startTime || "";
+
+  // Normaliser DETAILS.startTime som kan ha format "5/5/2023T11:36:03.86 AMZ"
+  if (flightStartTime) {
+    const testParsed = new Date(flightStartTime.replace(/Z$/, '').replace('T', ' '));
+    if (isNaN(testParsed.getTime())) {
+      const dtMatch = flightStartTime.match(
+        /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
+      );
+      if (dtMatch) {
+        const [, month, day, year, hours, mins, secs, , ampm] = dtMatch;
+        let h = parseInt(hours);
+        if (ampm?.toUpperCase() === 'PM' && h < 12) h += 12;
+        if (ampm?.toUpperCase() === 'AM' && h === 12) h = 0;
+        flightStartTime = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${String(h).padStart(2,'0')}:${mins}:${secs}Z`;
+        console.log("Normalised startTime:", flightStartTime);
+      } else {
+        console.log("Could not parse startTime, clearing for fallback:", flightStartTime);
+        flightStartTime = "";
+      }
+    }
+  }
+
   // Fallback 1: CUSTOM.date [UTC] + CUSTOM.updateTime [UTC]
   if (!flightStartTime && customDateUtc) {
     flightStartTime = customTimeUtc
