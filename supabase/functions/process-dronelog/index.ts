@@ -8,31 +8,32 @@ const corsHeaders = {
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
 
-// Correct field names per DroneLog API /fields endpoint
-const FIELDS = "OSD.latitude,OSD.longitude,OSD.altitude [m],OSD.height [m],OSD.flyTime [ms],OSD.hSpeed [m/s],BATTERY.chargeLevel [%]";
+// Expanded field list including date/time, drone info, battery details, GPS and errors
+const FIELDS = [
+  "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
+  "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
+  "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
+  "CUSTOM.dateTime",
+  "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.droneType",
+  "DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]",
+  "APP.warn",
+].join(",");
 
 /**
- * Find a header index using flexible matching:
- * 1. Exact match
- * 2. Case-insensitive exact match
- * 3. Partial match (header starts with the base field name before any bracket)
+ * Find a header index using flexible matching.
  */
 function findHeaderIndex(headers: string[], target: string): number {
-  // 1. Exact match
   const exact = headers.indexOf(target);
   if (exact !== -1) return exact;
 
-  // 2. Case-insensitive
   const targetLower = target.toLowerCase();
   const ciIdx = headers.findIndex((h) => h.toLowerCase() === targetLower);
   if (ciIdx !== -1) return ciIdx;
 
-  // 3. Partial: extract base name (e.g. "OSD.flyTime" from "OSD.flyTime [ms]")
   const baseName = target.replace(/\s*\[.*\]$/, "").toLowerCase();
   const partialIdx = headers.findIndex((h) => h.toLowerCase().replace(/\s*\[.*\]$/, "") === baseName);
   if (partialIdx !== -1) return partialIdx;
 
-  // 4. Legacy name mapping (old names → new base names)
   const legacyMap: Record<string, string> = {
     "osd.flytimemilliseconds": "osd.flytime",
     "osd.speed": "osd.hspeed",
@@ -47,6 +48,12 @@ function findHeaderIndex(headers: string[], target: string): number {
   return -1;
 }
 
+// Notable flycState values that indicate issues
+const FLYC_WARNING_STATES = new Set([
+  "gohome","autolanding","atti","gps_atti","landing","failsafe",
+  "gohome_avoid","motor_lock","not_enough_force","low_voltage_landing",
+]);
+
 function parseCsvToResult(csvText: string) {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) {
@@ -55,8 +62,8 @@ function parseCsvToResult(csvText: string) {
 
   const headers = lines[0].split(",").map((h) => h.trim());
   console.log("CSV headers received:", JSON.stringify(headers));
-  console.log("First data row:", lines[1]);
 
+  // Core indices
   const latIdx = findHeaderIndex(headers, "OSD.latitude");
   const lonIdx = findHeaderIndex(headers, "OSD.longitude");
   const altIdx = findHeaderIndex(headers, "OSD.altitude [m]");
@@ -65,14 +72,57 @@ function parseCsvToResult(csvText: string) {
   const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
   const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
 
-  console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx, "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx);
+  // New indices
+  const gpsNumIdx = findHeaderIndex(headers, "OSD.gpsNum");
+  const flycStateIdx = findHeaderIndex(headers, "OSD.flycState");
+  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [°C]");
+  const battVoltIdx = findHeaderIndex(headers, "BATTERY.totalVoltage [V]");
+  const battCurrentIdx = findHeaderIndex(headers, "BATTERY.current [A]");
+  const battLoopIdx = findHeaderIndex(headers, "BATTERY.loopNum");
+  const dateTimeIdx = findHeaderIndex(headers, "CUSTOM.dateTime");
+  const appWarnIdx = findHeaderIndex(headers, "APP.warn");
+
+  // DETAILS indices (metadata – same value every row, read from row 1)
+  const detStartTimeIdx = findHeaderIndex(headers, "DETAILS.startTime");
+  const detAircraftNameIdx = findHeaderIndex(headers, "DETAILS.aircraftName");
+  const detAircraftSNIdx = findHeaderIndex(headers, "DETAILS.aircraftSN");
+  const detDroneTypeIdx = findHeaderIndex(headers, "DETAILS.droneType");
+  const detTotalDistIdx = findHeaderIndex(headers, "DETAILS.totalDistance [m]");
+  const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxAltitude [m]");
+  const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHSpeed [m/s]");
+
+  console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
+    "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
+    "flycState:", flycStateIdx, "battTemp:", battTempIdx, "dateTime:", dateTimeIdx);
+
+  // Extract DETAILS metadata from first data row
+  const firstRow = lines[1].split(",").map((c) => c.trim());
+  const startTime = detStartTimeIdx >= 0 ? firstRow[detStartTimeIdx] : "";
+  const aircraftName = detAircraftNameIdx >= 0 ? firstRow[detAircraftNameIdx] : "";
+  const aircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
+  const droneType = detDroneTypeIdx >= 0 ? firstRow[detDroneTypeIdx] : "";
+  const totalDistance = detTotalDistIdx >= 0 ? parseFloat(firstRow[detTotalDistIdx]) : NaN;
+  const detailsMaxAlt = detMaxAltIdx >= 0 ? parseFloat(firstRow[detMaxAltIdx]) : NaN;
+  const detailsMaxSpeed = detMaxHSpeedIdx >= 0 ? parseFloat(firstRow[detMaxHSpeedIdx]) : NaN;
+  const batteryCycles = battLoopIdx >= 0 ? parseInt(firstRow[battLoopIdx]) : NaN;
+
+  // Determine flight start dateTime
+  let flightStartTime = startTime || "";
+  if (!flightStartTime && dateTimeIdx >= 0 && firstRow[dateTimeIdx]) {
+    flightStartTime = firstRow[dateTimeIdx];
+  }
 
   const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
   let maxSpeed = 0;
   let minBattery = 100;
   let maxFlyTimeMs = 0;
+  let maxBattTemp = -999;
+  let minBattVolt = 999;
+  let minGpsSats = 99;
   const batteryReadings: number[] = [];
   const warnings: Array<{ type: string; message: string; value?: number }> = [];
+  const flycStatesSet = new Set<string>();
+  const appWarnings = new Set<string>();
 
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
 
@@ -86,35 +136,60 @@ function parseCsvToResult(csvText: string) {
     const speed = speedIdx >= 0 ? parseFloat(cols[speedIdx]) : NaN;
     const battery = batteryIdx >= 0 ? parseFloat(cols[batteryIdx]) : NaN;
 
+    // New field parsing
+    const gpsSats = gpsNumIdx >= 0 ? parseInt(cols[gpsNumIdx]) : NaN;
+    const battTemp = battTempIdx >= 0 ? parseFloat(cols[battTempIdx]) : NaN;
+    const battVolt = battVoltIdx >= 0 ? parseFloat(cols[battVoltIdx]) : NaN;
+    const flycState = flycStateIdx >= 0 ? cols[flycStateIdx] : "";
+    const appWarn = appWarnIdx >= 0 ? cols[appWarnIdx] : "";
+
     if (!isNaN(speed) && speed > maxSpeed) maxSpeed = speed;
     if (!isNaN(battery)) {
       if (battery < minBattery) minBattery = battery;
       batteryReadings.push(battery);
     }
     if (!isNaN(flyTimeMs) && flyTimeMs > maxFlyTimeMs) maxFlyTimeMs = flyTimeMs;
+    if (!isNaN(battTemp) && battTemp > maxBattTemp) maxBattTemp = battTemp;
+    if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
+    if (!isNaN(gpsSats) && gpsSats < minGpsSats) minGpsSats = gpsSats;
+
+    if (flycState && FLYC_WARNING_STATES.has(flycState.toLowerCase())) {
+      flycStatesSet.add(flycState);
+    }
+    if (appWarn && appWarn.length > 0 && appWarn !== "0" && appWarn.toLowerCase() !== "none") {
+      appWarnings.add(appWarn);
+    }
 
     if ((i - 1) % sampleRate === 0 && !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
-      positions.push({
-        lat,
-        lng: lon,
-        alt: isNaN(alt) ? 0 : alt,
-        height: isNaN(height) ? 0 : height,
-        timestamp: !isNaN(flyTimeMs) ? `PT${Math.round(flyTimeMs / 1000)}S` : `PT${Math.round((i - 1) / 10)}S`,
-      });
+      const ts = dateTimeIdx >= 0 && cols[dateTimeIdx] ? cols[dateTimeIdx] :
+        (!isNaN(flyTimeMs) ? `PT${Math.round(flyTimeMs / 1000)}S` : `PT${Math.round((i - 1) / 10)}S`);
+      positions.push({ lat, lng: lon, alt: isNaN(alt) ? 0 : alt, height: isNaN(height) ? 0 : height, timestamp: ts });
     }
   }
 
   let durationMinutes = Math.round(maxFlyTimeMs / 60000);
-
-  // Fallback: estimate from row count if flyTime column was missing (DJI logs ~10Hz)
   if (maxFlyTimeMs === 0 && lines.length > 10) {
     const estimatedSeconds = (lines.length - 1) / 10;
     durationMinutes = Math.round(estimatedSeconds / 60);
-    console.log("flyTime column empty/missing, estimated duration from row count:", durationMinutes, "min (" + (lines.length - 1) + " rows @ 10Hz)");
+    console.log("flyTime column empty/missing, estimated duration from row count:", durationMinutes, "min");
   }
 
+  // ── Generate warnings ──
   if (minBattery < 20) {
     warnings.push({ type: "low_battery", message: `Batterinivå gikk ned til ${minBattery}%`, value: minBattery });
+  }
+  if (maxBattTemp > 50) {
+    warnings.push({ type: "high_battery_temp", message: `Batteritemperatur nådde ${maxBattTemp.toFixed(1)}°C`, value: maxBattTemp });
+  }
+  if (minGpsSats < 6 && minGpsSats >= 0) {
+    warnings.push({ type: "low_gps", message: `Lavt antall GPS-satellitter: ${minGpsSats}`, value: minGpsSats });
+  }
+  if (flycStatesSet.size > 0) {
+    warnings.push({ type: "flyc_state", message: `Flygkontrolltilstander: ${Array.from(flycStatesSet).join(", ")}` });
+  }
+  if (appWarnings.size > 0) {
+    const warnList = Array.from(appWarnings).slice(0, 5);
+    warnings.push({ type: "app_warning", message: `App-advarsler: ${warnList.join("; ")}` });
   }
 
   for (let i = 1; i < positions.length; i++) {
@@ -142,8 +217,22 @@ function parseCsvToResult(csvText: string) {
     totalRows: lines.length - 1,
     sampledPositions: positions.length,
     warnings,
+    // New fields
+    startTime: flightStartTime || null,
+    aircraftName: aircraftName || null,
+    aircraftSN: aircraftSN || null,
+    droneType: droneType || null,
+    totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
+    maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
+    detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
+    batteryTemperature: maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null,
+    batteryMinVoltage: minBattVolt < 999 ? Math.round(minBattVolt * 100) / 100 : null,
+    batteryCycles: !isNaN(batteryCycles) ? batteryCycles : null,
+    minGpsSatellites: minGpsSats < 99 ? minGpsSats : null,
   };
 }
+
+// ── HTTP handler ──
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -197,7 +286,6 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { action } = body;
 
-      // DJI Login
       if (action === "dji-login") {
         const { email, password } = body;
         if (!email || !password) {
@@ -209,7 +297,6 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
-        console.log("DJI login response status:", res.status, "body:", JSON.stringify(data));
         if (!res.ok) {
           const errMsg = res.status === 500
             ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
@@ -219,7 +306,6 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // DJI List Logs
       if (action === "dji-list-logs") {
         const { accountId, page = 1, limit = 20 } = body;
         if (!accountId) {
@@ -235,7 +321,6 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // DJI Process Log by URL
       if (action === "dji-process-log") {
         const { url } = body;
         if (!url) {
@@ -258,20 +343,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── File upload (existing functionality) ──
+    // ── File upload ──
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) {
       return new Response(JSON.stringify({ error: "No file provided" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Read file into bytes for manual multipart construction
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const fileName = file.name || "flight.txt";
     const boundary = "----DronLogBoundary" + Date.now();
     const fieldList = FIELDS.split(",").map(f => f.trim());
 
-    // Build multipart body manually to ensure fields[] works with Laravel
     const parts: string[] = [];
     for (const field of fieldList) {
       parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
@@ -287,7 +370,7 @@ Deno.serve(async (req) => {
     uploadBody.set(fileBytes, prefixBytes.length);
     uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
 
-    console.log("Upload: manual multipart, fields:", fieldList, "file:", fileName, "size:", fileBytes.length);
+    console.log("Upload: manual multipart, fields:", fieldList.length, "file:", fileName, "size:", fileBytes.length);
 
     const dronelogResponse = await fetch(`${DRONELOG_BASE}/logs/upload`, {
       method: "POST",
