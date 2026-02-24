@@ -1,30 +1,36 @@
 
 
-# Fix: Feil kolonnenavn ved opprettelse av oppdrag fra DJI-logg
+# Implementer: Kart på oppdragskort + nedsampling av flyspor
 
-## Problem
+## Endringer i `src/components/UploadDroneLogDialog.tsx`
 
-I `handleCreateNew` (linje 323 i `UploadDroneLogDialog.tsx`) brukes feil kolonnenavn:
+### 1. Nedsampling av flyspor (linje 315)
 
+Erstatt:
 ```typescript
-risk_level: 'Lav'  // FEIL — kolonnen heter risk_nivå
+const flightTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
 ```
 
-Supabase avviser insert-spørringen fordi `risk_level` ikke finnes i `missions`-tabellen. Det korrekte kolonnenavnet er `risk_nivå`.
-
-## Løsning
-
-**Fil: `src/components/UploadDroneLogDialog.tsx`**, linje 323:
-
-Endre `risk_level` til `risk_nivå`:
-
+Med:
 ```typescript
-// Fra:
-tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_level: 'Lav',
-
-// Til:
-tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
+const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+const maxPoints = 200;
+let flightTrack = rawTrack;
+if (rawTrack.length > maxPoints) {
+  const step = Math.ceil(rawTrack.length / maxPoints);
+  flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
+}
 ```
 
-En enkelt-tegn endring som fikser hele problemet.
+### 2. Legg til latitude/longitude i missions-insert (linje 319-325)
+
+Legg til to nye felter i insert-objektet, etter `beskrivelse`-linjen:
+```typescript
+latitude: result.startPosition?.lat ?? null,
+longitude: result.startPosition?.lng ?? null,
+```
+
+Dette gjør at:
+- Flyspor begrenses til maks ~200 punkter (ned fra 2000+)
+- Kartet vises på oppdragskortet fordi `latitude`/`longitude` nå settes fra DJI-loggens startposisjon
 
