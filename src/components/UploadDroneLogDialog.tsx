@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { format } from "date-fns";
@@ -30,6 +30,7 @@ interface DroneLogResult {
   startTime: string | null;
   aircraftName: string | null;
   aircraftSN: string | null;
+  aircraftSerial: string | null;
   droneType: string | null;
   totalDistance: number | null;
   maxAltitude: number | null;
@@ -38,6 +39,15 @@ interface DroneLogResult {
   batteryMinVoltage: number | null;
   batteryCycles: number | null;
   minGpsSatellites: number | null;
+  // New battery & performance fields
+  batterySN: string | null;
+  batteryHealth: number | null;
+  batteryFullCapacity: number | null;
+  batteryCurrentCapacity: number | null;
+  batteryStatus: string | null;
+  maxDistance: number | null;
+  maxVSpeed: number | null;
+  totalTimeSeconds: number | null;
 }
 
 interface MatchedFlightLog {
@@ -186,8 +196,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       const data: DroneLogResult = await response.json();
-      console.log('[DroneLog] startTime from API:', data.startTime, '| durationMinutes:', data.durationMinutes);
+      console.log('[DroneLog] startTime from API:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
+      // Auto-match drone by serial number
+      if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
+        const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
+        if (match) {
+          setSelectedDroneId(match.id);
+          toast.info(`Drone matchet automatisk: ${match.modell}`);
+        }
+      }
       await findMatchingFlightLog(data);
       setStep('result');
     } catch (error: any) {
@@ -241,8 +260,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsProcessing(true);
     try {
       const data: DroneLogResult = await callDronelogAction("dji-process-log", { url: log.url || log.id });
-      console.log('[DroneLog] DJI startTime:', data.startTime, '| durationMinutes:', data.durationMinutes);
+      console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
+      // Auto-match drone by serial number
+      if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
+        const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
+        if (match) {
+          setSelectedDroneId(match.id);
+          toast.info(`Drone matchet automatisk: ${match.modell}`);
+        }
+      }
       await findMatchingFlightLog(data);
       setStep('result');
     } catch (error: any) {
@@ -607,14 +635,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             {(result.startTime || result.aircraftName || result.droneType || matchedLog) && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
                 {result.startTime ? (
-                  <p className="text-sm font-medium">{result.startTime}</p>
+                  <p className="text-sm font-medium">
+                    {(() => {
+                      try {
+                        const d = new Date(result.startTime!);
+                        return !isNaN(d.getTime()) ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
+                      } catch { return result.startTime; }
+                    })()}
+                  </p>
                 ) : matchedLog ? (
                   <p className="text-sm font-medium">{matchedLog.flight_date}</p>
                 ) : null}
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                   {result.aircraftName && <span>{result.aircraftName}</span>}
                   {result.droneType && <span>{result.droneType}</span>}
-                  {result.aircraftSN && <span>SN: {result.aircraftSN}</span>}
+                  {(result.aircraftSN || result.aircraftSerial) && <span>SN: {result.aircraftSN || result.aircraftSerial}</span>}
+                  {result.batterySN && <span>Batteri SN: {result.batterySN}</span>}
                 </div>
               </div>
             )}
@@ -678,6 +714,33 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground"><Info className="w-3 h-3" />Ladesykluser</div>
                     <p className="text-sm font-medium">{result.batteryCycles}</p>
+                  </div>
+                )}
+                {result.batteryHealth != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Heart className="w-3 h-3" />Batterihelse</div>
+                    <p className={`text-sm font-medium ${result.batteryHealth < 70 ? 'text-destructive' : ''}`}>{result.batteryHealth}%</p>
+                  </div>
+                )}
+                {(result.batteryCurrentCapacity != null || result.batteryFullCapacity != null) && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />Kapasitet</div>
+                    <p className="text-sm font-medium">
+                      {result.batteryCurrentCapacity != null ? `${result.batteryCurrentCapacity}` : '?'}
+                      {result.batteryFullCapacity != null ? ` / ${result.batteryFullCapacity} mAh` : ' mAh'}
+                    </p>
+                  </div>
+                )}
+                {result.maxDistance != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Ruler className="w-3 h-3" />Maks avstand</div>
+                    <p className="text-sm font-medium">{result.maxDistance >= 1000 ? `${(result.maxDistance / 1000).toFixed(1)} km` : `${result.maxDistance} m`}</p>
+                  </div>
+                )}
+                {result.maxVSpeed != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Mountain className="w-3 h-3" />Maks V-fart</div>
+                    <p className="text-sm font-medium">{result.maxVSpeed} m/s</p>
                   </div>
                 )}
               </div>
