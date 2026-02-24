@@ -1,123 +1,74 @@
 
 
-# Fix: Feil dato og matching-logikk ved DJI-import
+# Fix: Bruk CUSTOM.date og CUSTOM.updateTime for korrekt dato/tid
 
 ## Analyse
 
-To separate problemer identifisert:
+Nåværende edge-funksjon bruker `DETAILS.startTime` som primærkilde for dato, med `CUSTOM.dateTime` som fallback. Problemet er at `DETAILS.startTime` ofte er tom i mange DJI-logger, og `CUSTOM.dateTime` kan også mangle eller ha uventet format.
 
-### Problem 1: Feil dato (viser dagens dato)
-
-I `findMatchingFlightLog` (linje 257):
-```typescript
-if (!companyId || !data.startTime) return;
-```
-
-Hvis `DETAILS.startTime` fra DroneLog API er tom/null, avbrytes matching umiddelbart. I `handleCreateNew` (linje 322):
-```typescript
-const flightDate = result.startTime ? new Date(result.startTime) : new Date();
-```
-
-Fallback til `new Date()` gir dagens dato. DJI-loggen inneholder sannsynligvis dato i `CUSTOM.dateTime`-feltet per rad, men edge-funksjonen bruker bare dette som fallback for `startTime`-variabelen. Hvis begge er tomme, har vi ingen dato.
-
-### Problem 2: Matching fungerer ikke ved re-import
-
-`findMatchingFlightLog` sjekker bare `missions.tidspunkt` innenfor 60-minuttersvinduet. Den burde OGSÅ matche direkte mot eksisterende `flight_logs` basert på:
-- Samme dato
-- Samme drone
-- Lignende varighet
-
-Dessuten: Hvis startTime er null, avbrytes matchingen fullstendig (linje 257).
-
-### Bonus: handleUpdateExisting mangler nedsampling
-
-`handleUpdateExisting` (linje 296) bruker fortsatt alle posisjonspunkter uten nedsampling.
-
----
+De nye feltene du fant gir bedre alternativer:
+- `CUSTOM.date [UTC]` — ren dato i UTC
+- `CUSTOM.updateTime [UTC]` — tidspunkt i UTC
+- `DETAILS.aircraftSerial` — kan være et alternativt felt for serienummer
 
 ## Plan
 
-### Fil: `src/components/UploadDroneLogDialog.tsx`
+### Fil: `supabase/functions/process-dronelog/index.ts`
 
-**1. Legg til client-side logging av startTime (for debugging)**
+**1. Utvid FIELDS-listen (linje 12-20)**
 
-Etter `setResult(data)` i både `handleUpload` og `handleSelectDjiLog`, logg `data.startTime` til konsollen.
+Legg til disse nye feltene:
+```
+CUSTOM.date [UTC]
+CUSTOM.updateTime [UTC]
+```
 
-**2. Forbedre `findMatchingFlightLog` (linje 256-290)**
+**2. Parse de nye feltene (linje 82-83 området)**
 
-- Fjern early return på null startTime
-- Beregn dato fra startTime ELLER bruk posisjonenes timestamps
-- Match direkte mot `flight_logs` basert på dato + drone, uten å kreve missions.tidspunkt
-- Behold 60-min tidsvindu som bonus-matching, men fall tilbake til dato-matching
+Legg til indekser for:
+- `CUSTOM.date [UTC]`
+- `CUSTOM.updateTime [UTC]`
+
+**3. Forbedre startTime-beregningen (linje 109-113)**
+
+Endre fallback-rekkefølgen:
+```
+1. DETAILS.startTime (eksisterende)
+2. CUSTOM.date [UTC] + CUSTOM.updateTime [UTC] (kombinert til ISO-streng)
+3. CUSTOM.dateTime (eksisterende fallback)
+4. Første rad sin CUSTOM.date [UTC] alene (bare dato, uten klokkeslett)
+```
 
 Ny logikk:
 ```typescript
-const findMatchingFlightLog = async (data: DroneLogResult) => {
-  if (!companyId) return;
-  
-  // Bestem dato: fra startTime, eller fra positions-timestamps, eller i dag
-  let flightDate: Date | null = null;
-  if (data.startTime) {
-    const d = new Date(data.startTime);
-    if (!isNaN(d.getTime())) flightDate = d;
+let flightStartTime = startTime || "";
+
+// Fallback 1: Kombiner CUSTOM.date [UTC] og CUSTOM.updateTime [UTC]
+if (!flightStartTime && customDateUtc) {
+  if (customTimeUtc) {
+    flightStartTime = `${customDateUtc}T${customTimeUtc}Z`;
+  } else {
+    flightStartTime = `${customDateUtc}T00:00:00Z`;
   }
-  
-  const dateStr = flightDate 
-    ? flightDate.toISOString().split('T')[0] 
-    : new Date().toISOString().split('T')[0];
+}
 
-  let query = supabase
-    .from('flight_logs')
-    .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel, tidspunkt)')
-    .eq('company_id', companyId)
-    .eq('flight_date', dateStr)
-    .order('flight_date', { ascending: false });
-  if (selectedDroneId) query = query.eq('drone_id', selectedDroneId);
-
-  const { data: logs } = await query;
-  if (!logs || logs.length === 0) return;
-
-  // 1. Prøv tidsmatch (60 min vindu) hvis vi har startTime
-  if (flightDate) {
-    for (const log of logs) {
-      const missionTime = (log as any).missions?.tidspunkt;
-      if (missionTime) {
-        const missionDate = new Date(missionTime);
-        const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
-        if (diffMs <= 60 * 60 * 1000) {
-          setMatchedLog(log as any);
-          return;
-        }
-      }
-    }
-  }
-
-  // 2. Match på drone + lignende varighet
-  if (selectedDroneId && data.durationMinutes > 0) {
-    const durationMatch = logs.find(l => 
-      l.drone_id === selectedDroneId && 
-      Math.abs((l.flight_duration_minutes || 0) - data.durationMinutes) <= 2
-    );
-    if (durationMatch) {
-      setMatchedLog(durationMatch as any);
-      return;
-    }
-  }
-
-  // 3. Fallback: kun én logg på datoen
-  if (logs.length === 1) {
-    setMatchedLog(logs[0] as any);
-  }
-};
+// Fallback 2: CUSTOM.dateTime
+if (!flightStartTime && dateTimeIdx >= 0 && firstRow[dateTimeIdx]) {
+  flightStartTime = firstRow[dateTimeIdx];
+}
 ```
 
-**3. Legg til nedsampling i `handleUpdateExisting` (linje 296)**
+**4. Legg til auto-matching av drone basert på serienummer (bonus)**
 
-Erstatt direkte mapping med samme nedsamplings-logikk som i `handleCreateNew`.
+Returner `aircraftSN` som allerede gjøres. Klienten (`UploadDroneLogDialog.tsx`) kan i fremtiden bruke dette til automatisk valg av drone basert på serienummer.
 
-**4. Total: 3 endringer i samme fil**
+### Fil: `supabase/functions/process-dronelog/index.ts` — Oppsummering
 
-- Linje 256-290: Ny matching-logikk
-- Linje 296: Nedsampling i handleUpdateExisting
-- Linje 188-190 og 243-244: Console.log for debugging av startTime
+- Linje 12-20: Legg til `CUSTOM.date [UTC]` og `CUSTOM.updateTime [UTC]` i FIELDS
+- Linje 82-83: Nye findHeaderIndex-kall
+- Linje 98-113: Ekstraher verdiene og forbedre fallback-kjeden for flightStartTime
+
+### Edge function må redeployes
+
+Endringen er i en Supabase Edge Function, så den må deployes på nytt etter endringen.
 
