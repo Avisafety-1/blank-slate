@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -51,7 +54,6 @@ interface DroneLogResult {
   totalRows: number;
   sampledPositions: number;
   warnings: Array<{ type: string; message: string; value?: number }>;
-  // Extended fields
   startTime: string | null;
   endTimeUtc: string | null;
   aircraftName: string | null;
@@ -67,7 +69,6 @@ interface DroneLogResult {
   batteryCycles: number | null;
   minGpsSatellites: number | null;
   maxGpsSatellites: number | null;
-  // Battery & performance fields
   batterySN: string | null;
   batteryHealth: number | null;
   batteryFullCapacity: number | null;
@@ -77,7 +78,6 @@ interface DroneLogResult {
   maxDistance: number | null;
   maxVSpeed: number | null;
   totalTimeSeconds: number | null;
-  // Dedup & events
   sha256Hash: string | null;
   guid: string | null;
   rthTriggered: boolean;
@@ -99,6 +99,19 @@ interface Drone {
   id: string;
   modell: string;
   serienummer: string;
+}
+
+interface Personnel {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+interface EquipmentItem {
+  id: string;
+  navn: string;
+  serienummer: string;
+  type: string;
 }
 
 interface DjiLog {
@@ -164,12 +177,60 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiPage, setDjiPage] = useState(1);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
 
+  // Logbook state
+  const [pilotId, setPilotId] = useState("");
+  const [personnel, setPersonnel] = useState<Personnel[]>([]);
+  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+  const [logToLogbooks, setLogToLogbooks] = useState(true);
+  const [logbookOpen, setLogbookOpen] = useState(true);
+  const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string }>>({});
+
   useEffect(() => {
     if (open && companyId) {
       fetchDrones();
+      fetchPersonnel();
+      fetchEquipment();
       resetState();
     }
   }, [open, companyId]);
+
+  // Auto-set pilot to current user
+  useEffect(() => {
+    if (user && personnel.length > 0 && !pilotId) {
+      const me = personnel.find(p => p.id === user.id);
+      if (me) setPilotId(me.id);
+    }
+  }, [user, personnel]);
+
+  // Initialize warning actions when result changes
+  useEffect(() => {
+    if (result && result.warnings.length > 0) {
+      const initial: Record<number, { saveToLog: boolean; newStatus: string }> = {};
+      result.warnings.forEach((w, i) => {
+        const isSevere = ['low_battery', 'cell_deviation', 'low_battery_health', 'rth'].includes(w.type);
+        initial[i] = { saveToLog: isSevere, newStatus: isSevere ? 'Gul' : 'Grønn' };
+      });
+      setWarningActions(initial);
+    }
+  }, [result]);
+
+  // Pre-select equipment from matched log
+  useEffect(() => {
+    if (matchedLog?.id && equipmentList.length > 0) {
+      fetchMatchedEquipment(matchedLog.id);
+    }
+  }, [matchedLog, equipmentList]);
+
+  const fetchMatchedEquipment = async (flightLogId: string) => {
+    const { data } = await supabase
+      .from('flight_log_equipment')
+      .select('equipment_id')
+      .eq('flight_log_id', flightLogId);
+    if (data && data.length > 0) {
+      setSelectedEquipment(data.map(d => d.equipment_id));
+    }
+  };
 
   const resetState = () => {
     setStep('method');
@@ -184,6 +245,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiLogs([]);
     setDjiLogsTotal(0);
     setDjiPage(1);
+    setPilotId("");
+    setSelectedEquipment([]);
+    setLogToLogbooks(true);
+    setWarningActions({});
   };
 
   const fetchDrones = async () => {
@@ -193,6 +258,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .eq("aktiv", true)
       .order("modell");
     if (data) setDrones(data);
+  };
+
+  const fetchPersonnel = async () => {
+    if (!companyId) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("company_id", companyId)
+      .eq("approved", true)
+      .order("full_name");
+    if (data) setPersonnel(data);
+  };
+
+  const fetchEquipment = async () => {
+    if (!companyId) return;
+    const { data } = await supabase
+      .from("equipment")
+      .select("id, navn, serienummer, type")
+      .eq("company_id", companyId)
+      .eq("aktiv", true)
+      .order("navn");
+    if (data) setEquipmentList(data);
   };
 
   // ── File upload flow ──
@@ -234,7 +321,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const data: DroneLogResult = await response.json();
       console.log('[DroneLog] startTime from API:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
-      // Auto-match drone by serial number
       if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
@@ -264,7 +350,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
-      setDjiPassword(""); // clear password from memory
+      setDjiPassword("");
       await fetchDjiLogs(accountId, 1);
       setStep('dji-logs');
     } catch (error: any) {
@@ -298,7 +384,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const data: DroneLogResult = await callDronelogAction("dji-process-log", { url: log.url || log.id });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
-      // Auto-match drone by serial number
       if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
@@ -322,7 +407,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const findMatchingFlightLog = async (data: DroneLogResult) => {
     if (!companyId) return;
 
-    // Bestem dato: fra startTime, eller fallback til i dag
     let flightDate: Date | null = null;
     if (data.startTime) {
       const d = parseFlightDate(data.startTime);
@@ -347,7 +431,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     console.log('[DroneLog] Found', logs?.length || 0, 'flight_logs on', dateStr);
     if (!logs || logs.length === 0) return;
 
-    // 1. Prøv tidsmatch (4-timers vindu) hvis vi har startTime
+    // 1. Time match (4-hour window)
     if (flightDate) {
       const timeCandidates: MatchedFlightLog[] = [];
       for (const log of logs) {
@@ -361,32 +445,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
       }
       if (timeCandidates.length === 1) {
-        console.log('[DroneLog] Matched single candidate by time window:', timeCandidates[0].id);
         setMatchedLog(timeCandidates[0]);
         return;
       } else if (timeCandidates.length > 1) {
-        console.log('[DroneLog] Multiple time-window candidates:', timeCandidates.length);
         setMatchCandidates(timeCandidates);
         return;
       }
     }
 
-    // 2. Match på drone + lignende varighet (innenfor 2 min)
+    // 2. Drone + duration match
     if (selectedDroneId && data.durationMinutes > 0) {
       const durationMatch = logs.find(l =>
         l.drone_id === selectedDroneId &&
         Math.abs((l.flight_duration_minutes || 0) - data.durationMinutes) <= 2
       );
       if (durationMatch) {
-        console.log('[DroneLog] Matched by drone + duration:', durationMatch.id);
         setMatchedLog(durationMatch as any);
         return;
       }
     }
 
-    // 3. Fallback: kun én logg på datoen
+    // 3. Fallback: single log on date
     if (logs.length === 1) {
-      console.log('[DroneLog] Matched single log on date:', logs[0].id);
       setMatchedLog(logs[0] as any);
     }
   };
@@ -441,6 +521,76 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return (data && data.length > 0);
   };
 
+  const saveLogbookEntries = async (flightLogId: string, durationMinutes: number) => {
+    if (!logToLogbooks || !companyId || !user) return;
+
+    // Save pilot to flight_log_personnel & update flyvetimer
+    if (pilotId) {
+      await supabase.from('flight_log_personnel').insert({
+        flight_log_id: flightLogId,
+        profile_id: pilotId,
+      });
+      // Update pilot flight hours
+      const { data: profile } = await supabase.from('profiles').select('flyvetimer').eq('id', pilotId).single();
+      if (profile) {
+        await supabase.from('profiles').update({
+          flyvetimer: (profile.flyvetimer || 0) + durationMinutes / 60
+        }).eq('id', pilotId);
+      }
+    }
+
+    // Save equipment to flight_log_equipment (triggers update equipment hours automatically)
+    for (const eqId of selectedEquipment) {
+      await supabase.from('flight_log_equipment').insert({
+        flight_log_id: flightLogId,
+        equipment_id: eqId,
+      });
+    }
+  };
+
+  const handleWarningsWithActions = async (droneId: string, warnings: Array<{ type: string; message: string; value?: number }>) => {
+    if (!companyId || !user) return;
+
+    // Determine worst status from user choices
+    let worstStatus = 'Grønn';
+    const statusPriority: Record<string, number> = { 'Grønn': 0, 'Gul': 1, 'Rød': 2 };
+
+    for (let i = 0; i < warnings.length; i++) {
+      const action = warningActions[i];
+      if (!action) continue;
+      if (statusPriority[action.newStatus] > statusPriority[worstStatus]) {
+        worstStatus = action.newStatus;
+      }
+
+      // Save to drone logbook if user chose to
+      if (action.saveToLog) {
+        const warning = warnings[i];
+        let title = warning.type === 'low_battery'
+          ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur')
+          : warning.type === 'cell_deviation'
+            ? 'Celleavvik registrert på batteri'
+            : warning.type === 'low_battery_health'
+              ? 'Lav batterihelse registrert'
+              : t('dronelog.warningAltitude', 'Advarsel fra flylogg');
+        
+        await supabase.from('drone_log_entries').insert({
+          company_id: companyId,
+          user_id: user.id,
+          drone_id: droneId,
+          entry_date: new Date().toISOString().split('T')[0],
+          entry_type: 'Advarsel',
+          title,
+          description: warning.message,
+        });
+      }
+    }
+
+    // Update drone status if needed
+    if (worstStatus !== 'Grønn') {
+      await supabase.from('drones').update({ status: worstStatus }).eq('id', droneId);
+    }
+  };
+
   const handleUpdateExisting = async () => {
     if (!result || !matchedLog || !companyId || !user) return;
     setIsSubmitting(true);
@@ -460,7 +610,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await saveFlightEvents(matchedLog.id, result);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
-      if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      await saveLogbookEntries(matchedLog.id, result.durationMinutes);
       
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       onOpenChange(false);
@@ -505,7 +656,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }).select('id').single();
       if (missionError) throw missionError;
 
-      
       if (mission && selectedDroneId) await supabase.from('mission_drones').insert({ mission_id: mission.id, drone_id: selectedDroneId });
 
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
@@ -519,9 +669,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       } as any).select('id').single();
       if (logError) throw logError;
 
-      if (logData) await saveFlightEvents(logData.id, result);
+      if (logData) {
+        await saveFlightEvents(logData.id, result);
+        await saveLogbookEntries(logData.id, result.durationMinutes);
+      }
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
-      if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
 
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       onOpenChange(false);
@@ -538,19 +691,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (drone) await supabase.from('drones').update({ flyvetimer: drone.flyvetimer + minutes / 60 }).eq('id', droneId);
   };
 
+  // ── Helpers ──
 
-  const handleWarnings = async (droneId: string, warnings: Array<{ type: string; message: string; value?: number }>) => {
-    if (!companyId || !user) return;
-    await supabase.from('drones').update({ status: 'Gul' }).eq('id', droneId);
-    for (const warning of warnings) {
-      await supabase.from('drone_log_entries').insert({
-        company_id: companyId, user_id: user.id, drone_id: droneId,
-        entry_date: new Date().toISOString().split('T')[0], entry_type: 'Advarsel',
-        title: warning.type === 'low_battery' ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur') : t('dronelog.warningAltitude', 'Uventet høydeendring registrert'),
-        description: warning.message,
-      });
-    }
-  };
+  const selectedPilot = personnel.find(p => p.id === pilotId);
+  const selectedDrone = drones.find(d => d.id === selectedDroneId);
+  const selectedEqNames = equipmentList.filter(e => selectedEquipment.includes(e.id));
 
   // ── Render ──
 
@@ -560,6 +705,174 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       {t('actions.back')}
     </Button>
   );
+
+  const renderLogbookSection = () => {
+    if (!result) return null;
+    const duration = result.durationMinutes;
+
+    return (
+      <Collapsible open={logbookOpen} onOpenChange={setLogbookOpen}>
+        <div className="rounded-lg border border-border">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/30 transition-colors rounded-t-lg">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Loggbok-oppdatering</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={logToLogbooks}
+                onCheckedChange={(checked) => { setLogToLogbooks(checked); }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${logbookOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            {logToLogbooks && (
+              <div className="p-3 pt-0 space-y-3 border-t border-border">
+                {/* Pilot selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><User className="w-3 h-3" />Pilot</Label>
+                  <Select value={pilotId} onValueChange={setPilotId}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Velg pilot" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personnel.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.full_name || p.email}
+                          {p.id === user?.id ? ' (deg)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Drone selector — reuse existing */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><Plane className="w-3 h-3" />{terminology.vehicle}</Label>
+                  <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={terminology.selectVehicle} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drones.map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.modell} ({d.serienummer})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() && (
+                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />Auto-matchet via SN
+                    </p>
+                  )}
+                </div>
+
+                {/* Equipment selector */}
+                {equipmentList.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1"><Wrench className="w-3 h-3" />Utstyr</Label>
+                    <div className="max-h-24 overflow-y-auto space-y-1 rounded border border-border p-2">
+                      {equipmentList.map(eq => (
+                        <label key={eq.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/30 rounded px-1 py-0.5">
+                          <Checkbox
+                            checked={selectedEquipment.includes(eq.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedEquipment(prev =>
+                                checked ? [...prev, eq.id] : prev.filter(id => id !== eq.id)
+                              );
+                            }}
+                          />
+                          <span>{eq.navn}</span>
+                          <span className="text-muted-foreground">({eq.serienummer})</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary */}
+                <div className="rounded-md bg-muted/40 p-2 space-y-0.5">
+                  <p className="text-xs font-medium text-muted-foreground">Oppsummering</p>
+                  {selectedPilot && (
+                    <p className="text-xs">
+                      <User className="w-3 h-3 inline mr-1" />
+                      {selectedPilot.full_name || selectedPilot.email} <span className="text-muted-foreground">+{duration} min flytid</span>
+                    </p>
+                  )}
+                  {selectedDrone && (
+                    <p className="text-xs">
+                      <Plane className="w-3 h-3 inline mr-1" />
+                      {selectedDrone.modell} <span className="text-muted-foreground">+{duration} min flytid</span>
+                    </p>
+                  )}
+                  {selectedEqNames.length > 0 && (
+                    <p className="text-xs">
+                      <Wrench className="w-3 h-3 inline mr-1" />
+                      {selectedEqNames.map(e => e.navn).join(', ')} <span className="text-muted-foreground">+{duration} min flytid</span>
+                    </p>
+                  )}
+                  {!selectedPilot && !selectedDrone && selectedEqNames.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Ingen ressurser valgt</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    );
+  };
+
+  const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number }>) => {
+    if (warnings.length === 0 || !selectedDroneId) return null;
+
+    return (
+      <div className="space-y-2">
+        {warnings.map((w, i) => {
+          const action = warningActions[i] || { saveToLog: false, newStatus: 'Grønn' };
+          return (
+            <div key={i} className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 ml-6">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <Checkbox
+                    checked={action.saveToLog}
+                    onCheckedChange={(checked) => {
+                      setWarningActions(prev => ({ ...prev, [i]: { ...action, saveToLog: !!checked } }));
+                    }}
+                  />
+                  <span>Lagre i droneloggbok</span>
+                </label>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span>Status:</span>
+                  <Select
+                    value={action.newStatus}
+                    onValueChange={(val) => {
+                      setWarningActions(prev => ({ ...prev, [i]: { ...action, newStatus: val } }));
+                    }}
+                  >
+                    <SelectTrigger className="h-6 w-24 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Grønn">🟢 Grønn</SelectItem>
+                      <SelectItem value="Gul">🟡 Gul</SelectItem>
+                      <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -881,20 +1194,32 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
-            {/* Warnings */}
+            {/* Warnings with actions */}
             {result.warnings.length > 0 && (
-              <div className="space-y-2">
-                {result.warnings.map((w, i) => (
-                  <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-                    <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
-                    </div>
-                  </div>
-                ))}
+              <>
+                {renderWarningActions(result.warnings)}
 
-            {/* Flight Events */}
-            {result.events && result.events.length > 0 && (
+                {/* Flight Events */}
+                {result.events && result.events.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
+                    {[...new Map(result.events.map((e: any) => [`${e.type}:${e.message}`, e])).values()].map((ev: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
+                        {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                        {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                        {ev.type === 'APP_WARNING' && <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0" />}
+                        {!['RTH', 'LOW_BATTERY', 'APP_WARNING'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                        <span className="font-medium">{ev.type}</span>
+                        {ev.message && <span className="text-muted-foreground truncate">{ev.message}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Flight events when no warnings */}
+            {result.warnings.length === 0 && result.events && result.events.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
                 {[...new Map(result.events.map((e: any) => [`${e.type}:${e.message}`, e])).values()].map((ev: any, i: number) => (
@@ -909,13 +1234,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 ))}
               </div>
             )}
-                {selectedDroneId && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('dronelog.warningDroneStatus', 'Dronens status settes til gul. Du kan kvittere ut advarselen i dronekortet.')}
-                  </p>
-                )}
-              </div>
-            )}
+
+            {/* Logbook section */}
+            {renderLogbookSection()}
 
             {/* Candidate selection when multiple matches */}
             {matchCandidates.length > 1 && !matchedLog && (
