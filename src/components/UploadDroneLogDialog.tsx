@@ -322,8 +322,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     // Bestem dato: fra startTime, eller fallback til i dag
     let flightDate: Date | null = null;
     if (data.startTime) {
-      const d = new Date(data.startTime);
-      if (!isNaN(d.getTime())) flightDate = d;
+      const d = parseFlightDate(data.startTime);
+      if (d && !isNaN(d.getTime())) flightDate = d;
     }
 
     const dateStr = flightDate
