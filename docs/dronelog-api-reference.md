@@ -253,15 +253,19 @@ Alle responser følger dette mønsteret:
 
 ## Nyttige felter for AviSafe-integrasjon
 
+> **Viktig:** Feltnavn inkluderer enhetssuffiks i brackets. CSV-responsen bruker disse fulle navnene som kolonneoverskrifter. Se `docs/dronelog-api-fields.md` for komplett feltliste.
+
 | Felt | Beskrivelse |
 |---|---|
 | `OSD.latitude` | GPS breddegrad |
 | `OSD.longitude` | GPS lengdegrad |
-| `OSD.altitude` | Høyde (MSL) |
-| `OSD.height` | Høyde over bakken (AGL) |
-| `OSD.flyTimeMilliseconds` | Flytid i millisekunder |
-| `OSD.speed` | Hastighet |
-| `BATTERY.chargeLevel` | Batterinivå |
-| `GIMBAL.pitch` | Gimbal pitch-vinkel |
-| `GIMBAL.roll` | Gimbal roll-vinkel |
-| `GIMBAL.yaw` | Gimbal yaw-vinkel |
+| `OSD.altitude [m]` | Høyde (MSL) i meter |
+| `OSD.height [m]` | Høyde over bakken (AGL) i meter |
+| `OSD.flyTime [ms]` | Flytid i millisekunder |
+| `OSD.hSpeed [m/s]` | Horisontal hastighet (m/s) |
+| `OSD.hSpeed [km/h]` | Horisontal hastighet (km/t) |
+| `OSD.vSpeed [m/s]` | Vertikal hastighet (m/s) |
+| `BATTERY.chargeLevel [%]` | Batterinivå (prosent) |
+| `GIMBAL.pitch [°]` | Gimbal pitch-vinkel |
+| `GIMBAL.roll [°]` | Gimbal roll-vinkel |
+| `GIMBAL.yaw [°]` | Gimbal yaw-vinkel |
