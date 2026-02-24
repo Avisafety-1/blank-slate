@@ -13,9 +13,10 @@ const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
   "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
-  "CUSTOM.dateTime",
-  "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.droneType",
-  "DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]",
+  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
+  "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
+  "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
+  "DETAILS.batterySN","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "APP.warn",
 ].join(",");
 
@@ -80,16 +81,29 @@ function parseCsvToResult(csvText: string) {
   const battCurrentIdx = findHeaderIndex(headers, "BATTERY.current [A]");
   const battLoopIdx = findHeaderIndex(headers, "BATTERY.loopNum");
   const dateTimeIdx = findHeaderIndex(headers, "CUSTOM.dateTime");
+  const customDateUtcIdx = findHeaderIndex(headers, "CUSTOM.date [UTC]");
+  const customTimeUtcIdx = findHeaderIndex(headers, "CUSTOM.updateTime [UTC]");
   const appWarnIdx = findHeaderIndex(headers, "APP.warn");
+
+  // Battery extended
+  const battFullCapIdx = findHeaderIndex(headers, "BATTERY.fullCapacity [mAh]");
+  const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
+  const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
+  const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
 
   // DETAILS indices (metadata – same value every row, read from row 1)
   const detStartTimeIdx = findHeaderIndex(headers, "DETAILS.startTime");
   const detAircraftNameIdx = findHeaderIndex(headers, "DETAILS.aircraftName");
   const detAircraftSNIdx = findHeaderIndex(headers, "DETAILS.aircraftSN");
+  const detAircraftSerialIdx = findHeaderIndex(headers, "DETAILS.aircraftSerial");
   const detDroneTypeIdx = findHeaderIndex(headers, "DETAILS.droneType");
+  const detBatterySNIdx = findHeaderIndex(headers, "DETAILS.batterySN");
+  const detTotalTimeIdx = findHeaderIndex(headers, "DETAILS.totalTime [s]");
   const detTotalDistIdx = findHeaderIndex(headers, "DETAILS.totalDistance [m]");
+  const detMaxDistIdx = findHeaderIndex(headers, "DETAILS.maxDistance [m]");
   const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxAltitude [m]");
   const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHSpeed [m/s]");
+  const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVSpeed [m/s]");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
@@ -99,18 +113,41 @@ function parseCsvToResult(csvText: string) {
   const firstRow = lines[1].split(",").map((c) => c.trim());
   const startTime = detStartTimeIdx >= 0 ? firstRow[detStartTimeIdx] : "";
   const aircraftName = detAircraftNameIdx >= 0 ? firstRow[detAircraftNameIdx] : "";
-  const aircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
+  const rawAircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
+  const aircraftSerial = detAircraftSerialIdx >= 0 ? firstRow[detAircraftSerialIdx] : "";
+  const aircraftSN = rawAircraftSN || aircraftSerial; // fallback
   const droneType = detDroneTypeIdx >= 0 ? firstRow[detDroneTypeIdx] : "";
   const totalDistance = detTotalDistIdx >= 0 ? parseFloat(firstRow[detTotalDistIdx]) : NaN;
+  const maxDistance = detMaxDistIdx >= 0 ? parseFloat(firstRow[detMaxDistIdx]) : NaN;
   const detailsMaxAlt = detMaxAltIdx >= 0 ? parseFloat(firstRow[detMaxAltIdx]) : NaN;
   const detailsMaxSpeed = detMaxHSpeedIdx >= 0 ? parseFloat(firstRow[detMaxHSpeedIdx]) : NaN;
+  const detailsMaxVSpeed = detMaxVSpeedIdx >= 0 ? parseFloat(firstRow[detMaxVSpeedIdx]) : NaN;
+  const detailsTotalTime = detTotalTimeIdx >= 0 ? parseFloat(firstRow[detTotalTimeIdx]) : NaN;
   const batteryCycles = battLoopIdx >= 0 ? parseInt(firstRow[battLoopIdx]) : NaN;
+  const batterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
+  const batteryFullCap = battFullCapIdx >= 0 ? parseFloat(firstRow[battFullCapIdx]) : NaN;
+  const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
+  const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
+  const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
 
-  // Determine flight start dateTime
+  // CUSTOM date/time UTC
+  const customDateUtc = customDateUtcIdx >= 0 ? firstRow[customDateUtcIdx] : "";
+  const customTimeUtc = customTimeUtcIdx >= 0 ? firstRow[customTimeUtcIdx] : "";
+
+  // Determine flight start dateTime — prioritized fallback chain
   let flightStartTime = startTime || "";
+  // Fallback 1: CUSTOM.date [UTC] + CUSTOM.updateTime [UTC]
+  if (!flightStartTime && customDateUtc) {
+    flightStartTime = customTimeUtc
+      ? `${customDateUtc}T${customTimeUtc}Z`
+      : `${customDateUtc}T00:00:00Z`;
+  }
+  // Fallback 2: CUSTOM.dateTime
   if (!flightStartTime && dateTimeIdx >= 0 && firstRow[dateTimeIdx]) {
     flightStartTime = firstRow[dateTimeIdx];
   }
+
+  console.log("startTime chain:", { startTime, customDateUtc, customTimeUtc, dateTime: dateTimeIdx >= 0 ? firstRow[dateTimeIdx] : "N/A", resolved: flightStartTime });
 
   const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
   let maxSpeed = 0;
@@ -221,6 +258,7 @@ function parseCsvToResult(csvText: string) {
     startTime: flightStartTime || null,
     aircraftName: aircraftName || null,
     aircraftSN: aircraftSN || null,
+    aircraftSerial: aircraftSerial || null,
     droneType: droneType || null,
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
@@ -229,6 +267,15 @@ function parseCsvToResult(csvText: string) {
     batteryMinVoltage: minBattVolt < 999 ? Math.round(minBattVolt * 100) / 100 : null,
     batteryCycles: !isNaN(batteryCycles) ? batteryCycles : null,
     minGpsSatellites: minGpsSats < 99 ? minGpsSats : null,
+    // New extended fields
+    batterySN: batterySN || null,
+    batteryHealth: !isNaN(batteryLife) ? Math.round(batteryLife * 10) / 10 : null,
+    batteryFullCapacity: !isNaN(batteryFullCap) ? Math.round(batteryFullCap) : null,
+    batteryCurrentCapacity: !isNaN(batteryCurrCap) ? Math.round(batteryCurrCap) : null,
+    batteryStatus: batteryStatus || null,
+    maxDistance: !isNaN(maxDistance) ? Math.round(maxDistance) : null,
+    maxVSpeed: !isNaN(detailsMaxVSpeed) ? Math.round(detailsMaxVSpeed * 10) / 10 : null,
+    totalTimeSeconds: !isNaN(detailsTotalTime) ? Math.round(detailsTotalTime) : null,
   };
 }
 
