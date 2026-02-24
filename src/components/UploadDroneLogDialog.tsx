@@ -282,7 +282,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const flightTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
-      await supabase.from('flight_logs').update({ flight_track: flightTrack as any, flight_duration_minutes: result.durationMinutes }).eq('id', matchedLog.id);
+      await supabase.from('flight_logs').update({ flight_track: { positions: flightTrack } as any, flight_duration_minutes: result.durationMinutes }).eq('id', matchedLog.id);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
       if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
       if (matchedLog.mission_id && result.positions.length > 0) await updateMissionRoute(matchedLog.mission_id, result.positions);
@@ -318,7 +318,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         flight_date: new Date().toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
-        movements: 1, flight_track: flightTrack as any,
+        movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery}%`,
       });
       if (logError) throw logError;
