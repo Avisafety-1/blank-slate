@@ -1,30 +1,38 @@
 
 
-# Fix: Falsk "batterinivå gikk ned til -1%" advarsel
+# Fix: Flight log matching bruker feil dato-parser
 
 ## Årsak
 
-I edge-funksjonen `process-dronelog/index.ts`, linje 207:
+I `findMatchingFlightLog` (linje 325):
 ```typescript
-let minBattery = batteryIdx >= 0 ? 100 : -1;
+const d = new Date(data.startTime);
 ```
 
-Når `BATTERY.chargeLevel [%]`-kolonnen ikke finnes i CSV-en (eldre loggfiler eller annet format), settes `minBattery = -1`. Deretter på linje 341:
-```typescript
-if (minBattery < 20) {
-  warnings.push({ type: "low_battery", message: `Batterinivå gikk ned til ${minBattery}%`, value: minBattery });
-}
-```
+`data.startTime` er i DJI-format (`"5/5/2023T11:36:03.86 AMZ"`), som `new Date()` ikke klarer å parse. Resultatet er `NaN`, så koden faller tilbake til dagens dato (linje 329-331). Dermed søkes det etter flight_logs på dagens dato i stedet for den faktiske flydatoen, og ingen match blir funnet.
 
-Siden `-1 < 20` er `true`, genereres alltid en falsk advarsel. I tillegg brukes `-1` direkte i notes-teksten (linje 506 i klienten).
+Funksjonen `parseFlightDate` som håndterer dette formatet korrekt eksisterer allerede i filen, men brukes ikke her.
 
 ## Fix
 
-**Fil: `supabase/functions/process-dronelog/index.ts`** — Linje 341: Legg til sjekk for at `minBattery >= 0` (dvs. at vi faktisk har batteridata):
+**Fil:** `src/components/UploadDroneLogDialog.tsx`
 
+**Linje 325** — Endre fra:
 ```typescript
-if (minBattery >= 0 && minBattery < 20) {
+const d = new Date(data.startTime);
 ```
 
-Det er alt. En betingelse, en linje, en fil. Edge-funksjonen må redeployes.
+Til:
+```typescript
+const d = parseFlightDate(data.startTime);
+```
+
+`parseFlightDate` returnerer allerede en `Date | null`, og sjekken på linje 326 (`!isNaN(d.getTime())`) håndterer null via optional chaining (trenger liten justering til `d && !isNaN(d.getTime())`).
+
+Endret sjekk på linje 326:
+```typescript
+if (d && !isNaN(d.getTime())) flightDate = d;
+```
+
+To linjer, en fil.
 
