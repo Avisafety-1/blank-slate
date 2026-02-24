@@ -1,106 +1,50 @@
 
 
-# Feature: Loggbok-integrasjon i Last opp flylogg-dialogen
+# Fix: SHA-256 duplikatsjekk kjores for sent i flyten
 
-## Oversikt
+## Problem
 
-Utvide `UploadDroneLogDialog` med et nytt steg/seksjon i result-visningen som lar brukeren konfigurere hva som skal logges i loggbokene til pilot, drone og utstyr -- med smarte standardvalg basert på data fra flyloggen og matchende oppdrag.
+Brukeren har slettet oppdragene fra `/oppdrag`, men de tilhorende `flight_logs`-radene med `dronelog_sha256` ligger fortsatt i databasen (foreldrelose). Flyten blir:
 
-## Tekniske endringer
+1. `findMatchingFlightLog` soker etter logger pa riktig dato, men finner ingen match (fordi oppdraget/mission er slettet, sa `missions.tidspunkt` er null)
+2. Brukeren ser "Ingen eksisterende flylogg matcher"
+3. Brukeren trykker "Opprett nytt oppdrag"
+4. `handleCreateNew` kjorer `checkDuplicate` via SHA-256 og finner den foreldrelose flight_log-raden
+5. Blokkerende feilmelding uten mulighet til a ga videre
+
+## Losning
+
+Flytt SHA-256-sjekken til starten av `findMatchingFlightLog`. Hvis en eksisterende flight_log med samme hash finnes, sett den som `matchedLog` direkte -- uavhengig av om oppdraget fortsatt eksisterer. Fjern den blokkerende sjekken fra `handleCreateNew`.
+
+## Endringer
 
 **Fil: `src/components/UploadDroneLogDialog.tsx`**
 
-### 1. Ny state og data
+### 1. Legg til SHA-256 oppslag i `findMatchingFlightLog` (linje 407-409)
 
-Legg til state for loggbok-konfigurasjon:
-
-```typescript
-// Ny state
-const [pilotId, setPilotId] = useState<string>("");
-const [personnel, setPersonnel] = useState<Personnel[]>([]);
-const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
-const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-const [logToLogbooks, setLogToLogbooks] = useState(true);
-const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string }>>({});
-```
-
-Interface for personell (samme moenster som `LogFlightTimeDialog`):
+For dato-matchingen, sjekk om `data.sha256Hash` allerede finnes i `flight_logs`. Hvis ja, hent raden og sett `matchedLog` direkte med en info-toast. Return tidlig.
 
 ```typescript
-interface Personnel { id: string; full_name: string | null; email: string | null; }
-interface EquipmentItem { id: string; navn: string; serienummer: string; }
+// Etter linje 408 (if (!companyId) return;)
+if (data.sha256Hash) {
+  const { data: dupMatch } = await (supabase
+    .from('flight_logs')
+    .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, missions(tittel, tidspunkt)')
+    .eq('company_id', companyId) as any)
+    .eq('dronelog_sha256', data.sha256Hash)
+    .limit(1)
+    .maybeSingle();
+  if (dupMatch) {
+    setMatchedLog(dupMatch as any);
+    toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+    return;
+  }
+}
 ```
 
-### 2. Hent personell og utstyr
+### 2. Fjern blokkerende SHA-256 sjekk fra `handleCreateNew` (linje 630-638)
 
-Utvid `useEffect` ved `open` til ogs aa hente:
-- `profiles` (godkjente, samme selskap) for pilotvelger
-- `equipment` (aktive) for utstyrsvelger
-- Auto-sett `pilotId` til innlogget bruker
+Fjern hele `checkDuplicate`-blokken fra `handleCreateNew`. SHA-256-matchen handteres na i `findMatchingFlightLog`, sa brukeren aldri nar `handleCreateNew` med en duplikat.
 
-Hvis matchet oppdrag har tilknyttet drone/utstyr/personell via `mission_drones`, `mission_equipment`, `flight_log_personnel` og `flight_log_equipment`, pre-select disse automatisk.
-
-### 3. Auto-match drone og utstyr
-
-Eksisterende SN-match for drone beholdes. I tillegg: hvis matchende oppdrag (`matchedLog`) har `drone_id`, pre-select den. Hvis oppdragets `flight_log_equipment` entries finnes, pre-select det utstyret.
-
-### 4. Ny UI-seksjon: "Loggbok-oppdatering"
-
-Plasseres i result-steget, mellom KPI-visningen og warnings/footer. Vises som en sammenklappbar seksjon med Switch for "Oppdater loggboeker".
-
-Inneholder:
-
-**a) Pilot-velger**
-- Select med alle godkjente profiler i selskapet
-- Innlogget bruker forhåndsvalgt
-- Viser hvem som er valgt
-
-**b) Drone-velger**  
-- Allerede eksisterende `selectedDroneId` gjenbrukes
-- Viser auto-match info (SN)
-
-**c) Utstyr-velger**
-- Checkbox-liste over tilgjengelig utstyr (samme moenster som `LogFlightTimeDialog`)
-- Pre-selectet fra matchende oppdrag
-
-**d) Sammendrag av hva som logges**
-- Kompakt oppsummering:
-  - "Pilot: [navn] +[X] min flytid"
-  - "Drone: [modell] +[X] min flytid" 
-  - "Utstyr: [navn1], [navn2] +[X] min flytid"
-
-### 5. Warning-handlinger
-
-For hver warning i `result.warnings`, vis valg:
-- Checkbox: "Lagre som loggbokoppfoering paa dronen" (default: true for alvorlige)
-- Dropdown: "Endre dronestatus" med valg Groen/Gul/Roed (default: Gul)
-
-For spesifikke warnings (celleavvik, lav batterihelse):
-- Automatisk foreslaa lagring i droneloggbok med passende tittel
-
-### 6. Oppdater save-logikken
-
-I `handleUpdateExisting` og `handleCreateNew`:
-
-- Opprett `flight_log_personnel` entry for valgt pilot (og evt. andre)
-- Opprett `flight_log_equipment` entries for valgt utstyr (trigger oppdaterer flyvetimer automatisk)
-- Oppdater pilot-profil `flyvetimer` 
-- Oppdater drone `flyvetimer` (allerede eksisterende)
-- For warnings: bruk brukerens valg for status (Gul/Roed) i stedet for alltid Gul
-- For warnings: lagre loggbokoppfoering kun hvis brukeren har valgt det
-
-### 7. Eksisterende `handleWarnings`-funksjon
-
-Refaktorer til aa bruke `warningActions`-state i stedet for hardkodet oppforsel. Dagens kode setter alltid status til Gul og lager alltid loggbokinnlegg -- ny kode bruker brukerens valg per warning.
-
-## Filendringer
-
-Kun **en fil** endres: `src/components/UploadDroneLogDialog.tsx`
-
-- ~100 linjer ny state/fetch-logikk
-- ~80 linjer ny UI-seksjon 
-- ~30 linjer oppdatert save-logikk
-- ~20 linjer refaktorert warning-handling
-
-Totalt ~230 linjer endringer/tillegg i en fil paa 998 linjer.
+Resultatet: brukeren ser "Flyloggen er allerede importert" med mulighet til a oppdatere, i stedet for a bli blokkert uten handlingsalternativ.
 
