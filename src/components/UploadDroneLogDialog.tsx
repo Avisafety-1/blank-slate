@@ -254,26 +254,38 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Shared logic ──
 
   const findMatchingFlightLog = async (data: DroneLogResult) => {
-    if (!companyId) return;
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    if (!companyId || !data.startTime) return;
+    const flightDate = new Date(data.startTime);
+    if (isNaN(flightDate.getTime())) return;
+    const dateStr = flightDate.toISOString().split('T')[0];
+
     let query = supabase
       .from('flight_logs')
-      .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel)')
+      .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel, tidspunkt)')
       .eq('company_id', companyId)
-      .gte('flight_date', weekAgo.toISOString().split('T')[0])
+      .eq('flight_date', dateStr)
       .order('flight_date', { ascending: false });
     if (selectedDroneId) query = query.eq('drone_id', selectedDroneId);
 
     const { data: logs } = await query;
     if (!logs || logs.length === 0) return;
 
+    // Match på klokkeslett (innenfor 60 min)
     for (const log of logs) {
-      const diff = Math.abs(log.flight_duration_minutes - data.durationMinutes);
-      const threshold = data.durationMinutes * 0.2;
-      if (diff <= Math.max(threshold, 2)) {
-        setMatchedLog(log as any);
-        return;
+      const missionTime = (log as any).missions?.tidspunkt;
+      if (missionTime) {
+        const missionDate = new Date(missionTime);
+        const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
+        if (diffMs <= 60 * 60 * 1000) {
+          setMatchedLog(log as any);
+          return;
+        }
       }
+    }
+
+    // Fallback: Hvis kun én logg på samme dato, foreslå den
+    if (logs.length === 1) {
+      setMatchedLog(logs[0] as any);
     }
   };
 
