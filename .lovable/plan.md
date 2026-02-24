@@ -1,38 +1,73 @@
 
 
-# Fix: Flight log matching bruker feil dato-parser
+# Feature: Velg blant flere matchende flylogger
 
-## Årsak
+## Oversikt
 
-I `findMatchingFlightLog` (linje 325):
+Når flere flylogger matcher innenfor et tidsvindu, skal brukeren kunne velge hvilken logg som skal oppdateres, i stedet for at systemet automatisk velger den første.
+
+## Endringer
+
+**Fil: `src/components/UploadDroneLogDialog.tsx`**
+
+### 1. Ny state for kandidatliste
+
+Legg til state `matchCandidates` (array av `MatchedFlightLog`) ved siden av eksisterende `matchedLog`:
+
 ```typescript
-const d = new Date(data.startTime);
+const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
 ```
 
-`data.startTime` er i DJI-format (`"5/5/2023T11:36:03.86 AMZ"`), som `new Date()` ikke klarer å parse. Resultatet er `NaN`, så koden faller tilbake til dagens dato (linje 329-331). Dermed søkes det etter flight_logs på dagens dato i stedet for den faktiske flydatoen, og ingen match blir funnet.
+### 2. Oppdater `findMatchingFlightLog`-logikken
 
-Funksjonen `parseFlightDate` som håndterer dette formatet korrekt eksisterer allerede i filen, men brukes ikke her.
+I stedet for å returnere ved første tidsmatch, samle alle logger som matcher innenfor tidsvinduet (utvide til f.eks. 4 timer). Deretter:
 
-## Fix
+- Hvis 0 kandidater: fall gjennom til varighets-match og single-log fallback (som nå)
+- Hvis 1 kandidat: sett `matchedLog` direkte (som nå)
+- Hvis 2+ kandidater: sett `matchCandidates` og la `matchedLog` stå som `null` til brukeren velger
 
-**Fil:** `src/components/UploadDroneLogDialog.tsx`
+### 3. Ny UI-seksjon: kandidatvelger
 
-**Linje 325** — Endre fra:
+Mellom warnings-seksjonen og footer-knappene (linje ~909), legg til en ny tilstand for `matchCandidates.length > 1`:
+
+- Vis en liste med RadioGroup-items, hver med dato, varighet og oppdragsnavn
+- Når brukeren velger en, sett `setMatchedLog(valgtKandidat)`
+- Vis også et alternativ "Opprett nytt oppdrag" nederst i listen
+
+### 4. Reset
+
+Legg til `setMatchCandidates([])` i alle steder der `setMatchedLog(null)` kalles (reset-funksjon og tilbake-knapp).
+
+## Teknisk detalj
+
+Matching-logikken endres fra:
 ```typescript
-const d = new Date(data.startTime);
+// Nåværende: returnerer ved første match
+for (const log of logs) {
+  if (diffMs <= 60 * 60 * 1000) {
+    setMatchedLog(log);
+    return;
+  }
+}
 ```
 
 Til:
 ```typescript
-const d = parseFlightDate(data.startTime);
+// Nytt: samle alle kandidater innenfor 4-timers vindu
+const candidates = [];
+for (const log of logs) {
+  if (diffMs <= 4 * 60 * 60 * 1000) {
+    candidates.push(log);
+  }
+}
+if (candidates.length === 1) {
+  setMatchedLog(candidates[0]);
+} else if (candidates.length > 1) {
+  setMatchCandidates(candidates);
+  // matchedLog forblir null — brukeren velger
+}
+// Hvis 0 kandidater: fall gjennom til varighet/fallback
 ```
 
-`parseFlightDate` returnerer allerede en `Date | null`, og sjekken på linje 326 (`!isNaN(d.getTime())`) håndterer null via optional chaining (trenger liten justering til `d && !isNaN(d.getTime())`).
-
-Endret sjekk på linje 326:
-```typescript
-if (d && !isNaN(d.getTime())) flightDate = d;
-```
-
-To linjer, en fil.
+UI-velgeren bruker eksisterende `RadioGroup` fra `src/components/ui/radio-group.tsx`.
 
