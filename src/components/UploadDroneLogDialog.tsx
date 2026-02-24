@@ -30,6 +30,14 @@ const parseFlightDate = (raw: string): Date | null => {
 
 // ── Types ──
 
+interface DroneLogEvent {
+  type: string;
+  message: string;
+  t_offset_ms: number | null;
+  raw_field: string;
+  raw_value: string;
+}
+
 interface DroneLogResult {
   positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }>;
   durationMinutes: number;
@@ -44,6 +52,7 @@ interface DroneLogResult {
   warnings: Array<{ type: string; message: string; value?: number }>;
   // Extended fields
   startTime: string | null;
+  endTimeUtc: string | null;
   aircraftName: string | null;
   aircraftSN: string | null;
   aircraftSerial: string | null;
@@ -52,18 +61,26 @@ interface DroneLogResult {
   maxAltitude: number | null;
   detailsMaxSpeed: number | null;
   batteryTemperature: number | null;
+  batteryTempMin: number | null;
   batteryMinVoltage: number | null;
   batteryCycles: number | null;
   minGpsSatellites: number | null;
-  // New battery & performance fields
+  maxGpsSatellites: number | null;
+  // Battery & performance fields
   batterySN: string | null;
   batteryHealth: number | null;
   batteryFullCapacity: number | null;
   batteryCurrentCapacity: number | null;
   batteryStatus: string | null;
+  batteryCellDeviationMax: number | null;
   maxDistance: number | null;
   maxVSpeed: number | null;
   totalTimeSeconds: number | null;
+  // Dedup & events
+  sha256Hash: string | null;
+  guid: string | null;
+  rthTriggered: boolean;
+  events: DroneLogEvent[];
 }
 
 interface MatchedFlightLog {
@@ -363,6 +380,56 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const buildExtendedFields = (r: DroneLogResult) => ({
+    source: 'dronelogapi' as any,
+    dronelog_sha256: r.sha256Hash || null,
+    start_time_utc: r.startTime || null,
+    end_time_utc: r.endTimeUtc || null,
+    total_distance_m: r.totalDistance || null,
+    max_height_m: r.maxAltitude || null,
+    max_horiz_speed_ms: r.detailsMaxSpeed || null,
+    max_vert_speed_ms: r.maxVSpeed || null,
+    drone_model: r.droneType || null,
+    aircraft_serial: r.aircraftSerial || r.aircraftSN || null,
+    battery_cycles: r.batteryCycles || null,
+    battery_temp_min_c: r.batteryTempMin || null,
+    battery_temp_max_c: r.batteryTemperature || null,
+    battery_voltage_min_v: r.batteryMinVoltage || null,
+    gps_sat_min: r.minGpsSatellites || null,
+    gps_sat_max: r.maxGpsSatellites || null,
+    rth_triggered: r.rthTriggered || false,
+    battery_sn: r.batterySN || null,
+    battery_health_pct: r.batteryHealth || null,
+    max_distance_m: r.maxDistance || null,
+    dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
+  });
+
+  const saveFlightEvents = async (flightLogId: string, r: DroneLogResult) => {
+    if (!companyId || !r.events || r.events.length === 0) return;
+    const rows = r.events.map(e => ({
+      flight_log_id: flightLogId,
+      company_id: companyId,
+      t_offset_ms: e.t_offset_ms,
+      type: e.type,
+      message: e.message,
+      raw_field: e.raw_field,
+      raw_value: e.raw_value,
+    }));
+    const { error } = await supabase.from('flight_events' as any).insert(rows as any);
+    if (error) console.error('Failed to save flight events:', error);
+  };
+
+  const checkDuplicate = async (sha256: string): Promise<boolean> => {
+    if (!companyId || !sha256) return false;
+    const { data } = await (supabase
+      .from('flight_logs')
+      .select('id')
+      .eq('company_id', companyId) as any)
+      .eq('dronelog_sha256', sha256)
+      .limit(1);
+    return (data && data.length > 0);
+  };
+
   const handleUpdateExisting = async () => {
     if (!result || !matchedLog || !companyId || !user) return;
     setIsSubmitting(true);
@@ -374,7 +441,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const step = Math.ceil(rawTrack.length / maxPts);
         flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
       }
-      await supabase.from('flight_logs').update({ flight_track: { positions: flightTrack } as any, flight_duration_minutes: result.durationMinutes }).eq('id', matchedLog.id);
+      await supabase.from('flight_logs').update({
+        flight_track: { positions: flightTrack } as any,
+        flight_duration_minutes: result.durationMinutes,
+        ...buildExtendedFields(result),
+      } as any).eq('id', matchedLog.id);
+
+      await saveFlightEvents(matchedLog.id, result);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
       if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
       
@@ -392,6 +465,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!result || !companyId || !user) return;
     setIsSubmitting(true);
     try {
+      // Deduplication check
+      if (result.sha256Hash) {
+        const isDup = await checkDuplicate(result.sha256Hash);
+        if (isDup) {
+          toast.error('Denne flyloggen er allerede importert (duplikat oppdaget via SHA-256).');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
       const maxPoints = 200;
       let flightTrack = rawTrack;
@@ -414,16 +497,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       
       if (mission && selectedDroneId) await supabase.from('mission_drones').insert({ mission_id: mission.id, drone_id: selectedDroneId });
 
-      const { error: logError } = await supabase.from('flight_logs').insert({
+      const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
         flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery}%`,
-      });
+        ...buildExtendedFields(result),
+      } as any).select('id').single();
       if (logError) throw logError;
 
+      if (logData) await saveFlightEvents(logData.id, result);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
       if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
 

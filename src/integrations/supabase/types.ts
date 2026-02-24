@@ -1483,6 +1483,57 @@ export type Database = {
           },
         ]
       }
+      flight_events: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          flight_log_id: string
+          id: string
+          message: string | null
+          raw_field: string | null
+          raw_value: string | null
+          t_offset_ms: number | null
+          type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          flight_log_id: string
+          id?: string
+          message?: string | null
+          raw_field?: string | null
+          raw_value?: string | null
+          t_offset_ms?: number | null
+          type: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          flight_log_id?: string
+          id?: string
+          message?: string | null
+          raw_field?: string | null
+          raw_value?: string | null
+          t_offset_ms?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flight_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_events_flight_log_id_fkey"
+            columns: ["flight_log_id"]
+            isOneToOne: false
+            referencedRelation: "flight_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flight_log_equipment: {
         Row: {
           equipment_id: string
@@ -1551,57 +1602,120 @@ export type Database = {
       }
       flight_logs: {
         Row: {
+          aircraft_serial: string | null
+          battery_cycles: number | null
+          battery_health_pct: number | null
+          battery_sn: string | null
+          battery_temp_max_c: number | null
+          battery_temp_min_c: number | null
+          battery_voltage_min_v: number | null
           company_id: string
           completed_checklists: string[] | null
           created_at: string | null
           departure_location: string
           drone_id: string | null
+          drone_model: string | null
+          dronelog_sha256: string | null
+          dronelog_warnings: Json | null
           dronetag_device_id: string | null
+          end_time_utc: string | null
           flight_date: string
           flight_duration_minutes: number
           flight_track: Json | null
+          gps_sat_max: number | null
+          gps_sat_min: number | null
           id: string
           landing_location: string
+          max_distance_m: number | null
+          max_height_m: number | null
+          max_horiz_speed_ms: number | null
+          max_vert_speed_ms: number | null
           mission_id: string | null
           movements: number
           notes: string | null
+          rth_triggered: boolean | null
           safesky_mode: string | null
+          source: string | null
+          start_time_utc: string | null
+          total_distance_m: number | null
           user_id: string
         }
         Insert: {
+          aircraft_serial?: string | null
+          battery_cycles?: number | null
+          battery_health_pct?: number | null
+          battery_sn?: string | null
+          battery_temp_max_c?: number | null
+          battery_temp_min_c?: number | null
+          battery_voltage_min_v?: number | null
           company_id: string
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location: string
           drone_id?: string | null
+          drone_model?: string | null
+          dronelog_sha256?: string | null
+          dronelog_warnings?: Json | null
           dronetag_device_id?: string | null
+          end_time_utc?: string | null
           flight_date?: string
           flight_duration_minutes: number
           flight_track?: Json | null
+          gps_sat_max?: number | null
+          gps_sat_min?: number | null
           id?: string
           landing_location: string
+          max_distance_m?: number | null
+          max_height_m?: number | null
+          max_horiz_speed_ms?: number | null
+          max_vert_speed_ms?: number | null
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          rth_triggered?: boolean | null
           safesky_mode?: string | null
+          source?: string | null
+          start_time_utc?: string | null
+          total_distance_m?: number | null
           user_id: string
         }
         Update: {
+          aircraft_serial?: string | null
+          battery_cycles?: number | null
+          battery_health_pct?: number | null
+          battery_sn?: string | null
+          battery_temp_max_c?: number | null
+          battery_temp_min_c?: number | null
+          battery_voltage_min_v?: number | null
           company_id?: string
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location?: string
           drone_id?: string | null
+          drone_model?: string | null
+          dronelog_sha256?: string | null
+          dronelog_warnings?: Json | null
           dronetag_device_id?: string | null
+          end_time_utc?: string | null
           flight_date?: string
           flight_duration_minutes?: number
           flight_track?: Json | null
+          gps_sat_max?: number | null
+          gps_sat_min?: number | null
           id?: string
           landing_location?: string
+          max_distance_m?: number | null
+          max_height_m?: number | null
+          max_horiz_speed_ms?: number | null
+          max_vert_speed_ms?: number | null
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          rth_triggered?: boolean | null
           safesky_mode?: string | null
+          source?: string | null
+          start_time_utc?: string | null
+          total_distance_m?: number | null
           user_id?: string
         }
         Relationships: [
