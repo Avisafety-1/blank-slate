@@ -383,8 +383,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const buildExtendedFields = (r: DroneLogResult) => ({
     source: 'dronelogapi' as any,
     dronelog_sha256: r.sha256Hash || null,
-    start_time_utc: r.startTime || null,
-    end_time_utc: r.endTimeUtc || null,
+    start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
+    end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
     total_distance_m: r.totalDistance || null,
     max_height_m: r.maxAltitude || null,
     max_horiz_speed_ms: r.detailsMaxSpeed || null,
