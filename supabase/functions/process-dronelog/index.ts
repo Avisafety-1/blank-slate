@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
+        console.log("DJI login raw response:", JSON.stringify(data));
         if (!res.ok) {
           return new Response(JSON.stringify({ error: data.message || "DJI login failed", details: data }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
