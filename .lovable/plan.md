@@ -1,40 +1,33 @@
 
 
-# Fix: DroneLog-opplastet flyspor vises ikke på kartet
+# Fix: DroneLog-import overskriver planlagt rute med feil format
 
 ## Problem
 
-Når du laster opp en DJI-flylogg via DroneLog, lagres `flight_track` som en flat array:
-```text
-[{lat, lng, alt, timestamp}, {lat, lng, alt, timestamp}, ...]
-```
+Funksjonen `updateMissionRoute` (linje 347-349 i `UploadDroneLogDialog.tsx`) gjør to ting feil:
 
-Men koden som leser og rendrer flyspor forventer formatet som brukes av `LogFlightTimeDialog` (manuell flylogg):
-```text
-{ positions: [{lat, lng, alt, timestamp}, ...] }
-```
+1. **Overskriver planlagt rute**: Den skriver flyposisjonene til `mission.route`, som er ment for den *planlagte* ruten — ikke den faktisk fløyne.
+2. **Bruker feil format**: Den lagrer `[[lat, lng], [lat, lng], ...]` i stedet for `{ coordinates: [{lat, lng}, ...], totalDistance: ... }`, som er formatet kartet forventer.
 
-Derfor returnerer `log.flight_track?.positions?.length > 0` alltid `false` for DroneLog-importerte logger, og sporet vises aldri.
+Resultatet er at kartet bare klarer å vise ett enkelt punkt ("Flytur 1 – Slutt") fordi `route.coordinates` er `undefined` (formatet er feil), mens det faktiske flysporet allerede ligger korrekt i `flight_logs.flight_track`.
 
 ## Løsning
 
+**Fjern `updateMissionRoute`-funksjonen og begge kallene til den.** Flysporet er allerede lagret i `flight_logs.flight_track` (med korrekt `{ positions: [...] }` format etter forrige fix). Kartet viser dette som "faktisk flydd rute" via `flightTracks`-propen.
+
 **Fil: `src/components/UploadDroneLogDialog.tsx`**
 
-Endre lagringen av `flight_track` til å bruke samme format som resten av systemet -- wrappet i `{ positions: [...] }`:
+1. **Linje 288**: Fjern kallet `await updateMissionRoute(matchedLog.mission_id, result.positions)`
+2. **Linje 316**: Fjern kallet `await updateMissionRoute(mission.id, result.positions)`
+3. **Linje 347-349**: Fjern hele `updateMissionRoute`-funksjonen
 
-- Linje 284-285 (matched log update): `flight_track: { positions: flightTrack }`
-- Linje 321 (ny flylogg): `flight_track: { positions: flightTrack }`
-
-To linjer endres, ingen andre filer påvirkes. Eksisterende logger som allerede er lagret som flat array vil fortsatt ikke vises, men alle nye opplastinger vil fungere korrekt.
+Dette bevarer eventuell planlagt rute som allerede finnes på oppdraget, og lar kartet vise flysporet som den faktisk fløyne ruten (via `flight_logs`).
 
 ## Teknisk detalj
 
-`LogFlightTimeDialog.tsx` linje 725-726 viser det korrekte formatet:
-```
-const flightTrackData = flightTrack && flightTrack.length > 0
-  ? { positions: flightTrack }
-  : null;
-```
+Kartet har allerede to separate lag:
+- **Planlagt rute** (blå stiplet linje): fra `mission.route.coordinates`
+- **Faktisk flydd rute** (fargekodet etter høyde): fra `flight_logs.flight_track.positions`
 
-DroneLog-dialogen må gjøre det samme.
+Ved å slutte å overskrive `mission.route` vil begge vises korrekt.
 
