@@ -158,10 +158,13 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ email, password }),
         });
-        const data = await res.json();
-        console.log("DJI login raw response:", JSON.stringify(data));
+        const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
+        console.log("DJI login response status:", res.status, "body:", JSON.stringify(data));
         if (!res.ok) {
-          return new Response(JSON.stringify({ error: data.message || "DJI login failed", details: data }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          const errMsg = res.status === 500 
+            ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
+            : (data.message || "DJI login failed");
+          return new Response(JSON.stringify({ error: errMsg, details: data, status: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
