@@ -301,11 +301,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const flightTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const flightDate = result.startTime ? new Date(result.startTime) : new Date();
+      const isValidDate = !isNaN(flightDate.getTime());
+      const effectiveDate = isValidDate ? flightDate : new Date();
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
-        tittel: `DJI-flylogg ${format(new Date(), 'dd.MM.yyyy HH:mm')}`,
+        tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
         lokasjon: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
-        tidspunkt: new Date().toISOString(), status: 'Fullført', risk_level: 'Lav',
+        tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_level: 'Lav',
         beskrivelse: `Importert fra DJI flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
       }).select('id').single();
       if (missionError) throw missionError;
@@ -315,7 +318,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       const { error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
-        flight_date: new Date().toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
+        flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
