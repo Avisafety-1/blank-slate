@@ -537,30 +537,76 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return (data && data.length > 0);
   };
 
-  const saveLogbookEntries = async (flightLogId: string, durationMinutes: number) => {
+  const saveLogbookEntries = async (flightLogId: string, durationMinutes: number, isUpdate: boolean = false, oldDurationMinutes: number = 0) => {
     if (!logToLogbooks || !companyId || !user) return;
+
+    const diffMinutes = isUpdate ? durationMinutes - oldDurationMinutes : durationMinutes;
 
     // Save pilot to flight_log_personnel & update flyvetimer
     if (pilotId) {
-      await supabase.from('flight_log_personnel').insert({
-        flight_log_id: flightLogId,
-        profile_id: pilotId,
-      });
-      // Update pilot flight hours
-      const { data: profile } = await supabase.from('profiles').select('flyvetimer').eq('id', pilotId).single();
-      if (profile) {
-        await supabase.from('profiles').update({
-          flyvetimer: (profile.flyvetimer || 0) + durationMinutes / 60
-        }).eq('id', pilotId);
+      if (isUpdate) {
+        // Check if personnel entry already exists
+        const { data: existing } = await supabase.from('flight_log_personnel')
+          .select('id').eq('flight_log_id', flightLogId).eq('profile_id', pilotId).limit(1);
+        if (!existing || existing.length === 0) {
+          await supabase.from('flight_log_personnel').insert({
+            flight_log_id: flightLogId,
+            profile_id: pilotId,
+          });
+        }
+      } else {
+        await supabase.from('flight_log_personnel').insert({
+          flight_log_id: flightLogId,
+          profile_id: pilotId,
+        });
+      }
+      // Update pilot flight hours with diff only
+      if (diffMinutes !== 0) {
+        const { data: profile } = await supabase.from('profiles').select('flyvetimer').eq('id', pilotId).single();
+        if (profile) {
+          await supabase.from('profiles').update({
+            flyvetimer: (profile.flyvetimer || 0) + diffMinutes / 60
+          }).eq('id', pilotId);
+        }
+      }
+    }
+
+    // For drone: trigger only fires on INSERT, so manually update on UPDATE
+    if (isUpdate && diffMinutes !== 0 && selectedDroneId) {
+      const { data: drone } = await supabase.from('drones').select('flyvetimer').eq('id', selectedDroneId).single();
+      if (drone) {
+        await supabase.from('drones').update({
+          flyvetimer: (drone.flyvetimer || 0) + diffMinutes / 60.0
+        }).eq('id', selectedDroneId);
       }
     }
 
     // Save equipment to flight_log_equipment (triggers update equipment hours automatically)
     for (const eqId of selectedEquipment) {
-      await supabase.from('flight_log_equipment').insert({
-        flight_log_id: flightLogId,
-        equipment_id: eqId,
-      });
+      if (isUpdate) {
+        // Check if equipment entry already exists
+        const { data: existing } = await supabase.from('flight_log_equipment')
+          .select('id').eq('flight_log_id', flightLogId).eq('equipment_id', eqId).limit(1);
+        if (!existing || existing.length === 0) {
+          await supabase.from('flight_log_equipment').insert({
+            flight_log_id: flightLogId,
+            equipment_id: eqId,
+          });
+        } else if (diffMinutes !== 0) {
+          // Manually update equipment hours since trigger only fires on INSERT
+          const { data: eq } = await supabase.from('equipment').select('flyvetimer').eq('id', eqId).single();
+          if (eq) {
+            await supabase.from('equipment').update({
+              flyvetimer: (eq.flyvetimer || 0) + diffMinutes / 60.0
+            }).eq('id', eqId);
+          }
+        }
+      } else {
+        await supabase.from('flight_log_equipment').insert({
+          flight_log_id: flightLogId,
+          equipment_id: eqId,
+        });
+      }
     }
   };
 
@@ -627,7 +673,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await saveFlightEvents(matchedLog.id, result);
       // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
       if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
-      await saveLogbookEntries(matchedLog.id, result.durationMinutes);
+      await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       onOpenChange(false);
@@ -714,6 +760,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const renderLogbookSection = () => {
     if (!result) return null;
     const duration = result.durationMinutes;
+    const isUpdate = !!matchedLog;
+    const oldDuration = matchedLog?.flight_duration_minutes ?? 0;
+    const diffMinutes = isUpdate ? duration - oldDuration : duration;
+
+    const flightTimeLabel = (resourceName: string) => {
+      if (!isUpdate) return <span className="text-muted-foreground">+{duration} min flytid</span>;
+      if (diffMinutes === 0) return <span className="text-muted-foreground">Ingen endring i flytid</span>;
+      return <span className={diffMinutes > 0 ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}>
+        {diffMinutes > 0 ? '+' : ''}{diffMinutes} min flytid
+      </span>;
+    };
 
     return (
       <Collapsible open={logbookOpen} onOpenChange={setLogbookOpen}>
@@ -803,19 +860,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   {selectedPilot && (
                     <p className="text-xs">
                       <User className="w-3 h-3 inline mr-1" />
-                      {selectedPilot.full_name || selectedPilot.email} <span className="text-muted-foreground">+{duration} min flytid</span>
+                      {selectedPilot.full_name || selectedPilot.email} {flightTimeLabel('pilot')}
                     </p>
                   )}
                   {selectedDrone && (
                     <p className="text-xs">
                       <Plane className="w-3 h-3 inline mr-1" />
-                      {selectedDrone.modell} <span className="text-muted-foreground">+{duration} min flytid</span>
+                      {selectedDrone.modell} {flightTimeLabel('drone')}
                     </p>
                   )}
                   {selectedEqNames.length > 0 && (
                     <p className="text-xs">
                       <Wrench className="w-3 h-3 inline mr-1" />
-                      {selectedEqNames.map(e => e.navn).join(', ')} <span className="text-muted-foreground">+{duration} min flytid</span>
+                      {selectedEqNames.map(e => e.navn).join(', ')} {flightTimeLabel('equipment')}
                     </p>
                   )}
                   {!selectedPilot && !selectedDrone && selectedEqNames.length === 0 && (
