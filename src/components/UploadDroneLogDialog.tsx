@@ -737,7 +737,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <p className="text-sm font-medium">
                     {(() => {
                       const d = parseFlightDate(result.startTime!);
-                      return d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
+                      const startStr = d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
+                      if (result.endTimeUtc) {
+                        const end = parseFlightDate(result.endTimeUtc);
+                        if (end) return `${startStr} → ${format(end, 'HH:mm')}`;
+                      }
+                      return startStr;
                     })()}
                   </p>
                 ) : matchedLog ? (
@@ -791,14 +796,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 )}
                 {result.minGpsSatellites != null && (
                   <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Satellite className="w-3 h-3" />Min. GPS sat.</div>
-                    <p className={`text-sm font-medium ${result.minGpsSatellites < 6 ? 'text-destructive' : ''}`}>{result.minGpsSatellites}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Satellite className="w-3 h-3" />GPS sat.</div>
+                    <p className={`text-sm font-medium ${result.minGpsSatellites < 6 ? 'text-destructive' : ''}`}>
+                      {result.minGpsSatellites}{result.maxGpsSatellites != null ? ` – ${result.maxGpsSatellites}` : ''}
+                    </p>
                   </div>
                 )}
                 {result.batteryTemperature != null && (
                   <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground"><Thermometer className="w-3 h-3" />Batt. temp</div>
-                    <p className={`text-sm font-medium ${result.batteryTemperature > 50 ? 'text-destructive' : ''}`}>{result.batteryTemperature}°C</p>
+                    <p className={`text-sm font-medium ${result.batteryTemperature > 50 || (result.batteryTempMin != null && result.batteryTempMin < 5) ? 'text-destructive' : ''}`}>
+                      {result.batteryTempMin != null ? `${result.batteryTempMin} – ` : ''}{result.batteryTemperature}°C
+                    </p>
                   </div>
                 )}
                 {result.batteryMinVoltage != null && (
@@ -840,6 +849,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <p className="text-sm font-medium">{result.maxVSpeed} m/s</p>
                   </div>
                 )}
+                {result.batteryCellDeviationMax != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap className="w-3 h-3" />Celleavvik</div>
+                    <p className={`text-sm font-medium ${result.batteryCellDeviationMax > 0.1 ? 'text-destructive' : ''}`}>
+                      {result.batteryCellDeviationMax.toFixed(3)} V
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* RTH Alert */}
+            {result.rthTriggered && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                <p className="text-sm font-medium text-destructive">
+                  Return to Home (RTH) ble utløst under denne flygingen
+                </p>
               </div>
             )}
 
@@ -854,6 +881,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     </div>
                   </div>
                 ))}
+
+            {/* Flight Events */}
+            {result.events && result.events.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
+                {[...new Map(result.events.map((e: any) => [`${e.type}:${e.message}`, e])).values()].map((ev: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
+                    {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                    {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                    {ev.type === 'APP_WARNING' && <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0" />}
+                    {!['RTH', 'LOW_BATTERY', 'APP_WARNING'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                    <span className="font-medium">{ev.type}</span>
+                    {ev.message && <span className="text-muted-foreground truncate">{ev.message}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
                 {selectedDroneId && (
                   <p className="text-xs text-muted-foreground">
                     {t('dronelog.warningDroneStatus', 'Dronens status settes til gul. Du kan kvittere ut advarselen i dronekortet.')}
