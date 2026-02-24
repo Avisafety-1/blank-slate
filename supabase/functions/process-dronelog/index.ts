@@ -114,7 +114,7 @@ function parseCsvToResult(csvText: string) {
 
   const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
   let maxSpeed = 0;
-  let minBattery = 100;
+  let minBattery = batteryIdx >= 0 ? 100 : -1; // -1 means no battery data
   let maxFlyTimeMs = 0;
   let maxBattTemp = -999;
   let minBattVolt = 999;
