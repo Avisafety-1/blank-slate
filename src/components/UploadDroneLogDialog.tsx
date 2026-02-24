@@ -285,7 +285,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await supabase.from('flight_logs').update({ flight_track: { positions: flightTrack } as any, flight_duration_minutes: result.durationMinutes }).eq('id', matchedLog.id);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
       if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
-      if (matchedLog.mission_id && result.positions.length > 0) await updateMissionRoute(matchedLog.mission_id, result.positions);
+      
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       onOpenChange(false);
     } catch (error: any) {
@@ -313,7 +313,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }).select('id').single();
       if (missionError) throw missionError;
 
-      if (mission && result.positions.length > 0) await updateMissionRoute(mission.id, result.positions);
+      
       if (mission && selectedDroneId) await supabase.from('mission_drones').insert({ mission_id: mission.id, drone_id: selectedDroneId });
 
       const { error: logError } = await supabase.from('flight_logs').insert({
@@ -344,9 +344,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (drone) await supabase.from('drones').update({ flyvetimer: drone.flyvetimer + minutes / 60 }).eq('id', droneId);
   };
 
-  const updateMissionRoute = async (missionId: string, positions: Array<{ lat: number; lng: number }>) => {
-    await supabase.from('missions').update({ route: positions.map(p => [p.lat, p.lng]) as any }).eq('id', missionId);
-  };
 
   const handleWarnings = async (droneId: string, warnings: Array<{ type: string; message: string; value?: number }>) => {
     if (!companyId || !user) return;
