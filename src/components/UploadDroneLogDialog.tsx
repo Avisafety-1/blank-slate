@@ -312,7 +312,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!result || !companyId || !user) return;
     setIsSubmitting(true);
     try {
-      const flightTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const maxPoints = 200;
+      let flightTrack = rawTrack;
+      if (rawTrack.length > maxPoints) {
+        const step = Math.ceil(rawTrack.length / maxPoints);
+        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
+      }
       const flightDate = result.startTime ? new Date(result.startTime) : new Date();
       const isValidDate = !isNaN(flightDate.getTime());
       const effectiveDate = isValidDate ? flightDate : new Date();
@@ -322,6 +328,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         lokasjon: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
         beskrivelse: `Importert fra DJI flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
+        latitude: result.startPosition?.lat ?? null,
+        longitude: result.startPosition?.lng ?? null,
       }).select('id').single();
       if (missionError) throw missionError;
 
