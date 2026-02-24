@@ -407,6 +407,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const findMatchingFlightLog = async (data: DroneLogResult) => {
     if (!companyId) return;
 
+    // Early SHA-256 duplicate check — catches orphaned flight_logs too
+    if (data.sha256Hash) {
+      const { data: dupMatch } = await (supabase
+        .from('flight_logs')
+        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, missions(tittel, tidspunkt)')
+        .eq('company_id', companyId) as any)
+        .eq('dronelog_sha256', data.sha256Hash)
+        .limit(1)
+        .maybeSingle();
+      if (dupMatch) {
+        setMatchedLog(dupMatch as any);
+        toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+        return;
+      }
+    }
+
     let flightDate: Date | null = null;
     if (data.startTime) {
       const d = parseFlightDate(data.startTime);
@@ -627,15 +643,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!result || !companyId || !user) return;
     setIsSubmitting(true);
     try {
-      // Deduplication check
-      if (result.sha256Hash) {
-        const isDup = await checkDuplicate(result.sha256Hash);
-        if (isDup) {
-          toast.error('Denne flyloggen er allerede importert (duplikat oppdaget via SHA-256).');
-          setIsSubmitting(false);
-          return;
-        }
-      }
+      // SHA-256 dedup is now handled early in findMatchingFlightLog
 
       const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
       const maxPoints = 200;
