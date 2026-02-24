@@ -1,62 +1,25 @@
 
 
-# Plan: Utvid DroneLog-data med dato/tid, feilmeldinger og batteridetaljer
+# Fix: `route.coordinates` is undefined in MissionMapPreview
 
-## Dagens situasjon
+## Problem
 
-Edge-funksjonen henter kun 7 felter: `OSD.latitude`, `OSD.longitude`, `OSD.altitude [m]`, `OSD.height [m]`, `OSD.flyTime [ms]`, `OSD.hSpeed [m/s]`, `BATTERY.chargeLevel [%]`. Resultatet viser flytid, maks hastighet, min batteri og datapunkter -- men mangler dato/klokkeslett, droneinfo, batteridetaljer og feilmeldinger.
+At line 98 in `MissionMapPreview.tsx`, the code checks `route && route.coordinates.length > 0`. This crashes when `route` is truthy (an object exists) but `route.coordinates` is `undefined`. This happens when a mission has a route object stored in the database without a `coordinates` array (e.g., an empty object `{}` or an object with only `soraSettings`).
 
-## Nye felter fra DroneLog API
+## Fix
 
-Legger til disse i `FIELDS`-konstanten:
+**File: `src/components/dashboard/MissionMapPreview.tsx`**
 
-| Felt | Hva det gir |
-|---|---|
-| `CUSTOM.dateTime` | Dato og klokkeslett per datapunkt |
-| `DETAILS.startTime` | Starttidspunkt for flyturen |
-| `DETAILS.aircraftName` | Dronens navn |
-| `DETAILS.aircraftSN` | Dronens serienummer |
-| `DETAILS.droneType` | Dronetype |
-| `DETAILS.totalDistance [m]` | Total flydistanse |
-| `DETAILS.maxAltitude [m]` | Maks oppnådd høyde |
-| `DETAILS.maxHSpeed [m/s]` | Maks hastighet (fra metadata) |
-| `BATTERY.temperature [°C]` | Batteritemperatur |
-| `BATTERY.totalVoltage [V]` | Total spenning |
-| `BATTERY.current [A]` | Strøm |
-| `BATTERY.loopNum` | Antall ladesykluser |
-| `OSD.gpsNum` | Antall GPS-satellitter |
-| `OSD.flycState` | Flygkontrolltilstand (feilmeldinger) |
-| `APP.warn` | App-advarsler/feilmeldinger |
+Add optional chaining on two lines where `route.coordinates` is accessed without a null check:
 
-## Endringer
+- **Line 98**: Change `route.coordinates.length` to `route?.coordinates?.length`
+- **Line 105** (inside the SORA block): `route.coordinates` is already guarded by the `??` fallback, so it's fine
+- **Line 113** (route polyline block): Same pattern — add `?.` guard
 
-### 1. `supabase/functions/process-dronelog/index.ts`
+Specifically:
+1. Line 98: `if (route && route.coordinates.length > 0)` → `if (route?.coordinates && route.coordinates.length > 0)`
+2. Line 105 already uses `(route.coordinates ?? [])` which is safe
+3. All other `route.coordinates` accesses inside the `if` block on line 98 are safe because the guard ensures it exists
 
-- Utvide `FIELDS`-konstanten med de nye feltene
-- Parse nye kolonner i `parseCsvToResult`: dato/tid, batteritemp, spenning, GPS-satellitter, flycState, app-advarsler
-- Trekke ut `DETAILS.*` fra første rad (disse er metadata, samme verdi på alle rader)
-- Generere nye warnings basert på:
-  - `BATTERY.temperature` over 50°C
-  - `OSD.gpsNum` under 6 satellitter
-  - `OSD.flycState` som inneholder feilkoder (GoHome, Landing, etc.)
-  - `APP.warn` ikke-tomme verdier
-- Utvide returverdien med nye felter: `startTime`, `aircraftName`, `aircraftSN`, `droneType`, `totalDistance`, `maxAltitude`, `batteryTemperature`, `batteryVoltage`, `batteryCycles`, `minGpsSatellites`, `flightErrors`
-
-### 2. `src/components/UploadDroneLogDialog.tsx`
-
-- Utvide `DroneLogResult`-interfacet med de nye feltene
-- Resultatsiden utvides fra 2x2 grid til mer informativt oppsett:
-  - **Topprad**: Dato/klokkeslett for flyturen (fra `startTime` eller `CUSTOM.dateTime`)
-  - **Droneinfo**: Navn, serienummer, type (hvis tilgjengelig)
-  - **Eksisterende KPIer**: Flytid, maks hastighet, min batteri, datapunkter
-  - **Nye KPIer**: Total distanse, maks høyde, batteritemp, GPS-satellitter, ladesykluser
-  - **Advarsler**: Eksisterende + nye (høy temp, lavt GPS-signal, flycontroller-feil, app-advarsler)
-- Bruke `startTime` for bedre matching mot eksisterende flylogger (dato-match i tillegg til varighet)
-
-## Tekniske detaljer
-
-- `DETAILS.*`-felter er metadata som gjentas på hver rad -- vi trenger bare lese dem fra rad 1
-- `CUSTOM.dateTime` gir ISO-format tidsstempel per datapunkt, brukes for start/slutt-tid
-- `OSD.flycState` returnerer strenger som "AutoLanding", "GoHome", "Atti" etc. -- disse fanges som advarsler
-- `APP.warn` kan være tom streng eller inneholde feilmeldinger fra DJI-appen
+This is a one-line fix with no side effects.
 
