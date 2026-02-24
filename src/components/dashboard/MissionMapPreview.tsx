@@ -114,7 +114,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
     }
 
     // Display planned route if provided (blue dashed line)
-    if (route && route.coordinates.length > 0) {
+    if (route?.coordinates && route.coordinates.length > 0) {
       const routeLayer = L.layerGroup().addTo(map);
       
       // Draw polyline
