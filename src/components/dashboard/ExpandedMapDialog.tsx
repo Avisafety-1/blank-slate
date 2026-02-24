@@ -298,7 +298,7 @@ export const ExpandedMapDialog = ({
         const allPoints: [number, number][] = [[latitude, longitude]];
 
         // Planned route (blue dashed)
-        if (route && route.coordinates.length > 0) {
+        if (route?.coordinates && route.coordinates.length > 0) {
           const routeLayer = L.layerGroup().addTo(map);
 
           if (route.coordinates.length > 1) {
@@ -566,7 +566,7 @@ export const ExpandedMapDialog = ({
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
         </DialogHeader>
 
-        {route && route.coordinates.length >= 3 && (
+        {route?.coordinates && route.coordinates.length >= 3 && (
           <div>
             <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} />
             {soraDirty && missionId && (
