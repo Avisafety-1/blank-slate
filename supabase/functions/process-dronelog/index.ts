@@ -22,7 +22,11 @@ Deno.serve(async (req) => {
         );
       }
       const res = await fetch("https://dronelogapi.com/api/v1/fields", {
-        headers: { Authorization: `Bearer ${dronelogKey}` },
+        headers: {
+          Authorization: `Bearer ${dronelogKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
       });
       const body = await res.text();
       if (!res.ok) {
@@ -106,6 +110,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${dronelogKey}`,
+          "Accept": "application/json",
         },
         body: dronelogForm,
       }
