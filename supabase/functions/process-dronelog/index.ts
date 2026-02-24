@@ -7,7 +7,45 @@ const corsHeaders = {
 };
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
-const FIELDS = "OSD.latitude,OSD.longitude,OSD.altitude,OSD.height,OSD.flyTimeMilliseconds,OSD.speed,BATTERY.chargeLevel";
+
+// Correct field names per DroneLog API /fields endpoint
+const FIELDS = "OSD.latitude,OSD.longitude,OSD.altitude [m],OSD.height [m],OSD.flyTime [ms],OSD.hSpeed [m/s],BATTERY.chargeLevel [%]";
+
+/**
+ * Find a header index using flexible matching:
+ * 1. Exact match
+ * 2. Case-insensitive exact match
+ * 3. Partial match (header starts with the base field name before any bracket)
+ */
+function findHeaderIndex(headers: string[], target: string): number {
+  // 1. Exact match
+  const exact = headers.indexOf(target);
+  if (exact !== -1) return exact;
+
+  // 2. Case-insensitive
+  const targetLower = target.toLowerCase();
+  const ciIdx = headers.findIndex((h) => h.toLowerCase() === targetLower);
+  if (ciIdx !== -1) return ciIdx;
+
+  // 3. Partial: extract base name (e.g. "OSD.flyTime" from "OSD.flyTime [ms]")
+  const baseName = target.replace(/\s*\[.*\]$/, "").toLowerCase();
+  const partialIdx = headers.findIndex((h) => h.toLowerCase().replace(/\s*\[.*\]$/, "") === baseName);
+  if (partialIdx !== -1) return partialIdx;
+
+  // 4. Legacy name mapping (old names → new base names)
+  const legacyMap: Record<string, string> = {
+    "osd.flytimemilliseconds": "osd.flytime",
+    "osd.speed": "osd.hspeed",
+    "battery.chargelevel": "battery.chargelevel",
+  };
+  const mapped = legacyMap[targetLower];
+  if (mapped) {
+    const mappedIdx = headers.findIndex((h) => h.toLowerCase().replace(/\s*\[.*\]$/, "") === mapped);
+    if (mappedIdx !== -1) return mappedIdx;
+  }
+
+  return -1;
+}
 
 function parseCsvToResult(csvText: string) {
   const lines = csvText.trim().split("\n");
@@ -16,13 +54,18 @@ function parseCsvToResult(csvText: string) {
   }
 
   const headers = lines[0].split(",").map((h) => h.trim());
-  const latIdx = headers.indexOf("OSD.latitude");
-  const lonIdx = headers.indexOf("OSD.longitude");
-  const altIdx = headers.indexOf("OSD.altitude");
-  const heightIdx = headers.indexOf("OSD.height");
-  const timeIdx = headers.indexOf("OSD.flyTimeMilliseconds");
-  const speedIdx = headers.indexOf("OSD.speed");
-  const batteryIdx = headers.indexOf("BATTERY.chargeLevel");
+  console.log("CSV headers received:", JSON.stringify(headers));
+  console.log("First data row:", lines[1]);
+
+  const latIdx = findHeaderIndex(headers, "OSD.latitude");
+  const lonIdx = findHeaderIndex(headers, "OSD.longitude");
+  const altIdx = findHeaderIndex(headers, "OSD.altitude [m]");
+  const heightIdx = findHeaderIndex(headers, "OSD.height [m]");
+  const timeIdx = findHeaderIndex(headers, "OSD.flyTime [ms]");
+  const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
+  const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
+
+  console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx, "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx);
 
   const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
   let maxSpeed = 0;
@@ -35,13 +78,13 @@ function parseCsvToResult(csvText: string) {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map((c) => c.trim());
-    const lat = parseFloat(cols[latIdx]);
-    const lon = parseFloat(cols[lonIdx]);
-    const alt = parseFloat(cols[altIdx]);
-    const height = parseFloat(cols[heightIdx]);
-    const flyTimeMs = parseFloat(cols[timeIdx]);
-    const speed = parseFloat(cols[speedIdx]);
-    const battery = parseFloat(cols[batteryIdx]);
+    const lat = latIdx >= 0 ? parseFloat(cols[latIdx]) : NaN;
+    const lon = lonIdx >= 0 ? parseFloat(cols[lonIdx]) : NaN;
+    const alt = altIdx >= 0 ? parseFloat(cols[altIdx]) : 0;
+    const height = heightIdx >= 0 ? parseFloat(cols[heightIdx]) : 0;
+    const flyTimeMs = timeIdx >= 0 ? parseFloat(cols[timeIdx]) : NaN;
+    const speed = speedIdx >= 0 ? parseFloat(cols[speedIdx]) : NaN;
+    const battery = batteryIdx >= 0 ? parseFloat(cols[batteryIdx]) : NaN;
 
     if (!isNaN(speed) && speed > maxSpeed) maxSpeed = speed;
     if (!isNaN(battery)) {
@@ -56,12 +99,19 @@ function parseCsvToResult(csvText: string) {
         lng: lon,
         alt: isNaN(alt) ? 0 : alt,
         height: isNaN(height) ? 0 : height,
-        timestamp: `PT${Math.round(flyTimeMs / 1000)}S`,
+        timestamp: !isNaN(flyTimeMs) ? `PT${Math.round(flyTimeMs / 1000)}S` : `PT${Math.round((i - 1) / 10)}S`,
       });
     }
   }
 
-  const durationMinutes = Math.round(maxFlyTimeMs / 60000);
+  let durationMinutes = Math.round(maxFlyTimeMs / 60000);
+
+  // Fallback: estimate from row count if flyTime column was missing (DJI logs ~10Hz)
+  if (maxFlyTimeMs === 0 && lines.length > 10) {
+    const estimatedSeconds = (lines.length - 1) / 10;
+    durationMinutes = Math.round(estimatedSeconds / 60);
+    console.log("flyTime column empty/missing, estimated duration from row count:", durationMinutes, "min (" + (lines.length - 1) + " rows @ 10Hz)");
+  }
 
   if (minBattery < 20) {
     warnings.push({ type: "low_battery", message: `Batterinivå gikk ned til ${minBattery}%`, value: minBattery });
@@ -161,7 +211,7 @@ Deno.serve(async (req) => {
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         console.log("DJI login response status:", res.status, "body:", JSON.stringify(data));
         if (!res.ok) {
-          const errMsg = res.status === 500 
+          const errMsg = res.status === 500
             ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
             : (data.message || "DJI login failed");
           return new Response(JSON.stringify({ error: errMsg, details: data, status: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -232,10 +282,10 @@ Deno.serve(async (req) => {
     const prefixBytes = textEncoder.encode(parts.join(""));
     const suffixBytes = textEncoder.encode(`\r\n--${boundary}--\r\n`);
 
-    const body = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
-    body.set(prefixBytes, 0);
-    body.set(fileBytes, prefixBytes.length);
-    body.set(suffixBytes, prefixBytes.length + fileBytes.length);
+    const uploadBody = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
+    uploadBody.set(prefixBytes, 0);
+    uploadBody.set(fileBytes, prefixBytes.length);
+    uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
 
     console.log("Upload: manual multipart, fields:", fieldList, "file:", fileName, "size:", fileBytes.length);
 
@@ -246,7 +296,7 @@ Deno.serve(async (req) => {
         Accept: "application/json",
         "Content-Type": `multipart/form-data; boundary=${boundary}`,
       },
-      body: body,
+      body: uploadBody,
     });
 
     if (!dronelogResponse.ok) {
