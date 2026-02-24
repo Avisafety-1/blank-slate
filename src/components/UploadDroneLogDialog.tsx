@@ -186,6 +186,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       const data: DroneLogResult = await response.json();
+      console.log('[DroneLog] startTime from API:', data.startTime, '| durationMinutes:', data.durationMinutes);
       setResult(data);
       await findMatchingFlightLog(data);
       setStep('result');
@@ -240,6 +241,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsProcessing(true);
     try {
       const data: DroneLogResult = await callDronelogAction("dji-process-log", { url: log.url || log.id });
+      console.log('[DroneLog] DJI startTime:', data.startTime, '| durationMinutes:', data.durationMinutes);
       setResult(data);
       await findMatchingFlightLog(data);
       setStep('result');
@@ -254,10 +256,20 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Shared logic ──
 
   const findMatchingFlightLog = async (data: DroneLogResult) => {
-    if (!companyId || !data.startTime) return;
-    const flightDate = new Date(data.startTime);
-    if (isNaN(flightDate.getTime())) return;
-    const dateStr = flightDate.toISOString().split('T')[0];
+    if (!companyId) return;
+
+    // Bestem dato: fra startTime, eller fallback til i dag
+    let flightDate: Date | null = null;
+    if (data.startTime) {
+      const d = new Date(data.startTime);
+      if (!isNaN(d.getTime())) flightDate = d;
+    }
+
+    const dateStr = flightDate
+      ? flightDate.toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+
+    console.log('[DroneLog] Matching: dateStr =', dateStr, '| droneId =', selectedDroneId, '| duration =', data.durationMinutes);
 
     let query = supabase
       .from('flight_logs')
@@ -268,23 +280,41 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (selectedDroneId) query = query.eq('drone_id', selectedDroneId);
 
     const { data: logs } = await query;
+    console.log('[DroneLog] Found', logs?.length || 0, 'flight_logs on', dateStr);
     if (!logs || logs.length === 0) return;
 
-    // Match på klokkeslett (innenfor 60 min)
-    for (const log of logs) {
-      const missionTime = (log as any).missions?.tidspunkt;
-      if (missionTime) {
-        const missionDate = new Date(missionTime);
-        const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
-        if (diffMs <= 60 * 60 * 1000) {
-          setMatchedLog(log as any);
-          return;
+    // 1. Prøv tidsmatch (60 min vindu) hvis vi har startTime
+    if (flightDate) {
+      for (const log of logs) {
+        const missionTime = (log as any).missions?.tidspunkt;
+        if (missionTime) {
+          const missionDate = new Date(missionTime);
+          const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
+          if (diffMs <= 60 * 60 * 1000) {
+            console.log('[DroneLog] Matched by time window:', log.id);
+            setMatchedLog(log as any);
+            return;
+          }
         }
       }
     }
 
-    // Fallback: Hvis kun én logg på samme dato, foreslå den
+    // 2. Match på drone + lignende varighet (innenfor 2 min)
+    if (selectedDroneId && data.durationMinutes > 0) {
+      const durationMatch = logs.find(l =>
+        l.drone_id === selectedDroneId &&
+        Math.abs((l.flight_duration_minutes || 0) - data.durationMinutes) <= 2
+      );
+      if (durationMatch) {
+        console.log('[DroneLog] Matched by drone + duration:', durationMatch.id);
+        setMatchedLog(durationMatch as any);
+        return;
+      }
+    }
+
+    // 3. Fallback: kun én logg på datoen
     if (logs.length === 1) {
+      console.log('[DroneLog] Matched single log on date:', logs[0].id);
       setMatchedLog(logs[0] as any);
     }
   };
@@ -293,7 +323,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!result || !matchedLog || !companyId || !user) return;
     setIsSubmitting(true);
     try {
-      const flightTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const maxPts = 200;
+      let flightTrack = rawTrack;
+      if (rawTrack.length > maxPts) {
+        const step = Math.ceil(rawTrack.length / maxPts);
+        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
+      }
       await supabase.from('flight_logs').update({ flight_track: { positions: flightTrack } as any, flight_duration_minutes: result.durationMinutes }).eq('id', matchedLog.id);
       if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
       if (result.warnings.length > 0 && selectedDroneId) await handleWarnings(selectedDroneId, result.warnings);
