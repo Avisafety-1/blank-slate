@@ -1,25 +1,21 @@
 
 
-# Fix: `route.coordinates` is undefined in MissionMapPreview
+# Fix: `route.coordinates` is undefined in ExpandedMapDialog
 
 ## Problem
 
-At line 98 in `MissionMapPreview.tsx`, the code checks `route && route.coordinates.length > 0`. This crashes when `route` is truthy (an object exists) but `route.coordinates` is `undefined`. This happens when a mission has a route object stored in the database without a `coordinates` array (e.g., an empty object `{}` or an object with only `soraSettings`).
+Same bug as MissionMapPreview -- `ExpandedMapDialog.tsx` accesses `route.coordinates.length` without checking if `coordinates` exists. When a mission has a route object without a `coordinates` array (e.g. `{}` or `{soraSettings: ...}`), lines 301, 304, 318, 320, and 569 all crash.
 
 ## Fix
 
-**File: `src/components/dashboard/MissionMapPreview.tsx`**
+**File: `src/components/dashboard/ExpandedMapDialog.tsx`**
 
-Add optional chaining on two lines where `route.coordinates` is accessed without a null check:
+Add optional chaining at the two guard points that protect all downstream access:
 
-- **Line 98**: Change `route.coordinates.length` to `route?.coordinates?.length`
-- **Line 105** (inside the SORA block): `route.coordinates` is already guarded by the `??` fallback, so it's fine
-- **Line 113** (route polyline block): Same pattern — add `?.` guard
+1. **Line 301**: `if (route && route.coordinates.length > 0)` → `if (route?.coordinates && route.coordinates.length > 0)`
+2. **Line 569**: `{route && route.coordinates.length >= 3 && (` → `{route?.coordinates && route.coordinates.length >= 3 && (`
 
-Specifically:
-1. Line 98: `if (route && route.coordinates.length > 0)` → `if (route?.coordinates && route.coordinates.length > 0)`
-2. Line 105 already uses `(route.coordinates ?? [])` which is safe
-3. All other `route.coordinates` accesses inside the `if` block on line 98 are safe because the guard ensures it exists
+All other `route.coordinates` accesses (lines 304, 305, 318, 320) are inside the block guarded by line 301, so they become safe automatically.
 
-This is a one-line fix with no side effects.
+Two-line fix, no side effects.
 
