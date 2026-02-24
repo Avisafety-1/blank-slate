@@ -625,7 +625,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       } as any).eq('id', matchedLog.id);
 
       await saveFlightEvents(matchedLog.id, result);
-      if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
+      // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
       if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
       await saveLogbookEntries(matchedLog.id, result.durationMinutes);
       
@@ -681,7 +681,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await saveFlightEvents(logData.id, result);
         await saveLogbookEntries(logData.id, result.durationMinutes);
       }
-      if (selectedDroneId) await updateDroneFlightHours(selectedDroneId, result.durationMinutes);
+      // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
       if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
 
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
@@ -694,10 +694,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const updateDroneFlightHours = async (droneId: string, minutes: number) => {
-    const { data: drone } = await supabase.from('drones').select('flyvetimer').eq('id', droneId).single();
-    if (drone) await supabase.from('drones').update({ flyvetimer: drone.flyvetimer + minutes / 60 }).eq('id', droneId);
-  };
+  // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
 
   // ── Helpers ──
 
