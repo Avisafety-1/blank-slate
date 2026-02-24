@@ -1,153 +1,83 @@
 
 
-# Analyse: ChatGPT-forslag vs. nåværende implementering
+# Oppdater resultat-dialogen med nye felter
 
-## Hva vi allerede har
+Dialogen viser allerede mye, men mangler visning av flere felter som nå hentes fra edge-funksjonen etter siste utvidelse. Her er hva som mangler i UI-et:
 
-### Edge function (`process-dronelog/index.ts`)
-Allerede henter og parser:
-- Posisjoner (lat/lng/alt/height), hastighet, flytid, GPS-satellitter
-- Batteri: chargeLevel, temperature, voltage, current, loopNum, fullCapacity, currentCapacity, life, status
-- Metadata: startTime, aircraftName, aircraftSN, aircraftSerial, droneType, batterySN
-- Totals: totalTime, totalDistance, maxAltitude, maxHSpeed, maxVSpeed, maxDistance
-- Advarsler: flycState, APP.warn, høydeanomalier
-- Dato-normalisering med fallback-kjede (DETAILS.startTime → CUSTOM.date UTC → CUSTOM.dateTime)
+## Felter som hentes men IKKE vises
 
-### Klienten (`UploadDroneLogDialog.tsx`)
-- Opplasting og DJI Cloud-synkronisering
-- Auto-matching av drone på serienummer
-- Matching av eksisterende flylogger (tid/drone+varighet/enkelt-dato)
-- Lagrer til `missions` + `flight_logs` + `flight_track` (JSONB)
-- Oppdaterer drone flyvetimer og oppretter advarsler i `drone_log_entries`
+| Felt | Beskrivelse | Prioritet |
+|---|---|---|
+| `rthTriggered` | RTH utløst under flyging | Høy — viktig sikkerhetsinformasjon |
+| `maxGpsSatellites` | Maks GPS-satellitter | Medium — nyttig kontekst til min-verdien |
+| `batteryTempMin` | Min. batteritemperatur | Medium — kulde er like farlig som varme |
+| `batteryCellDeviationMax` | Maks celleavvik (V) | Høy — indikerer ubalansert batteri |
+| `batteryStatus` | Statusstreng fra DJI | Lav — ofte kryptisk |
+| `sha256Hash` | Dedupliserings-hash | Ikke vis — intern bruk |
+| `events` | RTH, advarsler, lav-spenning | Høy — bør vises som hendelseliste |
+| `endTimeUtc` | Sluttid for flygingen | Lav — kan vises i header |
 
-### Database (`flight_logs`-tabellen)
-Eksisterende kolonner: id, company_id, user_id, drone_id, mission_id, departure_location, landing_location, flight_duration_minutes, movements, flight_date, notes, created_at, flight_track (jsonb), dronetag_device_id
+## Plan
 
-## Hva ChatGPT foreslår som er NYTT
+### 1. Vis RTH-varsel (ny boks)
+Hvis `result.rthTriggered === true`, vis en rød/oransje advarselsboks lignende warnings-seksjonen: "Return to Home ble utløst under denne flygingen".
 
-### A) Ny `flights`-tabell
-En dedikert tabell med strukturerte kolonner for alt DroneLog returnerer: `details_sha256` (deduplisering), `battery_temp_min/max`, `battery_cell_dev_max_v`, `gps_sat_min/max`, `rth_triggered`, `drone_model`, `aircraft_serial`, osv.
+### 2. Utvid GPS-kortet
+Endre "Min. GPS sat." til å vise **begge verdier**: `{min} – {max}` i stedet for bare min. Beholder rød farge hvis min < 6.
 
-### B) Ny `flight_events`-tabell
-Strukturerte hendelser (APP_WARNING, RTH, LOW_BATTERY, SENSOR) per flight med timestamp, type, og rå-verdier.
+### 3. Legg til batteritemperatur-range
+Vis `{min}°C – {max}°C` i stedet for bare maks-temp. Rød farge hvis max > 50 eller min < 5.
 
-### C) Deduplisering via `DETAILS.sha256Hash`
-Unik constraint på hash for å forhindre duplikater.
+### 4. Legg til celleavvik-kort
+Nytt KPI-kort for `batteryCellDeviationMax` med ikon og rød farge over 0.1V (indikerer dårlig balanse).
 
-### D) Nye felter fra API
-- `DETAILS.sha256Hash`, `DETAILS.guid` — ikke i vår FIELDS-liste ennå
-- `BATTERY.cellVoltageDeviation [V]` — ikke i FIELDS
-- `BATTERY.timesCharged` — trolig alias for `BATTERY.loopNum`
-- `BATTERY.isVoltageLow`, `BATTERY.goHomeStatus` — ikke i FIELDS
-- `OSD.goHomeStatus`, `HOME.goHomeStatus` — ikke i FIELDS
+### 5. Vis flight events
+Under warnings-seksjonen, vis `result.events` som en kompakt liste med ikon per type (RTH, APP_WARNING, LOW_BATTERY). Viser type + melding. Skjules hvis listen er tom.
 
-## Vurdering og anbefaling
-
-ChatGPT-forslaget er en **stor arkitekturendring** som erstatter nåværende dataflyt. Nåværende system lagrer allerede mye av det foreslåtte, men i en flat struktur (`flight_logs` + JSONB `flight_track`). Her er en pragmatisk tilnærming:
-
-### Anbefalt plan: Utvid eksisterende, ikke erstatt
-
-**Steg 1: Utvid `flight_logs`-tabellen** (ny migrasjon)
-
-Legg til kolonner som mangler — dette gir strukturert data uten å bryte eksisterende kode:
-
-```sql
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual';
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS dronelog_sha256 text;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS start_time_utc timestamptz;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS end_time_utc timestamptz;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS total_distance_m numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_height_m numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_horiz_speed_ms numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_vert_speed_ms numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS drone_model text;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS aircraft_serial text;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_cycles integer;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_temp_min_c numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_temp_max_c numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_voltage_min_v numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS gps_sat_min integer;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS gps_sat_max integer;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS rth_triggered boolean DEFAULT false;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_sn text;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_health_pct numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_distance_m numeric;
-ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS dronelog_warnings jsonb;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_flight_logs_sha256_company
-  ON flight_logs (company_id, dronelog_sha256) WHERE dronelog_sha256 IS NOT NULL;
-```
-
-**Steg 2: Opprett `flight_events`-tabell** (ny migrasjon)
-
-```sql
-CREATE TABLE IF NOT EXISTS flight_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  flight_log_id uuid NOT NULL REFERENCES flight_logs(id) ON DELETE CASCADE,
-  company_id uuid NOT NULL REFERENCES companies(id),
-  t_offset_ms integer,
-  type text NOT NULL,
-  message text,
-  raw_field text,
-  raw_value text,
-  created_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE flight_events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view flight events from own company"
-  ON flight_events FOR SELECT
-  USING (company_id = get_user_company_id(auth.uid()));
-
-CREATE POLICY "Approved users can create flight events"
-  ON flight_events FOR INSERT
-  WITH CHECK (company_id = get_user_company_id(auth.uid())
-    AND EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND approved = true));
-```
-
-**Steg 3: Utvid edge function FIELDS** (`process-dronelog/index.ts`)
-
-Legg til i FIELDS-listen:
-- `DETAILS.sha256Hash` — for deduplisering
-- `DETAILS.guid` — unik ID
-- `HOME.goHomeStatus` — RTH-deteksjon
-- `OSD.goHomeStatus` — alternativ RTH
-- `BATTERY.cellVoltageDeviation [V]` — cellebalanse
-- `BATTERY.isVoltageLow` — lav-spenning-flagg
-
-Utvid `parseCsvToResult` til å:
-- Tracke `maxGpsSats` i tillegg til min
-- Tracke `minBattTemp` i tillegg til max
-- Detektere RTH-hendelser (goHomeStatus-endringer)
-- Samle events med rad-offset (APP.warn-endringer, RTH, low voltage)
-- Returnere `sha256Hash`, `guid`, `gpsSatMax`, `batteryTempMin`, `rthTriggered`, `events[]`
-
-**Steg 4: Oppdater klienten** (`UploadDroneLogDialog.tsx`)
-
-- Ved `handleCreateNew`: Lagre de nye kolonnene i `flight_logs.insert()`
-- Ved `handleUpdateExisting`: Oppdater de nye kolonnene
-- Etter insert: Lagre events til `flight_events`-tabellen
-- Deduplisering: Sjekk `dronelog_sha256` før insert, vis melding hvis duplikat
-- Utvid `DroneLogResult`-interface med nye felter
-
-**Steg 5: Oppdater Supabase types** (`src/integrations/supabase/types.ts`)
-
-Regenerer eller manuelt legg til de nye kolonnene i `flight_logs` og den nye `flight_events`-tabellen.
+### 6. Vis sluttid i header
+Legg til formatert sluttid etter starttid: "05.05.2023 11:36 → 11:52".
 
 ---
 
-### Filer som endres
+## Tekniske detaljer
 
-1. **Ny migrasjon** — Utvider `flight_logs` + oppretter `flight_events`
-2. **`supabase/functions/process-dronelog/index.ts`** — Nye felter, events-deteksjon, sha256, RTH, GPS max, batt temp min
-3. **`src/components/UploadDroneLogDialog.tsx`** — Deduplisering, lagre utvidede felter, lagre events
-4. **`src/integrations/supabase/types.ts`** — Nye typer
+Kun **én fil** endres: `src/components/UploadDroneLogDialog.tsx`
 
-### Tekniske detaljer
+### RTH-varsel (etter linje 843, før warnings)
+```tsx
+{result.rthTriggered && (
+  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5" />
+    <p className="text-sm font-medium text-red-800 dark:text-red-300">
+      Return to Home (RTH) ble utløst under denne flygingen
+    </p>
+  </div>
+)}
+```
 
-- Deduplisering via `DETAILS.sha256Hash`: DroneLog beregner en SHA-256-hash av hver loggfil. To opplastinger av samme fil gir identisk hash. Vi bruker en unik index på `(company_id, dronelog_sha256)` for å forhindre duplikater.
-- Events samles under CSV-parsing ved å spore tilstandsendringer per rad (f.eks. `goHomeStatus` går fra tom til "GoingHome").
-- RTH-deteksjon: Sjekker både `HOME.goHomeStatus` og `OSD.flycState` for go-home-relaterte tilstander.
-- GPS sat max trackes ved å legge til `maxGpsSats`-variabel i parseren.
-- Ingen eksisterende data brytes — alle nye kolonner er nullable.
+### GPS-kort endring (linje 792-797)
+Fra: `{result.minGpsSatellites}`
+Til: `{result.minGpsSatellites}{result.maxGpsSatellites != null ? ` – ${result.maxGpsSatellites}` : ''}`
+
+### Batt. temp endring (linje 798-803)
+Fra: `{result.batteryTemperature}°C`
+Til: `{result.batteryTempMin != null ? `${result.batteryTempMin} – ` : ''}{result.batteryTemperature}°C`
+
+### Nytt celleavvik-kort (etter linje 842)
+```tsx
+{result.batteryCellDeviationMax != null && (
+  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap />Celleavvik</div>
+    <p className={`text-sm font-medium ${result.batteryCellDeviationMax > 0.1 ? 'text-destructive' : ''}`}>
+      {result.batteryCellDeviationMax.toFixed(3)} V
+    </p>
+  </div>
+)}
+```
+
+### Events-seksjon (etter warnings, før matchedLog)
+Kompakt liste over `result.events` filtrert til unike meldinger, med ikon basert på type.
+
+### Sluttid i header (linje 740-741)
+Legg til `result.endTimeUtc` formatert etter starttid med `→` separator.
 
