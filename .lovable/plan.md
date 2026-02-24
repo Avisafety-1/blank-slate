@@ -1,75 +1,153 @@
 
 
-# Fix: Feil dato-format fra DETAILS.startTime
+# Analyse: ChatGPT-forslag vs. nåværende implementering
 
-## Rotårsak
+## Hva vi allerede har
 
-`DETAILS.startTime` returnerer verdier som `"5/5/2023T11:36:03.86 AMZ"` — et ikke-standard datoformat med AM/PM og T-separator. Siden feltet ikke er tomt, brukes det direkte uten at fallback-kjeden (CUSTOM.date UTC osv.) trigges. Men `new Date("5/5/2023T11:36:03.86 AMZ")` gir `Invalid Date`, så klienten faller tilbake til `new Date()` (dagens dato).
+### Edge function (`process-dronelog/index.ts`)
+Allerede henter og parser:
+- Posisjoner (lat/lng/alt/height), hastighet, flytid, GPS-satellitter
+- Batteri: chargeLevel, temperature, voltage, current, loopNum, fullCapacity, currentCapacity, life, status
+- Metadata: startTime, aircraftName, aircraftSN, aircraftSerial, droneType, batterySN
+- Totals: totalTime, totalDistance, maxAltitude, maxHSpeed, maxVSpeed, maxDistance
+- Advarsler: flycState, APP.warn, høydeanomalier
+- Dato-normalisering med fallback-kjede (DETAILS.startTime → CUSTOM.date UTC → CUSTOM.dateTime)
 
-Resultatet: Tittelen viser rå-strengen, men oppdraget lagres med dagens dato.
+### Klienten (`UploadDroneLogDialog.tsx`)
+- Opplasting og DJI Cloud-synkronisering
+- Auto-matching av drone på serienummer
+- Matching av eksisterende flylogger (tid/drone+varighet/enkelt-dato)
+- Lagrer til `missions` + `flight_logs` + `flight_track` (JSONB)
+- Oppdaterer drone flyvetimer og oppretter advarsler i `drone_log_entries`
 
-## Plan
+### Database (`flight_logs`-tabellen)
+Eksisterende kolonner: id, company_id, user_id, drone_id, mission_id, departure_location, landing_location, flight_duration_minutes, movements, flight_date, notes, created_at, flight_track (jsonb), dronetag_device_id
 
-### Fil 1: `supabase/functions/process-dronelog/index.ts`
+## Hva ChatGPT foreslår som er NYTT
 
-**Etter linje 138** (`let flightStartTime = startTime || ""`) — legg til normalisering av startTime FØR fallback-kjeden:
+### A) Ny `flights`-tabell
+En dedikert tabell med strukturerte kolonner for alt DroneLog returnerer: `details_sha256` (deduplisering), `battery_temp_min/max`, `battery_cell_dev_max_v`, `gps_sat_min/max`, `rth_triggered`, `drone_model`, `aircraft_serial`, osv.
 
-```typescript
-let flightStartTime = startTime || "";
+### B) Ny `flight_events`-tabell
+Strukturerte hendelser (APP_WARNING, RTH, LOW_BATTERY, SENSOR) per flight med timestamp, type, og rå-verdier.
 
-// Normaliser DETAILS.startTime som kan ha format "5/5/2023T11:36:03.86 AMZ"
-if (flightStartTime) {
-  const parsed = new Date(flightStartTime.replace(/Z$/, '').replace('T', ' '));
-  if (isNaN(parsed.getTime())) {
-    // Prøv manuell parsing: M/D/YYYY eller MM/DD/YYYY med tid
-    const match = flightStartTime.match(
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
-    );
-    if (match) {
-      let [, month, day, year, hours, mins, secs, , ampm] = match;
-      let h = parseInt(hours);
-      if (ampm?.toUpperCase() === 'PM' && h < 12) h += 12;
-      if (ampm?.toUpperCase() === 'AM' && h === 12) h = 0;
-      flightStartTime = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${String(h).padStart(2,'0')}:${mins}:${secs}Z`;
-    } else {
-      flightStartTime = ""; // La fallback-kjeden ta over
-    }
-  }
-}
+### C) Deduplisering via `DETAILS.sha256Hash`
+Unik constraint på hash for å forhindre duplikater.
+
+### D) Nye felter fra API
+- `DETAILS.sha256Hash`, `DETAILS.guid` — ikke i vår FIELDS-liste ennå
+- `BATTERY.cellVoltageDeviation [V]` — ikke i FIELDS
+- `BATTERY.timesCharged` — trolig alias for `BATTERY.loopNum`
+- `BATTERY.isVoltageLow`, `BATTERY.goHomeStatus` — ikke i FIELDS
+- `OSD.goHomeStatus`, `HOME.goHomeStatus` — ikke i FIELDS
+
+## Vurdering og anbefaling
+
+ChatGPT-forslaget er en **stor arkitekturendring** som erstatter nåværende dataflyt. Nåværende system lagrer allerede mye av det foreslåtte, men i en flat struktur (`flight_logs` + JSONB `flight_track`). Her er en pragmatisk tilnærming:
+
+### Anbefalt plan: Utvid eksisterende, ikke erstatt
+
+**Steg 1: Utvid `flight_logs`-tabellen** (ny migrasjon)
+
+Legg til kolonner som mangler — dette gir strukturert data uten å bryte eksisterende kode:
+
+```sql
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual';
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS dronelog_sha256 text;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS start_time_utc timestamptz;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS end_time_utc timestamptz;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS total_distance_m numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_height_m numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_horiz_speed_ms numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_vert_speed_ms numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS drone_model text;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS aircraft_serial text;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_cycles integer;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_temp_min_c numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_temp_max_c numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_voltage_min_v numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS gps_sat_min integer;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS gps_sat_max integer;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS rth_triggered boolean DEFAULT false;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_sn text;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_health_pct numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS max_distance_m numeric;
+ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS dronelog_warnings jsonb;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_flight_logs_sha256_company
+  ON flight_logs (company_id, dronelog_sha256) WHERE dronelog_sha256 IS NOT NULL;
 ```
 
-Dette konverterer `"5/5/2023T11:36:03.86 AMZ"` → `"2023-05-05T11:36:03Z"` (gyldig ISO).
+**Steg 2: Opprett `flight_events`-tabell** (ny migrasjon)
 
-### Fil 2: `src/components/UploadDroneLogDialog.tsx`
+```sql
+CREATE TABLE IF NOT EXISTS flight_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  flight_log_id uuid NOT NULL REFERENCES flight_logs(id) ON DELETE CASCADE,
+  company_id uuid NOT NULL REFERENCES companies(id),
+  t_offset_ms integer,
+  type text NOT NULL,
+  message text,
+  raw_field text,
+  raw_value text,
+  created_at timestamptz DEFAULT now()
+);
 
-**Linje 386-388** — legg til samme type robust parsing som fallback i klienten:
+ALTER TABLE flight_events ENABLE ROW LEVEL SECURITY;
 
-```typescript
-const parseFlightDate = (raw: string): Date | null => {
-  const d = new Date(raw);
-  if (!isNaN(d.getTime())) return d;
-  // Fallback: parse M/D/YYYY AM/PM format
-  const m = raw.match(
-    /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
-  );
-  if (m) {
-    let [, month, day, year, hours, mins, secs, , ampm] = m;
-    let h = parseInt(hours);
-    if (ampm?.toUpperCase() === 'PM' && h < 12) h += 12;
-    if (ampm?.toUpperCase() === 'AM' && h === 12) h = 0;
-    return new Date(`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${String(h).padStart(2,'0')}:${mins}:${secs}Z`);
-  }
-  return null;
-};
+CREATE POLICY "Users can view flight events from own company"
+  ON flight_events FOR SELECT
+  USING (company_id = get_user_company_id(auth.uid()));
+
+CREATE POLICY "Approved users can create flight events"
+  ON flight_events FOR INSERT
+  WITH CHECK (company_id = get_user_company_id(auth.uid())
+    AND EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND approved = true));
 ```
 
-Bruk denne i:
-- Linje 386: `const flightDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();`
-- Linje 641-642 (visning): Bruk `parseFlightDate` for bedre parsing i resultats-headeren
+**Steg 3: Utvid edge function FIELDS** (`process-dronelog/index.ts`)
 
-## Tekniske detaljer
+Legg til i FIELDS-listen:
+- `DETAILS.sha256Hash` — for deduplisering
+- `DETAILS.guid` — unik ID
+- `HOME.goHomeStatus` — RTH-deteksjon
+- `OSD.goHomeStatus` — alternativ RTH
+- `BATTERY.cellVoltageDeviation [V]` — cellebalanse
+- `BATTERY.isVoltageLow` — lav-spenning-flagg
 
-- Edge-funksjonen redeployes automatisk
-- Regex-mønsteret håndterer formater som `M/D/YYYY`, `MM/DD/YYYY`, med eller uten AM/PM, med eller uten `T`-separator og `Z`-suffix
-- Klient-fallback sikrer at selv om edge-funksjonen ikke er redeployet ennå, fungerer parsing korrekt
+Utvid `parseCsvToResult` til å:
+- Tracke `maxGpsSats` i tillegg til min
+- Tracke `minBattTemp` i tillegg til max
+- Detektere RTH-hendelser (goHomeStatus-endringer)
+- Samle events med rad-offset (APP.warn-endringer, RTH, low voltage)
+- Returnere `sha256Hash`, `guid`, `gpsSatMax`, `batteryTempMin`, `rthTriggered`, `events[]`
+
+**Steg 4: Oppdater klienten** (`UploadDroneLogDialog.tsx`)
+
+- Ved `handleCreateNew`: Lagre de nye kolonnene i `flight_logs.insert()`
+- Ved `handleUpdateExisting`: Oppdater de nye kolonnene
+- Etter insert: Lagre events til `flight_events`-tabellen
+- Deduplisering: Sjekk `dronelog_sha256` før insert, vis melding hvis duplikat
+- Utvid `DroneLogResult`-interface med nye felter
+
+**Steg 5: Oppdater Supabase types** (`src/integrations/supabase/types.ts`)
+
+Regenerer eller manuelt legg til de nye kolonnene i `flight_logs` og den nye `flight_events`-tabellen.
+
+---
+
+### Filer som endres
+
+1. **Ny migrasjon** — Utvider `flight_logs` + oppretter `flight_events`
+2. **`supabase/functions/process-dronelog/index.ts`** — Nye felter, events-deteksjon, sha256, RTH, GPS max, batt temp min
+3. **`src/components/UploadDroneLogDialog.tsx`** — Deduplisering, lagre utvidede felter, lagre events
+4. **`src/integrations/supabase/types.ts`** — Nye typer
+
+### Tekniske detaljer
+
+- Deduplisering via `DETAILS.sha256Hash`: DroneLog beregner en SHA-256-hash av hver loggfil. To opplastinger av samme fil gir identisk hash. Vi bruker en unik index på `(company_id, dronelog_sha256)` for å forhindre duplikater.
+- Events samles under CSV-parsing ved å spore tilstandsendringer per rad (f.eks. `goHomeStatus` går fra tom til "GoingHome").
+- RTH-deteksjon: Sjekker både `HOME.goHomeStatus` og `OSD.flycState` for go-home-relaterte tilstander.
+- GPS sat max trackes ved å legge til `maxGpsSats`-variabel i parseren.
+- Ingen eksisterende data brytes — alle nye kolonner er nullable.
 
