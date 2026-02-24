@@ -1,58 +1,54 @@
 
 
-# Fix: Flytid logges i minutter i stedet for timer
+# Fix: Loggbok-oppsummering viser feil flytid ved match
 
-## Rotarsak
+## Problem
 
-Det er **to problemer**:
+Nar en flylogg matcher en eksisterende logg, viser oppsummeringen "+16 min flytid" for pilot, drone og utstyr -- som om hele varigheten skal legges til. Men ved oppdatering av en eksisterende logg skal bare **differansen** mellom ny og gammel varighet legges til (eller trekkes fra).
 
-### Problem 1: DB-triggere bruker feil enhet
-
-I `supabase/migrations/20260206153154_...sql` legger triggerne `flight_duration_minutes` rett til `flyvetimer` uten a dele pa 60:
-
-```sql
--- Drone-trigger (linje 8):
-SET flyvetimer = COALESCE(flyvetimer, 0) + NEW.flight_duration_minutes
--- 16 minutter blir lagt til som 16 timer!
-
--- Equipment-trigger (linje 33):
-SET flyvetimer = COALESCE(flyvetimer, 0) + v_duration
--- Samme feil
-```
-
-### Problem 2: Drone-timer oppdateres dobbelt
-
-For droner skjer det DOBBELT oppdatering:
-1. DB-triggeren `trg_update_drone_hours` kjorer ved INSERT i `flight_logs` (legger til minutter som timer)
-2. App-koden `updateDroneFlightHours()` kjorer ogsa og legger til `minutes / 60` (korrekt enhet, men dobbelt)
-
-Sa for en 16-minutters flytur far dronen: `16 + 0.267 = 16.267` timer i stedet for `0.267` timer.
+I tillegg: drone-triggeren (`trg_update_drone_hours`) kjorer kun pa INSERT, ikke UPDATE. Sa ved oppdatering av eksisterende logg oppdateres ikke drone-flyvetimer automatisk -- men `saveLogbookEntries` legger til full varighet pa pilot og utstyr uansett.
 
 ## Losning
 
-### 1. Ny migrasjon: Fiks begge triggere
+### 1. Beregn differanse ved match
 
-Oppdater trigger-funksjonene til a dele pa 60.0:
+I `renderLogbookSection`, beregn differansen mellom ny og gammel varighet:
 
-```sql
--- Drone
-SET flyvetimer = COALESCE(flyvetimer, 0) + NEW.flight_duration_minutes / 60.0
-
--- Equipment  
-SET flyvetimer = COALESCE(flyvetimer, 0) + v_duration / 60.0
+```typescript
+const duration = result.durationMinutes;
+const isUpdate = !!matchedLog;
+const oldDuration = matchedLog?.flight_duration_minutes ?? 0;
+const diffMinutes = isUpdate ? duration - oldDuration : duration;
 ```
 
-### 2. Fjern manuell drone-oppdatering fra app-koden
+### 2. Oppdater UI-oppsummeringen
 
-I `UploadDroneLogDialog.tsx`, fjern kallet til `updateDroneFlightHours()` (linje 628, 684) og selve funksjonen (linje 697-700), fordi triggeren na handterer dette korrekt.
+I stedet for alltid "+{duration} min flytid", vis:
 
-### 3. Sjekk pilot-oppdatering
+- **Ny logg**: "+16 min flytid" (som na)
+- **Match, med differanse**: "+3 min flytid" eller "-2 min flytid" 
+- **Match, ingen differanse**: "Ingen endring i flytid" (ingen +/- vises)
 
-Pilot-koden i `saveLogbookEntries` gjor `durationMinutes / 60` korrekt, og det finnes ingen trigger for `flight_log_personnel`, sa den er OK.
+### 3. Oppdater `saveLogbookEntries` for match-scenarioet
 
-## Endringer
+Nar `matchedLog` finnes:
+- Beregn `diffMinutes = result.durationMinutes - matchedLog.flight_duration_minutes`
+- Oppdater pilot flyvetimer med `diffMinutes / 60` i stedet for `durationMinutes / 60`
+- For utstyr: sjekk om `flight_log_equipment` entries allerede finnes for denne loggen for a unnga duplikater
+- For drone: manuelt oppdater `flyvetimer` med `diffMinutes / 60` (siden triggeren kun kjorer pa INSERT)
 
-- **Ny SQL-migrasjon**: `CREATE OR REPLACE FUNCTION` for begge trigger-funksjoner med `/ 60.0`
-- **`src/components/UploadDroneLogDialog.tsx`**: Fjern `updateDroneFlightHours`-kall og funksjonen
-- Vurder ogsa om `LogFlightTimeDialog.tsx` har samme dobbelt-oppdatering (den har kommentaren "trigger will auto-update drone flyvetimer" men bruker ogsa manuell oppdatering)
+### 4. Handter pilot `flight_log_personnel` duplikater
+
+Ved oppdatering: sjekk om `flight_log_personnel` entry allerede finnes for denne flight_log. Hvis ja, ikke sett inn pa nytt -- bare oppdater flyvetimer med differansen.
+
+## Tekniske endringer
+
+**Fil: `src/components/UploadDroneLogDialog.tsx`**
+
+- Linje 716: Legg til `diffMinutes`-beregning basert pa `matchedLog`
+- Linje 806, 812, 818: Vis `diffMinutes` i stedet for `duration` nar `matchedLog` finnes; vis "Ingen endring" nar diff er 0
+- Linje 540-565 (`saveLogbookEntries`): Bruk `diffMinutes` ved match; sjekk for eksisterende entries; oppdater drone manuelt ved UPDATE
+- Linje 630: Send differanse-info til `saveLogbookEntries`
+
+~40 linjer endret/lagt til.
 
