@@ -1,43 +1,62 @@
 
 
-## Plan: Save DroneLog API Fields Reference and Fix Field Name Mismatch
+# Plan: Utvid DroneLog-data med dato/tid, feilmeldinger og batteridetaljer
 
-### What I Found
+## Dagens situasjon
 
-I could not parse the uploaded .gdoc file directly (it's a binary PDF), but I successfully retrieved the **complete field list** from the live DroneLog API via the health check endpoint (`GET /api/v1/fields`). This gives us all 200+ available fields with descriptions.
+Edge-funksjonen henter kun 7 felter: `OSD.latitude`, `OSD.longitude`, `OSD.altitude [m]`, `OSD.height [m]`, `OSD.flyTime [ms]`, `OSD.hSpeed [m/s]`, `BATTERY.chargeLevel [%]`. Resultatet viser flytid, maks hastighet, min batteri og datapunkter -- men mangler dato/klokkeslett, droneinfo, batteridetaljer og feilmeldinger.
 
-### Important Discovery: Field Name Mismatch (Root Cause of 0 Duration)
+## Nye felter fra DroneLog API
 
-The current edge function requests these fields:
-```
-OSD.latitude, OSD.longitude, OSD.altitude, OSD.height, OSD.flyTimeMilliseconds, OSD.speed, BATTERY.chargeLevel
-```
+Legger til disse i `FIELDS`-konstanten:
 
-But the API's field metadata shows the actual names are different:
-- `OSD.flyTimeMilliseconds` -- The API docs example uses this, but the `/fields` endpoint lists `OSD.flyTime [ms]`
-- `OSD.speed` -- Not in the fields list at all; the actual names are `OSD.hSpeed [m/s]`, `OSD.hSpeed [km/h]`, etc.
-- `OSD.altitude` and `OSD.height` -- The fields list shows `OSD.altitude [m]`, `OSD.height [m]`, etc.
+| Felt | Hva det gir |
+|---|---|
+| `CUSTOM.dateTime` | Dato og klokkeslett per datapunkt |
+| `DETAILS.startTime` | Starttidspunkt for flyturen |
+| `DETAILS.aircraftName` | Dronens navn |
+| `DETAILS.aircraftSN` | Dronens serienummer |
+| `DETAILS.droneType` | Dronetype |
+| `DETAILS.totalDistance [m]` | Total flydistanse |
+| `DETAILS.maxAltitude [m]` | Maks oppnådd høyde |
+| `DETAILS.maxHSpeed [m/s]` | Maks hastighet (fra metadata) |
+| `BATTERY.temperature [°C]` | Batteritemperatur |
+| `BATTERY.totalVoltage [V]` | Total spenning |
+| `BATTERY.current [A]` | Strøm |
+| `BATTERY.loopNum` | Antall ladesykluser |
+| `OSD.gpsNum` | Antall GPS-satellitter |
+| `OSD.flycState` | Flygkontrolltilstand (feilmeldinger) |
+| `APP.warn` | App-advarsler/feilmeldinger |
 
-The CSV response likely uses the actual field names as column headers, causing our parser to fail finding the columns (index = -1), which explains why `durationMinutes` is 0 and speed data is missing.
+## Endringer
 
-### Plan
+### 1. `supabase/functions/process-dronelog/index.ts`
 
-**1. Create `docs/dronelog-api-fields.md`** -- A comprehensive reference of all available DroneLog API fields, organized by category (APP, APPGPS, BATTERY, BATTERY1, BATTERY2, CALC, CAMERA, CUSTOM, DETAILS, GIMBAL, HOME, MC, OSD, RC, RECOVER, RTK, SERIAL, WEATHER).
+- Utvide `FIELDS`-konstanten med de nye feltene
+- Parse nye kolonner i `parseCsvToResult`: dato/tid, batteritemp, spenning, GPS-satellitter, flycState, app-advarsler
+- Trekke ut `DETAILS.*` fra første rad (disse er metadata, samme verdi på alle rader)
+- Generere nye warnings basert på:
+  - `BATTERY.temperature` over 50°C
+  - `OSD.gpsNum` under 6 satellitter
+  - `OSD.flycState` som inneholder feilkoder (GoHome, Landing, etc.)
+  - `APP.warn` ikke-tomme verdier
+- Utvide returverdien med nye felter: `startTime`, `aircraftName`, `aircraftSN`, `droneType`, `totalDistance`, `maxAltitude`, `batteryTemperature`, `batteryVoltage`, `batteryCycles`, `minGpsSatellites`, `flightErrors`
 
-**2. Update `docs/dronelog-api-reference.md`** -- Update the "Nyttige felter" section to reflect the correct field names.
+### 2. `src/components/UploadDroneLogDialog.tsx`
 
-**3. Fix `supabase/functions/process-dronelog/index.ts`** -- Two changes:
-   - Update the `FIELDS` constant to use confirmed field names from the API
-   - Make the CSV header matching case-insensitive and partial-match aware, so `OSD.flyTime [ms]` matches even if we request `OSD.flyTimeMilliseconds`
+- Utvide `DroneLogResult`-interfacet med de nye feltene
+- Resultatsiden utvides fra 2x2 grid til mer informativt oppsett:
+  - **Topprad**: Dato/klokkeslett for flyturen (fra `startTime` eller `CUSTOM.dateTime`)
+  - **Droneinfo**: Navn, serienummer, type (hvis tilgjengelig)
+  - **Eksisterende KPIer**: Flytid, maks hastighet, min batteri, datapunkter
+  - **Nye KPIer**: Total distanse, maks høyde, batteritemp, GPS-satellitter, ladesykluser
+  - **Advarsler**: Eksisterende + nye (høy temp, lavt GPS-signal, flycontroller-feil, app-advarsler)
+- Bruke `startTime` for bedre matching mot eksisterende flylogger (dato-match i tillegg til varighet)
 
-### Technical Details
+## Tekniske detaljer
 
-The parser currently does exact string matching:
-```typescript
-const timeIdx = headers.indexOf("OSD.flyTimeMilliseconds");
-```
-
-If the CSV returns `OSD.flyTime [ms]` as the header, `indexOf` returns -1. Then `cols[-1]` is `undefined`, `parseFloat(undefined)` is `NaN`, and the `!isNaN` check skips it -- resulting in `maxFlyTimeMs = 0` and `durationMinutes = 0`.
-
-The fix adds flexible header lookup that tries exact match first, then falls back to partial matching, and logs the actual headers received for debugging.
+- `DETAILS.*`-felter er metadata som gjentas på hver rad -- vi trenger bare lese dem fra rad 1
+- `CUSTOM.dateTime` gir ISO-format tidsstempel per datapunkt, brukes for start/slutt-tid
+- `OSD.flycState` returnerer strenger som "AutoLanding", "GoHome", "Atti" etc. -- disse fanges som advarsler
+- `APP.warn` kan være tom streng eller inneholde feilmeldinger fra DJI-appen
 
