@@ -1,35 +1,30 @@
 
 
-# Fix: Rå startTime-streng sendes direkte til timestamptz-kolonne
+# Fix: Falsk "batterinivå gikk ned til -1%" advarsel
 
-## Problem
+## Årsak
 
-Konsollfeilen viser:
+I edge-funksjonen `process-dronelog/index.ts`, linje 207:
+```typescript
+let minBattery = batteryIdx >= 0 ? 100 : -1;
 ```
-"invalid input syntax for type timestamp with time zone: \"5/5/2023T11:36:03.86 AMZ\""
+
+Når `BATTERY.chargeLevel [%]`-kolonnen ikke finnes i CSV-en (eldre loggfiler eller annet format), settes `minBattery = -1`. Deretter på linje 341:
+```typescript
+if (minBattery < 20) {
+  warnings.push({ type: "low_battery", message: `Batterinivå gikk ned til ${minBattery}%`, value: minBattery });
+}
 ```
 
-I `buildExtendedFields` (linje 386-387) sendes `r.startTime` og `r.endTimeUtc` direkte som strenger til `start_time_utc` og `end_time_utc` kolonnene. Disse er `timestamptz`-kolonner som krever gyldig ISO-format. Men DJI-formatet `"5/5/2023T11:36:03.86 AMZ"` er ikke gyldig ISO, og Supabase avviser insert-operasjonen.
-
-`parseFlightDate`-funksjonen som konverterer dette formatet til en gyldig `Date` eksisterer allerede i filen, men brukes ikke i `buildExtendedFields`.
+Siden `-1 < 20` er `true`, genereres alltid en falsk advarsel. I tillegg brukes `-1` direkte i notes-teksten (linje 506 i klienten).
 
 ## Fix
 
-**Fil: `src/components/UploadDroneLogDialog.tsx`**
+**Fil: `supabase/functions/process-dronelog/index.ts`** — Linje 341: Legg til sjekk for at `minBattery >= 0` (dvs. at vi faktisk har batteridata):
 
-Endre linje 386-387 i `buildExtendedFields` fra:
 ```typescript
-start_time_utc: r.startTime || null,
-end_time_utc: r.endTimeUtc || null,
+if (minBattery >= 0 && minBattery < 20) {
 ```
 
-Til:
-```typescript
-start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
-end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
-```
-
-Dette bruker den eksisterende `parseFlightDate`-funksjonen til a konvertere rå-strengen til en gyldig ISO-streng for Supabase kan godta den.
-
-En endring, to linjer, en fil.
+Det er alt. En betingelse, en linje, en fil. Edge-funksjonen må redeployes.
 
