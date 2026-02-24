@@ -338,7 +338,7 @@ function parseCsvToResult(csvText: string) {
   }
 
   // ── Generate warnings ──
-  if (minBattery < 20) {
+  if (minBattery >= 0 && minBattery < 20) {
     warnings.push({ type: "low_battery", message: `Batterinivå gikk ned til ${minBattery}%`, value: minBattery });
   }
   if (maxBattTemp > 50) {
