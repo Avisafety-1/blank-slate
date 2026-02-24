@@ -217,7 +217,9 @@ Deno.serve(async (req) => {
 
     const dronelogForm = new FormData();
     dronelogForm.append("file", file);
-    dronelogForm.append("fields", FIELDS);
+    for (const field of FIELDS.split(",")) {
+      dronelogForm.append("fields[]", field);
+    }
 
     const dronelogResponse = await fetch(`${DRONELOG_BASE}/logs/upload`, {
       method: "POST",
