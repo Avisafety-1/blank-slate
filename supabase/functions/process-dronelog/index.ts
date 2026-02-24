@@ -215,18 +215,38 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No file provided" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const dronelogForm = new FormData();
-    dronelogForm.append("file", file);
+    // Read file into bytes for manual multipart construction
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const fileName = file.name || "flight.txt";
+    const boundary = "----DronLogBoundary" + Date.now();
     const fieldList = FIELDS.split(",").map(f => f.trim());
+
+    // Build multipart body manually to ensure fields[] works with Laravel
+    const parts: string[] = [];
     for (const field of fieldList) {
-      dronelogForm.append("fields", field);
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
     }
-    console.log("Upload fields:", fieldList);
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+
+    const textEncoder = new TextEncoder();
+    const prefixBytes = textEncoder.encode(parts.join(""));
+    const suffixBytes = textEncoder.encode(`\r\n--${boundary}--\r\n`);
+
+    const body = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
+    body.set(prefixBytes, 0);
+    body.set(fileBytes, prefixBytes.length);
+    body.set(suffixBytes, prefixBytes.length + fileBytes.length);
+
+    console.log("Upload: manual multipart, fields:", fieldList, "file:", fileName, "size:", fileBytes.length);
 
     const dronelogResponse = await fetch(`${DRONELOG_BASE}/logs/upload`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
-      body: dronelogForm,
+      headers: {
+        Authorization: `Bearer ${dronelogKey}`,
+        Accept: "application/json",
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+      },
+      body: body,
     });
 
     if (!dronelogResponse.ok) {
