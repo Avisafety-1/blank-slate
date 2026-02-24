@@ -548,11 +548,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {step === 'result' && result && (
           <div className="space-y-4">
             {/* Flight date/time & drone info header */}
-            {(result.startTime || result.aircraftName || result.droneType) && (
+            {(result.startTime || result.aircraftName || result.droneType || matchedLog) && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
-                {result.startTime && (
+                {result.startTime ? (
                   <p className="text-sm font-medium">{result.startTime}</p>
-                )}
+                ) : matchedLog ? (
+                  <p className="text-sm font-medium">{matchedLog.flight_date}</p>
+                ) : null}
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                   {result.aircraftName && <span>{result.aircraftName}</span>}
                   {result.droneType && <span>{result.droneType}</span>}
@@ -573,7 +575,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
-                <p className={`font-semibold ${result.minBattery < 20 ? 'text-destructive' : ''}`}>{result.minBattery}%</p>
+                <p className={`font-semibold ${result.minBattery >= 0 && result.minBattery < 20 ? 'text-destructive' : ''}`}>
+                  {result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
+                </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="w-3 h-3" />{t('dronelog.dataPoints', 'Datapunkter')}</div>
