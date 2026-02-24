@@ -1,33 +1,69 @@
 
 
-# Fix: DroneLog-import overskriver planlagt rute med feil format
+# Fix: Match flylogger på dato/klokkeslett + gi valg ved ingen treff
 
 ## Problem
 
-Funksjonen `updateMissionRoute` (linje 347-349 i `UploadDroneLogDialog.tsx`) gjør to ting feil:
-
-1. **Overskriver planlagt rute**: Den skriver flyposisjonene til `mission.route`, som er ment for den *planlagte* ruten — ikke den faktisk fløyne.
-2. **Bruker feil format**: Den lagrer `[[lat, lng], [lat, lng], ...]` i stedet for `{ coordinates: [{lat, lng}, ...], totalDistance: ... }`, som er formatet kartet forventer.
-
-Resultatet er at kartet bare klarer å vise ett enkelt punkt ("Flytur 1 – Slutt") fordi `route.coordinates` er `undefined` (formatet er feil), mens det faktiske flysporet allerede ligger korrekt i `flight_logs.flight_track`.
+`findMatchingFlightLog` matcher på flytid (varighet) med 20% toleranse og søker siste 7 dager. Brukeren vil at matching skal baseres på dato og klokkeslett, og at man alltid skal få valget om å opprette nytt oppdrag hvis ingen match finnes innenfor 1 time.
 
 ## Løsning
 
-**Fjern `updateMissionRoute`-funksjonen og begge kallene til den.** Flysporet er allerede lagret i `flight_logs.flight_track` (med korrekt `{ positions: [...] }` format etter forrige fix). Kartet viser dette som "faktisk flydd rute" via `flightTracks`-propen.
-
 **Fil: `src/components/UploadDroneLogDialog.tsx`**
 
-1. **Linje 288**: Fjern kallet `await updateMissionRoute(matchedLog.mission_id, result.positions)`
-2. **Linje 316**: Fjern kallet `await updateMissionRoute(mission.id, result.positions)`
-3. **Linje 347-349**: Fjern hele `updateMissionRoute`-funksjonen
+### 1. Endre `findMatchingFlightLog` (linje 256-278)
 
-Dette bevarer eventuell planlagt rute som allerede finnes på oppdraget, og lar kartet vise flysporet som den faktisk fløyne ruten (via `flight_logs`).
+Erstatt hele funksjonen med ny logikk:
+- Parse `result.startTime` til en dato
+- Filtrer `flight_logs` på eksakt `flight_date` (samme dato) og `company_id`
+- For hvert treff: sammenlign klokkeslett fra DJI-loggens `startTime` med oppdragets `tidspunkt` (via join `missions(tittel, tidspunkt)`)
+- Match hvis tidsdifferansen er innenfor **60 minutter**
+- Hvis ingen match: `setMatchedLog(null)` — UI viser allerede "Opprett nytt oppdrag"-knappen (linje 662-666, 675-679)
 
-## Teknisk detalj
+### 2. Ingen UI-endringer nødvendig
 
-Kartet har allerede to separate lag:
-- **Planlagt rute** (blå stiplet linje): fra `mission.route.coordinates`
-- **Faktisk flydd rute** (fargekodet etter høyde): fra `flight_logs.flight_track.positions`
+Eksisterende UI håndterer allerede begge scenarioer:
+- **Match funnet** (linje 649-661): Viser grønn boks med "Eksisterende flylogg funnet!" og "Oppdater flylogg"-knapp
+- **Ingen match** (linje 662-666): Viser blå boks med "Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag." og "Opprett nytt oppdrag"-knapp
 
-Ved å slutte å overskrive `mission.route` vil begge vises korrekt.
+### Ny `findMatchingFlightLog`-logikk
+
+```typescript
+const findMatchingFlightLog = async (data: DroneLogResult) => {
+  if (!companyId || !data.startTime) return;
+  const flightDate = new Date(data.startTime);
+  if (isNaN(flightDate.getTime())) return;
+  const dateStr = flightDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('flight_logs')
+    .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel, tidspunkt)')
+    .eq('company_id', companyId)
+    .eq('flight_date', dateStr)
+    .order('flight_date', { ascending: false });
+  if (selectedDroneId) query = query.eq('drone_id', selectedDroneId);
+
+  const { data: logs } = await query;
+  if (!logs || logs.length === 0) return;
+
+  // Match på klokkeslett (innenfor 60 min)
+  for (const log of logs) {
+    const missionTime = (log as any).missions?.tidspunkt;
+    if (missionTime) {
+      const missionDate = new Date(missionTime);
+      const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
+      if (diffMs <= 60 * 60 * 1000) {
+        setMatchedLog(log as any);
+        return;
+      }
+    }
+  }
+
+  // Fallback: Hvis kun én logg på samme dato, foreslå den
+  if (logs.length === 1) {
+    setMatchedLog(logs[0] as any);
+  }
+};
+```
+
+Endringen påvirker kun matchingslogikken -- ingen andre filer eller UI-endringer.
 
