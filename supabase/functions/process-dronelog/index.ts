@@ -56,7 +56,7 @@ function parseCsvToResult(csvText: string) {
         lng: lon,
         alt: isNaN(alt) ? 0 : alt,
         height: isNaN(height) ? 0 : height,
-        timestamp: new Date(flyTimeMs).toISOString(),
+        timestamp: `PT${Math.round(flyTimeMs / 1000)}S`,
       });
     }
   }
