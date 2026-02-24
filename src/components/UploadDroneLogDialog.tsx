@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { format } from "date-fns";
@@ -26,6 +26,18 @@ interface DroneLogResult {
   totalRows: number;
   sampledPositions: number;
   warnings: Array<{ type: string; message: string; value?: number }>;
+  // Extended fields
+  startTime: string | null;
+  aircraftName: string | null;
+  aircraftSN: string | null;
+  droneType: string | null;
+  totalDistance: number | null;
+  maxAltitude: number | null;
+  detailsMaxSpeed: number | null;
+  batteryTemperature: number | null;
+  batteryMinVoltage: number | null;
+  batteryCycles: number | null;
+  minGpsSatellites: number | null;
 }
 
 interface MatchedFlightLog {
@@ -535,6 +547,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* ── Step: Result ── */}
         {step === 'result' && result && (
           <div className="space-y-4">
+            {/* Flight date/time & drone info header */}
+            {(result.startTime || result.aircraftName || result.droneType) && (
+              <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
+                {result.startTime && (
+                  <p className="text-sm font-medium">{result.startTime}</p>
+                )}
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                  {result.aircraftName && <span>{result.aircraftName}</span>}
+                  {result.droneType && <span>{result.droneType}</span>}
+                  {result.aircraftSN && <span>SN: {result.aircraftSN}</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Primary KPIs */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{t('dronelog.flightDuration', 'Flytid')}</div>
@@ -542,7 +569,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap className="w-3 h-3" />{t('dronelog.maxSpeed', 'Maks hastighet')}</div>
-                <p className="font-semibold">{result.maxSpeed} m/s</p>
+                <p className="font-semibold">{result.detailsMaxSpeed ?? result.maxSpeed} m/s</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
@@ -554,16 +581,56 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             </div>
 
+            {/* Extended KPIs */}
+            {(result.totalDistance != null || result.maxAltitude != null || result.batteryTemperature != null || result.minGpsSatellites != null) && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {result.totalDistance != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Route className="w-3 h-3" />Distanse</div>
+                    <p className="text-sm font-medium">{result.totalDistance >= 1000 ? `${(result.totalDistance / 1000).toFixed(1)} km` : `${result.totalDistance} m`}</p>
+                  </div>
+                )}
+                {result.maxAltitude != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Mountain className="w-3 h-3" />Maks høyde</div>
+                    <p className="text-sm font-medium">{result.maxAltitude} m</p>
+                  </div>
+                )}
+                {result.minGpsSatellites != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Satellite className="w-3 h-3" />Min. GPS sat.</div>
+                    <p className={`text-sm font-medium ${result.minGpsSatellites < 6 ? 'text-destructive' : ''}`}>{result.minGpsSatellites}</p>
+                  </div>
+                )}
+                {result.batteryTemperature != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Thermometer className="w-3 h-3" />Batt. temp</div>
+                    <p className={`text-sm font-medium ${result.batteryTemperature > 50 ? 'text-destructive' : ''}`}>{result.batteryTemperature}°C</p>
+                  </div>
+                )}
+                {result.batteryMinVoltage != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap className="w-3 h-3" />Min. spenning</div>
+                    <p className="text-sm font-medium">{result.batteryMinVoltage} V</p>
+                  </div>
+                )}
+                {result.batteryCycles != null && (
+                  <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Info className="w-3 h-3" />Ladesykluser</div>
+                    <p className="text-sm font-medium">{result.batteryCycles}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Warnings */}
             {result.warnings.length > 0 && (
               <div className="space-y-2">
                 {result.warnings.map((w, i) => (
                   <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
                     <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
-                        {w.type === 'low_battery' ? t('dronelog.warningLowBattery', 'Lavt batterinivå') : t('dronelog.warningAltitude', 'Uventet høydeendring')}
-                      </p>
-                      <p className="text-xs text-yellow-700 dark:text-yellow-400">{w.message}</p>
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
                     </div>
                   </div>
                 ))}
