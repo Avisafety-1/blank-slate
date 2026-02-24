@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { format } from "date-fns";
@@ -151,6 +152,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<DroneLogResult | null>(null);
   const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
+  const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // DJI login state
@@ -174,6 +176,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setFile(null);
     setResult(null);
     setMatchedLog(null);
+    setMatchCandidates([]);
     setSelectedDroneId("");
     setDjiEmail("");
     setDjiPassword("");
@@ -344,19 +347,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     console.log('[DroneLog] Found', logs?.length || 0, 'flight_logs on', dateStr);
     if (!logs || logs.length === 0) return;
 
-    // 1. Prøv tidsmatch (60 min vindu) hvis vi har startTime
+    // 1. Prøv tidsmatch (4-timers vindu) hvis vi har startTime
     if (flightDate) {
+      const timeCandidates: MatchedFlightLog[] = [];
       for (const log of logs) {
         const missionTime = (log as any).missions?.tidspunkt;
         if (missionTime) {
           const missionDate = new Date(missionTime);
           const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
-          if (diffMs <= 60 * 60 * 1000) {
-            console.log('[DroneLog] Matched by time window:', log.id);
-            setMatchedLog(log as any);
-            return;
+          if (diffMs <= 4 * 60 * 60 * 1000) {
+            timeCandidates.push(log as any);
           }
         }
+      }
+      if (timeCandidates.length === 1) {
+        console.log('[DroneLog] Matched single candidate by time window:', timeCandidates[0].id);
+        setMatchedLog(timeCandidates[0]);
+        return;
+      } else if (timeCandidates.length > 1) {
+        console.log('[DroneLog] Multiple time-window candidates:', timeCandidates.length);
+        setMatchCandidates(timeCandidates);
+        return;
       }
     }
 
@@ -906,6 +917,44 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
+            {/* Candidate selection when multiple matches */}
+            {matchCandidates.length > 1 && !matchedLog && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  {t('dronelog.multipleCandidates', 'Flere flylogger matcher. Velg hvilken som skal oppdateres:')}
+                </p>
+                <RadioGroup
+                  onValueChange={(val) => {
+                    if (val === '__new__') {
+                      setMatchedLog(null);
+                      setMatchCandidates([]);
+                    } else {
+                      const selected = matchCandidates.find(c => c.id === val);
+                      if (selected) setMatchedLog(selected);
+                    }
+                  }}
+                >
+                  {matchCandidates.map((c) => (
+                    <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value={c.id} />
+                      <div className="text-sm">
+                        <span className="font-medium">{c.flight_date}</span>
+                        <span className="text-muted-foreground"> — {c.flight_duration_minutes} min</span>
+                        {c.missions && <span className="text-muted-foreground"> — {(c.missions as any).tittel}</span>}
+                      </div>
+                    </label>
+                  ))}
+                  <label className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                    <RadioGroupItem value="__new__" />
+                    <div className="flex items-center gap-1 text-sm">
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>{t('dronelog.createMission', 'Opprett nytt oppdrag')}</span>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
+
             {matchedLog ? (
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                 <div className="flex items-start gap-2">
@@ -919,19 +968,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : matchCandidates.length === 0 ? (
               <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag.')}</p>
               </div>
-            )}
+            ) : null}
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); }}>{t('actions.back')}</Button>
+              <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); }}>{t('actions.back')}</Button>
               {matchedLog ? (
                 <Button onClick={handleUpdateExisting} disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {t('dronelog.updateExisting', 'Oppdater flylogg')}
                 </Button>
+              ) : matchCandidates.length > 1 ? (
+                <Button disabled>{t('dronelog.selectLogFirst', 'Velg en flylogg ovenfor')}</Button>
               ) : (
                 <Button onClick={handleCreateNew} disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
