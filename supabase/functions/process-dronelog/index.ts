@@ -8,15 +8,20 @@ const corsHeaders = {
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
 
-// Expanded field list including date/time, drone info, battery details, GPS and errors
+// Expanded field list including new fields for dedup, RTH, cell deviation
 const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
+  "OSD.goHomeStatus",
   "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
   "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
+  "BATTERY.cellVoltageDeviation [V]","BATTERY.isVoltageLow",
+  "BATTERY.goHomeStatus",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
+  "DETAILS.sha256Hash","DETAILS.guid",
+  "HOME.goHomeStatus",
   "APP.warn",
 ].join(",");
 
@@ -55,6 +60,20 @@ const FLYC_WARNING_STATES = new Set([
   "gohome_avoid","motor_lock","not_enough_force","low_voltage_landing",
 ]);
 
+// RTH-related goHomeStatus values
+const RTH_ACTIVE_STATES = new Set([
+  "goinghome","gohome","autogoinghome","lowbatterygoinghome",
+  "rc_disconnect_goinghome","smart_goinghome",
+]);
+
+interface FlightEvent {
+  type: string;
+  message: string;
+  t_offset_ms: number | null;
+  raw_field: string;
+  raw_value: string;
+}
+
 function parseCsvToResult(csvText: string) {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) {
@@ -73,7 +92,7 @@ function parseCsvToResult(csvText: string) {
   const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
   const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
 
-  // New indices
+  // Extended indices
   const gpsNumIdx = findHeaderIndex(headers, "OSD.gpsNum");
   const flycStateIdx = findHeaderIndex(headers, "OSD.flycState");
   const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [°C]");
@@ -90,6 +109,13 @@ function parseCsvToResult(csvText: string) {
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
   const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
+  const battCellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
+  const battIsLowIdx = findHeaderIndex(headers, "BATTERY.isVoltageLow");
+
+  // RTH indices
+  const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
+  const homeGoHomeIdx = findHeaderIndex(headers, "HOME.goHomeStatus");
+  const battGoHomeIdx = findHeaderIndex(headers, "BATTERY.goHomeStatus");
 
   // DETAILS indices (metadata – same value every row, read from row 1)
   const detStartTimeIdx = findHeaderIndex(headers, "DETAILS.startTime");
@@ -104,10 +130,13 @@ function parseCsvToResult(csvText: string) {
   const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxAltitude [m]");
   const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHSpeed [m/s]");
   const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVSpeed [m/s]");
+  const detSha256Idx = findHeaderIndex(headers, "DETAILS.sha256Hash");
+  const detGuidIdx = findHeaderIndex(headers, "DETAILS.guid");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
-    "flycState:", flycStateIdx, "battTemp:", battTempIdx, "dateTime:", dateTimeIdx);
+    "flycState:", flycStateIdx, "battTemp:", battTempIdx, "dateTime:", dateTimeIdx,
+    "sha256:", detSha256Idx, "guid:", detGuidIdx, "osdGoHome:", osdGoHomeIdx);
 
   // Extract DETAILS metadata from first data row
   const firstRow = lines[1].split(",").map((c) => c.trim());
@@ -115,7 +144,7 @@ function parseCsvToResult(csvText: string) {
   const aircraftName = detAircraftNameIdx >= 0 ? firstRow[detAircraftNameIdx] : "";
   const rawAircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
   const aircraftSerial = detAircraftSerialIdx >= 0 ? firstRow[detAircraftSerialIdx] : "";
-  const aircraftSN = rawAircraftSN || aircraftSerial; // fallback
+  const aircraftSN = rawAircraftSN || aircraftSerial;
   const droneType = detDroneTypeIdx >= 0 ? firstRow[detDroneTypeIdx] : "";
   const totalDistance = detTotalDistIdx >= 0 ? parseFloat(firstRow[detTotalDistIdx]) : NaN;
   const maxDistance = detMaxDistIdx >= 0 ? parseFloat(firstRow[detMaxDistIdx]) : NaN;
@@ -129,6 +158,8 @@ function parseCsvToResult(csvText: string) {
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
   const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
   const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
+  const sha256Hash = detSha256Idx >= 0 ? firstRow[detSha256Idx] : "";
+  const guid = detGuidIdx >= 0 ? firstRow[detGuidIdx] : "";
 
   // CUSTOM date/time UTC
   const customDateUtc = customDateUtcIdx >= 0 ? firstRow[customDateUtcIdx] : "";
@@ -173,17 +204,30 @@ function parseCsvToResult(csvText: string) {
 
   const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
   let maxSpeed = 0;
-  let minBattery = batteryIdx >= 0 ? 100 : -1; // -1 means no battery data
+  let minBattery = batteryIdx >= 0 ? 100 : -1;
   let maxFlyTimeMs = 0;
   let maxBattTemp = -999;
+  let minBattTemp = 999;
   let minBattVolt = 999;
+  let maxBattCellDev = 0;
   let minGpsSats = 99;
+  let maxGpsSats = 0;
   const batteryReadings: number[] = [];
   const warnings: Array<{ type: string; message: string; value?: number }> = [];
   const flycStatesSet = new Set<string>();
   const appWarnings = new Set<string>();
+  const events: FlightEvent[] = [];
+  let rthTriggered = false;
+
+  // State tracking for event detection
+  let prevAppWarn = "";
+  let prevGoHomeStatus = "";
+  let prevBattIsLow = "";
 
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
+
+  // Track last timestamp for end_time_utc
+  let lastTimestamp = "";
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map((c) => c.trim());
@@ -195,12 +239,25 @@ function parseCsvToResult(csvText: string) {
     const speed = speedIdx >= 0 ? parseFloat(cols[speedIdx]) : NaN;
     const battery = batteryIdx >= 0 ? parseFloat(cols[batteryIdx]) : NaN;
 
-    // New field parsing
+    // Extended field parsing
     const gpsSats = gpsNumIdx >= 0 ? parseInt(cols[gpsNumIdx]) : NaN;
     const battTemp = battTempIdx >= 0 ? parseFloat(cols[battTempIdx]) : NaN;
     const battVolt = battVoltIdx >= 0 ? parseFloat(cols[battVoltIdx]) : NaN;
+    const battCellDev = battCellDevIdx >= 0 ? parseFloat(cols[battCellDevIdx]) : NaN;
     const flycState = flycStateIdx >= 0 ? cols[flycStateIdx] : "";
     const appWarn = appWarnIdx >= 0 ? cols[appWarnIdx] : "";
+    const battIsLow = battIsLowIdx >= 0 ? cols[battIsLowIdx] : "";
+
+    // RTH status from multiple sources
+    const osdGoHome = osdGoHomeIdx >= 0 ? cols[osdGoHomeIdx] : "";
+    const homeGoHome = homeGoHomeIdx >= 0 ? cols[homeGoHomeIdx] : "";
+    const battGoHome = battGoHomeIdx >= 0 ? cols[battGoHomeIdx] : "";
+    const currentGoHome = osdGoHome || homeGoHome || battGoHome;
+
+    // Track last custom timestamp for end_time
+    if (customTimeUtcIdx >= 0 && cols[customTimeUtcIdx]) {
+      lastTimestamp = cols[customTimeUtcIdx];
+    }
 
     if (!isNaN(speed) && speed > maxSpeed) maxSpeed = speed;
     if (!isNaN(battery)) {
@@ -208,15 +265,50 @@ function parseCsvToResult(csvText: string) {
       batteryReadings.push(battery);
     }
     if (!isNaN(flyTimeMs) && flyTimeMs > maxFlyTimeMs) maxFlyTimeMs = flyTimeMs;
-    if (!isNaN(battTemp) && battTemp > maxBattTemp) maxBattTemp = battTemp;
+    if (!isNaN(battTemp)) {
+      if (battTemp > maxBattTemp) maxBattTemp = battTemp;
+      if (battTemp < minBattTemp) minBattTemp = battTemp;
+    }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
-    if (!isNaN(gpsSats) && gpsSats < minGpsSats) minGpsSats = gpsSats;
+    if (!isNaN(battCellDev) && battCellDev > maxBattCellDev) maxBattCellDev = battCellDev;
+    if (!isNaN(gpsSats)) {
+      if (gpsSats < minGpsSats) minGpsSats = gpsSats;
+      if (gpsSats > maxGpsSats) maxGpsSats = gpsSats;
+    }
 
     if (flycState && FLYC_WARNING_STATES.has(flycState.toLowerCase())) {
       flycStatesSet.add(flycState);
     }
-    if (appWarn && appWarn.length > 0 && appWarn !== "0" && appWarn.toLowerCase() !== "none") {
+
+    // ── Event detection ──
+    const offsetMs = !isNaN(flyTimeMs) ? Math.round(flyTimeMs) : null;
+
+    // APP.warn change
+    if (appWarn && appWarn !== "0" && appWarn.toLowerCase() !== "none" && appWarn !== prevAppWarn) {
       appWarnings.add(appWarn);
+      events.push({ type: "APP_WARNING", message: appWarn, t_offset_ms: offsetMs, raw_field: "APP.warn", raw_value: appWarn });
+    }
+    prevAppWarn = appWarn;
+
+    // RTH detection
+    if (currentGoHome && currentGoHome.toLowerCase() !== prevGoHomeStatus.toLowerCase()) {
+      const lower = currentGoHome.toLowerCase();
+      if (RTH_ACTIVE_STATES.has(lower)) {
+        rthTriggered = true;
+        events.push({ type: "RTH", message: `Return to Home: ${currentGoHome}`, t_offset_ms: offsetMs, raw_field: "goHomeStatus", raw_value: currentGoHome });
+      }
+    }
+    prevGoHomeStatus = currentGoHome;
+
+    // Low battery voltage event
+    if (battIsLow && battIsLow.toLowerCase() === "true" && prevBattIsLow.toLowerCase() !== "true") {
+      events.push({ type: "LOW_BATTERY", message: "Battery voltage low detected", t_offset_ms: offsetMs, raw_field: "BATTERY.isVoltageLow", raw_value: battIsLow });
+    }
+    prevBattIsLow = battIsLow;
+
+    // Also detect RTH from flycState
+    if (flycState && (flycState.toLowerCase() === "gohome" || flycState.toLowerCase() === "gohome_avoid")) {
+      rthTriggered = true;
     }
 
     if ((i - 1) % sampleRate === 0 && !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
@@ -231,6 +323,18 @@ function parseCsvToResult(csvText: string) {
     const estimatedSeconds = (lines.length - 1) / 10;
     durationMinutes = Math.round(estimatedSeconds / 60);
     console.log("flyTime column empty/missing, estimated duration from row count:", durationMinutes, "min");
+  }
+
+  // Compute end_time_utc
+  let endTimeUtc: string | null = null;
+  if (flightStartTime && durationMinutes > 0) {
+    try {
+      const startD = new Date(flightStartTime);
+      if (!isNaN(startD.getTime())) {
+        const endD = new Date(startD.getTime() + (maxFlyTimeMs || durationMinutes * 60000));
+        endTimeUtc = endD.toISOString();
+      }
+    } catch { /* ignore */ }
   }
 
   // ── Generate warnings ──
@@ -249,6 +353,9 @@ function parseCsvToResult(csvText: string) {
   if (appWarnings.size > 0) {
     const warnList = Array.from(appWarnings).slice(0, 5);
     warnings.push({ type: "app_warning", message: `App-advarsler: ${warnList.join("; ")}` });
+  }
+  if (maxBattCellDev > 0.3) {
+    warnings.push({ type: "cell_deviation", message: `Høy celleavvik: ${maxBattCellDev.toFixed(3)}V`, value: maxBattCellDev });
   }
 
   for (let i = 1; i < positions.length; i++) {
@@ -276,8 +383,9 @@ function parseCsvToResult(csvText: string) {
     totalRows: lines.length - 1,
     sampledPositions: positions.length,
     warnings,
-    // New fields
+    // Metadata
     startTime: flightStartTime || null,
+    endTimeUtc: endTimeUtc,
     aircraftName: aircraftName || null,
     aircraftSN: aircraftSN || null,
     aircraftSerial: aircraftSerial || null,
@@ -286,18 +394,26 @@ function parseCsvToResult(csvText: string) {
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
     batteryTemperature: maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null,
+    batteryTempMin: minBattTemp < 999 ? Math.round(minBattTemp * 10) / 10 : null,
     batteryMinVoltage: minBattVolt < 999 ? Math.round(minBattVolt * 100) / 100 : null,
     batteryCycles: !isNaN(batteryCycles) ? batteryCycles : null,
     minGpsSatellites: minGpsSats < 99 ? minGpsSats : null,
-    // New extended fields
+    maxGpsSatellites: maxGpsSats > 0 ? maxGpsSats : null,
+    // Battery extended
     batterySN: batterySN || null,
     batteryHealth: !isNaN(batteryLife) ? Math.round(batteryLife * 10) / 10 : null,
     batteryFullCapacity: !isNaN(batteryFullCap) ? Math.round(batteryFullCap) : null,
     batteryCurrentCapacity: !isNaN(batteryCurrCap) ? Math.round(batteryCurrCap) : null,
     batteryStatus: batteryStatus || null,
+    batteryCellDeviationMax: maxBattCellDev > 0 ? Math.round(maxBattCellDev * 1000) / 1000 : null,
     maxDistance: !isNaN(maxDistance) ? Math.round(maxDistance) : null,
     maxVSpeed: !isNaN(detailsMaxVSpeed) ? Math.round(detailsMaxVSpeed * 10) / 10 : null,
     totalTimeSeconds: !isNaN(detailsTotalTime) ? Math.round(detailsTotalTime) : null,
+    // New dedup & event fields
+    sha256Hash: sha256Hash || null,
+    guid: guid || null,
+    rthTriggered,
+    events,
   };
 }
 
