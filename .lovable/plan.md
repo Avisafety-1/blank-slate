@@ -1,73 +1,106 @@
 
 
-# Feature: Velg blant flere matchende flylogger
+# Feature: Loggbok-integrasjon i Last opp flylogg-dialogen
 
 ## Oversikt
 
-Når flere flylogger matcher innenfor et tidsvindu, skal brukeren kunne velge hvilken logg som skal oppdateres, i stedet for at systemet automatisk velger den første.
+Utvide `UploadDroneLogDialog` med et nytt steg/seksjon i result-visningen som lar brukeren konfigurere hva som skal logges i loggbokene til pilot, drone og utstyr -- med smarte standardvalg basert på data fra flyloggen og matchende oppdrag.
 
-## Endringer
+## Tekniske endringer
 
 **Fil: `src/components/UploadDroneLogDialog.tsx`**
 
-### 1. Ny state for kandidatliste
+### 1. Ny state og data
 
-Legg til state `matchCandidates` (array av `MatchedFlightLog`) ved siden av eksisterende `matchedLog`:
+Legg til state for loggbok-konfigurasjon:
 
 ```typescript
-const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
+// Ny state
+const [pilotId, setPilotId] = useState<string>("");
+const [personnel, setPersonnel] = useState<Personnel[]>([]);
+const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+const [logToLogbooks, setLogToLogbooks] = useState(true);
+const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string }>>({});
 ```
 
-### 2. Oppdater `findMatchingFlightLog`-logikken
+Interface for personell (samme moenster som `LogFlightTimeDialog`):
 
-I stedet for å returnere ved første tidsmatch, samle alle logger som matcher innenfor tidsvinduet (utvide til f.eks. 4 timer). Deretter:
-
-- Hvis 0 kandidater: fall gjennom til varighets-match og single-log fallback (som nå)
-- Hvis 1 kandidat: sett `matchedLog` direkte (som nå)
-- Hvis 2+ kandidater: sett `matchCandidates` og la `matchedLog` stå som `null` til brukeren velger
-
-### 3. Ny UI-seksjon: kandidatvelger
-
-Mellom warnings-seksjonen og footer-knappene (linje ~909), legg til en ny tilstand for `matchCandidates.length > 1`:
-
-- Vis en liste med RadioGroup-items, hver med dato, varighet og oppdragsnavn
-- Når brukeren velger en, sett `setMatchedLog(valgtKandidat)`
-- Vis også et alternativ "Opprett nytt oppdrag" nederst i listen
-
-### 4. Reset
-
-Legg til `setMatchCandidates([])` i alle steder der `setMatchedLog(null)` kalles (reset-funksjon og tilbake-knapp).
-
-## Teknisk detalj
-
-Matching-logikken endres fra:
 ```typescript
-// Nåværende: returnerer ved første match
-for (const log of logs) {
-  if (diffMs <= 60 * 60 * 1000) {
-    setMatchedLog(log);
-    return;
-  }
-}
+interface Personnel { id: string; full_name: string | null; email: string | null; }
+interface EquipmentItem { id: string; navn: string; serienummer: string; }
 ```
 
-Til:
-```typescript
-// Nytt: samle alle kandidater innenfor 4-timers vindu
-const candidates = [];
-for (const log of logs) {
-  if (diffMs <= 4 * 60 * 60 * 1000) {
-    candidates.push(log);
-  }
-}
-if (candidates.length === 1) {
-  setMatchedLog(candidates[0]);
-} else if (candidates.length > 1) {
-  setMatchCandidates(candidates);
-  // matchedLog forblir null — brukeren velger
-}
-// Hvis 0 kandidater: fall gjennom til varighet/fallback
-```
+### 2. Hent personell og utstyr
 
-UI-velgeren bruker eksisterende `RadioGroup` fra `src/components/ui/radio-group.tsx`.
+Utvid `useEffect` ved `open` til ogs aa hente:
+- `profiles` (godkjente, samme selskap) for pilotvelger
+- `equipment` (aktive) for utstyrsvelger
+- Auto-sett `pilotId` til innlogget bruker
+
+Hvis matchet oppdrag har tilknyttet drone/utstyr/personell via `mission_drones`, `mission_equipment`, `flight_log_personnel` og `flight_log_equipment`, pre-select disse automatisk.
+
+### 3. Auto-match drone og utstyr
+
+Eksisterende SN-match for drone beholdes. I tillegg: hvis matchende oppdrag (`matchedLog`) har `drone_id`, pre-select den. Hvis oppdragets `flight_log_equipment` entries finnes, pre-select det utstyret.
+
+### 4. Ny UI-seksjon: "Loggbok-oppdatering"
+
+Plasseres i result-steget, mellom KPI-visningen og warnings/footer. Vises som en sammenklappbar seksjon med Switch for "Oppdater loggboeker".
+
+Inneholder:
+
+**a) Pilot-velger**
+- Select med alle godkjente profiler i selskapet
+- Innlogget bruker forhåndsvalgt
+- Viser hvem som er valgt
+
+**b) Drone-velger**  
+- Allerede eksisterende `selectedDroneId` gjenbrukes
+- Viser auto-match info (SN)
+
+**c) Utstyr-velger**
+- Checkbox-liste over tilgjengelig utstyr (samme moenster som `LogFlightTimeDialog`)
+- Pre-selectet fra matchende oppdrag
+
+**d) Sammendrag av hva som logges**
+- Kompakt oppsummering:
+  - "Pilot: [navn] +[X] min flytid"
+  - "Drone: [modell] +[X] min flytid" 
+  - "Utstyr: [navn1], [navn2] +[X] min flytid"
+
+### 5. Warning-handlinger
+
+For hver warning i `result.warnings`, vis valg:
+- Checkbox: "Lagre som loggbokoppfoering paa dronen" (default: true for alvorlige)
+- Dropdown: "Endre dronestatus" med valg Groen/Gul/Roed (default: Gul)
+
+For spesifikke warnings (celleavvik, lav batterihelse):
+- Automatisk foreslaa lagring i droneloggbok med passende tittel
+
+### 6. Oppdater save-logikken
+
+I `handleUpdateExisting` og `handleCreateNew`:
+
+- Opprett `flight_log_personnel` entry for valgt pilot (og evt. andre)
+- Opprett `flight_log_equipment` entries for valgt utstyr (trigger oppdaterer flyvetimer automatisk)
+- Oppdater pilot-profil `flyvetimer` 
+- Oppdater drone `flyvetimer` (allerede eksisterende)
+- For warnings: bruk brukerens valg for status (Gul/Roed) i stedet for alltid Gul
+- For warnings: lagre loggbokoppfoering kun hvis brukeren har valgt det
+
+### 7. Eksisterende `handleWarnings`-funksjon
+
+Refaktorer til aa bruke `warningActions`-state i stedet for hardkodet oppforsel. Dagens kode setter alltid status til Gul og lager alltid loggbokinnlegg -- ny kode bruker brukerens valg per warning.
+
+## Filendringer
+
+Kun **en fil** endres: `src/components/UploadDroneLogDialog.tsx`
+
+- ~100 linjer ny state/fetch-logikk
+- ~80 linjer ny UI-seksjon 
+- ~30 linjer oppdatert save-logikk
+- ~20 linjer refaktorert warning-handling
+
+Totalt ~230 linjer endringer/tillegg i en fil paa 998 linjer.
 
