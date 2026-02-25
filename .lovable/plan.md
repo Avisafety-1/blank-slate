@@ -1,34 +1,40 @@
 
 
-# Påvirkning på eksisterende bruk (mobil/pad/PC)
+# Fix: `crypto.randomUUID` polyfill for DJI RC Plus
 
-## Kort svar
+## Problem
 
-**Nei, endringene vil ikke endre opplevelsen på mobil, nettbrett eller PC.** De er designet for å være bakoverkompatible. Her er vurderingen punkt for punkt:
+Skjermbildet viser feilen: `TypeError: crypto.randomUUID is not a function @ 1738:128667`
 
----
+`crypto.randomUUID()` ble introdusert i Chrome 92. DJI RC Plus sin WebView er eldre (Chrome 70-87) og mangler denne funksjonen. Den brukes i 6 filer i prosjektet, inkludert på module-level i `OpenAIPMap.tsx` som krasjer ved import -- for ErrorBoundary kan fange noe.
 
-## 1. Senke Vite build target (`es2015`, `chrome70`)
+## Losning
 
-**Ingen synlig endring.** Vite transpilerer bare moderne JS-syntaks (som `??=`, `||=`) ned til eldre syntaks. Sluttresultatet er funksjonelt identisk — bare litt mer verbose JavaScript. Moderne nettlesere kjører det like raskt. Bundle-størrelsen kan øke marginalt (noen få KB), men dette er neglisjerbart.
+Legg til en **polyfill** tidlig i `src/main.tsx` (for alle importer) som definerer `crypto.randomUUID` hvis den mangler:
 
-## 2. Try/catch rundt `createSyncStoragePersister`
+```typescript
+// src/main.tsx - legg til OVERST, for alle andre importer
+if (typeof crypto !== 'undefined' && typeof crypto.randomUUID !== 'function') {
+  crypto.randomUUID = function() {
+    return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, function(c) {
+      var r = crypto.getRandomValues(new Uint8Array(1))[0];
+      return (Number(c) ^ (r & (15 >> (Number(c) / 4)))).toString(16);
+    });
+  };
+}
+```
 
-**Ingen endring i normal bruk.** localStorage fungerer på alle moderne nettlesere. Try/catch-blokken aktiveres bare hvis localStorage er utilgjengelig (f.eks. privat modus på svært gamle nettlesere). På mobil/pad/PC fortsetter alt som før.
+Dette er en standard polyfill som bruker `crypto.getRandomValues` (tilgjengelig fra Chrome 11) til a generere UUID v4.
 
-## 3. Global error handler i `index.html`
+## Filer som endres
 
-**Ingen synlig endring.** Scriptet viser bare en feilmelding hvis appen feiler helt ved oppstart. På fungerende nettlesere (alle mobiler, nettbrett, PC-er i bruk i dag) vil scriptet aldri aktiveres — det er en ren "failsafe" for enheter der JS-bundlen krasjer.
+| Fil | Endring |
+|---|---|
+| `src/main.tsx` | Legg til `crypto.randomUUID` polyfill overst, for alle importer |
 
-## 4. CSS: `svh`/`dvh` → `screen` (`vh`)
+~7 linjer lagt til.
 
-**Minimal visuell endring.** `svh` (small viewport height) og `vh` (viewport height) er identiske i de fleste situasjoner. Forskjellen er kun synlig på iOS Safari der adresselinjen skjuler/viser seg — `svh` bruker den minste høyden, `vh` bruker den "statiske" høyden. Sidebar-komponenten brukes ikke i appen per nå (appen bruker Header-navigasjon), så endringen der er irrelevant. For `ExpandedMapDialog` har den allerede `sm:h-[90vh]` som fallback for desktop, og på mobil vil `h-screen` (`100vh`) oppføre seg nesten identisk med `100dvh`.
+## Pavirkning
 
-**index.css sin `dvh`-bruk er allerede bak `@supports`** og trenger ikke endres — den har `min-height: 100%` som fallback.
-
----
-
-## Konklusjon
-
-Alle fire endringene er "defensive" tiltak som kun aktiveres på eldre/begrensede nettlesere. For brukere på moderne mobil, nettbrett og PC vil appen fungere og se ut nøyaktig som i dag.
+Ingen endring for moderne nettlesere -- polyfillen aktiveres kun hvis `crypto.randomUUID` ikke finnes. Pa DJI RC Plus vil den generere gyldige UUID-er via `crypto.getRandomValues`.
 
