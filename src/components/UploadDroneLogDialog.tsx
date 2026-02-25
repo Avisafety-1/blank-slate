@@ -149,6 +149,10 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
   if (!res.ok) throw new Error(data.error || data.message || "Request failed");
   return data;
 }
+const isApiLimitError = (error: any): boolean => {
+  const msg = error?.message || '';
+  return msg.includes('limit reached') || msg.includes('429') || msg.includes('API limit');
+};
 
 // ── Component ──
 
@@ -360,7 +364,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('result');
     } catch (error: any) {
       console.error('DroneLog upload error:', error);
-      toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message);
+      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
+      else { toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
     }
@@ -382,7 +387,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
-      toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message);
+      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
+      else { toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message); }
     } finally {
       setIsDjiLoading(false);
     }
@@ -398,7 +404,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setDjiPage(page);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
-      toast.error(t('dronelog.djiListError', 'Kunne ikke hente flylogger: ') + error.message);
+      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
+      else { toast.error(t('dronelog.djiListError', 'Kunne ikke hente flylogger: ') + error.message); }
     } finally {
       setIsDjiLoading(false);
     }
@@ -423,7 +430,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('result');
     } catch (error: any) {
       console.error('DJI process log error:', error);
-      toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message);
+      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
+      else { toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
     }
