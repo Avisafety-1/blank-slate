@@ -185,6 +185,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [logToLogbooks, setLogToLogbooks] = useState(true);
   const [logbookOpen, setLogbookOpen] = useState(true);
   const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string }>>({});
+  const [oldPilotIds, setOldPilotIds] = useState<string[]>([]);
+  const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
+  const [oldDroneId, setOldDroneId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && companyId) {
@@ -215,10 +218,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   }, [result]);
 
-  // Pre-select equipment from matched log
+  // Pre-select equipment and personnel from matched log
   useEffect(() => {
     if (matchedLog?.id && equipmentList.length > 0) {
       fetchMatchedEquipment(matchedLog.id);
+    }
+    if (matchedLog?.id) {
+      fetchMatchedPersonnel(matchedLog.id);
+      setOldDroneId(matchedLog.drone_id || null);
     }
   }, [matchedLog, equipmentList]);
 
@@ -228,7 +235,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .select('equipment_id')
       .eq('flight_log_id', flightLogId);
     if (data && data.length > 0) {
-      setSelectedEquipment(data.map(d => d.equipment_id));
+      const ids = data.map(d => d.equipment_id);
+      setSelectedEquipment(ids);
+      setOldEquipmentIds(ids);
+    }
+  };
+
+  const fetchMatchedPersonnel = async (flightLogId: string) => {
+    const { data } = await supabase
+      .from('flight_log_personnel')
+      .select('profile_id')
+      .eq('flight_log_id', flightLogId);
+    if (data && data.length > 0) {
+      const ids = data.map(d => d.profile_id);
+      setOldPilotIds(ids);
+      // Pre-select the first pilot if current user isn't already set
+      if (!pilotId || !personnel.find(p => p.id === pilotId)) {
+        setPilotId(ids[0]);
+      }
     }
   };
 
@@ -245,10 +269,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiLogs([]);
     setDjiLogsTotal(0);
     setDjiPage(1);
-    setPilotId("");
-    setSelectedEquipment([]);
-    setLogToLogbooks(true);
-    setWarningActions({});
+      setPilotId("");
+      setSelectedEquipment([]);
+      setOldPilotIds([]);
+      setOldEquipmentIds([]);
+      setOldDroneId(null);
+      setLogToLogbooks(true);
+      setWarningActions({});
   };
 
   const fetchDrones = async () => {
@@ -541,71 +568,82 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!logToLogbooks || !companyId || !user) return;
 
     const diffMinutes = isUpdate ? durationMinutes - oldDurationMinutes : durationMinutes;
+    const newDuration = durationMinutes;
+    const oldDuration = oldDurationMinutes;
 
-    // Save pilot to flight_log_personnel & update flyvetimer
-    if (pilotId) {
-      if (isUpdate) {
-        // Check if personnel entry already exists
-        const { data: existing } = await supabase.from('flight_log_personnel')
-          .select('id').eq('flight_log_id', flightLogId).eq('profile_id', pilotId).limit(1);
-        if (!existing || existing.length === 0) {
-          await supabase.from('flight_log_personnel').insert({
-            flight_log_id: flightLogId,
-            profile_id: pilotId,
-          });
-        }
-      } else {
-        await supabase.from('flight_log_personnel').insert({
-          flight_log_id: flightLogId,
-          profile_id: pilotId,
-        });
+    // ── Helper to adjust flight hours on a resource ──
+    const adjustHours = async (table: 'profiles' | 'drones' | 'equipment', id: string, minutesDelta: number) => {
+      if (minutesDelta === 0) return;
+      const { data: row } = await supabase.from(table).select('flyvetimer').eq('id', id).single();
+      if (row) {
+        await supabase.from(table).update({
+          flyvetimer: Math.max(0, ((row as any).flyvetimer || 0) + minutesDelta / 60.0)
+        }).eq('id', id);
       }
-      // Update pilot flight hours with diff only
-      if (diffMinutes !== 0) {
-        const { data: profile } = await supabase.from('profiles').select('flyvetimer').eq('id', pilotId).single();
-        if (profile) {
-          await supabase.from('profiles').update({
-            flyvetimer: (profile.flyvetimer || 0) + diffMinutes / 60
-          }).eq('id', pilotId);
+    };
+
+    // ── PILOT ──
+    if (isUpdate) {
+      const oldPilot = oldPilotIds[0] || null;
+      const newPilot = pilotId || null;
+      const pilotChanged = oldPilot !== newPilot;
+
+      if (pilotChanged) {
+        // Remove old pilot from junction & subtract old duration
+        if (oldPilot) {
+          await supabase.from('flight_log_personnel').delete().eq('flight_log_id', flightLogId).eq('profile_id', oldPilot);
+          await adjustHours('profiles', oldPilot, -oldDuration);
         }
+        // Add new pilot to junction & add full new duration
+        if (newPilot) {
+          await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: newPilot });
+          await adjustHours('profiles', newPilot, newDuration);
+        }
+      } else if (newPilot && diffMinutes !== 0) {
+        // Same pilot, just adjust by diff
+        await adjustHours('profiles', newPilot, diffMinutes);
       }
+    } else if (pilotId) {
+      await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: pilotId });
+      await adjustHours('profiles', pilotId, newDuration);
     }
 
-    // For drone: trigger only fires on INSERT, so manually update on UPDATE
-    if (isUpdate && diffMinutes !== 0 && selectedDroneId) {
-      const { data: drone } = await supabase.from('drones').select('flyvetimer').eq('id', selectedDroneId).single();
-      if (drone) {
-        await supabase.from('drones').update({
-          flyvetimer: (drone.flyvetimer || 0) + diffMinutes / 60.0
-        }).eq('id', selectedDroneId);
+    // ── DRONE ──
+    if (isUpdate) {
+      const droneChanged = oldDroneId !== selectedDroneId;
+      if (droneChanged) {
+        if (oldDroneId) await adjustHours('drones', oldDroneId, -oldDuration);
+        if (selectedDroneId) await adjustHours('drones', selectedDroneId, newDuration);
+      } else if (selectedDroneId && diffMinutes !== 0) {
+        await adjustHours('drones', selectedDroneId, diffMinutes);
       }
     }
+    // For new logs, drone hours are handled by DB trigger trg_update_drone_hours
 
-    // Save equipment to flight_log_equipment (triggers update equipment hours automatically)
-    for (const eqId of selectedEquipment) {
-      if (isUpdate) {
-        // Check if equipment entry already exists
-        const { data: existing } = await supabase.from('flight_log_equipment')
-          .select('id').eq('flight_log_id', flightLogId).eq('equipment_id', eqId).limit(1);
-        if (!existing || existing.length === 0) {
-          await supabase.from('flight_log_equipment').insert({
-            flight_log_id: flightLogId,
-            equipment_id: eqId,
-          });
-        } else if (diffMinutes !== 0) {
-          // Manually update equipment hours since trigger only fires on INSERT
-          const { data: eq } = await supabase.from('equipment').select('flyvetimer').eq('id', eqId).single();
-          if (eq) {
-            await supabase.from('equipment').update({
-              flyvetimer: (eq.flyvetimer || 0) + diffMinutes / 60.0
-            }).eq('id', eqId);
-          }
-        }
-      } else {
-        await supabase.from('flight_log_equipment').insert({
-          flight_log_id: flightLogId,
-          equipment_id: eqId,
-        });
+    // ── EQUIPMENT ──
+    if (isUpdate) {
+      const removedEq = oldEquipmentIds.filter(id => !selectedEquipment.includes(id));
+      const addedEq = selectedEquipment.filter(id => !oldEquipmentIds.includes(id));
+      const keptEq = selectedEquipment.filter(id => oldEquipmentIds.includes(id));
+
+      // Removed equipment: delete junction & subtract old duration
+      for (const eqId of removedEq) {
+        await supabase.from('flight_log_equipment').delete().eq('flight_log_id', flightLogId).eq('equipment_id', eqId);
+        await adjustHours('equipment', eqId, -oldDuration);
+      }
+      // Added equipment: insert junction & add full new duration
+      for (const eqId of addedEq) {
+        await supabase.from('flight_log_equipment').insert({ flight_log_id: flightLogId, equipment_id: eqId });
+        await adjustHours('equipment', eqId, newDuration);
+      }
+      // Kept equipment: adjust by diff only
+      for (const eqId of keptEq) {
+        if (diffMinutes !== 0) await adjustHours('equipment', eqId, diffMinutes);
+      }
+    } else {
+      for (const eqId of selectedEquipment) {
+        await supabase.from('flight_log_equipment').insert({ flight_log_id: flightLogId, equipment_id: eqId });
+        // Equipment hours are handled by DB trigger on INSERT
       }
     }
   };
@@ -667,6 +705,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await supabase.from('flight_logs').update({
         flight_track: { positions: flightTrack } as any,
         flight_duration_minutes: result.durationMinutes,
+        drone_id: selectedDroneId || null,
         ...buildExtendedFields(result),
       } as any).eq('id', matchedLog.id);
 
@@ -764,8 +803,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     const oldDuration = matchedLog?.flight_duration_minutes ?? 0;
     const diffMinutes = isUpdate ? duration - oldDuration : duration;
 
-    const flightTimeLabel = (resourceName: string) => {
+    const flightTimeLabelForResource = (resourceType: 'pilot' | 'drone' | 'equipment', resourceId: string) => {
       if (!isUpdate) return <span className="text-muted-foreground">+{duration} min flytid</span>;
+
+      // Determine if this resource is new, kept, or swapped
+      let isNew = false;
+      if (resourceType === 'pilot') isNew = !oldPilotIds.includes(resourceId);
+      else if (resourceType === 'drone') isNew = oldDroneId !== resourceId;
+      else if (resourceType === 'equipment') isNew = !oldEquipmentIds.includes(resourceId);
+
+      if (isNew) {
+        return <span className="text-green-600 dark:text-green-400">+{duration} min flytid (ny)</span>;
+      }
       if (diffMinutes === 0) return <span className="text-muted-foreground">Ingen endring i flytid</span>;
       return <span className={diffMinutes > 0 ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}>
         {diffMinutes > 0 ? '+' : ''}{diffMinutes} min flytid
@@ -860,21 +909,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   {selectedPilot && (
                     <p className="text-xs">
                       <User className="w-3 h-3 inline mr-1" />
-                      {selectedPilot.full_name || selectedPilot.email} {flightTimeLabel('pilot')}
+                      {selectedPilot.full_name || selectedPilot.email} {flightTimeLabelForResource('pilot', pilotId)}
                     </p>
                   )}
                   {selectedDrone && (
                     <p className="text-xs">
                       <Plane className="w-3 h-3 inline mr-1" />
-                      {selectedDrone.modell} {flightTimeLabel('drone')}
+                      {selectedDrone.modell} {flightTimeLabelForResource('drone', selectedDroneId)}
                     </p>
                   )}
-                  {selectedEqNames.length > 0 && (
-                    <p className="text-xs">
+                  {selectedEqNames.length > 0 && selectedEqNames.map(eq => (
+                    <p key={eq.id} className="text-xs">
                       <Wrench className="w-3 h-3 inline mr-1" />
-                      {selectedEqNames.map(e => e.navn).join(', ')} {flightTimeLabel('equipment')}
+                      {eq.navn} {flightTimeLabelForResource('equipment', eq.id)}
                     </p>
-                  )}
+                  ))}
                   {!selectedPilot && !selectedDrone && selectedEqNames.length === 0 && (
                     <p className="text-xs text-muted-foreground italic">Ingen ressurser valgt</p>
                   )}
