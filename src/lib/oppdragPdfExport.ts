@@ -596,7 +596,16 @@ export const exportToPDF = async (
             if (typeof rec === 'string') {
               recText = rec;
             } else if (rec && typeof rec === 'object') {
-              recText = rec.text || rec.title || rec.description || rec.message || rec.content || rec.recommendation || JSON.stringify(rec);
+              // Handle RiskRecommendations format: { priority, action, reason, risk_addressed }
+              if (rec.action) {
+                const priorityLabels: Record<string, string> = { high: 'Høy', medium: 'Medium', low: 'Lav' };
+                const pLabel = priorityLabels[rec.priority] || rec.priority || '';
+                const reasonText = rec.risk_addressed || rec.reason || '';
+                recText = pLabel ? `[${pLabel}] ${rec.action}` : rec.action;
+                if (reasonText) recText += ` — ${reasonText}`;
+              } else {
+                recText = rec.text || rec.title || rec.description || rec.message || rec.content || rec.recommendation || JSON.stringify(rec);
+              }
             }
             const sanitizedRec = sanitizeForPdf(recText);
             const bulletText = `${index + 1}. ${sanitizedRec}`;
