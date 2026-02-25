@@ -1,33 +1,34 @@
 
 
-# Add "SSB data" as default option for "Nærhet til mennesker"
+# Påvirkning på eksisterende bruk (mobil/pad/PC)
 
-## Summary
+## Kort svar
 
-The proximity-to-people selector currently has three manual options: Ingen, Få, Mange. The edge function already fetches SSB population density and land use data automatically. This change adds a fourth option, "SSB data", as the new default, which tells the AI to rely entirely on the automatically fetched SSB data rather than a manual pilot estimate.
+**Nei, endringene vil ikke endre opplevelsen på mobil, nettbrett eller PC.** De er designet for å være bakoverkompatible. Her er vurderingen punkt for punkt:
 
-## Changes
+---
 
-### 1. Frontend: `src/components/dashboard/RiskAssessmentDialog.tsx`
+## 1. Senke Vite build target (`es2015`, `chrome70`)
 
-**Add new option and change default:**
+**Ingen synlig endring.** Vite transpilerer bare moderne JS-syntaks (som `??=`, `||=`) ned til eldre syntaks. Sluttresultatet er funksjonelt identisk — bare litt mer verbose JavaScript. Moderne nettlesere kjører det like raskt. Bundle-størrelsen kan øke marginalt (noen få KB), men dette er neglisjerbart.
 
-- Change default value from `'none'` to `'ssb_data'` (line 79)
-- Add a new `<SelectItem value="ssb_data">` as the first option in the proximity select (line 486), labeled "SSB data (automatisk)"
-- Keep existing options (Ingen, Få, Mange) as manual overrides
+## 2. Try/catch rundt `createSyncStoragePersister`
 
-### 2. Edge function: `supabase/functions/ai-risk-assessment/index.ts`
+**Ingen endring i normal bruk.** localStorage fungerer på alle moderne nettlesere. Try/catch-blokken aktiveres bare hvis localStorage er utilgjengelig (f.eks. privat modus på svært gamle nettlesere). På mobil/pad/PC fortsetter alt som før.
 
-**Update AI prompt to handle `ssb_data` value:**
+## 3. Global error handler i `index.html`
 
-- In the prompt section around line 855, update the fallback logic: when `proximityToPeople` is `"ssb_data"`, instruct the AI to use SSB population density and land use data as the sole source for proximity assessment -- no fallback to manual input needed
-- When `proximityToPeople` is one of the manual values (`none`, `few`, `many`), instruct the AI to use the pilot's manual assessment as an override, but still consider SSB data if available
+**Ingen synlig endring.** Scriptet viser bare en feilmelding hvis appen feiler helt ved oppstart. På fungerende nettlesere (alle mobiler, nettbrett, PC-er i bruk i dag) vil scriptet aldri aktiveres — det er en ren "failsafe" for enheter der JS-bundlen krasjer.
 
-### 3. Translations: `src/i18n/locales/no.json` and `src/i18n/locales/en.json`
+## 4. CSS: `svh`/`dvh` → `screen` (`vh`)
 
-- Add `riskAssessment.proximity.ssbData` key: "SSB data (automatisk)" / "SSB data (automatic)"
+**Minimal visuell endring.** `svh` (small viewport height) og `vh` (viewport height) er identiske i de fleste situasjoner. Forskjellen er kun synlig på iOS Safari der adresselinjen skjuler/viser seg — `svh` bruker den minste høyden, `vh` bruker den "statiske" høyden. Sidebar-komponenten brukes ikke i appen per nå (appen bruker Header-navigasjon), så endringen der er irrelevant. For `ExpandedMapDialog` har den allerede `sm:h-[90vh]` som fallback for desktop, og på mobil vil `h-screen` (`100vh`) oppføre seg nesten identisk med `100dvh`.
 
-## Technical details
+**index.css sin `dvh`-bruk er allerede bak `@supports`** og trenger ikke endres — den har `min-height: 100%` som fallback.
 
-The edge function already fetches SSB data (lines 390-475 for land use, population density fetched separately). The `proximityToPeople` field currently serves as a fallback when SSB data is unavailable (line 855). With `"ssb_data"` as the value, the AI prompt will be adjusted so SSB data is treated as authoritative rather than supplementary, and the manual options become explicit overrides when the pilot has local knowledge that contradicts the data.
+---
+
+## Konklusjon
+
+Alle fire endringene er "defensive" tiltak som kun aktiveres på eldre/begrensede nettlesere. For brukere på moderne mobil, nettbrett og PC vil appen fungere og se ut nøyaktig som i dag.
 
