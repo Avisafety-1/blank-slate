@@ -459,7 +459,34 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const dronelogKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
+    const globalKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
+
+    // Look up per-company key
+    let dronelogKey = globalKey;
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile?.company_id) {
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data: company } = await serviceClient
+          .from("companies")
+          .select("dronelog_api_key")
+          .eq("id", profile.company_id)
+          .single();
+
+        if (company?.dronelog_api_key) {
+          dronelogKey = company.dronelog_api_key;
+          console.log("Using per-company DroneLog key for company:", profile.company_id);
+        }
+      }
+    } catch (err) {
+      console.log("Could not look up company key, using global:", err);
+    }
+
     if (!dronelogKey) {
       return new Response(JSON.stringify({ error: "DroneLog API key not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

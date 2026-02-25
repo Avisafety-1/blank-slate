@@ -54,6 +54,7 @@ interface Company {
   created_at: string;
   updated_at: string;
   eccairs_enabled: boolean | null;
+  dji_flightlog_enabled: boolean;
 }
 
 // Mobile expandable company card component
@@ -61,12 +62,14 @@ const MobileCompanyCard = ({
   company,
   onToggleActive,
   onToggleEccairs,
+  onToggleDji,
   onEdit,
   onDelete,
 }: {
   company: Company;
   onToggleActive: (company: Company) => void;
   onToggleEccairs: (company: Company) => void;
+  onToggleDji: (company: Company) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
 }) => {
@@ -85,6 +88,9 @@ const MobileCompanyCard = ({
               </Badge>
               {company.eccairs_enabled && (
                 <Badge variant="outline" className="text-xs">ECCAIRS</Badge>
+              )}
+              {company.dji_flightlog_enabled && (
+                <Badge variant="outline" className="text-xs">DJI</Badge>
               )}
             </div>
           </div>
@@ -151,6 +157,13 @@ const MobileCompanyCard = ({
                   onCheckedChange={() => onToggleEccairs(company)}
                 />
                 <Label className="text-sm">ECCAIRS</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={company.dji_flightlog_enabled}
+                  onCheckedChange={() => onToggleDji(company)}
+                />
+                <Label className="text-sm">DJI Flylogg</Label>
               </div>
             </div>
 
@@ -283,6 +296,28 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleToggleDji = async (company: Company) => {
+    const newValue = !company.dji_flightlog_enabled;
+    // Optimistic update
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_flightlog_enabled: newValue } : c));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-dronelog-key', {
+        body: { companyId: company.id, enable: newValue },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(newValue ? "DJI Flylogg aktivert" : "DJI Flylogg deaktivert");
+    } catch (error: any) {
+      // Revert on error
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_flightlog_enabled: !newValue } : c));
+      console.error("Error toggling DJI status:", error);
+      toast.error("Kunne ikke oppdatere DJI Flylogg-status: " + (error.message || "Ukjent feil"));
+    }
+  };
+
   const handleDeleteClick = (company: Company) => {
     setCompanyToDelete(company);
     setDeleteDialogOpen(true);
@@ -362,6 +397,7 @@ export const CompanyManagementSection = () => {
                 company={company}
                 onToggleActive={handleToggleActive}
                 onToggleEccairs={handleToggleEccairs}
+                onToggleDji={handleToggleDji}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
               />
@@ -380,6 +416,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
+                    <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -474,6 +511,22 @@ export const CompanyManagementSection = () => {
                               className="text-xs"
                             >
                               {company.eccairs_enabled ? "På" : "Av"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={company.dji_flightlog_enabled}
+                            onCheckedChange={() => handleToggleDji(company)}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={company.dji_flightlog_enabled ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {company.dji_flightlog_enabled ? "På" : "Av"}
                             </Badge>
                           </Label>
                         </div>
