@@ -1,54 +1,35 @@
 
 
-# Fix: Loggbok-oppsummering viser feil flytid ved match
+# Remove drone selector from upload/login steps
 
-## Problem
+## Background
 
-Nar en flylogg matcher en eksisterende logg, viser oppsummeringen "+16 min flytid" for pilot, drone og utstyr -- som om hele varigheten skal legges til. Men ved oppdatering av en eksisterende logg skal bare **differansen** mellom ny og gammel varighet legges til (eller trekkes fra).
+The drone selector currently appears in **three places**:
+1. **Upload step** (line 1006-1013) — mandatory-looking selector before processing
+2. **DJI login step** (line 1041-1048) — marked as optional
+3. **Result/logbook section** (line 815-832) — the final selector with auto-match feedback
 
-I tillegg: drone-triggeren (`trg_update_drone_hours`) kjorer kun pa INSERT, ikke UPDATE. Sa ved oppdatering av eksisterende logg oppdateres ikke drone-flyvetimer automatisk -- men `saveLogbookEntries` legger til full varighet pa pilot og utstyr uansett.
+Since the logbook section on the result step already has a drone selector (with SN auto-matching), the earlier selectors are redundant. The auto-match logic already sets `selectedDroneId` when it finds a serial number match after processing, making pre-selection unnecessary.
 
-## Losning
+## Changes
 
-### 1. Beregn differanse ved match
+**File: `src/components/UploadDroneLogDialog.tsx`**
 
-I `renderLogbookSection`, beregn differansen mellom ny og gammel varighet:
+### 1. Remove drone selector from upload step (lines 1006-1013)
 
-```typescript
-const duration = result.durationMinutes;
-const isUpdate = !!matchedLog;
-const oldDuration = matchedLog?.flight_duration_minutes ?? 0;
-const diffMinutes = isUpdate ? duration - oldDuration : duration;
-```
+Remove the `<div>` containing the drone `<Select>` from the file upload step. The file can be processed without a drone selected.
 
-### 2. Oppdater UI-oppsummeringen
+### 2. Remove drone selector from DJI login step (lines 1041-1048)
 
-I stedet for alltid "+{duration} min flytid", vis:
+Remove the `<div>` containing the drone `<Select>` from the DJI login step.
 
-- **Ny logg**: "+16 min flytid" (som na)
-- **Match, med differanse**: "+3 min flytid" eller "-2 min flytid" 
-- **Match, ingen differanse**: "Ingen endring i flytid" (ingen +/- vises)
+### 3. Keep auto-match logic intact
 
-### 3. Oppdater `saveLogbookEntries` for match-scenarioet
+The existing auto-match code (which sets `selectedDroneId` based on `aircraftSN`/`aircraftSerial` after parsing) remains — it will still pre-select the drone in the logbook section on the result step.
 
-Nar `matchedLog` finnes:
-- Beregn `diffMinutes = result.durationMinutes - matchedLog.flight_duration_minutes`
-- Oppdater pilot flyvetimer med `diffMinutes / 60` i stedet for `durationMinutes / 60`
-- For utstyr: sjekk om `flight_log_equipment` entries allerede finnes for denne loggen for a unnga duplikater
-- For drone: manuelt oppdater `flyvetimer` med `diffMinutes / 60` (siden triggeren kun kjorer pa INSERT)
+### 4. Remove `!file` guard only (upload button)
 
-### 4. Handter pilot `flight_log_personnel` duplikater
+The upload button currently requires `!file || isProcessing`. No change needed — drone is no longer required to proceed.
 
-Ved oppdatering: sjekk om `flight_log_personnel` entry allerede finnes for denne flight_log. Hvis ja, ikke sett inn pa nytt -- bare oppdater flyvetimer med differansen.
-
-## Tekniske endringer
-
-**Fil: `src/components/UploadDroneLogDialog.tsx`**
-
-- Linje 716: Legg til `diffMinutes`-beregning basert pa `matchedLog`
-- Linje 806, 812, 818: Vis `diffMinutes` i stedet for `duration` nar `matchedLog` finnes; vis "Ingen endring" nar diff er 0
-- Linje 540-565 (`saveLogbookEntries`): Bruk `diffMinutes` ved match; sjekk for eksisterende entries; oppdater drone manuelt ved UPDATE
-- Linje 630: Send differanse-info til `saveLogbookEntries`
-
-~40 linjer endret/lagt til.
+Result: one fewer step of friction. Drone selection happens once, in the logbook section, with auto-match feedback visible.
 
