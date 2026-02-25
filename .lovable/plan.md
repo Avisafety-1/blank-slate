@@ -1,35 +1,33 @@
 
 
-# Remove drone selector from upload/login steps
+# Add "SSB data" as default option for "Nærhet til mennesker"
 
-## Background
+## Summary
 
-The drone selector currently appears in **three places**:
-1. **Upload step** (line 1006-1013) — mandatory-looking selector before processing
-2. **DJI login step** (line 1041-1048) — marked as optional
-3. **Result/logbook section** (line 815-832) — the final selector with auto-match feedback
-
-Since the logbook section on the result step already has a drone selector (with SN auto-matching), the earlier selectors are redundant. The auto-match logic already sets `selectedDroneId` when it finds a serial number match after processing, making pre-selection unnecessary.
+The proximity-to-people selector currently has three manual options: Ingen, Få, Mange. The edge function already fetches SSB population density and land use data automatically. This change adds a fourth option, "SSB data", as the new default, which tells the AI to rely entirely on the automatically fetched SSB data rather than a manual pilot estimate.
 
 ## Changes
 
-**File: `src/components/UploadDroneLogDialog.tsx`**
+### 1. Frontend: `src/components/dashboard/RiskAssessmentDialog.tsx`
 
-### 1. Remove drone selector from upload step (lines 1006-1013)
+**Add new option and change default:**
 
-Remove the `<div>` containing the drone `<Select>` from the file upload step. The file can be processed without a drone selected.
+- Change default value from `'none'` to `'ssb_data'` (line 79)
+- Add a new `<SelectItem value="ssb_data">` as the first option in the proximity select (line 486), labeled "SSB data (automatisk)"
+- Keep existing options (Ingen, Få, Mange) as manual overrides
 
-### 2. Remove drone selector from DJI login step (lines 1041-1048)
+### 2. Edge function: `supabase/functions/ai-risk-assessment/index.ts`
 
-Remove the `<div>` containing the drone `<Select>` from the DJI login step.
+**Update AI prompt to handle `ssb_data` value:**
 
-### 3. Keep auto-match logic intact
+- In the prompt section around line 855, update the fallback logic: when `proximityToPeople` is `"ssb_data"`, instruct the AI to use SSB population density and land use data as the sole source for proximity assessment -- no fallback to manual input needed
+- When `proximityToPeople` is one of the manual values (`none`, `few`, `many`), instruct the AI to use the pilot's manual assessment as an override, but still consider SSB data if available
 
-The existing auto-match code (which sets `selectedDroneId` based on `aircraftSN`/`aircraftSerial` after parsing) remains — it will still pre-select the drone in the logbook section on the result step.
+### 3. Translations: `src/i18n/locales/no.json` and `src/i18n/locales/en.json`
 
-### 4. Remove `!file` guard only (upload button)
+- Add `riskAssessment.proximity.ssbData` key: "SSB data (automatisk)" / "SSB data (automatic)"
 
-The upload button currently requires `!file || isProcessing`. No change needed — drone is no longer required to proceed.
+## Technical details
 
-Result: one fewer step of friction. Drone selection happens once, in the logbook section, with auto-match feedback visible.
+The edge function already fetches SSB data (lines 390-475 for land use, population density fetched separately). The `proximityToPeople` field currently serves as a fallback when SSB data is unavailable (line 855). With `"ssb_data"` as the value, the AI prompt will be adjusted so SSB data is treated as authoritative rather than supplementary, and the manual options become explicit overrides when the pilot has local knowledge that contradicts the data.
 
