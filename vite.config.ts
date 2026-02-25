@@ -55,6 +55,9 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ].filter(Boolean),
+  build: {
+    target: ['es2015', 'chrome70'],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
@@ -45,10 +45,15 @@ const queryClient = new QueryClient({
   },
 });
 
-const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-  key: 'avisafe_query_cache',
-});
+let persister: ReturnType<typeof createSyncStoragePersister> | undefined;
+try {
+  persister = createSyncStoragePersister({
+    storage: window.localStorage,
+    key: 'avisafe_query_cache',
+  });
+} catch (e) {
+  console.error('Failed to create query persister:', e);
+}
 
 // Layout wrapper that renders Header once for all authenticated routes
 const AuthenticatedLayout = () => {
@@ -92,9 +97,19 @@ const AuthenticatedLayout = () => {
 };
 
 // FIX: Refactored to explicit function body to avoid render2 error with provider nesting
+const QueryWrapper = persister
+  ? ({ children }: { children: React.ReactNode }) => (
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: persister!, maxAge: 24 * 60 * 60 * 1000 }}>
+        {children}
+      </PersistQueryClientProvider>
+    )
+  : ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
 const App = () => {
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 60 * 60 * 1000 }}>
+    <QueryWrapper>
       <TooltipProvider>
         <ErrorBoundary>
           <AuthProvider>
@@ -133,7 +148,7 @@ const App = () => {
           </AuthProvider>
         </ErrorBoundary>
       </TooltipProvider>
-    </PersistQueryClientProvider>
+    </QueryWrapper>
   );
 };
 

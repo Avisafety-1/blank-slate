@@ -559,7 +559,7 @@ export const ExpandedMapDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-full sm:w-[95vw] h-[100dvh] sm:h-[90vh] flex flex-col p-0 rounded-none sm:rounded-lg"
+        className="max-w-4xl w-full sm:w-[95vw] h-screen sm:h-[90vh] flex flex-col p-0 rounded-none sm:rounded-lg"
         aria-describedby={undefined}
       >
         <DialogHeader className="px-3 py-2">

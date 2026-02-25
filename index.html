@@ -36,6 +36,23 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      function showFallback(msg) {
+        var el = document.getElementById('root');
+        if (el && !el.children.length) {
+          el.innerHTML = '<div style="padding:2rem;text-align:center;font-family:sans-serif">' +
+            '<h2>Nettleseren st\u00F8ttes ikke fullt ut</h2>' +
+            '<p>Pr\u00F8v \u00E5 oppdatere nettleseren eller bruk en annen enhet.</p>' +
+            '<p style="font-size:12px;color:#888">Feil: ' + msg + '</p></div>';
+        }
+      }
+      window.onerror = function(msg, url, line, col) {
+        showFallback(msg + ' @ ' + (line || '?') + ':' + (col || '?'));
+      };
+      window.onunhandledrejection = function(e) {
+        showFallback((e && e.reason && e.reason.message) ? e.reason.message : 'Unhandled promise rejection');
+      };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
