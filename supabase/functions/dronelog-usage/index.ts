@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
     });
 
     const data = await res.json().catch(() => null);
+    console.log("DroneLog usage response:", JSON.stringify(data));
     if (!res.ok) {
       console.error("DroneLog usage error:", res.status, data);
       return new Response(JSON.stringify({ error: "Failed to fetch usage", details: data }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
