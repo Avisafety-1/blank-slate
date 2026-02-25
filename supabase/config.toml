@@ -98,3 +98,6 @@ verify_jwt = true
 
 [functions.process-dronelog]
 verify_jwt = false
+
+[functions.manage-dronelog-key]
+verify_jwt = false

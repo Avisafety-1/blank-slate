@@ -287,6 +287,8 @@ export type Database = {
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
           created_at: string
+          dji_flightlog_enabled: boolean
+          dronelog_api_key: string | null
           eccairs_enabled: boolean | null
           id: string
           kontakt_epost: string | null
@@ -305,6 +307,8 @@ export type Database = {
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           created_at?: string
+          dji_flightlog_enabled?: boolean
+          dronelog_api_key?: string | null
           eccairs_enabled?: boolean | null
           id?: string
           kontakt_epost?: string | null
@@ -323,6 +327,8 @@ export type Database = {
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           created_at?: string
+          dji_flightlog_enabled?: boolean
+          dronelog_api_key?: string | null
           eccairs_enabled?: boolean | null
           id?: string
           kontakt_epost?: string | null

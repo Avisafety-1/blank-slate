@@ -25,6 +25,7 @@ interface CachedProfile {
   userRole: string | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  djiFlightlogEnabled: boolean;
 }
 
 interface AuthContextType {
@@ -37,6 +38,7 @@ interface AuthContextType {
   companyLat: number | null;
   companyLon: number | null;
   isSuperAdmin: boolean;
+  djiFlightlogEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
   userRole: string | null;
@@ -54,6 +56,7 @@ const AuthContext = createContext<AuthContextType>({
   companyLat: null,
   companyLon: null,
   isSuperAdmin: false,
+  djiFlightlogEnabled: false,
   isAdmin: false,
   isApproved: false,
   userRole: null,
@@ -82,6 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [djiFlightlogEnabled, setDjiFlightlogEnabled] = useState(false);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
@@ -98,6 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUserRole(cached.userRole);
       setIsAdmin(cached.isAdmin);
       setIsSuperAdmin(cached.isSuperAdmin);
+      setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
       console.log('AuthContext: Applied cached profile for offline use');
       return true;
     } catch {
@@ -187,6 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsSuperAdmin(false);
           setIsAdmin(false);
           setIsApproved(false);
+          setDjiFlightlogEnabled(false);
           setUserRole(null);
           setLoading(false);
         } else {
@@ -261,7 +267,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               navn,
               selskapstype,
               adresse_lat,
-              adresse_lon
+              adresse_lon,
+              dji_flightlog_enabled
             )
           `)
           .eq('id', userId)
@@ -283,6 +290,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userRole: null,
         isAdmin: false,
         isSuperAdmin: false,
+        djiFlightlogEnabled: false,
       };
 
       // If both queries failed (e.g. network error), fall back to cache
@@ -302,6 +310,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
         profileData.companyLon = company?.adresse_lon || null;
+        profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
       }
 
       if (roleResult.data) {
@@ -320,6 +329,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUserRole(profileData.userRole);
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
+      setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
 
       // Cache for offline use
       saveCachedProfile(userId, profileData);
@@ -362,6 +372,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyLat,
       companyLon,
       isSuperAdmin, 
+      djiFlightlogEnabled,
       isAdmin,
       isApproved,
       userRole, 
