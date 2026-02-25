@@ -1,52 +1,73 @@
 
 
-# Fix: Flylogg-oppdatering med bytte av drone/pilot/utstyr
+# DJI Flylogg-opplasting: Per-selskap aktivering med egen API-nøkkel
 
-## Problemet
+## Oversikt
 
-Når en flylogg oppdateres og brukeren bytter drone, pilot eller utstyr, skjer følgende feil:
+I dag er DJI flylogg-opplasting hardkodet til å bare vises for selskaper med navn som inneholder "avisafe" eller "uas voss", og alle bruker samme globale `DRONELOG_AVISAFE_KEY`. Denne endringen gjør at superadmin kan aktivere/deaktivere DJI-opplasting per selskap via en bryter i admin-panelet. Når bryteren slås på, genereres en dedikert DroneLog API-nøkkel for selskapet og lagres i databasen.
 
-1. `diffMinutes = nyVarighet - gammelVarighet`. Hvis varigheten er lik → `diffMinutes = 0`
-2. Den **nye** dronen/piloten/utstyret får `+0 min` → "Ingen endring i flytid"
-3. Den **gamle** dronen/piloten/utstyret beholder flytimene som aldri trekkes fra
+## Tekniske endringer
 
-Resultatet er at den gamle dronen har for mange timer og den nye har for få.
+### 1. Database-migrasjon
 
-## Løsning
+Legg til to nye kolonner på `companies`-tabellen:
 
-Endre `saveLogbookEntries` (linje 540-611) til å håndtere ressursbytte:
+```sql
+ALTER TABLE companies
+  ADD COLUMN dji_flightlog_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN dronelog_api_key text;
+```
 
-1. **Hent tidligere ressurser** fra `matchedLog` og junction-tabellene (`flight_log_personnel`, `flight_log_equipment`) + `matchedLog.drone_id`
-2. **Trekk fra `oldDuration`** fra ressurser som er fjernet eller byttet ut
-3. **Legg til `newDuration`** (full varighet, ikke diff) på nye ressurser
-4. **For uendrede ressurser**: legg til bare `diffMinutes` (som i dag)
-5. **Oppdater junction-tabeller**: fjern gamle, legg til nye
+### 2. Ny edge function: `manage-dronelog-key`
 
-Tilsvarende for drone i `handleUpdateExisting`: sammenlign `matchedLog.drone_id` med `selectedDroneId`.
+Oppretter/sletter DroneLog API-nøkler via DroneLog API:
 
-## Fil som endres
+- **Aktivering**: Kaller `POST https://dronelogapi.com/api/v1/keys` med `{ name: "<selskapsnavn>" }` og `Authorization: Bearer <master-key>`. Lagrer den returnerte nøkkelen i `companies.dronelog_api_key` og setter `dji_flightlog_enabled = true`.
+- **Deaktivering**: Kaller `DELETE https://dronelogapi.com/api/v1/keys/<key>` for å slette nøkkelen fra DroneLog, nullstiller `dronelog_api_key` og setter `dji_flightlog_enabled = false`.
+- Bruker den eksisterende `DRONELOG_AVISAFE_KEY` som master-nøkkel for å opprette nye nøkler.
+
+### 3. Admin UI: CompanyManagementSection
+
+Legg til en ny "DJI"-bryter (Switch) ved siden av ECCAIRS-bryteren, både i desktop-tabellen og mobil-kortene. Følger nøyaktig samme mønster som `handleToggleEccairs`:
+
+- Optimistisk UI-oppdatering
+- Kaller edge function `manage-dronelog-key` med `{ companyId, enable: true/false }`
+- Toast-melding med suksess/feil
+
+Kolonne-header i tabellen: "DJI Flylogg". Badge viser "På"/"Av".
+
+### 4. Oppdater `process-dronelog` edge function
+
+I stedet for å alltid bruke `DRONELOG_AVISAFE_KEY`, hent brukerens `company_id` fra profilen, slå opp `dronelog_api_key` fra `companies`-tabellen, og bruk den selskapsspesifikke nøkkelen. Fallback til `DRONELOG_AVISAFE_KEY` hvis ingen selskapsnøkkel finnes.
+
+### 5. Fjern hardkodet selskapssjekk i Index.tsx
+
+Erstatt sjekken `companyName?.toLowerCase().includes('avisafe') || companyName?.toLowerCase().includes('uas voss')` med en sjekk mot `dji_flightlog_enabled` fra selskapsdataene. Hent denne verdien via AuthContext eller en dedikert query.
+
+## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/components/UploadDroneLogDialog.tsx` | Refaktorer `saveLogbookEntries` og `handleUpdateExisting` for å håndtere ressursbytte |
+| `supabase/migrations/` | Ny migrasjon: legg til `dji_flightlog_enabled` og `dronelog_api_key` på `companies` |
+| `supabase/functions/manage-dronelog-key/index.ts` | Ny edge function for å opprette/slette DroneLog API-nøkler |
+| `supabase/config.toml` | Registrer ny funksjon med `verify_jwt = false` |
+| `src/components/admin/CompanyManagementSection.tsx` | Legg til DJI-bryter i tabell og mobil-kort |
+| `supabase/functions/process-dronelog/index.ts` | Bruk selskapsspesifikk nøkkel i stedet for global |
+| `src/pages/Index.tsx` | Erstatt hardkodet selskapssjekk med `dji_flightlog_enabled` |
+| `src/contexts/AuthContext.tsx` | Eksponer `djiFlightlogEnabled` fra selskapsdataene |
 
-## Teknisk detalj
+## Flyten
 
 ```text
-Scenario: Oppdater flylogg, bytt drone A → drone B, varighet uendret (30 min)
+Admin slår på DJI-bryter for "Firma AS"
+  → Frontend kaller manage-dronelog-key({ companyId, enable: true })
+  → Edge function: POST dronelogapi.com/api/v1/keys { name: "Firma AS" }
+  → Returnert nøkkel lagres i companies.dronelog_api_key
+  → companies.dji_flightlog_enabled = true
+  → UI oppdateres
 
-DAGENS LOGIKK:
-  diffMinutes = 30 - 30 = 0
-  Drone B: +0 min  ← FEIL (burde fått +30)
-  Drone A: uendret ← FEIL (burde mistet -30)
-
-NY LOGIKK:
-  oldDroneId = matchedLog.drone_id (A)
-  newDroneId = selectedDroneId (B)
-  A ≠ B → ressursbytte!
-  Drone A: -oldDuration (-30 min)
-  Drone B: +newDuration (+30 min)
+Pilot i "Firma AS" laster opp flylogg
+  → process-dronelog henter company.dronelog_api_key
+  → Bruker selskapets egen nøkkel mot DroneLog API
 ```
-
-Samme logikk gjelder for pilot og utstyr. `renderLogbookSection` oppdateres også slik at den viser korrekt label per ressurs — f.eks. "+30 min" for ny drone i stedet for "Ingen endring".
 
