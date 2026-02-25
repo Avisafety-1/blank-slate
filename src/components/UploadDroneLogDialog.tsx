@@ -170,6 +170,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [result, setResult] = useState<DroneLogResult | null>(null);
   const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
   const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
+  const [matchedMissions, setMatchedMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
+  const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // DJI login state
@@ -266,6 +268,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setResult(null);
     setMatchedLog(null);
     setMatchCandidates([]);
+    setMatchedMissions([]);
+    setSelectedMissionId('');
     setSelectedDroneId("");
     setDjiEmail("");
     setDjiPassword("");
@@ -458,67 +462,39 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
     }
 
-    let flightDate: Date | null = null;
+    // Direct mission search: find missions within 1-hour window of the flight
+    let flightStart: Date | null = null;
     if (data.startTime) {
       const d = parseFlightDate(data.startTime);
-      if (d && !isNaN(d.getTime())) flightDate = d;
+      if (d && !isNaN(d.getTime())) flightStart = d;
     }
+    if (!flightStart) return; // Can't match without a timestamp
 
-    const dateStr = flightDate
-      ? flightDate.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+    const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
+    const windowMs = 60 * 60 * 1000; // 1 hour
+    const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
+    const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
 
-    console.log('[DroneLog] Matching: dateStr =', dateStr, '| droneId =', selectedDroneId, '| duration =', data.durationMinutes);
+    console.log('[DroneLog] Searching missions between', rangeStart, 'and', rangeEnd);
 
-    let query = supabase
-      .from('flight_logs')
-      .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, missions(tittel, tidspunkt)')
+    const { data: missions } = await supabase
+      .from('missions')
+      .select('id, tittel, tidspunkt, status, lokasjon')
       .eq('company_id', companyId)
-      .eq('flight_date', dateStr)
-      .order('flight_date', { ascending: false });
-    if (selectedDroneId) query = query.eq('drone_id', selectedDroneId);
+      .gte('tidspunkt', rangeStart)
+      .lte('tidspunkt', rangeEnd)
+      .order('tidspunkt', { ascending: true });
 
-    const { data: logs } = await query;
-    console.log('[DroneLog] Found', logs?.length || 0, 'flight_logs on', dateStr);
-    if (!logs || logs.length === 0) return;
-
-    // 1. Time match (4-hour window)
-    if (flightDate) {
-      const timeCandidates: MatchedFlightLog[] = [];
-      for (const log of logs) {
-        const missionTime = (log as any).missions?.tidspunkt;
-        if (missionTime) {
-          const missionDate = new Date(missionTime);
-          const diffMs = Math.abs(flightDate.getTime() - missionDate.getTime());
-          if (diffMs <= 4 * 60 * 60 * 1000) {
-            timeCandidates.push(log as any);
-          }
-        }
-      }
-      if (timeCandidates.length === 1) {
-        setMatchedLog(timeCandidates[0]);
-        return;
-      } else if (timeCandidates.length > 1) {
-        setMatchCandidates(timeCandidates);
-        return;
-      }
-    }
-
-    // 2. Drone + duration match
-    if (selectedDroneId && data.durationMinutes > 0) {
-      const durationMatch = logs.find(l =>
-        l.drone_id === selectedDroneId &&
-        Math.abs((l.flight_duration_minutes || 0) - data.durationMinutes) <= 2
-      );
-      if (durationMatch) {
-        setMatchedLog(durationMatch as any);
-        return;
-      }
-    }
-
-    // 3. Fallback: single log on date
-    if (logs.length === 1) {
-      setMatchedLog(logs[0] as any);
+    if (missions && missions.length > 0) {
+      // Sort by closest to flight start
+      const sorted = [...missions].sort((a, b) => {
+        const diffA = Math.abs(new Date(a.tidspunkt).getTime() - flightStart!.getTime());
+        const diffB = Math.abs(new Date(b.tidspunkt).getTime() - flightStart!.getTime());
+        return diffA - diffB;
+      });
+      console.log('[DroneLog] Found', sorted.length, 'matching missions');
+      setMatchedMissions(sorted);
+      setSelectedMissionId(sorted[0].id); // Pre-select closest
     }
   };
 
@@ -782,6 +758,53 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     } catch (error: any) {
       console.error('Create error:', error);
       toast.error(t('dronelog.createError', 'Kunne ikke opprette oppdrag'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ── Link to existing mission (no new mission created) ──
+  const handleLinkToMission = async () => {
+    if (!result || !companyId || !user || !selectedMissionId) return;
+    setIsSubmitting(true);
+    try {
+      const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const maxPoints = 200;
+      let flightTrack = rawTrack;
+      if (rawTrack.length > maxPoints) {
+        const step = Math.ceil(rawTrack.length / maxPoints);
+        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
+      }
+      const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
+
+      // Link drone to mission
+      if (selectedDroneId) {
+        await supabase.from('mission_drones').upsert({ mission_id: selectedMissionId, drone_id: selectedDroneId }, { onConflict: 'mission_id,drone_id' });
+      }
+
+      const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
+        company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: selectedMissionId,
+        flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
+        departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
+        landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
+        movements: 1, flight_track: { positions: flightTrack } as any,
+        notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery}%`,
+        ...buildExtendedFields(result),
+      } as any).select('id').single();
+      if (logError) throw logError;
+
+      if (logData) {
+        await saveFlightEvents(logData.id, result);
+        await saveLogbookEntries(logData.id, result.durationMinutes);
+      }
+      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
+
+      const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
+      toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Link to mission error:', error);
+      toast.error('Kunne ikke lagre flyloggen');
     } finally {
       setIsSubmitting(false);
     }
@@ -1337,34 +1360,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             {/* Logbook section */}
             {renderLogbookSection()}
 
-            {/* Candidate selection when multiple matches */}
-            {matchCandidates.length > 1 && !matchedLog && (
+            {/* Mission candidates from direct mission search */}
+            {!matchedLog && matchedMissions.length > 0 && (
               <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                  {t('dronelog.multipleCandidates', 'Flere flylogger matcher. Velg hvilken som skal oppdateres:')}
+                  {matchedMissions.length === 1
+                    ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
+                    : `${matchedMissions.length} oppdrag matcher tidspunktet. Velg hvilket oppdrag flyloggen tilhører:`}
                 </p>
-                <RadioGroup
-                  onValueChange={(val) => {
-                    if (val === '__new__') {
-                      setMatchedLog(null);
-                      setMatchCandidates([]);
-                    } else {
-                      const selected = matchCandidates.find(c => c.id === val);
-                      if (selected) setMatchedLog(selected);
-                    }
-                  }}
-                >
-                  {matchCandidates.map((c) => (
-                    <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
-                      <RadioGroupItem value={c.id} />
+                <RadioGroup value={selectedMissionId} onValueChange={setSelectedMissionId}>
+                  {matchedMissions.map((m) => (
+                    <label key={m.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value={m.id} />
                       <div className="text-sm">
-                        <span className="font-medium">{c.flight_date}</span>
-                        <span className="text-muted-foreground"> — {c.flight_duration_minutes} min</span>
-                        {c.missions && <span className="text-muted-foreground"> — {(c.missions as any).tittel}</span>}
+                        <span className="font-medium">{m.tittel}</span>
+                        <span className="text-muted-foreground"> — {format(new Date(m.tidspunkt), 'dd.MM.yyyy HH:mm')}</span>
+                        {m.lokasjon && <span className="text-muted-foreground"> — {m.lokasjon}</span>}
+                        <span className={`ml-1 text-xs ${m.status === 'Fullført' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>({m.status})</span>
                       </div>
                     </label>
                   ))}
-                  <label className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                  <label className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer border-t border-border mt-1 pt-3">
                     <RadioGroupItem value="__new__" />
                     <div className="flex items-center gap-1 text-sm">
                       <PlusCircle className="w-3.5 h-3.5" />
@@ -1388,26 +1404,31 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 </div>
               </div>
-            ) : matchCandidates.length === 0 ? (
+            ) : matchedMissions.length === 0 ? (
               <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag.')}</p>
+                <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende oppdrag matcher tidspunktet. Du kan opprette et nytt oppdrag.')}</p>
               </div>
             ) : null}
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); }}>{t('actions.back')}</Button>
+              <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); }}>{t('actions.back')}</Button>
               {matchedLog ? (
                 <Button onClick={handleUpdateExisting} disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {t('dronelog.updateExisting', 'Oppdater flylogg')}
                 </Button>
-              ) : matchCandidates.length > 1 ? (
-                <Button disabled>{t('dronelog.selectLogFirst', 'Velg en flylogg ovenfor')}</Button>
-              ) : (
+              ) : selectedMissionId === '__new__' || matchedMissions.length === 0 ? (
                 <Button onClick={handleCreateNew} disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {t('dronelog.createMission', 'Opprett nytt oppdrag')}
                 </Button>
+              ) : selectedMissionId ? (
+                <Button onClick={handleLinkToMission} disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Lagre flylogg
+                </Button>
+              ) : (
+                <Button disabled>Velg et oppdrag ovenfor</Button>
               )}
             </DialogFooter>
           </div>
