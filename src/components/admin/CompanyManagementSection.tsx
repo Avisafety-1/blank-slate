@@ -29,7 +29,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -203,6 +211,9 @@ export const CompanyManagementSection = () => {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [usageDialogOpen, setUsageDialogOpen] = useState(false);
+  const [usageData, setUsageData] = useState<any>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
 
   useEffect(() => {
     fetchCompanies();
@@ -360,6 +371,30 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleFetchUsage = async () => {
+    setUsageDialogOpen(true);
+    setUsageLoading(true);
+    try {
+      const now = new Date();
+      const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      const { data, error } = await supabase.functions.invoke('dronelog-usage', {
+        body: { from, to },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setUsageData(data);
+    } catch (error: any) {
+      console.error("Error fetching usage:", error);
+      toast.error("Kunne ikke hente API-bruk: " + (error.message || "Ukjent feil"));
+    } finally {
+      setUsageLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <GlassCard className="p-3 sm:p-6">
@@ -378,10 +413,16 @@ export const CompanyManagementSection = () => {
             <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
           </div>
-          <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
-            <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-            {isMobile ? "Nytt" : "Nytt selskap"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleFetchUsage} variant="outline" size={isMobile ? "sm" : "default"}>
+              <BarChart3 className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {isMobile ? "API" : "API-bruk"}
+            </Button>
+            <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
+              <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {isMobile ? "Nytt" : "Nytt selskap"}
+            </Button>
+          </div>
         </div>
 
         {companies.length === 0 ? (
@@ -591,6 +632,75 @@ export const CompanyManagementSection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={usageDialogOpen} onOpenChange={setUsageDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              DroneLog API-bruk
+            </DialogTitle>
+            <DialogDescription>
+              Bruksstatistikk for gjeldende måned
+            </DialogDescription>
+          </DialogHeader>
+
+          {usageLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : usageData ? (
+            <div className="space-y-4">
+              {/* Summary from result */}
+              {(() => {
+                const result = usageData?.result || usageData;
+                const used = result?.total ?? result?.requests_count ?? result?.used ?? '—';
+                const limit = result?.limit ?? result?.quota ?? '—';
+                const remaining = typeof used === 'number' && typeof limit === 'number' ? limit - used : result?.remaining ?? '—';
+                const pct = typeof used === 'number' && typeof limit === 'number' && limit > 0 ? Math.round((used / limit) * 100) : null;
+
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center p-3 rounded-lg bg-muted/50">
+                        <p className="text-2xl font-bold">{used}</p>
+                        <p className="text-xs text-muted-foreground">Brukt</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-muted/50">
+                        <p className="text-2xl font-bold">{limit}</p>
+                        <p className="text-xs text-muted-foreground">Limit</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-muted/50">
+                        <p className="text-2xl font-bold">{remaining}</p>
+                        <p className="text-xs text-muted-foreground">Gjenstående</p>
+                      </div>
+                    </div>
+                    {pct !== null && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Forbruk</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <Progress value={pct} />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Raw JSON fallback for debugging */}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Vis rådata</summary>
+                <pre className="mt-2 p-2 rounded bg-muted overflow-auto max-h-48 text-xs">
+                  {JSON.stringify(usageData, null, 2)}
+                </pre>
+              </details>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Ingen data tilgjengelig</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
