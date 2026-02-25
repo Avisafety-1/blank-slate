@@ -1,0 +1,199 @@
+import L from "leaflet";
+import { supabase } from "@/integrations/supabase/client";
+import { getBeaconSvgUrl, isAnimatedType, HELI_ANIM_FRAMES, droneAnimatedIcon } from "@/lib/mapIcons";
+
+export interface SafeSkyControls {
+  start: () => void;
+  stop: () => void;
+}
+
+export function createSafeSkyManager(params: {
+  safeskyLayer: L.LayerGroup;
+  mode: string;
+}) {
+  const { safeskyLayer, mode } = params;
+  
+  const safeskyMarkersCache = new Map<string, L.Marker>();
+  const heliAnimIntervals = new Map<string, number>();
+  
+  function renderSafeSkyBeacons(beacons: any[]) {
+    const currentIds = new Set<string>();
+    console.log(`SafeSky: ${beacons.length} beacons from database`);
+    
+    for (const beacon of beacons) {
+      const lat = beacon.latitude;
+      const lon = beacon.longitude;
+      if (lat == null || lon == null) continue;
+      
+      const beaconId = beacon.id || `${lat}_${lon}`;
+      currentIds.add(beaconId);
+      
+      const beaconType = beacon.beacon_type || 'UNKNOWN';
+      const course = beacon.course || 0;
+      const isDrone = beaconType === 'UAV';
+      const isHeli = isAnimatedType(beaconType);
+      
+      const altitudeMetersForColor = beacon.altitude;
+      const isHighAltitude = altitudeMetersForColor != null && altitudeMetersForColor > 610;
+      const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
+      
+      const iconUrl = getBeaconSvgUrl(beaconType);
+      
+      const callsign = beacon.callsign || 'Ukjent';
+      const altitudeFt = beacon.altitude != null ? Math.round(beacon.altitude * 3.28084) : '?';
+      const speedKt = beacon.ground_speed != null ? Math.round(beacon.ground_speed * 1.94384) : '?';
+      const typeLabel = beaconType || 'Ukjent';
+      const popupHtml = `
+        <div>
+          <strong>Callsign: ${callsign}</strong><br/>
+          Type: ${typeLabel}<br/>
+          Høyde: ${altitudeFt} ft<br/>
+          Fart: ${speedKt} kt<br/>
+          <span style="font-size: 10px; color: #888;">Via SafeSky</span>
+        </div>
+      `;
+      
+      const existingMarker = safeskyMarkersCache.get(beaconId);
+      
+      if (existingMarker) {
+        if (!existingMarker.isPopupOpen()) {
+          existingMarker.setLatLng([lat, lon]);
+        }
+        existingMarker.setPopupContent(popupHtml);
+        
+        if (!isDrone && !isHeli) {
+          const el = existingMarker.getElement();
+          if (el) {
+            const img = el.querySelector('img');
+            if (img) {
+              img.style.transform = `rotate(${course}deg)`;
+            }
+          }
+        }
+      } else {
+        const size = 56;
+        const anchor = size / 2;
+        const rotation = (!isDrone && !isHeli) ? `transform:rotate(${course}deg);` : '';
+        
+        const icon = L.divIcon({
+          className: '',
+          html: `<img src="${iconUrl}" style="width:${size}px;height:${size}px;${rotation}${highAltFilter}" data-beacon-type="${beaconType}" />`,
+          iconSize: [size, size],
+          iconAnchor: [anchor, anchor],
+          popupAnchor: [0, -anchor],
+        });
+        
+        const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning', pane: 'safeskyPane' });
+        marker.bindPopup(popupHtml, { autoPan: false, keepInView: false });
+        marker.addTo(safeskyLayer);
+        safeskyMarkersCache.set(beaconId, marker);
+        
+        if (isHeli) {
+          let frameIdx = 0;
+          const intervalId = window.setInterval(() => {
+            if (marker.isPopupOpen()) return;
+            frameIdx = (frameIdx + 1) % HELI_ANIM_FRAMES.length;
+            const el = marker.getElement();
+            if (el) {
+              const img = el.querySelector('img');
+              if (img) {
+                img.src = HELI_ANIM_FRAMES[frameIdx];
+              }
+            }
+          }, 200);
+          heliAnimIntervals.set(beaconId, intervalId);
+        }
+      }
+    }
+    
+    for (const [id, marker] of safeskyMarkersCache) {
+      if (!currentIds.has(id)) {
+        safeskyLayer.removeLayer(marker);
+        safeskyMarkersCache.delete(id);
+        const intervalId = heliAnimIntervals.get(id);
+        if (intervalId != null) {
+          clearInterval(intervalId);
+          heliAnimIntervals.delete(id);
+        }
+      }
+    }
+  }
+
+  async function fetchSafeSkyBeacons() {
+    try {
+      const { data, error } = await supabase
+        .from('safesky_beacons')
+        .select('*');
+      
+      if (error) {
+        console.error('SafeSky database error:', error);
+        return;
+      }
+      
+      renderSafeSkyBeacons(data || []);
+    } catch (err) {
+      console.error('Feil ved henting av SafeSky data:', err);
+    }
+  }
+
+  let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
+  let safeskyDebounceTimer: number | null = null;
+  let safeskyPollInterval: number | null = null;
+
+  const debouncedFetchSafeSky = () => {
+    if (safeskyDebounceTimer) {
+      clearTimeout(safeskyDebounceTimer);
+    }
+    safeskyDebounceTimer = window.setTimeout(() => {
+      fetchSafeSkyBeacons();
+    }, 500);
+  };
+
+  function start() {
+    if (!safeskyChannel) {
+      console.log('Lufttrafikk: Starting real-time subscription');
+      fetchSafeSkyBeacons();
+      
+      safeskyPollInterval = window.setInterval(() => {
+        fetchSafeSkyBeacons();
+      }, 5000);
+      
+      safeskyChannel = supabase
+        .channel('safesky-beacons-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'safesky_beacons' },
+          () => debouncedFetchSafeSky()
+        )
+        .subscribe();
+    }
+  }
+
+  function stop() {
+    if (safeskyChannel) {
+      console.log('Lufttrafikk: Stopping subscription');
+      safeskyChannel.unsubscribe();
+      safeskyChannel = null;
+      safeskyLayer.clearLayers();
+      safeskyMarkersCache.clear();
+    }
+    if (safeskyPollInterval) {
+      clearInterval(safeskyPollInterval);
+      safeskyPollInterval = null;
+    }
+    if (safeskyDebounceTimer) {
+      clearTimeout(safeskyDebounceTimer);
+      safeskyDebounceTimer = null;
+    }
+  }
+
+  function cleanup() {
+    stop();
+    for (const [, intervalId] of heliAnimIntervals) {
+      clearInterval(intervalId);
+    }
+    heliAnimIntervals.clear();
+  }
+
+  return { start, stop, cleanup };
+}
