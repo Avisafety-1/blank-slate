@@ -317,7 +317,7 @@ const Index = () => {
           {/* Mobile-only flight buttons */}
           <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
-            {companyName?.toLowerCase().includes('avisafe') ? (
+            {companyName?.toLowerCase().includes('avisafe') || companyName?.toLowerCase().includes('uas voss') ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2" variant="secondary">
@@ -467,7 +467,7 @@ const Index = () => {
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
                     <div className="flex flex-col gap-2">
-                      {companyName?.toLowerCase().includes('avisafe') ? (
+                      {companyName?.toLowerCase().includes('avisafe') || companyName?.toLowerCase().includes('uas voss') ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button className="w-full gap-2 hidden lg:flex" variant="secondary">
