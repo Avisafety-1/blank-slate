@@ -44,11 +44,6 @@ export const exportToKMZ = async (
     
     if (uploadError) throw uploadError;
     
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-    
     // Create document record with kml-kmz category
     const { error: insertError } = await supabase
       .from('documents')
@@ -56,7 +51,7 @@ export const exportToKMZ = async (
         tittel: `KMZ - ${mission.tittel}`,
         beskrivelse: `Eksportert rutefil for DJI Pilot 2 - ${mission.tittel}`,
         kategori: 'kml-kmz',
-        fil_url: publicUrl,
+        fil_url: filePath,
         fil_navn: fileName,
         fil_storrelse: blob.size,
         company_id: companyId,
