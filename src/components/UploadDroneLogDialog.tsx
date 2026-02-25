@@ -1003,16 +1003,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <input ref={fileInputRef} type="file" accept=".txt,.zip" className="hidden" onChange={handleFileSelect} />
             </div>
 
-            <div className="space-y-2">
-              <Label>{terminology.vehicle}</Label>
-              <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
-                <SelectTrigger><SelectValue placeholder={terminology.selectVehicle} /></SelectTrigger>
-                <SelectContent>
-                  {drones.map(d => <SelectItem key={d.id} value={d.id}>{d.modell} ({d.serienummer})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
               <Button onClick={handleUpload} disabled={!file || isProcessing}>
@@ -1036,16 +1026,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             <div className="space-y-2">
               <Label>{t('dronelog.djiPassword', 'DJI passord')}</Label>
               <Input type="password" value={djiPassword} onChange={e => setDjiPassword(e.target.value)} placeholder="••••••••" />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{terminology.vehicle} ({t('common.optional', 'valgfritt')})</Label>
-              <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
-                <SelectTrigger><SelectValue placeholder={terminology.selectVehicle} /></SelectTrigger>
-                <SelectContent>
-                  {drones.map(d => <SelectItem key={d.id} value={d.id}>{d.modell} ({d.serienummer})</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
 
             <DialogFooter>
