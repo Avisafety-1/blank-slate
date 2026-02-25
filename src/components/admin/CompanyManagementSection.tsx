@@ -654,13 +654,18 @@ export const CompanyManagementSection = () => {
               {/* Summary from result */}
               {(() => {
                 const result = usageData?.result || usageData;
-                const used = result?.total ?? result?.requests_count ?? result?.used ?? '—';
+                const used = result?.used ?? result?.total ?? result?.requests_count ?? '—';
                 const limit = result?.limit ?? result?.quota ?? '—';
-                const remaining = typeof used === 'number' && typeof limit === 'number' ? limit - used : result?.remaining ?? '—';
+                const remaining = result?.remaining ?? (typeof used === 'number' && typeof limit === 'number' ? limit - used : '—');
                 const pct = typeof used === 'number' && typeof limit === 'number' && limit > 0 ? Math.round((used / limit) * 100) : null;
 
                 return (
                   <>
+                    {result?.plan && (
+                      <div className="text-sm text-muted-foreground text-center">
+                        Plan: <span className="font-medium text-foreground capitalize">{result.plan}</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 rounded-lg bg-muted/50">
                         <p className="text-2xl font-bold">{used}</p>
