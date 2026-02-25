@@ -653,17 +653,18 @@ export const CompanyManagementSection = () => {
             <div className="space-y-4">
               {/* Summary from result */}
               {(() => {
-                const result = usageData?.result || usageData;
-                const used = result?.used ?? result?.total ?? result?.requests_count ?? '—';
-                const limit = result?.limit ?? result?.quota ?? '—';
-                const remaining = result?.remaining ?? (typeof used === 'number' && typeof limit === 'number' ? limit - used : '—');
+                const summary = usageData?.result?.summary || usageData?.summary || usageData?.result || usageData;
+                const used = summary?.used_this_month ?? summary?.used ?? summary?.total ?? '—';
+                const limit = summary?.monthly_limit ?? summary?.limit ?? summary?.quota ?? '—';
+                const remaining = summary?.remaining ?? (typeof used === 'number' && typeof limit === 'number' ? limit - used : '—');
+                const plan = summary?.plan;
                 const pct = typeof used === 'number' && typeof limit === 'number' && limit > 0 ? Math.round((used / limit) * 100) : null;
 
                 return (
                   <>
-                    {result?.plan && (
+                    {plan && (
                       <div className="text-sm text-muted-foreground text-center">
-                        Plan: <span className="font-medium text-foreground capitalize">{result.plan}</span>
+                        Plan: <span className="font-medium text-foreground capitalize">{plan}</span>
                       </div>
                     )}
                     <div className="grid grid-cols-3 gap-3">
