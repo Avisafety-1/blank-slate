@@ -670,17 +670,13 @@ export const exportToPDF = async (
     
     if (uploadError) throw uploadError;
     
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-    
     const { error: insertError } = await supabase
       .from('documents')
       .insert({
         tittel: `Oppdragsrapport - ${mission.tittel}`,
         beskrivelse: `Eksportert rapport for oppdrag ${mission.tittel}`,
         kategori: 'oppdrag',
-        fil_url: publicUrl,
+        fil_url: filePath,
         fil_navn: fileName,
         fil_storrelse: pdfBlob.size,
         company_id: companyId,
