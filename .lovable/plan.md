@@ -1,33 +1,24 @@
 
 
-# Fix: Polyfill kjører for sent — må flyttes til `index.html`
+# Fix: PWA tvinges til landskapsmodus på DJI RC Pro
 
-## Problemet
+## Problem
 
-Polyfillen i `src/main.tsx` fungerer **ikke** fordi ES-moduler hoister `import`-statements. Selv om polyfillen står øverst i filen, kjører denne rekkefølgen:
-
-1. `import App from "./App.tsx"` evalueres (og alle transitive importer, inkludert `OpenAIPMap.tsx`)
-2. `crypto.randomUUID()` kalles under modul-evaluering → **krasj**
-3. Polyfillen kjører — men for sent
+PWA-manifestet har `orientation: "portrait-primary"` (linje 30 i `vite.config.ts`). DJI RC Pro har en bred skjerm som naturlig er i landskapsmodus. Når manifestet tvinger `portrait-primary`, roteres appen 90 grader — som gjør at den vises feil vei.
 
 ## Løsning
 
-Flytt polyfillen til `index.html` som et vanlig `<script>`-blokk **før** `<script type="module">`. Vanlige scripts kjører synkront før moduler lastes. Det eksisterende error-handler-scriptet i `index.html` er det perfekte stedet å legge den.
+Endre `orientation` til `"any"` slik at appen tilpasser seg skjermens naturlige orientering i stedet for å tvinge portrett.
 
-## Filer som endres
+## Fil som endres
 
 | Fil | Endring |
 |---|---|
-| `index.html` | Legg til `crypto.randomUUID`-polyfill i det eksisterende `<script>`-blokken, før `showFallback`-funksjonen |
-| `src/main.tsx` | Fjern polyfillen (den er nå i `index.html`) |
+| `vite.config.ts` | Endre `orientation: "portrait-primary"` → `orientation: "any"` |
 
-## Teknisk detalj
+1 linje endret.
 
-```text
-index.html load order:
-  1. <script> (synkront) → polyfill settes her ✓
-  2. <script type="module" src="main.tsx"> → App importeres, crypto.randomUUID finnes nå ✓
-```
+## Merk
 
-Ingen påvirkning på moderne nettlesere — polyfillen aktiveres kun hvis funksjonen mangler.
+Etter deploy må brukeren slette cache/avinstallere PWA og reinstallere for at det nye manifestet skal tre i kraft, da service workeren cacher det forrige manifestet.
 
