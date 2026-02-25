@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.manage-dronelog-key]
 verify_jwt = false
+
+[functions.dronelog-usage]
+verify_jwt = false
