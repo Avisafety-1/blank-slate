@@ -378,29 +378,134 @@ export const exportToPDF = async (
         pdf.addPage();
         yPos = 20;
       }
-      
+
+      const sora = mission.sora;
+      const soraStatusLabels: Record<string, string> = {
+        draft: "Utkast",
+        completed: "Fullført",
+        approved: "Godkjent",
+      };
+
+      // Fetch prepared_by / approved_by names
+      const soraProfileIds = [sora.prepared_by, sora.approved_by].filter(Boolean);
+      let soraNameMap: Record<string, string> = {};
+      if (soraProfileIds.length > 0) {
+        const { data: soraProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', soraProfileIds);
+        if (soraProfiles) {
+          soraNameMap = Object.fromEntries(soraProfiles.map((p: any) => [p.id, p.full_name]));
+        }
+      }
+
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
       pdf.text("SORA-analyse", 15, yPos);
       yPos += 7;
-      
-      const soraInfo = [
-        ["Status", mission.sora.sora_status || "-"],
-        ...(mission.sora.sail ? [["SAIL", mission.sora.sail]] : []),
-        ...(mission.sora.fgrc ? [["Final GRC", mission.sora.fgrc.toString()]] : []),
-        ...(mission.sora.residual_risk_level ? [["Residual Risk", mission.sora.residual_risk_level]] : [])
+
+      // 1. Oppsummering
+      const soraSummary: string[][] = [
+        ["Status", sanitizeForPdf(soraStatusLabels[sora.sora_status] || sora.sora_status || "-")],
+        ...(sora.sail ? [["SAIL-nivå", sanitizeForPdf(sora.sail)]] : []),
+        ...(sora.residual_risk_level ? [["Rest-risikonivå", sanitizeForPdf(sora.residual_risk_level)]] : []),
       ];
-      
+      if (sora.prepared_by) {
+        const name = soraNameMap[sora.prepared_by] || sora.prepared_by;
+        const date = sora.prepared_at ? ` (${formatDateForPdf(sora.prepared_at, "dd.MM.yyyy")})` : "";
+        soraSummary.push(["Utarbeidet av", sanitizeForPdf(name + date)]);
+      }
+      if (sora.approved_by) {
+        const name = soraNameMap[sora.approved_by] || sora.approved_by;
+        const date = sora.approved_at ? ` (${formatDateForPdf(sora.approved_at, "dd.MM.yyyy")})` : "";
+        soraSummary.push(["Godkjent av", sanitizeForPdf(name + date)]);
+      }
+
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: soraInfo,
+        body: soraSummary,
         theme: "grid",
         styles: { fontSize: 9 },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
       });
-      
-      yPos = (pdf as any).lastAutoTable.finalY + 10;
+      yPos = (pdf as any).lastAutoTable.finalY + 5;
+
+      // 2. Operasjonsmiljø og ConOps
+      if (sora.environment || sora.conops_summary) {
+        if (yPos > 250) { pdf.addPage(); yPos = 20; }
+        const envInfo: string[][] = [];
+        if (sora.environment) envInfo.push(["Miljø", sanitizeForPdf(sora.environment)]);
+        if (sora.conops_summary) envInfo.push(["ConOps-beskrivelse", sanitizeForPdf(sora.conops_summary)]);
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: envInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+      }
+
+      // 3. Bakkebasert risiko (GRC)
+      if (sora.igrc != null || sora.fgrc != null || sora.ground_mitigations) {
+        if (yPos > 250) { pdf.addPage(); yPos = 20; }
+        const grcInfo: string[][] = [];
+        if (sora.igrc != null) grcInfo.push(["iGRC (grunnrisiko)", String(sora.igrc)]);
+        if (sora.fgrc != null) grcInfo.push(["fGRC (endelig)", String(sora.fgrc)]);
+        if (sora.ground_mitigations) grcInfo.push(["Bakkemitigeringer", sanitizeForPdf(sora.ground_mitigations)]);
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Bakkebasert risiko (GRC)", ""]],
+          body: grcInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+      }
+
+      // 4. Luftromsrisiko (ARC)
+      if (sora.arc_initial || sora.arc_residual || sora.airspace_mitigations) {
+        if (yPos > 250) { pdf.addPage(); yPos = 20; }
+        const arcInfo: string[][] = [];
+        if (sora.arc_initial) arcInfo.push(["Initial ARC", sanitizeForPdf(sora.arc_initial)]);
+        if (sora.arc_residual) arcInfo.push(["Residual ARC", sanitizeForPdf(sora.arc_residual)]);
+        if (sora.airspace_mitigations) arcInfo.push(["Luftromsmitigeringer", sanitizeForPdf(sora.airspace_mitigations)]);
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Luftromsrisiko (ARC)", ""]],
+          body: arcInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+      }
+
+      // 5. Rest-risiko og begrensninger
+      if (sora.residual_risk_comment || sora.operational_limits) {
+        if (yPos > 250) { pdf.addPage(); yPos = 20; }
+        const residualInfo: string[][] = [];
+        if (sora.residual_risk_comment) residualInfo.push(["Rest-risiko kommentar", sanitizeForPdf(sora.residual_risk_comment)]);
+        if (sora.operational_limits) residualInfo.push(["Operative begrensninger", sanitizeForPdf(sora.operational_limits)]);
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: residualInfo,
+          theme: "grid",
+          styles: { fontSize: 9 },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+      }
+
+      yPos += 5;
     }
     
     // AI Risk Assessment
