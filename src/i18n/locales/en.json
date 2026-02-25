@@ -572,6 +572,7 @@
       "delivery": "Delivery"
     },
     "proximity": {
+      "ssbData": "SSB data (automatic)",
       "none": "None",
       "few": "Few",
       "many": "Many"

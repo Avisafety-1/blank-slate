@@ -572,6 +572,7 @@
       "delivery": "Levering"
     },
     "proximity": {
+      "ssbData": "SSB data (automatisk)",
       "none": "Ingen",
       "few": "Få",
       "many": "Mange"

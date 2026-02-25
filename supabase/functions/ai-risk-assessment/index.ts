@@ -852,7 +852,9 @@ Hvis feltet "landUse" finnes i kontekstdataene, bruk dette som PRIMÆRKILDE for 
 - groundRiskClassification "high": Boligområder eller offentlige institusjoner i operasjonsområdet. Reduser mission_complexity score med 2-3 poeng. List kategoriene i complexity_factors og legg til spesifikke concerns.
 - groundRiskClassification "moderate": Næring, industri eller transport i området. Reduser mission_complexity score med 1-2 poeng.
 - groundRiskClassification "low": Ubebodd/fritidsområde — ingen ekstra reduksjon.
-- Hvis landUse er null (data utilgjengelig), fall tilbake på pilotens manuelle input om "proximityToPeople".
+- Hvis landUse er null (data utilgjengelig) OG proximityToPeople IKKE er "ssb_data", fall tilbake på pilotens manuelle input om "proximityToPeople".
+- Hvis proximityToPeople er "ssb_data": Bruk KUN SSB-data (landUse og populationDensity) som autoritativ kilde for nærhet til mennesker. Ikke bruk noen manuell fallback — SSB-dataene er den eneste kilden for denne vurderingen. Hvis SSB-data mangler, noter dette som en begrensning i vurderingen.
+- Hvis proximityToPeople er "none", "few" eller "many": Piloten har manuelt overstyrt SSB-data med lokal kunnskap. Bruk pilotens vurdering som primærkilde, men sammenlign med SSB-data hvis tilgjengelig og noter eventuelle avvik.
 Arealbrukskategoriene og featureCount gir detaljert informasjon om hva som finnes i området — bruk dette til å gi konkrete anbefalinger i recommendations.
 
 ### BEFOLKNINGSTETTHET OG SORA GRC (SSB befolkningsgitter-data)

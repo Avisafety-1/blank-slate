@@ -76,7 +76,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     isVlos: true,
     observerCount: 0,
     atcRequired: false,
-    proximityToPeople: 'none',
+    proximityToPeople: 'ssb_data',
     criticalInfrastructure: false,
     backupLandingAvailable: true,
     skipWeatherEvaluation: false,
@@ -483,6 +483,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="ssb_data">{t('riskAssessment.proximity.ssbData', 'SSB data (automatisk)')}</SelectItem>
                             <SelectItem value="none">{t('riskAssessment.proximity.none', 'Ingen')}</SelectItem>
                             <SelectItem value="few">{t('riskAssessment.proximity.few', 'Få')}</SelectItem>
                             <SelectItem value="many">{t('riskAssessment.proximity.many', 'Mange')}</SelectItem>
