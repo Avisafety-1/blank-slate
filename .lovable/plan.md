@@ -1,40 +1,33 @@
 
 
-# Fix: `crypto.randomUUID` polyfill for DJI RC Plus
+# Fix: Polyfill kjører for sent — må flyttes til `index.html`
 
-## Problem
+## Problemet
 
-Skjermbildet viser feilen: `TypeError: crypto.randomUUID is not a function @ 1738:128667`
+Polyfillen i `src/main.tsx` fungerer **ikke** fordi ES-moduler hoister `import`-statements. Selv om polyfillen står øverst i filen, kjører denne rekkefølgen:
 
-`crypto.randomUUID()` ble introdusert i Chrome 92. DJI RC Plus sin WebView er eldre (Chrome 70-87) og mangler denne funksjonen. Den brukes i 6 filer i prosjektet, inkludert på module-level i `OpenAIPMap.tsx` som krasjer ved import -- for ErrorBoundary kan fange noe.
+1. `import App from "./App.tsx"` evalueres (og alle transitive importer, inkludert `OpenAIPMap.tsx`)
+2. `crypto.randomUUID()` kalles under modul-evaluering → **krasj**
+3. Polyfillen kjører — men for sent
 
-## Losning
+## Løsning
 
-Legg til en **polyfill** tidlig i `src/main.tsx` (for alle importer) som definerer `crypto.randomUUID` hvis den mangler:
-
-```typescript
-// src/main.tsx - legg til OVERST, for alle andre importer
-if (typeof crypto !== 'undefined' && typeof crypto.randomUUID !== 'function') {
-  crypto.randomUUID = function() {
-    return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, function(c) {
-      var r = crypto.getRandomValues(new Uint8Array(1))[0];
-      return (Number(c) ^ (r & (15 >> (Number(c) / 4)))).toString(16);
-    });
-  };
-}
-```
-
-Dette er en standard polyfill som bruker `crypto.getRandomValues` (tilgjengelig fra Chrome 11) til a generere UUID v4.
+Flytt polyfillen til `index.html` som et vanlig `<script>`-blokk **før** `<script type="module">`. Vanlige scripts kjører synkront før moduler lastes. Det eksisterende error-handler-scriptet i `index.html` er det perfekte stedet å legge den.
 
 ## Filer som endres
 
 | Fil | Endring |
 |---|---|
-| `src/main.tsx` | Legg til `crypto.randomUUID` polyfill overst, for alle importer |
+| `index.html` | Legg til `crypto.randomUUID`-polyfill i det eksisterende `<script>`-blokken, før `showFallback`-funksjonen |
+| `src/main.tsx` | Fjern polyfillen (den er nå i `index.html`) |
 
-~7 linjer lagt til.
+## Teknisk detalj
 
-## Pavirkning
+```text
+index.html load order:
+  1. <script> (synkront) → polyfill settes her ✓
+  2. <script type="module" src="main.tsx"> → App importeres, crypto.randomUUID finnes nå ✓
+```
 
-Ingen endring for moderne nettlesere -- polyfillen aktiveres kun hvis `crypto.randomUUID` ikke finnes. Pa DJI RC Plus vil den generere gyldige UUID-er via `crypto.getRandomValues`.
+Ingen påvirkning på moderne nettlesere — polyfillen aktiveres kun hvis funksjonen mangler.
 
