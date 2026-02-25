@@ -9,83 +9,32 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
-import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import { renderSoraZones } from "@/lib/soraGeometry";
-// SafeSky beacon type SVG icons
-import dotSvg from "@/assets/safesky-icons/dot.svg";
-import gliderSvg from "@/assets/safesky-icons/glider.svg";
-import aircraftSvg from "@/assets/safesky-icons/aircraft.svg";
-import lightAircraftSvg from "@/assets/safesky-icons/light_aircraft.svg";
-import heavyAircraftSvg from "@/assets/safesky-icons/heavy_aircraft.svg";
-import helicopterSvg from "@/assets/safesky-icons/helicopter.svg";
-import heliAnim0 from "@/assets/safesky-icons/helicopter-anim_0.svg";
-import heliAnim1 from "@/assets/safesky-icons/helicopter-anim_1.svg";
-import heliAnim2 from "@/assets/safesky-icons/helicopter-anim_2.svg";
-import heliAnim3 from "@/assets/safesky-icons/helicopter-anim_3.svg";
-
-const HELI_ANIM_FRAMES = [heliAnim0, heliAnim1, heliAnim2, heliAnim3];
-
-// Map SafeSky beacon_type string to SVG icon URL
-function getBeaconSvgUrl(beaconType: string): string {
-  switch (beaconType) {
-    case 'MOTORPLANE': return aircraftSvg;
-    case 'THREE_AXES_LIGHT_PLANE': return lightAircraftSvg;
-    case 'JET': return heavyAircraftSvg;
-    case 'GLIDER': return gliderSvg;
-    case 'HELICOPTER': return heliAnim0;
-    case 'GYROCOPTER': return helicopterSvg; // fallback to static helicopter
-    case 'MILITARY': return aircraftSvg;
-    case 'UAV': return droneAnimatedIcon;
-    // Fallback to dot for types without dedicated icons
-    case 'UNKNOWN':
-    case 'STATIC_OBJECT':
-    case 'PARA_GLIDER':
-    case 'HAND_GLIDER':
-    case 'PARA_MOTOR':
-    case 'PARACHUTE':
-    case 'FLEX_WING_TRIKES':
-    case 'AIRSHIP':
-    case 'BALLOON':
-    case 'PAV':
-    default: return dotSvg;
-  }
-}
-
-function isAnimatedType(beaconType: string): boolean {
-  return beaconType === 'HELICOPTER';
-}
-import airportIcon from "@/assets/airport-icon.png";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Re-export types for backward compatibility
+export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
+import type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
+
+// Extracted modules
+import { calculateDistance, calculateTotalDistance, calculatePolygonAreaKm2 } from "@/lib/mapGeometry";
+import {
+  fetchNsmData,
+  fetchRpasData,
+  fetchAipRestrictionZones,
+  fetchRmzTmzAtzZones,
+  fetchObstacles,
+  fetchAirportsData,
+  fetchAndDisplayMissions,
+  fetchDroneTelemetry,
+  fetchActiveAdvisories,
+  fetchPilotPositions,
+} from "@/lib/mapDataFetchers";
+import { createSafeSkyManager } from "@/lib/mapSafeSky";
+import { showWeatherPopup } from "@/lib/mapWeatherPopup";
+
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
-
-// Generate a unique session ID for heartbeat tracking
 const SESSION_ID = crypto.randomUUID();
-
-export interface RoutePoint {
-  lat: number;
-  lng: number;
-}
-
-export interface RouteData {
-  coordinates: RoutePoint[];
-  totalDistance: number;
-  areaKm2?: number;
-  pilotPosition?: RoutePoint;
-  maxDistanceFromPilot?: number;
-  pointsOutsideVLOS?: number;
-  soraSettings?: SoraSettings;
-}
-
-export interface SoraSettings {
-  enabled: boolean;
-  flightAltitude: number;
-  flightGeographyDistance: number;
-  contingencyDistance: number;
-  contingencyHeight: number;
-  groundRiskDistance: number;
-  bufferMode?: "corridor" | "convexHull";
-}
 
 interface OpenAIPMapProps {
   onMissionClick?: (mission: any) => void;
@@ -101,169 +50,6 @@ interface OpenAIPMapProps {
   focusFlightId?: string | null;
   onFocusFlightHandled?: () => void;
   soraSettings?: SoraSettings;
-}
-
-// Calculate distance between two points using Haversine formula
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-function calculateTotalDistance(points: RoutePoint[]): number {
-  let total = 0;
-  for (let i = 1; i < points.length; i++) {
-    total += calculateDistance(
-      points[i-1].lat, points[i-1].lng,
-      points[i].lat, points[i].lng
-    );
-  }
-  return total;
-}
-
-// Compute convex hull using Graham scan algorithm (same as edge function)
-function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
-  if (points.length < 3) return points;
-  
-  // Find the point with lowest lat (and leftmost if tie)
-  let start = points[0];
-  for (const p of points) {
-    if (p.lat < start.lat || (p.lat === start.lat && p.lng < start.lng)) {
-      start = p;
-    }
-  }
-  
-  // Sort by polar angle from start
-  const sorted = points.slice().sort((a, b) => {
-    if (a === start) return -1;
-    if (b === start) return 1;
-    const angleA = Math.atan2(a.lng - start.lng, a.lat - start.lat);
-    const angleB = Math.atan2(b.lng - start.lng, b.lat - start.lat);
-    return angleA - angleB;
-  });
-  
-  // Build hull
-  const hull: RoutePoint[] = [];
-  for (const p of sorted) {
-    while (hull.length >= 2) {
-      const a = hull[hull.length - 2];
-      const b = hull[hull.length - 1];
-      const cross = (b.lat - a.lat) * (p.lng - b.lng) - (b.lng - a.lng) * (p.lat - b.lat);
-      if (cross <= 0) {
-        hull.pop();
-      } else {
-        break;
-      }
-    }
-    hull.push(p);
-  }
-  
-  return hull;
-}
-
-// Buffer a convex hull polygon outward by a distance in meters
-function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[] {
-  if (hull.length < 3 || distanceMeters <= 0) return hull;
-
-  const avgLat = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
-  const latScale = 111320;
-  const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
-
-  // Convert to local meters
-  const ref = hull[0];
-  const pts = hull.map(p => ({
-    x: (p.lng - ref.lng) * lngScale,
-    y: (p.lat - ref.lat) * latScale,
-  }));
-
-  // Ensure CCW winding (positive signed area = CCW)
-  let signedArea = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const j = (i + 1) % pts.length;
-    signedArea += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
-  }
-  if (signedArea < 0) {
-    pts.reverse();
-  }
-
-  const n = pts.length;
-  // Compute outward-offset edges (for CCW: left-hand normal = outward)
-  const offsetEdges: { x1: number; y1: number; x2: number; y2: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const dx = pts[j].x - pts[i].x;
-    const dy = pts[j].y - pts[i].y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len === 0) continue;
-    // Outward normal for CCW polygon: (dy, -dx) / len
-    const nx = dy / len;
-    const ny = -dx / len;
-    offsetEdges.push({
-      x1: pts[i].x + nx * distanceMeters,
-      y1: pts[i].y + ny * distanceMeters,
-      x2: pts[j].x + nx * distanceMeters,
-      y2: pts[j].y + ny * distanceMeters,
-    });
-  }
-
-  // Intersect consecutive offset edges
-  const result: RoutePoint[] = [];
-  for (let i = 0; i < offsetEdges.length; i++) {
-    const j = (i + 1) % offsetEdges.length;
-    const e1 = offsetEdges[i];
-    const e2 = offsetEdges[j];
-    const ix = intersectLines(e1.x1, e1.y1, e1.x2, e1.y2, e2.x1, e2.y1, e2.x2, e2.y2);
-    if (ix) {
-      result.push({
-        lat: ref.lat + ix.y / latScale,
-        lng: ref.lng + ix.x / lngScale,
-      });
-    }
-  }
-
-  return result.length >= 3 ? result : hull;
-}
-
-function intersectLines(
-  x1: number, y1: number, x2: number, y2: number,
-  x3: number, y3: number, x4: number, y4: number
-): { x: number; y: number } | null {
-  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(denom) < 1e-10) return null;
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-  return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
-}
-
-// Calculate polygon area using Shoelace formula (returns km²)
-function calculatePolygonAreaKm2(points: RoutePoint[]): number {
-  if (points.length < 3) return 0;
-  
-  const hull = computeConvexHull(points);
-  if (hull.length < 3) return 0;
-  
-  // Convert to meters using approximate scale at average latitude
-  const avgLat = hull.reduce((sum, p) => sum + p.lat, 0) / hull.length;
-  const latScale = 111320; // meters per degree latitude
-  const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180); // meters per degree longitude
-  
-  // Apply Shoelace formula
-  let area = 0;
-  for (let i = 0; i < hull.length; i++) {
-    const j = (i + 1) % hull.length;
-    const xi = hull[i].lng * lngScale;
-    const yi = hull[i].lat * latScale;
-    const xj = hull[j].lng * lngScale;
-    const yj = hull[j].lat * latScale;
-    area += xi * yj - xj * yi;
-  }
-  
-  return Math.abs(area) / 2 / 1_000_000; // Convert m² to km²
 }
 
 export function OpenAIPMap({ 
@@ -327,7 +113,6 @@ export function OpenAIPMap({
           (el as HTMLElement).style.pointerEvents = enabled ? "auto" : "none";
         }
 
-        // Also toggle Leaflet's internal interactive target registration
         if (!enabled && typeof layer.removeInteractiveTarget === "function" && el) {
           layer.removeInteractiveTarget(el);
         } else if (enabled && typeof layer.addInteractiveTarget === "function" && el) {
@@ -370,27 +155,12 @@ export function OpenAIPMap({
     setBaseLayerType(newType);
   }, []);
 
-  // Sync refs with state/props for use in event handlers
-  useEffect(() => {
-    weatherEnabledRef.current = weatherEnabled;
-  }, [weatherEnabled]);
-
-  useEffect(() => {
-    onMissionClickRef.current = onMissionClick;
-  }, [onMissionClick]);
-
-  useEffect(() => {
-    onRouteChangeRef.current = onRouteChange;
-  }, [onRouteChange]);
-
-  useEffect(() => {
-    isPlacingPilotRef.current = isPlacingPilot;
-  }, [isPlacingPilot]);
-
-  useEffect(() => {
-    onPilotPositionChangeRef.current = onPilotPositionChange;
-  }, [onPilotPositionChange]);
-
+  // Sync refs with state/props
+  useEffect(() => { weatherEnabledRef.current = weatherEnabled; }, [weatherEnabled]);
+  useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
+  useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
+  useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
+  useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -418,9 +188,9 @@ export function OpenAIPMap({
       const isFirst = index === 0;
       const isLast = index === points.length - 1 && points.length > 1;
 
-      let bgColor = '#3b82f6'; // blue default
-      if (isFirst) bgColor = '#22c55e'; // green for start
-      else if (isLast) bgColor = '#ef4444'; // red for end
+      let bgColor = '#3b82f6';
+      if (isFirst) bgColor = '#22c55e';
+      else if (isLast) bgColor = '#ef4444';
 
       const marker = L.marker([point.lat, point.lng], {
         icon: L.divIcon({
@@ -448,62 +218,42 @@ export function OpenAIPMap({
       });
 
       if (modeRef.current === 'routePlanning') {
-        // Drag to move point
         marker.on('dragend', (e: any) => {
           const { lat, lng } = e.target.getLatLng();
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
-
           const cb = onRouteChangeRef.current;
           if (cb) {
             const coords = [...routePointsRef.current];
-            cb({
-              coordinates: coords,
-              totalDistance: calculateTotalDistance(coords),
-              areaKm2: calculatePolygonAreaKm2(coords),
-            });
+            cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
           }
         });
 
-        // Right-click to remove point
         marker.on('contextmenu', (e: any) => {
           L.DomEvent.stopPropagation(e);
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
-
           const cb = onRouteChangeRef.current;
           if (cb) {
             const coords = [...routePointsRef.current];
-            cb({
-              coordinates: coords,
-              totalDistance: calculateTotalDistance(coords),
-              areaKm2: calculatePolygonAreaKm2(coords),
-            });
+            cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
           }
         });
       }
 
-      // Show distance in popup
       let popupContent = `<strong>Punkt ${index + 1}</strong>`;
       if (index > 0) {
-        const dist = calculateDistance(
-          points[index - 1].lat,
-          points[index - 1].lng,
-          point.lat,
-          point.lng
-        );
+        const dist = calculateDistance(points[index - 1].lat, points[index - 1].lng, point.lat, point.lng);
         popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
       }
       if (modeRef.current === 'routePlanning') {
-        popupContent +=
-          '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
+        popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
       }
       marker.bindPopup(popupContent);
-
       marker.addTo(routeLayerRef.current!);
     });
 
-    // Show total distance on last segment
+    // Total distance label
     if (points.length > 1) {
       const totalDist = calculateTotalDistance(points);
       const midPoint = points[Math.floor(points.length / 2)];
@@ -542,7 +292,7 @@ export function OpenAIPMap({
     }
   }, []);
 
-  // Sync soraSettings ref and redraw when settings change
+  // Sync soraSettings ref and redraw
   useEffect(() => {
     soraSettingsRef.current = soraSettings;
     if (routeLayerRef.current && leafletMapRef.current) {
@@ -550,11 +300,10 @@ export function OpenAIPMap({
     }
   }, [soraSettings, updateRouteDisplay]);
 
-  // Sync mode ref and update route display when mode changes
+  // Sync mode ref and toggle interactivity
   useEffect(() => {
     modeRef.current = mode;
 
-    // Ensure vector layers don't block map clicks when in route planning mode
     const vectorsInteractive = mode !== "routePlanning";
     setGeoJsonInteractivity(nsmGeoJsonRef.current, vectorsInteractive);
     setGeoJsonInteractivity(rpasGeoJsonRef.current, vectorsInteractive);
@@ -562,7 +311,6 @@ export function OpenAIPMap({
       setGeoJsonInteractivity(layer, vectorsInteractive);
     });
 
-    // Disable pointer events on all airspace panes when in route planning mode
     if (leafletMapRef.current) {
       const map = leafletMapRef.current;
       const container = map.getContainer();
@@ -581,33 +329,30 @@ export function OpenAIPMap({
       }
     }
 
-    // Update route display when mode changes (to update draggable status on markers)
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
   }, [mode, updateRouteDisplay, setGeoJsonInteractivity]);
 
-  // Sync with controlled route from parent (for clear/undo operations and KML import)
+  // Sync with controlled route from parent
   useEffect(() => {
     if (!controlledRoute) return;
     const controlled = controlledRoute.coordinates;
     const current = routePointsRef.current;
-    // Sync if length differs OR if the first coordinate changed (e.g. KML import replaced the route)
     const firstChanged =
-      controlled.length > 0 &&
-      current.length > 0 &&
+      controlled.length > 0 && current.length > 0 &&
       (controlled[0].lat !== current[0].lat || controlled[0].lng !== current[0].lng);
     if (controlled.length < current.length || controlled.length === 0 || firstChanged || (controlled.length > 0 && current.length === 0)) {
       routePointsRef.current = [...controlled];
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
-      // Pan map to first point if route was imported (more points than before and no existing points)
       if (controlled.length > 0 && leafletMapRef.current && (current.length === 0 || firstChanged)) {
         leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
       }
     }
   }, [controlledRoute?.coordinates.length, controlledRoute?.coordinates[0]?.lat, controlledRoute?.coordinates[0]?.lng, updateRouteDisplay]);
 
+  // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -615,29 +360,12 @@ export function OpenAIPMap({
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
     leafletMapRef.current = map;
 
-    // Z-index hierarchy (smallest/most specific areas on top):
-    // 690: airportPane   - Airport markers (highest, always clickable)
-    // 685: missionPane   - Mission markers
-    // 680: routePane     - Route planner
-    // 675: obstaclePane  - Obstacles (wind turbines, masts)
-    // 660: safeskyPane   - SafeSky traffic
-    // 650: nsmPane       - NSM restriction zones
-    // 645: rpasPane      - RPAS 5km zones
-    // 640: aipPane       - Danger/Prohibited/Restricted (P/R/D) - above RMZ
-    // 635: rmzPane       - RMZ/TMZ/ATZ zones
-
+    // Create panes
     const paneConfig: Record<string, string> = {
-      airportPane: '690',
-      missionPane: '685',
-      routePane: '680',
-      obstaclePane: '675',
-      safeskyPane: '660',
-      nsmPane: '650',
-      rpasPane: '645',
-      aipPane: '640',
-      rmzPane: '635',
+      airportPane: '690', missionPane: '685', routePane: '680',
+      obstaclePane: '675', safeskyPane: '660', nsmPane: '650',
+      rpasPane: '645', aipPane: '640', rmzPane: '635',
     };
-
     const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
@@ -647,9 +375,8 @@ export function OpenAIPMap({
         pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
-    console.log('Panes created:', Object.keys(paneConfig).join(', '));
 
-    // OSM background
+    // Base layer
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
       attribution: openAipConfig.attribution.osm,
       subdomains: "abc",
@@ -661,165 +388,53 @@ export function OpenAIPMap({
     // OpenAIP airspace
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
-      const airspaceLayer = L.tileLayer(airspaceUrl, {
-        opacity: 0.55,
-        subdomains: "abc",
-      }).addTo(map);
-      
-      layerConfigs.push({
-        id: "airspace",
-        name: "Luftrom (OpenAIP)",
-        layer: airspaceLayer,
-        enabled: true,
-        icon: "layers",
-      });
+      const airspaceLayer = L.tileLayer(airspaceUrl, { opacity: 0.55, subdomains: "abc" }).addTo(map);
+      layerConfigs.push({ id: "airspace", name: "Luftrom (OpenAIP)", layer: airspaceLayer, enabled: true, icon: "layers" });
     }
 
-    // NRL - Luftfartshindre
-    const nrlLayer = L.tileLayer.wms(
-      "https://wms.geonorge.no/skwms1/wms.nrl5?",
-      {
-        layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.8,
-        attribution: 'NRL Luftfartshindre',
-      }
-    );
-    layerConfigs.push({
-      id: "nrl",
-      name: "Luftfartshindre (NRL)",
-      layer: nrlLayer,
-      enabled: false,
-      icon: "alertTriangle",
+    // NRL
+    const nrlLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.nrl5?", {
+      layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt", format: "image/png", transparent: true, opacity: 0.8, attribution: 'NRL Luftfartshindre',
     });
+    layerConfigs.push({ id: "nrl", name: "Luftfartshindre (NRL)", layer: nrlLayer, enabled: false, icon: "alertTriangle" });
 
     // Naturvern
-    const naturvernLayer = L.tileLayer.wms(
-      "https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?",
-      {
-        layers: "0",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.7,
-        attribution: 'Miljødirektoratet - Verneområder',
-      }
-    ).addTo(map);
-    layerConfigs.push({
-      id: "naturvern",
-      name: "Naturvern-restriksjoner",
-      layer: naturvernLayer,
-      enabled: true,
-      icon: "treePine",
-    });
+    const naturvernLayer = L.tileLayer.wms("https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?", {
+      layers: "0", format: "image/png", transparent: true, opacity: 0.7, attribution: 'Miljødirektoratet - Verneområder',
+    }).addTo(map);
+    layerConfigs.push({ id: "naturvern", name: "Naturvern-restriksjoner", layer: naturvernLayer, enabled: true, icon: "treePine" });
 
-    // SSB Arealbruk (befolkningstetthet)
-    const arealbrukLayer = L.tileLayer.wms(
-      "https://wms.geonorge.no/skwms1/wms.arealbruk?",
-      {
-        layers: "arealbruk",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.6,
-        attribution: "SSB Arealbruk",
-        minZoom: 0,
-        maxZoom: 20,
-        tiled: true,
-      } as any
-    );
-    layerConfigs.push({
-      id: "arealbruk",
-      name: "Befolkning / Arealbruk (SSB)",
-      layer: arealbrukLayer,
-      enabled: false,
-      icon: "users",
-    });
+    // SSB Arealbruk
+    const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
+      layers: "arealbruk", format: "image/png", transparent: true, opacity: 0.6, attribution: "SSB Arealbruk", minZoom: 0, maxZoom: 20, tiled: true,
+    } as any);
+    layerConfigs.push({ id: "arealbruk", name: "Befolkning / Arealbruk (SSB)", layer: arealbrukLayer, enabled: false, icon: "users" });
 
-    // SSB Befolkning 1km² rutenett
-    const befolkningLayer = L.tileLayer.wms(
-      "https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett",
-      {
-        layers: "befolkning_1km_2025",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.65,
-        attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>',
-        minZoom: 0,
-        maxZoom: 20,
-        tiled: true,
-        version: "1.3.0",
-      } as any
-    );
-    layerConfigs.push({
-      id: "befolkning1km",
-      name: "Befolkning 1km² (SSB)",
-      layer: befolkningLayer,
-      enabled: false,
-      icon: "users",
-    });
+    // SSB Befolkning
+    const befolkningLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
+      layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.65,
+      attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
+    } as any);
+    layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
 
-    // RPAS 5km soner
+    // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "rpas",
-      name: "RPAS 5km soner",
-      layer: rpasLayer,
-      enabled: true,
-      icon: "radio",
-    });
+    layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
 
-
-
-
-    // NSM Forbudsområder - added last so it's on top and clickable
     const nsmLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "nsm",
-      name: "NSM Forbudsområder",
-      layer: nsmLayer,
-      enabled: true,
-      icon: "ban",
-    });
+    layerConfigs.push({ id: "nsm", name: "NSM Forbudsområder", layer: nsmLayer, enabled: true, icon: "ban" });
 
-    // AIP ENR 5.1 Restriction zones (Prohibited/Restricted/Danger)
     const aipLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "aip",
-      name: "Fareområder (P/R/D)",
-      layer: aipLayer,
-      enabled: true,
-      icon: "shield",
-    });
+    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: true, icon: "shield" });
 
-    // RMZ/TMZ/ATZ zones from OpenAIP
     const rmzTmzAtzLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "rmz_tmz_atz",
-      name: "RMZ / TMZ / ATZ",
-      layer: rmzTmzAtzLayer,
-      enabled: true,
-      icon: "radio",
-    });
+    layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio" });
 
-    // OpenAIP Obstacles (wind turbines, masts, etc.)
     const obstaclesLayer = L.layerGroup();
-    layerConfigs.push({
-      id: "obstacles",
-      name: "Hindringer (OpenAIP)",
-      layer: obstaclesLayer,
-      enabled: false,
-      icon: "alertTriangle",
-    });
+    layerConfigs.push({ id: "obstacles", name: "Hindringer (OpenAIP)", layer: obstaclesLayer, enabled: false, icon: "alertTriangle" });
 
-    // Airports
     const airportsLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "airports",
-      name: "Flyplasser",
-      layer: airportsLayer,
-      enabled: true,
-      icon: "planeLanding",
-    });
+    layerConfigs.push({ id: "airports", name: "Flyplasser", layer: airportsLayer, enabled: true, icon: "planeLanding" });
 
     // Geolocation
     if (!initialCenter && navigator.geolocation) {
@@ -827,1272 +442,131 @@ export function OpenAIPMap({
         (pos) => {
           const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           map.setView(coords, 9);
-          
           if (userMarkerRef.current) {
             userMarkerRef.current.setLatLng(coords);
           } else {
             userMarkerRef.current = L.circleMarker(coords, {
-              radius: 8,
-              fillColor: '#3b82f6',
-              fillOpacity: 1,
-              color: '#ffffff',
-              weight: 2,
+              radius: 8, fillColor: '#3b82f6', fillOpacity: 1, color: '#ffffff', weight: 2,
             }).addTo(map);
             userMarkerRef.current.bindPopup("Din posisjon");
           }
         },
         () => {
           console.log("Geolokasjon nektet");
-          // Fallback: use company address coordinates if available
           if (companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
-            console.log("Bruker selskapets adresse som fallback-posisjon");
           }
         },
       );
     }
 
-    // Drone telemetry layer
+    // Drone, Missions, SafeSky, Route, Pilot, Advisory layers
     const droneLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "drones",
-      name: "Droner (live)",
-      layer: droneLayer,
-      enabled: true,
-      icon: "navigation",
-    });
+    layerConfigs.push({ id: "drones", name: "Droner (live)", layer: droneLayer, enabled: true, icon: "navigation" });
 
-    // Missions layer - only in view mode
     const missionsLayer = L.layerGroup();
-    if (modeRef.current === "view") {
-      missionsLayer.addTo(map);
-    }
+    if (modeRef.current === "view") missionsLayer.addTo(map);
     missionsLayerRef.current = missionsLayer;
-    layerConfigs.push({
-      id: "missions",
-      name: "Oppdrag",
-      layer: missionsLayer,
-      enabled: modeRef.current === "view",
-      icon: "mapPin",
-    });
+    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin" });
 
-    // SafeSky / Lufttrafikk layer - renamed from "SafeSky (live)" to "Lufttrafikk (live)"
     const safeskyLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({
-      id: "safesky",
-      name: "Lufttrafikk (live)",
-      layer: safeskyLayer,
-      enabled: true,
-      icon: "radar",
-    });
+    layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
 
-    // Route layer for route planning
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
 
-    // Pilot VLOS layer for route planning mode
     const pilotLayer = L.layerGroup().addTo(map);
     pilotLayerRef.current = pilotLayer;
 
-    // Active advisory areas layer - always visible when active flights exist (not toggleable)
     const activeAdvisoryLayer = L.layerGroup().addTo(map);
-
-    // Pilot positions layer - shows live_uav pilot positions internally
     const pilotPositionsLayer = L.layerGroup().addTo(map);
 
     setLayers(layerConfigs);
 
-    // Fetch drone telemetry from database
-    async function fetchDroneTelemetry() {
-      try {
-        const { data: telemetry, error } = await supabase
-          .from('drone_telemetry')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (error || !telemetry) return;
-        
-        droneLayer.clearLayers();
-        
-        // Group by drone_id, take only latest position per drone
-        const latestByDrone = new Map<string, typeof telemetry[0]>();
-        telemetry.forEach(t => {
-          const droneId = t.drone_id || 'unknown';
-          if (!latestByDrone.has(droneId)) {
-            latestByDrone.set(droneId, t);
-          }
-        });
-        
-        latestByDrone.forEach((t, droneId) => {
-          if (!t.lat || !t.lon) return;
-          
-          const icon = L.divIcon({
-            className: '',
-            html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;" />`,
-            iconSize: [70, 70],
-            iconAnchor: [35, 35],
-            popupAnchor: [0, -35],
-          });
-          
-          const marker = L.marker([t.lat, t.lon], { icon, interactive: modeRef.current !== 'routePlanning' });
-          const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
-          marker.bindPopup(
-            `
-              <div>
-                <strong>🛸 ${droneId}</strong><br/>
-                Høyde: ${t.alt ?? '?'} m<br/>
-                Oppdatert: ${updatedTime}
-              </div>
-            `,
-            {
-              // Allow dragging map freely even when popup is open
-              autoPan: false,
-              keepInView: false,
-            }
-          );
-          marker.addTo(droneLayer);
-        });
-      } catch (err) {
-        console.error('Feil ved henting av dronetelemetri:', err);
-      }
-    }
+    // Common fetch params
+    const geoJsonParams = {
+      mode,
+      setGeoJsonInteractivity,
+      modeRef,
+    };
 
-    // SafeSky markers cache for efficient updates
-    const safeskyMarkersCache = new Map<string, L.Marker>();
-    // Animation intervals for helicopter beacons
-    const heliAnimIntervals = new Map<string, number>();
-    
-    // SafeSky render function - updates existing markers or creates new ones
-    function renderSafeSkyBeacons(beacons: any[]) {
-      const currentIds = new Set<string>();
-      console.log(`SafeSky: ${beacons.length} beacons from database`);
-      
-      for (const beacon of beacons) {
-        const lat = beacon.latitude;
-        const lon = beacon.longitude;
-        if (lat == null || lon == null) continue;
-        
-        const beaconId = beacon.id || `${lat}_${lon}`;
-        currentIds.add(beaconId);
-        
-        const beaconType = beacon.beacon_type || 'UNKNOWN';
-        const course = beacon.course || 0;
-        const isDrone = beaconType === 'UAV';
-        const isHeli = isAnimatedType(beaconType);
-        
-        // Check if altitude > 2000ft (610m) for high altitude styling
-        const altitudeMetersForColor = beacon.altitude;
-        const isHighAltitude = altitudeMetersForColor != null && altitudeMetersForColor > 610;
-        const highAltFilter = isHighAltitude ? 'filter:grayscale(100%) brightness(0);' : '';
-        
-        const iconUrl = getBeaconSvgUrl(beaconType);
-        
-        // Popup content builder
-        const callsign = beacon.callsign || 'Ukjent';
-        const altitudeFt = beacon.altitude != null ? Math.round(beacon.altitude * 3.28084) : '?';
-        const speedKt = beacon.ground_speed != null ? Math.round(beacon.ground_speed * 1.94384) : '?';
-        const typeLabel = beaconType || 'Ukjent';
-        const popupHtml = `
-          <div>
-            <strong>Callsign: ${callsign}</strong><br/>
-            Type: ${typeLabel}<br/>
-            Høyde: ${altitudeFt} ft<br/>
-            Fart: ${speedKt} kt<br/>
-            <span style="font-size: 10px; color: #888;">Via SafeSky</span>
-          </div>
-        `;
-        
-        // Check if marker already exists
-        const existingMarker = safeskyMarkersCache.get(beaconId);
-        
-        if (existingMarker) {
-          // Only update position if popup is not open
-          if (!existingMarker.isPopupOpen()) {
-            existingMarker.setLatLng([lat, lon]);
-          }
-          existingMarker.setPopupContent(popupHtml);
-          
-          // Update rotation for non-helicopter, non-drone types
-          if (!isDrone && !isHeli) {
-            const el = existingMarker.getElement();
-            if (el) {
-              const img = el.querySelector('img');
-              if (img) {
-                img.style.transform = `rotate(${course}deg)`;
-              }
-            }
-          }
-        } else {
-          // Create new marker
-          let icon: L.DivIcon;
-          const size = 56;
-          const anchor = size / 2;
-          const rotation = (!isDrone && !isHeli) ? `transform:rotate(${course}deg);` : '';
-          
-          icon = L.divIcon({
-            className: '',
-            html: `<img src="${iconUrl}" style="width:${size}px;height:${size}px;${rotation}${highAltFilter}" data-beacon-type="${beaconType}" />`,
-            iconSize: [size, size],
-            iconAnchor: [anchor, anchor],
-            popupAnchor: [0, -anchor],
-          });
-          
-          const marker = L.marker([lat, lon], { icon, interactive: mode !== 'routePlanning', pane: 'safeskyPane' });
-          marker.bindPopup(popupHtml, { autoPan: false, keepInView: false });
-          marker.addTo(safeskyLayer);
-          safeskyMarkersCache.set(beaconId, marker);
-          
-          // Start helicopter animation
-          if (isHeli) {
-            let frameIdx = 0;
-            const intervalId = window.setInterval(() => {
-              // Skip if popup is open
-              if (marker.isPopupOpen()) return;
-              frameIdx = (frameIdx + 1) % HELI_ANIM_FRAMES.length;
-              const el = marker.getElement();
-              if (el) {
-                const img = el.querySelector('img');
-                if (img) {
-                  img.src = HELI_ANIM_FRAMES[frameIdx];
-                }
-              }
-            }, 200);
-            heliAnimIntervals.set(beaconId, intervalId);
-          }
-        }
-      }
-      
-      // Remove markers that are no longer present
-      for (const [id, marker] of safeskyMarkersCache) {
-        if (!currentIds.has(id)) {
-          safeskyLayer.removeLayer(marker);
-          safeskyMarkersCache.delete(id);
-          // Clear helicopter animation interval
-          const intervalId = heliAnimIntervals.get(id);
-          if (intervalId != null) {
-            clearInterval(intervalId);
-            heliAnimIntervals.delete(id);
-          }
-        }
-      }
-    }
-
-    // Fetch SafeSky beacons from database
-    async function fetchSafeSkyBeacons() {
-      try {
-        const { data, error } = await supabase
-          .from('safesky_beacons')
-          .select('*');
-        
-        if (error) {
-          console.error('SafeSky database error:', error);
-          return;
-        }
-        
-        renderSafeSkyBeacons(data || []);
-      } catch (err) {
-        console.error('Feil ved henting av SafeSky data:', err);
-      }
-    }
-
-    // Fetch and display active advisory areas from active_flights with publish_mode='advisory'
-    // Uses route_data directly from active_flights instead of joining with missions
-    // to avoid exposing mission data across companies
-    async function fetchActiveAdvisories() {
-      try {
-        const { data: activeFlights, error } = await supabase
-          .from('active_flights')
-          .select('id, mission_id, publish_mode, route_data')
-          .eq('publish_mode', 'advisory');
-        
-        if (error) {
-          console.error('Error fetching active advisories:', error);
-          return;
-        }
-        
-        activeAdvisoryLayer.clearLayers();
-        // Clear advisory markers from flight markers ref
-        for (const [key] of flightMarkersRef.current) {
-          if (key.startsWith('advisory_')) flightMarkersRef.current.delete(key);
-        }
-        
-        for (const flight of activeFlights || []) {
-          const route = flight.route_data as any;
-          
-          // Skip if no valid route with at least 3 points to form a polygon
-          if (!route?.coordinates || route.coordinates.length < 3) continue;
-          
-          // Build polygon from route coordinates
-          const polygonCoords = route.coordinates.map((p: any) => [p.lat, p.lng] as [number, number]);
-          
-          // Draw semi-transparent emerald polygon (similar to SafeSky app)
-          const polygon = L.polygon(polygonCoords, {
-            color: '#10b981',        // Emerald border
-            weight: 2,
-            fillColor: '#10b981',    // Emerald fill
-            fillOpacity: 0.25,       // Semi-transparent
-            interactive: true,
-          });
-          
-          // Popup with flight info - no mission title shown for cross-company privacy
-          polygon.bindPopup(`
-            <div>
-              <strong>🛸 Aktiv flytur</strong><br/>
-              <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
-            </div>
-          `);
-          
-          polygon.addTo(activeAdvisoryLayer);
-
-          // Create an invisible marker at centroid for focus navigation
-          const centLat = polygonCoords.reduce((s: number, c: [number, number]) => s + c[0], 0) / polygonCoords.length;
-          const centLng = polygonCoords.reduce((s: number, c: [number, number]) => s + c[1], 0) / polygonCoords.length;
-          const invisibleIcon = L.divIcon({ className: '', html: '', iconSize: [0, 0] });
-          const centroidMarker = L.marker([centLat, centLng], { icon: invisibleIcon, interactive: false });
-          centroidMarker.addTo(activeAdvisoryLayer);
-          flightMarkersRef.current.set(flight.id, centroidMarker as any);
-        }
-      } catch (err) {
-        console.error('Error fetching active advisories:', err);
-      }
-    }
-
-    // Fetch and display pilot positions from active_flights with publish_mode='live_uav'
-    // These are internal positions (not published to SafeSky) for tracking pilots
-    async function fetchPilotPositions() {
-      try {
-        const { data: liveFlights, error } = await supabase
-          .from('active_flights')
-          .select('id, start_lat, start_lng, pilot_name, start_time')
-          .eq('publish_mode', 'live_uav')
-          .not('start_lat', 'is', null)
-          .not('start_lng', 'is', null);
-        
-        if (error) {
-          console.error('Error fetching pilot positions:', error);
-          return;
-        }
-        
-        pilotPositionsLayer.clearLayers();
-        // Clear live markers from flight markers ref
-        for (const [key] of flightMarkersRef.current) {
-          if (key.startsWith('live_')) flightMarkersRef.current.delete(key);
-        }
-        
-        for (const flight of liveFlights || []) {
-          if (!flight.start_lat || !flight.start_lng) continue;
-          
-          // Create pilot marker with person icon
-          const pilotIcon = L.divIcon({
-            className: '',
-            html: `<div style="
-              width: 32px;
-              height: 32px;
-              background: #0ea5e9;
-              border: 3px solid white;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            ">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-                <circle cx="12" cy="7" r="4"/>
-                <path d="M5.5 21a9.5 9.5 0 0 1 13 0"/>
-              </svg>
-            </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-            popupAnchor: [0, -16],
-          });
-          
-          const marker = L.marker([flight.start_lat, flight.start_lng], { 
-            icon: pilotIcon, 
-            interactive: mode !== 'routePlanning' 
-          });
-          
-          const startTime = flight.start_time ? new Date(flight.start_time).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }) : 'Ukjent';
-          const pilotName = flight.pilot_name || 'Ukjent pilot';
-          
-          marker.bindPopup(`
-            <div>
-              <strong>👤 ${pilotName}</strong><br/>
-              <span style="font-size: 11px; color: #666;">Pilot (live posisjon)</span><br/>
-              <span style="font-size: 11px;">Startet: ${startTime}</span>
-            </div>
-          `);
-          
-          marker.addTo(pilotPositionsLayer);
-          flightMarkersRef.current.set(flight.id, marker);
-        }
-        
-        console.log(`Rendered ${liveFlights?.length || 0} pilot positions`);
-      } catch (err) {
-        console.error('Error fetching pilot positions:', err);
-      }
-    }
-
-    // Data fetching functions
-    async function fetchNsmData() {
-      try {
-        const url = "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        const response = await fetch(url);
-        if (!response.ok) return;
-
-        const geojson = await response.json();
-        const geoJsonLayer = L.geoJSON(geojson, {
-          pane: 'nsmPane',
-          interactive: mode !== 'routePlanning',
-          style: {
-            color: '#ff0000',
-            weight: 2,
-            fillColor: '#ff0000',
-            fillOpacity: 0.25,
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-            const props = feature?.properties || {};
-            const name =
-              props.navn ||
-              props.NAVN ||
-              props.name ||
-              props.Name ||
-              props.OMR_NAVN ||
-              props.OMRNAVN ||
-              props.OBJECTID ||
-              'Ukjent område';
-
-            const excludeKeys = ['globalid', 'shape_area', 'shape__area', 'shape_length', 'shape__length', 'shape_lenght', 'objectid', 'refnr', 'length'];
-            const details = Object.entries(props)
-              .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== '' && !excludeKeys.includes(k.trim().toLowerCase()))
-              .slice(0, 8)
-              .map(([k, v]) => `<div style="font-size: 11px;"><span style="color:#666;">${k}:</span> ${String(v)}</div>`)
-              .join('');
-
-            layer.bindPopup(
-              `<div>
-                <strong>NSM Forbudsområde</strong><br/>
-                <span>${String(name)}</span>
-                ${details ? `<div style="margin-top:6px;">${details}</div>` : ''}
-              </div>`
-            );
-          } : undefined,
-        });
-
-        // Keep a ref so we can toggle interactivity when switching to route planning
-        nsmGeoJsonRef.current = geoJsonLayer;
-        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
-
-        // Ensure NSM stays above other vector overlays
-        (geoJsonLayer as any).bringToFront?.();
-        geoJsonLayer.eachLayer((l: any) => l?.bringToFront?.());
-
-        nsmLayer.clearLayers();
-        nsmLayer.addLayer(geoJsonLayer);
-      } catch (err) {
-        console.error("Kunne ikke hente NSM Forbudsområder:", err);
-      }
-    }
-
-    async function fetchRpasData() {
-      try {
-        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        const response = await fetch(url);
-        if (!response.ok) return;
-        
-        const geojson = await response.json();
-        const geoJsonLayer = L.geoJSON(geojson, {
-          interactive: mode !== 'routePlanning',
-          pane: 'rpasPane',
-          style: {
-            color: '#f97316',
-            weight: 2,
-            fillColor: '#f97316',
-            fillOpacity: 0.2,
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-            if (feature.properties) {
-              const name = feature.properties.navn || feature.properties.name || 'Ukjent';
-              layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
-            }
-          } : undefined
-        });
-
-        // Make sure the layer doesn't block adding route points when switching mode
-        rpasGeoJsonRef.current = geoJsonLayer;
-        setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
-        
-        rpasLayer.clearLayers();
-        rpasLayer.addLayer(geoJsonLayer);
-      } catch (err) {
-        console.error("Kunne ikke hente RPAS 5km soner:", err);
-      }
-    }
-
-
-
-    // Fetch AIP ENR 5.1 restriction zones from database
-    async function fetchAipRestrictionZones() {
-      try {
-        const { data, error } = await supabase
-          .from('aip_restriction_zones')
-          .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-          .in('zone_type', ['P', 'R', 'D']);
-
-        if (error || !data) {
-          console.error('Feil ved henting av AIP-soner:', error);
-          return;
-        }
-
-        aipLayer.clearLayers();
-        aipGeoJsonLayersRef.current = [];
-
-        for (const zone of data) {
-          if (!zone.geometry) continue;
-
-          // Color based on zone type
-          let color = '#f59e0b'; // orange default (Danger)
-          let label = 'Fareområde';
-          if (zone.zone_type === 'P') {
-            color = '#dc2626'; // red for Prohibited
-            label = 'Forbudsområde';
-          } else if (zone.zone_type === 'R') {
-            color = '#8b5cf6'; // purple for Restricted
-            label = 'Restriksjonsområde';
-          }
-
-          try {
-            const geojsonFeature = {
-              type: 'Feature' as const,
-              geometry: zone.geometry,
-              properties: {
-                zone_id: zone.zone_id,
-                zone_type: zone.zone_type,
-                name: zone.name,
-                upper_limit: zone.upper_limit,
-                lower_limit: zone.lower_limit,
-                remarks: zone.remarks,
-              }
-            };
-
-            const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
-              interactive: mode !== 'routePlanning',
-              style: {
-                color,
-                weight: 2,
-                fillColor: color,
-                fillOpacity: 0.2,
-                dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
-                pane: 'aipPane',
-              },
-              onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-                const p = feature.properties || {};
-                const displayName = p.name || p.zone_id || 'Ukjent';
-                let popup = `<strong>${label}</strong><br/>`;
-                popup += `<strong>${displayName}</strong><br/>`;
-                if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
-                if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
-                if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
-                layer.bindPopup(popup);
-              } : undefined,
-            });
-            geoJsonLayer.addTo(aipLayer);
-            aipGeoJsonLayersRef.current.push(geoJsonLayer);
-            // Ensure interactivity is disabled if currently in route planning mode
-            if (modeRef.current === 'routePlanning') {
-              setGeoJsonInteractivity(geoJsonLayer, false);
-            }
-          } catch (err) {
-            console.error(`Feil ved parsing av AIP-sone ${zone.zone_id}:`, err);
-          }
-        }
-      } catch (err) {
-        console.error('Kunne ikke hente AIP restriksjonsområder:', err);
-      }
-    }
-
-    // Fetch RMZ/TMZ/ATZ zones from database
-    async function fetchRmzTmzAtzZones() {
-      try {
-        const { data, error } = await supabase
-          .from('aip_restriction_zones')
-          .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-          .in('zone_type', ['RMZ', 'TMZ', 'ATZ']);
-
-        if (error || !data) {
-          console.error('Feil ved henting av RMZ/TMZ/ATZ-soner:', error);
-          return;
-        }
-
-        rmzTmzAtzLayer.clearLayers();
-
-        for (const zone of data) {
-          if (!zone.geometry) continue;
-
-          let color = '#22c55e'; // green default (RMZ)
-          let label = 'RMZ (Radio Mandatory Zone)';
-          let dashArray: string | undefined = '8, 6';
-          if (zone.zone_type === 'TMZ') {
-            color = '#06b6d4'; // cyan
-            label = 'TMZ (Transponder Mandatory Zone)';
-            dashArray = '8, 6';
-          } else if (zone.zone_type === 'ATZ') {
-            color = '#38bdf8'; // light blue
-            label = 'ATZ (Aerodrome Traffic Zone)';
-            dashArray = undefined; // solid
-          }
-
-          try {
-            const geojsonFeature = {
-              type: 'Feature' as const,
-              geometry: zone.geometry,
-              properties: {
-                zone_id: zone.zone_id,
-                zone_type: zone.zone_type,
-                name: zone.name,
-                upper_limit: zone.upper_limit,
-                lower_limit: zone.lower_limit,
-                remarks: zone.remarks,
-              }
-            };
-
-            const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
-              interactive: mode !== 'routePlanning',
-              style: {
-                color,
-                weight: 2,
-                fillColor: color,
-                fillOpacity: 0.12,
-                dashArray,
-                pane: 'rmzPane',
-              },
-              onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-                const p = feature.properties || {};
-                const displayName = p.name || p.zone_id || 'Ukjent';
-                let popup = `<strong>${label}</strong><br/>`;
-                popup += `<strong>${displayName}</strong><br/>`;
-                if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
-                if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
-                if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
-                layer.bindPopup(popup);
-              } : undefined,
-            });
-            geoJsonLayer.addTo(rmzTmzAtzLayer);
-            aipGeoJsonLayersRef.current.push(geoJsonLayer);
-            // Ensure interactivity is disabled if currently in route planning mode
-            if (modeRef.current === 'routePlanning') {
-              setGeoJsonInteractivity(geoJsonLayer, false);
-            }
-          } catch (err) {
-            console.error(`Feil ved parsing av ${zone.zone_type}-sone ${zone.zone_id}:`, err);
-          }
-        }
-      } catch (err) {
-        console.error('Kunne ikke hente RMZ/TMZ/ATZ-soner:', err);
-      }
-    }
-
-    // Fetch OpenAIP obstacles from database
-    async function fetchObstacles() {
-      try {
-        const { data, error } = await supabase
-          .from('openaip_obstacles')
-          .select('openaip_id, name, type, geometry, elevation, height_agl, properties');
-
-        if (error || !data) {
-          console.error('Feil ved henting av hindringer:', error);
-          return;
-        }
-
-        obstaclesLayer.clearLayers();
-
-        for (const obstacle of data) {
-          if (!obstacle.geometry) continue;
-
-          try {
-            const geom = obstacle.geometry as any;
-            let lat: number, lng: number;
-            
-            if (geom.coordinates) {
-              [lng, lat] = geom.coordinates;
-            } else {
-              continue;
-            }
-
-            const obstacleIcon = L.divIcon({
-              className: '',
-              html: `<div style="
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#991b1b" stroke-width="1.5">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/>
-                </svg>
-              </div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10],
-              popupAnchor: [0, -10],
-            });
-
-            const marker = L.marker([lat, lng], { icon: obstacleIcon, interactive: mode !== 'routePlanning', pane: 'obstaclePane' });
-            
-            const typeName = obstacle.type || 'Ukjent';
-            const displayName = obstacle.name || typeName;
-            let popup = `<strong>⚠️ Hindring</strong><br/>`;
-            popup += `<strong>${displayName}</strong><br/>`;
-            popup += `Type: ${typeName}<br/>`;
-            if (obstacle.elevation) popup += `Høyde (MSL): ${obstacle.elevation} m<br/>`;
-            if (obstacle.height_agl) popup += `Høyde (AGL): ${obstacle.height_agl} m<br/>`;
-            marker.bindPopup(popup);
-            
-            marker.addTo(obstaclesLayer);
-          } catch (err) {
-            // Skip individual obstacles that fail
-          }
-        }
-      } catch (err) {
-        console.error('Kunne ikke hente hindringer:', err);
-      }
-    }
-
-    async function fetchAirportsData() {
-      try {
-        const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/FlyplassInfo_PROD/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-        const response = await fetch(url);
-        if (!response.ok) return;
-        
-        const geojson = await response.json();
-       
-       // Fix incorrect coordinates for known airports
-       const coordinateFixes: Record<string, [number, number]> = {
-         'ENKJ': [11.0364, 59.9753], // Kjeller flyplass - correct coordinates [lng, lat]
-       };
-       
-       // Apply coordinate fixes
-       if (geojson.features) {
-         geojson.features = geojson.features.map((feature: any) => {
-           const icao = feature.properties?.ICAO || feature.properties?.icao;
-           if (icao && coordinateFixes[icao] && feature.geometry?.coordinates) {
-             feature.geometry.coordinates = coordinateFixes[icao];
-           }
-           return feature;
-         });
-       }
-       
-        const geoJsonLayer = L.geoJSON(geojson, {
-          pointToLayer: (feature, latlng) => {
-            const icon = L.icon({
-              iconUrl: airportIcon,
-              iconSize: [32, 40],
-              iconAnchor: [16, 40],
-              popupAnchor: [0, -40]
-            });
-            return L.marker(latlng, { icon, interactive: mode !== 'routePlanning', pane: 'airportPane' });
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-            if (feature.properties) {
-              const props = feature.properties;
-              const icao = props.ICAO || props.icao || '';
-              const iata = props.IATA || props.iata || '';
-              const name = props.NAVN || props.navn || props.name || props.Name || icao || 'Flyplass';
-              
-              let popupContent = `<strong>${name}</strong>`;
-              if (icao) popupContent += `<br/>ICAO: ${icao}`;
-              if (iata) popupContent += `<br/>IATA: ${iata}`;
-              
-              layer.bindPopup(popupContent);
-            }
-          } : undefined
-        });
-        
-        airportsLayer.clearLayers();
-        airportsLayer.addLayer(geoJsonLayer);
-      } catch (err) {
-        console.error("Kunne ikke hente flyplasser:", err);
-      }
-    }
-
-    async function fetchAndDisplayMissions() {
-      if (modeRef.current !== "view") return;
-      
-      try {
-        const { data: missions, error } = await supabase
-          .from("missions")
-          .select("*")
-          .not("latitude", "is", null)
-          .not("longitude", "is", null);
-
-        if (error || !missionsLayerRef.current) return;
-        
-        missionsLayerRef.current.clearLayers();
-
-        missions?.forEach((mission) => {
-          if (!mission.latitude || !mission.longitude) return;
-
-          let markerColor = '#3b82f6';
-          if (mission.status === 'Pågående') markerColor = '#eab308';
-          else if (mission.status === 'Fullført') markerColor = '#6b7280';
-          
-          const icon = L.divIcon({
-            className: '',
-            html: `<div style="
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-            ">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${markerColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3" fill="${markerColor}"/>
-              </svg>
-            </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-          });
-
-          const marker = L.marker([mission.latitude, mission.longitude], { icon, pane: 'missionPane' });
-          marker.on('click', () => {
-            onMissionClickRef.current?.(mission);
-          });
-          marker.addTo(missionsLayerRef.current!);
-        });
-      } catch (err) {
-        console.error("Feil ved henting av oppdrag:", err);
-      }
-    }
-
-    // Map click handler - different behavior for route planning vs view mode
+    // Map click handler
     const handleMapClick = async (e: any) => {
-      // Don't handle clicks that originated from markers or popups
-      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper')) {
-        return;
-      }
+      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper')) return;
       
       const { lat, lng } = e.latlng;
       
-      // Check if we're placing pilot position
       if (isPlacingPilotRef.current) {
         const cb = onPilotPositionChangeRef.current;
-        if (cb) {
-          cb({ lat, lng });
-        }
+        if (cb) cb({ lat, lng });
         return;
       }
       
       if (modeRef.current === "routePlanning") {
-        // Add point to route
         routePointsRef.current.push({ lat, lng });
         setRoutePointCount(routePointsRef.current.length);
         updateRouteDisplay();
-
         const cb = onRouteChangeRef.current;
         if (cb) {
           const coords = [...routePointsRef.current];
-          cb({
-            coordinates: coords,
-            totalDistance: calculateTotalDistance(coords),
-            areaKm2: calculatePolygonAreaKm2(coords),
-          });
+          cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
         }
       } else if (weatherEnabledRef.current) {
-        // Show weather popup only when weather is enabled
-        const popup = L.popup()
-          .setLatLng([lat, lng])
-          .setContent(`
-            <div style="min-width: 280px; padding: 8px;">
-              <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
-                Dronevær for valgt posisjon
-              </div>
-              <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
-                Koordinater: ${lat.toFixed(4)}, ${lng.toFixed(4)}
-              </div>
-              <div id="weather-content-${Date.now()}" style="text-align: center; padding: 12px;">
-                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <div style="margin-top: 8px; font-size: 12px; color: #666;">Laster værdata...</div>
-              </div>
-              <style>
-                @keyframes spin {
-                  to { transform: rotate(360deg); }
-                }
-              </style>
-            </div>
-          `)
-          .openOn(map);
-        
-        try {
-          const { data, error } = await supabase.functions.invoke('drone-weather', {
-            body: { lat, lon: lng }
-          });
-          
-          const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
-          if (!contentEl) return;
-          
-          if (error || !data) {
-            contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Kunne ikke hente værdata</div>';
-            return;
-          }
-          
-          const recommendation = data.drone_flight_recommendation;
-          const recommendationColors: Record<string, any> = {
-            warning: { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' },
-            caution: { bg: '#fef3c7', border: '#f59e0b', color: '#f59e0b' },
-            ok: { bg: '#d1fae5', border: '#10b981', color: '#10b981' },
-          };
-          const colors = recommendationColors[recommendation] || { bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' };
-          
-          const recommendationText: Record<string, string> = {
-            warning: 'Anbefales ikke å fly',
-            caution: 'Fly med forsiktighet',
-            ok: 'Gode flyforhold',
-          };
-          
-          let html = `
-            <div style="padding: 8px; background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 6px; margin-bottom: 12px;">
-              <div style="color: ${colors.color}; font-weight: 600; font-size: 13px;">
-                ${recommendationText[recommendation] || 'Ukjent'}
-              </div>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
-              <div>
-                <div style="color: #6b7280; font-size: 11px;">Vind</div>
-                <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
-              </div>
-              <div>
-                <div style="color: #6b7280; font-size: 11px;">Temp</div>
-                <div style="font-weight: 600;">${data.current.temperature?.toFixed(1) || '-'}°C</div>
-              </div>
-              <div>
-                <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
-                <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
-              </div>
-            </div>
-          `;
-          
-          if (data.warnings && data.warnings.length > 0) {
-            html += '<div style="margin-top: 12px; font-size: 11px;">';
-            data.warnings.forEach((w: any) => {
-              const wColors: Record<string, any> = {
-                warning: { bg: '#fee2e2', border: '#dc2626' },
-                caution: { bg: '#fef3c7', border: '#f59e0b' },
-                note: { bg: '#dbeafe', border: '#3b82f6' },
-              };
-              const wColor = wColors[w.level] || wColors.note;
-              html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${w.message}</div>`;
-            });
-            html += '</div>';
-          }
-          
-          // Timeprognose for de neste 12 timene
-          if (data.hourly_forecast && data.hourly_forecast.length > 0) {
-            const forecast = data.hourly_forecast.slice(0, 12);
-            const recColors: Record<string, string> = {
-              ok: '#10b981',
-              caution: '#f59e0b',
-              warning: '#dc2626',
-            };
-            const recTexts: Record<string, string> = {
-              ok: 'Gode flyforhold',
-              caution: 'Fly med forsiktighet',
-              warning: 'Anbefales ikke å fly',
-            };
-            
-            // Genererer årsak til anbefaling
-            const getReasons = (h: any) => {
-              const reasons: string[] = [];
-              const windSpeed = h.wind_speed || 0;
-              const windGust = h.wind_gust || 0;
-              const precipitation = h.precipitation || 0;
-              const temperature = h.temperature || 0;
-              const symbol = h.symbol || '';
-              
-              if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
-              if (windGust > 15) reasons.push(`Kraftige vindkast (${windGust.toFixed(1)} m/s)`);
-              if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
-              if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
-              if (symbol.includes('fog')) reasons.push('Tåke');
-              
-              if (reasons.length === 0) {
-                if (windSpeed > 7) reasons.push(`Mye vind (${windSpeed.toFixed(1)} m/s)`);
-                if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
-                if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
-                if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
-              }
-              return reasons;
-            };
-            
-            const popupId = `forecast-popup-${Date.now()}`;
-            
-            // Lagre forecast-data i window for tilgang fra onclick
-            const forecastDataId = `forecastData_${Date.now()}`;
-            (window as any)[forecastDataId] = forecast.map((h: any, i: number) => {
-              const hour = new Date(h.time).getHours().toString().padStart(2, '0');
-              const reasons = getReasons(h);
-              return {
-                hour,
-                temp: h.temperature?.toFixed(1) || '-',
-                wind: h.wind_speed?.toFixed(1) || '-',
-                windGust: h.wind_gust?.toFixed(1) || null,
-                precip: h.precipitation?.toFixed(1) || '0',
-                recommendation: h.recommendation,
-                recText: recTexts[h.recommendation] || '',
-                color: recColors[h.recommendation] || '#9ca3af',
-                reasons,
-              };
-            });
-            
-            html += `
-              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
-                  <div style="font-size: 11px; font-weight: 600; color: #6b7280; line-height: 1.3;">Prognose neste<br/>12 timer</div>
-                  <div style="display: flex; gap: 6px; font-size: 9px; color: #9ca3af;">
-                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span>OK</span>
-                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #f59e0b; border-radius: 2px;"></span>Forsiktig</span>
-                    <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>Ikke fly</span>
-                  </div>
-                </div>
-                <div id="${popupId}-container" style="display: flex; gap: 2px; position: relative;">
-                  ${forecast.map((h: any, i: number) => {
-                    const hour = new Date(h.time).getHours().toString().padStart(2, '0');
-                    const color = recColors[h.recommendation] || '#9ca3af';
-                    return `
-                      <div 
-                        class="forecast-block-${popupId}" 
-                        data-index="${i}"
-                        data-forecast-id="${forecastDataId}"
-                        data-popup-id="${popupId}"
-                        style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; position: relative;"
-                      >
-                        <div style="width: 100%; height: 16px; background: ${color}; border-radius: 3px; transition: transform 0.1s;" onmouseover="this.style.transform='scaleY(1.2)'" onmouseout="this.style.transform='scaleY(1)'"></div>
-                        <span style="font-size: 8px; color: #9ca3af;">${hour}</span>
-                      </div>
-                    `;
-                  }).join('')}
-                  <div id="${popupId}" style="display: none; position: absolute; z-index: 9999; pointer-events: auto;"></div>
-                </div>
-              </div>
-            `;
-            
-            // Beste flyvindu
-            if (data.best_flight_window) {
-              const startTime = new Date(data.best_flight_window.start_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-              const endTime = new Date(data.best_flight_window.end_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-              html += `
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500;">
-                  <span style="color: #10b981;">✨</span>
-                  <span>Beste flyvindu: ${startTime} - ${endTime} (${data.best_flight_window.duration_hours}t)</span>
-                </div>
-              `;
-            }
-            
-            // Legg til event listeners etter HTML er satt
-            setTimeout(() => {
-              const blocks = document.querySelectorAll(`.forecast-block-${popupId}`);
-              blocks.forEach((block) => {
-                block.addEventListener('click', function(this: HTMLElement) {
-                  const idx = parseInt(this.dataset.index || '0');
-                  const dataId = this.dataset.forecastId || '';
-                  const popId = this.dataset.popupId || '';
-                  const forecastArr = (window as any)[dataId];
-                  if (!forecastArr) return;
-                  
-                  const h = forecastArr[idx];
-                  const popupEl = document.getElementById(popId);
-                  if (!popupEl) return;
-                  
-                  if (popupEl.style.display === 'block' && popupEl.dataset.activeIndex === String(idx)) {
-                    popupEl.style.display = 'none';
-                    return;
-                  }
-                  
-                  let reasonsHtml = '';
-                  if (h.recommendation !== 'ok' && h.reasons.length > 0) {
-                    reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: ${h.color}; font-size: 10px; font-weight: 500;">${h.recText}<ul style="margin: 4px 0 0 14px; padding: 0; font-weight: 400;">${h.reasons.map((r: string) => `<li style="margin-bottom: 2px;">${r}</li>`).join('')}</ul></div>`;
-                  } else if (h.recommendation === 'ok') {
-                    reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">Gode flyforhold</div>`;
-                  }
-                  
-                  popupEl.innerHTML = `
-                    <div style="padding: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 12px; min-width: 160px; border: 1px solid #e5e7eb;">
-                      <div style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">${h.hour}:00</div>
-                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span>🌡️</span><span>${h.temp}°C</span>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span>💨</span><span>${h.wind} m/s${h.windGust ? ` (kast ${h.windGust})` : ''}</span>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span>💧</span><span>${h.precip} mm</span>
-                      </div>
-                      ${reasonsHtml}
-                    </div>
-                  `;
-                  popupEl.dataset.activeIndex = String(idx);
-                  popupEl.style.display = 'block';
-                  
-                  // Posisjonering - plasser rett over den klikkede boksen
-                  const blockRect = this.getBoundingClientRect();
-                  const container = document.getElementById(`${popId}-container`);
-                  if (container) {
-                    const containerRect = container.getBoundingClientRect();
-                    const popupWidth = 160;
-                    let leftPos = blockRect.left - containerRect.left + blockRect.width / 2 - popupWidth / 2;
-                    
-                    // Sørg for at popup ikke går utenfor containeren
-                    if (leftPos < 0) leftPos = 0;
-                    if (leftPos + popupWidth > containerRect.width) leftPos = containerRect.width - popupWidth;
-                    
-                    popupEl.style.left = `${leftPos}px`;
-                    popupEl.style.bottom = `calc(100% + 4px)`;
-                    popupEl.style.transform = 'none';
-                  }
-                });
-              });
-            }, 100);
-          }
-          
-          html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
-          
-          contentEl.innerHTML = html;
-        } catch (err) {
-          console.error('Error fetching weather in map popup:', err);
-          const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
-          if (contentEl) {
-            contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Feil ved henting av værdata</div>';
-          }
-        }
+        showWeatherPopup(map, lat, lng);
       }
     };
 
     map.on('click', handleMapClick);
 
-    fetchNsmData();
-    fetchRpasData();
-    fetchAipRestrictionZones();
-    fetchRmzTmzAtzZones();
-    fetchObstacles();
-    fetchAirportsData();
-    fetchDroneTelemetry();
-    fetchAndDisplayMissions();
-    fetchActiveAdvisories();
-    fetchPilotPositions();
+    // Fetch all data
+    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAipRestrictionZones({ ...geoJsonParams, layer: aipLayer, aipGeoJsonLayersRef });
+    fetchRmzTmzAtzZones({ ...geoJsonParams, layer: rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchObstacles({ layer: obstaclesLayer, mode });
+    fetchAirportsData({ layer: airportsLayer, mode });
+    fetchDroneTelemetry({ droneLayer, modeRef });
+    fetchAndDisplayMissions({ missionsLayer, modeRef, onMissionClickRef });
+    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
 
-    const droneInterval = setInterval(fetchDroneTelemetry, 5000);
+    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
 
-    // === HEARTBEAT SYSTEM ===
-    // Sends heartbeat to database so backend knows to fetch beacons
+    // Heartbeat
     let heartbeatInterval: number | undefined;
-    
     const sendHeartbeat = async () => {
       try {
         const { error } = await supabase
           .from('map_viewer_heartbeats')
-          .upsert({
-            session_id: SESSION_ID,
-            user_id: user?.id || null,
-            last_seen: new Date().toISOString(),
-          }, { onConflict: 'session_id' });
-        
-        if (error) {
-          console.error('Heartbeat error:', error);
-        }
+          .upsert({ session_id: SESSION_ID, user_id: user?.id || null, last_seen: new Date().toISOString() }, { onConflict: 'session_id' });
+        if (error) console.error('Heartbeat error:', error);
       } catch (err) {
         console.error('Heartbeat failed:', err);
       }
     };
-    
     const deleteHeartbeat = async () => {
       try {
-        await supabase
-          .from('map_viewer_heartbeats')
-          .delete()
-          .eq('session_id', SESSION_ID);
+        await supabase.from('map_viewer_heartbeats').delete().eq('session_id', SESSION_ID);
       } catch (err) {
         console.error('Failed to delete heartbeat:', err);
       }
     };
-    
-    // Send initial heartbeat and start interval
     sendHeartbeat();
     heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
-    
-    // SafeSky real-time subscription - only active when layer is enabled
-    let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
-    let safeskyDebounceTimer: number | null = null;
-    let safeskyPollInterval: number | null = null;
-    
-    // Debounced fetch to prevent excessive re-renders from multiple real-time events
-    const debouncedFetchSafeSky = () => {
-      if (safeskyDebounceTimer) {
-        clearTimeout(safeskyDebounceTimer);
-      }
-      safeskyDebounceTimer = window.setTimeout(() => {
-        fetchSafeSkyBeacons();
-      }, 500); // Wait 500ms after last event before fetching
-    };
-    
-    const startSafeSkySubscription = () => {
-      if (!safeskyChannel) {
-        console.log('Lufttrafikk: Starting real-time subscription');
-        // Initial fetch
-        fetchSafeSkyBeacons();
-        
-        // Use polling every 5 seconds instead of individual event triggers
-        // This is more efficient when many beacons are updated at once
-        safeskyPollInterval = window.setInterval(() => {
-          fetchSafeSkyBeacons();
-        }, 5000);
-        
-        // Subscribe to real-time updates with debounce for immediate feedback
-        safeskyChannel = supabase
-          .channel('safesky-beacons-changes')
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'safesky_beacons' },
-            () => debouncedFetchSafeSky()
-          )
-          .subscribe();
-      }
-    };
-    const stopSafeSkySubscription = () => {
-      if (safeskyChannel) {
-        console.log('Lufttrafikk: Stopping subscription');
-        safeskyChannel.unsubscribe();
-        safeskyChannel = null;
-        safeskyLayer.clearLayers();
-        safeskyMarkersCache.clear();
-      }
-      if (safeskyPollInterval) {
-        clearInterval(safeskyPollInterval);
-        safeskyPollInterval = null;
-      }
-      if (safeskyDebounceTimer) {
-        clearTimeout(safeskyDebounceTimer);
-        safeskyDebounceTimer = null;
-      }
-    };
-    
-    // Store subscription controls on the map for access in handleLayerToggle
-    (map as any)._safeskyControls = { start: startSafeSkySubscription, stop: stopSafeSkySubscription };
-    
-    // Start SafeSky subscription immediately since layer is enabled by default
-    setTimeout(() => {
-      startSafeSkySubscription();
-    }, 500);
 
-    // Consolidated map channel for missions, telemetry, and active flights
+    // SafeSky manager
+    const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
+    (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
+    setTimeout(() => safeSkyManager.start(), 500);
+
+    // Real-time subscriptions
     const mapChannel = supabase
       .channel('kart-main')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions({ missionsLayer, modeRef, onMissionClickRef }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry({ droneLayer, modeRef }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
-        fetchActiveAdvisories();
-        fetchPilotPositions();
+        fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+        fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
       })
       .subscribe();
 
@@ -2100,26 +574,21 @@ export function OpenAIPMap({
       clearInterval(droneInterval);
       clearInterval(heartbeatInterval);
       deleteHeartbeat();
-      stopSafeSkySubscription();
-      // Clear all helicopter animation intervals
-      for (const [, intervalId] of heliAnimIntervals) {
-        clearInterval(intervalId);
-      }
-      heliAnimIntervals.clear();
+      safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
       map.remove();
     };
   }, []);
 
-  // Recenter map when initialCenter changes (without re-creating the map instance)
+  // Recenter map when initialCenter changes
   useEffect(() => {
     if (initialCenter && leafletMapRef.current) {
       leafletMapRef.current.setView(initialCenter, 13);
     }
   }, [initialCenter]);
 
-  // Display existing route when provided (without re-creating the map instance)
+  // Display existing route
   useEffect(() => {
     if (existingRoute && existingRoute.coordinates.length > 0) {
       routePointsRef.current = [...existingRoute.coordinates];
@@ -2127,11 +596,10 @@ export function OpenAIPMap({
     }
   }, [existingRoute, updateRouteDisplay]);
 
-  // Focus on a specific flight when focusFlightId is set
+  // Focus on specific flight
   useEffect(() => {
     if (!focusFlightId || !leafletMapRef.current) return;
 
-    // Wait a tick for markers to be rendered
     const timer = setTimeout(() => {
       const marker = flightMarkersRef.current.get(focusFlightId);
       if (marker) {
@@ -2139,7 +607,6 @@ export function OpenAIPMap({
         leafletMapRef.current?.setView(latlng, 14, { animate: true });
         marker.openPopup();
       } else {
-        // Fallback: fetch position from DB and pan there
         supabase
           .from('active_flights')
           .select('start_lat, start_lng, publish_mode, route_data')
@@ -2165,7 +632,7 @@ export function OpenAIPMap({
     return () => clearTimeout(timer);
   }, [focusFlightId, onFocusFlightHandled]);
 
-  // Update pilot position marker and VLOS circle
+  // Pilot position marker and VLOS circle
   useEffect(() => {
     if (!pilotLayerRef.current || !leafletMapRef.current) return;
     
@@ -2175,25 +642,18 @@ export function OpenAIPMap({
     
     if (!pilotPosition) return;
     
-    const VLOS_RADIUS = 120; // 120 meters (max altitude VLOS)
+    const VLOS_RADIUS = 120;
     
-    // Create pilot marker with controller icon
     const pilotIcon = L.divIcon({
       className: '',
       html: `<div style="
-        width: 36px;
-        height: 36px;
-        background: #8b5cf6;
-        border: 3px solid white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 36px; height: 36px; background: #8b5cf6;
+        border: 3px solid white; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
         box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       ">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="5"/>
-          <path d="M20 21a8 8 0 0 0-16 0"/>
+          <circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>
         </svg>
       </div>`,
       iconSize: [36, 36],
@@ -2202,71 +662,47 @@ export function OpenAIPMap({
     });
     
     const marker = L.marker([pilotPosition.lat, pilotPosition.lng], { 
-      icon: pilotIcon, 
-      draggable: mode === 'routePlanning',
-      pane: 'routePane',
+      icon: pilotIcon, draggable: mode === 'routePlanning', pane: 'routePane',
     });
     
-    marker.bindPopup(`
-      <div>
-        <strong>👤 Pilotposisjon</strong><br/>
-        <span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/>
-        <span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span>
-      </div>
-    `);
+    marker.bindPopup(`<div><strong>👤 Pilotposisjon</strong><br/><span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/><span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span></div>`);
     
     if (mode === 'routePlanning') {
       marker.on('dragend', (e: any) => {
         const { lat, lng } = e.target.getLatLng();
         const cb = onPilotPositionChangeRef.current;
-        if (cb) {
-          cb({ lat, lng });
-        }
+        if (cb) cb({ lat, lng });
       });
     }
     
     marker.addTo(pilotLayerRef.current);
     pilotMarkerRef.current = marker;
     
-    // Create VLOS circle
     const circle = L.circle([pilotPosition.lat, pilotPosition.lng], {
-      radius: VLOS_RADIUS,
-      color: '#8b5cf6',
-      weight: 2,
-      fillColor: '#8b5cf6',
-      fillOpacity: 0.1,
-      dashArray: '5, 5',
-      pane: 'routePane',
+      radius: VLOS_RADIUS, color: '#8b5cf6', weight: 2, fillColor: '#8b5cf6',
+      fillOpacity: 0.1, dashArray: '5, 5', pane: 'routePane',
     });
     circle.addTo(pilotLayerRef.current);
     pilotCircleRef.current = circle;
-    
   }, [pilotPosition, mode]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;
     if (!map) return;
     
-    // Handle SafeSky layer specially - start/stop interval
     if (id === 'safesky') {
       const controls = (map as any)._safeskyControls;
       if (controls) {
-        if (enabled) {
-          controls.start();
-        } else {
-          controls.stop();
-        }
+        if (enabled) controls.start();
+        else controls.stop();
       }
     }
     
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
         if (layer.id === id) {
-          if (enabled) {
-            layer.layer.addTo(map);
-          } else {
-            layer.layer.remove();
-          }
+          if (enabled) layer.layer.addTo(map);
+          else layer.layer.remove();
           return { ...layer, enabled };
         }
         return layer;
@@ -2274,17 +710,13 @@ export function OpenAIPMap({
     );
   };
 
-  // Method to clear route (exposed via ref if needed)
   const clearRoute = useCallback(() => {
     routePointsRef.current = [];
     setRoutePointCount(0);
     updateRouteDisplay();
-    if (onRouteChange) {
-      onRouteChange({ coordinates: [], totalDistance: 0 });
-    }
+    if (onRouteChange) onRouteChange({ coordinates: [], totalDistance: 0 });
   }, [updateRouteDisplay, onRouteChange]);
 
-  // Method to undo last point
   const undoLastPoint = useCallback(() => {
     if (routePointsRef.current.length > 0) {
       routePointsRef.current.pop();
@@ -2292,11 +724,7 @@ export function OpenAIPMap({
       updateRouteDisplay();
       if (onRouteChange) {
         const coords = [...routePointsRef.current];
-        onRouteChange({
-          coordinates: coords,
-          totalDistance: calculateTotalDistance(coords),
-          areaKm2: calculatePolygonAreaKm2(coords)
-        });
+        onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
       }
     }
   }, [updateRouteDisplay, onRouteChange]);
@@ -2305,97 +733,54 @@ export function OpenAIPMap({
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
       <div ref={mapRef} className="w-full h-full touch-manipulation" />
       
-      {/* Map controls */}
       <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
-        {/* Weather toggle button */}
         <Button
           variant={weatherEnabled ? "default" : "secondary"}
           size="icon"
           className={`shadow-lg ${weatherEnabled ? "" : "bg-card hover:bg-accent"}`}
-          onClick={() => {
-            if (mode !== "view") return;
-            setWeatherEnabled(!weatherEnabled);
-          }}
+          onClick={() => { if (mode !== "view") return; setWeatherEnabled(!weatherEnabled); }}
           disabled={mode !== "view"}
-          title={
-            mode !== "view"
-              ? "Værvisning er ikke tilgjengelig under ruteplanlegging"
-              : weatherEnabled
-                ? "Slå av værvisning"
-                : "Slå på værvisning (klikk i kartet)"
-          }
+          title={mode !== "view" ? "Værvisning er ikke tilgjengelig under ruteplanlegging" : weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
         >
           <CloudSun className="h-5 w-5" />
         </Button>
 
-        {/* Base layer toggle button */}
         <Button
           variant="secondary"
           size="icon"
           className="shadow-lg bg-card hover:bg-accent"
           onClick={() => {
-            const next =
-              baseLayerType === "osm"
-                ? "satellite"
-                : baseLayerType === "satellite"
-                  ? "topo"
-                  : "osm";
+            const next = baseLayerType === "osm" ? "satellite" : baseLayerType === "satellite" ? "topo" : "osm";
             switchBaseLayer(next);
           }}
-          title={
-            baseLayerType === "osm"
-              ? "Bytt til satellittkart"
-              : baseLayerType === "satellite"
-                ? "Bytt til topografisk kart"
-                : "Bytt til standard kart"
-          }
+          title={baseLayerType === "osm" ? "Bytt til satellittkart" : baseLayerType === "satellite" ? "Bytt til topografisk kart" : "Bytt til standard kart"}
         >
-          {baseLayerType === "osm" ? (
-            <Satellite className="h-5 w-5" />
-          ) : baseLayerType === "satellite" ? (
-            <Mountain className="h-5 w-5" />
-          ) : (
-            <MapIcon className="h-5 w-5" />
-          )}
+          {baseLayerType === "osm" ? <Satellite className="h-5 w-5" /> : baseLayerType === "satellite" ? <Mountain className="h-5 w-5" /> : <MapIcon className="h-5 w-5" />}
         </Button>
 
-        {/* Layers / filters */}
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
 
-        {/* Route planning button */}
         {mode === "view" && onStartRoutePlanning && (
-          <Button
-            onClick={onStartRoutePlanning}
-            variant="default"
-            size="icon"
-            className="shadow-lg"
-            title="Planlegg ny rute"
-          >
+          <Button onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
             <Route className="h-5 w-5" />
           </Button>
         )}
       </div>
 
-      {/* Weather enabled hint */}
       {mode === "view" && weatherEnabled && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
         </div>
       )}
 
-      {/* Route planning instructions */}
       {mode === "routePlanning" && routePointCount === 0 && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
       )}
 
-      {layers.find(l => l.id === "arealbruk")?.enabled && (
-        <ArealbrukLegend />
-      )}
-      {layers.find(l => l.id === "befolkning1km")?.enabled && (
-        <BefolkningLegend />
-      )}
+      {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
+      {layers.find(l => l.id === "befolkning1km")?.enabled && <BefolkningLegend />}
     </div>
   );
 }

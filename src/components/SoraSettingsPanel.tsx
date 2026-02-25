@@ -1,4 +1,4 @@
-import { SoraSettings } from "@/components/OpenAIPMap";
+import { SoraSettings } from "@/types/map";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
