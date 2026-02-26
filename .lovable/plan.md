@@ -1,85 +1,47 @@
 
 
-# Fix: SORA-seksjon i oppdragsrapport PDF
-
 ## Problem
 
-SORA-seksjonen i PDF-eksporten (linje 376-404 i `oppdragPdfExport.ts`) viser bare 4 felter med rå engelske/kode-aktige etiketter:
+The database trigger `create_default_email_settings` (migration `20251204091249`) hardcodes `smtp_pass = 'Avisafe!'` when creating email settings for a new company. This is the **wrong password**.
 
-| Nåværende | Ser ut som |
-|---|---|
-| `Status` | `completed` |
-| `SAIL` | `SAIL II` |
-| `Final GRC` | `3` |
-| `Residual Risk` | `Moderat` |
+The `getEmailConfig` function in `email-config.ts` (line 110) reads `emailPass = emailSettings.smtp_pass`. Since `'Avisafe!'` is truthy, it does NOT fall through to the global secret fallback (line 117: `if (!emailPass)`). The SMTP connection then fails with the wrong password.
 
-Resten av SORA-dataene (miljø, ConOps, iGRC, bakkemitigeringer, ARC, luftromsmitigeringer, operative begrensninger, rest-risiko kommentar) ignoreres helt.
+When you "cycle" the email settings in the UI, `handleSave` sends `p_smtp_pass: null` (line 167 of `EmailSettingsDialog.tsx`, because `useAviSafe` is true). This clears the password to null, triggering the fallback to the correct global `EMAIL_PASS` secret. That's why toggling fixes it.
 
-## Løsning
+## Fix
 
-Utvide SORA-seksjonen til å vise alle relevante felter med norske etiketter, strukturert i grupper som matcher `SoraResultView.tsx`-komponenten. Ingen nye filer -- kun endring i `oppdragPdfExport.ts`.
+Update the trigger function to store `smtp_pass = NULL` instead of `'Avisafe!'`. This ensures the fallback to the global `EMAIL_PASS` secret works immediately for all new companies.
 
-### Endring i `src/lib/oppdragPdfExport.ts` (linje 376-404)
+### Database migration
 
-Erstatte den enkle 4-felts tabellen med:
+```sql
+CREATE OR REPLACE FUNCTION public.create_default_email_settings()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.email_settings (
+    company_id, smtp_host, smtp_port, smtp_user, smtp_pass,
+    smtp_secure, from_name, from_email, enabled
+  ) VALUES (
+    NEW.id,
+    'send.one.com',
+    465,
+    'noreply@avisafe.no',
+    NULL,          -- ← was 'Avisafe!' (wrong password); NULL triggers global secret fallback
+    true,
+    'AviSafe',
+    'noreply@avisafe.no',
+    true
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-**1. Oppsummering og status (tabell 1)**
-
-| Etikett | Kilde |
-|---|---|
-| Status | `sora_status` (oversatt: draft→Utkast, completed→Fullført, approved→Godkjent) |
-| SAIL-nivå | `sail` |
-| Rest-risikonivå | `residual_risk_level` |
-| Utarbeidet | `prepared_by` + `prepared_at` (formatert dato) |
-| Godkjent | `approved_by` + `approved_at` (formatert dato) |
-
-**2. Operasjonsmiljø og ConOps (tabell 2)**
-
-| Etikett | Kilde |
-|---|---|
-| Miljø | `environment` |
-| ConOps-beskrivelse | `conops_summary` (splitTextToSize for lang tekst) |
-
-**3. Bakkebasert risiko -- GRC (tabell 3)**
-
-| Etikett | Kilde |
-|---|---|
-| iGRC (grunnrisiko) | `igrc` |
-| fGRC (endelig) | `fgrc` |
-| Bakkemitigeringer | `ground_mitigations` |
-
-**4. Luftromsrisiko -- ARC (tabell 4)**
-
-| Etikett | Kilde |
-|---|---|
-| Initial ARC | `arc_initial` |
-| Residual ARC | `arc_residual` |
-| Luftromsmitigeringer | `airspace_mitigations` |
-
-**5. Rest-risiko og begrensninger (tabell 5)**
-
-| Etikett | Kilde |
-|---|---|
-| Rest-risiko kommentar | `residual_risk_comment` |
-| Operative begrensninger | `operational_limits` |
-
-### Statusoversettelse
-
-```text
-const soraStatusLabels: Record<string, string> = {
-  draft: "Utkast",
-  completed: "Fullfort",
-  approved: "Godkjent",
-};
+-- Fix any existing companies still stuck with the wrong hardcoded password
+UPDATE public.email_settings
+SET smtp_pass = NULL
+WHERE smtp_pass = 'Avisafe!'
+  AND smtp_host = 'send.one.com'
+  AND smtp_user = 'noreply@avisafe.no';
 ```
 
-### Sideskift-håndtering
-
-Legge til `if (yPos > 250) { pdf.addPage(); yPos = 20; }` mellom hver undergruppe for å unngå at innhold kuttes.
-
-### Fil som endres
-
-| Fil | Endring |
-|---|---|
-| `src/lib/oppdragPdfExport.ts` | Erstatte linje 376-404 med utvidet SORA-seksjon (~60 linjer) |
-
+One migration, no code changes needed.
