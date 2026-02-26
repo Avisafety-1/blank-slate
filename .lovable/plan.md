@@ -2,46 +2,54 @@
 
 ## Problem
 
-The database trigger `create_default_email_settings` (migration `20251204091249`) hardcodes `smtp_pass = 'Avisafe!'` when creating email settings for a new company. This is the **wrong password**.
+The `handle_new_user()` trigger (migration `20251229134717`) assigns the role `'lesetilgang'` to new users. This is a legacy role value. The current simplified role system uses `bruker`, `administrator`, and `superadmin`. The user wants new users to receive `'administrator'` immediately upon creation.
 
-The `getEmailConfig` function in `email-config.ts` (line 110) reads `emailPass = emailSettings.smtp_pass`. Since `'Avisafe!'` is truthy, it does NOT fall through to the global secret fallback (line 117: `if (!emailPass)`). The SMTP connection then fails with the wrong password.
-
-When you "cycle" the email settings in the UI, `handleSave` sends `p_smtp_pass: null` (line 167 of `EmailSettingsDialog.tsx`, because `useAviSafe` is true). This clears the password to null, triggering the fallback to the correct global `EMAIL_PASS` secret. That's why toggling fixes it.
+There is also a separate trigger `auto_assign_admin_on_approval` that assigns `'admin'` (legacy alias for `administrator`) when a user is approved -- but this only fires on approval, not creation.
 
 ## Fix
 
-Update the trigger function to store `smtp_pass = NULL` instead of `'Avisafe!'`. This ensures the fallback to the global `EMAIL_PASS` secret works immediately for all new companies.
+Update the `handle_new_user()` trigger to assign `'administrator'` instead of `'lesetilgang'`.
+
+Additionally, update any existing users stuck with the old `'lesetilgang'` or `'bruker'` role to `'administrator'`.
 
 ### Database migration
 
 ```sql
-CREATE OR REPLACE FUNCTION public.create_default_email_settings()
-RETURNS TRIGGER AS $$
+-- Update handle_new_user to assign 'administrator' role to new users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO public.email_settings (
-    company_id, smtp_host, smtp_port, smtp_user, smtp_pass,
-    smtp_secure, from_name, from_email, enabled
-  ) VALUES (
-    NEW.id,
-    'send.one.com',
-    465,
-    'noreply@avisafe.no',
-    NULL,          -- ← was 'Avisafe!' (wrong password); NULL triggers global secret fallback
-    true,
-    'AviSafe',
-    'noreply@avisafe.no',
-    true
-  );
+  IF NEW.raw_user_meta_data->>'company_id' IS NOT NULL THEN
+    INSERT INTO public.profiles (id, full_name, company_id, email, approved)
+    VALUES (
+      NEW.id,
+      COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+      (NEW.raw_user_meta_data->>'company_id')::uuid,
+      NEW.email,
+      false
+    );
+
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'administrator');
+  END IF;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$;
 
--- Fix any existing companies still stuck with the wrong hardcoded password
-UPDATE public.email_settings
-SET smtp_pass = NULL
-WHERE smtp_pass = 'Avisafe!'
-  AND smtp_host = 'send.one.com'
-  AND smtp_user = 'noreply@avisafe.no';
+-- Upgrade existing users with legacy/low roles to administrator
+-- (skip superadmin users)
+UPDATE public.user_roles
+SET role = 'administrator'
+WHERE role IN ('lesetilgang', 'bruker', 'saksbehandler', 'operatør')
+  AND user_id NOT IN (
+    SELECT user_id FROM public.user_roles WHERE role = 'superadmin'
+  );
 ```
 
-One migration, no code changes needed.
+Single migration, no code changes needed. The `has_role()` function already handles `'administrator'` correctly in the hierarchy.
+
