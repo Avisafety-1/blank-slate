@@ -381,7 +381,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     try {
       const data = await callDronelogAction("dji-login", { email: djiEmail, password: djiPassword });
       console.log("DJI login response:", JSON.stringify(data));
-      const accountId = data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
+      const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
       setDjiPassword("");
