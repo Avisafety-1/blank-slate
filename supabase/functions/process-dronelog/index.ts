@@ -599,91 +599,57 @@ Deno.serve(async (req) => {
           return await uploadRes.text();
         };
 
-        // Primary URL from API docs: GET /logs/{accountId}/{logId}/download
-        const primaryUrl = `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-        const fallbackUrl = downloadUrl || null;
+        // ── Route A (primary): POST /logs with downloadUrl ──
+        // The log list response includes a downloadUrl. Pass it directly to POST /logs
+        // so DroneLog fetches the file server-side — no download+re-upload needed.
+        const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
+        console.log(`[process-dronelog] POST /logs with url=${logUrl.slice(0, 120)}`);
 
-        // Try primary URL first, then fallback
-        const urlsToTry = [primaryUrl, ...(fallbackUrl && fallbackUrl !== primaryUrl ? [fallbackUrl] : [])];
+        const logsRes = await fetch(`${DRONELOG_BASE}/logs`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${dronelogKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ url: logUrl, fields: fieldList }),
+        });
 
-        for (const url of urlsToTry) {
-          console.log(`[process-dronelog] trying download: ${url.slice(0, 120)}...`);
-          const fileRes = await fetch(url, {
-            headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
+        if (logsRes.ok) {
+          csvText = await logsRes.text();
+          console.log(`[process-dronelog] POST /logs succeeded, CSV length=${csvText.length}`);
+        } else {
+          const errText = await logsRes.text();
+          console.error(`[process-dronelog] POST /logs failed: ${logsRes.status} ${errText.slice(0, 300)}`);
+
+          // 429 → propagate immediately
+          if (logsRes.status === 429) {
+            return handleUpstreamError(logsRes, errText, "POST /logs");
+          }
+
+          // ── Route B (fallback): download raw file → upload via multipart ──
+          console.log(`[process-dronelog] falling back to download+upload`);
+          const fileRes = await fetch(logUrl, {
+            headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
             redirect: "follow",
           });
 
-          if (fileRes.status === 429) {
-            const errText = await fileRes.text();
-            return handleUpstreamError(fileRes, errText, "download");
-          }
-
           if (!fileRes.ok) {
-            const errText = await fileRes.text();
-            console.log(`[process-dronelog] download ${fileRes.status} from ${url.slice(0, 80)}, trying next...`);
-            // If this is the last URL, return the error
-            if (url === urlsToTry[urlsToTry.length - 1]) {
-              return handleUpstreamError(fileRes, errText, "download");
-            }
-            continue; // try next URL
+            const dlErr = await fileRes.text();
+            return handleUpstreamError(fileRes, dlErr, "download-fallback");
           }
 
-          // ── Binary-safe body read ──
           const buffer = await fileRes.arrayBuffer();
           const bytes = new Uint8Array(buffer);
-          const ct = fileRes.headers.get("content-type") || "";
           const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
-
-          console.log(`[process-dronelog] download OK: content-type=${ct}, bytes=${bytes.length}, isZip=${isZip}, first4=[${bytes.slice(0, 4).join(",")}]`);
-
-          // ── Route A: JSON response (contains file URL) ──
-          if (ct.includes("application/json")) {
-            const text = new TextDecoder().decode(bytes);
-            let json: any;
-            try { json = JSON.parse(text); } catch { json = null; }
-            const fileUrl = json?.result?.url || json?.result || json?.url;
-            if (fileUrl && typeof fileUrl === "string") {
-              console.log(`[process-dronelog] JSON contained file URL, calling POST /logs`);
-              const logsRes = await fetch(`${DRONELOG_BASE}/logs`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-                body: JSON.stringify({ url: fileUrl, fields: fieldList }),
-              });
-              if (!logsRes.ok) {
-                const errText = await logsRes.text();
-                return handleUpstreamError(logsRes, errText, "POST /logs");
-              }
-              csvText = await logsRes.text();
-            } else {
-              console.error(`[process-dronelog] unexpected JSON: ${text.slice(0, 500)}`);
-              if (url === urlsToTry[urlsToTry.length - 1]) {
-                return new Response(JSON.stringify({ error: "Unexpected download response format", details: text.slice(0, 500) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-              }
-              continue;
-            }
-            break;
-          }
-
-          // ── Route B: Already CSV ──
-          const textPreview = new TextDecoder().decode(bytes.slice(0, 100));
-          const looksLikeCsv = textPreview.startsWith("DETAILS.") || textPreview.startsWith("OSD.") || textPreview.startsWith('"DETAILS.') || textPreview.startsWith('"OSD.');
-          if (looksLikeCsv) {
-            console.log(`[process-dronelog] download is CSV data, using directly`);
-            csvText = new TextDecoder().decode(bytes);
-            break;
-          }
-
-          // ── Route C: Binary file (ZIP or TXT) → upload raw bytes ──
           const ext = isZip ? ".zip" : ".txt";
-          console.log(`[process-dronelog] binary file detected (${ext}), uploading raw bytes`);
+          console.log(`[process-dronelog] fallback: downloaded ${bytes.length} bytes (${ext})`);
+
           const uploadResult = await uploadRawBytes(bytes, ext);
           if (uploadResult instanceof Response) {
-            // Upload returned an error response — try retry once with opposite extension if it was a 500
-            if (url === urlsToTry[urlsToTry.length - 1]) return uploadResult;
-            continue;
+            return uploadResult; // error response
           }
           csvText = uploadResult;
-          break;
         }
 
         if (!csvText) {
