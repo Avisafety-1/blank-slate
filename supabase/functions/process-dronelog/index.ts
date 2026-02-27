@@ -572,7 +572,24 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "Failed to download DJI log", details: errText, upstreamStatus: downloadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const fileBytes = new Uint8Array(await downloadRes.arrayBuffer());
+        // The download endpoint returns JSON with a URL to the actual file
+        const downloadJson = await downloadRes.json();
+        console.log(`[process-dronelog] download response keys: ${JSON.stringify(Object.keys(downloadJson))}`);
+        const fileUrl = downloadJson?.result?.url || downloadJson?.result || downloadJson?.url;
+        if (!fileUrl || typeof fileUrl !== "string") {
+          console.error(`[process-dronelog] unexpected download response: ${JSON.stringify(downloadJson).slice(0, 500)}`);
+          return new Response(JSON.stringify({ error: "Unexpected download response format", details: JSON.stringify(downloadJson).slice(0, 500) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        console.log(`[process-dronelog] fetching actual file from: ${fileUrl.slice(0, 120)}...`);
+        const fileRes = await fetch(fileUrl);
+        if (!fileRes.ok) {
+          const errText = await fileRes.text();
+          console.error(`[process-dronelog] file fetch failed: ${fileRes.status}`);
+          return new Response(JSON.stringify({ error: "Failed to fetch DJI log file", details: errText, upstreamStatus: fileRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const fileBytes = new Uint8Array(await fileRes.arrayBuffer());
         const fileName = `dji_log_${logId}.txt`;
         console.log(`Downloaded DJI log file: ${fileBytes.length} bytes`);
 
