@@ -163,12 +163,13 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
 const getDronelogErrorMessage = (error: any): { message: string; type: 'warning' | 'error' } => {
   const status = error?.upstreamStatus || 0;
   if (status === 429) {
-    // Distinguish rate-limit from quota exhaustion
     const remaining = error?.remaining;
-    if (remaining !== null && remaining !== undefined && Number(remaining) > 0) {
-      return { message: 'For mange forespørsler akkurat nå. Vent noen sekunder og prøv igjen.', type: 'warning' };
+    // Only show quota exhausted when API explicitly says remaining = 0
+    if (remaining !== null && remaining !== undefined && Number(remaining) === 0) {
+      return { message: 'DroneLog API-kvoten er brukt opp for denne måneden. Oppgrader abonnementet eller prøv igjen neste måned.', type: 'warning' };
     }
-    return { message: 'DroneLog API-kvoten er brukt opp for denne måneden. Oppgrader abonnementet eller prøv igjen neste måned.', type: 'warning' };
+    // Default: temporary rate limit
+    return { message: 'For mange forespørsler akkurat nå. Vent noen sekunder og prøv igjen.', type: 'warning' };
   }
   if (status === 401 || status === 403) {
     return { message: 'Ugyldig eller utløpt DroneLog API-nøkkel. Kontakt administrator.', type: 'error' };
