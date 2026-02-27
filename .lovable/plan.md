@@ -1,19 +1,25 @@
 
 
-## Plan: Revert beacons endpoints to x-api-key auth
+## Plan: Fix DJI cloud log download headers
 
 ### Problem
-The `/v1/beacons` endpoint used by `safesky-beacons-fetch` returns "Access denied" with HMAC auth. The `/v1/uav` and `/v1/advisory` endpoints work fine with HMAC.
+When clicking a DJI log from the cloud list, the download call to `GET /api/v1/logs/{accountId}/{logId}/download` fails because the request headers don't match what the DroneLog API expects.
 
-### Changes
+### Root cause
+Line 563 in `supabase/functions/process-dronelog/index.ts` sends:
+```
+Accept: "application/octet-stream"
+```
+But the API documentation specifies:
+```
+Content-Type: application/json
+Accept: application/json
+```
 
-**`supabase/functions/safesky-beacons-fetch/index.ts`**:
-- Remove `import { generateAuthHeaders }` from safesky-hmac
-- Replace HMAC auth headers with simple `x-api-key: {SAFESKY_BEACONS_API_KEY}` header
+### Change
 
-**`supabase/functions/safesky-beacons/index.ts`**:
-- This function calls `/v1/uav` which works with HMAC -- no change needed (it should keep HMAC)
+**`supabase/functions/process-dronelog/index.ts`** (line 562-563):
+- Replace the download fetch headers from `{ Authorization: ..., Accept: "application/octet-stream" }` to `{ Authorization: ..., "Content-Type": "application/json", Accept: "application/json" }` to match the API specification.
 
-### Summary
-Only `safesky-beacons-fetch` changes. The other 3 functions (`safesky-beacons`, `safesky-advisory`, `safesky-cron-refresh`) keep HMAC auth.
+This is a one-line header change. The rest of the flow (download bytes -> upload to `/logs/upload` -> parse CSV) remains unchanged.
 
