@@ -2,27 +2,14 @@
 
 ## Problem
 
-Edge function logs confirm that the company key (`Pwv9Pb…`) gets HTTP 429 on `dji-login` repeatedly. The DroneLog API's 429 response for this endpoint likely doesn't include a `remaining` field, so `getDronelogErrorMessage` defaults to "kvoten er brukt opp" -- which is incorrect. It's just short-term rate-limiting.
+In `CompanyManagementSection.tsx` line 660, a `<SelectItem value="">` is used for the "all companies" option. Radix UI Select does not allow empty string values on SelectItem.
 
-The fix is simple: when `remaining` is `null`/`undefined` (i.e., the API didn't tell us the quota is zero), treat it as temporary rate-limiting, not quota exhaustion.
+## Fix
 
-## Changes
+### `src/components/admin/CompanyManagementSection.tsx` (line 660)
 
-### `src/components/UploadDroneLogDialog.tsx` - Fix `getDronelogErrorMessage`
+Change `value=""` to `value="__all__"` and update the corresponding `onValueChange` handler to treat `"__all__"` the same as empty string (i.e., no company filter).
 
-Change the 429 logic: only show "kvote brukt opp" when `remaining` is explicitly `0`. When `remaining` is null/undefined, default to the "vent og prøv igjen" message.
-
-```typescript
-if (status === 429) {
-  const remaining = error?.remaining;
-  // Only show quota exhausted when API explicitly says remaining = 0
-  if (remaining !== null && remaining !== undefined && Number(remaining) === 0) {
-    return { message: 'DroneLog API-kvoten er brukt opp for denne måneden.', type: 'warning' };
-  }
-  // Default: temporary rate limit
-  return { message: 'For mange forespørsler akkurat nå. Vent noen sekunder og prøv igjen.', type: 'warning' };
-}
-```
-
-This is a 2-line logic inversion in one file.
+- `<SelectItem value="__all__">Master-nøkkel (alle)</SelectItem>`
+- In the `onValueChange`, map `"__all__"` back to `""` or `null` for the state variable
 
