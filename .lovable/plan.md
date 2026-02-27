@@ -1,27 +1,19 @@
 
 
-## Plan: Use POST /logs with URL instead of download+upload
+## Plan: Use downloadUrl directly in POST /logs
 
 ### Problem
-The current two-step approach (download file via `/logs/{accountId}/{logId}/download`, then upload to `/logs/upload`) returns a 500 Server Error. The API docs suggest using `POST /api/v1/logs` with a `url` parameter instead.
+The current flow calls `GET /logs/{accountId}/{logId}/download` to get a file URL, then passes it to `POST /logs`. But the download URL is already available in the log list response as `downloadUrl` — no need for the extra API call that's returning errors.
 
-### Root cause
-The `/download` endpoint likely returns a direct file URL. Instead of downloading the bytes and re-uploading them via multipart, we can pass that URL directly to `POST /api/v1/logs` which accepts a `url` body parameter and processes it server-side.
+### Changes
 
-### Change
+**1. `src/components/UploadDroneLogDialog.tsx`** — Pass the `downloadUrl` to the action call:
+- Change the `callDronelogAction("dji-process-log", { accountId, logId })` call to also include `downloadUrl: log.url`
 
-**`supabase/functions/process-dronelog/index.ts`** — Replace lines 554-635 (the `dji-process-log` action):
+**2. `supabase/functions/process-dronelog/index.ts`** — Simplify the `dji-process-log` action:
+- Accept `downloadUrl` from the request body
+- Remove Step 1 entirely (the `GET /download` call and URL extraction, lines 560-582)
+- Use the provided `downloadUrl` directly in `POST /logs` with `{ url: downloadUrl, fields: fieldList }`
 
-1. Keep Step 1: Call `GET /logs/{accountId}/{logId}/download` to get the file URL from the JSON response
-2. Replace Step 2: Instead of fetching the file bytes and uploading via multipart to `/logs/upload`, call `POST /logs` with:
-   ```json
-   {
-     "url": "<fileUrl from step 1>",
-     "fields": ["OSD.latitude", "OSD.longitude", ...]
-   }
-   ```
-   With headers: `Authorization`, `Content-Type: application/json`, `Accept: application/json`
-3. Parse the CSV response with `parseCsvToResult()` as before
-
-This eliminates the file download + multipart re-upload, using the simpler JSON-body endpoint that the API supports natively.
+This eliminates the failing intermediate API call entirely.
 
