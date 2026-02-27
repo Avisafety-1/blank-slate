@@ -534,20 +534,59 @@ Deno.serve(async (req) => {
       }
 
       if (action === "dji-process-log") {
-        const { url } = body;
-        if (!url) {
-          return new Response(JSON.stringify({ error: "url required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const { accountId, logId } = body;
+        if (!accountId || !logId) {
+          return new Response(JSON.stringify({ error: "accountId and logId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const res = await fetch(`${DRONELOG_BASE}/logs`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ url, fields: FIELDS.split(",") }),
+
+        // Step 1: Download the raw flight log file from DJI cloud
+        console.log(`Downloading DJI log: /logs/${accountId}/${logId}/download`);
+        const downloadRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}/${logId}/download`, {
+          headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
         });
-        if (!res.ok) {
-          const errText = await res.text();
-          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (!downloadRes.ok) {
+          const errText = await downloadRes.text();
+          console.error("DJI log download failed:", downloadRes.status, errText);
+          return new Response(JSON.stringify({ error: "Failed to download DJI log", details: errText, status: downloadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const csvText = await res.text();
+
+        const fileBytes = new Uint8Array(await downloadRes.arrayBuffer());
+        const fileName = `dji_log_${logId}.txt`;
+        console.log(`Downloaded DJI log file: ${fileBytes.length} bytes`);
+
+        // Step 2: Upload the file to /logs/upload for CSV parsing
+        const boundary = "----DronLogBoundary" + Date.now();
+        const fieldList = FIELDS.split(",").map(f => f.trim());
+        const parts: string[] = [];
+        for (const field of fieldList) {
+          parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
+        }
+        parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+
+        const textEncoder = new TextEncoder();
+        const prefixBytes = textEncoder.encode(parts.join(""));
+        const suffixBytes = textEncoder.encode(`\r\n--${boundary}--\r\n`);
+        const uploadBody = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
+        uploadBody.set(prefixBytes, 0);
+        uploadBody.set(fileBytes, prefixBytes.length);
+        uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
+
+        const uploadRes = await fetch(`${DRONELOG_BASE}/logs/upload`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${dronelogKey}`,
+            Accept: "application/json",
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+          },
+          body: uploadBody,
+        });
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          console.error("DroneLog upload error after DJI download:", uploadRes.status, errText);
+          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, status: uploadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const csvText = await uploadRes.text();
         const result = parseCsvToResult(csvText);
         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }

@@ -416,10 +416,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   const handleSelectDjiLog = async (log: DjiLog) => {
-    if (!log.url && !log.id) return;
+    if (!log.id || !djiAccountId) return;
     setIsProcessing(true);
     try {
-      const data: DroneLogResult = await callDronelogAction("dji-process-log", { url: log.url || log.id });
+      const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
       if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
