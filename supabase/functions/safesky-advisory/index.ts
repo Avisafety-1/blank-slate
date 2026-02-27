@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -252,10 +253,12 @@ Deno.serve(async (req) => {
 
       console.log('Point Advisory payload:', JSON.stringify(payload, null, 2));
 
+      const advisoryBody = JSON.stringify(payload);
+      const pointAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advisoryBody);
       const response = await fetch(SAFESKY_ADVISORY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': SAFESKY_API_KEY },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', ...pointAuthHeaders },
+        body: advisoryBody
       });
 
       const responseText = await response.text();
@@ -309,10 +312,12 @@ Deno.serve(async (req) => {
 
       console.log('Sending live UAV beacon:', JSON.stringify(payload));
 
+      const liveBody = JSON.stringify(payload);
+      const liveAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, liveBody);
       const response = await fetch(SAFESKY_UAV_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': SAFESKY_API_KEY },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
+        body: liveBody
       });
 
       const responseText = await response.text();
@@ -454,10 +459,12 @@ Deno.serve(async (req) => {
 
       console.log('Advisory payload:', JSON.stringify(payload, null, 2));
 
+      const advBody = JSON.stringify(payload);
+      const advAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advBody);
       const response = await fetch(SAFESKY_ADVISORY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': SAFESKY_API_KEY },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', ...advAuthHeaders },
+        body: advBody
       });
 
       const responseText = await response.text();
@@ -540,10 +547,12 @@ Deno.serve(async (req) => {
 
       console.log('Sending UAV beacon:', JSON.stringify(payload));
 
+      const uavBody = JSON.stringify(payload);
+      const uavAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
       const response = await fetch(SAFESKY_UAV_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': SAFESKY_API_KEY },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', ...uavAuthHeaders },
+        body: uavBody
       });
 
       const responseText = await response.text();

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
 
     // (log line replaced by reason-based log above)
 
-    // Step 2: Fetch beacons from SafeSky Sandbox API with simple x-api-key header
+    // Step 2: Fetch beacons from SafeSky Sandbox API with HMAC authentication
     const SAFESKY_BEACONS_API_KEY = Deno.env.get('SAFESKY_BEACONS_API_KEY');
     if (!SAFESKY_BEACONS_API_KEY) {
       console.error('SAFESKY_BEACONS_API_KEY not configured');
@@ -120,11 +121,12 @@ Deno.serve(async (req) => {
 
     console.log('Calling SafeSky Sandbox API:', SAFESKY_BEACONS_URL);
 
+    const authHeaders = await generateAuthHeaders(SAFESKY_BEACONS_API_KEY, 'GET', SAFESKY_BEACONS_URL);
     const response = await fetch(SAFESKY_BEACONS_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': SAFESKY_BEACONS_API_KEY
+        ...authHeaders
       }
     });
 
