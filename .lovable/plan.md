@@ -2,54 +2,31 @@
 
 ## Problem
 
-The `handle_new_user()` trigger (migration `20251229134717`) assigns the role `'lesetilgang'` to new users. This is a legacy role value. The current simplified role system uses `bruker`, `administrator`, and `superadmin`. The user wants new users to receive `'administrator'` immediately upon creation.
+The current DJI cloud sync flow has an incorrect step for processing individual logs:
 
-There is also a separate trigger `auto_assign_admin_on_approval` that assigns `'admin'` (legacy alias for `administrator`) when a user is approved -- but this only fires on approval, not creation.
+1. **DJI Login** (`POST /api/v1/accounts/dji`) -- Correct
+2. **List Logs** (`GET /api/v1/logs/{accountId}`) -- Correct
+3. **Process Log** -- **Wrong**: Currently sends `log.url || log.id` to `POST /api/v1/logs` (which expects a raw URL to a file). The correct endpoint is `GET /api/v1/logs/{accountId}/{logId}/download` to first download the log file, then process it via `/logs/upload`.
 
 ## Fix
 
-Update the `handle_new_user()` trigger to assign `'administrator'` instead of `'lesetilgang'`.
+### Edge function (`supabase/functions/process-dronelog/index.ts`)
 
-Additionally, update any existing users stuck with the old `'lesetilgang'` or `'bruker'` role to `'administrator'`.
+Replace the `dji-process-log` action:
 
-### Database migration
+- Accept `{ accountId, logId }` instead of `{ url }`
+- Step 1: `GET /api/v1/logs/{accountId}/{logId}/download` to download the raw flight log file
+- Step 2: Send that file to `POST /api/v1/logs/upload` (reusing the existing multipart upload logic) to get parsed CSV
+- Step 3: Parse CSV and return result as before
 
-```sql
--- Update handle_new_user to assign 'administrator' role to new users
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.raw_user_meta_data->>'company_id' IS NOT NULL THEN
-    INSERT INTO public.profiles (id, full_name, company_id, email, approved)
-    VALUES (
-      NEW.id,
-      COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-      (NEW.raw_user_meta_data->>'company_id')::uuid,
-      NEW.email,
-      false
-    );
+### Client (`src/components/UploadDroneLogDialog.tsx`)
 
-    INSERT INTO public.user_roles (user_id, role)
-    VALUES (NEW.id, 'administrator');
-  END IF;
+- Update `handleSelectDjiLog` to pass `{ accountId, logId: log.id }` instead of `{ url: log.url || log.id }`
+- Ensure `accountId` state is available when calling
 
-  RETURN NEW;
-END;
-$$;
+### Summary of changes
 
--- Upgrade existing users with legacy/low roles to administrator
--- (skip superadmin users)
-UPDATE public.user_roles
-SET role = 'administrator'
-WHERE role IN ('lesetilgang', 'bruker', 'saksbehandler', 'operatør')
-  AND user_id NOT IN (
-    SELECT user_id FROM public.user_roles WHERE role = 'superadmin'
-  );
-```
-
-Single migration, no code changes needed. The `has_role()` function already handles `'administrator'` correctly in the hierarchy.
+Two files modified:
+1. **Edge function**: New download-then-process logic in `dji-process-log` action
+2. **Client dialog**: Pass `accountId` + `logId` instead of `url`
 
