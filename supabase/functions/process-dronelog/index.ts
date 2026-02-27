@@ -630,7 +630,7 @@ Deno.serve(async (req) => {
 
           const uploadRes = await fetch(`${DRONELOG_BASE}/logs/upload`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": `multipart/form-data; boundary=${boundary}`, Accept: "text/csv" },
+            headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": `multipart/form-data; boundary=${boundary}`, Accept: "application/json" },
             body: uploadBody,
           });
           if (!uploadRes.ok) {
