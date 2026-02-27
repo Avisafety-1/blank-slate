@@ -409,6 +409,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── DJI login flow ──
 
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
+  const [djiImportCooldown, setDjiImportCooldown] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const handleDjiLogin = async () => {
     if (!djiEmail || !djiPassword || djiLoginCooldown) return;
@@ -470,12 +472,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const startImportCooldown = () => {
+    setDjiImportCooldown(true);
+    setCooldownSeconds(15);
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setDjiImportCooldown(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleSelectDjiLog = async (log: DjiLog) => {
-    if (!log.id || !djiAccountId) return;
+    if (!log.id || !djiAccountId || djiImportCooldown) return;
     setProcessingLogId(log.id);
     setIsProcessing(true);
     try {
-      const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id, downloadUrl: log.url });
+      const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id, downloadUrl: log.url || undefined });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
       if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
@@ -491,8 +508,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     } catch (error: any) {
       console.error('DJI process log error:', error);
       if (isApiLimitError(error)) {
+        startImportCooldown();
         const { message, type } = getDronelogErrorMessage(error);
-        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
+        type === 'warning' ? toast.warning(`${message} Vent 15s...`, { duration: 8000 }) : toast.error(message, { duration: 8000 });
       } else { toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
@@ -1198,7 +1216,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <button
                     key={log.id}
                     onClick={() => handleSelectDjiLog(log)}
-                    disabled={processingLogId !== null}
+                    disabled={processingLogId !== null || djiImportCooldown}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left disabled:opacity-50"
                   >
                     <Plane className="w-5 h-5 text-primary shrink-0" />
