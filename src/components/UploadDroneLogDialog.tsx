@@ -146,10 +146,36 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.message || "Request failed");
+  if (!res.ok) {
+    // Attach upstream status info for richer error handling
+    const err: any = new Error(data.error || data.message || "Request failed");
+    err.upstreamStatus = data.upstreamStatus || res.status;
+    err.retryAfter = data.retryAfter;
+    err.remaining = data.remaining;
+    throw err;
+  }
   return data;
 }
+
+const getDronelogErrorMessage = (error: any): { message: string; type: 'warning' | 'error' } => {
+  const status = error?.upstreamStatus || 0;
+  if (status === 429) {
+    // Distinguish rate-limit from quota exhaustion
+    const remaining = error?.remaining;
+    if (remaining !== null && remaining !== undefined && Number(remaining) > 0) {
+      return { message: 'For mange forespørsler akkurat nå. Vent noen sekunder og prøv igjen.', type: 'warning' };
+    }
+    return { message: 'DroneLog API-kvoten er brukt opp for denne måneden. Oppgrader abonnementet eller prøv igjen neste måned.', type: 'warning' };
+  }
+  if (status === 401 || status === 403) {
+    return { message: 'Ugyldig eller utløpt DroneLog API-nøkkel. Kontakt administrator.', type: 'error' };
+  }
+  return { message: error?.message || 'Ukjent feil', type: 'error' };
+};
+
 const isApiLimitError = (error: any): boolean => {
+  const status = error?.upstreamStatus || 0;
+  if (status === 429) return true;
   const msg = (error?.message || '').toLowerCase();
   return msg.includes('limit reached') || msg.includes('429') || msg.includes('api limit') || msg.includes('too many requests');
 };
@@ -366,8 +392,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('result');
     } catch (error: any) {
       console.error('DroneLog upload error:', error);
-      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
-      else { toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message); }
+      if (isApiLimitError(error)) {
+        const { message, type } = getDronelogErrorMessage(error);
+        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
+      } else { toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
     }
@@ -375,9 +403,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // ── DJI login flow ──
 
+  const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
+
   const handleDjiLogin = async () => {
-    if (!djiEmail || !djiPassword) return;
+    if (!djiEmail || !djiPassword || djiLoginCooldown) return;
     setIsDjiLoading(true);
+    setDjiLoginCooldown(true);
+    setTimeout(() => setDjiLoginCooldown(false), 15000); // 15s cooldown
     try {
       const data = await callDronelogAction("dji-login", { email: djiEmail, password: djiPassword });
       console.log("DJI login response:", JSON.stringify(data));
@@ -389,8 +421,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
-      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
-      else { toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message); }
+      if (isApiLimitError(error)) {
+        const { message, type } = getDronelogErrorMessage(error);
+        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
+      } else { toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message); }
     } finally {
       setIsDjiLoading(false);
     }
@@ -412,8 +446,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setDjiHasMore(logs.length >= 20);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
-      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
-      else { toast.error(t('dronelog.djiListError', 'Kunne ikke hente flylogger: ') + error.message); }
+      if (isApiLimitError(error)) {
+        const { message, type } = getDronelogErrorMessage(error);
+        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
+      } else { toast.error(t('dronelog.djiListError', 'Kunne ikke hente flylogger: ') + error.message); }
     } finally {
       setIsDjiLoading(false);
     }
@@ -438,8 +474,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('result');
     } catch (error: any) {
       console.error('DJI process log error:', error);
-      if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
-      else { toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message); }
+      if (isApiLimitError(error)) {
+        const { message, type } = getDronelogErrorMessage(error);
+        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
+      } else { toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
     }
