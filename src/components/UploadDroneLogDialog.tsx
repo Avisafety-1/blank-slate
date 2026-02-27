@@ -150,8 +150,8 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
   return data;
 }
 const isApiLimitError = (error: any): boolean => {
-  const msg = error?.message || '';
-  return msg.includes('limit reached') || msg.includes('429') || msg.includes('API limit');
+  const msg = (error?.message || '').toLowerCase();
+  return msg.includes('limit reached') || msg.includes('429') || msg.includes('api limit') || msg.includes('too many requests');
 };
 
 // ── Component ──
