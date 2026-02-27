@@ -552,37 +552,13 @@ Deno.serve(async (req) => {
       }
 
       if (action === "dji-process-log") {
-        const { accountId, logId } = body;
-        if (!accountId || !logId) {
-          return new Response(JSON.stringify({ error: "accountId and logId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const { accountId, logId, downloadUrl } = body;
+        if (!accountId || !logId || !downloadUrl) {
+          return new Response(JSON.stringify({ error: "accountId, logId and downloadUrl required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        // Step 1: Download the raw flight log file from DJI cloud
-        console.log(`Downloading DJI log: /logs/${accountId}/${logId}/download`);
-        const downloadRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}/${logId}/download`, {
-          headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-        });
-        if (!downloadRes.ok) {
-          const errText = await downloadRes.text();
-          console.error(`[process-dronelog] dji-download key=${keyFingerprint} upstream=${downloadRes.status}`);
-          if (downloadRes.status === 429) {
-            const retryAfter = downloadRes.headers.get("Retry-After") || null;
-            return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-          return new Response(JSON.stringify({ error: "Failed to download DJI log", details: errText, upstreamStatus: downloadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-
-        // The download endpoint returns JSON with a URL to the actual file
-        const downloadJson = await downloadRes.json();
-        console.log(`[process-dronelog] download response keys: ${JSON.stringify(Object.keys(downloadJson))}`);
-        const fileUrl = downloadJson?.result?.url || downloadJson?.result || downloadJson?.url;
-        if (!fileUrl || typeof fileUrl !== "string") {
-          console.error(`[process-dronelog] unexpected download response: ${JSON.stringify(downloadJson).slice(0, 500)}`);
-          return new Response(JSON.stringify({ error: "Unexpected download response format", details: JSON.stringify(downloadJson).slice(0, 500) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-
-        // Step 2: Use POST /logs with the file URL directly (no download+reupload)
-        console.log(`[process-dronelog] calling POST /logs with url: ${fileUrl.slice(0, 120)}...`);
+        // Use the downloadUrl from the log list directly with POST /logs
+        console.log(`[process-dronelog] calling POST /logs with downloadUrl: ${downloadUrl.slice(0, 120)}...`);
         const fieldList = FIELDS.split(",").map(f => f.trim());
         const logsRes = await fetch(`${DRONELOG_BASE}/logs`, {
           method: "POST",
@@ -591,7 +567,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({ url: fileUrl, fields: fieldList }),
+          body: JSON.stringify({ url: downloadUrl, fields: fieldList }),
         });
         if (!logsRes.ok) {
           const errText = await logsRes.text();
