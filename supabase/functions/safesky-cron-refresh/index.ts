@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -310,13 +311,15 @@ Deno.serve(async (req) => {
 
           console.log(`Refreshing polygon advisory for mission ${missionId} (${mission.tittel})`);
 
+          const cronAdvBody = JSON.stringify(payload);
+          const cronAdvHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, cronAdvBody);
           const response = await fetch(SAFESKY_ADVISORY_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-api-key': SAFESKY_API_KEY,
+              ...cronAdvHeaders,
             },
-            body: JSON.stringify(payload)
+            body: cronAdvBody
           });
 
           const responseText = await response.text();
@@ -407,10 +410,11 @@ Deno.serve(async (req) => {
         console.log(`Fetching beacons for flight ${flight.id}: ${beaconsUrl}`);
 
         try {
+          const beaconAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'GET', beaconsUrl);
           const beaconsResponse = await fetch(beaconsUrl, {
             method: 'GET',
             headers: {
-              'x-api-key': SAFESKY_API_KEY,
+              ...beaconAuthHeaders,
             }
           });
 

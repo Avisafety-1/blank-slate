@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,12 +42,13 @@ serve(async (req) => {
     // GET /v1/uav - fetch nearby aircraft
     const safeskyUrl = `https://sandbox-public-api.safesky.app/v1/uav?lat=${latTrunc}&lng=${lngTrunc}&rad=${radius}`;
     
+    const authHeaders = await generateAuthHeaders(safeskyApiKey, 'GET', safeskyUrl);
     const response = await fetch(safeskyUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
-        'x-api-key': safeskyApiKey,
+        ...authHeaders,
       },
     });
 
