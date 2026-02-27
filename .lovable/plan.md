@@ -2,23 +2,36 @@
 
 ## Problem
 
-The log listing response from DroneLog API returns `result` as a direct array:
-```json
-{ "statusCode": 200, "result": [ { "id": 654704210, ... } ] }
-```
+API-et returnerer logger med feltnavn som `aircraftName`, `fileName`, `totalTime`, `timestamp`, men DjiLog-interfacet og UI-en forventer `aircraft`, `date`, `duration`. Siden rå API-objektene lagres direkte uten mapping, blir alle felt `undefined` og viser "Ukjent drone".
 
-But `fetchDjiLogs` extracts logs with `r.logs || []` which returns an empty array since there is no `logs` property.
+## Endringer
 
-## Fix
+### `src/components/UploadDroneLogDialog.tsx`
 
-### `src/components/UploadDroneLogDialog.tsx` (~line 439-440)
+1. **Oppdater DjiLog-interfacet** til å inkludere API-feltene (`aircraftName`, `fileName`, `totalTime`, `totalDistance`, `maxHeight`, `timestamp`, `downloadUrl`).
 
-Change the extraction logic to handle both shapes:
-
+2. **Legg til mapping i `fetchDjiLogs`** etter linje 440 — map rå API-objekter til DjiLog-format:
 ```typescript
-const r = data.result || data;
-const logs = Array.isArray(r) ? r : (r.logs || []);
+const mapped = logs.map((l: any) => ({
+  id: l.id,
+  date: l.timestamp ? format(new Date(l.timestamp), 'dd.MM.yyyy HH:mm') : l.date || '',
+  duration: l.totalTime ? Math.round(l.totalTime / 1000) : l.duration || 0,
+  aircraft: l.aircraftName || l.aircraft || '',
+  fileName: l.fileName || '',
+  totalDistance: l.totalDistance || 0,
+  maxHeight: l.maxHeight || 0,
+  url: l.downloadUrl || l.url || '',
+}));
 ```
 
-One line change, one file.
+3. **Oppdater visningen** (linje ~1189) til å vise `aircraftName` og `fileName`:
+```
+{log.aircraft || log.fileName || 'Ukjent drone'}
+```
+Og vis filnavn som undertekst dersom aircraft finnes:
+```
+{log.fileName && <span className="text-xs text-muted-foreground">{log.fileName}</span>}
+```
+
+4. **Vis ekstra metadata** i listen: totalDistance og maxHeight der tilgjengelig.
 
