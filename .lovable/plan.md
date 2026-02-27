@@ -2,31 +2,32 @@
 
 ## Problem
 
-The current DJI cloud sync flow has an incorrect step for processing individual logs:
-
-1. **DJI Login** (`POST /api/v1/accounts/dji`) -- Correct
-2. **List Logs** (`GET /api/v1/logs/{accountId}`) -- Correct
-3. **Process Log** -- **Wrong**: Currently sends `log.url || log.id` to `POST /api/v1/logs` (which expects a raw URL to a file). The correct endpoint is `GET /api/v1/logs/{accountId}/{logId}/download` to first download the log file, then process it via `/logs/upload`.
+The DJI log listing endpoint uses a `page` query parameter (`?page=${page}&limit=${limit}`) which does not exist in the DroneLog API. The API uses `limit` and `createdAfterId` for pagination. This causes the API to return no results or unexpected behavior.
 
 ## Fix
 
-### Edge function (`supabase/functions/process-dronelog/index.ts`)
+### 1. Edge function (`supabase/functions/process-dronelog/index.ts`)
 
-Replace the `dji-process-log` action:
+Update `dji-list-logs` action:
+- Remove `page` parameter
+- Add `createdAfterId` parameter support
+- Build query string with `limit` and optionally `createdAfterId`
 
-- Accept `{ accountId, logId }` instead of `{ url }`
-- Step 1: `GET /api/v1/logs/{accountId}/{logId}/download` to download the raw flight log file
-- Step 2: Send that file to `POST /api/v1/logs/upload` (reusing the existing multipart upload logic) to get parsed CSV
-- Step 3: Parse CSV and return result as before
+```
+GET /logs/{accountId}?limit=20
+GET /logs/{accountId}?limit=20&createdAfterId=654704209
+```
 
-### Client (`src/components/UploadDroneLogDialog.tsx`)
+### 2. Client (`src/components/UploadDroneLogDialog.tsx`)
 
-- Update `handleSelectDjiLog` to pass `{ accountId, logId: log.id }` instead of `{ url: log.url || log.id }`
-- Ensure `accountId` state is available when calling
+- Replace `djiPage` state with `djiCreatedAfterId` (tracking the last log ID for pagination)
+- Update `fetchDjiLogs` to pass `createdAfterId` instead of `page`
+- Update pagination buttons: "Next" passes the last log's ID as `createdAfterId`; "Previous" can be removed or replaced with a simple history stack
+- Keep accumulating logs or replace list on each fetch
 
-### Summary of changes
+### Summary
 
-Two files modified:
-1. **Edge function**: New download-then-process logic in `dji-process-log` action
-2. **Client dialog**: Pass `accountId` + `logId` instead of `url`
+Two files changed:
+1. **Edge function**: Replace `page` with `createdAfterId` in the query string to `/logs/{accountId}`
+2. **Client dialog**: Update pagination logic to use cursor-based `createdAfterId` instead of page numbers
 
