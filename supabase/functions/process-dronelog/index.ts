@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
         // Step 1: Download the raw flight log file from DJI cloud
         console.log(`Downloading DJI log: /logs/${accountId}/${logId}/download`);
         const downloadRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}/${logId}/download`, {
-          headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
+          headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
         });
         if (!downloadRes.ok) {
           const errText = await downloadRes.text();
