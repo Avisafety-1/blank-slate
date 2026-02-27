@@ -197,6 +197,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingLogId, setProcessingLogId] = useState<string | null>(null);
   const [result, setResult] = useState<DroneLogResult | null>(null);
   const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
   const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
@@ -471,6 +472,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handleSelectDjiLog = async (log: DjiLog) => {
     if (!log.id || !djiAccountId) return;
+    setProcessingLogId(log.id);
     setIsProcessing(true);
     try {
       const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id, downloadUrl: log.url });
@@ -494,6 +496,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       } else { toast.error(t('dronelog.processError', 'Kunne ikke behandle flyloggen: ') + error.message); }
     } finally {
       setIsProcessing(false);
+      setProcessingLogId(null);
     }
   };
 
@@ -1195,7 +1198,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <button
                     key={log.id}
                     onClick={() => handleSelectDjiLog(log)}
-                    disabled={isProcessing}
+                    disabled={processingLogId !== null}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left disabled:opacity-50"
                   >
                     <Plane className="w-5 h-5 text-primary shrink-0" />
@@ -1209,7 +1212,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
                       </div>
                     </div>
-                    {isProcessing && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                    {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
                   </button>
                 ))}
               </div>
