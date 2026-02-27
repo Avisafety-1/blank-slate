@@ -3,16 +3,26 @@
  * 
  * Implements the HMAC signing protocol required by SafeSky's API.
  * Uses Deno's Web Crypto API (HKDF + HMAC via crypto.subtle).
+ * 
+ * Reference: https://docs.safesky.app/books/safesky-api-for-uav/page/authentication
  */
 
 const encoder = new TextEncoder();
 
-/** Base64url encode (no padding) */
+/** Base64url encode (no padding): uses - instead of +, _ instead of /, no = padding */
 function base64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Standard base64 encode */
+function base64encode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
 }
 
 /** SHA-256 hash of a string, returned as lowercase hex */
@@ -21,42 +31,34 @@ async function sha256Hex(data: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Import API key as raw key material for HKDF */
-async function importKeyMaterial(apiKey: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
+/**
+ * Derive KID (Key Identifier) from API key.
+ * kid = base64url(SHA256("kid:" + api_key)[0:16])
+ */
+export async function deriveKid(apiKey: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(`kid:${apiKey}`));
+  const first16 = new Uint8Array(hash).slice(0, 16);
+  return base64url(first16.buffer.slice(first16.byteOffset, first16.byteOffset + first16.byteLength));
+}
+
+/**
+ * Derive HMAC signing key from API key using HKDF-SHA256.
+ * hmac_key = HKDF-SHA256(api_key, salt="safesky-hmac-salt-v1", info="auth-v1", len=32)
+ */
+export async function deriveHmacKey(apiKey: string): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey(
     'raw',
     encoder.encode(apiKey),
     'HKDF',
     false,
     ['deriveBits']
   );
-}
-
-/** Derive KID (Key Identifier) from API key using HKDF-SHA256 */
-export async function deriveKid(apiKey: string): Promise<string> {
-  const keyMaterial = await importKeyMaterial(apiKey);
   const derived = await crypto.subtle.deriveBits(
     {
       name: 'HKDF',
       hash: 'SHA-256',
-      salt: new Uint8Array(32), // empty salt (32 zero bytes)
-      info: encoder.encode('safesky-kid'),
-    },
-    keyMaterial,
-    256 // 32 bytes
-  );
-  return base64url(derived);
-}
-
-/** Derive HMAC signing key from API key using HKDF-SHA256 */
-export async function deriveHmacKey(apiKey: string): Promise<CryptoKey> {
-  const keyMaterial = await importKeyMaterial(apiKey);
-  const derived = await crypto.subtle.deriveBits(
-    {
-      name: 'HKDF',
-      hash: 'SHA-256',
-      salt: new Uint8Array(32),
-      info: encoder.encode('safesky-hmac'),
+      salt: encoder.encode('safesky-hmac-salt-v1'),
+      info: encoder.encode('auth-v1'),
     },
     keyMaterial,
     256
@@ -75,13 +77,23 @@ export function generateNonce(): string {
   return crypto.randomUUID();
 }
 
-/** Generate ISO8601 UTC timestamp */
+/** Generate ISO8601 UTC timestamp with milliseconds (e.g., 2025-11-12T14:30:00.000Z) */
 export function generateTimestamp(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return new Date().toISOString();
 }
 
 /**
  * Build the canonical request string for HMAC signature.
+ * 
+ * Format:
+ * METHOD\n
+ * path\n
+ * queryString\n
+ * host:hostValue\n
+ * x-ss-date:timestamp\n
+ * x-ss-nonce:nonce\n
+ * \n
+ * sha256(body)
  */
 export async function buildCanonicalRequest(
   method: string,
@@ -92,25 +104,26 @@ export async function buildCanonicalRequest(
   nonce: string,
   body: string
 ): Promise<string> {
-  const bodyHash = await sha256Hex(body);
+  const bodyHash = await sha256Hex(body || '');
   return [
     method.toUpperCase(),
     path,
-    queryString,
+    queryString || '',
     `host:${host}`,
     `x-ss-date:${timestamp}`,
     `x-ss-nonce:${nonce}`,
+    '', // empty line before body hash
     bodyHash,
   ].join('\n');
 }
 
-/** Generate HMAC-SHA256 signature as lowercase hex */
+/** Generate HMAC-SHA256 signature as base64 (NOT hex) */
 export async function generateSignature(
   canonicalRequest: string,
   hmacKey: CryptoKey
 ): Promise<string> {
   const sig = await crypto.subtle.sign('HMAC', hmacKey, encoder.encode(canonicalRequest));
-  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return base64encode(sig);
 }
 
 /**
