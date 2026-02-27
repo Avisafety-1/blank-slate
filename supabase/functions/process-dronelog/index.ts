@@ -519,14 +519,17 @@ Deno.serve(async (req) => {
       }
 
       if (action === "dji-list-logs") {
-        const { accountId, page = 1, limit = 20 } = body;
+        const { accountId, limit = 20, createdAfterId } = body;
         if (!accountId) {
           return new Response(JSON.stringify({ error: "accountId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const res = await fetch(`${DRONELOG_BASE}/logs/${accountId}?page=${page}&limit=${limit}`, {
+        let qs = `limit=${limit}`;
+        if (createdAfterId) qs += `&createdAfterId=${createdAfterId}`;
+        const res = await fetch(`${DRONELOG_BASE}/logs/${accountId}?${qs}`, {
           headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
         });
         const data = await res.json();
+        console.log("dji-list-logs response status:", res.status, "body:", JSON.stringify(data).slice(0, 500));
         if (!res.ok) {
           return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
