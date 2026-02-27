@@ -581,55 +581,30 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "Unexpected download response format", details: JSON.stringify(downloadJson).slice(0, 500) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        console.log(`[process-dronelog] fetching actual file from: ${fileUrl.slice(0, 120)}...`);
-        const fileRes = await fetch(fileUrl);
-        if (!fileRes.ok) {
-          const errText = await fileRes.text();
-          console.error(`[process-dronelog] file fetch failed: ${fileRes.status}`);
-          return new Response(JSON.stringify({ error: "Failed to fetch DJI log file", details: errText, upstreamStatus: fileRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-
-        const fileBytes = new Uint8Array(await fileRes.arrayBuffer());
-        const fileName = `dji_log_${logId}.txt`;
-        console.log(`Downloaded DJI log file: ${fileBytes.length} bytes`);
-
-        // Step 2: Upload the file to /logs/upload for CSV parsing
-        const boundary = "----DronLogBoundary" + Date.now();
+        // Step 2: Use POST /logs with the file URL directly (no download+reupload)
+        console.log(`[process-dronelog] calling POST /logs with url: ${fileUrl.slice(0, 120)}...`);
         const fieldList = FIELDS.split(",").map(f => f.trim());
-        const parts: string[] = [];
-        for (const field of fieldList) {
-          parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
-        }
-        parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
-
-        const textEncoder = new TextEncoder();
-        const prefixBytes = textEncoder.encode(parts.join(""));
-        const suffixBytes = textEncoder.encode(`\r\n--${boundary}--\r\n`);
-        const uploadBody = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
-        uploadBody.set(prefixBytes, 0);
-        uploadBody.set(fileBytes, prefixBytes.length);
-        uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
-
-        const uploadRes = await fetch(`${DRONELOG_BASE}/logs/upload`, {
+        const logsRes = await fetch(`${DRONELOG_BASE}/logs`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${dronelogKey}`,
+            "Content-Type": "application/json",
             Accept: "application/json",
-            "Content-Type": `multipart/form-data; boundary=${boundary}`,
           },
-          body: uploadBody,
+          body: JSON.stringify({ url: fileUrl, fields: fieldList }),
         });
-        if (!uploadRes.ok) {
-          const errText = await uploadRes.text();
-          console.error(`[process-dronelog] dji-upload key=${keyFingerprint} upstream=${uploadRes.status}`);
-          if (uploadRes.status === 429) {
-            const retryAfter = uploadRes.headers.get("Retry-After") || null;
+        if (!logsRes.ok) {
+          const errText = await logsRes.text();
+          console.error(`[process-dronelog] POST /logs failed: ${logsRes.status} ${errText.slice(0, 300)}`);
+          if (logsRes.status === 429) {
+            const retryAfter = logsRes.headers.get("Retry-After") || null;
             return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, upstreamStatus: uploadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, upstreamStatus: logsRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const csvText = await uploadRes.text();
+        const csvText = await logsRes.text();
+        console.log(`[process-dronelog] POST /logs CSV response length: ${csvText.length}`);
         const result = parseCsvToResult(csvText);
         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
