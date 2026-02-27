@@ -560,7 +560,11 @@ Deno.serve(async (req) => {
         // Step 1: Fetch the file from the downloadUrl (requires auth)
         console.log(`[process-dronelog] fetching file from downloadUrl: ${downloadUrl.slice(0, 120)}...`);
         const fileRes = await fetch(downloadUrl, {
-          headers: { Authorization: `Bearer ${dronelogKey}` },
+          headers: {
+            Authorization: `Bearer ${dronelogKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
           redirect: "follow",
         });
         if (!fileRes.ok) {
