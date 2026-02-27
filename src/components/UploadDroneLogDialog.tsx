@@ -179,8 +179,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiPassword, setDjiPassword] = useState("");
   const [djiAccountId, setDjiAccountId] = useState("");
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
-  const [djiLogsTotal, setDjiLogsTotal] = useState(0);
-  const [djiPage, setDjiPage] = useState(1);
+  const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
 
   // Logbook state
@@ -275,8 +274,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiPassword("");
     setDjiAccountId("");
     setDjiLogs([]);
-    setDjiLogsTotal(0);
-    setDjiPage(1);
+    setDjiHasMore(false);
       setPilotId("");
       setSelectedEquipment([]);
       setOldPilotIds([]);
@@ -387,7 +385,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
       setDjiPassword("");
-      await fetchDjiLogs(accountId, 1);
+      await fetchDjiLogs(accountId);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
@@ -398,14 +396,20 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const fetchDjiLogs = async (accountId: string, page: number) => {
+  const fetchDjiLogs = async (accountId: string, createdAfterId?: number) => {
     setIsDjiLoading(true);
     try {
-      const data = await callDronelogAction("dji-list-logs", { accountId, page, limit: 20 });
+      const payload: any = { accountId, limit: 20 };
+      if (createdAfterId) payload.createdAfterId = createdAfterId;
+      const data = await callDronelogAction("dji-list-logs", payload);
       const r = data.result || data;
-      setDjiLogs(r.logs || []);
-      setDjiLogsTotal(r.total || 0);
-      setDjiPage(page);
+      const logs = r.logs || [];
+      if (createdAfterId) {
+        setDjiLogs(prev => [...prev, ...logs]);
+      } else {
+        setDjiLogs(logs);
+      }
+      setDjiHasMore(logs.length >= 20);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
       if (isApiLimitError(error)) { toast.warning('DroneLog API-grensen er nådd for denne måneden. Oppgrader DroneLog-abonnementet eller prøv igjen neste måned.', { duration: 8000 }); }
@@ -1156,17 +1160,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
-            {/* Pagination */}
-            {djiLogsTotal > 20 && (
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" disabled={djiPage <= 1 || isDjiLoading} onClick={() => fetchDjiLogs(djiAccountId, djiPage - 1)}>
-                  {t('common.previous', 'Forrige')}
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {t('common.page', 'Side')} {djiPage} / {Math.ceil(djiLogsTotal / 20)}
-                </span>
-                <Button variant="outline" size="sm" disabled={djiPage >= Math.ceil(djiLogsTotal / 20) || isDjiLoading} onClick={() => fetchDjiLogs(djiAccountId, djiPage + 1)}>
-                  {t('common.next', 'Neste')}
+            {/* Load more */}
+            {djiHasMore && (
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" size="sm" disabled={isDjiLoading} onClick={() => {
+                  const lastLog = djiLogs[djiLogs.length - 1];
+                  if (lastLog) fetchDjiLogs(djiAccountId, Number(lastLog.id));
+                }}>
+                  {t('common.loadMore', 'Last inn flere')}
                 </Button>
               </div>
             )}
