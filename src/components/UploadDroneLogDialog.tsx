@@ -437,7 +437,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
       const r = data.result || data;
-      const logs = r.logs || [];
+      const logs = Array.isArray(r) ? r : (r.logs || []);
       if (createdAfterId) {
         setDjiLogs(prev => [...prev, ...logs]);
       } else {
