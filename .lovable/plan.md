@@ -2,36 +2,27 @@
 
 ## Problem
 
-API-et returnerer logger med feltnavn som `aircraftName`, `fileName`, `totalTime`, `timestamp`, men DjiLog-interfacet og UI-en forventer `aircraft`, `date`, `duration`. Siden rå API-objektene lagres direkte uten mapping, blir alle felt `undefined` og viser "Ukjent drone".
+Edge function logs confirm that the company key (`Pwv9Pb…`) gets HTTP 429 on `dji-login` repeatedly. The DroneLog API's 429 response for this endpoint likely doesn't include a `remaining` field, so `getDronelogErrorMessage` defaults to "kvoten er brukt opp" -- which is incorrect. It's just short-term rate-limiting.
 
-## Endringer
+The fix is simple: when `remaining` is `null`/`undefined` (i.e., the API didn't tell us the quota is zero), treat it as temporary rate-limiting, not quota exhaustion.
 
-### `src/components/UploadDroneLogDialog.tsx`
+## Changes
 
-1. **Oppdater DjiLog-interfacet** til å inkludere API-feltene (`aircraftName`, `fileName`, `totalTime`, `totalDistance`, `maxHeight`, `timestamp`, `downloadUrl`).
+### `src/components/UploadDroneLogDialog.tsx` - Fix `getDronelogErrorMessage`
 
-2. **Legg til mapping i `fetchDjiLogs`** etter linje 440 — map rå API-objekter til DjiLog-format:
+Change the 429 logic: only show "kvote brukt opp" when `remaining` is explicitly `0`. When `remaining` is null/undefined, default to the "vent og prøv igjen" message.
+
 ```typescript
-const mapped = logs.map((l: any) => ({
-  id: l.id,
-  date: l.timestamp ? format(new Date(l.timestamp), 'dd.MM.yyyy HH:mm') : l.date || '',
-  duration: l.totalTime ? Math.round(l.totalTime / 1000) : l.duration || 0,
-  aircraft: l.aircraftName || l.aircraft || '',
-  fileName: l.fileName || '',
-  totalDistance: l.totalDistance || 0,
-  maxHeight: l.maxHeight || 0,
-  url: l.downloadUrl || l.url || '',
-}));
+if (status === 429) {
+  const remaining = error?.remaining;
+  // Only show quota exhausted when API explicitly says remaining = 0
+  if (remaining !== null && remaining !== undefined && Number(remaining) === 0) {
+    return { message: 'DroneLog API-kvoten er brukt opp for denne måneden.', type: 'warning' };
+  }
+  // Default: temporary rate limit
+  return { message: 'For mange forespørsler akkurat nå. Vent noen sekunder og prøv igjen.', type: 'warning' };
+}
 ```
 
-3. **Oppdater visningen** (linje ~1189) til å vise `aircraftName` og `fileName`:
-```
-{log.aircraft || log.fileName || 'Ukjent drone'}
-```
-Og vis filnavn som undertekst dersom aircraft finnes:
-```
-{log.fileName && <span className="text-xs text-muted-foreground">{log.fileName}</span>}
-```
-
-4. **Vis ekstra metadata** i listen: totalDistance og maxHeight der tilgjengelig.
+This is a 2-line logic inversion in one file.
 
