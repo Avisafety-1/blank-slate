@@ -119,6 +119,9 @@ interface DjiLog {
   date: string;
   duration: number;
   aircraft: string;
+  fileName?: string;
+  totalDistance?: number;
+  maxHeight?: number;
   url?: string;
 }
 
@@ -437,13 +440,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
       const r = data.result || data;
-      const logs = Array.isArray(r) ? r : (r.logs || []);
+      const rawLogs = Array.isArray(r) ? r : (r.logs || []);
+      const mapped: DjiLog[] = rawLogs.map((l: any) => ({
+        id: String(l.id),
+        date: l.timestamp ? format(new Date(l.timestamp), 'dd.MM.yyyy HH:mm') : l.date || '',
+        duration: l.totalTime ? Math.round(l.totalTime / 1000) : l.duration || 0,
+        aircraft: l.aircraftName || l.aircraft || '',
+        fileName: l.fileName || '',
+        totalDistance: l.totalDistance || 0,
+        maxHeight: l.maxHeight || 0,
+        url: l.downloadUrl || l.url || '',
+      }));
       if (createdAfterId) {
-        setDjiLogs(prev => [...prev, ...logs]);
+        setDjiLogs(prev => [...prev, ...mapped]);
       } else {
-        setDjiLogs(logs);
+        setDjiLogs(mapped);
       }
-      setDjiHasMore(logs.length >= 20);
+      setDjiHasMore(rawLogs.length >= 20);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
       if (isApiLimitError(error)) {
@@ -1186,10 +1199,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   >
                     <Plane className="w-5 h-5 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{log.aircraft || 'Ukjent drone'}</p>
+                      <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
+                      {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{log.date}</span>
                         {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
+                        {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
+                        {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
                       </div>
                     </div>
                     {isProcessing && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
