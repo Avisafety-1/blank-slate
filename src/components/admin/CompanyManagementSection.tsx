@@ -652,12 +652,12 @@ export const CompanyManagementSection = () => {
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Vis bruk for</Label>
             <div className="flex gap-2">
-              <Select value={usageCompanyId} onValueChange={(v) => { setUsageCompanyId(v); handleFetchUsage(v || undefined); }}>
+              <Select value={usageCompanyId || "__all__"} onValueChange={(v) => { const val = v === "__all__" ? "" : v; setUsageCompanyId(val); handleFetchUsage(val || undefined); }}>
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Master-nøkkel (alle)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Master-nøkkel (alle)</SelectItem>
+                  <SelectItem value="__all__">Master-nøkkel (alle)</SelectItem>
                   {companies.filter(c => c.dji_flightlog_enabled).map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
                   ))}
