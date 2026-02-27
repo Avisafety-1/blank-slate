@@ -371,7 +371,9 @@ export const CompanyManagementSection = () => {
     }
   };
 
-  const handleFetchUsage = async () => {
+  const [usageCompanyId, setUsageCompanyId] = useState<string>("");
+
+  const handleFetchUsage = async (forCompanyId?: string) => {
     setUsageDialogOpen(true);
     setUsageLoading(true);
     try {
@@ -380,9 +382,10 @@ export const CompanyManagementSection = () => {
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      const { data, error } = await supabase.functions.invoke('dronelog-usage', {
-        body: { from, to },
-      });
+      const body: any = { from, to };
+      if (forCompanyId) body.companyId = forCompanyId;
+
+      const { data, error } = await supabase.functions.invoke('dronelog-usage', { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -414,7 +417,7 @@ export const CompanyManagementSection = () => {
             <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleFetchUsage} variant="outline" size={isMobile ? "sm" : "default"}>
+            <Button onClick={() => handleFetchUsage()} variant="outline" size={isMobile ? "sm" : "default"}>
               <BarChart3 className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
               {isMobile ? "API" : "API-bruk"}
             </Button>
@@ -640,10 +643,33 @@ export const CompanyManagementSection = () => {
               <BarChart3 className="h-5 w-5 text-primary" />
               DroneLog API-bruk
             </DialogTitle>
-            <DialogDescription>
+           <DialogDescription>
               Bruksstatistikk for gjeldende måned
             </DialogDescription>
           </DialogHeader>
+
+          {/* Company selector for scoped usage */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Vis bruk for</Label>
+            <div className="flex gap-2">
+              <Select value={usageCompanyId} onValueChange={(v) => { setUsageCompanyId(v); handleFetchUsage(v || undefined); }}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Master-nøkkel (alle)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Master-nøkkel (alle)</SelectItem>
+                  {companies.filter(c => c.dji_flightlog_enabled).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {usageData?._keyScope && (
+              <p className="text-xs text-muted-foreground">
+                Viser: {usageData._keyScope === 'company' ? `Selskapsnøkkel (${usageData._companyName})` : 'Master-nøkkel'}
+              </p>
+            )}
+          </div>
 
           {usageLoading ? (
             <div className="flex items-center justify-center py-8">

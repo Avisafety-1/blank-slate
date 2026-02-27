@@ -491,6 +491,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "DroneLog API key not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const keyFingerprint = dronelogKey.substring(0, 6) + "…";
+    console.log(`[process-dronelog] key=${keyFingerprint}`);
+
     const contentType = req.headers.get("content-type") || "";
 
     // ── JSON actions (DJI login, list logs, process log) ──
@@ -510,10 +513,18 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         if (!res.ok) {
+          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status}`);
+          const retryAfter = res.headers.get("Retry-After") || null;
+          if (res.status === 429) {
+            return new Response(JSON.stringify({ error: "Too many requests", details: data, upstreamStatus: 429, retryAfter, remaining: data?.remaining ?? null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          if (res.status === 401 || res.status === 403) {
+            return new Response(JSON.stringify({ error: "Ugyldig eller utløpt API-nøkkel", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
           const errMsg = res.status === 500
             ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
             : (data.message || "DJI login failed");
-          return new Response(JSON.stringify({ error: errMsg, details: data, status: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: errMsg, details: data, upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -529,9 +540,13 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
         });
         const data = await res.json();
-        console.log("dji-list-logs response status:", res.status, "body:", JSON.stringify(data).slice(0, 500));
+        console.log(`[process-dronelog] dji-list-logs key=${keyFingerprint} upstream=${res.status}`);
         if (!res.ok) {
-          return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          if (res.status === 429) {
+            const retryAfter = res.headers.get("Retry-After") || null;
+            return new Response(JSON.stringify({ error: "Too many requests", details: data, upstreamStatus: 429, retryAfter, remaining: data?.remaining ?? null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -549,8 +564,12 @@ Deno.serve(async (req) => {
         });
         if (!downloadRes.ok) {
           const errText = await downloadRes.text();
-          console.error("DJI log download failed:", downloadRes.status, errText);
-          return new Response(JSON.stringify({ error: "Failed to download DJI log", details: errText, status: downloadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          console.error(`[process-dronelog] dji-download key=${keyFingerprint} upstream=${downloadRes.status}`);
+          if (downloadRes.status === 429) {
+            const retryAfter = downloadRes.headers.get("Retry-After") || null;
+            return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          return new Response(JSON.stringify({ error: "Failed to download DJI log", details: errText, upstreamStatus: downloadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const fileBytes = new Uint8Array(await downloadRes.arrayBuffer());
@@ -585,8 +604,12 @@ Deno.serve(async (req) => {
         });
         if (!uploadRes.ok) {
           const errText = await uploadRes.text();
-          console.error("DroneLog upload error after DJI download:", uploadRes.status, errText);
-          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, status: uploadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          console.error(`[process-dronelog] dji-upload key=${keyFingerprint} upstream=${uploadRes.status}`);
+          if (uploadRes.status === 429) {
+            const retryAfter = uploadRes.headers.get("Retry-After") || null;
+            return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, upstreamStatus: uploadRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const csvText = await uploadRes.text();
@@ -638,8 +661,12 @@ Deno.serve(async (req) => {
 
     if (!dronelogResponse.ok) {
       const errText = await dronelogResponse.text();
-      console.error("DroneLog API error:", dronelogResponse.status, errText);
-      return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, status: dronelogResponse.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error(`[process-dronelog] file-upload key=${keyFingerprint} upstream=${dronelogResponse.status}`);
+      if (dronelogResponse.status === 429) {
+        const retryAfter = dronelogResponse.headers.get("Retry-After") || null;
+        return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "DroneLog API error", details: errText, upstreamStatus: dronelogResponse.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const csvText = await dronelogResponse.text();
