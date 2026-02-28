@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
+import { getStatusColorClasses } from "@/lib/maintenanceStatus";
+import { Status } from "@/types";
 
 interface Equipment {
   id: string;
@@ -315,7 +317,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 <div className="flex justify-between sm:block">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={equipment.status === 'Grønn' ? 'default' : equipment.status === 'Rød' ? 'destructive' : 'secondary'}>
+                    <Badge className={`${getStatusColorClasses(equipment.status as Status)} border`}>
                       {equipment.status}
                     </Badge>
                     {(equipment.status === 'Gul' || equipment.status === 'Rød') && (

@@ -2,7 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
 
 interface StatusCounts {
   Grønn: number;
@@ -45,7 +45,8 @@ const fetchDrones = async () => {
       linkedEquipment
     );
 
-    return { ...drone, status };
+    const dbStatus = (drone.status as Status) || "Grønn";
+    return { ...drone, status: worstStatus(status, dbStatus) };
   });
 };
 
@@ -59,10 +60,11 @@ const fetchEquipment = async () => {
     throw error;
   }
 
-  return data.map(item => ({
-    ...item,
-    status: calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status
-  }));
+  return data.map(item => {
+    const maintenanceStatus = calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status;
+    const dbStatus = (item.status as Status) || "Grønn";
+    return { ...item, status: worstStatus(maintenanceStatus, dbStatus) };
+  });
 };
 
 const fetchPersonnel = async (companyId: string) => {
