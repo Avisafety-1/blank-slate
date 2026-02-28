@@ -220,7 +220,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [logToLogbooks, setLogToLogbooks] = useState(true);
   const [logbookOpen, setLogbookOpen] = useState(true);
-  const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string }>>({});
+  const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }>>({});
   const [oldPilotIds, setOldPilotIds] = useState<string[]>([]);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
@@ -245,10 +245,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // Initialize warning actions when result changes
   useEffect(() => {
     if (result && result.warnings.length > 0) {
-      const initial: Record<number, { saveToLog: boolean; newStatus: string }> = {};
+      const initial: Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }> = {};
       result.warnings.forEach((w, i) => {
         const isSevere = ['low_battery', 'cell_deviation', 'low_battery_health', 'rth'].includes(w.type);
-        initial[i] = { saveToLog: isSevere, newStatus: isSevere ? 'Gul' : 'Grønn' };
+        const isBatteryRelated = ['low_battery', 'cell_deviation', 'low_battery_health'].includes(w.type);
+        // Default targets: battery warnings → selected equipment; others → drone
+        const defaultTargets: string[] = [];
+        if (isSevere && selectedDroneId && !isBatteryRelated) defaultTargets.push(`drone:${selectedDroneId}`);
+        if (isSevere && isBatteryRelated && selectedEquipment.length > 0) {
+          selectedEquipment.forEach(eqId => defaultTargets.push(`equipment:${eqId}`));
+        } else if (isSevere && selectedDroneId) {
+          defaultTargets.push(`drone:${selectedDroneId}`);
+        }
+        initial[i] = { saveToLog: isSevere, newStatus: isSevere ? 'Gul' : 'Grønn', targetLogbooks: defaultTargets };
       });
       setWarningActions(initial);
     }
@@ -712,43 +721,65 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handleWarningsWithActions = async (droneId: string, warnings: Array<{ type: string; message: string; value?: number }>) => {
     if (!companyId || !user) return;
 
-    // Determine worst status from user choices
-    let worstStatus = 'Grønn';
     const statusPriority: Record<string, number> = { 'Grønn': 0, 'Gul': 1, 'Rød': 2 };
+    // Track worst status per resource
+    const resourceStatuses: Record<string, string> = {};
 
     for (let i = 0; i < warnings.length; i++) {
       const action = warningActions[i];
       if (!action) continue;
-      if (statusPriority[action.newStatus] > statusPriority[worstStatus]) {
-        worstStatus = action.newStatus;
-      }
 
-      // Save to drone logbook if user chose to
-      if (action.saveToLog) {
-        const warning = warnings[i];
-        let title = warning.type === 'low_battery'
-          ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur')
-          : warning.type === 'cell_deviation'
-            ? 'Celleavvik registrert på batteri'
-            : warning.type === 'low_battery_health'
-              ? 'Lav batterihelse registrert'
-              : t('dronelog.warningAltitude', 'Advarsel fra flylogg');
-        
-        await supabase.from('drone_log_entries').insert({
-          company_id: companyId,
-          user_id: user.id,
-          drone_id: droneId,
-          entry_date: new Date().toISOString().split('T')[0],
-          entry_type: 'Advarsel',
-          title,
-          description: warning.message,
-        });
+      const warning = warnings[i];
+      let title = warning.type === 'low_battery'
+        ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur')
+        : warning.type === 'cell_deviation'
+          ? 'Celleavvik registrert på batteri'
+          : warning.type === 'low_battery_health'
+            ? 'Lav batterihelse registrert'
+            : t('dronelog.warningAltitude', 'Advarsel fra flylogg');
+
+      // Save to each selected logbook target
+      for (const target of action.targetLogbooks) {
+        const [type, id] = target.split(':');
+        if (type === 'drone') {
+          await supabase.from('drone_log_entries').insert({
+            company_id: companyId,
+            user_id: user.id,
+            drone_id: id,
+            entry_date: new Date().toISOString().split('T')[0],
+            entry_type: 'Advarsel',
+            title,
+            description: warning.message,
+          });
+        } else if (type === 'equipment') {
+          await supabase.from('equipment_log_entries').insert({
+            company_id: companyId,
+            user_id: user.id,
+            equipment_id: id,
+            entry_date: new Date().toISOString().split('T')[0],
+            entry_type: 'Advarsel',
+            title,
+            description: warning.message,
+          });
+        }
+
+        // Track worst status per resource
+        const key = target;
+        if (!resourceStatuses[key] || statusPriority[action.newStatus] > statusPriority[resourceStatuses[key]]) {
+          resourceStatuses[key] = action.newStatus;
+        }
       }
     }
 
-    // Update drone status if needed
-    if (worstStatus !== 'Grønn') {
-      await supabase.from('drones').update({ status: worstStatus }).eq('id', droneId);
+    // Update statuses per resource
+    for (const [target, status] of Object.entries(resourceStatuses)) {
+      if (status === 'Grønn') continue;
+      const [type, id] = target.split(':');
+      if (type === 'drone') {
+        await supabase.from('drones').update({ status }).eq('id', id);
+      } else if (type === 'equipment') {
+        await supabase.from('equipment').update({ status }).eq('id', id);
+      }
     }
   };
 
@@ -772,7 +803,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await saveFlightEvents(matchedLog.id, result);
       // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
-      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
       await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
@@ -828,7 +859,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await saveLogbookEntries(logData.id, result.durationMinutes);
       }
       // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
-      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
 
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       onOpenChange(false);
@@ -874,7 +905,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await saveFlightEvents(logData.id, result);
         await saveLogbookEntries(logData.id, result.durationMinutes);
       }
-      if (result.warnings.length > 0 && selectedDroneId) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
 
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
@@ -1045,46 +1076,74 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number }>) => {
-    if (warnings.length === 0 || !selectedDroneId) return null;
+    if (warnings.length === 0 || (!selectedDroneId && selectedEquipment.length === 0)) return null;
 
     return (
       <div className="space-y-2">
         {warnings.map((w, i) => {
-          const action = warningActions[i] || { saveToLog: false, newStatus: 'Grønn' };
+          const action = warningActions[i] || { saveToLog: false, newStatus: 'Grønn', targetLogbooks: [] };
+          // Build available logbook targets
+          const availableTargets: Array<{ key: string; label: string; icon: React.ReactNode }> = [];
+          if (selectedDroneId) {
+            const drone = drones.find(d => d.id === selectedDroneId);
+            availableTargets.push({ key: `drone:${selectedDroneId}`, label: `${terminology.vehicle}: ${drone?.modell || ''}`, icon: <Plane className="w-3 h-3" /> });
+          }
+          selectedEquipment.forEach(eqId => {
+            const eq = equipmentList.find(e => e.id === eqId);
+            if (eq) availableTargets.push({ key: `equipment:${eqId}`, label: `${eq.type}: ${eq.navn}`, icon: <Wrench className="w-3 h-3" /> });
+          });
+
           return (
             <div key={i} className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 space-y-2">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
                 <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 ml-6">
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                  <Checkbox
-                    checked={action.saveToLog}
-                    onCheckedChange={(checked) => {
-                      setWarningActions(prev => ({ ...prev, [i]: { ...action, saveToLog: !!checked } }));
-                    }}
-                  />
-                  <span>Lagre i droneloggbok</span>
-                </label>
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span>Status:</span>
-                  <Select
-                    value={action.newStatus}
-                    onValueChange={(val) => {
-                      setWarningActions(prev => ({ ...prev, [i]: { ...action, newStatus: val } }));
-                    }}
-                  >
-                    <SelectTrigger className="h-6 w-24 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                      <SelectItem value="Gul">🟡 Gul</SelectItem>
-                      <SelectItem value="Rød">🔴 Rød</SelectItem>
-                    </SelectContent>
-                  </Select>
+              
+              {availableTargets.length > 0 && (
+                <div className="ml-6 space-y-1.5">
+                  <p className="text-xs text-muted-foreground font-medium">Lagre i loggbok:</p>
+                  {availableTargets.map(target => {
+                    const isChecked = action.targetLogbooks.includes(target.key);
+                    return (
+                      <label key={target.key} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const newTargets = checked
+                              ? [...action.targetLogbooks, target.key]
+                              : action.targetLogbooks.filter(t => t !== target.key);
+                            const newSaveToLog = newTargets.length > 0;
+                            setWarningActions(prev => ({
+                              ...prev,
+                              [i]: { ...action, targetLogbooks: newTargets, saveToLog: newSaveToLog }
+                            }));
+                          }}
+                        />
+                        <span className="flex items-center gap-1">{target.icon} {target.label}</span>
+                      </label>
+                    );
+                  })}
                 </div>
+              )}
+
+              <div className="flex items-center gap-1.5 text-xs ml-6">
+                <span>Status:</span>
+                <Select
+                  value={action.newStatus}
+                  onValueChange={(val) => {
+                    setWarningActions(prev => ({ ...prev, [i]: { ...action, newStatus: val } }));
+                  }}
+                >
+                  <SelectTrigger className="h-6 w-24 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
+                    <SelectItem value="Gul">🟡 Gul</SelectItem>
+                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           );
