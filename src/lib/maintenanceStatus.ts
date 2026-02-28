@@ -53,6 +53,13 @@ export const STATUS_PRIORITY: Record<Status, number> = {
 };
 
 /**
+ * Returns the worst (highest priority) of two statuses.
+ */
+export const worstStatus = (a: Status, b: Status): Status => {
+  return STATUS_PRIORITY[a] >= STATUS_PRIORITY[b] ? a : b;
+};
+
+/**
  * Interface for competencies with expiry dates and status flag
  */
 interface CompetencyItem {
