@@ -521,6 +521,41 @@ export const AddMissionDialog = ({
           if (documentsError) throw documentsError;
         }
 
+        // Auto-sync checklist_ids based on attached checklist documents
+        {
+          const checklistDocIds = selectedDocuments.filter(id => {
+            const doc = documents.find(d => d.id === id);
+            return doc?.kategori === "sjekklister";
+          });
+
+          // Get all document IDs that are checklists (to know which to remove)
+          const allChecklistDocIds = documents
+            .filter(d => d.kategori === "sjekklister")
+            .map(d => d.id);
+
+          // Fetch current checklist_ids from mission
+          const { data: currentMission } = await (supabase as any)
+            .from("missions")
+            .select("checklist_ids")
+            .eq("id", mission.id)
+            .single();
+
+          const currentIds: string[] = currentMission?.checklist_ids || [];
+
+          // Remove any checklist doc IDs that were un-selected, keep manually-linked ones
+          const withoutRemoved = currentIds.filter(
+            id => !allChecklistDocIds.includes(id) || checklistDocIds.includes(id)
+          );
+
+          // Merge in newly selected checklist doc IDs (deduplicated)
+          const merged = [...new Set([...withoutRemoved, ...checklistDocIds])];
+
+          await (supabase as any)
+            .from("missions")
+            .update({ checklist_ids: merged })
+            .eq("id", mission.id);
+        }
+
         toast.success(t('missions.missionUpdated'));
       } else {
         // INSERT mode
@@ -600,6 +635,21 @@ export const AddMissionDialog = ({
             .insert(documentsData);
           
           if (documentsError) throw documentsError;
+        }
+
+        // Auto-sync checklist_ids based on attached checklist documents
+        {
+          const checklistDocIds = selectedDocuments.filter(id => {
+            const doc = documents.find(d => d.id === id);
+            return doc?.kategori === "sjekklister";
+          });
+
+          if (checklistDocIds.length > 0) {
+            await (supabase as any)
+              .from("missions")
+              .update({ checklist_ids: checklistDocIds })
+              .eq("id", newMission.id);
+          }
         }
 
         // Send email notification for new mission
