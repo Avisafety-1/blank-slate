@@ -355,8 +355,13 @@ function parseCsvToResult(csvText: string) {
     const warnList = Array.from(appWarnings).slice(0, 5);
     warnings.push({ type: "app_warning", message: `App-advarsler: ${warnList.join("; ")}` });
   }
-  if (maxBattCellDev > 0.3) {
+  if (maxBattCellDev > 0.1) {
     warnings.push({ type: "cell_deviation", message: `Høy celleavvik: ${maxBattCellDev.toFixed(3)}V`, value: maxBattCellDev });
+  }
+
+  // Mirror LOW_BATTERY events as actionable warnings so checkbox appears
+  if (events.some((e: any) => e.type === "LOW_BATTERY") && !warnings.find((w: any) => w.type === "low_battery")) {
+    warnings.push({ type: "low_battery", message: `Lavt batteri registrert under flyging (${minBattery}%)`, value: minBattery });
   }
 
   for (let i = 1; i < positions.length; i++) {
