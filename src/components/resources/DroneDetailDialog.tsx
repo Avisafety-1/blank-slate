@@ -19,6 +19,7 @@ import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Drone {
   id: string;
@@ -60,6 +61,7 @@ interface DroneDetailDialogProps {
 export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
+  const queryClient = useQueryClient();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
@@ -599,9 +601,53 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
-                    {aggregatedStatus}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
+                      {aggregatedStatus}
+                    </Badge>
+                    {(drone.status === 'Gul' || drone.status === 'Rød') && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs h-6 px-2">
+                            Kvitter ut advarsel
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction onClick={async () => {
+                              if (!user || !companyId) return;
+                              const { error } = await supabase.from('drones').update({ status: 'Grønn' }).eq('id', drone.id);
+                              if (error) {
+                                toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                                return;
+                              }
+                              await supabase.from('drone_log_entries').insert({
+                                drone_id: drone.id,
+                                company_id: companyId,
+                                user_id: user.id,
+                                entry_date: new Date().toISOString().split('T')[0],
+                                entry_type: 'Kvittering',
+                                title: 'Advarsel kvittert ut',
+                                description: `Status endret fra ${drone.status} til Grønn`,
+                              });
+                              queryClient.invalidateQueries({ queryKey: ['drones'] });
+                              onDroneUpdated();
+                              toast.success('Advarsel kvittert ut — status satt til Grønn');
+                            }}>
+                              Kvitter ut
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </div>
               </div>
 

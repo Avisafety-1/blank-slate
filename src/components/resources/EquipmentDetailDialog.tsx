@@ -6,12 +6,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList } from "lucide-react";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
@@ -44,6 +46,7 @@ interface EquipmentDetailDialogProps {
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEquipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { isAdmin } = useAdminCheck();
   const { user, companyId } = useAuth();
+  const queryClient = useQueryClient();
   const { checklists } = useChecklists();
   const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);
   const [isEditing, setIsEditing] = useState(false);
@@ -309,6 +312,59 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
                 </div>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={equipment.status === 'Grønn' ? 'default' : equipment.status === 'Rød' ? 'destructive' : 'secondary'}>
+                      {equipment.status}
+                    </Badge>
+                    {(equipment.status === 'Gul' || equipment.status === 'Rød') && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs h-6 px-2">
+                            Kvitter ut advarsel
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction onClick={async () => {
+                              if (!user || !companyId) return;
+                              const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
+                              if (error) {
+                                toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                                return;
+                              }
+                              await supabase.from('equipment_log_entries').insert({
+                                equipment_id: equipment.id,
+                                company_id: companyId,
+                                user_id: user.id,
+                                entry_date: new Date().toISOString().split('T')[0],
+                                entry_type: 'Kvittering',
+                                title: 'Advarsel kvittert ut',
+                                description: `Status endret fra ${equipment.status} til Grønn`,
+                              });
+                              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+                              onEquipmentUpdated();
+                              toast.success('Advarsel kvittert ut — status satt til Grønn');
+                            }}>
+                              Kvitter ut
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall</p>
                   <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
