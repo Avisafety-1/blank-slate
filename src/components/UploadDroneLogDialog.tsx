@@ -14,6 +14,7 @@ import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, B
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 const parseFlightDate = (raw: string): Date | null => {
@@ -190,6 +191,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('method');
@@ -721,6 +723,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handleWarningsWithActions = async (droneId: string, warnings: Array<{ type: string; message: string; value?: number }>) => {
     if (!companyId || !user) return;
 
+    // Derive flight date from result.startTime, fall back to today
+    const flightDate = result?.startTime
+      ? (parseFlightDate(result.startTime)?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0])
+      : new Date().toISOString().split('T')[0];
+
     const statusPriority: Record<string, number> = { 'Grønn': 0, 'Gul': 1, 'Rød': 2 };
     // Track worst status per resource
     const resourceStatuses: Record<string, string> = {};
@@ -746,7 +753,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             company_id: companyId,
             user_id: user.id,
             drone_id: id,
-            entry_date: new Date().toISOString().split('T')[0],
+            entry_date: flightDate,
             entry_type: 'Advarsel',
             title,
             description: warning.message,
@@ -756,7 +763,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             company_id: companyId,
             user_id: user.id,
             equipment_id: id,
-            entry_date: new Date().toISOString().split('T')[0],
+            entry_date: flightDate,
             entry_type: 'Advarsel',
             title,
             description: warning.message,
@@ -776,9 +783,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (status === 'Grønn') continue;
       const [type, id] = target.split(':');
       if (type === 'drone') {
-        await supabase.from('drones').update({ status }).eq('id', id);
+        const { error } = await supabase.from('drones').update({ status }).eq('id', id);
+        if (error) {
+          console.error('Error updating drone status:', error);
+          toast.error(`Kunne ikke oppdatere dronestatus: ${error.message}`);
+        }
       } else if (type === 'equipment') {
-        await supabase.from('equipment').update({ status }).eq('id', id);
+        const { error } = await supabase.from('equipment').update({ status }).eq('id', id);
+        if (error) {
+          console.error('Error updating equipment status:', error);
+          toast.error(`Kunne ikke oppdatere utstyrsstatus: ${error.message}`);
+        }
       }
     }
   };
@@ -803,7 +818,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await saveFlightEvents(matchedLog.id, result);
       // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
-      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) {
+        await handleWarningsWithActions(selectedDroneId, result.warnings);
+        queryClient.invalidateQueries({ queryKey: ['drones'] });
+        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      }
       await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
@@ -859,7 +878,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await saveLogbookEntries(logData.id, result.durationMinutes);
       }
       // Drone flyvetimer is auto-updated by DB trigger trg_update_drone_hours
-      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) {
+        await handleWarningsWithActions(selectedDroneId, result.warnings);
+        queryClient.invalidateQueries({ queryKey: ['drones'] });
+        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      }
 
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       onOpenChange(false);
@@ -905,7 +928,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await saveFlightEvents(logData.id, result);
         await saveLogbookEntries(logData.id, result.durationMinutes);
       }
-      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) await handleWarningsWithActions(selectedDroneId, result.warnings);
+      if (result.warnings.length > 0 && (selectedDroneId || selectedEquipment.length > 0)) {
+        await handleWarningsWithActions(selectedDroneId, result.warnings);
+        queryClient.invalidateQueries({ queryKey: ['drones'] });
+        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      }
 
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
