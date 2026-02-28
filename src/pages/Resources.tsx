@@ -23,7 +23,7 @@ import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDia
 import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
-import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
@@ -119,17 +119,36 @@ const Resources = () => {
     }
     // 2. Skip network if offline
     if (!navigator.onLine) return;
-    // 3. Fetch fresh data
+    // 3. Fetch fresh data with nested accessories + equipment for aggregated status
     try {
       const { data, error } = await (supabase as any)
         .from("drones")
-        .select("*")
+        .select(`
+          *,
+          drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
+          drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager))
+        `)
         .eq("aktiv", true)
         .order("opprettet_dato", { ascending: false });
       
       if (error) throw error;
-      setDrones(data || []);
-      if (companyId) setCachedData(`offline_drones_${companyId}`, data || []);
+
+      // Calculate aggregated status for each drone
+      const dronesWithStatus = (data || []).map((drone: any) => {
+        const accessories = drone.drone_accessories || [];
+        const linkedEquipment = (drone.drone_equipment || [])
+          .map((link: any) => link.equipment)
+          .filter(Boolean);
+        const { status } = calculateDroneAggregatedStatus(
+          { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+          accessories,
+          linkedEquipment
+        );
+        return { ...drone, _aggregatedStatus: status };
+      });
+
+      setDrones(dronesWithStatus);
+      if (companyId) setCachedData(`offline_drones_${companyId}`, dronesWithStatus);
     } catch (err) {
       console.error("Error fetching drones:", err);
       toast.error(t('resources.couldNotLoadDrones'));
@@ -321,7 +340,7 @@ const Resources = () => {
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
                     if (droneStatusFilter !== "alle") {
-                      const status = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
+                      const status = drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
                       if (status !== droneStatusFilter) return false;
                     }
                     return true;
@@ -340,7 +359,7 @@ const Resources = () => {
                         <h3 className="font-semibold">{drone.modell}</h3>
                         <p className="text-sm text-muted-foreground">{drone.registrering}</p>
                       </div>
-                      <StatusBadge status={calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) as Status} />
+                      <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>{t('flight.flightHours')}: {drone.flyvetimer}</p>
@@ -356,7 +375,7 @@ const Resources = () => {
                       if (!(drone.modell?.toLowerCase().includes(searchLower) || drone.registrering?.toLowerCase().includes(searchLower) || drone.merknader?.toLowerCase().includes(searchLower))) return false;
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
-                    if (droneStatusFilter !== "alle" && calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14) !== droneStatusFilter) return false;
+                    if (droneStatusFilter !== "alle" && (drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) !== droneStatusFilter) return false;
                     return true;
                 }).length === 0 && (droneSearch || droneModelFilter !== "alle" || droneStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
