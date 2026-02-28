@@ -1,28 +1,38 @@
 
 
-## Problem
+## Three bugs to fix
 
-Two bugs in `supabase/functions/process-dronelog/index.ts`:
+### Bug 1: Drone and Equipment aggregated status ignores DB `status` field
 
-### 1. Low battery warning always shows -1%
-The LOW_BATTERY event mirror (line 363) uses `minBattery` in its message without checking if battery data was available. When `batteryIdx < 0`, `minBattery` is initialized to `-1` (line 208). Additionally, the field `BATTERY.isVoltageLow` (line 19) likely does not exist in the DroneLog API (not in the official field list), so the LOW_BATTERY event detection on line 305 may be matching an unintended column via the partial-match logic in `findHeaderIndex`, or firing incorrectly.
+In `Resources.tsx`, `_aggregatedStatus` for drones is calculated purely from maintenance dates (`neste_inspeksjon`, accessories, linked equipment). It never considers the DB `status` column (which gets set to "Gul"/"Rød" by warning log uploads). Same issue for equipment — line 483 uses `calculateMaintenanceStatus(item.neste_vedlikehold)` and ignores `item.status`.
 
-### 2. Cell deviation never calculated correctly
-The field `BATTERY.cellVoltageDeviation [V]` (line 19, used at line 113) does not exist in the DroneLog API. The API provides **individual cell voltages** (`BATTERY.cellVoltage1 [V]` through `BATTERY.cellVoltage6 [V]`), but these are not requested in the FIELDS list. So `battCellDevIdx` is always `-1`, `maxBattCellDev` stays at `0`, and the cell deviation warning on line 358 never triggers from actual data.
+**Fix in `Resources.tsx`**:
+- Drone: After computing `_aggregatedStatus` from `calculateDroneAggregatedStatus`, also compare with `drone.status` from DB and take the worst (highest priority).
+- Equipment: After computing maintenance status, compare with `item.status` from DB and take the worst.
 
-## Changes
+**Fix in `useStatusData.ts`**: Same pattern — the dashboard Status page also ignores DB `status` for equipment.
 
-### 1. Add individual cell voltage fields to FIELDS list
-Add `BATTERY.cellVoltage1 [V]` through `BATTERY.cellVoltage6 [V]` to the FIELDS constant (line 13-27).
+### Bug 2: Equipment Badge turns blue after "Kvitter ut"
 
-### 2. Calculate cell deviation from individual cells
-After parsing the header indices, find indices for cellVoltage1-6. In the row loop (line 233), read all 6 cell voltages, compute `max - min` of non-zero values as the deviation for that row, and track the maximum deviation across all rows. Remove reliance on the non-existent `BATTERY.cellVoltageDeviation [V]` field.
+In `EquipmentDetailDialog.tsx` line 318, the Badge uses:
+```
+variant={equipment.status === 'Grønn' ? 'default' : ...}
+```
+The `default` variant = `bg-primary` = blue. Should use `getStatusColorClasses` from `maintenanceStatus.ts` like the drone dialog does, with explicit color classes instead of Badge variants.
 
-### 3. Fix LOW_BATTERY mirror warning
-On line 363, add a guard: only push the low_battery warning if `minBattery >= 0` (i.e., battery data was actually available). Change the message to use the actual battery percentage only when valid.
+**Fix**: Import `getStatusColorClasses` and `calculateMaintenanceStatus` in `EquipmentDetailDialog.tsx`. Replace the Badge variant logic with:
+```tsx
+<Badge className={`${getStatusColorClasses(equipment.status as Status)} border`}>
+```
 
-### 4. Remove non-existent fields from FIELDS
-Remove `BATTERY.cellVoltageDeviation [V]` and `BATTERY.isVoltageLow` from the FIELDS list since they don't exist in the DroneLog API. The LOW_BATTERY detection should rely on the existing `minBattery < 20%` check and/or individual cell voltage analysis instead.
+### Bug 3: "Kvitter ut" visibility should also check aggregated status
 
-### 5. Redeploy edge function
+In `DroneDetailDialog.tsx` line 608, the "Kvitter ut" button shows when `drone.status === 'Gul' || drone.status === 'Rød'`. This is correct for the DB status field. No change needed here — it correctly checks the DB field that was set by the warning.
+
+### Files to change
+
+1. **`src/pages/Resources.tsx`** — Factor in DB `status` when computing displayed status for both drones and equipment
+2. **`src/components/resources/EquipmentDetailDialog.tsx`** — Use `getStatusColorClasses` for Badge styling instead of variant-based coloring
+3. **`src/hooks/useStatusData.ts`** — Factor in DB `status` for equipment status counting
+4. **`src/lib/maintenanceStatus.ts`** — Add a small helper `worstStatus(a, b)` to pick the worst of two statuses
 
