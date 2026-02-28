@@ -81,14 +81,14 @@ serve(async (req: Request): Promise<Response> => {
       </p>
 
       <div style="text-align:center;margin:24px 0;">
-        <a href="${webcalUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
-          📅 Åpne i kalenderappen
+        <a href="${feedUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
+          📅 Åpne kalenderlenke
         </a>
       </div>
 
       <p style="margin:16px 0 0 0;font-size:13px;color:#888;text-align:center;">
-        Fungerer fra telefon og desktop e-postklient (Apple Mail, Outlook).<br/>
-        Bruker du webmail (Gmail, Outlook.com)? Kopier lenken under i stedet.
+        Noen e-postapper (spesielt på iPhone/iPad) blokkerer webcal://-lenker.<br/>
+        Bruk knappen over, og lim inn lenken under i kalenderappen via «Abonner fra URL».
       </p>
     </div>
 
