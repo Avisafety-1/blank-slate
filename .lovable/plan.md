@@ -1,21 +1,51 @@
 
 
-## Analyse
+## Ressurskalender — Tidslinjevisning for ressurser
 
-Når brukeren klikker `https://`-lenken i e-posten, åpner nettleseren den. Selv om serveren returnerer `Content-Type: text/calendar` med `Content-Disposition: attachment`, vil de fleste mobile e-postklienter først åpne en nettleser som så laster ned .ics-filen — ikke ideelt.
+### Konsept
+En ny fane/seksjon på Kalender-siden (`/kalender`) som viser en visuell tidslinje (Gantt-lignende) for droner, utstyr og personell. Hver ressurs vises som en rad, og oppdragstildelinger vises som fargede blokker langs tidsaksen. Konflikter (overlappende tildelinger) markeres visuelt med rød/oransje indikator.
 
-**`webcal://`-protokollen** er den eneste måten å trigge direkte kalender-abonnement. Problemet er at webmail (Gmail, Outlook web) blokkerer `webcal://`-lenker.
+### Visning
+```text
+  Ressurskalender — Uke 12, 2026
+  ──────────────────────────────────────────────
+           Man     Tir     Ons     Tor     Fre
+  ──────────────────────────────────────────────
+  DJI M30  [███ Oppdrag A ███]
+                           [██ Oppdrag B ██]
+  ──────────────────────────────────────────────
+  Mavic 3         [█ Oppdrag C █]
+  ──────────────────────────────────────────────
+  Ola N.   [███ Oppdrag A ███]
+                   [██ Oppdrag C ██]  ⚠️ konflikt
+  ──────────────────────────────────────────────
+```
 
-## Løsning
+### Implementering
 
-Bytt hovedknappen tilbake til `webcal://` — men **bare for den store CTA-knappen**. Behold `https://`-lenken som backup for kopier/lim-inn. Legg til en tydelig forklaring om at knappen fungerer best fra telefon eller desktop e-postklient (Outlook, Apple Mail), og at webmail-brukere bør kopiere lenken manuelt.
+**1. Ny komponent `src/components/dashboard/ResourceTimeline.tsx`**
+- Henter alle oppdrag med status "Planlagt"/"Pågående" og deres tilknyttede ressurser via `mission_drones`, `mission_personnel`, `mission_equipment`
+- Grupperer per ressurs (drone/person/utstyr)
+- Rendrer en horisontal tidslinje for gjeldende uke med navigasjon forover/bakover
+- Oppdragsblokker vises som fargede barer
+- Overlappende tildelinger vises med advarsel-ikon og rød kantlinje
+- Bruker eksisterende `checkTimeOverlap`-logikk fra `useResourceConflicts.ts`
+- Klikk på en blokk åpner `MissionDetailDialog`
 
-De fleste brukere leser e-post på telefon, der `webcal://` fungerer utmerket i standard e-postapper.
+**2. Endre `src/pages/Kalender.tsx`**
+- Legg til en Tabs-komponent (Radix Tabs, allerede installert) med to faner:
+  - "Månedsoversikt" (eksisterende kalendervisning)
+  - "Ressurskalender" (ny tidslinje-komponent)
+- All eksisterende kode forblir uendret, bare wrappet i en tab
 
-### Endringer i `supabase/functions/send-calendar-link/index.ts`
+**3. Ingen databaseendringer**
+- All data finnes allerede i `missions`, `mission_drones`, `mission_personnel`, `mission_equipment`
+- RLS-policyer dekker allerede lesetilgang
 
-1. Hovedknappen: endre `href` fra `feedUrl` tilbake til `webcalUrl` med teksten "Åpne i kalenderappen"
-2. Legg til en merknad under knappen: "Fungerer fra telefon og desktop e-postklient. Bruker du webmail? Kopier lenken under."
-3. Behold `https://`-lenken i "Manuelt oppsett"-seksjonen som fallback for webmail-brukere
-4. Fjern den separate sekundære webcal-lenken (duplikat nå)
+### Omfang
+- Uke-basert visning med pil-navigasjon
+- Tre seksjoner: Droner, Personell, Utstyr
+- Automatisk konflikt-deteksjon med visuell markering
+- Responsiv: på mobil stables radene vertikalt med kompakt visning
+- Klikk på oppdragsblokk viser detaljer
 
