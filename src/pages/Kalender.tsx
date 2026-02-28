@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar as CalendarIcon, Plus, Download, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Download, ChevronDown, LayoutGrid, GanttChart } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ResourceTimeline } from "@/components/dashboard/ResourceTimeline";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -727,187 +729,212 @@ export default function Kalender() {
       <div className="relative z-10 w-full">
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Calendar */}
-            <div className="flex-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6">
-              <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
-                </div>
-
-                <div className="flex flex-row gap-2">
-                  <Button 
-                    variant="outline" 
-                    size={isMobile ? "sm" : "default"}
-                    className="gap-2"
-                    onClick={() => setExportDialogOpen(true)}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Synkroniser</span>
-                  </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size={isMobile ? "sm" : "default"} className="gap-2">
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Legg til oppføring</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-                        Oppdrag
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-                        Hendelse
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-                        Dokument
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
-                        Nyhet
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
-                        Annet
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={handleDateClick}
-                locale={nb}
-                className={cn("rounded-md border-0 pointer-events-auto w-full")}
-                classNames={{
-                  months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
-                  month: "space-y-4 w-full",
-                  caption: "flex justify-center pt-1 relative items-center",
-                  caption_label: "text-lg font-medium",
-                  nav: "space-x-1 flex items-center",
-                  nav_button: cn(
-                    "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100"
-                  ),
-                  nav_button_previous: "absolute left-1",
-                  nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse space-y-1",
-                  head_row: "flex w-full",
-                  head_cell: "text-muted-foreground rounded-md w-full font-normal text-sm",
-                  row: "flex w-full mt-2",
-                  cell: cn(
-                    "relative p-0 text-center focus-within:relative focus-within:z-20 w-full min-h-[70px] sm:min-h-[120px]",
-                    "[&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-outside)]:bg-accent/50"
-                  ),
-                  day: cn(
-                    "h-full w-full p-1 sm:p-2 font-normal hover:bg-accent/30 hover:text-accent-foreground rounded-md",
-                    "flex flex-col items-start justify-start gap-1"
-                  ),
-                  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                  day_today: "bg-accent text-accent-foreground font-semibold",
-                  day_outside: "text-muted-foreground opacity-50",
-                  day_disabled: "text-muted-foreground opacity-50",
-                }}
-                components={{
-                  Day: ({ date: dayDate, ...props }) => {
-                    const dayEvents = getEventsForDate(dayDate);
-
-                    if (isMobile) {
-                      const maxDots = 4;
-                      const displayDots = dayEvents.slice(0, maxDots);
-                      const hasMore = dayEvents.length > maxDots;
-
-                      return (
-                        <button
-                          {...props}
-                          onClick={() => handleDateClick(dayDate)}
-                          className="h-full w-full p-1 font-normal hover:bg-accent/30 hover:text-accent-foreground rounded-md flex flex-col items-center justify-start gap-1"
-                        >
-                          <span className="text-sm font-medium">{format(dayDate, "d")}</span>
-                          {displayDots.length > 0 && (
-                            <div className="flex flex-wrap gap-0.5 justify-center mt-0.5">
-                              {displayDots.map((event, idx) => (
-                                <div
-                                  key={event.id || idx}
-                                  className={cn("w-2 h-2 rounded-full", getEventDotColor(event.type))}
-                                />
-                              ))}
-                              {hasMore && <span className="text-[8px] text-muted-foreground">+</span>}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    }
-
-                    // Desktop: tekstbasert visning
-                    const displayEvents = dayEvents.slice(0, 2);
-                    const remainingCount = dayEvents.length - 2;
-
-                    return (
-                      <button
-                        {...props}
-                        onClick={() => handleDateClick(dayDate)}
-                        className={cn(
-                          "h-full w-full p-2 font-normal hover:bg-accent/30 hover:text-accent-foreground rounded-md",
-                          "flex flex-col items-start justify-start gap-1 text-left"
-                        )}
-                      >
-                        <span className="text-sm font-medium mb-1">{format(dayDate, "d")}</span>
-                        {displayEvents.map((event, idx) => (
-                          <div
-                            key={event.id || idx}
-                            className={cn(
-                              "text-xs truncate w-full px-1.5 py-1 rounded text-foreground cursor-pointer transition-colors font-medium border",
-                              getEventBackgroundColor(event.type)
-                            )}
-                            title={event.title}
-                          >
-                            {event.title}
-                          </div>
-                        ))}
-                        {remainingCount > 0 && (
-                          <span className="text-[10px] text-muted-foreground px-1">+{remainingCount} mer</span>
-                        )}
-                      </button>
-                    );
-                  },
-                }}
-              />
-
-              {/* Fargelegende */}
-              <div className="mt-6 pt-4 border-t border-border">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Fargekode:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Oppdrag</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Hendelse</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Dokument</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Vedlikehold</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Nyhet</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm">Annet</span>
-                  </div>
-                </div>
-              </div>
+          <Tabs defaultValue="month" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="bg-card/50 backdrop-blur-sm">
+                <TabsTrigger value="month" className="gap-1.5">
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="hidden sm:inline">Månedsoversikt</span>
+                </TabsTrigger>
+                <TabsTrigger value="resources" className="gap-1.5">
+                  <GanttChart className="w-4 h-4" />
+                  <span className="hidden sm:inline">Ressurskalender</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-          </div>
+            <TabsContent value="month">
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Calendar */}
+                <div className="flex-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6">
+                  <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                      <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
+                    </div>
+
+                    <div className="flex flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        size={isMobile ? "sm" : "default"}
+                        className="gap-2"
+                        onClick={() => setExportDialogOpen(true)}
+                      >
+                        <Download className="w-4 h-4" />
+                        <span className="hidden sm:inline">Synkroniser</span>
+                      </Button>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size={isMobile ? "sm" : "default"} className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            <span className="hidden sm:inline">Legg til oppføring</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
+                            Oppdrag
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
+                            Hendelse
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
+                            Dokument
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
+                            Nyhet
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
+                            Annet
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateClick}
+                    locale={nb}
+                    className={cn("rounded-md border-0 pointer-events-auto w-full")}
+                    classNames={{
+                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
+                      month: "space-y-4 w-full",
+                      caption: "flex justify-center pt-1 relative items-center",
+                      caption_label: "text-lg font-medium",
+                      nav: "space-x-1 flex items-center",
+                      nav_button: cn(
+                        "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100"
+                      ),
+                      nav_button_previous: "absolute left-1",
+                      nav_button_next: "absolute right-1",
+                      table: "w-full border-collapse space-y-1",
+                      head_row: "flex w-full",
+                      head_cell: "text-muted-foreground rounded-md w-full font-normal text-sm",
+                      row: "flex w-full mt-2",
+                      cell: cn(
+                        "relative p-0 text-center focus-within:relative focus-within:z-20 w-full min-h-[70px] sm:min-h-[120px]",
+                        "[&:has([aria-selected])]:bg-accent"
+                      ),
+                      day: cn(
+                        "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-md hover:bg-accent/50 transition-colors min-h-[70px] sm:min-h-[120px]"
+                      ),
+                      day_selected: "bg-accent text-accent-foreground",
+                      day_today: "bg-primary/10 text-primary font-bold",
+                      day_outside: "text-muted-foreground opacity-50",
+                    }}
+                    components={{
+                      DayContent: ({ date: dayDate }) => {
+                        const dayEvents = dayDate ? getEventsForDate(dayDate) : [];
+                        return (
+                          <div className="flex flex-col items-start w-full h-full p-1 sm:p-2">
+                            <span className="text-xs sm:text-sm leading-none mb-1">
+                              {dayDate?.getDate()}
+                            </span>
+                            <div className="flex flex-wrap gap-0.5 sm:gap-1 w-full">
+                              {dayEvents.slice(0, isMobile ? 2 : 4).map((event, index) => (
+                                <div
+                                  key={event.id || index}
+                                  className={cn(
+                                    "w-full text-left text-[9px] sm:text-[10px] leading-tight truncate px-0.5 sm:px-1 py-0.5 rounded border",
+                                    getEventBackgroundColor(event.type)
+                                  )}
+                                  title={event.title}
+                                >
+                                  <span className="hidden sm:inline">{event.title}</span>
+                                  <span className="sm:hidden">
+                                    <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", getEventDotColor(event.type))} />
+                                  </span>
+                                </div>
+                              ))}
+                              {dayEvents.length > (isMobile ? 2 : 4) && (
+                                <span className="text-[9px] text-muted-foreground">
+                                  +{dayEvents.length - (isMobile ? 2 : 4)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      },
+                    }}
+                  />
+                </div>
+
+                {/* Sidebar */}
+                <div className="w-full lg:w-72 space-y-4">
+                  {/* Upcoming events */}
+                  <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
+                    <h3 className="text-sm font-semibold mb-3">Kommende hendelser</h3>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {allEvents
+                        .filter((e) => e.date >= new Date())
+                        .sort((a, b) => a.date.getTime() - b.date.getTime())
+                        .slice(0, 8)
+                        .map((event, index) => (
+                          <div
+                            key={event.id || index}
+                            className="flex items-start gap-2 p-2 rounded-md hover:bg-accent/30 cursor-pointer transition-colors"
+                            onClick={(e) => handleEventClick(event, e)}
+                          >
+                            <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", getEventDotColor(event.type))} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs sm:text-sm font-medium truncate">{event.title}</p>
+                              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                {format(event.date, "dd. MMM yyyy", { locale: nb })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      {allEvents.filter((e) => e.date >= new Date()).length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          Ingen kommende hendelser
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
+                    <h3 className="text-sm font-semibold mb-3">Fargeforklaring</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Oppdrag</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Hendelse</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Dokument</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Vedlikehold</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Nyhet</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">Annet</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </TabsContent>
+
+            <TabsContent value="resources">
+              <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6">
+                <ResourceTimeline />
+              </div>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
