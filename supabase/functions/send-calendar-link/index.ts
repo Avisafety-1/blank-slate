@@ -81,14 +81,23 @@ serve(async (req: Request): Promise<Response> => {
       </p>
 
       <div style="text-align:center;margin:24px 0;">
-        <a href="${feedUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
-          📅 Åpne kalenderlenke
-        </a>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto;">
+          <tr>
+            <td style="border-radius:8px;background:#1a1a2e;">
+              <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;line-height:1.2;">
+                📅 Åpne kalenderlenke
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
 
-      <p style="margin:16px 0 0 0;font-size:13px;color:#888;text-align:center;">
-        Noen e-postapper (spesielt på iPhone/iPad) blokkerer webcal://-lenker.<br/>
-        Bruk knappen over, og lim inn lenken under i kalenderappen via «Abonner fra URL».
+      <p style="margin:16px 0 8px 0;font-size:13px;color:#888;text-align:center;">
+        Noen e-postapper (spesielt på iPhone/iPad) blokkerer enkelte lenketyper.<br/>
+        Fungerer ikke knappen? Trykk direkte på lenken under eller kopier den inn i kalenderappen via «Abonner fra URL».
+      </p>
+      <p style="margin:0 0 4px 0;text-align:center;word-break:break-all;">
+        <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#1a1a2e;text-decoration:underline;">${feedUrl}</a>
       </p>
     </div>
 
