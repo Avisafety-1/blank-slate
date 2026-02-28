@@ -459,13 +459,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const mapped: DjiLog[] = rawLogs.map((l: any) => ({
         id: String(l.id),
         date: l.timestamp ? format(new Date(l.timestamp), 'dd.MM.yyyy HH:mm') : l.date || '',
+        _timestamp: l.timestamp || 0,
         duration: l.totalTime ? Math.round(l.totalTime / 1000) : l.duration || 0,
         aircraft: l.aircraftName || l.aircraft || '',
         fileName: l.fileName || '',
         totalDistance: l.totalDistance || 0,
         maxHeight: l.maxHeight || 0,
         url: l.downloadUrl || l.url || '',
-      }));
+      })).sort((a: any, b: any) => b._timestamp - a._timestamp);
       if (createdAfterId) {
         setDjiLogs(prev => [...prev, ...mapped]);
       } else {
