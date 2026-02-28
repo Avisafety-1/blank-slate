@@ -1,18 +1,21 @@
 
 
-## Problem
+## Analyse
 
-The "Legg til i kalender" button in the email uses a `webcal://` protocol URL. Most email clients (Gmail, Outlook web, Apple Mail) strip or block non-http(s) links, making the button unclickable.
+Når brukeren klikker `https://`-lenken i e-posten, åpner nettleseren den. Selv om serveren returnerer `Content-Type: text/calendar` med `Content-Disposition: attachment`, vil de fleste mobile e-postklienter først åpne en nettleser som så laster ned .ics-filen — ikke ideelt.
 
-## Solution
+**`webcal://`-protokollen** er den eneste måten å trigge direkte kalender-abonnement. Problemet er at webmail (Gmail, Outlook web) blokkerer `webcal://`-lenker.
 
-Change the email to use the regular `https://` URL for the main button and the manual copy section. Add the `webcal://` link as a secondary option with a note that it works best when opened from a phone/desktop mail client.
+## Løsning
 
-### Changes to `supabase/functions/send-calendar-link/index.ts`
+Bytt hovedknappen tilbake til `webcal://` — men **bare for den store CTA-knappen**. Behold `https://`-lenken som backup for kopier/lim-inn. Legg til en tydelig forklaring om at knappen fungerer best fra telefon eller desktop e-postklient (Outlook, Apple Mail), og at webmail-brukere bør kopiere lenken manuelt.
 
-1. Change the main "Legg til i kalender" button `href` from `webcalUrl` to the regular `feedUrl` (https)
-2. Add a secondary row mentioning the `webcal://` link for users on native mail apps
-3. Keep the manual URL section with the `https://` feed URL as-is
+De fleste brukere leser e-post på telefon, der `webcal://` fungerer utmerket i standard e-postapper.
 
-This ensures the button is always clickable in all email clients. Users can copy the https URL and paste it into their calendar app's "subscribe from URL" feature.
+### Endringer i `supabase/functions/send-calendar-link/index.ts`
+
+1. Hovedknappen: endre `href` fra `feedUrl` tilbake til `webcalUrl` med teksten "Åpne i kalenderappen"
+2. Legg til en merknad under knappen: "Fungerer fra telefon og desktop e-postklient. Bruker du webmail? Kopier lenken under."
+3. Behold `https://`-lenken i "Manuelt oppsett"-seksjonen som fallback for webmail-brukere
+4. Fjern den separate sekundære webcal-lenken (duplikat nå)
 
