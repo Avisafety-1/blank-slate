@@ -1,28 +1,18 @@
 
 
-## Plan: Send kalender-abonnementslenke på e-post via SMTP (denomailer)
+## Problem
 
-### Endringer
+The "Legg til i kalender" button in the email uses a `webcal://` protocol URL. Most email clients (Gmail, Outlook web, Apple Mail) strip or block non-http(s) links, making the button unclickable.
 
-**1. Ny edge function `supabase/functions/send-calendar-link/index.ts`**
-- Bruker denomailer/SMTPClient og eksisterende `getEmailConfig()` fra `_shared/email-config.ts` — samme mønster som alle andre e-postfunksjoner
-- Mottar `{ userId, feedUrl, companyId }` fra frontend
-- Henter brukerens e-post via `supabase.auth.admin.getUserById()`
-- Sender en HTML-e-post med:
-  - Klikkbar `webcal://`-lenke (erstatter `https://` med `webcal://`) som åpner kalenderappen direkte
-  - Vanlig URL som backup
-  - Instruksjoner for Google Calendar, iPhone og Outlook
-- Bruker selskapets SMTP-konfigurasjon via `getEmailConfig(companyId)`
+## Solution
 
-**2. `supabase/config.toml`** — Legg til `[functions.send-calendar-link]` med `verify_jwt = true`
+Change the email to use the regular `https://` URL for the main button and the manual copy section. Add the `webcal://` link as a secondary option with a note that it works best when opened from a phone/desktop mail client.
 
-**3. `src/components/dashboard/CalendarSubscriptionSection.tsx`**
-- Legg til en "Send på e-post"-knapp (Mail-ikon) ved siden av kopier-knappen
-- Kaller `supabase.functions.invoke('send-calendar-link', { body: { userId, feedUrl, companyId } })`
-- Viser loading-state og suksess-toast
+### Changes to `supabase/functions/send-calendar-link/index.ts`
 
-### Filer
-1. `supabase/functions/send-calendar-link/index.ts` (ny)
-2. `supabase/config.toml` (oppdater)
-3. `src/components/dashboard/CalendarSubscriptionSection.tsx` (oppdater)
+1. Change the main "Legg til i kalender" button `href` from `webcalUrl` to the regular `feedUrl` (https)
+2. Add a secondary row mentioning the `webcal://` link for users on native mail apps
+3. Keep the manual URL section with the `https://` feed URL as-is
+
+This ensures the button is always clickable in all email clients. Users can copy the https URL and paste it into their calendar app's "subscribe from URL" feature.
 
