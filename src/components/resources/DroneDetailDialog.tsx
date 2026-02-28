@@ -18,7 +18,8 @@ import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
-import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { Status } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Drone {
@@ -507,11 +508,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   // Calculate aggregated status based on drone + accessories + linked equipment
   const linkedEquipmentData = linkedEquipment.map((link: any) => link.equipment).filter(Boolean);
-  const { status: aggregatedStatus, affectedItems } = calculateDroneAggregatedStatus(
+  const { status: maintenanceAggregated, affectedItems } = calculateDroneAggregatedStatus(
     { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
     accessories,
     linkedEquipmentData
   );
+  const dbStatus = (drone.status as Status) || "Grønn";
+  const aggregatedStatus = worstStatus(maintenanceAggregated, dbStatus);
   const droneOwnStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
 
   // Calculate payload status
