@@ -1,32 +1,28 @@
 
 
-## Plan
+## Problem
 
-Three changes from the approved plan, plus the new "acknowledge warning" feature.
+Two bugs in `supabase/functions/process-dronelog/index.ts`:
 
-### 1. Fix warning logbook entry date (`UploadDroneLogDialog.tsx`)
+### 1. Low battery warning always shows -1%
+The LOW_BATTERY event mirror (line 363) uses `minBattery` in its message without checking if battery data was available. When `batteryIdx < 0`, `minBattery` is initialized to `-1` (line 208). Additionally, the field `BATTERY.isVoltageLow` (line 19) likely does not exist in the DroneLog API (not in the official field list), so the LOW_BATTERY event detection on line 305 may be matching an unintended column via the partial-match logic in `findHeaderIndex`, or firing incorrectly.
 
-In `handleWarningsWithActions`, replace `new Date().toISOString().split('T')[0]` (lines 749 and 759) with the flight date from `result.startTime`. Fall back to today if unavailable.
+### 2. Cell deviation never calculated correctly
+The field `BATTERY.cellVoltageDeviation [V]` (line 19, used at line 113) does not exist in the DroneLog API. The API provides **individual cell voltages** (`BATTERY.cellVoltage1 [V]` through `BATTERY.cellVoltage6 [V]`), but these are not requested in the FIELDS list. So `battCellDevIdx` is always `-1`, `maxBattCellDev` stays at `0`, and the cell deviation warning on line 358 never triggers from actual data.
 
-### 2. Add error handling to status updates (`UploadDroneLogDialog.tsx`)
+## Changes
 
-Capture errors from the `supabase.from('drones').update(...)` and `supabase.from('equipment').update(...)` calls (lines 779, 781). Show toast error on failure.
+### 1. Add individual cell voltage fields to FIELDS list
+Add `BATTERY.cellVoltage1 [V]` through `BATTERY.cellVoltage6 [V]` to the FIELDS constant (line 13-27).
 
-### 3. Invalidate query cache after warnings saved (`UploadDroneLogDialog.tsx`)
+### 2. Calculate cell deviation from individual cells
+After parsing the header indices, find indices for cellVoltage1-6. In the row loop (line 233), read all 6 cell voltages, compute `max - min` of non-zero values as the deviation for that row, and track the maximum deviation across all rows. Remove reliance on the non-existent `BATTERY.cellVoltageDeviation [V]` field.
 
-Import `useQueryClient`. After `handleWarningsWithActions` completes successfully, call `queryClient.invalidateQueries` for `['drones']` and `['equipment']` keys.
+### 3. Fix LOW_BATTERY mirror warning
+On line 363, add a guard: only push the low_battery warning if `minBattery >= 0` (i.e., battery data was actually available). Change the message to use the actual battery percentage only when valid.
 
-### 4. Add "Kvitter ut advarsel" (Acknowledge warning) button
+### 4. Remove non-existent fields from FIELDS
+Remove `BATTERY.cellVoltageDeviation [V]` and `BATTERY.isVoltageLow` from the FIELDS list since they don't exist in the DroneLog API. The LOW_BATTERY detection should rely on the existing `minBattery < 20%` check and/or individual cell voltage analysis instead.
 
-**DroneDetailDialog.tsx**: When the drone's DB `status` field is "Gul" or "Rød" (not from maintenance date calculation, but from a manually set warning status), show a button "Kvitter ut advarsel — Sett status til Grønn" next to the status badge. On click:
-- Update `drones.status` to "Grønn" in DB
-- Insert a logbook entry in `drone_log_entries` with `entry_type: 'Kvittering'` documenting the acknowledgment
-- Invalidate queries and refresh
-
-**EquipmentDetailDialog.tsx**: Same pattern — when `equipment.status` is "Gul" or "Rød", show a "Kvitter ut" button. On click:
-- Update `equipment.status` to "Grønn"
-- Insert entry in `equipment_log_entries` with `entry_type: 'Kvittering'`
-- Refresh data
-
-The acknowledge button will use an `AlertDialog` confirmation to prevent accidental clicks, asking "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+### 5. Redeploy edge function
 
