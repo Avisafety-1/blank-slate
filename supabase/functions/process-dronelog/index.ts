@@ -16,7 +16,8 @@ const FIELDS = [
   "OSD.goHomeStatus",
   "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
   "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
-  "BATTERY.cellVoltageDeviation [V]","BATTERY.isVoltageLow",
+  "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
+  "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
   "BATTERY.goHomeStatus",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
@@ -110,8 +111,14 @@ function parseCsvToResult(csvText: string) {
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
   const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
-  const battCellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
-  const battIsLowIdx = findHeaderIndex(headers, "BATTERY.isVoltageLow");
+  // Individual cell voltage indices for manual deviation calculation
+  const cellVoltIdx1 = findHeaderIndex(headers, "BATTERY.cellVoltage1 [V]");
+  const cellVoltIdx2 = findHeaderIndex(headers, "BATTERY.cellVoltage2 [V]");
+  const cellVoltIdx3 = findHeaderIndex(headers, "BATTERY.cellVoltage3 [V]");
+  const cellVoltIdx4 = findHeaderIndex(headers, "BATTERY.cellVoltage4 [V]");
+  const cellVoltIdx5 = findHeaderIndex(headers, "BATTERY.cellVoltage5 [V]");
+  const cellVoltIdx6 = findHeaderIndex(headers, "BATTERY.cellVoltage6 [V]");
+  const cellVoltIndices = [cellVoltIdx1, cellVoltIdx2, cellVoltIdx3, cellVoltIdx4, cellVoltIdx5, cellVoltIdx6];
 
   // RTH indices
   const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
@@ -223,7 +230,6 @@ function parseCsvToResult(csvText: string) {
   // State tracking for event detection
   let prevAppWarn = "";
   let prevGoHomeStatus = "";
-  let prevBattIsLow = "";
 
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
 
@@ -244,10 +250,8 @@ function parseCsvToResult(csvText: string) {
     const gpsSats = gpsNumIdx >= 0 ? parseInt(cols[gpsNumIdx]) : NaN;
     const battTemp = battTempIdx >= 0 ? parseFloat(cols[battTempIdx]) : NaN;
     const battVolt = battVoltIdx >= 0 ? parseFloat(cols[battVoltIdx]) : NaN;
-    const battCellDev = battCellDevIdx >= 0 ? parseFloat(cols[battCellDevIdx]) : NaN;
     const flycState = flycStateIdx >= 0 ? cols[flycStateIdx] : "";
     const appWarn = appWarnIdx >= 0 ? cols[appWarnIdx] : "";
-    const battIsLow = battIsLowIdx >= 0 ? cols[battIsLowIdx] : "";
 
     // RTH status from multiple sources
     const osdGoHome = osdGoHomeIdx >= 0 ? cols[osdGoHomeIdx] : "";
@@ -271,7 +275,15 @@ function parseCsvToResult(csvText: string) {
       if (battTemp < minBattTemp) minBattTemp = battTemp;
     }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
-    if (!isNaN(battCellDev) && battCellDev > maxBattCellDev) maxBattCellDev = battCellDev;
+    // Calculate cell deviation from individual cell voltages
+    const cellVoltages = cellVoltIndices
+      .filter(idx => idx >= 0)
+      .map(idx => parseFloat(cols[idx]))
+      .filter(v => !isNaN(v) && v > 0);
+    if (cellVoltages.length >= 2) {
+      const rowDev = Math.max(...cellVoltages) - Math.min(...cellVoltages);
+      if (rowDev > maxBattCellDev) maxBattCellDev = rowDev;
+    }
     if (!isNaN(gpsSats)) {
       if (gpsSats < minGpsSats) minGpsSats = gpsSats;
       if (gpsSats > maxGpsSats) maxGpsSats = gpsSats;
@@ -301,11 +313,12 @@ function parseCsvToResult(csvText: string) {
     }
     prevGoHomeStatus = currentGoHome;
 
-    // Low battery voltage event
-    if (battIsLow && battIsLow.toLowerCase() === "true" && prevBattIsLow.toLowerCase() !== "true") {
-      events.push({ type: "LOW_BATTERY", message: "Battery voltage low detected", t_offset_ms: offsetMs, raw_field: "BATTERY.isVoltageLow", raw_value: battIsLow });
+    // Low battery detection from charge level dropping below 20%
+    if (!isNaN(battery) && battery < 20 && battery >= 0) {
+      if (!events.some((e: any) => e.type === "LOW_BATTERY")) {
+        events.push({ type: "LOW_BATTERY", message: `Battery charge low: ${battery}%`, t_offset_ms: offsetMs, raw_field: "BATTERY.chargeLevel [%]", raw_value: String(battery) });
+      }
     }
-    prevBattIsLow = battIsLow;
 
     // Also detect RTH from flycState
     if (flycState && (flycState.toLowerCase() === "gohome" || flycState.toLowerCase() === "gohome_avoid")) {
@@ -359,8 +372,8 @@ function parseCsvToResult(csvText: string) {
     warnings.push({ type: "cell_deviation", message: `Høy celleavvik: ${maxBattCellDev.toFixed(3)}V`, value: maxBattCellDev });
   }
 
-  // Mirror LOW_BATTERY events as actionable warnings so checkbox appears
-  if (events.some((e: any) => e.type === "LOW_BATTERY") && !warnings.find((w: any) => w.type === "low_battery")) {
+  // Mirror LOW_BATTERY events as actionable warnings so checkbox appears (only if valid battery data)
+  if (minBattery >= 0 && events.some((e: any) => e.type === "LOW_BATTERY") && !warnings.find((w: any) => w.type === "low_battery")) {
     warnings.push({ type: "low_battery", message: `Lavt batteri registrert under flyging (${minBattery}%)`, value: minBattery });
   }
 
