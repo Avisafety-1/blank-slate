@@ -599,58 +599,32 @@ Deno.serve(async (req) => {
           return await uploadRes.text();
         };
 
-        // ── Route A (primary): POST /logs with downloadUrl ──
-        // The log list response includes a downloadUrl. Pass it directly to POST /logs
-        // so DroneLog fetches the file server-side — no download+re-upload needed.
+        // ── Download file from DJI Cloud, then upload via /logs/upload ──
         const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-        console.log(`[process-dronelog] POST /logs with url=${logUrl.slice(0, 120)}`);
+        console.log(`[process-dronelog] downloading file from ${logUrl.slice(0, 120)}`);
 
-        const logsRes = await fetch(`${DRONELOG_BASE}/logs`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${dronelogKey}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ url: logUrl, fields: fieldList }),
+        const fileRes = await fetch(logUrl, {
+          headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
+          redirect: "follow",
         });
 
-        if (logsRes.ok) {
-          csvText = await logsRes.text();
-          console.log(`[process-dronelog] POST /logs succeeded, CSV length=${csvText.length}`);
-        } else {
-          const errText = await logsRes.text();
-          console.error(`[process-dronelog] POST /logs failed: ${logsRes.status} ${errText.slice(0, 300)}`);
-
-          // 429 → propagate immediately
-          if (logsRes.status === 429) {
-            return handleUpstreamError(logsRes, errText, "POST /logs");
-          }
-
-          // ── Route B (fallback): download raw file → upload via multipart ──
-          console.log(`[process-dronelog] falling back to download+upload`);
-          const fileRes = await fetch(logUrl, {
-            headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
-            redirect: "follow",
-          });
-
-          if (!fileRes.ok) {
-            const dlErr = await fileRes.text();
-            return handleUpstreamError(fileRes, dlErr, "download-fallback");
-          }
-
-          const buffer = await fileRes.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
-          const ext = isZip ? ".zip" : ".txt";
-          console.log(`[process-dronelog] fallback: downloaded ${bytes.length} bytes (${ext})`);
-
-          const uploadResult = await uploadRawBytes(bytes, ext);
-          if (uploadResult instanceof Response) {
-            return uploadResult; // error response
-          }
-          csvText = uploadResult;
+        if (!fileRes.ok) {
+          const dlErr = await fileRes.text();
+          console.error(`[process-dronelog] download failed: ${fileRes.status} ${dlErr.slice(0, 300)}`);
+          return handleUpstreamError(fileRes, dlErr, "download");
         }
+
+        const buffer = await fileRes.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
+        const ext = isZip ? ".zip" : ".txt";
+        console.log(`[process-dronelog] downloaded ${bytes.length} bytes (${ext}), uploading via /logs/upload`);
+
+        const uploadResult = await uploadRawBytes(bytes, ext);
+        if (uploadResult instanceof Response) {
+          return uploadResult; // error response
+        }
+        csvText = uploadResult;
 
         if (!csvText) {
           return new Response(JSON.stringify({ error: "Could not retrieve or process DJI log" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
