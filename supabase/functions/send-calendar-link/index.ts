@@ -81,14 +81,21 @@ serve(async (req: Request): Promise<Response> => {
       </p>
 
       <div style="text-align:center;margin:24px 0;">
-        <a href="${webcalUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
-          ➕ Legg til i kalender
+        <a href="${feedUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
+          📅 Åpne kalenderlenke
         </a>
       </div>
 
       <p style="margin:16px 0 0 0;font-size:13px;color:#888;text-align:center;">
-        Knappen over åpner kalenderappen din direkte.
+        Kopier lenken fra nettleseren og lim den inn i kalenderappen din (se instruksjoner under).
       </p>
+
+      <div style="text-align:center;margin:16px 0 0 0;">
+        <a href="${webcalUrl}" style="font-size:13px;color:#1a1a2e;text-decoration:underline;">
+          Åpne direkte i kalenderappen (webcal://)
+        </a>
+        <p style="font-size:11px;color:#aaa;margin:4px 0 0 0;">Fungerer best fra telefon eller desktop e-postklient</p>
+      </div>
     </div>
 
     <div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:24px;">
