@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, RefreshCw, Trash2, Link, Loader2 } from "lucide-react";
+import { Copy, RefreshCw, Trash2, Link, Loader2, Mail } from "lucide-react";
 import { useCalendarSubscription } from "@/hooks/useCalendarSubscription";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function CalendarSubscriptionSection() {
+  const { user, companyId } = useAuth();
+  const [sendingEmail, setSendingEmail] = useState(false);
   const {
     subscription,
     feedUrl,
@@ -26,6 +32,23 @@ export function CalendarSubscriptionSection() {
     regenerateSubscription,
     copyToClipboard,
   } = useCalendarSubscription();
+
+  const sendEmailLink = async () => {
+    if (!user || !feedUrl || !companyId) return;
+    setSendingEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-calendar-link", {
+        body: { userId: user.id, feedUrl, companyId },
+      });
+      if (error) throw error;
+      toast.success("Kalenderlenke sendt på e-post!");
+    } catch (err) {
+      console.error("Error sending calendar link email:", err);
+      toast.error("Kunne ikke sende e-post");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -68,6 +91,19 @@ export function CalendarSubscriptionSection() {
                 title="Kopier lenke"
               >
                 <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={sendEmailLink}
+                disabled={sendingEmail}
+                title="Send på e-post"
+              >
+                {sendingEmail ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
               </Button>
             </div>
 

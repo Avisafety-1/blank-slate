@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.dronelog-usage]
 verify_jwt = false
+
+[functions.send-calendar-link]
+verify_jwt = false
