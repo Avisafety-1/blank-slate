@@ -1,22 +1,32 @@
 
 
-## Problem
+## Plan
 
-Warning action checkboxes ("Lagre i droneloggbok" + status selector) only appear when `result.warnings` contains items. Two gaps prevent them from showing:
+Three changes from the approved plan, plus the new "acknowledge warning" feature.
 
-1. **Cell deviation threshold too high**: Currently set at `> 0.3V`, but the screenshot shows `0.258V` displayed in red. The KPI card already flags values `> 0.1V` as red, but the warning generation uses `0.3V`. These should align — threshold should be `> 0.1V`.
+### 1. Fix warning logbook entry date (`UploadDroneLogDialog.tsx`)
 
-2. **LOW_BATTERY event not mirrored as warning**: The `events` array contains `LOW_BATTERY` entries (shown in "Hendelser under flyging"), but a `warnings` entry is only added when `minBattery < 20%`. If the battery percentage stayed above 20% but voltage was low, no warning is generated and thus no checkbox appears.
+In `handleWarningsWithActions`, replace `new Date().toISOString().split('T')[0]` (lines 749 and 759) with the flight date from `result.startTime`. Fall back to today if unavailable.
 
-## Changes
+### 2. Add error handling to status updates (`UploadDroneLogDialog.tsx`)
 
-### 1. Lower cell deviation warning threshold (`supabase/functions/process-dronelog/index.ts`)
+Capture errors from the `supabase.from('drones').update(...)` and `supabase.from('equipment').update(...)` calls (lines 779, 781). Show toast error on failure.
 
-Change line 358 from `maxBattCellDev > 0.3` to `maxBattCellDev > 0.1` to match the KPI card's red threshold.
+### 3. Invalidate query cache after warnings saved (`UploadDroneLogDialog.tsx`)
 
-### 2. Add low-voltage warning based on detected LOW_BATTERY events
+Import `useQueryClient`. After `handleWarningsWithActions` completes successfully, call `queryClient.invalidateQueries` for `['drones']` and `['equipment']` keys.
 
-After the existing warning generation block (~line 366), add: if `events` contains any `LOW_BATTERY` type entry and no `low_battery` warning was already generated, push a `low_battery` warning so the checkbox appears.
+### 4. Add "Kvitter ut advarsel" (Acknowledge warning) button
 
-### 3. Redeploy the `process-dronelog` edge function
+**DroneDetailDialog.tsx**: When the drone's DB `status` field is "Gul" or "Rød" (not from maintenance date calculation, but from a manually set warning status), show a button "Kvitter ut advarsel — Sett status til Grønn" next to the status badge. On click:
+- Update `drones.status` to "Grønn" in DB
+- Insert a logbook entry in `drone_log_entries` with `entry_type: 'Kvittering'` documenting the acknowledgment
+- Invalidate queries and refresh
+
+**EquipmentDetailDialog.tsx**: Same pattern — when `equipment.status` is "Gul" or "Rød", show a "Kvitter ut" button. On click:
+- Update `equipment.status` to "Grønn"
+- Insert entry in `equipment_log_entries` with `entry_type: 'Kvittering'`
+- Refresh data
+
+The acknowledge button will use an `AlertDialog` confirmation to prevent accidental clicks, asking "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
 
