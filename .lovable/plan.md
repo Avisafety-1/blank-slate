@@ -1,38 +1,22 @@
 
 
-## Root Cause
+## Problem
 
-The current flow downloads the raw file from `/download`, then re-uploads it to `/logs/upload`. The DroneLog API returns 500 because re-uploading a downloaded file through multipart is fragile and unnecessary.
+Warning action checkboxes ("Lagre i droneloggbok" + status selector) only appear when `result.warnings` contains items. Two gaps prevent them from showing:
 
-The API docs show `POST /logs` accepts a `url` parameter. Since we already have the `downloadUrl` from the log list response, we should pass it directly — no download, no re-upload.
+1. **Cell deviation threshold too high**: Currently set at `> 0.3V`, but the screenshot shows `0.258V` displayed in red. The KPI card already flags values `> 0.1V` as red, but the warning generation uses `0.3V`. These should align — threshold should be `> 0.1V`.
 
-## Plan
+2. **LOW_BATTERY event not mirrored as warning**: The `events` array contains `LOW_BATTERY` entries (shown in "Hendelser under flyging"), but a `warnings` entry is only added when `minBattery < 20%`. If the battery percentage stayed above 20% but voltage was low, no warning is generated and thus no checkbox appears.
 
-### 1. Simplify `dji-process-log` in `supabase/functions/process-dronelog/index.ts`
+## Changes
 
-Replace the entire download-then-upload logic (lines 602-687) with a single `POST /logs` call:
+### 1. Lower cell deviation warning threshold (`supabase/functions/process-dronelog/index.ts`)
 
-```
-POST /api/v1/logs
-{ "url": downloadUrl, "fields": [...] }
-```
+Change line 358 from `maxBattCellDev > 0.3` to `maxBattCellDev > 0.1` to match the KPI card's red threshold.
 
-- Use the `downloadUrl` from the log list response as the primary source
-- Fall back to constructing `${DRONELOG_BASE}/logs/${accountId}/${logId}/download` if `downloadUrl` is missing
-- Keep the existing `uploadRawBytes` function only as a last-resort fallback if `POST /logs` fails with a non-429 error
-- Keep all 429/error handling intact
+### 2. Add low-voltage warning based on detected LOW_BATTERY events
 
-### 2. Pass `downloadUrl` from client
+After the existing warning generation block (~line 366), add: if `events` contains any `LOW_BATTERY` type entry and no `low_battery` warning was already generated, push a `low_battery` warning so the checkbox appears.
 
-In `src/components/UploadDroneLogDialog.tsx`, the `handleSelectDjiLog` already passes `downloadUrl: log.url`. No client changes needed.
-
-### Technical Detail
-
-```text
-Current (broken):
-  GET /download → raw bytes → POST /logs/upload (multipart) → 500
-
-Fixed:
-  POST /logs { url: downloadUrl, fields: [...] } → CSV → parse
-```
+### 3. Redeploy the `process-dronelog` edge function
 
