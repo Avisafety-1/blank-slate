@@ -320,19 +320,19 @@ const Index = () => {
             {djiFlightlogEnabled ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="w-full gap-2" variant="secondary">
+                  <Button className="w-full gap-2 justify-center" variant="secondary">
                     <Clock className="w-4 h-4" />
                     {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
-                    <ChevronDown className="w-4 h-4 ml-auto" />
+                    <ChevronDown className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full">
-                  <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)}>
-                    <Clock className="w-4 h-4 mr-2" />
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] p-1.5">
+                  <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                    <Clock className="w-4 h-4" />
                     {t('dronelog.logManually', 'Logg flytid manuelt')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)}>
-                    <Upload className="w-4 h-4 mr-2" />
+                  <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                    <Upload className="w-4 h-4" />
                     {t('dronelog.uploadDjiLog', 'Last opp DJI-flylogg')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -470,19 +470,19 @@ const Index = () => {
                       {djiFlightlogEnabled ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button className="w-full gap-2 hidden lg:flex" variant="secondary">
+                            <Button className="w-full gap-2 hidden lg:flex justify-center" variant="secondary">
                               <Clock className="w-4 h-4" />
                               {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
-                              <ChevronDown className="w-4 h-4 ml-auto" />
+                              <ChevronDown className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)}>
-                              <Clock className="w-4 h-4 mr-2" />
+                          <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] p-1.5">
+                            <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                              <Clock className="w-4 h-4" />
                               {t('dronelog.logManually', 'Logg flytid manuelt')}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)}>
-                              <Upload className="w-4 h-4 mr-2" />
+                            <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                              <Upload className="w-4 h-4" />
                               {t('dronelog.uploadDjiLog', 'Last opp DJI-flylogg')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
