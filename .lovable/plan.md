@@ -1,28 +1,28 @@
 
 
-## Plan: Auto-link checklists when attaching documents to missions
+## Plan: Send kalender-abonnementslenke på e-post via SMTP (denomailer)
 
-When a user attaches a document with `kategori = "sjekklister"` to a mission via the document picker in AddMissionDialog, it should automatically also be added to the mission's `checklist_ids` array — giving it the same behavior as manually linking via "Tilknytt sjekkliste" (badge, execution dialog, flight-start blocking).
+### Endringer
 
-### Changes
+**1. Ny edge function `supabase/functions/send-calendar-link/index.ts`**
+- Bruker denomailer/SMTPClient og eksisterende `getEmailConfig()` fra `_shared/email-config.ts` — samme mønster som alle andre e-postfunksjoner
+- Mottar `{ userId, feedUrl, companyId }` fra frontend
+- Henter brukerens e-post via `supabase.auth.admin.getUserById()`
+- Sender en HTML-e-post med:
+  - Klikkbar `webcal://`-lenke (erstatter `https://` med `webcal://`) som åpner kalenderappen direkte
+  - Vanlig URL som backup
+  - Instruksjoner for Google Calendar, iPhone og Outlook
+- Bruker selskapets SMTP-konfigurasjon via `getEmailConfig(companyId)`
 
-**`src/components/dashboard/AddMissionDialog.tsx`**
+**2. `supabase/config.toml`** — Legg til `[functions.send-calendar-link]` med `verify_jwt = true`
 
-After inserting `mission_documents`, check which of the selected documents are checklists (kategori = "sjekklister"). For any that are, merge them into the mission's `checklist_ids` array:
+**3. `src/components/dashboard/CalendarSubscriptionSection.tsx`**
+- Legg til en "Send på e-post"-knapp (Mail-ikon) ved siden av kopier-knappen
+- Kaller `supabase.functions.invoke('send-calendar-link', { body: { userId, feedUrl, companyId } })`
+- Viser loading-state og suksess-toast
 
-1. The `documents` state already contains `kategori` for each document (fetched at line ~270).
-2. After the document insert block (both UPDATE path ~line 510-522 and INSERT path ~line 591-603), add logic:
-   - Filter `selectedDocuments` to find IDs where the document's `kategori === "sjekklister"`.
-   - If any exist, read the mission's current `checklist_ids`, merge in the new checklist IDs (deduplicated), and update the mission row.
-   - Also remove from `checklist_ids` any checklist document IDs that were **un-selected** (no longer in `selectedDocuments`).
-
-This ensures:
-- Attaching a checklist document → auto-added to `checklist_ids` → badge appears → must complete before flight
-- Removing a checklist document → auto-removed from `checklist_ids` → badge disappears
-- No duplicate entries in the array
-- Existing manually-linked checklists (not in documents) are preserved
-
-### Files to change
-
-1. **`src/components/dashboard/AddMissionDialog.tsx`** — Add checklist_ids sync logic after document insert/update in both the UPDATE and INSERT code paths
+### Filer
+1. `supabase/functions/send-calendar-link/index.ts` (ny)
+2. `supabase/config.toml` (oppdater)
+3. `src/components/dashboard/CalendarSubscriptionSection.tsx` (oppdater)
 
