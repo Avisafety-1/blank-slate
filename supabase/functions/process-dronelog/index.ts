@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "npm:jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -622,9 +623,41 @@ Deno.serve(async (req) => {
 
         const uploadResult = await uploadRawBytes(bytes, ext);
         if (uploadResult instanceof Response) {
-          return uploadResult; // error response
+          // Some DJI downloads arrive as ZIPs that DroneLog /logs/upload rejects with 500.
+          // Fallback: extract first .txt from ZIP and retry once as plain text.
+          if (isZip && uploadResult.status === 502) {
+            const uploadErr = await uploadResult.clone().json().catch(() => null);
+            if (uploadErr?.isUpstream500) {
+              try {
+                console.log(`[process-dronelog] ZIP upload got upstream 500, trying ZIP->TXT fallback`);
+                const zip = await JSZip.loadAsync(bytes);
+                const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith(".txt"));
+
+                if (!txtEntry) {
+                  console.error(`[process-dronelog] ZIP fallback failed: no .txt entry in archive`);
+                  return uploadResult;
+                }
+
+                const txtBytes = await txtEntry.async("uint8array");
+                console.log(`[process-dronelog] extracted ${txtEntry.name} (${txtBytes.length} bytes), retrying /logs/upload`);
+                const txtUploadResult = await uploadRawBytes(txtBytes, ".txt");
+                if (txtUploadResult instanceof Response) {
+                  return txtUploadResult;
+                }
+                csvText = txtUploadResult;
+              } catch (zipErr) {
+                console.error(`[process-dronelog] ZIP->TXT fallback threw:`, zipErr);
+                return uploadResult;
+              }
+            } else {
+              return uploadResult;
+            }
+          } else {
+            return uploadResult; // non-zip or non-500 upload error
+          }
+        } else {
+          csvText = uploadResult;
         }
-        csvText = uploadResult;
 
         if (!csvText) {
           return new Response(JSON.stringify({ error: "Could not retrieve or process DJI log" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
