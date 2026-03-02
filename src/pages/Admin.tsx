@@ -79,6 +79,7 @@ const Admin = () => {
 
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletingByEmail, setDeletingByEmail] = useState(false);
+  const [showEmailList, setShowEmailList] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -654,10 +655,57 @@ const Admin = () => {
               {/* Approved Users */}
               <Card>
                 <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({approvedUsers.length})</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    {t('admin.manageRoles')}
-                  </CardDescription>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({approvedUsers.length})</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        {t('admin.manageRoles')}
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowEmailList(prev => !prev)}
+                      >
+                        <Mail className="w-4 h-4 mr-1.5" />
+                        {showEmailList ? 'Skjul mailliste' : 'Vis mailliste'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const emails = approvedUsers
+                            .map(p => p.email)
+                            .filter(Boolean) as string[];
+                          if (emails.length === 0) {
+                            toast.error('Ingen e-postadresser funnet');
+                            return;
+                          }
+                          navigator.clipboard.writeText(emails.join(', '));
+                          toast.success(`${emails.length} e-postadresser kopiert`);
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-1.5" />
+                        Kopier mailliste
+                      </Button>
+                    </div>
+                  </div>
+                  {showEmailList && (
+                    <div className="mt-3">
+                      <textarea
+                        readOnly
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono min-h-[80px] max-h-[200px] resize-y"
+                        value={approvedUsers
+                          .map(p => p.email)
+                          .filter(Boolean)
+                          .join('\n')}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {approvedUsers.filter(p => p.email).length} e-postadresser
+                      </p>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
                   <div className="space-y-2">
