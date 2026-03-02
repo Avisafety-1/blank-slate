@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SAFESKY_UAV_URL = 'https://sandbox-public-api.safesky.app/v1/uav';
-const SAFESKY_ADVISORY_URL = 'https://sandbox-public-api.safesky.app/v1/advisory';
+const SAFESKY_ADVISORY_URL = 'https://uav-api.safesky.app/v1/advisory';
 
 interface RoutePoint {
   lat: number;
@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
     console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lng=${lng || lon}, pilotName=${pilotName}`);
 
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
+    const SAFESKY_PROD_API_KEY = Deno.env.get('SAFESKY_PROD_API_KEY');
     if (!SAFESKY_API_KEY) {
       console.error('SAFESKY_API_KEY not configured');
       return new Response(
@@ -207,6 +208,9 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // Use production key for advisory, fall back to sandbox key
+    const ADVISORY_API_KEY = SAFESKY_PROD_API_KEY || SAFESKY_API_KEY;
+    console.log(`Using ${SAFESKY_PROD_API_KEY ? 'PRODUCTION' : 'SANDBOX'} key for advisory publishing`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -254,7 +258,7 @@ Deno.serve(async (req) => {
       console.log('Point Advisory payload:', JSON.stringify(payload, null, 2));
 
       const advisoryBody = JSON.stringify(payload);
-      const pointAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advisoryBody);
+      const pointAuthHeaders = await generateAuthHeaders(ADVISORY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advisoryBody);
       const response = await fetch(SAFESKY_ADVISORY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...pointAuthHeaders },
@@ -460,7 +464,7 @@ Deno.serve(async (req) => {
       console.log('Advisory payload:', JSON.stringify(payload, null, 2));
 
       const advBody = JSON.stringify(payload);
-      const advAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advBody);
+      const advAuthHeaders = await generateAuthHeaders(ADVISORY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, advBody);
       const response = await fetch(SAFESKY_ADVISORY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...advAuthHeaders },
