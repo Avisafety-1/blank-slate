@@ -1,51 +1,27 @@
 
 
-## Ressurskalender — Tidslinjevisning for ressurser
+## SafeSky Produksjonsnøkkel for Advisory
 
-### Konsept
-En ny fane/seksjon på Kalender-siden (`/kalender`) som viser en visuell tidslinje (Gantt-lignende) for droner, utstyr og personell. Hver ressurs vises som en rad, og oppdragstildelinger vises som fargede blokker langs tidsaksen. Konflikter (overlappende tildelinger) markeres visuelt med rød/oransje indikator.
+### Hva skal gjøres
+Legge til en ny secret `SAFESKY_PROD_API_KEY` for produksjonsnøkkelen, og oppdatere **kun advisory-publisering** til å bruke produksjons-URL `https://uav-api.safesky.app/v1/advisory` med den nye nøkkelen. Alt annet (UAV-beacons, cron-refresh beacons-henting) forblir på sandbox.
 
-### Visning
-```text
-  Ressurskalender — Uke 12, 2026
-  ──────────────────────────────────────────────
-           Man     Tir     Ons     Tor     Fre
-  ──────────────────────────────────────────────
-  DJI M30  [███ Oppdrag A ███]
-                           [██ Oppdrag B ██]
-  ──────────────────────────────────────────────
-  Mavic 3         [█ Oppdrag C █]
-  ──────────────────────────────────────────────
-  Ola N.   [███ Oppdrag A ███]
-                   [██ Oppdrag C ██]  ⚠️ konflikt
-  ──────────────────────────────────────────────
-```
+### Endringer
 
-### Implementering
+**1. Ny secret: `SAFESKY_PROD_API_KEY`**
+- Be brukeren lime inn produksjonsnøkkelen via secrets-verktøyet
 
-**1. Ny komponent `src/components/dashboard/ResourceTimeline.tsx`**
-- Henter alle oppdrag med status "Planlagt"/"Pågående" og deres tilknyttede ressurser via `mission_drones`, `mission_personnel`, `mission_equipment`
-- Grupperer per ressurs (drone/person/utstyr)
-- Rendrer en horisontal tidslinje for gjeldende uke med navigasjon forover/bakover
-- Oppdragsblokker vises som fargede barer
-- Overlappende tildelinger vises med advarsel-ikon og rød kantlinje
-- Bruker eksisterende `checkTimeOverlap`-logikk fra `useResourceConflicts.ts`
-- Klikk på en blokk åpner `MissionDetailDialog`
+**2. `supabase/functions/safesky-advisory/index.ts`**
+- Endre `SAFESKY_ADVISORY_URL` fra `https://sandbox-public-api.safesky.app/v1/advisory` til `https://uav-api.safesky.app/v1/advisory`
+- Bruk `SAFESKY_PROD_API_KEY` (faller tilbake til `SAFESKY_API_KEY` hvis ikke satt) kun for advisory-kall (`publish_advisory`, `refresh_advisory`, `publish_point_advisory`, `refresh_point_advisory`)
+- UAV-publisering (`publish_live_uav`, `publish_uav`) og beacon-henting forblir på sandbox med `SAFESKY_API_KEY`
 
-**2. Endre `src/pages/Kalender.tsx`**
-- Legg til en Tabs-komponent (Radix Tabs, allerede installert) med to faner:
-  - "Månedsoversikt" (eksisterende kalendervisning)
-  - "Ressurskalender" (ny tidslinje-komponent)
-- All eksisterende kode forblir uendret, bare wrappet i en tab
+**3. `supabase/functions/safesky-cron-refresh/index.ts`**
+- Legg til `SAFESKY_PROD_API_KEY` for advisory-refresh-delen (Part 1)
+- Oppdater advisory-URL til produksjon
+- Behold sandbox-URL og `SAFESKY_API_KEY` for beacon-henting (Part 2 og 3)
 
-**3. Ingen databaseendringer**
-- All data finnes allerede i `missions`, `mission_drones`, `mission_personnel`, `mission_equipment`
-- RLS-policyer dekker allerede lesetilgang
-
-### Omfang
-- Uke-basert visning med pil-navigasjon
-- Tre seksjoner: Droner, Personell, Utstyr
-- Automatisk konflikt-deteksjon med visuell markering
-- Responsiv: på mobil stables radene vertikalt med kompakt visning
-- Klikk på oppdragsblokk viser detaljer
+### Hva forblir uendret
+- `safesky-beacons/index.ts` — bruker sandbox for UAV-henting
+- `safesky-beacons-fetch/index.ts` — bruker legacy `SAFESKY_BEACONS_API_KEY`
+- HMAC-logikken i `_shared/safesky-hmac.ts` — fungerer med begge nøkler
 
