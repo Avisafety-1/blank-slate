@@ -863,36 +863,6 @@ export default function Kalender() {
 
                 {/* Sidebar */}
                 <div className="w-full lg:w-72 space-y-4">
-                  {/* Upcoming events */}
-                  <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
-                    <h3 className="text-sm font-semibold mb-3">Kommende hendelser</h3>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {allEvents
-                        .filter((e) => e.date >= new Date())
-                        .sort((a, b) => a.date.getTime() - b.date.getTime())
-                        .slice(0, 8)
-                        .map((event, index) => (
-                          <div
-                            key={event.id || index}
-                            className="flex items-start gap-2 p-2 rounded-md hover:bg-accent/30 cursor-pointer transition-colors"
-                            onClick={(e) => handleEventClick(event, e)}
-                          >
-                            <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", getEventDotColor(event.type))} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs sm:text-sm font-medium truncate">{event.title}</p>
-                              <p className="text-[10px] sm:text-xs text-muted-foreground">
-                                {format(event.date, "dd. MMM yyyy", { locale: nb })}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      {allEvents.filter((e) => e.date >= new Date()).length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Ingen kommende hendelser
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
                   {/* Legend */}
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
