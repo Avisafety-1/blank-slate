@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SAFESKY_ADVISORY_URL = 'https://sandbox-public-api.safesky.app/v1/advisory';
+const SAFESKY_ADVISORY_URL = 'https://uav-api.safesky.app/v1/advisory';
 const SAFESKY_UAV_URL = 'https://sandbox-public-api.safesky.app/v1/uav';
 
 // Norway bounding box for beacon fetching
@@ -199,6 +199,7 @@ Deno.serve(async (req) => {
 
   try {
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
+    const SAFESKY_PROD_API_KEY = Deno.env.get('SAFESKY_PROD_API_KEY');
     if (!SAFESKY_API_KEY) {
       console.error('SAFESKY_API_KEY not configured');
       return new Response(
@@ -206,6 +207,9 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // Use production key for advisory refresh, fall back to sandbox key
+    const ADVISORY_API_KEY = SAFESKY_PROD_API_KEY || SAFESKY_API_KEY;
+    console.log(`Cron: Using ${SAFESKY_PROD_API_KEY ? 'PRODUCTION' : 'SANDBOX'} key for advisory refresh`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -312,7 +316,7 @@ Deno.serve(async (req) => {
           console.log(`Refreshing polygon advisory for mission ${missionId} (${mission.tittel})`);
 
           const cronAdvBody = JSON.stringify(payload);
-          const cronAdvHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, cronAdvBody);
+          const cronAdvHeaders = await generateAuthHeaders(ADVISORY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, cronAdvBody);
           const response = await fetch(SAFESKY_ADVISORY_URL, {
             method: 'POST',
             headers: {
