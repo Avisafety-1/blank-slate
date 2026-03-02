@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, AlertTriangle, Plane, Users, Wrench } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Plane, Users, Wrench, Calendar, FileText } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, getWeek } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -10,22 +10,33 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-interface MissionResource {
-  missionId: string;
-  missionTitle: string;
-  missionStart: Date;
-  missionEnd: Date;
-  status: string;
+type TimelineEventType = "mission" | "maintenance" | "document" | "calendar";
+
+interface TimelineEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  status?: string;
+  eventType: TimelineEventType;
 }
 
 interface ResourceRow {
   id: string;
   name: string;
   type: "drone" | "equipment" | "personnel";
-  missions: MissionResource[];
+  events: TimelineEvent[];
 }
 
 const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
+const MAINTENANCE_DURATION_MS = 1 * 60 * 60 * 1000; // 1h block for maintenance
+
+const EVENT_COLORS: Record<TimelineEventType, string> = {
+  mission: "bg-primary/80 border-primary",
+  maintenance: "bg-orange-500/80 border-orange-500",
+  document: "bg-blue-400/80 border-blue-400",
+  calendar: "bg-purple-500/80 border-purple-500",
+};
 
 const MISSION_COLORS = [
   "bg-primary/80 border-primary",
@@ -47,8 +58,8 @@ const getMissionColor = (missionId: string): string => {
   return MISSION_COLORS[Math.abs(hash) % MISSION_COLORS.length];
 };
 
-const checkOverlap = (a: MissionResource, b: MissionResource): boolean => {
-  return a.missionStart < b.missionEnd && a.missionEnd > b.missionStart;
+const checkOverlap = (a: TimelineEvent, b: TimelineEvent): boolean => {
+  return a.start < b.end && a.end > b.start;
 };
 
 export function ResourceTimeline() {
@@ -66,79 +77,133 @@ export function ResourceTimeline() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch missions with resources
-      const { data: missions, error } = await supabase
-        .from("missions")
-        .select("id, tittel, tidspunkt, slutt_tidspunkt, status")
-        .in("status", ["Planlagt", "Pågående"]);
-
-      if (error) throw error;
-      if (!missions || missions.length === 0) {
-        setResourceRows([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch all resource links in parallel
-      const missionIds = missions.map((m) => m.id);
-      const [droneLinks, personnelLinks, equipmentLinks] = await Promise.all([
-        supabase.from("mission_drones").select("mission_id, drone_id, drones(id, modell, serienummer)").in("mission_id", missionIds),
-        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name)").in("mission_id", missionIds),
-        supabase.from("mission_equipment").select("mission_id, equipment_id, equipment(id, navn, type)").in("mission_id", missionIds),
+      // Fetch all data in parallel
+      const [
+        missionsResult,
+        dronesResult,
+        equipmentResult,
+        accessoriesResult,
+      ] = await Promise.all([
+        supabase.from("missions").select("id, tittel, tidspunkt, slutt_tidspunkt, status").in("status", ["Planlagt", "Pågående"]),
+        supabase.from("drones").select("id, modell, serienummer, neste_inspeksjon, sjekkliste_id").eq("aktiv", true),
+        supabase.from("equipment").select("id, navn, type, neste_vedlikehold, sjekkliste_id").eq("aktiv", true),
+        supabase.from("drone_accessories").select("id, navn, drone_id, neste_vedlikehold"),
       ]);
 
-      const missionMap = new Map(missions.map((m) => [m.id, m]));
+      const missions = missionsResult.data || [];
+      const allDrones = dronesResult.data || [];
+      const allEquipment = equipmentResult.data || [];
+      const allAccessories = accessoriesResult.data || [];
 
-      // Build resource rows
+      // Build resource row maps
       const droneRows = new Map<string, ResourceRow>();
       const personnelRows = new Map<string, ResourceRow>();
       const equipmentRows = new Map<string, ResourceRow>();
 
-      const toMissionResource = (missionId: string): MissionResource | null => {
-        const m = missionMap.get(missionId);
-        if (!m) return null;
-        const start = new Date(m.tidspunkt);
-        const end = m.slutt_tidspunkt ? new Date(m.slutt_tidspunkt) : new Date(start.getTime() + DEFAULT_DURATION_MS);
-        return { missionId: m.id, missionTitle: m.tittel, missionStart: start, missionEnd: end, status: m.status };
-      };
-
-      for (const link of droneLinks.data || []) {
-        const drone = link.drones as any;
-        if (!drone) continue;
-        const mr = toMissionResource(link.mission_id);
-        if (!mr) continue;
-        if (!droneRows.has(drone.id)) {
-          droneRows.set(drone.id, { id: drone.id, name: drone.modell, type: "drone", missions: [] });
+      // Pre-populate drone and equipment rows so maintenance shows even without missions
+      for (const drone of allDrones) {
+        droneRows.set(drone.id, { id: drone.id, name: drone.modell, type: "drone", events: [] });
+        // Add inspection event if exists
+        if (drone.neste_inspeksjon) {
+          const inspDate = new Date(drone.neste_inspeksjon);
+          droneRows.get(drone.id)!.events.push({
+            id: `insp-${drone.id}`,
+            title: `Inspeksjon`,
+            start: inspDate,
+            end: new Date(inspDate.getTime() + MAINTENANCE_DURATION_MS),
+            eventType: "maintenance",
+          });
         }
-        droneRows.get(drone.id)!.missions.push(mr);
       }
 
-      for (const link of personnelLinks.data || []) {
-        const profile = link.profiles as any;
-        if (!profile) continue;
-        const mr = toMissionResource(link.mission_id);
-        if (!mr) continue;
-        if (!personnelRows.has(profile.id)) {
-          personnelRows.set(profile.id, { id: profile.id, name: profile.full_name || "Ukjent", type: "personnel", missions: [] });
+      for (const eq of allEquipment) {
+        equipmentRows.set(eq.id, { id: eq.id, name: eq.navn, type: "equipment", events: [] });
+        if (eq.neste_vedlikehold) {
+          const maintDate = new Date(eq.neste_vedlikehold);
+          equipmentRows.get(eq.id)!.events.push({
+            id: `maint-${eq.id}`,
+            title: `Vedlikehold`,
+            start: maintDate,
+            end: new Date(maintDate.getTime() + MAINTENANCE_DURATION_MS),
+            eventType: "maintenance",
+          });
         }
-        personnelRows.get(profile.id)!.missions.push(mr);
       }
 
-      for (const link of equipmentLinks.data || []) {
-        const eq = link.equipment as any;
-        if (!eq) continue;
-        const mr = toMissionResource(link.mission_id);
-        if (!mr) continue;
-        if (!equipmentRows.has(eq.id)) {
-          equipmentRows.set(eq.id, { id: eq.id, name: eq.navn, type: "equipment", missions: [] });
+      // Add accessory maintenance to parent drone
+      for (const acc of allAccessories) {
+        if (acc.neste_vedlikehold && acc.drone_id && droneRows.has(acc.drone_id)) {
+          const maintDate = new Date(acc.neste_vedlikehold);
+          droneRows.get(acc.drone_id)!.events.push({
+            id: `acc-maint-${acc.id}`,
+            title: `${acc.navn} vedlikehold`,
+            start: maintDate,
+            end: new Date(maintDate.getTime() + MAINTENANCE_DURATION_MS),
+            eventType: "maintenance",
+          });
         }
-        equipmentRows.get(eq.id)!.missions.push(mr);
       }
+
+      // Process missions and resource links
+      if (missions.length > 0) {
+        const missionIds = missions.map((m) => m.id);
+        const [droneLinks, personnelLinks, equipmentLinks] = await Promise.all([
+          supabase.from("mission_drones").select("mission_id, drone_id, drones(id, modell, serienummer)").in("mission_id", missionIds),
+          supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name)").in("mission_id", missionIds),
+          supabase.from("mission_equipment").select("mission_id, equipment_id, equipment(id, navn, type)").in("mission_id", missionIds),
+        ]);
+
+        const missionMap = new Map(missions.map((m) => [m.id, m]));
+
+        const toTimelineEvent = (missionId: string): TimelineEvent | null => {
+          const m = missionMap.get(missionId);
+          if (!m) return null;
+          const start = new Date(m.tidspunkt);
+          const end = m.slutt_tidspunkt ? new Date(m.slutt_tidspunkt) : new Date(start.getTime() + DEFAULT_DURATION_MS);
+          return { id: m.id, title: m.tittel, start, end, status: m.status, eventType: "mission" };
+        };
+
+        for (const link of droneLinks.data || []) {
+          const drone = link.drones as any;
+          if (!drone) continue;
+          const ev = toTimelineEvent(link.mission_id);
+          if (!ev) continue;
+          if (!droneRows.has(drone.id)) {
+            droneRows.set(drone.id, { id: drone.id, name: drone.modell, type: "drone", events: [] });
+          }
+          droneRows.get(drone.id)!.events.push(ev);
+        }
+
+        for (const link of personnelLinks.data || []) {
+          const profile = link.profiles as any;
+          if (!profile) continue;
+          const ev = toTimelineEvent(link.mission_id);
+          if (!ev) continue;
+          if (!personnelRows.has(profile.id)) {
+            personnelRows.set(profile.id, { id: profile.id, name: profile.full_name || "Ukjent", type: "personnel", events: [] });
+          }
+          personnelRows.get(profile.id)!.events.push(ev);
+        }
+
+        for (const link of equipmentLinks.data || []) {
+          const eq = link.equipment as any;
+          if (!eq) continue;
+          const ev = toTimelineEvent(link.mission_id);
+          if (!ev) continue;
+          if (!equipmentRows.has(eq.id)) {
+            equipmentRows.set(eq.id, { id: eq.id, name: eq.navn, type: "equipment", events: [] });
+          }
+          equipmentRows.get(eq.id)!.events.push(ev);
+        }
+      }
+
+      // Filter: only show rows that have events visible in any timeframe (or always show if they have maintenance)
+      const hasAnyEvents = (row: ResourceRow) => row.events.length > 0;
 
       setResourceRows([
-        ...Array.from(droneRows.values()),
-        ...Array.from(personnelRows.values()),
-        ...Array.from(equipmentRows.values()),
+        ...Array.from(droneRows.values()).filter(hasAnyEvents),
+        ...Array.from(personnelRows.values()).filter(hasAnyEvents),
+        ...Array.from(equipmentRows.values()).filter(hasAnyEvents),
       ]);
     } catch (err) {
       console.error("ResourceTimeline fetch error:", err);
@@ -173,44 +238,59 @@ export function ResourceTimeline() {
   const weekEndMs = weekEnd.getTime();
   const weekDurationMs = weekEndMs - weekStartMs;
 
-  const renderMissionBlock = (mission: MissionResource, row: ResourceRow) => {
-    const mStart = Math.max(mission.missionStart.getTime(), weekStartMs);
-    const mEnd = Math.min(mission.missionEnd.getTime(), weekEndMs);
+  const renderEventBlock = (event: TimelineEvent, row: ResourceRow) => {
+    const mStart = Math.max(event.start.getTime(), weekStartMs);
+    const mEnd = Math.min(event.end.getTime(), weekEndMs);
     if (mEnd <= mStart) return null;
 
     const leftPct = ((mStart - weekStartMs) / weekDurationMs) * 100;
     const widthPct = ((mEnd - mStart) / weekDurationMs) * 100;
 
-    const hasConflict = row.missions.some(
-      (other) => other.missionId !== mission.missionId && checkOverlap(mission, other)
+    const hasConflict = event.eventType === "mission" && row.events.some(
+      (other) => other.id !== event.id && other.eventType === "mission" && checkOverlap(event, other)
     );
 
-    const color = getMissionColor(mission.missionId);
+    const color = event.eventType === "mission" 
+      ? getMissionColor(event.id) 
+      : EVENT_COLORS[event.eventType];
+
+    const isClickable = event.eventType === "mission";
+
+    const blockContent = (
+      <span className="flex items-center gap-1 truncate">
+        {hasConflict && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-200" />}
+        {event.eventType === "maintenance" && <Wrench className="w-3 h-3 flex-shrink-0" />}
+        {event.title}
+      </span>
+    );
 
     return (
-      <TooltipProvider key={mission.missionId} delayDuration={200}>
+      <TooltipProvider key={event.id} delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => handleMissionClick(mission.missionId)}
+              onClick={isClickable ? () => handleMissionClick(event.id) : undefined}
               className={cn(
-                "absolute top-1 h-7 rounded-md border text-[10px] sm:text-xs font-medium text-white px-1.5 truncate cursor-pointer transition-opacity hover:opacity-90 z-10",
+                "absolute top-1 h-7 rounded-md border text-[10px] sm:text-xs font-medium text-white px-1.5 truncate transition-opacity hover:opacity-90 z-10",
+                isClickable ? "cursor-pointer" : "cursor-default",
                 color,
                 hasConflict && "ring-2 ring-amber-400 ring-offset-1 ring-offset-background"
               )}
               style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%` }}
             >
-              <span className="flex items-center gap-1 truncate">
-                {hasConflict && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-200" />}
-                {mission.missionTitle}
-              </span>
+              {blockContent}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
-            <p className="font-semibold">{mission.missionTitle}</p>
+            <p className="font-semibold">{event.title}</p>
             <p className="text-xs text-muted-foreground">
-              {format(mission.missionStart, "EEE dd.MM HH:mm", { locale: nb })} – {format(mission.missionEnd, "HH:mm", { locale: nb })}
+              {format(event.start, "EEE dd.MM HH:mm", { locale: nb })} – {format(event.end, "HH:mm", { locale: nb })}
             </p>
+            {event.eventType !== "mission" && (
+              <Badge variant="outline" className="text-[10px] mt-1 capitalize">
+                {event.eventType === "maintenance" ? "Vedlikehold" : event.eventType}
+              </Badge>
+            )}
             {hasConflict && (
               <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
                 <AlertTriangle className="w-3 h-3" /> Ressurskonflikt
@@ -233,8 +313,8 @@ export function ResourceTimeline() {
         </div>
         <div className="border border-border rounded-lg overflow-hidden">
           {rows.map((row, idx) => {
-            const visibleMissions = row.missions.filter((m) => {
-              return m.missionEnd.getTime() > weekStartMs && m.missionStart.getTime() < weekEndMs;
+            const visibleEvents = row.events.filter((e) => {
+              return e.end.getTime() > weekStartMs && e.start.getTime() < weekEndMs;
             });
             return (
               <div
@@ -261,9 +341,9 @@ export function ResourceTimeline() {
                       />
                     ))}
                   </div>
-                  {/* Mission blocks */}
-                  {visibleMissions.map((m) => renderMissionBlock(m, row))}
-                  {visibleMissions.length === 0 && (
+                  {/* Event blocks */}
+                  {visibleEvents.map((e) => renderEventBlock(e, row))}
+                  {visibleEvents.length === 0 && (
                     <div className="absolute inset-0" />
                   )}
                 </div>
@@ -297,6 +377,12 @@ export function ResourceTimeline() {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mb-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/80 inline-block" /> Oppdrag</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-orange-500/80 inline-block" /> Vedlikehold</span>
+      </div>
+
       {/* Day headers */}
       <div className="flex mb-2">
         <div className="w-28 sm:w-36 flex-shrink-0" />
@@ -321,7 +407,7 @@ export function ResourceTimeline() {
         </div>
       ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-sm">Ingen ressurser er tilknyttet aktive oppdrag</p>
+          <p className="text-sm">Ingen ressurser med hendelser</p>
           <p className="text-xs mt-1">Opprett oppdrag og tildel droner, utstyr eller personell for å se dem her</p>
         </div>
       ) : (
