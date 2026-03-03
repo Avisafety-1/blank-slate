@@ -1,35 +1,23 @@
 
 
-## Problem: Edit button in MissionDetailDialog closes dialog and loses state
+## Problem
 
-When opened from AISearchBar, clicking the edit pencil button calls `handleEditClick` which:
-1. Calls `onOpenChange(false)` — this triggers `setSelectedMission(null)` in AISearchBar
-2. MissionDetailDialog unmounts (since `open={!!selectedMission}` becomes false)
-3. The `editDialogOpen` state and `AddMissionDialog` are destroyed before they can render
+`AISearchBar` er kun rendret i en `<div className="lg:hidden">` — altså vises den **bare på mobil** (under `lg` breakpoint / 1024px). På pad og PC forsvinner den helt.
 
-### Fix
+## Løsning
 
-**File: `src/components/dashboard/MissionDetailDialog.tsx`**
+Legg til `AISearchBar` i desktop-layouten (center column) — plassert mellom "Active flights" og "Missions" seksjonen, wrappet i en `hidden lg:block` div. Søkefeltet vil da vises på alle skjermstørrelser.
 
-Remove the line `onOpenChange(false)` from `handleEditClick` (line 141). The detail dialog should stay open (but hidden behind) while the edit dialog opens, or better: keep both dialogs managed inside the component without closing the parent.
+### Endring i `src/pages/Index.tsx`
 
-Actually the cleanest fix: Don't close the detail dialog when opening edit. Just open the edit dialog on top. The detail dialog will naturally be behind it. When edit completes, `handleMissionUpdated` already calls `onOpenChange(false)`.
+Etter "Active flights - Desktop" blokken (linje ~563), legg til:
 
-Change `handleEditClick` from:
-```typescript
-const handleEditClick = () => {
-  onOpenChange(false);
-  setEditDialogOpen(true);
-};
-```
-To:
-```typescript
-const handleEditClick = () => {
-  setEditDialogOpen(true);
-};
+```tsx
+{/* AI Search Bar - Desktop */}
+<div className="hidden lg:block">
+  <AISearchBar />
+</div>
 ```
 
-This works because `AddMissionDialog` renders as its own Dialog on top, and when editing is done, `handleMissionUpdated` closes everything properly.
-
-Also noted: there are **duplicate "Rediger rute" buttons** on lines 160-164 and 166-170 — will clean that up too.
+Dette plasserer søkefeltet i midtkolonnen på desktop, rett over oppdragslisten — konsistent med mobilplasseringen.
 
