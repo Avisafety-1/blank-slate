@@ -138,7 +138,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   if (!mission) return null;
 
   const handleEditClick = () => {
-    onOpenChange(false);
     setEditDialogOpen(true);
   };
 
@@ -157,12 +156,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {onEditRoute && (
-                  <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
-                    <Route className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Rediger rute</span>
-                  </Button>
-                )}
                 {onEditRoute && (
                   <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
                     <Route className="w-4 h-4 sm:mr-2" />
