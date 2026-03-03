@@ -298,7 +298,7 @@ export const AISearchBar = () => {
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-muted-foreground" />
               <Label htmlFor="search-mode" className="text-xs text-muted-foreground whitespace-nowrap">
-                {searchMode === "internal" ? "Internt søk" : "Droneregelverk AI"}
+                Internt søk
               </Label>
               <Switch
                 id="search-mode"
@@ -306,6 +306,7 @@ export const AISearchBar = () => {
                 onCheckedChange={handleModeChange}
               />
               <Bot className={`h-4 w-4 ${searchMode === "regulations" ? "text-primary" : "text-muted-foreground"}`} />
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">(regelverkssøk)</Label>
             </div>
           </div>
           <div className="flex gap-2">
