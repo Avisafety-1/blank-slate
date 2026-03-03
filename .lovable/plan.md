@@ -1,28 +1,35 @@
 
 
-## Problem: AI-risikovurderingen gir kryptisk output med rå variabelnavn
+## Problem: Edit button in MissionDetailDialog closes dialog and loses state
 
-Brukeren ser tekst som `landUse.groundRiskClassification='low'` og `maxDensity=21 pers/km²` i risikovurderingen — dette er tekniske variabelnavn som AI-modellen kopierer rett fra system-prompten.
+When opened from AISearchBar, clicking the edit pencil button calls `handleEditClick` which:
+1. Calls `onOpenChange(false)` — this triggers `setSelectedMission(null)` in AISearchBar
+2. MissionDetailDialog unmounts (since `open={!!selectedMission}` becomes false)
+3. The `editDialogOpen` state and `AddMissionDialog` are destroyed before they can render
 
-### Rotårsak
+### Fix
 
-I system-prompten (linje 856) står det:
-> "VIKTIG: Oppgi alltid befolkningstettheten (maxDensity) i actual_conditions"
+**File: `src/components/dashboard/MissionDetailDialog.tsx`**
 
-Dette gjør at AI-modellen inkluderer rå variabelnavn i sin norske tekst. Prompten refererer også til `landUse.groundRiskClassification`, `populationDensity.maxDensity`, `grcImpact` osv. som tekniske begreper, og AI-en kopierer dem inn i brukerteksten.
+Remove the line `onOpenChange(false)` from `handleEditClick` (line 141). The detail dialog should stay open (but hidden behind) while the edit dialog opens, or better: keep both dialogs managed inside the component without closing the parent.
 
-### Plan
+Actually the cleanest fix: Don't close the detail dialog when opening edit. Just open the edit dialog on top. The detail dialog will naturally be behind it. When edit completes, `handleMissionUpdated` already calls `onOpenChange(false)`.
 
-**Fil: `supabase/functions/ai-risk-assessment/index.ts`**
+Change `handleEditClick` from:
+```typescript
+const handleEditClick = () => {
+  onOpenChange(false);
+  setEditDialogOpen(true);
+};
+```
+To:
+```typescript
+const handleEditClick = () => {
+  setEditDialogOpen(true);
+};
+```
 
-1. **Oppdater system-prompten** (linje 837–857) for å instruere AI-en om å bruke naturlig norsk i all output:
-   - Endre "Oppgi alltid befolkningstettheten (maxDensity)" → "Oppgi alltid befolkningstettheten i naturlig tekst, f.eks. 'Maks befolkningstetthet i området er ca. 3400 personer per km²'"
-   - Legg til eksplisitt instruksjon: "Bruk ALDRI tekniske variabelnavn som `landUse.groundRiskClassification`, `maxDensity`, `grcImpact` o.l. i output-teksten. Skriv alt på forståelig norsk."
-   - Erstatt referanser til tekniske feltnavn i instruksjonene med naturlig språk der de beskriver hva AI-en skal skrive i output
+This works because `AddMissionDialog` renders as its own Dialog on top, and when editing is done, `handleMissionUpdated` closes everything properly.
 
-2. **Forbedre eksempel-formuleringer** i response-format (linje 905–911) for `mission_complexity`:
-   - `complexity_factors` beskrives som "Skriv en lettlest beskrivelse av arealbruk, terreng, befolkningstetthet og operasjonelle faktorer — unngå tekniske variabelnavn"
-   - `actual_conditions` beskrives tilsvarende
-
-Ingen endringer i selve logikken eller datahentingen — kun i AI-prompten slik at output blir mer brukerlesbar.
+Also noted: there are **duplicate "Rediger rute" buttons** on lines 160-164 and 166-170 — will clean that up too.
 
