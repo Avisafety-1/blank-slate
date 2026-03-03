@@ -847,13 +847,15 @@ Arealbrukskategoriene og featureCount gir detaljert informasjon om hva som finne
 ### BEFOLKNINGSTETTHET OG SORA GRC (SSB befolkningsgitter-data)
 Feltet "populationDensity" inneholder faktiske personantall per km² hentet fra SSBs befolkningsgitter. Dette er OBLIGATORISK input for SORA Ground Risk Class (GRC):
 
-- grcImpact "very_high" (1500+ pers/km²): Tett bybebyggelse. Legg til grcIncrement (+2) på baseline iGRC. Angi environment som "Tettbygd". Reduser mission_complexity score med 3 poeng. Krev spesifikke tiltak: sperringer, beredskapsplan, koordinering med grunneier/politi.
-- grcImpact "high" (500–1499 pers/km²): Befolket område. Legg til grcIncrement (+1) på baseline iGRC. Reduser mission_complexity score med 2 poeng. Krev tiltak: buffersoner, kommunikasjon med berørte.
-- grcImpact "moderate" (100–499 pers/km²): Spredt bebyggelse. Ingen GRC-økning, men noter i concerns. Reduser mission_complexity score med 1 poeng.
-- grcImpact "none" (<100 pers/km²): Lav tetthet — ingen ekstra GRC-tillegg.
-- Hvis populationDensity er null (data utilgjengelig): bruk landUse og pilotInput som fallback.
+- Tetthet 1500+ pers/km²: Tett bybebyggelse. Legg til +2 på baseline iGRC. Angi environment som "Tettbygd". Reduser mission_complexity score med 3 poeng. Krev spesifikke tiltak: sperringer, beredskapsplan, koordinering med grunneier/politi.
+- Tetthet 500–1499 pers/km²: Befolket område. Legg til +1 på baseline iGRC. Reduser mission_complexity score med 2 poeng. Krev tiltak: buffersoner, kommunikasjon med berørte.
+- Tetthet 100–499 pers/km²: Spredt bebyggelse. Ingen GRC-økning, men noter i concerns. Reduser mission_complexity score med 1 poeng.
+- Tetthet under 100 pers/km²: Lav tetthet — ingen ekstra GRC-tillegg.
+- Hvis befolkningsdata mangler: bruk arealbruksdata og pilotens input som fallback.
 
-VIKTIG: Oppgi alltid befolkningstettheten (maxDensity) i "actual_conditions" for mission_complexity, og nevn GRC-påvirkningen eksplisitt i complexity_factors.
+VIKTIG: Oppgi alltid befolkningstettheten i naturlig tekst i "actual_conditions", f.eks. "Maks befolkningstetthet i området er ca. 21 personer per km²". Nevn også GRC-påvirkningen på forståelig norsk i complexity_factors.
+
+VIKTIG SPRÅKREGEL: Bruk ALDRI tekniske variabelnavn som "landUse.groundRiskClassification", "maxDensity", "grcImpact", "grcIncrement", "populationDensity" eller lignende i output-teksten. Skriv ALT på naturlig, forståelig norsk som en pilot uten teknisk bakgrunn kan forstå. Eksempel: IKKE skriv "landUse.groundRiskClassification='low'" — skriv i stedet "Arealbruken i området er klassifisert som lav risiko (ubebygd/fritidsområde)".
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
@@ -905,7 +907,8 @@ Returner en JSON-respons med denne strukturen:
     "mission_complexity": {
       "score": <number 1-10>,
       "go_decision": "<GO|BETINGET|NO-GO>",
-      "complexity_factors": "<vurdering av oppdragstype, terreng, lysforhold>",
+      "complexity_factors": "<lettlest beskrivelse av arealbruk, terreng, befolkningstetthet og operasjonelle faktorer på naturlig norsk — IKKE bruk tekniske variabelnavn>",
+      "actual_conditions": "<beskrivelse av faktiske forhold i området på naturlig norsk, inkludert befolkningstetthet og arealbruk>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     }
