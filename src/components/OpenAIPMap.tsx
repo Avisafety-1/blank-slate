@@ -469,6 +469,9 @@ export function OpenAIPMap({
     missionsLayerRef.current = missionsLayer;
     layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin" });
 
+    const completedMissionsLayer = L.layerGroup();
+    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin" });
+
     const safeskyLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
 
@@ -526,7 +529,7 @@ export function OpenAIPMap({
     fetchObstacles({ layer: obstaclesLayer, mode });
     fetchAirportsData({ layer: airportsLayer, mode });
     fetchDroneTelemetry({ droneLayer, modeRef });
-    fetchAndDisplayMissions({ missionsLayer, modeRef, onMissionClickRef });
+    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
 
@@ -562,7 +565,7 @@ export function OpenAIPMap({
     // Real-time subscriptions
     const mapChannel = supabase
       .channel('kart-main')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions({ missionsLayer, modeRef, onMissionClickRef }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry({ droneLayer, modeRef }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
