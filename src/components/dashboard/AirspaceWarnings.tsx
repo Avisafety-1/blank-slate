@@ -65,11 +65,30 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
             r.severity === "WARNING" ? "warning" : r.severity === "CAUTION" ? "caution" : "note";
           const distMeters = Math.round(r.min_distance);
           let message: string;
-          if (r.route_inside) {
+
+          const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
+          const is5km = r.z_type === '5KM';
+
+          if (isCtrOrTiz) {
+            if (r.route_inside) {
+              message = `I kontrollert luftrom (${r.z_type} «${r.z_name}»). Maks høyde 120 meter AGL.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til kontrollert luftrom (${r.z_type} «${r.z_name}»), ${distStr} unna. Kontakt tårn ved høyere operasjoner.`;
+            }
+          } else if (is5km) {
+            if (r.route_inside) {
+              message = `Inne i 5 km-sonen rundt «${r.z_name}». Kontrollert luftrom — maks 120 m AGL.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL.`;
+            }
+          } else if (r.route_inside) {
             message = `Ruten går gjennom ${r.z_type}-sone «${r.z_name}».`;
           } else {
             message = `Ruten er ${distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km"} fra ${r.z_type}-sone «${r.z_name}».`;
           }
+
           return {
             zone_type: r.z_type,
             zone_name: r.z_name,
