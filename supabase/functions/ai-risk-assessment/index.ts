@@ -518,24 +518,36 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         minLng -= bufferM * degPerMeterLng;
         maxLng += bufferM * degPerMeterLng;
 
-        // SSB befolkning_paa_rutenett WFS — 1km² grid cells with population count
-        const popWfsUrl = `https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WFSServer?service=WFS&version=2.0.0&request=GetFeature&typeName=befolkning_paa_rutenett_1000m&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326&outputFormat=application/json&count=100`;
-        console.log(`Fetching SSB population WFS: bbox=${minLng.toFixed(5)},${minLat.toFixed(5)},${maxLng.toFixed(5)},${maxLat.toFixed(5)}`);
+        // SSB befolkning_paa_rutenett WFS 2.0 — 1km² grid cells with population count
+        // Note: WFS 2.0 with EPSG:4326 requires lat,lng axis order for BBOX
+        const popWfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=befolkning_1km_2025&SRSNAME=EPSG:4326&BBOX=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326&COUNT=100`;
+        console.log(`Fetching SSB population WFS: bbox=${minLat.toFixed(5)},${minLng.toFixed(5)},${maxLat.toFixed(5)},${maxLng.toFixed(5)}`);
 
         const popResponse = await fetch(popWfsUrl, { signal: AbortSignal.timeout(8000) });
         if (popResponse.ok) {
-          const popJson = await popResponse.json();
-          const features = popJson.features || [];
-          console.log(`SSB population WFS: ${features.length} cells returned`);
+          const popText = await popResponse.text();
+          console.log(`SSB population WFS response length: ${popText.length} chars`);
 
-          const densities: number[] = features
-            .map((f: any) => {
-              // Try common field names for population count
-              const props = f.properties || {};
-              return props.befolkning ?? props.pop ?? props.total ?? props.count ?? props.value ?? null;
-            })
-            .filter((v: any) => v !== null && v !== undefined && !isNaN(Number(v)))
-            .map(Number);
+          // Parse GML/XML response — extract population values from XML elements
+          // Look for common SSB field names in GML elements
+          const densities: number[] = [];
+          const popPatterns = [
+            /<[^>]*:?befolkning[^>]*>(\d+)<\//gi,
+            /<[^>]*:?pop_tot[^>]*>(\d+)<\//gi,
+            /<[^>]*:?pop[^>]*>(\d+)<\//gi,
+            /<[^>]*:?total[^>]*>(\d+)<\//gi,
+          ];
+          
+          for (const pattern of popPatterns) {
+            let match;
+            while ((match = pattern.exec(popText)) !== null) {
+              const val = parseInt(match[1], 10);
+              if (!isNaN(val)) densities.push(val);
+            }
+            if (densities.length > 0) break; // Use first pattern that matches
+          }
+
+          console.log(`SSB population WFS: ${densities.length} density values parsed`);
 
           if (densities.length > 0) {
             const maxDensity = Math.max(...densities);
@@ -567,34 +579,9 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
             populationData = { maxDensity, avgDensity, cellCount: densities.length, grcImpact, grcIncrement, summary };
             console.log(`Population data: max=${maxDensity}, avg=${avgDensity.toFixed(0)}, grcImpact=${grcImpact}, grcIncrement=+${grcIncrement}`);
           } else {
-            console.log('SSB population WFS: no density values parsed from features');
-            // Try alternative GeoServer endpoint
-            const altUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?service=WFS&version=2.0.0&request=GetFeature&typeName=befolkning_1km_2025&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326&outputFormat=application/json&count=50`;
-            const altResponse = await fetch(altUrl, { signal: AbortSignal.timeout(6000) });
-            if (altResponse.ok) {
-              const altJson = await altResponse.json();
-              const altFeatures = altJson.features || [];
-              const altDensities: number[] = altFeatures
-                .map((f: any) => {
-                  const props = f.properties || {};
-                  return props.befolkning ?? props.pop ?? props.total ?? props.count ?? null;
-                })
-                .filter((v: any) => v !== null && !isNaN(Number(v)))
-                .map(Number);
-              if (altDensities.length > 0) {
-                const maxDensity = Math.max(...altDensities);
-                const avgDensity = altDensities.reduce((s, v) => s + v, 0) / altDensities.length;
-                let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
-                let grcIncrement = 0;
-                let summary = '';
-                if (maxDensity >= 1500) { grcImpact = 'very_high'; grcIncrement = 2; summary = `Tett befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +2 (iGRC).`; }
-                else if (maxDensity >= 500) { grcImpact = 'high'; grcIncrement = 1; summary = `Befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +1 (iGRC).`; }
-                else if (maxDensity >= 100) { grcImpact = 'moderate'; grcIncrement = 0; summary = `Spredt bebyggelse: ${Math.round(maxDensity)} personer/km² (maks).`; }
-                else { grcImpact = 'none'; grcIncrement = 0; summary = `Lav befolkningstetthet: ${Math.round(maxDensity)} personer/km².`; }
-                populationData = { maxDensity, avgDensity, cellCount: altDensities.length, grcImpact, grcIncrement, summary };
-                console.log(`Population (alt endpoint): max=${maxDensity}, grcImpact=${grcImpact}`);
-              }
-            }
+            console.log('SSB population WFS: no density values found in GML response');
+            // Log a snippet for debugging
+            console.log('GML snippet:', popText.substring(0, 500));
           }
         } else {
           console.error('SSB population WFS failed:', popResponse.status, await popResponse.text().catch(() => ''));
