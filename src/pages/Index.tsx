@@ -562,6 +562,11 @@ const Index = () => {
                       <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
                     </div>
 
+                    {/* AI Search Bar - Desktop */}
+                    <div className="hidden lg:block">
+                      <AISearchBar />
+                    </div>
+
                     {/* Missions - Desktop only (mobile shows after status) */}
                     <div className="mt-auto hidden lg:block">
                       {layout &&
