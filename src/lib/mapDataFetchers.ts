@@ -397,10 +397,11 @@ export async function fetchAirportsData(params: FetchParams) {
 
 export async function fetchAndDisplayMissions(params: {
   missionsLayer: L.LayerGroup;
+  completedMissionsLayer?: L.LayerGroup;
   modeRef: React.MutableRefObject<string>;
   onMissionClickRef: React.MutableRefObject<((mission: any) => void) | undefined>;
 }) {
-  const { missionsLayer, modeRef, onMissionClickRef } = params;
+  const { missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef } = params;
   if (modeRef.current !== "view") return;
   
   try {
@@ -413,13 +414,16 @@ export async function fetchAndDisplayMissions(params: {
     if (error) return;
     
     missionsLayer.clearLayers();
+    completedMissionsLayer?.clearLayers();
 
     missions?.forEach((mission) => {
       if (!mission.latitude || !mission.longitude) return;
 
+      const isCompleted = mission.status === 'Fullført';
+
       let markerColor = '#3b82f6';
       if (mission.status === 'Pågående') markerColor = '#eab308';
-      else if (mission.status === 'Fullført') markerColor = '#6b7280';
+      else if (isCompleted) markerColor = '#6b7280';
       
       const icon = L.divIcon({
         className: '',
@@ -444,7 +448,13 @@ export async function fetchAndDisplayMissions(params: {
       marker.on('click', () => {
         onMissionClickRef.current?.(mission);
       });
-      marker.addTo(missionsLayer);
+
+      // Add completed missions to separate layer if available, otherwise to main layer
+      if (isCompleted && completedMissionsLayer) {
+        marker.addTo(completedMissionsLayer);
+      } else {
+        marker.addTo(missionsLayer);
+      }
     });
   } catch (err) {
     console.error("Feil ved henting av oppdrag:", err);
