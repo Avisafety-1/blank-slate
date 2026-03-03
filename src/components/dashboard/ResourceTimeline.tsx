@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type TimelineEventType = "mission" | "maintenance" | "document" | "calendar";
 
@@ -19,6 +20,8 @@ interface TimelineEvent {
   end: Date;
   status?: string;
   eventType: TimelineEventType;
+  resourceName?: string;
+  resourceType?: "drone" | "equipment" | "personnel";
 }
 
 interface ResourceRow {
@@ -29,33 +32,13 @@ interface ResourceRow {
 }
 
 const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
-const MAINTENANCE_DURATION_MS = 1 * 60 * 60 * 1000; // 1h block for maintenance
+const MAINTENANCE_DURATION_MS = 1 * 60 * 60 * 1000;
 
 const EVENT_COLORS: Record<TimelineEventType, string> = {
   mission: "bg-primary/80 border-primary",
   maintenance: "bg-orange-500/80 border-orange-500",
   document: "bg-blue-400/80 border-blue-400",
   calendar: "bg-purple-500/80 border-purple-500",
-};
-
-const MISSION_COLORS = [
-  "bg-primary/80 border-primary",
-  "bg-blue-500/80 border-blue-500",
-  "bg-emerald-500/80 border-emerald-500",
-  "bg-violet-500/80 border-violet-500",
-  "bg-amber-500/80 border-amber-500",
-  "bg-rose-500/80 border-rose-500",
-  "bg-cyan-500/80 border-cyan-500",
-  "bg-fuchsia-500/80 border-fuchsia-500",
-];
-
-const getMissionColor = (missionId: string): string => {
-  let hash = 0;
-  for (let i = 0; i < missionId.length; i++) {
-    hash = ((hash << 5) - hash) + missionId.charCodeAt(i);
-    hash |= 0;
-  }
-  return MISSION_COLORS[Math.abs(hash) % MISSION_COLORS.length];
 };
 
 const checkOverlap = (a: TimelineEvent, b: TimelineEvent): boolean => {
@@ -69,6 +52,8 @@ export function ResourceTimeline() {
   const [loading, setLoading] = useState(true);
   const [selectedMission, setSelectedMission] = useState<any | null>(null);
   const [missionDetailOpen, setMissionDetailOpen] = useState(false);
+  const [maintenanceDetailOpen, setMaintenanceDetailOpen] = useState(false);
+  const [selectedMaintenanceEvent, setSelectedMaintenanceEvent] = useState<TimelineEvent | null>(null);
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const daysOfWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -77,7 +62,6 @@ export function ResourceTimeline() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all data in parallel
       const [
         missionsResult,
         dronesResult,
@@ -95,15 +79,12 @@ export function ResourceTimeline() {
       const allEquipment = equipmentResult.data || [];
       const allAccessories = accessoriesResult.data || [];
 
-      // Build resource row maps
       const droneRows = new Map<string, ResourceRow>();
       const personnelRows = new Map<string, ResourceRow>();
       const equipmentRows = new Map<string, ResourceRow>();
 
-      // Pre-populate drone and equipment rows so maintenance shows even without missions
       for (const drone of allDrones) {
         droneRows.set(drone.id, { id: drone.id, name: drone.modell, type: "drone", events: [] });
-        // Add inspection event if exists
         if (drone.neste_inspeksjon) {
           const inspDate = new Date(drone.neste_inspeksjon);
           droneRows.get(drone.id)!.events.push({
@@ -112,6 +93,8 @@ export function ResourceTimeline() {
             start: inspDate,
             end: new Date(inspDate.getTime() + MAINTENANCE_DURATION_MS),
             eventType: "maintenance",
+            resourceName: drone.modell,
+            resourceType: "drone",
           });
         }
       }
@@ -126,25 +109,28 @@ export function ResourceTimeline() {
             start: maintDate,
             end: new Date(maintDate.getTime() + MAINTENANCE_DURATION_MS),
             eventType: "maintenance",
+            resourceName: eq.navn,
+            resourceType: "equipment",
           });
         }
       }
 
-      // Add accessory maintenance to parent drone
       for (const acc of allAccessories) {
         if (acc.neste_vedlikehold && acc.drone_id && droneRows.has(acc.drone_id)) {
           const maintDate = new Date(acc.neste_vedlikehold);
-          droneRows.get(acc.drone_id)!.events.push({
+          const parentDrone = droneRows.get(acc.drone_id)!;
+          parentDrone.events.push({
             id: `acc-maint-${acc.id}`,
             title: `${acc.navn} vedlikehold`,
             start: maintDate,
             end: new Date(maintDate.getTime() + MAINTENANCE_DURATION_MS),
             eventType: "maintenance",
+            resourceName: parentDrone.name,
+            resourceType: "drone",
           });
         }
       }
 
-      // Process missions and resource links
       if (missions.length > 0) {
         const missionIds = missions.map((m) => m.id);
         const [droneLinks, personnelLinks, equipmentLinks] = await Promise.all([
@@ -197,13 +183,10 @@ export function ResourceTimeline() {
         }
       }
 
-      // Filter: only show rows that have events visible in any timeframe (or always show if they have maintenance)
-      const hasAnyEvents = (row: ResourceRow) => row.events.length > 0;
-
       setResourceRows([
-        ...Array.from(droneRows.values()).filter(hasAnyEvents),
-        ...Array.from(personnelRows.values()).filter(hasAnyEvents),
-        ...Array.from(equipmentRows.values()).filter(hasAnyEvents),
+        ...Array.from(droneRows.values()),
+        ...Array.from(personnelRows.values()),
+        ...Array.from(equipmentRows.values()),
       ]);
     } catch (err) {
       console.error("ResourceTimeline fetch error:", err);
@@ -229,14 +212,21 @@ export function ResourceTimeline() {
     }
   };
 
-  // Group rows by type
-  const droneResources = resourceRows.filter((r) => r.type === "drone");
-  const personnelResources = resourceRows.filter((r) => r.type === "personnel");
-  const equipmentResources = resourceRows.filter((r) => r.type === "equipment");
+  const handleMaintenanceClick = (event: TimelineEvent) => {
+    setSelectedMaintenanceEvent(event);
+    setMaintenanceDetailOpen(true);
+  };
 
   const weekStartMs = weekStart.getTime();
   const weekEndMs = weekEnd.getTime();
   const weekDurationMs = weekEndMs - weekStartMs;
+
+  // Filter rows by type, then by week visibility
+  const eventOverlapsWeek = (e: TimelineEvent) => e.end.getTime() > weekStartMs && e.start.getTime() < weekEndMs;
+
+  const droneResources = resourceRows.filter((r) => r.type === "drone" && r.events.some(eventOverlapsWeek));
+  const personnelResources = resourceRows.filter((r) => r.type === "personnel" && r.events.some(eventOverlapsWeek));
+  const equipmentResources = resourceRows.filter((r) => r.type === "equipment" && r.events.some(eventOverlapsWeek));
 
   const renderEventBlock = (event: TimelineEvent, row: ResourceRow) => {
     const mStart = Math.max(event.start.getTime(), weekStartMs);
@@ -250,11 +240,13 @@ export function ResourceTimeline() {
       (other) => other.id !== event.id && other.eventType === "mission" && checkOverlap(event, other)
     );
 
-    const color = event.eventType === "mission" 
-      ? getMissionColor(event.id) 
-      : EVENT_COLORS[event.eventType];
+    const color = EVENT_COLORS[event.eventType];
+    const isClickable = event.eventType === "mission" || event.eventType === "maintenance";
 
-    const isClickable = event.eventType === "mission";
+    const handleClick = () => {
+      if (event.eventType === "mission") handleMissionClick(event.id);
+      else if (event.eventType === "maintenance") handleMaintenanceClick(event);
+    };
 
     const blockContent = (
       <span className="flex items-center gap-1 truncate">
@@ -269,7 +261,7 @@ export function ResourceTimeline() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={isClickable ? () => handleMissionClick(event.id) : undefined}
+              onClick={isClickable ? handleClick : undefined}
               className={cn(
                 "absolute top-1 h-7 rounded-md border text-[10px] sm:text-xs font-medium text-white px-1.5 truncate transition-opacity hover:opacity-90 z-10",
                 isClickable ? "cursor-pointer" : "cursor-default",
@@ -313,9 +305,7 @@ export function ResourceTimeline() {
         </div>
         <div className="border border-border rounded-lg overflow-hidden">
           {rows.map((row, idx) => {
-            const visibleEvents = row.events.filter((e) => {
-              return e.end.getTime() > weekStartMs && e.start.getTime() < weekEndMs;
-            });
+            const visibleEvents = row.events.filter(eventOverlapsWeek);
             return (
               <div
                 key={row.id}
@@ -328,7 +318,6 @@ export function ResourceTimeline() {
                   <span className="text-xs sm:text-sm font-medium truncate">{row.name}</span>
                 </div>
                 <div className="flex-1 relative">
-                  {/* Day grid lines */}
                   <div className="absolute inset-0 flex">
                     {daysOfWeek.map((day, i) => (
                       <div
@@ -341,7 +330,6 @@ export function ResourceTimeline() {
                       />
                     ))}
                   </div>
-                  {/* Event blocks */}
                   {visibleEvents.map((e) => renderEventBlock(e, row))}
                   {visibleEvents.length === 0 && (
                     <div className="absolute inset-0" />
@@ -355,7 +343,7 @@ export function ResourceTimeline() {
     );
   };
 
-  const isEmpty = resourceRows.length === 0 && !loading;
+  const isEmpty = droneResources.length === 0 && personnelResources.length === 0 && equipmentResources.length === 0 && !loading;
 
   return (
     <div>
@@ -407,7 +395,7 @@ export function ResourceTimeline() {
         </div>
       ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-sm">Ingen ressurser med hendelser</p>
+          <p className="text-sm">Ingen ressurser med hendelser denne uken</p>
           <p className="text-xs mt-1">Opprett oppdrag og tildel droner, utstyr eller personell for å se dem her</p>
         </div>
       ) : (
@@ -423,6 +411,42 @@ export function ResourceTimeline() {
         onOpenChange={setMissionDetailOpen}
         mission={selectedMission}
       />
+
+      {/* Maintenance detail dialog */}
+      <Dialog open={maintenanceDetailOpen} onOpenChange={setMaintenanceDetailOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-orange-500" />
+              {selectedMaintenanceEvent?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedMaintenanceEvent && (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Ressurs</span>
+                <span className="font-medium">{selectedMaintenanceEvent.resourceName || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <Badge variant="outline" className="capitalize">
+                  {selectedMaintenanceEvent.resourceType === "drone" ? "Drone" : "Utstyr"}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Dato</span>
+                <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: nb })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kategori</span>
+                <Badge className="bg-orange-500/80 text-white border-orange-500">
+                  {selectedMaintenanceEvent.title.includes("Inspeksjon") ? "Inspeksjon" : "Vedlikehold"}
+                </Badge>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
