@@ -1,27 +1,28 @@
 
 
-## Ressurskalender — 4 fixes
+## Problem: AI-risikovurderingen gir kryptisk output med rå variabelnavn
 
-**Fil: `src/components/dashboard/ResourceTimeline.tsx`**
+Brukeren ser tekst som `landUse.groundRiskClassification='low'` og `maxDensity=21 pers/km²` i risikovurderingen — dette er tekniske variabelnavn som AI-modellen kopierer rett fra system-prompten.
 
-### 1. Klikkbare vedlikeholdselementer
-Legg til state for en vedlikeholds-popover/dialog. Ved klikk på maintenance-events, vis en enkel Dialog med tittel, ressursnavn, dato og type (inspeksjon/vedlikehold). Lagre ekstra metadata på `TimelineEvent` (resourceName, resourceType) for visning.
+### Rotårsak
 
-### 2. Filtrer rader per uke (kun rader med synlige events)
-Flytt filtreringen fra `hasAnyEvents` (som sjekker totalt) til `renderSection` — filtrer `rows` til kun de som har events innenfor `weekStartMs`–`weekEndMs`. Seksjoner uten synlige rader skjules automatisk (eksisterende `rows.length === 0` check på linje 306).
+I system-prompten (linje 856) står det:
+> "VIKTIG: Oppgi alltid befolkningstettheten (maxDensity) i actual_conditions"
 
-### 3. Skjul tomme seksjoner per uke
-Følger automatisk av punkt 2 — `renderSection` returnerer `null` når filtrerte rader er tomme.
+Dette gjør at AI-modellen inkluderer rå variabelnavn i sin norske tekst. Prompten refererer også til `landUse.groundRiskClassification`, `populationDensity.maxDensity`, `grcImpact` osv. som tekniske begreper, og AI-en kopierer dem inn i brukerteksten.
 
-### 4. Oppdragsfarge matcher legend
-Endre `renderEventBlock` slik at mission-events bruker `EVENT_COLORS.mission` (`bg-primary/80`) i stedet for `getMissionColor(event.id)` som gir tilfeldige farger. Dette matcher legend-fargen.
+### Plan
 
-### Implementasjonsdetaljer
+**Fil: `supabase/functions/ai-risk-assessment/index.ts`**
 
-- Ny state: `maintenanceDetailOpen` + `selectedMaintenanceEvent` (med resourceName)
-- Utvid `TimelineEvent` med valgfri `resourceName?: string`
-- Sett `resourceName` ved opprettelse av maintenance-events (drone.modell / eq.navn)
-- Enkel Dialog for vedlikeholdsdetaljer (dato, type, ressursnavn)
-- `renderSection` filtrerer: `rows.filter(r => r.events.some(e => overlaps week))`
-- Fjern `getMissionColor` — bruk `EVENT_COLORS[event.eventType]` for alle events
+1. **Oppdater system-prompten** (linje 837–857) for å instruere AI-en om å bruke naturlig norsk i all output:
+   - Endre "Oppgi alltid befolkningstettheten (maxDensity)" → "Oppgi alltid befolkningstettheten i naturlig tekst, f.eks. 'Maks befolkningstetthet i området er ca. 3400 personer per km²'"
+   - Legg til eksplisitt instruksjon: "Bruk ALDRI tekniske variabelnavn som `landUse.groundRiskClassification`, `maxDensity`, `grcImpact` o.l. i output-teksten. Skriv alt på forståelig norsk."
+   - Erstatt referanser til tekniske feltnavn i instruksjonene med naturlig språk der de beskriver hva AI-en skal skrive i output
+
+2. **Forbedre eksempel-formuleringer** i response-format (linje 905–911) for `mission_complexity`:
+   - `complexity_factors` beskrives som "Skriv en lettlest beskrivelse av arealbruk, terreng, befolkningstetthet og operasjonelle faktorer — unngå tekniske variabelnavn"
+   - `actual_conditions` beskrives tilsvarende
+
+Ingen endringer i selve logikken eller datahentingen — kun i AI-prompten slik at output blir mer brukerlesbar.
 
