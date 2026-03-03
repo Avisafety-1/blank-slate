@@ -195,7 +195,7 @@ export async function fetchRmzTmzAtzZones(params: GeoJsonFetchParams) {
     const { data, error } = await supabase
       .from('aip_restriction_zones')
       .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-      .in('zone_type', ['RMZ', 'TMZ', 'ATZ']);
+      .in('zone_type', ['RMZ', 'TMZ', 'ATZ', 'CTR', 'TIZ']);
 
     if (error || !data) {
       console.error('Feil ved henting av RMZ/TMZ/ATZ-soner:', error);
@@ -218,6 +218,14 @@ export async function fetchRmzTmzAtzZones(params: GeoJsonFetchParams) {
         color = '#38bdf8';
         label = 'ATZ (Aerodrome Traffic Zone)';
         dashArray = undefined;
+      } else if (zone.zone_type === 'CTR') {
+        color = '#ec4899';
+        label = 'CTR (Control Zone)';
+        dashArray = undefined;
+      } else if (zone.zone_type === 'TIZ') {
+        color = '#a78bfa';
+        label = 'TIZ (Traffic Information Zone)';
+        dashArray = '8, 6';
       }
 
       try {

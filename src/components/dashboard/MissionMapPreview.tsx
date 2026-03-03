@@ -339,6 +339,8 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
               else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
               else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
               else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'ATZ'; }
+              else if (zone.zone_type === 'CTR') { color = '#ec4899'; label = 'CTR'; }
+              else if (zone.zone_type === 'TIZ') { color = '#a78bfa'; label = 'TIZ'; dashArray = '8, 6'; }
 
               try {
                 L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
