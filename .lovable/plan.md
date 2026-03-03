@@ -1,41 +1,27 @@
 
 
-## Problem: SSB befolkningsdata feiler for AI-risikovurdering
+## Ressurskalender — 4 fixes
 
-### Rotårsak
-SSB har migrert WFS-tjenesten sin. Koden bruker to endepunkter som begge feiler:
+**Fil: `src/components/dashboard/ResourceTimeline.tsx`**
 
-1. **Primær-URL** (linje 522): `https://kart.ssb.no/arcgis/services/ekstern/befolkning_paa_rutenett/MapServer/WFSServer` → **404 Not Found** (fjernet av SSB)
-2. **Fallback-URL** (linje 572): `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett` med `typeName` (entall) og `outputFormat=application/json` → **400 Bad Request** (feil parameternavn + JSON-format støttes ikke)
+### 1. Klikkbare vedlikeholdselementer
+Legg til state for en vedlikeholds-popover/dialog. Ved klikk på maintenance-events, vis en enkel Dialog med tittel, ressursnavn, dato og type (inspeksjon/vedlikehold). Lagre ekstra metadata på `TimelineEvent` (resourceName, resourceType) for visning.
 
-### Verifisert fungerende endepunkt
-```text
-https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett
-  ?SERVICE=WFS
-  &VERSION=2.0.0
-  &REQUEST=GetFeature
-  &TYPENAMES=befolkning_1km_2025       ← WFS 2.0 krever TYPENAMES (flertall)
-  &SRSNAME=EPSG:4326
-  &BBOX={lat_min},{lng_min},{lat_max},{lng_max},EPSG:4326  ← lat,lng rekkefølge for WFS 2.0
-  &COUNT=100
-  (ingen outputFormat → returnerer GML/XML)
-```
+### 2. Filtrer rader per uke (kun rader med synlige events)
+Flytt filtreringen fra `hasAnyEvents` (som sjekker totalt) til `renderSection` — filtrer `rows` til kun de som har events innenfor `weekStartMs`–`weekEndMs`. Seksjoner uten synlige rader skjules automatisk (eksisterende `rows.length === 0` check på linje 306).
 
-Testet med Trondheim-koordinater — returnerer data med befolkningstall (f.eks. 2969, 1899 per km²).
+### 3. Skjul tomme seksjoner per uke
+Følger automatisk av punkt 2 — `renderSection` returnerer `null` når filtrerte rader er tomme.
 
-### Plan
+### 4. Oppdragsfarge matcher legend
+Endre `renderEventBlock` slik at mission-events bruker `EVENT_COLORS.mission` (`bg-primary/80`) i stedet for `getMissionColor(event.id)` som gir tilfeldige farger. Dette matcher legend-fargen.
 
-**Fil: `supabase/functions/ai-risk-assessment/index.ts`** (linje 488–604)
+### Implementasjonsdetaljer
 
-1. Erstatt begge endepunkt-URLene med den verifiserte nye SSB-URLen
-2. Endre `typeName` → `TYPENAMES` og fjern `outputFormat=application/json`
-3. Bytt bbox-akseorden til lat,lng (WFS 2.0 med EPSG:4326)
-4. Parse GML/XML-respons med regex for å ekstrahere befolkningstall (feltnavn fra GML-data)
-5. Fjern den separate fallback-logikken (linje 571–597) siden vi nå bruker riktig URL direkte
-
-### Tekniske detaljer
-
-GML-responsen inneholder befolkningstall i XML-elementer. Vi parser med regex tilsvarende hvordan arealbruk allerede parses (linje 430). Nøkkelfelter å ekstrahere: `befolkning` eller `pop_tot` verdier fra GML-features.
-
-Resten av logikken (GRC-beregning, terskler osv.) forblir uendret.
+- Ny state: `maintenanceDetailOpen` + `selectedMaintenanceEvent` (med resourceName)
+- Utvid `TimelineEvent` med valgfri `resourceName?: string`
+- Sett `resourceName` ved opprettelse av maintenance-events (drone.modell / eq.navn)
+- Enkel Dialog for vedlikeholdsdetaljer (dato, type, ressursnavn)
+- `renderSection` filtrerer: `rows.filter(r => r.events.some(e => overlaps week))`
+- Fjern `getMissionColor` — bruk `EVENT_COLORS[event.eventType]` for alle events
 
