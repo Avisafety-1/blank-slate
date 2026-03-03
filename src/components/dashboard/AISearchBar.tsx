@@ -291,7 +291,7 @@ export const AISearchBar = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="relative">
       <GlassCard className="p-4">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
@@ -329,7 +329,7 @@ export const AISearchBar = () => {
       </GlassCard>
 
       {searchMode === "regulations" && chatMessages.length > 0 && (
-        <GlassCard className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
+        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 space-y-4 max-h-[500px] overflow-y-auto shadow-lg border border-border">
           <div className="space-y-4">
             {chatMessages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -363,7 +363,7 @@ export const AISearchBar = () => {
       )}
 
       {searchMode === "internal" && results && (
-        <GlassCard className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 space-y-4 max-h-[400px] overflow-y-auto shadow-lg border border-border">
           <div className="space-y-2">
             <h3 className="font-semibold text-lg">{t('dashboard.search.results')} ({getTotalResults()})</h3>
             {results.summary && <p className="text-sm text-muted-foreground">{results.summary}</p>}
