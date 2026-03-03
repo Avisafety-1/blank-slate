@@ -120,8 +120,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Map type
-        const zoneType = typeMap[airspaceType] || "D";
+        // Map type, with name-based override for CTR zones
+        let zoneType = typeMap[airspaceType] || "D";
+        if (name.toUpperCase().includes("CTR")) {
+          zoneType = "CTR";
+        }
 
         // Extract zone_id from name
         // Match EN-R102, EN-D303 etc.
