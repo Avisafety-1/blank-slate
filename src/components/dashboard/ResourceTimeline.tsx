@@ -67,21 +67,25 @@ export function ResourceTimeline() {
         dronesResult,
         equipmentResult,
         accessoriesResult,
+        calendarEventsResult,
       ] = await Promise.all([
         supabase.from("missions").select("id, tittel, tidspunkt, slutt_tidspunkt, status").in("status", ["Planlagt", "Pågående"]),
         supabase.from("drones").select("id, modell, serienummer, neste_inspeksjon, sjekkliste_id").eq("aktiv", true),
         supabase.from("equipment").select("id, navn, type, neste_vedlikehold, sjekkliste_id").eq("aktiv", true),
         supabase.from("drone_accessories").select("id, navn, drone_id, neste_vedlikehold"),
+        supabase.from("calendar_events").select("id, title, event_date, event_time, type"),
       ]);
 
       const missions = missionsResult.data || [];
       const allDrones = dronesResult.data || [];
       const allEquipment = equipmentResult.data || [];
       const allAccessories = accessoriesResult.data || [];
+      const calendarEvents = calendarEventsResult.data || [];
 
       const droneRows = new Map<string, ResourceRow>();
       const personnelRows = new Map<string, ResourceRow>();
       const equipmentRows = new Map<string, ResourceRow>();
+      const calendarRows = new Map<string, ResourceRow>();
 
       for (const drone of allDrones) {
         droneRows.set(drone.id, { id: drone.id, name: drone.modell, type: "drone", events: [] });
@@ -183,10 +187,31 @@ export function ResourceTimeline() {
         }
       }
 
+      // Process calendar events into their own rows grouped by type
+      for (const ce of calendarEvents) {
+        const eventDate = new Date(ce.event_date);
+        if (ce.event_time) {
+          const [h, m] = ce.event_time.split(":").map(Number);
+          eventDate.setHours(h || 0, m || 0);
+        }
+        const typeLabel = ce.type || "Annet";
+        if (!calendarRows.has(typeLabel)) {
+          calendarRows.set(typeLabel, { id: `cal-type-${typeLabel}`, name: typeLabel, type: "personnel", events: [] });
+        }
+        calendarRows.get(typeLabel)!.events.push({
+          id: `cal-${ce.id}`,
+          title: ce.title,
+          start: eventDate,
+          end: new Date(eventDate.getTime() + MAINTENANCE_DURATION_MS),
+          eventType: "calendar",
+        });
+      }
+
       setResourceRows([
         ...Array.from(droneRows.values()),
         ...Array.from(personnelRows.values()),
         ...Array.from(equipmentRows.values()),
+        ...Array.from(calendarRows.values()),
       ]);
     } catch (err) {
       console.error("ResourceTimeline fetch error:", err);
@@ -225,8 +250,9 @@ export function ResourceTimeline() {
   const eventOverlapsWeek = (e: TimelineEvent) => e.end.getTime() > weekStartMs && e.start.getTime() < weekEndMs;
 
   const droneResources = resourceRows.filter((r) => r.type === "drone" && r.events.some(eventOverlapsWeek));
-  const personnelResources = resourceRows.filter((r) => r.type === "personnel" && r.events.some(eventOverlapsWeek));
+  const personnelResources = resourceRows.filter((r) => r.type === "personnel" && !r.id.startsWith("cal-type-") && r.events.some(eventOverlapsWeek));
   const equipmentResources = resourceRows.filter((r) => r.type === "equipment" && r.events.some(eventOverlapsWeek));
+  const calendarResources = resourceRows.filter((r) => r.id.startsWith("cal-type-") && r.events.some(eventOverlapsWeek));
 
   const renderEventBlock = (event: TimelineEvent, row: ResourceRow) => {
     const mStart = Math.max(event.start.getTime(), weekStartMs);
@@ -343,7 +369,7 @@ export function ResourceTimeline() {
     );
   };
 
-  const isEmpty = droneResources.length === 0 && personnelResources.length === 0 && equipmentResources.length === 0 && !loading;
+  const isEmpty = droneResources.length === 0 && personnelResources.length === 0 && equipmentResources.length === 0 && calendarResources.length === 0 && !loading;
 
   return (
     <div>
@@ -360,15 +386,23 @@ export function ResourceTimeline() {
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-        <div className="text-sm font-medium text-muted-foreground">
-          Uke {weekNumber}, {format(weekStart, "yyyy")} — {format(weekStart, "d. MMM", { locale: nb })} – {format(weekEnd, "d. MMM", { locale: nb })}
-        </div>
+        {isMobile ? (
+          <div className="text-right">
+            <div className="text-sm font-semibold text-foreground">Uke {weekNumber}, {format(weekStart, "yyyy")}</div>
+            <div className="text-xs text-muted-foreground">{format(weekStart, "d. MMMM", { locale: nb })} – {format(weekEnd, "d. MMMM", { locale: nb })}</div>
+          </div>
+        ) : (
+          <div className="text-sm font-medium text-muted-foreground">
+            Uke {weekNumber}, {format(weekStart, "yyyy")} — {format(weekStart, "d. MMM", { locale: nb })} – {format(weekEnd, "d. MMM", { locale: nb })}
+          </div>
+        )}
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/80 inline-block" /> Oppdrag</span>
         <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-orange-500/80 inline-block" /> Vedlikehold</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-purple-500/80 inline-block" /> Kalender</span>
       </div>
 
       {/* Day headers */}
@@ -403,6 +437,7 @@ export function ResourceTimeline() {
           {renderSection("Droner", <Plane className="w-4 h-4 text-primary" />, droneResources)}
           {renderSection("Personell", <Users className="w-4 h-4 text-blue-500" />, personnelResources)}
           {renderSection("Utstyr", <Wrench className="w-4 h-4 text-orange-500" />, equipmentResources)}
+          {renderSection("Kalender", <Calendar className="w-4 h-4 text-purple-500" />, calendarResources)}
         </>
       )}
 
