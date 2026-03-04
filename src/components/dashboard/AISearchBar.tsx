@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Loader2, Bot, Database } from "lucide-react";
+import { Search, Loader2, Bot, Database, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
@@ -49,7 +49,7 @@ export const AISearchBar = () => {
   const [searchMode, setSearchMode] = useState<"internal" | "regulations">("internal");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
@@ -67,7 +67,9 @@ export const AISearchBar = () => {
   }, [query, searchMode]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [chatMessages]);
 
   const handleModeChange = (checked: boolean) => {
@@ -329,7 +331,18 @@ export const AISearchBar = () => {
       </GlassCard>
 
       {searchMode === "regulations" && chatMessages.length > 0 && (
-        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 space-y-4 max-h-[500px] overflow-y-auto shadow-lg border border-border">
+        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 max-h-[500px] shadow-lg border border-border">
+          <div className="space-y-4 overflow-y-auto max-h-[460px]" ref={chatContainerRef}>
+          <div className="flex justify-end sticky top-0 z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-muted/80 hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setChatMessages([])}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="space-y-4">
             {chatMessages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -357,7 +370,7 @@ export const AISearchBar = () => {
                 </div>
               </div>
             )}
-            <div ref={chatEndRef} />
+          </div>
           </div>
         </GlassCard>
       )}
