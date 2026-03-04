@@ -16,6 +16,20 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
 });
 registerRoute(navigationRoute);
 
+// Force immediate activation of new SW versions
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  self.clients.claim();
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(key => caches.delete(key)))
+    )
+  );
+});
+
 // Push notification handler
 self.addEventListener('push', function(event) {
   console.log('[SW] Push received:', event);
