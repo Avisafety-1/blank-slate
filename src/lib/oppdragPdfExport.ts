@@ -94,7 +94,7 @@ export const exportToPDF = async (
           pdf.setFontSize(12);
           setFontStyle(pdf, "bold");
           pdf.setTextColor(0);
-          pdf.text("Kartutssnitt", 15, yPos);
+          pdf.text("Kartutsnitt", 15, yPos);
           yPos += 7;
 
           pdf.addImage(mapDataUrl, "PNG", 15, yPos, 180, 90);
@@ -251,7 +251,7 @@ export const exportToPDF = async (
       
       const basicInfo = [
         ["Status", sanitizeForPdf(mission.status)],
-        ["Risikonivia", sanitizeForPdf(mission.risk_nivå)],
+        ["Risikonivå", sanitizeForPdf(mission.risk_nivå)],
         ["Lokasjon", sanitizeForPdf(mission.lokasjon)],
         ["Dato/tid", formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
         ...(mission.slutt_tidspunkt ? [["Sluttid", formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
@@ -540,7 +540,7 @@ export const exportToPDF = async (
         ];
         
         if (overallScore != null) riskInfo.push(["Total score", `${Number(overallScore).toFixed(1)}/10`]);
-        if (weatherScore != null) riskInfo.push(["Vaer-score", `${Number(weatherScore).toFixed(1)}/10`]);
+        if (weatherScore != null) riskInfo.push(["Vær-score", `${Number(weatherScore).toFixed(1)}/10`]);
         if (airspaceScore != null) riskInfo.push(["Luftrom-score", `${Number(airspaceScore).toFixed(1)}/10`]);
         if (pilotScore != null) riskInfo.push(["Pilot-score", `${Number(pilotScore).toFixed(1)}/10`]);
         if (equipmentScore != null) riskInfo.push(["Utstyr-score", `${Number(equipmentScore).toFixed(1)}/10`]);
