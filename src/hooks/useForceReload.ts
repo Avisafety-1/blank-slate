@@ -3,8 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { processQueue } from '@/lib/offlineQueue';
 
-// Hardcoded local version — bump this on each deploy or let admin manage via DB
-const LOCAL_APP_VERSION = '1';
+const VERSION_KEY = 'avisafe_app_version';
+
+function getLocalVersion(): string | null {
+  return localStorage.getItem(VERSION_KEY);
+}
+
+function setLocalVersion(v: string) {
+  localStorage.setItem(VERSION_KEY, v);
+}
+
+// Track the pending version so performReload can persist it
+let pendingVersion: string | null = null;
 
 interface ForceReloadState {
   showBanner: boolean;
@@ -75,6 +85,25 @@ export async function performReload() {
     console.warn('[ForceReload] Could not sync offline queue:', e);
   }
 
+  // If we don't have a pending version from broadcast, fetch from DB
+  if (!pendingVersion) {
+    try {
+      const { data } = await supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'app_version')
+        .single();
+      if (data?.value) pendingVersion = data.value;
+    } catch {}
+  }
+
+  // Persist the new version BEFORE reload so the check won't trigger again
+  if (pendingVersion) {
+    setLocalVersion(pendingVersion);
+    console.log(`[ForceReload] Saved version ${pendingVersion} to localStorage`);
+    pendingVersion = null;
+  }
+
   await clearAllCaches();
   window.location.reload();
 }
@@ -94,6 +123,10 @@ export function useForceReload() {
       .on('broadcast', { event: 'reload' }, (payload) => {
         console.log('[ForceReload] Received broadcast signal', payload);
         const forceImmediate = payload?.payload?.forceImmediate === true;
+        // Store version from broadcast so performReload can persist it
+        if (payload?.payload?.version) {
+          pendingVersion = payload.payload.version;
+        }
 
         if (forceImmediate) {
           performReload();
@@ -118,10 +151,15 @@ export function useForceReload() {
           return;
         }
 
-        if (data && data.value !== LOCAL_APP_VERSION) {
-          console.log(`[ForceReload] Version mismatch: local=${LOCAL_APP_VERSION}, remote=${data.value}`);
+        const localVer = getLocalVersion();
+        if (data && localVer && data.value !== localVer) {
+          console.log(`[ForceReload] Version mismatch: local=${localVer}, remote=${data.value}`);
+          pendingVersion = data.value;
           globalState = { showBanner: true, forceImmediate: false };
           notify();
+        } else if (data && !localVer) {
+          // First visit — seed localStorage with current DB version
+          setLocalVersion(data.value);
         }
       } catch (e) {
         console.warn('[ForceReload] Version check failed:', e);
