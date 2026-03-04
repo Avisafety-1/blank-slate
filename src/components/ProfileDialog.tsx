@@ -1644,6 +1644,9 @@ export const ProfileDialog = () => {
               </TabsContent>
             </Tabs>
           )}
+          <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
+            App versjon v{localStorage.getItem('avisafe_app_version') || '1'}
+          </p>
         </ScrollArea>
       </DialogContent>
 
