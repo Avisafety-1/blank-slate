@@ -376,7 +376,18 @@ export const AISearchBar = () => {
       )}
 
       {searchMode === "internal" && results && (
-        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 space-y-4 max-h-[400px] overflow-y-auto shadow-lg border border-border">
+        <GlassCard className="absolute z-50 left-0 right-0 mt-2 p-6 max-h-[400px] shadow-lg border border-border">
+          <div className="space-y-4 overflow-y-auto max-h-[360px]">
+          <div className="flex justify-end sticky top-0 z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-muted/80 hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setResults(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="space-y-2">
             <h3 className="font-semibold text-lg">{t('dashboard.search.results')} ({getTotalResults()})</h3>
             {results.summary && <p className="text-sm text-muted-foreground">{results.summary}</p>}
@@ -570,6 +581,7 @@ export const AISearchBar = () => {
                 </ul>
               </div>
             )}
+          </div>
           </div>
         </GlassCard>
       )}
