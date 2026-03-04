@@ -1,8 +1,14 @@
 
 
-## Legg til X-knapp på internt søk
+## Svar: Permanent, ikke engangs
 
-**Fil: `src/components/dashboard/AISearchBar.tsx`**
+`skipWaiting()` og `clients.claim()` blir en **permanent** del av Service Worker-en — ikke en engangsgreie. Det betyr:
 
-Legg til samme sticky X-knapp (som allerede finnes på regelverks-chatten) øverst til høyre i internal results GlassCard. Knappen kaller `setResults(null)` for å lukke resultatpanelet. Wrapper innholdet i en scrollbar div med sticky X-knapp, identisk mønster som regulations-chatten.
+- **Hver gang** du deployer en ny versjon av appen, vil den nye SW-en aktiveres umiddelbart for alle brukere neste gang de åpner/navigerer til appen.
+- Det påvirker **ikke** innlogging, registrering eller annen funksjonalitet. Det er kun SW-livssyklusen som endres: nye versjoner venter ikke lenger på at brukeren lukker alle tabs.
+- Cache-slettingen i `activate` sikrer at gamle filer ikke henger igjen.
+
+**Dette er ønsket oppførsel fremover** — det betyr at du aldri igjen trenger å bekymre deg for brukere som sitter fast på gammel cache. Hver deploy → neste besøk → automatisk oppdatering.
+
+Skal jeg implementere dette?
 
