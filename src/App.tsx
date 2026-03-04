@@ -12,6 +12,8 @@ import { Header } from "@/components/Header";
 import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
+import { ForceReloadBanner } from "@/components/ForceReloadBanner";
+import { useForceReload } from "@/hooks/useForceReload";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -59,6 +61,7 @@ try {
 const AuthenticatedLayout = () => {
   const { user, loading, isApproved } = useAuth();
   const location = useLocation();
+  useForceReload();
   
   // Don't render Header until we know user is authenticated and approved
   // Exception: offline with cached session — allow rendering
@@ -114,6 +117,7 @@ const App = () => {
         <ErrorBoundary>
           <AuthProvider>
             <BrowserRouter>
+              <ForceReloadBanner />
               <Toaster />
               <Sonner />
               <KeyboardDismissButton />
