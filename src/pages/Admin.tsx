@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -543,6 +543,88 @@ const Admin = () => {
                 </Card>
               )}
 
+
+              {isSuperAdmin && (
+                <Card>
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <Radio className="h-4 w-4" />
+                      Tving oppdatering for alle brukere
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Sender et signal til alle tilkoblede brukere om å oppdatere appen. Offline-brukere får oppdateringen når de kobler til igjen.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 sm:px-6">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          if (!confirm('Dette vil vise en oppdateringsbanner for alle tilkoblede brukere. Fortsett?')) return;
+                          try {
+                            const channel = supabase.channel('global-force-reload');
+                            await channel.send({
+                              type: 'broadcast',
+                              event: 'reload',
+                              payload: { forceImmediate: false, timestamp: Date.now() },
+                            });
+                            // Also bump the version in app_config for offline users
+                            const { data: current } = await supabase
+                              .from('app_config')
+                              .select('value')
+                              .eq('key', 'app_version')
+                              .single();
+                            const nextVersion = String(Number(current?.value || '0') + 1);
+                            await supabase
+                              .from('app_config')
+                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
+                              .eq('key', 'app_version');
+                            toast.success(`Oppdateringssignal sendt til alle brukere (v${nextVersion})`);
+                            supabase.removeChannel(channel);
+                          } catch (err) {
+                            console.error('Force reload error:', err);
+                            toast.error('Kunne ikke sende oppdateringssignal');
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Send oppdateringssignal
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          if (!confirm('ADVARSEL: Dette tvinger en umiddelbar reload for ALLE tilkoblede brukere. Ulagret arbeid kan gå tapt. Fortsett?')) return;
+                          try {
+                            const channel = supabase.channel('global-force-reload');
+                            await channel.send({
+                              type: 'broadcast',
+                              event: 'reload',
+                              payload: { forceImmediate: true, timestamp: Date.now() },
+                            });
+                            const { data: current } = await supabase
+                              .from('app_config')
+                              .select('value')
+                              .eq('key', 'app_version')
+                              .single();
+                            const nextVersion = String(Number(current?.value || '0') + 1);
+                            await supabase
+                              .from('app_config')
+                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
+                              .eq('key', 'app_version');
+                            toast.success('Tvungen oppdatering sendt!');
+                            supabase.removeChannel(channel);
+                          } catch (err) {
+                            console.error('Force immediate reload error:', err);
+                            toast.error('Kunne ikke sende tvunget oppdatering');
+                          }
+                        }}
+                      >
+                        ⚠️ Tving umiddelbart
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {isSuperAdmin && (
                 <Card>
