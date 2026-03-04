@@ -1,19 +1,27 @@
 
 
-## Fix: Solid dark accent on button hover/focus states
+## Problem
 
-### Problem
-The `Button` component's `outline` and `ghost` variants use `hover:bg-accent` (solid dark blue). When used as Popover/combobox triggers (e.g., the "Personell" field in AddMissionDialog), hovering or focusing fills the entire field with a solid dark background. The `focus-visible:ring-ring` also uses the same solid dark color.
+Banneret forsvinner ikke etter klikk fordi:
 
-### Solution
-Update `src/components/ui/button.tsx` to use opacity variants:
+1. `performReload()` tømmer cacher og gjør `window.location.reload()`
+2. Etter reload kjører `handleOnline`/mount-sjekken på nytt
+3. Den sammenligner hardkodet `LOCAL_APP_VERSION = '1'` mot DB-verdien (som admin har bumpa til '2')
+4. Mismatch → banneret vises igjen i en uendelig loop
 
-- `outline` variant: `hover:bg-accent` → `hover:bg-accent/15`
-- `ghost` variant: `hover:bg-accent` → `hover:bg-accent/15`
-- Base ring: `focus-visible:ring-ring` → `focus-visible:ring-ring/40`
+### Løsning
 
-This matches the same `/15` opacity pattern already applied to dropdown-menu, select, command, context-menu, and menubar components.
+Erstatt hardkodet `LOCAL_APP_VERSION` med en localStorage-basert "sist sett versjon":
 
-### File changed
-`src/components/ui/button.tsx` — 3 class string replacements in `buttonVariants`.
+- Ved oppstart: les `localStorage.getItem('avisafe_app_version')` som lokal referanse
+- Ved versionssjekk: sammenlign DB-verdi mot localStorage-verdi (ikke hardkodet)
+- I `performReload()`: lagre den nye versjonen i localStorage **før** reload, slik at etter reload matcher versjonene og banneret ikke vises igjen
+- Broadcast-signalet må inkludere versjonen slik at klienten vet hva den oppdaterer til
+
+### Fil som endres
+
+| Fil | Endring |
+|---|---|
+| `src/hooks/useForceReload.ts` | Fjern `LOCAL_APP_VERSION`. Bruk localStorage `avisafe_app_version` som referanse. I `performReload` og broadcast-handler: hent/lagre ny versjon i localStorage før reload. |
+| `src/pages/Admin.tsx` | Inkluder gjeldende `app_version`-verdi i broadcast-payload slik at klienter kan lagre den |
 
