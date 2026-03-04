@@ -566,8 +566,20 @@ export async function fetchActiveAdvisories(params: {
 
       const centLat = polygonCoords.reduce((s: number, c: [number, number]) => s + c[0], 0) / polygonCoords.length;
       const centLng = polygonCoords.reduce((s: number, c: [number, number]) => s + c[1], 0) / polygonCoords.length;
-      const invisibleIcon = L.divIcon({ className: '', html: '', iconSize: [0, 0] });
-      const centroidMarker = L.marker([centLat, centLng], { icon: invisibleIcon, interactive: false });
+      const droneIcon = L.divIcon({
+        className: '',
+        html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;" />`,
+        iconSize: [70, 70],
+        iconAnchor: [35, 35],
+        popupAnchor: [0, -35],
+      });
+      const centroidMarker = L.marker([centLat, centLng], { icon: droneIcon, interactive: true });
+      centroidMarker.bindPopup(`
+        <div>
+          <strong>🛸 Aktiv flytur</strong><br/>
+          <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
+        </div>
+      `);
       centroidMarker.addTo(activeAdvisoryLayer);
       flightMarkersRef.current.set(flight.id, centroidMarker as any);
     }
