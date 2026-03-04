@@ -1,22 +1,19 @@
 
 
-## Fix: Dropdown active/hover states too dark
+## Fix: Solid dark accent on button hover/focus states
 
 ### Problem
-The CSS variable `--accent` is set to `210 80% 28%` (dark blue). All dropdown UI components use `bg-accent` as a solid background for hover/focus/active states, making them appear too dark and hard to read.
+The `Button` component's `outline` and `ghost` variants use `hover:bg-accent` (solid dark blue). When used as Popover/combobox triggers (e.g., the "Personell" field in AddMissionDialog), hovering or focusing fills the entire field with a solid dark background. The `focus-visible:ring-ring` also uses the same solid dark color.
 
 ### Solution
-Change `hover:bg-accent` and `focus:bg-accent` to use opacity variants (`bg-accent/10` or `bg-accent/15`) across all affected UI components. This keeps the accent color but makes it translucent.
+Update `src/components/ui/button.tsx` to use opacity variants:
 
-### Files to update
+- `outline` variant: `hover:bg-accent` → `hover:bg-accent/15`
+- `ghost` variant: `hover:bg-accent` → `hover:bg-accent/15`
+- Base ring: `focus-visible:ring-ring` → `focus-visible:ring-ring/40`
 
-| File | What changes |
-|---|---|
-| `src/components/ui/select.tsx` | `SelectItem`: `hover:bg-accent` → `hover:bg-accent/15` |
-| `src/components/ui/dropdown-menu.tsx` | `DropdownMenuItem`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioItem`, `DropdownMenuSubTrigger`: all `focus:bg-accent` / `data-[state=open]:bg-accent` → `/15` opacity variants |
-| `src/components/ui/command.tsx` | `CommandItem`: `hover:bg-accent` → `hover:bg-accent/15` |
-| `src/components/ui/context-menu.tsx` | Same pattern: `focus:bg-accent` / `data-[state=open]:bg-accent` → `/15` |
-| `src/components/ui/menubar.tsx` | Same pattern for menubar items |
+This matches the same `/15` opacity pattern already applied to dropdown-menu, select, command, context-menu, and menubar components.
 
-All changes follow the same mechanical pattern: append `/15` to every `bg-accent` used in interactive highlight states, and similarly `/80` for `text-accent-foreground` if needed (though text color may remain solid).
+### File changed
+`src/components/ui/button.tsx` — 3 class string replacements in `buttonVariants`.
 
