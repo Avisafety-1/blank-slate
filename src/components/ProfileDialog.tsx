@@ -142,10 +142,23 @@ export const ProfileDialog = () => {
   const [feedbackSubject, setFeedbackSubject] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
 
   useEffect(() => {
     if (user) {
       fetchUserData();
+      // Fetch app version from DB
+      supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'app_version')
+        .single()
+        .then(({ data }) => {
+          if (data?.value) {
+            setAppVersion(data.value);
+            localStorage.setItem('avisafe_app_version', data.value);
+          }
+        });
     }
   }, [user]);
 
@@ -1645,7 +1658,7 @@ export const ProfileDialog = () => {
             </Tabs>
           )}
           <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
-            App versjon v{localStorage.getItem('avisafe_app_version') || '1'}
+            App versjon v{appVersion}
           </p>
         </ScrollArea>
       </DialogContent>
