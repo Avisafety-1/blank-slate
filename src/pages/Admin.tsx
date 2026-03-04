@@ -568,7 +568,7 @@ const Admin = () => {
                               event: 'reload',
                               payload: { forceImmediate: false, timestamp: Date.now() },
                             });
-                            // Also bump the version in app_config for offline users
+                            // Bump the version in app_config for offline users
                             const { data: current } = await supabase
                               .from('app_config')
                               .select('value')
@@ -579,6 +579,14 @@ const Admin = () => {
                               .from('app_config')
                               .update({ value: nextVersion, updated_at: new Date().toISOString() })
                               .eq('key', 'app_version');
+                            // Re-send broadcast with the version so clients can persist it
+                            const ch2 = supabase.channel('global-force-reload');
+                            await ch2.send({
+                              type: 'broadcast',
+                              event: 'reload',
+                              payload: { forceImmediate: false, version: nextVersion, timestamp: Date.now() },
+                            });
+                            supabase.removeChannel(ch2);
                             toast.success(`Oppdateringssignal sendt til alle brukere (v${nextVersion})`);
                             supabase.removeChannel(channel);
                           } catch (err) {
@@ -611,6 +619,14 @@ const Admin = () => {
                               .from('app_config')
                               .update({ value: nextVersion, updated_at: new Date().toISOString() })
                               .eq('key', 'app_version');
+                            // Re-send with version included
+                            const ch2 = supabase.channel('global-force-reload');
+                            await ch2.send({
+                              type: 'broadcast',
+                              event: 'reload',
+                              payload: { forceImmediate: true, version: nextVersion, timestamp: Date.now() },
+                            });
+                            supabase.removeChannel(ch2);
                             toast.success('Tvungen oppdatering sendt!');
                             supabase.removeChannel(channel);
                           } catch (err) {
