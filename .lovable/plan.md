@@ -1,54 +1,22 @@
 
 
-## Problem: Offline brukere med gammel cache
+## Fix: Dropdown active/hover states too dark
 
-Ja, dette er et reelt problem. Når en bruker er offline, serverer appen:
+### Problem
+The CSS variable `--accent` is set to `210 80% 28%` (dark blue). All dropdown UI components use `bg-accent` as a solid background for hover/focus/active states, making them appear too dark and hard to read.
 
-1. **Gamle app-filer** fra Service Worker-cachen (HTML, JS, CSS)
-2. **Gammel data** fra React Query persistence (localStorage, 24t TTL)
-3. **Gammel data** fra `offlineCache` (localStorage, 24t TTL)
+### Solution
+Change `hover:bg-accent` and `focus:bg-accent` to use opacity variants (`bg-accent/10` or `bg-accent/15`) across all affected UI components. This keeps the accent color but makes it translucent.
 
-Når de kommer tilbake online, oppdaterer Service Worker seg *asynkront i bakgrunnen* — men brukeren ser fortsatt gammel kode til neste reload. React Query-data forblir cachet til TTL utløper.
+### Files to update
 
-## Løsning: To-lags tilnærming
-
-### 1. Superadmin "Tving oppdatering"-knapp (for online brukere)
-- Supabase Realtime broadcast sender signal til alle tilkoblede klienter
-- Klienten viser en **ikke-lukkbar banner**: "Ny versjon tilgjengelig — klikk for å oppdatere"
-- Valgfri "Tving umiddelbart"-toggle for kritiske situasjoner
-
-### 2. Automatisk cache-bust ved reconnect (for offline brukere)
-- Når en bruker går fra offline → online, sjekk en enkel `app_version`-verdi i en Supabase-tabell mot en hardkodet versjon i koden
-- Hvis versjonene ikke matcher: tøm cacher og vis reload-banner
-- Dette fanger opp offline-brukere automatisk uten broadcast
-
-### Filer som endres/opprettes
-
-| Fil | Endring |
+| File | What changes |
 |---|---|
-| `src/hooks/useForceReload.ts` | **Ny.** Lytter på broadcast + sjekker versjon ved reconnect. Tømmer SW-cache, React Query-cache, localStorage-cacher, og viser banner. |
-| `src/components/ForceReloadBanner.tsx` | **Ny.** Ikke-lukkbar banner med "Oppdater nå"-knapp |
-| `src/App.tsx` | Legg til `useForceReload` og `ForceReloadBanner` |
-| `src/pages/Admin.tsx` | Legg til "Tving oppdatering"-knapp i superadmin-seksjonen |
-| **DB-migrasjon** | Ny tabell `app_config` med én rad (`key: 'app_version', value: '...'`) — superadmin oppdaterer denne |
+| `src/components/ui/select.tsx` | `SelectItem`: `hover:bg-accent` → `hover:bg-accent/15` |
+| `src/components/ui/dropdown-menu.tsx` | `DropdownMenuItem`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioItem`, `DropdownMenuSubTrigger`: all `focus:bg-accent` / `data-[state=open]:bg-accent` → `/15` opacity variants |
+| `src/components/ui/command.tsx` | `CommandItem`: `hover:bg-accent` → `hover:bg-accent/15` |
+| `src/components/ui/context-menu.tsx` | Same pattern: `focus:bg-accent` / `data-[state=open]:bg-accent` → `/15` |
+| `src/components/ui/menubar.tsx` | Same pattern for menubar items |
 
-### Flyt
-
-```text
-ONLINE BRUKERE:
-  Admin klikker "Tving oppdatering"
-    → Broadcast signal sendes
-    → Banner vises: "Ny versjon — klikk for å oppdatere"
-    → Bruker klikker → cacher tømmes → reload
-
-OFFLINE BRUKERE:
-  Bruker kommer online igjen
-    → Hook sjekker app_config.app_version mot lokal versjon
-    → Mismatch → Banner vises → Bruker klikker → reload
-```
-
-### Sikkerhet
-- Ingen data går tapt: offline-køen (`offlineQueue`) synkroniseres **før** reload
-- Brukeren velger selv når de oppdaterer (med mindre admin tvinger umiddelbart)
-- Kun AviSafe påvirkes — broadcast er app-spesifikt
+All changes follow the same mechanical pattern: append `/15` to every `bg-accent` used in interactive highlight states, and similarly `/80` for `text-accent-foreground` if needed (though text color may remain solid).
 
