@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 const STORAGE_KEY = "dashboard-layout";
 
@@ -52,6 +53,19 @@ const Index = () => {
   const { user, loading, isApproved, djiFlightlogEnabled } = useAuth();
   const navigate = useNavigate();
   const dashboardRealtime = useDashboardRealtime();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: pushSubscribe } = usePushNotifications();
+
+  // Auto-enable push notifications for PWA users (one-time prompt)
+  useEffect(() => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches 
+               || (window.navigator as any).standalone === true;
+    
+    if (!isPWA || !pushSupported || pushSubscribed || pushLoading || pushPermission === 'denied') return;
+    if (localStorage.getItem('pwa-push-auto-prompted')) return;
+    
+    localStorage.setItem('pwa-push-auto-prompted', 'true');
+    pushSubscribe();
+  }, [pushSupported, pushSubscribed, pushLoading, pushPermission, pushSubscribe]);
   const [layout, setLayout] = useState(defaultLayout);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [uploadDroneLogOpen, setUploadDroneLogOpen] = useState(false);
