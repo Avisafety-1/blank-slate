@@ -1750,7 +1750,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <div>
                     <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('dronelog.matchFound', 'Eksisterende flylogg funnet!')}</p>
                     <p className="text-xs text-green-700 dark:text-green-400">
-                      {matchedLog.flight_date} — {matchedLog.flight_duration_minutes} min
+                      {matchedLog.flight_date ? format(new Date(matchedLog.flight_date), 'dd.MM.yyyy') : 'Ukjent dato'} — {matchedLog.flight_duration_minutes} min
                       {matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
                     </p>
                   </div>
