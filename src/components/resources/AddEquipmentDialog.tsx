@@ -11,14 +11,23 @@ import { addDays, format } from "date-fns";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 
+export interface EquipmentDefaultValues {
+  type?: string;
+  serienummer?: string;
+  navn?: string;
+  merknader?: string;
+}
+
 interface AddEquipmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEquipmentAdded: () => void;
   userId: string;
+  defaultValues?: EquipmentDefaultValues;
+  onEquipmentCreated?: (equipment: { id: string; navn: string; serienummer: string; type: string }) => void;
 }
 
-export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userId }: AddEquipmentDialogProps) => {
+export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userId, defaultValues, onEquipmentCreated }: AddEquipmentDialogProps) => {
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vedlikeholdStartdato, setVedlikeholdStartdato] = useState<string>("");
@@ -47,6 +56,16 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
       fetchCompanyId();
     }
   }, [userId]);
+
+  // Pre-populate from defaultValues when dialog opens
+  useEffect(() => {
+    if (open && defaultValues) {
+      if (defaultValues.type) setSelectedType(defaultValues.type);
+      if (defaultValues.serienummer) {
+        // Will be set via defaultValue on Input
+      }
+    }
+  }, [open, defaultValues]);
 
   // Calculate neste_vedlikehold when start date or interval changes
   useEffect(() => {
@@ -86,7 +105,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
     
     try {
       const vektValue = formData.get("vekt") as string;
-      const { error } = await (supabase as any).from("equipment").insert([{
+      const insertData = {
         user_id: userId,
         company_id: companyId,
         navn: formData.get("navn") as string,
@@ -101,17 +120,11 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         vedlikeholdsintervall_dager: vedlikeholdsintervallDager ? parseInt(vedlikeholdsintervallDager) : null,
         vedlikehold_startdato: vedlikeholdStartdato || null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
-      }]);
+      };
+      const { data: insertedData, error } = await (supabase as any).from("equipment").insert([insertData]).select('id, navn, serienummer, type').single();
 
       if (error) {
         console.error("Error adding equipment:", error);
-        console.error("Error details:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
         if (error.code === "42501" || error.message?.includes("policy")) {
           toast.error("Du har ikke tillatelse til å legge til utstyr");
         } else {
@@ -119,6 +132,9 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         }
       } else {
         toast.success("Utstyr lagt til");
+        if (insertedData && onEquipmentCreated) {
+          onEquipmentCreated(insertedData);
+        }
         form.reset();
         setVedlikeholdStartdato("");
         setVedlikeholdsintervallDager("");
@@ -144,7 +160,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="navn">Navn</Label>
-              <Input id="navn" name="navn" required />
+              <Input id="navn" name="navn" required defaultValue={defaultValues?.navn || ""} />
             </div>
             <div>
               <Label htmlFor="type">Type</Label>
@@ -173,7 +189,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="serienummer">Serienummer</Label>
-              <Input id="serienummer" name="serienummer" />
+              <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ""} />
             </div>
             <div>
               <Label htmlFor="vekt">Vekt (kg)</Label>
@@ -262,7 +278,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
 
           <div>
             <Label htmlFor="merknader">Merknader</Label>
-            <Textarea id="merknader" name="merknader" />
+            <Textarea id="merknader" name="merknader" defaultValue={defaultValues?.merknader || ""} />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Legger til..." : "Legg til utstyr"}
