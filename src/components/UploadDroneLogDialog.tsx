@@ -920,6 +920,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (missionError) throw missionError;
 
       if (mission && selectedDroneId) await supabase.from('mission_drones').insert({ mission_id: mission.id, drone_id: selectedDroneId });
+      if (mission && pilotId) await supabase.from('mission_personnel').insert({ mission_id: mission.id, profile_id: pilotId });
+      if (mission && selectedEquipment.length > 0) await supabase.from('mission_equipment').insert(selectedEquipment.map(eqId => ({ mission_id: mission.id, equipment_id: eqId })));
 
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
@@ -967,9 +969,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
 
-      // Link drone to mission
+      // Link drone, personnel, equipment to mission
       if (selectedDroneId) {
         await supabase.from('mission_drones').upsert({ mission_id: selectedMissionId, drone_id: selectedDroneId }, { onConflict: 'mission_id,drone_id' });
+      }
+      if (selectedMissionId && pilotId) {
+        await supabase.from('mission_personnel').upsert({ mission_id: selectedMissionId, profile_id: pilotId }, { onConflict: 'mission_id,profile_id' });
+      }
+      if (selectedMissionId && selectedEquipment.length > 0) {
+        await supabase.from('mission_equipment').upsert(selectedEquipment.map(eqId => ({ mission_id: selectedMissionId, equipment_id: eqId })), { onConflict: 'mission_id,equipment_id' });
       }
 
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
