@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
+import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -229,6 +230,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
+  const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+  const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
 
   useEffect(() => {
     if (open && companyId) {
@@ -329,6 +332,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setWarningActions({});
       setUnmatchedBatterySN(null);
       setShowAddEquipmentDialog(false);
+      setUnmatchedDroneSN(null);
+      setShowAddDroneDialog(false);
   };
 
   // ── Battery matching helper ──
@@ -350,6 +355,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  // ── Drone matching helper ──
+  const matchDroneFromResult = (data: DroneLogResult) => {
+    if (!data.aircraftSN && !data.aircraftSerial) {
+      setUnmatchedDroneSN(null);
+      return;
+    }
+    const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+    const match = drones.find(d => d.serienummer && d.serienummer.trim().toLowerCase() === sn);
+    if (match) {
+      setSelectedDroneId(match.id);
+      toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
+      setUnmatchedDroneSN(null);
+    } else {
+      setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
+    }
+  };
+
   const batteryDefaultValues: EquipmentDefaultValues | undefined = unmatchedBatterySN ? (() => {
     const merknader: string[] = [];
     if (result?.batteryHealth != null) merknader.push(`Helse: ${result.batteryHealth}%`);
@@ -363,6 +385,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : undefined,
     };
   })() : undefined;
+
+  const droneDefaultValues: DroneDefaultValues | undefined = unmatchedDroneSN ? {
+    modell: result?.aircraftName || result?.droneType || '',
+    serienummer: unmatchedDroneSN,
+    merknader: 'Importert fra DJI-logg',
+  } : undefined;
 
   const fetchDrones = async () => {
     const { data } = await supabase
@@ -434,15 +462,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const data: DroneLogResult = await response.json();
       console.log('[DroneLog] startTime from API:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
-      if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
-        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-        const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
-        if (match) {
-          setSelectedDroneId(match.id);
-          toast.info(`Drone matchet automatisk: ${match.modell}`);
-        }
+      if (!selectedDroneId) {
+        matchDroneFromResult(data);
       }
-      matchBatteryFromResult(data);
       matchBatteryFromResult(data);
       await findMatchingFlightLog(data);
       setStep('result');
@@ -547,14 +569,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id, downloadUrl: log.url || undefined });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
-      if (!selectedDroneId && (data.aircraftSN || data.aircraftSerial)) {
-        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-        const match = drones.find(d => d.serienummer && d.serienummer.trim() === sn);
-        if (match) {
-          setSelectedDroneId(match.id);
-          toast.info(`Drone matchet automatisk: ${match.modell}`);
-        }
+      if (!selectedDroneId) {
+        matchDroneFromResult(data);
       }
+      matchBatteryFromResult(data);
       await findMatchingFlightLog(data);
       setStep('result');
     } catch (error: any) {
@@ -1602,6 +1620,51 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   setSelectedEquipment(prev => [...prev, newEq.id]);
                   setUnmatchedBatterySN(null);
                   setShowAddEquipmentDialog(false);
+                }}
+              />
+            )}
+
+            {/* Drone create prompt */}
+            {unmatchedDroneSN && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Plane className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      Ukjent {terminology.vehicleLower}: {unmatchedDroneSN}
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                      {terminology.vehicle} ble ikke funnet i ressursene. Ønsker du å opprette den?
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-6">
+                  <Button size="sm" variant="default" onClick={() => setShowAddDroneDialog(true)}>
+                    <PlusCircle className="w-3 h-3 mr-1" />
+                    Opprett {terminology.vehicleLower}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setUnmatchedDroneSN(null)}>
+                    Hopp over
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* AddDroneDialog for drone creation */}
+            {user && showAddDroneDialog && (
+              <AddDroneDialog
+                open={showAddDroneDialog}
+                onOpenChange={(open) => {
+                  setShowAddDroneDialog(open);
+                }}
+                onDroneAdded={() => {}}
+                userId={user.id}
+                defaultValues={droneDefaultValues}
+                onDroneCreated={(newDrone) => {
+                  setDrones(prev => [...prev, newDrone]);
+                  setSelectedDroneId(newDrone.id);
+                  setUnmatchedDroneSN(null);
+                  setShowAddDroneDialog(false);
                 }}
               />
             )}
