@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench } from "lucide-react";
+import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -225,7 +226,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }>>({});
   const [oldPilotIds, setOldPilotIds] = useState<string[]>([]);
   const [unmatchedBatterySN, setUnmatchedBatterySN] = useState<string | null>(null);
-  const [isCreatingBattery, setIsCreatingBattery] = useState(false);
+  const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
 
@@ -327,7 +328,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setLogToLogbooks(true);
       setWarningActions({});
       setUnmatchedBatterySN(null);
-      setIsCreatingBattery(false);
+      setShowAddEquipmentDialog(false);
   };
 
   // ── Battery matching helper ──
@@ -349,46 +350,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const handleCreateBattery = async () => {
-    if (!unmatchedBatterySN || !companyId || !user) return;
-    setIsCreatingBattery(true);
-    try {
-      const merknader: string[] = [];
-      if (result?.batteryHealth != null) merknader.push(`Helse: ${result.batteryHealth}%`);
-      if (result?.batteryFullCapacity != null) merknader.push(`Kapasitet: ${result.batteryFullCapacity} mAh`);
-      if (result?.batteryCycles != null) merknader.push(`Sykluser: ${result.batteryCycles}`);
-      if (result?.batteryTemperature != null) merknader.push(`Maks temp: ${result.batteryTemperature}°C`);
-
-      const { data: newEq, error } = await supabase
-        .from('equipment')
-        .insert({
-          company_id: companyId,
-          user_id: user.id,
-          type: 'Batteri',
-          navn: `Batteri ${unmatchedBatterySN}`,
-          serienummer: unmatchedBatterySN,
-          status: 'Grønn',
-          aktiv: true,
-          tilgjengelig: true,
-          merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : null,
-        })
-        .select('id, navn, serienummer, type')
-        .single();
-
-      if (error) throw error;
-      if (newEq) {
-        setEquipmentList(prev => [...prev, newEq]);
-        setSelectedEquipment(prev => [...prev, newEq.id]);
-        setUnmatchedBatterySN(null);
-        toast.success(`Batteri "${newEq.navn}" opprettet og lagt til`);
-      }
-    } catch (error: any) {
-      console.error('Failed to create battery:', error);
-      toast.error('Kunne ikke opprette batteri: ' + error.message);
-    } finally {
-      setIsCreatingBattery(false);
-    }
-  };
+  const batteryDefaultValues: EquipmentDefaultValues | undefined = unmatchedBatterySN ? (() => {
+    const merknader: string[] = [];
+    if (result?.batteryHealth != null) merknader.push(`Helse: ${result.batteryHealth}%`);
+    if (result?.batteryFullCapacity != null) merknader.push(`Kapasitet: ${result.batteryFullCapacity} mAh`);
+    if (result?.batteryCycles != null) merknader.push(`Sykluser: ${result.batteryCycles}`);
+    if (result?.batteryTemperature != null) merknader.push(`Maks temp: ${result.batteryTemperature}°C`);
+    return {
+      type: 'Batteri',
+      serienummer: unmatchedBatterySN,
+      navn: `Batteri ${unmatchedBatterySN}`,
+      merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : undefined,
+    };
+  })() : undefined;
 
   const fetchDrones = async () => {
     const { data } = await supabase
@@ -1602,8 +1576,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 </div>
                 <div className="flex gap-2 ml-6">
-                  <Button size="sm" variant="default" onClick={handleCreateBattery} disabled={isCreatingBattery}>
-                    {isCreatingBattery ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <PlusCircle className="w-3 h-3 mr-1" />}
+                  <Button size="sm" variant="default" onClick={() => setShowAddEquipmentDialog(true)}>
+                    <PlusCircle className="w-3 h-3 mr-1" />
                     Opprett batteri
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setUnmatchedBatterySN(null)}>
@@ -1611,6 +1585,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </Button>
                 </div>
               </div>
+            )}
+
+            {/* AddEquipmentDialog for battery creation */}
+            {user && showAddEquipmentDialog && (
+              <AddEquipmentDialog
+                open={showAddEquipmentDialog}
+                onOpenChange={(open) => {
+                  setShowAddEquipmentDialog(open);
+                }}
+                onEquipmentAdded={() => {}}
+                userId={user.id}
+                defaultValues={batteryDefaultValues}
+                onEquipmentCreated={(newEq) => {
+                  setEquipmentList(prev => [...prev, newEq]);
+                  setSelectedEquipment(prev => [...prev, newEq.id]);
+                  setUnmatchedBatterySN(null);
+                  setShowAddEquipmentDialog(false);
+                }}
+              />
             )}
 
             {/* Logbook section */}
