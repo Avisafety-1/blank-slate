@@ -224,6 +224,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [logbookOpen, setLogbookOpen] = useState(true);
   const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }>>({});
   const [oldPilotIds, setOldPilotIds] = useState<string[]>([]);
+  const [unmatchedBatterySN, setUnmatchedBatterySN] = useState<string | null>(null);
+  const [isCreatingBattery, setIsCreatingBattery] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
 
@@ -324,6 +326,68 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setOldDroneId(null);
       setLogToLogbooks(true);
       setWarningActions({});
+      setUnmatchedBatterySN(null);
+      setIsCreatingBattery(false);
+  };
+
+  // ── Battery matching helper ──
+  const matchBatteryFromResult = (data: DroneLogResult) => {
+    if (!data.batterySN) {
+      setUnmatchedBatterySN(null);
+      return;
+    }
+    const sn = data.batterySN.trim().toLowerCase();
+    const match = equipmentList.find(e => 
+      e.serienummer && e.serienummer.trim().toLowerCase() === sn
+    );
+    if (match) {
+      setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
+      toast.info(`Batteri matchet automatisk: ${match.navn}`);
+      setUnmatchedBatterySN(null);
+    } else {
+      setUnmatchedBatterySN(data.batterySN);
+    }
+  };
+
+  const handleCreateBattery = async () => {
+    if (!unmatchedBatterySN || !companyId || !user) return;
+    setIsCreatingBattery(true);
+    try {
+      const merknader: string[] = [];
+      if (result?.batteryHealth != null) merknader.push(`Helse: ${result.batteryHealth}%`);
+      if (result?.batteryFullCapacity != null) merknader.push(`Kapasitet: ${result.batteryFullCapacity} mAh`);
+      if (result?.batteryCycles != null) merknader.push(`Sykluser: ${result.batteryCycles}`);
+      if (result?.batteryTemperature != null) merknader.push(`Maks temp: ${result.batteryTemperature}°C`);
+
+      const { data: newEq, error } = await supabase
+        .from('equipment')
+        .insert({
+          company_id: companyId,
+          user_id: user.id,
+          type: 'Batteri',
+          navn: `Batteri ${unmatchedBatterySN}`,
+          serienummer: unmatchedBatterySN,
+          status: 'Grønn',
+          aktiv: true,
+          tilgjengelig: true,
+          merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : null,
+        })
+        .select('id, navn, serienummer, type')
+        .single();
+
+      if (error) throw error;
+      if (newEq) {
+        setEquipmentList(prev => [...prev, newEq]);
+        setSelectedEquipment(prev => [...prev, newEq.id]);
+        setUnmatchedBatterySN(null);
+        toast.success(`Batteri "${newEq.navn}" opprettet og lagt til`);
+      }
+    } catch (error: any) {
+      console.error('Failed to create battery:', error);
+      toast.error('Kunne ikke opprette batteri: ' + error.message);
+    } finally {
+      setIsCreatingBattery(false);
+    }
   };
 
   const fetchDrones = async () => {
@@ -404,6 +468,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           toast.info(`Drone matchet automatisk: ${match.modell}`);
         }
       }
+      matchBatteryFromResult(data);
+      matchBatteryFromResult(data);
       await findMatchingFlightLog(data);
       setStep('result');
     } catch (error: any) {
@@ -1518,6 +1584,32 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     {ev.message && <span className="text-muted-foreground truncate">{ev.message}</span>}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Battery create prompt */}
+            {unmatchedBatterySN && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Battery className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      Ukjent batteri: {unmatchedBatterySN}
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                      Batteriet ble ikke funnet i ressursene. Ønsker du å opprette det som nytt utstyr?
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-6">
+                  <Button size="sm" variant="default" onClick={handleCreateBattery} disabled={isCreatingBattery}>
+                    {isCreatingBattery ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <PlusCircle className="w-3 h-3 mr-1" />}
+                    Opprett batteri
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setUnmatchedBatterySN(null)}>
+                    Hopp over
+                  </Button>
+                </div>
               </div>
             )}
 
