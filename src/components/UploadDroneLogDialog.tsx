@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1109,22 +1109,54 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {equipmentList.length > 0 && (
                   <div className="space-y-1.5">
                     <Label className="text-xs flex items-center gap-1"><Wrench className="w-3 h-3" />Utstyr</Label>
-                    <div className="max-h-24 overflow-y-auto space-y-1 rounded border border-border p-2">
-                      {equipmentList.map(eq => (
-                        <label key={eq.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/30 rounded px-1 py-0.5">
-                          <Checkbox
-                            checked={selectedEquipment.includes(eq.id)}
-                            onCheckedChange={(checked) => {
-                              setSelectedEquipment(prev =>
-                                checked ? [...prev, eq.id] : prev.filter(id => id !== eq.id)
-                              );
-                            }}
-                          />
-                          <span>{eq.navn}</span>
-                          <span className="text-muted-foreground">({eq.serienummer})</span>
-                        </label>
-                      ))}
-                    </div>
+                    {(() => {
+                      const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
+                      return availableEquipment.length > 0 ? (
+                        <Select
+                          value=""
+                          onValueChange={(val) => {
+                            if (val) setSelectedEquipment(prev => [...prev, val]);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Velg utstyr" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableEquipment.map(eq => (
+                              <SelectItem key={eq.id} value={eq.id}>{eq.navn} ({eq.serienummer})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : null;
+                    })()}
+                    {selectedEquipment.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedEquipment.map(eqId => {
+                          const eq = equipmentList.find(e => e.id === eqId);
+                          if (!eq) return null;
+                          return (
+                            <span key={eqId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                              {eq.navn}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEquipment(prev => prev.filter(id => id !== eqId))}
+                                className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {selectedEquipment.some(eqId => {
+                      const eq = equipmentList.find(e => e.id === eqId);
+                      return eq && result?.batterySN && eq.serienummer?.trim() === result.batterySN.trim();
+                    }) && (
+                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />Batteri auto-matchet via SN
+                      </p>
+                    )}
                   </div>
                 )}
 
