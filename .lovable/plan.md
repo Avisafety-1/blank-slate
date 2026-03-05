@@ -1,25 +1,32 @@
 
 
-## Åpne AddEquipmentDialog med forhåndsutfylte verdier ved batteri-opprettelse
+## Drone-matching med «Opprett drone»-dialog fra flylogg-import
 
 ### Oversikt
-I stedet for å auto-inserere batteriet direkte i databasen når brukeren trykker "Opprett batteri", skal `AddEquipmentDialog` åpnes med forhåndsutfylte verdier (type="Batteri", serienummer, merknader fra loggen). Brukeren kan da redigere navn, sette vedlikeholdsintervall osv. før lagring.
+Samme mønster som batteri: når en DJI-logg inneholder et drone-serienummer som ikke matcher noen eksisterende drone, vises en prompt med «Opprett drone»-knapp som åpner `AddDroneDialog` med forhåndsutfylte verdier (serienummer, modellnavn fra loggen).
 
 ### Endringer
 
-**`src/components/resources/AddEquipmentDialog.tsx`**
-- Legg til valgfri prop `defaultValues?: { type?: string; serienummer?: string; navn?: string; merknader?: string }` i interfacet
-- Bruk `defaultValues` til å pre-populere feltene ved mount/open (sett `selectedType`, og bruk som defaultValue på Input-feltene)
-- Returnér det opprettede utstyret via en ny valgfri callback `onEquipmentCreated?: (equipment: { id: string; navn: string; serienummer: string; type: string }) => void` som kalles etter vellykket insert (i tillegg til eksisterende `onEquipmentAdded`)
+**`src/components/resources/AddDroneDialog.tsx`**
+- Legg til valgfri prop `defaultValues?: { modell?: string; serienummer?: string; merknader?: string }`
+- Legg til valgfri callback `onDroneCreated?: (drone: { id: string; modell: string; serienummer: string }) => void`
+- Ved `open` + `defaultValues`: pre-populer `modell`, `merknader`, og serienummer-feltet
+- Etter vellykket insert: kall `onDroneCreated` med den nye dronen (fra `.select().single()` responsen)
 
 **`src/components/UploadDroneLogDialog.tsx`**
-- Erstatt `handleCreateBattery` (som gjør direkte insert) med logikk som åpner `AddEquipmentDialog`
-- Ny state: `showAddEquipmentDialog: boolean`
-- Beregn `batteryDefaultValues` fra `unmatchedBatterySN` og `result` (batteryhelse, sykluser osv. som merknader)
-- Ved "Opprett batteri"-klikk: sett `showAddEquipmentDialog = true`
-- Render `<AddEquipmentDialog>` med `defaultValues` og `onEquipmentCreated`-callback som:
-  1. Legger det nye utstyret til `equipmentList` og `selectedEquipment`
-  2. Nullstiller `unmatchedBatterySN`
-  3. Lukker dialogen
-- Ved dialog-lukking uten lagring: behold `unmatchedBatterySN` så brukeren kan prøve igjen eller hoppe over
+- Ny state: `unmatchedDroneSN: string | null`, `showAddDroneDialog: boolean`
+- Ny funksjon `matchDroneFromResult(data)` — identisk mønster som `matchBatteryFromResult`:
+  - Matcher `aircraftSN`/`aircraftSerial` mot `drones`-listen (trim, case-insensitive)
+  - Ved match: sett `selectedDroneId` + toast
+  - Ved ingen match: sett `unmatchedDroneSN`
+- Erstatt eksisterende inline drone-matching i `handleUpload` og `handleSelectDjiLog` med kall til `matchDroneFromResult`
+- Beregn `droneDefaultValues` fra result: `{ modell: result.aircraftName || result.droneType, serienummer: unmatchedDroneSN, merknader: 'Importert fra DJI-logg' }`
+- Render «Ukjent drone»-prompt (amber boks med Plane-ikon) rett under drone-selectoren, med «Opprett drone» og «Hopp over»-knapper — identisk layout som batteri-prompten
+- Render `<AddDroneDialog>` med `defaultValues` og `onDroneCreated`-callback som:
+  1. Legger dronen til `drones`-listen
+  2. Setter `selectedDroneId` til den nye dronen
+  3. Nullstiller `unmatchedDroneSN`
+  4. Lukker dialogen
+- Reset `unmatchedDroneSN` og `showAddDroneDialog` i `resetState()`
+- Import `AddDroneDialog` øverst i filen
 
