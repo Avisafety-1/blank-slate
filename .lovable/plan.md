@@ -1,31 +1,25 @@
 
 
-## Fix: Batteri-serienummer fra DJI-logger
+## Åpne AddEquipmentDialog med forhåndsutfylte verdier ved batteri-opprettelse
 
-### Problem
-Edge-funksjonen ber om feltet `DETAILS.batterySN` fra DroneLog API, men det korrekte feltnavnet er `DETAILS.batterySerial`. Derfor returnerer API-et aldri batteriserienummeret, og `batterySN` blir alltid tom streng — ingen batteri-matching eller opprettelsesprompt trigges.
+### Oversikt
+I stedet for å auto-inserere batteriet direkte i databasen når brukeren trykker "Opprett batteri", skal `AddEquipmentDialog` åpnes med forhåndsutfylte verdier (type="Batteri", serienummer, merknader fra loggen). Brukeren kan da redigere navn, sette vedlikeholdsintervall osv. før lagring.
 
-Merk: For `aircraftSN` har vi allerede løst dette ved å be om **begge** (`DETAILS.aircraftSN` og `DETAILS.aircraftSerial`) og bruke fallback. Samme mønster trengs for batteri.
+### Endringer
 
-### Endring
+**`src/components/resources/AddEquipmentDialog.tsx`**
+- Legg til valgfri prop `defaultValues?: { type?: string; serienummer?: string; navn?: string; merknader?: string }` i interfacet
+- Bruk `defaultValues` til å pre-populere feltene ved mount/open (sett `selectedType`, og bruk som defaultValue på Input-feltene)
+- Returnér det opprettede utstyret via en ny valgfri callback `onEquipmentCreated?: (equipment: { id: string; navn: string; serienummer: string; type: string }) => void` som kalles etter vellykket insert (i tillegg til eksisterende `onEquipmentAdded`)
 
-**`supabase/functions/process-dronelog/index.ts`**
-
-1. I `FIELDS`-listen (linje 24): legg til `"DETAILS.batterySerial"` ved siden av eksisterende `"DETAILS.batterySN"`
-2. Legg til en ny header-index (etter linje 134):
-   ```
-   const detBatterySerialIdx = findHeaderIndex(headers, "DETAILS.batterySerial");
-   ```
-3. Oppdater batterySN-utlesningen (linje 164) til å bruke fallback, identisk med aircraftSN-mønsteret:
-   ```
-   const rawBatterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
-   const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
-   const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
-   ```
-4. Legg til en logg-linje for debugging:
-   ```
-   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
-   ```
-
-Ingen andre filer trenger endring — frontend og matching-logikken bruker allerede `result.batterySN` korrekt.
+**`src/components/UploadDroneLogDialog.tsx`**
+- Erstatt `handleCreateBattery` (som gjør direkte insert) med logikk som åpner `AddEquipmentDialog`
+- Ny state: `showAddEquipmentDialog: boolean`
+- Beregn `batteryDefaultValues` fra `unmatchedBatterySN` og `result` (batteryhelse, sykluser osv. som merknader)
+- Ved "Opprett batteri"-klikk: sett `showAddEquipmentDialog = true`
+- Render `<AddEquipmentDialog>` med `defaultValues` og `onEquipmentCreated`-callback som:
+  1. Legger det nye utstyret til `equipmentList` og `selectedEquipment`
+  2. Nullstiller `unmatchedBatterySN`
+  3. Lukker dialogen
+- Ved dialog-lukking uten lagring: behold `unmatchedBatterySN` så brukeren kan prøve igjen eller hoppe over
 
