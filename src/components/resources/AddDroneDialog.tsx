@@ -19,14 +19,22 @@ interface DroneModel {
   comment: string | null;
 }
 
+export interface DroneDefaultValues {
+  modell?: string;
+  serienummer?: string;
+  merknader?: string;
+}
+
 interface AddDroneDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDroneAdded: () => void;
   userId: string;
+  defaultValues?: DroneDefaultValues;
+  onDroneCreated?: (drone: { id: string; modell: string; serienummer: string }) => void;
 }
 
-export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: AddDroneDialogProps) => {
+export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defaultValues, onDroneCreated }: AddDroneDialogProps) => {
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
@@ -83,7 +91,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
     }
   }, [open]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes, pre-populate from defaultValues when opening
   useEffect(() => {
     if (!open) {
       setSelectedModelId("");
@@ -96,8 +104,11 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
       setInspectionIntervalDays("");
       setCalculatedNextInspection("");
       setSelectedChecklistId("");
+    } else if (defaultValues) {
+      if (defaultValues.modell) setModell(defaultValues.modell);
+      if (defaultValues.merknader) setMerknader(defaultValues.merknader);
     }
-  }, [open]);
+  }, [open, defaultValues]);
 
   // Calculate next inspection when start date or interval changes
   useEffect(() => {
@@ -193,6 +204,9 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
         setVekt("");
         setPayload("");
         setMerknader("");
+        if (onDroneCreated && droneData) {
+          onDroneCreated({ id: droneData.id, modell: droneData.modell, serienummer: droneData.serienummer });
+        }
         onDroneAdded();
         onOpenChange(false);
       }
@@ -241,7 +255,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId }: Add
           </div>
           <div>
             <Label htmlFor="serienummer">Serienummer</Label>
-            <Input id="serienummer" name="serienummer" />
+            <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ''} />
           </div>
           <div>
             <Label htmlFor="klasse">Klasse</Label>
