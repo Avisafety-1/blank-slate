@@ -21,7 +21,7 @@ const FIELDS = [
   "BATTERY.goHomeStatus",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
-  "DETAILS.batterySN","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
+  "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
   "HOME.goHomeStatus",
   "APP.warn",
@@ -132,6 +132,7 @@ function parseCsvToResult(csvText: string) {
   const detAircraftSerialIdx = findHeaderIndex(headers, "DETAILS.aircraftSerial");
   const detDroneTypeIdx = findHeaderIndex(headers, "DETAILS.droneType");
   const detBatterySNIdx = findHeaderIndex(headers, "DETAILS.batterySN");
+  const detBatterySerialIdx = findHeaderIndex(headers, "DETAILS.batterySerial");
   const detTotalTimeIdx = findHeaderIndex(headers, "DETAILS.totalTime [s]");
   const detTotalDistIdx = findHeaderIndex(headers, "DETAILS.totalDistance [m]");
   const detMaxDistIdx = findHeaderIndex(headers, "DETAILS.maxDistance [m]");
@@ -161,7 +162,10 @@ function parseCsvToResult(csvText: string) {
   const detailsMaxVSpeed = detMaxVSpeedIdx >= 0 ? parseFloat(firstRow[detMaxVSpeedIdx]) : NaN;
   const detailsTotalTime = detTotalTimeIdx >= 0 ? parseFloat(firstRow[detTotalTimeIdx]) : NaN;
   const batteryCycles = battLoopIdx >= 0 ? parseInt(firstRow[battLoopIdx]) : NaN;
-  const batterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
+  const rawBatterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
+  const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
+  const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
+  console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
   const batteryFullCap = battFullCapIdx >= 0 ? parseFloat(firstRow[battFullCapIdx]) : NaN;
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
   const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
