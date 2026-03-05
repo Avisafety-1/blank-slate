@@ -1,40 +1,31 @@
 
 
-## Auto-oppretting og matching av batteri fra DJI-logg
+## Fix: Batteri-serienummer fra DJI-logger
 
-### Oversikt
+### Problem
+Edge-funksjonen ber om feltet `DETAILS.batterySN` fra DroneLog API, men det korrekte feltnavnet er `DETAILS.batterySerial`. Derfor returnerer API-et aldri batteriserienummeret, og `batterySN` blir alltid tom streng — ingen batteri-matching eller opprettelsesprompt trigges.
 
-Når en DJI-logg importeres og inneholder `batterySN` (serienummer), skal systemet:
-1. Sjekke om det finnes et utstyr av type "Batteri" med matchende serienummer i selskapets equipment-tabell
-2. **Hvis funnet**: Auto-velge batteriet i utstyrslisten (som allerede gjøres for droner via `aircraftSN`)
-3. **Hvis ikke funnet**: Vise et valg til brukeren om å opprette batteriet som nytt utstyr
+Merk: For `aircraftSN` har vi allerede løst dette ved å be om **begge** (`DETAILS.aircraftSN` og `DETAILS.aircraftSerial`) og bruke fallback. Samme mønster trengs for batteri.
 
-### Endringer
+### Endring
 
-**`src/components/UploadDroneLogDialog.tsx`**
+**`supabase/functions/process-dronelog/index.ts`**
 
-1. Etter at `result` er satt (både i `handleUpload` og `handleSelectDjiLog`), legg til batteri-matching-logikk:
-   - Søk i `equipmentList` etter et utstyr der `serienummer` matcher `result.batterySN` (og type inneholder "Batteri" eller lignende)
-   - Hvis match: auto-legg til i `selectedEquipment` og vis toast "Batteri matchet automatisk: [navn]"
-   - Hvis ikke match og `batterySN` finnes: sett en ny state `unmatchedBatterySN` 
+1. I `FIELDS`-listen (linje 24): legg til `"DETAILS.batterySerial"` ved siden av eksisterende `"DETAILS.batterySN"`
+2. Legg til en ny header-index (etter linje 134):
+   ```
+   const detBatterySerialIdx = findHeaderIndex(headers, "DETAILS.batterySerial");
+   ```
+3. Oppdater batterySN-utlesningen (linje 164) til å bruke fallback, identisk med aircraftSN-mønsteret:
+   ```
+   const rawBatterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
+   const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
+   const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
+   ```
+4. Legg til en logg-linje for debugging:
+   ```
+   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
+   ```
 
-2. Ny state:
-   - `unmatchedBatterySN: string | null` — serienummeret som ikke ble funnet
-   - `showCreateBatteryPrompt: boolean` — viser prompt til brukeren
-
-3. I result-steget, vis en info-boks når `unmatchedBatterySN` er satt:
-   - Melding: "Batteriet med serienummer [SN] ble ikke funnet i ressursene. Ønsker du å opprette det?"
-   - Knapper: "Opprett batteri" / "Hopp over"
-   - Ved "Opprett batteri": Inserter nytt equipment med `type: "Batteri"`, `serienummer: batterySN`, `navn: "Batteri [SN]"`, og legg det automatisk til i `selectedEquipment`
-   - Inkluder batterihelse, kapasitet og sykluser fra loggen i merknader-feltet
-
-4. Etter opprettelse: Oppdater `equipmentList` lokalt og legg til det nye batteriet i `selectedEquipment`
-
-### Matching-logikk (detalj)
-
-Matching gjøres case-insensitive og trimmet. Typen sjekkes bredt ("Batteri", "Battery", eller at serienummeret matcher uansett type) for å fange batterier som kan ha blitt opprettet manuelt med annen type.
-
-### Ingen database-endringer
-
-Equipment-tabellen støtter allerede batterier som type. Ingen skjemaendringer nødvendig.
+Ingen andre filer trenger endring — frontend og matching-logikken bruker allerede `result.batterySN` korrekt.
 
