@@ -1384,14 +1384,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 </div>
               </button>
               <button
-                onClick={() => setStep('dji-login')}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
+                onClick={() => {
+                  if (hasSavedCredentials) {
+                    setStep('dji-login');
+                    // Trigger auto-login
+                    setTimeout(() => handleDjiAutoLogin(), 100);
+                  } else {
+                    setStep('dji-login');
+                  }
+                }}
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center relative"
               >
                 <CloudDownload className="w-8 h-8 text-primary" />
                 <div>
                   <p className="font-medium text-sm">{t('dronelog.djiAccount', 'DJI-konto')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{t('dronelog.djiAccountDesc', 'Hent fra skyen')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {hasSavedCredentials ? savedDjiEmail : t('dronelog.djiAccountDesc', 'Hent fra skyen')}
+                  </p>
                 </div>
+                {hasSavedCredentials && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" title="Innlogget" />
+                )}
               </button>
             </div>
           </div>
@@ -1436,31 +1449,78 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {step === 'dji-login' && (
           <div className="space-y-4">
             {backButton('method')}
-            <p className="text-sm text-muted-foreground">
-              {t('dronelog.djiLoginDesc', 'Logg inn med din DJI-konto for å hente flylogger fra skyen. Legitimasjonen sendes direkte til DJI og lagres ikke.')}
-            </p>
-            <div className="space-y-2">
-              <Label>{t('dronelog.djiEmail', 'DJI e-post')}</Label>
-              <Input type="email" value={djiEmail} onChange={e => setDjiEmail(e.target.value)} placeholder="bruker@eksempel.no" />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('dronelog.djiPassword', 'DJI passord')}</Label>
-              <Input type="password" value={djiPassword} onChange={e => setDjiPassword(e.target.value)} placeholder="••••••••" />
-            </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
-              <Button onClick={handleDjiLogin} disabled={!djiEmail || !djiPassword || isDjiLoading}>
-                {isDjiLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><LogIn className="w-4 h-4 mr-2" />{t('dronelog.djiLogin', 'Logg inn')}</>}
-              </Button>
-            </DialogFooter>
+            {/* Auto-logging in state */}
+            {isAutoLoggingIn ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Logger inn som {savedDjiEmail}...</p>
+              </div>
+            ) : hasSavedCredentials ? (
+              /* Saved credentials – show status */
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" />
+                    <p className="text-sm font-medium">Lagret innlogging</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{savedDjiEmail}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleDjiAutoLogin} disabled={isDjiLoading} className="flex-1">
+                    {isDjiLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Logger inn...</> : <><LogIn className="w-4 h-4 mr-2" />Logg inn</>}
+                  </Button>
+                  <Button variant="outline" onClick={handleDjiLogout}>
+                    Logg ut
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* Manual login form */
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {t('dronelog.djiLoginDesc', 'Logg inn med din DJI-konto for å hente flylogger fra skyen.')}
+                </p>
+                <div className="space-y-2">
+                  <Label>{t('dronelog.djiEmail', 'DJI e-post')}</Label>
+                  <Input type="email" value={djiEmail} onChange={e => setDjiEmail(e.target.value)} placeholder="bruker@eksempel.no" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('dronelog.djiPassword', 'DJI passord')}</Label>
+                  <Input type="password" value={djiPassword} onChange={e => setDjiPassword(e.target.value)} placeholder="••••••••" />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={saveCredentials}
+                    onCheckedChange={(checked) => setSaveCredentials(checked === true)}
+                  />
+                  <span className="text-sm">Husk innlogging</span>
+                </label>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Passordet lagres kryptert på serveren. Du kan logge ut når som helst.
+                </p>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
+                  <Button onClick={handleDjiLogin} disabled={!djiEmail || !djiPassword || isDjiLoading}>
+                    {isDjiLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><LogIn className="w-4 h-4 mr-2" />{t('dronelog.djiLogin', 'Logg inn')}</>}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
           </div>
         )}
 
         {/* ── Step: DJI Logs list ── */}
         {step === 'dji-logs' && (
           <div className="space-y-4">
-            {backButton('dji-login')}
+            <div className="flex items-center justify-between">
+              {backButton('dji-login')}
+              <Button variant="ghost" size="sm" onClick={handleDjiLogout} className="text-xs text-muted-foreground">
+                Logg ut av DJI
+              </Button>
+            </div>
             <p className="text-sm text-muted-foreground">
               {t('dronelog.selectLog', 'Velg en flylogg å importere:')}
             </p>
