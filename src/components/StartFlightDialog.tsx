@@ -91,6 +91,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [missionCompletedChecklistIds, setMissionCompletedChecklistIds] = useState<string[]>([]);
   const [showMissionChecklistWarning, setShowMissionChecklistWarning] = useState(false);
   const [isFetchingMissionChecklists, setIsFetchingMissionChecklists] = useState(false);
+  const [activeMissionChecklistId, setActiveMissionChecklistId] = useState<string | null>(null);
+  const [missionChecklistTitles, setMissionChecklistTitles] = useState<Record<string, string>>({});
   
   // Large advisory warning (50-150 km²)
   const [showLargeAdvisoryWarning, setShowLargeAdvisoryWarning] = useState(false);
@@ -218,11 +220,23 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           .eq('id', selectedMissionId)
           .single();
         if (data) {
-          setMissionChecklistIds((data as any).checklist_ids || []);
+          const checklistIds: string[] = (data as any).checklist_ids || [];
+          setMissionChecklistIds(checklistIds);
           setMissionCompletedChecklistIds((data as any).checklist_completed_ids || []);
+          // Fetch titles for mission checklists
+          if (checklistIds.length > 0) {
+            const { data: docs } = await supabase
+              .from('documents').select('id, tittel').in('id', checklistIds);
+            const titles: Record<string, string> = {};
+            docs?.forEach(d => { titles[d.id] = d.tittel; });
+            setMissionChecklistTitles(titles);
+          } else {
+            setMissionChecklistTitles({});
+          }
         } else {
           setMissionChecklistIds([]);
           setMissionCompletedChecklistIds([]);
+          setMissionChecklistTitles({});
         }
       } finally {
         setIsFetchingMissionChecklists(false);
@@ -281,6 +295,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setMissionCompletedChecklistIds([]);
       setShowMissionChecklistWarning(false);
       setIsFetchingMissionChecklists(false);
+      setActiveMissionChecklistId(null);
+      setMissionChecklistTitles({});
     }
   }, [open]);
 
@@ -505,21 +521,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
   const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
 
-  const validateMissionChecklists = async (missionId: string | undefined): Promise<boolean> => {
-    if (!missionId || missionId === 'none') return true;
-
-    const { data } = await supabase
-      .from('missions')
-      .select('checklist_ids, checklist_completed_ids')
-      .eq('id', missionId)
-      .maybeSingle();
-
-    if (!data) return true;
-
-    const checklistIds: string[] = (data as any).checklist_ids || [];
-    const completedIds: string[] = (data as any).checklist_completed_ids || [];
-
-    const hasIncomplete = checklistIds.some(id => !completedIds.includes(id));
+  const validateMissionChecklists = (): boolean => {
+    if (!selectedMissionId || selectedMissionId === 'none') return true;
+    const hasIncomplete = missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
     if (hasIncomplete) {
       setShowMissionChecklistWarning(true);
       return false;
@@ -548,8 +552,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
 
-      // Fresh DB validation of mission checklists — covers all code paths
-      const checklistsOk = await validateMissionChecklists(missionId);
+      // Validate mission checklists using local state
+      const checklistsOk = validateMissionChecklists();
       if (!checklistsOk) {
         setLoading(false);
         return;
@@ -643,6 +647,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setCompletedChecklistIds(prev => [...prev, activeChecklistId]);
     }
     setActiveChecklistId(null);
+  };
+
+  const handleMissionChecklistComplete = async (checklistId: string) => {
+    if (!selectedMissionId || selectedMissionId === 'none') return;
+    const newCompleted = [...missionCompletedChecklistIds, checklistId];
+    await supabase
+      .from('missions')
+      .update({ checklist_completed_ids: newCompleted } as any)
+      .eq('id', selectedMissionId);
+    setMissionCompletedChecklistIds(newCompleted);
+    setActiveMissionChecklistId(null);
   };
 
   return (
@@ -823,12 +838,36 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </SelectContent>
             </Select>
 
-            {missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id)) && (
-              <div className="flex items-start gap-2 rounded-lg bg-orange-500/10 border border-orange-500/30 p-3 text-sm mt-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                <p className="text-orange-600 dark:text-orange-400">
-                  Dette oppdraget har sjekkliste/r som må utføres fra oppdragskortet før du kan starte flytur.
-                </p>
+            {missionChecklistIds.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  Oppdragssjekklister
+                </Label>
+                {missionChecklistIds.map(id => {
+                  const done = missionCompletedChecklistIds.includes(id);
+                  return (
+                    <div key={id} className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3">
+                      <span className="text-sm font-medium truncate flex-1">
+                        {missionChecklistTitles[id] || '…'}
+                      </span>
+                      {done ? (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                          <Check className="h-3 w-3" />
+                          {t('common.completed')}
+                        </span>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveMissionChecklistId(id)}
+                        >
+                          {t('flight.openChecklist')}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             </div>
@@ -1059,7 +1098,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       </AlertDialog>
 
 
-      {/* Checklist Execution Dialog */}
+      {/* Checklist Execution Dialog (company-level) */}
       {activeChecklistId && (
         <ChecklistExecutionDialog
           open={!!activeChecklistId}
@@ -1067,6 +1106,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           checklistId={activeChecklistId}
           itemName={checklists.find(c => c.id === activeChecklistId)?.tittel || ''}
           onComplete={handleChecklistComplete}
+        />
+      )}
+
+      {/* Checklist Execution Dialog (mission-level) */}
+      {activeMissionChecklistId && (
+        <ChecklistExecutionDialog
+          open={!!activeMissionChecklistId}
+          onOpenChange={(open) => !open && setActiveMissionChecklistId(null)}
+          checklistId={activeMissionChecklistId}
+          itemName={missionChecklistTitles[activeMissionChecklistId] || ''}
+          onComplete={handleMissionChecklistComplete}
         />
       )}
     </>
