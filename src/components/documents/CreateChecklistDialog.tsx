@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2, GripVertical, Globe } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Globe } from "lucide-react";
 
 interface ChecklistItem {
   id: string;
@@ -31,6 +31,18 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
 
   const handleAddItem = () => {
     setItems([...items, { id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+    setItems(prev => {
+      const idx = prev.findIndex(item => item.id === id);
+      if (idx < 0) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
   };
 
   const handleRemoveItem = (id: string) => {
@@ -129,8 +141,15 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
             <Label>Sjekkliste-punkter</Label>
             <div className="space-y-2">
               {items.map((item, index) => (
-                <div key={item.id} className="flex items-center gap-2">
-                  <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div key={item.id} className="flex items-center gap-1.5">
+                  <div className="flex flex-col flex-shrink-0">
+                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveItem(item.id, 'up')} disabled={index === 0}>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveItem(item.id, 'down')} disabled={index === items.length - 1}>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                   <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
                   <Input
                     value={item.text}
