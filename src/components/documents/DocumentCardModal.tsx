@@ -42,7 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Upload, Trash2, Plus, GripVertical } from "lucide-react";
+import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -123,6 +123,18 @@ const DocumentCardModal = ({
 
   const handleAddChecklistItem = () => {
     setChecklistItems(prev => [...prev, { id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleMoveChecklistItem = (id: string, direction: 'up' | 'down') => {
+    setChecklistItems(prev => {
+      const idx = prev.findIndex(item => item.id === id);
+      if (idx < 0) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
   };
 
   const handleRemoveChecklistItem = (id: string) => {
@@ -387,8 +399,17 @@ const DocumentCardModal = ({
                       {form.watch("kategori") === "sjekklister" ? (
                         <div className="space-y-2">
                           {checklistItems.map((item, index) => (
-                            <div key={item.id} className="flex items-center gap-2">
-                              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div key={item.id} className="flex items-center gap-1.5">
+                              {!readOnly && (
+                                <div className="flex flex-col flex-shrink-0">
+                                  <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveChecklistItem(item.id, 'up')} disabled={index === 0}>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveChecklistItem(item.id, 'down')} disabled={index === checklistItems.length - 1}>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              )}
                               <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
                               <Input
                                 value={item.text}
