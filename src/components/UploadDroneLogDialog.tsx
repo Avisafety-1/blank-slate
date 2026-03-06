@@ -216,6 +216,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
+  const [saveCredentials, setSaveCredentials] = useState(false);
+  const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
+  const [savedDjiEmail, setSavedDjiEmail] = useState("");
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
 
   // Logbook state
   const [pilotId, setPilotId] = useState("");
@@ -238,6 +242,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       fetchDrones();
       fetchPersonnel();
       fetchEquipment();
+      checkSavedCredentials();
       resetState();
     }
   }, [open, companyId]);
@@ -309,6 +314,63 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const checkSavedCredentials = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('dji_credentials')
+      .select('id, dji_email')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data) {
+      setHasSavedCredentials(true);
+      setSavedDjiEmail(data.dji_email);
+    } else {
+      setHasSavedCredentials(false);
+      setSavedDjiEmail("");
+    }
+  };
+
+  const handleDjiAutoLogin = async () => {
+    setIsAutoLoggingIn(true);
+    setIsDjiLoading(true);
+    try {
+      const data = await callDronelogAction("dji-auto-login", {});
+      const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId;
+      if (!accountId) throw new Error("Auto-innlogging feilet");
+      setDjiAccountId(accountId);
+      setDjiEmail(data.email || savedDjiEmail);
+      await fetchDjiLogs(accountId);
+      setStep('dji-logs');
+    } catch (error: any) {
+      console.error('DJI auto-login error:', error);
+      // If auto-login fails, clear saved state and show manual login
+      setHasSavedCredentials(false);
+      setSavedDjiEmail("");
+      toast.error('Auto-innlogging feilet. Logg inn manuelt.');
+    } finally {
+      setIsAutoLoggingIn(false);
+      setIsDjiLoading(false);
+    }
+  };
+
+  const handleDjiLogout = async () => {
+    try {
+      await callDronelogAction("dji-delete-credentials", {});
+    } catch (e) {
+      console.error('Failed to delete credentials:', e);
+    }
+    setDjiAccountId("");
+    setDjiLogs([]);
+    setDjiHasMore(false);
+    setHasSavedCredentials(false);
+    setSavedDjiEmail("");
+    setSaveCredentials(false);
+    setDjiEmail("");
+    setDjiPassword("");
+    setStep('dji-login');
+    toast.success('Logget ut av DJI');
+  };
+
   const resetState = () => {
     setStep('method');
     setFile(null);
@@ -323,17 +385,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiAccountId("");
     setDjiLogs([]);
     setDjiHasMore(false);
-      setPilotId("");
-      setSelectedEquipment([]);
-      setOldPilotIds([]);
-      setOldEquipmentIds([]);
-      setOldDroneId(null);
-      setLogToLogbooks(true);
-      setWarningActions({});
-      setUnmatchedBatterySN(null);
-      setShowAddEquipmentDialog(false);
-      setUnmatchedDroneSN(null);
-      setShowAddDroneDialog(false);
+    setPilotId("");
+    setSelectedEquipment([]);
+    setOldPilotIds([]);
+    setOldEquipmentIds([]);
+    setOldDroneId(null);
+    setLogToLogbooks(true);
+    setWarningActions({});
+    setUnmatchedBatterySN(null);
+    setShowAddEquipmentDialog(false);
+    setUnmatchedDroneSN(null);
+    setShowAddDroneDialog(false);
+    setSaveCredentials(false);
+    setIsAutoLoggingIn(false);
   };
 
   // ── Battery matching helper ──
