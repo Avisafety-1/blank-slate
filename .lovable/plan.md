@@ -1,27 +1,44 @@
 
 
-## Formater dato og varighet i «Eksisterende flylogg funnet»
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-Linje 1753 viser `matchedLog.flight_date` rått fra databasen (ISO-format `2020-10-06T00:00:00+00:00`) i stedet for et lesbart format. Brukeren ser en kryptisk streng.
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**`src/components/UploadDroneLogDialog.tsx`** — linje 1752-1755
+### Endringer
 
-Formater `matchedLog.flight_date` med `format()` fra `date-fns` til `dd.MM.yyyy` (norsk datoformat). Filen importerer allerede `date-fns`.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Erstatt:
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
-{matchedLog.flight_date} — {matchedLog.flight_duration_minutes} min
-{matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
 ```
 
-Med:
-```
-{matchedLog.flight_date ? format(new Date(matchedLog.flight_date), 'dd.MM.yyyy') : 'Ukjent dato'} — {matchedLog.flight_duration_minutes} min
-{matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
-```
-
-Én linje endres. Ingen andre filer berørt.
+Ingen nye avhengigheter. Ingen databaseendringer.
 
