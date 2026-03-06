@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     await client.send({
       from: formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail),
-      to: 'feedback@avisafe.no',
+      to: 'support@avisafe.no',
       subject: sanitizeSubject(`Tilbakemelding: ${subject.trim()}`),
       content: "auto",
       html: htmlBody,
