@@ -690,6 +690,90 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // ── DJI credential management ──
+
+      if (action === "dji-save-credentials") {
+        const { email, password, accountId: djiAccId } = body;
+        if (!email || !password) {
+          return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        // Encrypt password using SUPABASE_SERVICE_ROLE_KEY as encryption basis
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(serviceKey.slice(0, 32)), "AES-GCM", false, ["encrypt"]);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, keyMaterial, new TextEncoder().encode(password));
+        const encryptedB64 = btoa(String.fromCharCode(...iv, ...new Uint8Array(encrypted)));
+
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { error: upsertErr } = await serviceClient
+          .from("dji_credentials")
+          .upsert({
+            user_id: authUser.id,
+            dji_email: email,
+            dji_password_encrypted: encryptedB64,
+            dji_account_id: djiAccId || null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "user_id" });
+
+        if (upsertErr) {
+          console.error("[process-dronelog] dji-save-credentials error:", upsertErr);
+          return new Response(JSON.stringify({ error: "Failed to save credentials" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ saved: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (action === "dji-auto-login") {
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data: cred, error: credErr } = await serviceClient
+          .from("dji_credentials")
+          .select("dji_email, dji_password_encrypted, dji_account_id")
+          .eq("user_id", authUser.id)
+          .maybeSingle();
+
+        if (credErr || !cred) {
+          return new Response(JSON.stringify({ error: "No saved credentials" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Decrypt password
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const raw = Uint8Array.from(atob(cred.dji_password_encrypted), c => c.charCodeAt(0));
+        const iv = raw.slice(0, 12);
+        const ciphertext = raw.slice(12);
+        const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(serviceKey.slice(0, 32)), "AES-GCM", false, ["decrypt"]);
+        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, keyMaterial, ciphertext);
+        const password = new TextDecoder().decode(decrypted);
+
+        // Login to DJI via DroneLog API
+        const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ email: cred.dji_email, password }),
+        });
+        const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
+        if (!res.ok) {
+          console.error(`[process-dronelog] dji-auto-login upstream=${res.status}`);
+          // If credentials are invalid, delete them
+          if (res.status === 401 || res.status === 403 || res.status === 500) {
+            await serviceClient.from("dji_credentials").delete().eq("user_id", authUser.id);
+          }
+          return new Response(JSON.stringify({ error: data.message || "Auto-login failed", upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Update stored accountId if needed
+        const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId;
+        if (accountId && accountId !== cred.dji_account_id) {
+          await serviceClient.from("dji_credentials").update({ dji_account_id: accountId }).eq("user_id", authUser.id);
+        }
+
+        return new Response(JSON.stringify({ ...data, email: cred.dji_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (action === "dji-delete-credentials") {
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await serviceClient.from("dji_credentials").delete().eq("user_id", authUser.id);
+        return new Response(JSON.stringify({ deleted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
