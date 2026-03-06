@@ -494,6 +494,36 @@ export type Database = {
           },
         ]
       }
+      dji_credentials: {
+        Row: {
+          created_at: string | null
+          dji_account_id: string | null
+          dji_email: string
+          dji_password_encrypted: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dji_account_id?: string | null
+          dji_email: string
+          dji_password_encrypted: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dji_account_id?: string | null
+          dji_email?: string
+          dji_password_encrypted?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           beskrivelse: string | null
