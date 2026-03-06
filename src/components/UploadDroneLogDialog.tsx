@@ -560,6 +560,20 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
+      
+      // Save credentials if checkbox is checked
+      if (saveCredentials) {
+        try {
+          await callDronelogAction("dji-save-credentials", { email: djiEmail, password: djiPassword, accountId });
+          setHasSavedCredentials(true);
+          setSavedDjiEmail(djiEmail);
+          toast.success('DJI-innlogging lagret');
+        } catch (saveErr) {
+          console.error('Failed to save DJI credentials:', saveErr);
+          toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
+        }
+      }
+      
       setDjiPassword("");
       await fetchDjiLogs(accountId);
       setStep('dji-logs');
