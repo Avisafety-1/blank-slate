@@ -521,21 +521,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
   const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
 
-  const validateMissionChecklists = async (missionId: string | undefined): Promise<boolean> => {
-    if (!missionId || missionId === 'none') return true;
-
-    const { data } = await supabase
-      .from('missions')
-      .select('checklist_ids, checklist_completed_ids')
-      .eq('id', missionId)
-      .maybeSingle();
-
-    if (!data) return true;
-
-    const checklistIds: string[] = (data as any).checklist_ids || [];
-    const completedIds: string[] = (data as any).checklist_completed_ids || [];
-
-    const hasIncomplete = checklistIds.some(id => !completedIds.includes(id));
+  const validateMissionChecklists = (): boolean => {
+    if (!selectedMissionId || selectedMissionId === 'none') return true;
+    const hasIncomplete = missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
     if (hasIncomplete) {
       setShowMissionChecklistWarning(true);
       return false;
@@ -564,8 +552,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     try {
       const missionId = selectedMissionId && selectedMissionId !== 'none' ? selectedMissionId : undefined;
 
-      // Fresh DB validation of mission checklists — covers all code paths
-      const checklistsOk = await validateMissionChecklists(missionId);
+      // Validate mission checklists using local state
+      const checklistsOk = validateMissionChecklists();
       if (!checklistsOk) {
         setLoading(false);
         return;
