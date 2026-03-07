@@ -88,6 +88,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     vedlikeholdsintervall_dager: "",
     sist_vedlikehold: "",
   });
+  const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
   const [formData, setFormData] = useState({
     modell: "",
     serienummer: "",
@@ -103,6 +104,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     payload: "",
     inspection_start_date: "",
     inspection_interval_days: "",
+    inspection_interval_hours: "",
+    inspection_interval_missions: "",
     varsel_dager: "14",
     sjekkliste_id: "",
   });
