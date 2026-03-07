@@ -46,6 +46,8 @@ interface Drone {
   hours_at_last_inspection: number;
   missions_at_last_inspection: number;
   varsel_dager: number | null;
+  varsel_timer: number | null;
+  varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
 }
 
@@ -107,6 +109,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     inspection_interval_hours: "",
     inspection_interval_missions: "",
     varsel_dager: "14",
+    varsel_timer: "",
+    varsel_oppdrag: "",
     sjekkliste_id: "",
   });
 
