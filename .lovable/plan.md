@@ -1,31 +1,44 @@
 
-Status nå (hva som faktisk skjedde)
-- Nei, denne synken lyktes ikke ennå.
-- Siste kjøring av `dji-auto-sync` (16:12:14Z) ga: `synced: 0`, `errors: 1`.
-- Feilen i edge-loggene er: `Login failed ... 429` + `Rate limited, stopping sync for this company`.
-- `pending_dji_logs` er fortsatt tom, derfor vises ingenting i «logger til behandling».
 
-Implementasjonsplan (for å gjøre dette tydelig og robust)
-1) Rett resultatmeldingen i UI
-- Oppdater «Sync nå»-toast i `UploadDroneLogDialog.tsx` til å bruke `data.synced` (ikke `data.processed`).
-- Vis også `data.errors` i meldingen, så brukeren ser forskjell på «0 funnet» vs «0 pga feil».
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-2) Gi bedre feildetaljer fra edge-funksjonen
-- Utvid `dji-auto-sync`-responsen med tydelig årsak ved 429 (rate limit), f.eks. `rate_limited: true`, `upstream_status`, `details`.
-- Returner per-selskap/per-bruker årsak i `companies[].details` når login/list/download stopper på 429.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-3) Bedre UX ved rate limit
-- Legg til `isSyncing` + disable på «Sync nå»-knappen under kall.
-- Ved 429: vis warning-toast med «vent litt og prøv igjen», og legg inn kort cooldown (f.eks. 15s) før nytt forsøk.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-4) Sørg for at «logger til behandling» oppdateres med en gang
-- Etter vellykket sync, trigge refetch av `pending_dji_logs` i dialogen slik at nye logger vises uten å lukke/åpne dialogen.
+### Endringer
 
-5) Verifisering (end-to-end)
-- Vent noen minutter (for å komme ut av 429-vinduet), trykk «Sync nå» én gang.
-- Bekreft at toast viser riktige tall (`synced/errors`) og årsak ved feil.
-- Bekreft at nye rader dukker opp i «Ventende flylogger fra auto-sync» når sync lykkes.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Tekniske detaljer
-- Rotårsak nå er ikke parsing/datatype lenger, men ekstern API-rate-limit (HTTP 429 ved DJI-login).
-- Det finnes også en UI-avvik: frontend leser `processed`, mens edge-funksjonen returnerer `synced`.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
+

@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
     let totalSynced = 0;
     let totalErrors = 0;
     const results: Array<{ company: string; synced: number; errors: number; details?: string }> = [];
+    let rateLimited = false;
 
     for (const company of companies) {
       const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
@@ -304,6 +305,7 @@ Deno.serve(async (req) => {
             // If credentials are invalid, skip (don't delete - could be temporary)
             if (loginRes.status === 429) {
               console.log(`[dji-auto-sync] Rate limited, stopping sync for this company`);
+              rateLimited = true;
               companyErrors++;
               break;
             }
@@ -478,7 +480,7 @@ Deno.serve(async (req) => {
 
       totalSynced += companySynced;
       totalErrors += companyErrors;
-      results.push({ company: company.navn, synced: companySynced, errors: companyErrors });
+      results.push({ company: company.navn, synced: companySynced, errors: companyErrors, details: rateLimited ? 'Rate limited by DJI API' : undefined });
     }
 
     const elapsed = Date.now() - startMs;
@@ -488,6 +490,7 @@ Deno.serve(async (req) => {
       success: true,
       synced: totalSynced,
       errors: totalErrors,
+      rate_limited: rateLimited,
       elapsed_ms: elapsed,
       companies: results,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

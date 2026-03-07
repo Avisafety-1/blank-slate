@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +29,19 @@ interface PendingDjiLogsSectionProps {
   onSelectLog: (log: PendingDjiLog) => void;
 }
 
-export const PendingDjiLogsSection = ({ onSelectLog }: PendingDjiLogsSectionProps) => {
+export interface PendingDjiLogsSectionRef {
+  refresh: () => void;
+}
+
+export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog }, ref) => {
   const { companyId } = useAuth();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    refresh: () => { if (companyId) fetchPendingLogs(); }
+  }));
 
   useEffect(() => {
     if (companyId) fetchPendingLogs();
@@ -139,4 +147,4 @@ export const PendingDjiLogsSection = ({ onSelectLog }: PendingDjiLogsSectionProp
       </div>
     </div>
   );
-};
+});
