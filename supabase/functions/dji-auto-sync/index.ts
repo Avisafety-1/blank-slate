@@ -305,6 +305,7 @@ Deno.serve(async (req) => {
             // If credentials are invalid, skip (don't delete - could be temporary)
             if (loginRes.status === 429) {
               console.log(`[dji-auto-sync] Rate limited, stopping sync for this company`);
+              rateLimited = true;
               companyErrors++;
               break;
             }
