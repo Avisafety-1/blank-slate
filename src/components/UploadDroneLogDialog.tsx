@@ -236,8 +236,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
-  const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
-  const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
+   const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+   const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
+   const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
+   const [linkDroneToExisting, setLinkDroneToExisting] = useState(false);
 
   useEffect(() => {
     if (open && companyId) {
@@ -398,6 +400,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setShowAddEquipmentDialog(false);
     setUnmatchedDroneSN(null);
     setShowAddDroneDialog(false);
+    setLinkBatteryToExisting(false);
+    setLinkDroneToExisting(false);
     setSaveCredentials(false);
     setIsAutoLoggingIn(false);
   };
@@ -1779,15 +1783,45 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-6">
+                <div className="flex gap-2 ml-6 flex-wrap">
                   <Button size="sm" variant="default" onClick={() => setShowAddEquipmentDialog(true)}>
                     <PlusCircle className="w-3 h-3 mr-1" />
                     Opprett batteri
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setLinkBatteryToExisting(true)}>
+                    <Wrench className="w-3 h-3 mr-1" />
+                    Knytt til eksisterende
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setUnmatchedBatterySN(null)}>
                     Hopp over
                   </Button>
                 </div>
+                {linkBatteryToExisting && (
+                  <div className="ml-6 mt-2">
+                    <Label className="text-xs mb-1 block">Velg eksisterende batteri</Label>
+                    <Select onValueChange={async (eqId) => {
+                      const { error } = await supabase.from('equipment').update({ internal_serial: unmatchedBatterySN }).eq('id', eqId);
+                      if (error) { toast.error('Kunne ikke oppdatere internt serienummer'); return; }
+                      setEquipmentList(prev => prev.map(e => e.id === eqId ? { ...e, internal_serial: unmatchedBatterySN } : e));
+                      setSelectedEquipment(prev => prev.includes(eqId) ? prev : [...prev, eqId]);
+                      const matched = equipmentList.find(e => e.id === eqId);
+                      toast.success(`Batteri koblet: ${matched?.navn || eqId}`);
+                      setUnmatchedBatterySN(null);
+                      setLinkBatteryToExisting(false);
+                    }}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Velg batteri..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {equipmentList.filter(e => e.type === 'Batteri').map(e => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.navn} {e.serienummer ? `(${e.serienummer})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1824,15 +1858,45 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-6">
+                <div className="flex gap-2 ml-6 flex-wrap">
                   <Button size="sm" variant="default" onClick={() => setShowAddDroneDialog(true)}>
                     <PlusCircle className="w-3 h-3 mr-1" />
                     Opprett {terminology.vehicleLower}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setLinkDroneToExisting(true)}>
+                    <Wrench className="w-3 h-3 mr-1" />
+                    Knytt til eksisterende
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setUnmatchedDroneSN(null)}>
                     Hopp over
                   </Button>
                 </div>
+                {linkDroneToExisting && (
+                  <div className="ml-6 mt-2">
+                    <Label className="text-xs mb-1 block">Velg eksisterende {terminology.vehicleLower}</Label>
+                    <Select onValueChange={async (droneId) => {
+                      const { error } = await supabase.from('drones').update({ internal_serial: unmatchedDroneSN }).eq('id', droneId);
+                      if (error) { toast.error('Kunne ikke oppdatere internt serienummer'); return; }
+                      setDrones(prev => prev.map(d => d.id === droneId ? { ...d, internal_serial: unmatchedDroneSN } : d));
+                      setSelectedDroneId(droneId);
+                      const matched = drones.find(d => d.id === droneId);
+                      toast.success(`${terminology.vehicle} koblet: ${matched?.modell || droneId}`);
+                      setUnmatchedDroneSN(null);
+                      setLinkDroneToExisting(false);
+                    }}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder={`Velg ${terminology.vehicleLower}...`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drones.map(d => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.modell} {d.serienummer ? `(${d.serienummer})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
