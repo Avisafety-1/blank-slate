@@ -31,9 +31,10 @@ interface AirspaceWarningsProps {
   latitude: number | null;
   longitude: number | null;
   routePoints?: RoutePoint[];
+  onAirspaceResult?: (warnings: AirspaceWarning[]) => void;
 }
 
-export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceWarningsProps) => {
+export const AirspaceWarnings = ({ latitude, longitude, routePoints, onAirspaceResult }: AirspaceWarningsProps) => {
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -78,10 +79,10 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
             }
           } else if (is5km) {
             if (r.route_inside) {
-              message = `Inne i 5 km-sonen rundt «${r.z_name}». Kontrollert luftrom — maks 120 m AGL.`;
+              message = `Inne i 5 km-sonen rundt «${r.z_name}». Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             } else {
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL.`;
+              message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             }
           } else if (r.route_inside) {
             message = `Ruten går gjennom ${r.z_type}-sone «${r.z_name}».`;
@@ -104,6 +105,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints }: AirspaceW
         );
 
         setWarnings(sortedWarnings);
+        onAirspaceResult?.(sortedWarnings);
       } catch (error) {
         console.error("Error checking airspace:", error);
       } finally {

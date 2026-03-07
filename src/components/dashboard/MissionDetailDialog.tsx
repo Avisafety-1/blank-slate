@@ -81,6 +81,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
+  const [has5kmZone, setHas5kmZone] = useState(false);
+  const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(false);
 
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
@@ -94,7 +97,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
       ]);
-      if (missionRes.data) setLiveMission(missionRes.data);
+      if (missionRes.data) {
+        setLiveMission(missionRes.data);
+        setNinoxApproved(!!(missionRes.data as any).ninox_approved);
+      }
       setSoraStatus(soraRes.data?.sora_status ?? null);
     };
     fetchLatest();
@@ -244,6 +250,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <ShieldCheck className="w-3 h-3 mr-1" />
               SORA: {soraStatus || 'Ikke startet'}
             </Badge>
+            {has5kmZone && (
+              <Badge
+                className={`border cursor-pointer hover:opacity-80 transition-opacity ${
+                  ninoxApproved
+                    ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30'
+                    : 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30'
+                }`}
+                onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
+              >
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -270,6 +289,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
                     routePoints={routeCoords}
+                    onAirspaceResult={(warnings) => {
+                      setHas5kmZone(warnings.some(w => w.zone_type === '5KM'));
+                    }}
                   />
                   <DroneWeatherPanel 
                     latitude={effectiveLat} 
@@ -440,6 +462,37 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             setApprovalConfirmOpen(false);
           }}>
             Send til godkjenning
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-amber-500" />
+            Ninox-godkjenning påkrevd
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction onClick={async () => {
+            const { error } = await supabase
+              .from('missions')
+              .update({ ninox_approved: true } as any)
+              .eq('id', currentMission.id);
+            if (!error) {
+              setNinoxApproved(true);
+              setLiveMission({ ...liveMission, ninox_approved: true });
+              onMissionUpdated?.();
+            }
+            setNinoxConfirmOpen(false);
+          }}>
+            Bekreft godkjenning
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

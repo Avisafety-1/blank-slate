@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import {
@@ -10,6 +21,8 @@ import {
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
   Send, CheckCircle2, Upload
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
@@ -75,7 +88,25 @@ export const MissionCard = ({
   fetchMissions,
   onRiskBadgeClick,
 }: MissionCardProps) => {
+  const [has5kmZone, setHas5kmZone] = useState(false);
+  const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
+
+  const handleNinoxConfirm = async () => {
+    const { error } = await supabase
+      .from('missions')
+      .update({ ninox_approved: true } as any)
+      .eq('id', mission.id);
+    if (!error) {
+      setNinoxApproved(true);
+      fetchMissions();
+      toast.success('Ninox-godkjenning bekreftet');
+    }
+    setNinoxConfirmOpen(false);
+  };
+
   return (
+    <>
     <GlassCard className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 sm:gap-4">
@@ -146,6 +177,23 @@ export const MissionCard = ({
                 )
                   ? 'Sjekkliste utført'
                   : 'Utfør sjekkliste/r'}
+              </Badge>
+            )}
+            {has5kmZone && (
+              <Badge
+                variant="outline"
+                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
+                  ninoxApproved
+                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                    : 'bg-red-500/20 text-red-900 border-red-500/30'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!ninoxApproved) setNinoxConfirmOpen(true);
+                }}
+              >
+                <ShieldCheck className="h-3 w-3 mr-1" />
+                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
               </Badge>
             )}
           </div>
@@ -461,6 +509,10 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               routePoints={routeCoords}
+              onAirspaceResult={(warnings) => {
+                const found = warnings.some(w => w.zone_type === '5KM');
+                setHas5kmZone(found);
+              }}
             />
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
@@ -675,5 +727,26 @@ export const MissionCard = ({
         </div>
       )}
     </GlassCard>
+
+    <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-amber-500" />
+            Ninox-godkjenning påkrevd
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction onClick={handleNinoxConfirm}>
+            Bekreft godkjenning
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };

@@ -33,7 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleCheck } from '@/hooks/useRoleCheck';
-import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler, Plane, Info } from 'lucide-react';
+import { Radio, MapPin, AlertCircle, Navigation, ClipboardCheck, Check, AlertTriangle, Plus, X, Ruler, Plane, Info, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
@@ -46,6 +46,9 @@ interface Mission {
   tittel: string;
   lokasjon: string;
   route: unknown;
+  latitude?: number | null;
+  longitude?: number | null;
+  ninox_approved?: boolean;
 }
 
 interface DronetagDevice {
@@ -121,6 +124,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   } | null>(null);
   const [trafficLoading, setTrafficLoading] = useState(false);
 
+  // Ninox approval state
+  const [missionIn5kmZone, setMissionIn5kmZone] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(false);
+  const [ninoxChecking, setNinoxChecking] = useState(false);
+  const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
+
   // Fetch company-level checklist settings
   useEffect(() => {
     const fetchCompanyChecklists = async () => {
@@ -150,7 +159,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       try {
         const { data, error } = await supabase
           .from('missions')
-          .select('id, tittel, lokasjon, route')
+          .select('id, tittel, lokasjon, route, latitude, longitude, ninox_approved')
           .eq('company_id', companyId)
           .in('status', ['Planlagt', 'Pågående'])
           .order('tidspunkt', { ascending: true });
@@ -297,8 +306,47 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setIsFetchingMissionChecklists(false);
       setActiveMissionChecklistId(null);
       setMissionChecklistTitles({});
+      setMissionIn5kmZone(false);
+      setNinoxApproved(false);
+      setNinoxChecking(false);
+      setShowNinoxConfirm(false);
     }
   }, [open]);
+
+  // Check if selected mission is in a 5km zone
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none') {
+      setMissionIn5kmZone(false);
+      setNinoxApproved(false);
+      return;
+    }
+    const m = missions.find(mi => mi.id === selectedMissionId);
+    if (!m) return;
+    
+    setNinoxApproved(!!m.ninox_approved);
+    
+    const lat = m.latitude ?? (m.route as any)?.coordinates?.[0]?.lat;
+    const lng = m.longitude ?? (m.route as any)?.coordinates?.[0]?.lng;
+    if (!lat || !lng) {
+      setMissionIn5kmZone(false);
+      return;
+    }
+    
+    setNinoxChecking(true);
+    const routePoints = (m.route as any)?.coordinates || null;
+    
+    supabase.rpc("check_mission_airspace", {
+      p_lat: lat,
+      p_lng: lng,
+      p_route: routePoints ? JSON.parse(JSON.stringify(routePoints)) : null,
+    }).then(({ data, error }) => {
+      if (error) { setNinoxChecking(false); return; }
+      const rawArray = (data as any[]) || [];
+      const has5km = rawArray.some((r: any) => r.z_type === '5KM');
+      setMissionIn5kmZone(has5km);
+      setNinoxChecking(false);
+    });
+  }, [selectedMissionId, missions]);
 
   // Fetch nearest air traffic when GPS position is available
   useEffect(() => {
@@ -1001,6 +1049,33 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </p>
               </div>
             )}
+
+            {/* Ninox approval warning */}
+            {missionIn5kmZone && !ninoxApproved && !ninoxChecking && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-500/10 p-3 text-sm">
+                <ShieldCheck className="h-4 w-4 text-red-500 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <p className="font-medium text-red-700 dark:text-red-300">
+                    Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/30 hover:bg-red-500/10"
+                    onClick={() => setShowNinoxConfirm(true)}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                    Bekreft Ninox-godkjenning
+                  </Button>
+                </div>
+              </div>
+            )}
+            {missionIn5kmZone && ninoxApproved && (
+              <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
+                <ShieldCheck className="h-4 w-4 text-green-500 mt-0.5" />
+                <p className="text-green-700 dark:text-green-300">Ninox-godkjenning bekreftet ✓</p>
+              </div>
+            )}
             </div>
           </div>
 
@@ -1010,7 +1085,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading || isFetchingMissionChecklists || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
+              disabled={loading || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
@@ -1119,6 +1194,40 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           onComplete={handleMissionChecklistComplete}
         />
       )}
+
+      {/* Ninox Approval Confirm Dialog */}
+      <AlertDialog open={showNinoxConfirm} onOpenChange={setShowNinoxConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-amber-500" />
+              Ninox-godkjenning påkrevd
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!selectedMissionId || selectedMissionId === 'none') return;
+              const { error } = await supabase
+                .from('missions')
+                .update({ ninox_approved: true } as any)
+                .eq('id', selectedMissionId);
+              if (!error) {
+                setNinoxApproved(true);
+                // Update local missions list
+                setMissions(prev => prev.map(m => m.id === selectedMissionId ? { ...m, ninox_approved: true } : m));
+                toast.success('Ninox-godkjenning bekreftet');
+              }
+              setShowNinoxConfirm(false);
+            }}>
+              Bekreft godkjenning
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -1,60 +1,44 @@
 
 
-## Plan: Ninox-godkjenning for oppdrag i 5 km RPAS-soner
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Oversikt
-Når et oppdrag befinner seg innenfor en 5 km RPAS-sone rundt en flyplass, skal systemet:
-1. Vise «Søk godkjenning i Ninox» i luftromsadvarselen
-2. Vise en klikkbar badge «Ikke godkjent i Ninox» på oppdragskortet
-3. La brukeren bekrefte Ninox-godkjenning via en dialog (fra badge eller StartFlightDialog)
-4. Blokkere flytur-start dersom Ninox-godkjenning mangler
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### 1. Database-migrasjon
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Legg til én kolonne på `missions`-tabellen:
+### Endringer
 
-```sql
-ALTER TABLE missions ADD COLUMN ninox_approved boolean DEFAULT false;
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-### 2. AirspaceWarnings — legg til Ninox-tekst + callback
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-**`src/components/dashboard/AirspaceWarnings.tsx`**:
-- For 5KM-soner (`is5km`), legg til teksten «Søk godkjenning i Ninox» i meldingen
-- Eksporter også en hjelpefunksjon/info om at advarselen inneholder 5KM-soner, slik at konsumenter kan bruke den
-
-### 3. Ninox-statusberegning for oppdrag
-
-Trenger å vite om oppdraget er innenfor en 5KM-sone. To tilnærminger:
-- **Alternativ A**: Kall `check_mission_airspace` RPC og sjekk for 5KM-treff. Gjøres allerede av `AirspaceWarnings`-komponenten.
-- **Valgt tilnærming**: Legg til en `onAirspaceResult`-callback prop på `AirspaceWarnings` som returnerer warning-listen. Overordnet komponent kan da sjekke om 5KM finnes og vise Ninox-badge.
-
-### 4. MissionCard — Ninox-badge
-
-**`src/components/oppdrag/MissionCard.tsx`**:
-- Legg til lokal state `has5kmZone` som settes via `onAirspaceResult` callback fra `AirspaceWarnings`
-- Vis en badge «Ikke godkjent i Ninox» (rød/grå) eller «Godkjent i Ninox» (grønn) basert på `mission.ninox_approved` og `has5kmZone`
-- Badge vises KUN hvis oppdraget er i en 5KM-sone
-- Klikk på badge åpner en `AlertDialog` med tekst: «Ditt oppdrag krever godkjenning i Ninox: Bekreft at du har innhentet dette»
-- Ved bekreftelse: oppdater `missions.ninox_approved = true` i Supabase og kall `fetchMissions`
-
-### 5. StartFlightDialog — Ninox-sjekk
-
-**`src/components/StartFlightDialog.tsx`**:
-- Når et oppdrag er valgt, sjekk via `check_mission_airspace` RPC om det er i en 5KM-sone
-- Hvis ja og `ninox_approved === false`: vis en advarsel og en knapp for å bekrefte Ninox-godkjenning inline
-- Blokkér «Start flytur»-knappen inntil Ninox er bekreftet (legg til i `disabled`-betingelsen)
-- Hent `ninox_approved`-status sammen med misjonsdataene (utvid select-spørringen)
-
-### 6. MissionDetailDialog (dashboard)
-
-**`src/components/dashboard/MissionDetailDialog.tsx`**: Tilsvarende badge-logikk som MissionCard — vises kun ved 5KM-sone.
-
-### Filer som endres
-1. **Database-migrasjon** — 1 ny kolonne (`ninox_approved`)
-2. `src/components/dashboard/AirspaceWarnings.tsx` — Ninox-tekst i 5KM-meldinger + `onAirspaceResult` callback
-3. `src/components/oppdrag/MissionCard.tsx` — Ninox-badge med bekreftelsesdialog
-4. `src/components/StartFlightDialog.tsx` — Ninox-sjekk, bekreftelsesmulighet, blokkering
-5. `src/components/dashboard/MissionDetailDialog.tsx` — Ninox-badge
-6. `src/hooks/useOppdragData.ts` — Hent `ninox_approved` (allerede inkludert via `select *`)
+Ingen nye avhengigheter. Ingen databaseendringer.
 
