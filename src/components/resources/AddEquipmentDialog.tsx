@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { addDays, format } from "date-fns";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
+import { ChevronDown } from "lucide-react";
 
 export interface EquipmentDefaultValues {
   type?: string;
@@ -38,6 +40,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   const [selectedType, setSelectedType] = useState<string>("");
   const [customType, setCustomType] = useState<string>("");
   const [internalSerial, setInternalSerial] = useState<string>("");
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const { checklists } = useChecklists();
   const equipmentTypes = useEquipmentTypes(companyId, open);
 
@@ -235,87 +238,93 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
             </div>
           </div>
 
-          <div className="border-t border-border pt-4">
-            <p className="text-sm font-medium text-muted-foreground mb-3">Vedlikeholdsintervall</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="vedlikehold_startdato">Startdato</Label>
-                <Input 
-                  id="vedlikehold_startdato" 
-                  name="vedlikehold_startdato" 
-                  type="date" 
-                  value={vedlikeholdStartdato}
-                  onChange={(e) => setVedlikeholdStartdato(e.target.value)}
-                />
+          {/* Collapsible maintenance settings */}
+          <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
+              <span className="text-sm font-medium">Vedlikeholdsintervall</span>
+            </CollapsibleTrigger>
+            <p className="text-xs text-muted-foreground mt-1 ml-6">Status trigges av det som kommer først av dager, timer eller oppdrag</p>
+            <CollapsibleContent className="space-y-4 pt-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="vedlikehold_startdato">Startdato</Label>
+                  <Input 
+                    id="vedlikehold_startdato" 
+                    name="vedlikehold_startdato" 
+                    type="date" 
+                    value={vedlikeholdStartdato}
+                    onChange={(e) => setVedlikeholdStartdato(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vedlikeholdsintervall_dager">Intervall (dager)</Label>
+                  <Input 
+                    id="vedlikeholdsintervall_dager" 
+                    name="vedlikeholdsintervall_dager" 
+                    type="number" 
+                    min="1"
+                    value={vedlikeholdsintervallDager}
+                    onChange={(e) => setVedlikeholdsintervallDager(e.target.value)}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="vedlikeholdsintervall_dager">Intervall (dager)</Label>
-                <Input 
-                  id="vedlikeholdsintervall_dager" 
-                  name="vedlikeholdsintervall_dager" 
-                  type="number" 
-                  min="1"
-                  value={vedlikeholdsintervallDager}
-                  onChange={(e) => setVedlikeholdsintervallDager(e.target.value)}
-                />
+              {nesteVedlikehold && (
+                <p className="text-xs text-muted-foreground">
+                  Neste vedlikehold: {format(new Date(nesteVedlikehold), "dd.MM.yyyy")}
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="inspection_interval_hours">Intervall (timer)</Label>
+                  <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder="F.eks. 50" />
+                </div>
+                <div>
+                  <Label htmlFor="inspection_interval_missions">Intervall (oppdrag)</Label>
+                  <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder="F.eks. 100" />
+                </div>
               </div>
-            </div>
-            {nesteVedlikehold && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Neste vedlikehold: {format(new Date(nesteVedlikehold), "dd.MM.yyyy")}
-              </p>
-            )}
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="varsel_timer">Varsel timer</Label>
+                  <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder="Timer før gul" />
+                </div>
+                <div>
+                  <Label htmlFor="varsel_oppdrag">Varsel oppdrag</Label>
+                  <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder="Oppdrag før gul" />
+                </div>
+              </div>
 
-          {/* Vedlikeholdsintervall timer og oppdrag */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="inspection_interval_hours">Intervall (timer)</Label>
-              <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder="F.eks. 50" />
-            </div>
-            <div>
-              <Label htmlFor="inspection_interval_missions">Intervall (oppdrag)</Label>
-              <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder="F.eks. 100" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="varsel_timer">Varsel timer</Label>
-              <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder="Timer før gul" />
-            </div>
-            <div>
-              <Label htmlFor="varsel_oppdrag">Varsel oppdrag</Label>
-              <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder="Oppdrag før gul" />
-            </div>
-          </div>
+              <div>
+                <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
+                <Input id="sist_vedlikeholdt" name="sist_vedlikeholdt" type="date" />
+              </div>
 
-          <div>
-            <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
-            <Input id="sist_vedlikeholdt" name="sist_vedlikeholdt" type="date" />
-          </div>
-
-          {/* Checklist selection */}
-          {checklists.length > 0 && (
-            <div className="border-t border-border pt-4">
-              <Label htmlFor="sjekkliste">Sjekkliste for vedlikehold</Label>
-              <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Hvis valgt, må sjekklisten fullføres før vedlikehold registreres
-              </p>
-            </div>
-          )}
+              {/* Checklist selection */}
+              {checklists.length > 0 && (
+                <div>
+                  <Label htmlFor="sjekkliste">Sjekkliste for vedlikehold</Label>
+                  <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                      {checklists.map((checklist) => (
+                        <SelectItem key={checklist.id} value={checklist.id}>
+                          {checklist.tittel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hvis valgt, må sjekklisten fullføres før vedlikehold registreres
+                  </p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
 
           <div>
             <Label htmlFor="merknader">Merknader</Label>

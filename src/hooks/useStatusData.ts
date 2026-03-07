@@ -2,7 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
 
 interface StatusCounts {
   Grønn: number;
@@ -19,7 +19,6 @@ const countByStatus = (items: { status: Status }[]): StatusCounts => {
 
 const fetchDrones = async () => {
   // Single query with nested selects — PostgREST joins server-side.
-  // The 1000-row limit applies only to top-level rows (drones), not nested data.
   const { data: dronesData, error } = await supabase
     .from("drones")
     .select(`
@@ -33,7 +32,6 @@ const fetchDrones = async () => {
     throw error;
   }
 
-  // For each drone, count missions since last inspection from flight_logs
   const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
 
   const dronesWithMissions = await Promise.all(dronesData.map(async (drone: any) => {
@@ -42,7 +40,6 @@ const fetchDrones = async () => {
       .map((link: any) => link.equipment)
       .filter(Boolean);
 
-    // Count unique missions from flight_logs since last inspection
     let missionsSinceInspection = 0;
     if (drone.inspection_interval_missions) {
       missionsSinceInspection = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
@@ -81,11 +78,41 @@ const fetchEquipment = async () => {
     throw error;
   }
 
-  return data.map(item => {
-    const maintenanceStatus = calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status;
+  // Count missions for equipment that has mission-based intervals
+  const equipmentWithMissions = await Promise.all(data.map(async (item: any) => {
+    let missionsSinceMaintenance = 0;
+
+    if (item.inspection_interval_missions) {
+      // Count missions via mission_equipment since last maintenance
+      const { data: meData } = await supabase
+        .from("mission_equipment")
+        .select("mission_id")
+        .eq("equipment_id", item.id);
+
+      if (meData) {
+        const totalMissions = new Set(meData.map((r: any) => r.mission_id)).size;
+        missionsSinceMaintenance = totalMissions - (item.missions_at_last_maintenance ?? 0);
+        if (missionsSinceMaintenance < 0) missionsSinceMaintenance = 0;
+      }
+    }
+
+    const maintenanceStatus = calculateEquipmentMaintenanceStatus({
+      neste_vedlikehold: item.neste_vedlikehold,
+      varsel_dager: item.varsel_dager,
+      flyvetimer: item.flyvetimer ?? 0,
+      hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
+      inspection_interval_hours: item.inspection_interval_hours,
+      varsel_timer: item.varsel_timer,
+      missions_since_maintenance: missionsSinceMaintenance,
+      inspection_interval_missions: item.inspection_interval_missions,
+      varsel_oppdrag: item.varsel_oppdrag,
+    });
+
     const dbStatus = (item.status as Status) || "Grønn";
     return { ...item, status: worstStatus(maintenanceStatus, dbStatus) };
-  });
+  }));
+
+  return equipmentWithMissions;
 };
 
 const fetchPersonnel = async (companyId: string) => {
@@ -110,9 +137,6 @@ const fetchPersonnel = async (companyId: string) => {
 
 export const useStatusData = () => {
   const { user, companyId } = useAuth();
-
-  // Real-time cache invalidation is now handled by useDashboardRealtime hook
-  // in the dashboard-main channel (see src/hooks/useDashboardRealtime.ts)
 
   const results = useQueries({
     queries: [

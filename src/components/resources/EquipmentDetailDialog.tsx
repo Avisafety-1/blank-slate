@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,7 +13,7 @@ import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck } from "lucide-react";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
@@ -63,6 +64,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [showLogbook, setShowLogbook] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [customType, setCustomType] = useState("");
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [formData, setFormData] = useState({
     navn: "",
@@ -153,6 +155,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
     }
   }, [isEditing, formData.sist_vedlikeholdt, formData.vedlikeholdsintervall_dager]);
 
+  /** Count unique missions for this equipment via mission_equipment */
+  const countEquipmentMissions = async (): Promise<number> => {
+    const { data } = await supabase
+      .from("mission_equipment")
+      .select("mission_id")
+      .eq("equipment_id", equipment!.id);
+    if (!data) return 0;
+    return new Set(data.map((r: any) => r.mission_id)).size;
+  };
+
   const performMaintenanceUpdate = async () => {
     if (!equipment || isSubmitting) return;
     
@@ -167,13 +179,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         neste_vedlikehold = nextDate.toISOString().split('T')[0];
       }
 
+      // Count actual total missions for this equipment
+      const totalMissions = await countEquipmentMissions();
+
       const { error } = await supabase
         .from("equipment")
         .update({
           sist_vedlikeholdt: today,
           neste_vedlikehold,
           hours_at_last_maintenance: equipment.flyvetimer || 0,
-          missions_at_last_maintenance: (equipment.missions_at_last_maintenance || 0),
+          missions_at_last_maintenance: totalMissions,
         })
         .eq("id", equipment.id);
 
@@ -397,17 +412,6 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (dager)</p>
-                  <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
-                </div>
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (timer)</p>
-                  <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? `${equipment.inspection_interval_hours} timer` : "Ikke angitt"}</p>
-                </div>
-              </div>
-
               {/* Hours progress */}
               {equipment.inspection_interval_hours != null && equipment.inspection_interval_hours > 0 && (() => {
                 const hoursSince = (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0);
@@ -440,32 +444,52 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 );
               })()}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (oppdrag)</p>
-                  <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? `${equipment.inspection_interval_missions} oppdrag` : "Ikke angitt"}</p>
-                </div>
-              </div>
+              {/* Maintenance details in collapsible */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
+                  <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  Vedlikeholdsdetaljer
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (dager)</p>
+                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (timer)</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? `${equipment.inspection_interval_hours} timer` : "Ikke angitt"}</p>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
-                  <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
-                </div>
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sjekkliste</p>
-                  <p className="text-sm sm:text-base flex items-center gap-1">
-                    {linkedChecklist ? (
-                      <>
-                        <ClipboardList className="w-3 h-3 text-primary" />
-                        {linkedChecklist.tittel}
-                      </>
-                    ) : (
-                      "Ingen"
-                    )}
-                  </p>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (oppdrag)</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? `${equipment.inspection_interval_missions} oppdrag` : "Ikke angitt"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
+                      <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sjekkliste</p>
+                      <p className="text-sm sm:text-base flex items-center gap-1">
+                        {linkedChecklist ? (
+                          <>
+                            <ClipboardList className="w-3 h-3 text-primary" />
+                            {linkedChecklist.tittel}
+                          </>
+                        ) : (
+                          "Ingen"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div className="border-t border-border pt-3 sm:pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -604,132 +628,143 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     className="text-sm"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">Vedl.intervall (dager)</Label>
-                  <Input
-                    id="vedlikeholdsintervall_dager"
-                    type="number"
-                    min="1"
-                    placeholder="30"
-                    value={formData.vedlikeholdsintervall_dager}
-                    onChange={(e) => setFormData({ ...formData, vedlikeholdsintervall_dager: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Label htmlFor="inspection_interval_hours" className="text-xs sm:text-sm">Vedl.intervall (timer)</Label>
-                  <Input
-                    id="inspection_interval_hours"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="F.eks. 50"
-                    value={formData.inspection_interval_hours}
-                    onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">Vedl.intervall (oppdrag)</Label>
-                  <Input
-                    id="inspection_interval_missions"
-                    type="number"
-                    min="1"
-                    placeholder="F.eks. 100"
-                    value={formData.inspection_interval_missions}
-                    onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
+              {/* Collapsible maintenance settings */}
+              <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
+                  <span className="text-sm font-medium">Vedlikeholdsintervall</span>
+                </CollapsibleTrigger>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">Status trigges av det som kommer først av dager, timer eller oppdrag</p>
+                <CollapsibleContent className="space-y-3 pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">Intervall (dager)</Label>
+                      <Input
+                        id="vedlikeholdsintervall_dager"
+                        type="number"
+                        min="1"
+                        placeholder="30"
+                        value={formData.vedlikeholdsintervall_dager}
+                        onChange={(e) => setFormData({ ...formData, vedlikeholdsintervall_dager: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
+                      <Input
+                        id="varsel_dager"
+                        type="number"
+                        min="1"
+                        placeholder="14"
+                        value={formData.varsel_dager}
+                        onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Label htmlFor="varsel_timer" className="text-xs sm:text-sm">Varsel timer før gul</Label>
-                  <Input
-                    id="varsel_timer"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="F.eks. 5"
-                    value={formData.varsel_timer}
-                    onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">Varsel oppdrag før gul</Label>
-                  <Input
-                    id="varsel_oppdrag"
-                    type="number"
-                    min="1"
-                    placeholder="F.eks. 10"
-                    value={formData.varsel_oppdrag}
-                    onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="inspection_interval_hours" className="text-xs sm:text-sm">Intervall (timer)</Label>
+                      <Input
+                        id="inspection_interval_hours"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="F.eks. 50"
+                        value={formData.inspection_interval_hours}
+                        onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="varsel_timer" className="text-xs sm:text-sm">Varsel timer før gul</Label>
+                      <Input
+                        id="varsel_timer"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="F.eks. 5"
+                        value={formData.varsel_timer}
+                        onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
-                  <Input
-                    id="varsel_dager"
-                    type="number"
-                    min="1"
-                    placeholder="14"
-                    value={formData.varsel_dager}
-                    onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs sm:text-sm">Sjekkliste for vedlikehold</Label>
-                  <Select
-                    value={formData.sjekkliste_id}
-                    onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value === "none" ? "" : value })}
-                  >
-                    <SelectTrigger className="text-sm">
-                      <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                      {checklists.map((checklist) => (
-                        <SelectItem key={checklist.id} value={checklist.id}>
-                          {checklist.tittel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">Intervall (oppdrag)</Label>
+                      <Input
+                        id="inspection_interval_missions"
+                        type="number"
+                        min="1"
+                        placeholder="F.eks. 100"
+                        value={formData.inspection_interval_missions}
+                        onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">Varsel oppdrag før gul</Label>
+                      <Input
+                        id="varsel_oppdrag"
+                        type="number"
+                        min="1"
+                        placeholder="F.eks. 10"
+                        value={formData.varsel_oppdrag}
+                        onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">Sist vedlikeholdt</Label>
-                  <Input
-                    id="sist_vedlikeholdt"
-                    type="date"
-                    value={formData.sist_vedlikeholdt}
-                    onChange={(e) => setFormData({ ...formData, sist_vedlikeholdt: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="neste_vedlikehold" className="text-xs sm:text-sm">Neste vedlikehold</Label>
-                  <Input
-                    id="neste_vedlikehold"
-                    type="date"
-                    value={formData.neste_vedlikehold}
-                    onChange={(e) => setFormData({ ...formData, neste_vedlikehold: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">Sist vedlikeholdt</Label>
+                      <Input
+                        id="sist_vedlikeholdt"
+                        type="date"
+                        value={formData.sist_vedlikeholdt}
+                        onChange={(e) => setFormData({ ...formData, sist_vedlikeholdt: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="neste_vedlikehold" className="text-xs sm:text-sm">Neste vedlikehold</Label>
+                      <Input
+                        id="neste_vedlikehold"
+                        type="date"
+                        value={formData.neste_vedlikehold}
+                        onChange={(e) => setFormData({ ...formData, neste_vedlikehold: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs sm:text-sm">Sjekkliste for vedlikehold</Label>
+                    <Select
+                      value={formData.sjekkliste_id}
+                      onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value === "none" ? "" : value })}
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        {checklists.map((checklist) => (
+                          <SelectItem key={checklist.id} value={checklist.id}>
+                            {checklist.tittel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div>
                 <Label htmlFor="merknader" className="text-xs sm:text-sm">Merknader</Label>
