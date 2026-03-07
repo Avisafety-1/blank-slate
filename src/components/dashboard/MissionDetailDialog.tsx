@@ -97,7 +97,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
       ]);
-      if (missionRes.data) setLiveMission(missionRes.data);
+      if (missionRes.data) {
+        setLiveMission(missionRes.data);
+        setNinoxApproved(!!(missionRes.data as any).ninox_approved);
+      }
       setSoraStatus(soraRes.data?.sora_status ?? null);
     };
     fetchLatest();
