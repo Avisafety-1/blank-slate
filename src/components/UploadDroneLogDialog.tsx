@@ -700,11 +700,60 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Pending DJI log handler ──
 
   const handleSelectPendingLog = async (pendingLog: any) => {
-    if (!pendingLog.parsed_result) {
+    let parsed = pendingLog.parsed_result;
+
+    // On-demand parsing: if no parsed_result, fetch and parse via edge function
+    if (!parsed) {
+      setProcessingLogId(pendingLog.id);
+      setIsProcessing(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
+
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const res = await fetch(`https://${projectId}.supabase.co/functions/v1/dji-process-single`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ pending_log_id: pendingLog.id }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Kunne ikke hente flydata");
+        }
+
+        if (data.already_imported) {
+          toast.info("Denne loggen er allerede importert.");
+          // Refresh the pending logs list
+          pendingLogsRef.current?.refresh();
+          setIsProcessing(false);
+          setProcessingLogId(null);
+          return;
+        }
+
+        parsed = data.parsed_result;
+        // Update local pendingLog reference for matched IDs
+        pendingLog.matched_drone_id = data.matched_drone_id || null;
+        pendingLog.matched_battery_id = data.matched_battery_id || null;
+        pendingLog.parsed_result = parsed;
+      } catch (error: any) {
+        console.error("On-demand parse error:", error);
+        toast.error(error.message || "Feil ved henting av flydata");
+        setIsProcessing(false);
+        setProcessingLogId(null);
+        return;
+      }
+      setIsProcessing(false);
+      setProcessingLogId(null);
+    }
+
+    if (!parsed) {
       toast.error("Denne loggen mangler data og kan ikke importeres.");
       return;
     }
-    const parsed = pendingLog.parsed_result;
     // Map parsed_result to DroneLogResult shape
     const data: DroneLogResult = {
       positions: parsed.positions || [],
