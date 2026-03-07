@@ -46,6 +46,9 @@ interface Mission {
   tittel: string;
   lokasjon: string;
   route: unknown;
+  latitude?: number | null;
+  longitude?: number | null;
+  ninox_approved?: boolean;
 }
 
 interface DronetagDevice {
@@ -150,7 +153,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       try {
         const { data, error } = await supabase
           .from('missions')
-          .select('id, tittel, lokasjon, route')
+          .select('id, tittel, lokasjon, route, latitude, longitude, ninox_approved')
           .eq('company_id', companyId)
           .in('status', ['Planlagt', 'Pågående'])
           .order('tidspunkt', { ascending: true });
