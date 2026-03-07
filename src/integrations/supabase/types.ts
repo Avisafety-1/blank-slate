@@ -298,6 +298,7 @@ export type Database = {
       }
       changelog_entries: {
         Row: {
+          completed_at: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -306,6 +307,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -314,6 +316,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
