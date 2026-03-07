@@ -508,6 +508,10 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               routePoints={routeCoords}
+              onAirspaceResult={(warnings) => {
+                const found = warnings.some(w => w.zone_type === '5KM');
+                setHas5kmZone(found);
+              }}
             />
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
