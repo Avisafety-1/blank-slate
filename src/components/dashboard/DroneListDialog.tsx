@@ -75,6 +75,9 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                 <div>
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
                   <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
+                  {drone.internal_serial && (
+                    <p className="text-sm text-muted-foreground">Internt SN: {drone.internal_serial}</p>
+                  )}
                 </div>
                 <StatusBadge status={drone.status as Status} />
               </div>

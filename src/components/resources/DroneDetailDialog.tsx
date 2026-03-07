@@ -26,6 +26,7 @@ interface Drone {
   id: string;
   modell: string;
   serienummer: string;
+  internal_serial: string | null;
   status: string;
   flyvetimer: number;
   merknader: string | null;
@@ -85,6 +86,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [formData, setFormData] = useState({
     modell: "",
     serienummer: "",
+    internal_serial: "",
     status: "Grønn",
     flyvetimer: 0,
     merknader: "",
@@ -139,6 +141,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       setFormData({
         modell: drone.modell,
         serienummer: drone.serienummer,
+        internal_serial: drone.internal_serial || "",
         status: drone.status,
         flyvetimer: drone.flyvetimer,
         merknader: drone.merknader || "",
@@ -455,6 +458,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         .update({
           modell: formData.modell,
           serienummer: formData.serienummer,
+          internal_serial: formData.internal_serial || null,
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
@@ -574,6 +578,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-sm sm:text-base">{drone.serienummer}</p>
                 </div>
               </div>
+
+              {drone.internal_serial && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Internt serienummer</p>
+                  <p className="text-sm sm:text-base">{drone.internal_serial}</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
@@ -1051,6 +1062,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="internal_serial">Internt serienummer</Label>
+                <Input
+                  id="internal_serial"
+                  value={formData.internal_serial}
+                  onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
+                  placeholder="Valgfritt"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
