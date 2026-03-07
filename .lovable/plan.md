@@ -1,44 +1,52 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Konfigurerbar «varsel før gul» for timer og oppdrag
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Nåværende situasjon
+- **Dager**: Konfiguerbart via `varsel_dager` (f.eks. 14 dager før → Gul)
+- **Timer/oppdrag**: Hardkodet 80%-ratio i `calculateUsageStatus`
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+#### 1. Databasemigrasjon
+```sql
+ALTER TABLE public.drones
+  ADD COLUMN IF NOT EXISTS varsel_timer numeric NULL,
+  ADD COLUMN IF NOT EXISTS varsel_oppdrag integer NULL;
+```
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
+#### 2. `maintenanceStatus.ts`
+Oppdater `calculateUsageStatus` til å akseptere en absolutt varselmargin i stedet for ratio:
 ```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+calculateUsageStatus(currentUsage, limit, warningMargin?)
 ```
+- Gul når `currentUsage >= limit - warningMargin`
+- Faller tilbake til 80%-ratio hvis warningMargin ikke er satt
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+Oppdater `calculateDroneInspectionStatus` til å ta inn `varsel_timer` og `varsel_oppdrag` og sende de videre.
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+#### 3. `DroneDetailDialog.tsx`
+- **Drone-interface**: Legg til `varsel_timer`, `varsel_oppdrag`
+- **formData**: Legg til tilsvarende felt
+- **Edit-modus**: Endre varsel-seksjonen fra 1 felt til 3 felt i et grid:
+  - «Varsel dager før gul» (eksisterende)
+  - «Varsel timer før gul»
+  - «Varsel oppdrag før gul»
+- **Save-handler**: Inkluder nye felt i update-kallet
+- **View-modus**: Bruk `varsel_timer`/`varsel_oppdrag` i progress-bar-beregningene
+
+#### 4. `useStatusData.ts`
+Send `varsel_timer` og `varsel_oppdrag` fra drone-data inn i `calculateDroneInspectionStatus` og `calculateDroneAggregatedStatus`.
+
+#### 5. Realtime sync
+Allerede dekket:
+- `useDashboardRealtime` lytter på `drones`-tabellen og invaliderer `['drones', companyId]`
+- `DroneDetailDialog` har egen realtime-kanal for `drones` filtrert på drone-id
+- Begge bruker `select('*')`, så nye kolonner plukkes opp automatisk
+
+### Berørte filer
+- Ny migrasjon (SQL)
+- `src/lib/maintenanceStatus.ts`
+- `src/components/resources/DroneDetailDialog.tsx`
+- `src/hooks/useStatusData.ts`
 
