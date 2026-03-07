@@ -354,6 +354,7 @@ Deno.serve(async (req) => {
 
       let companySynced = 0;
       let companyErrors = 0;
+      let loginFailures = 0;
 
       for (const cred of credentials) {
         if (rateLimited) break;
@@ -369,8 +370,9 @@ Deno.serve(async (req) => {
           });
 
           if (!loginRes.ok) {
-            await loginRes.text();
-            console.error(`[dji-auto-sync] Login failed for ${cred.dji_email}: ${loginRes.status}`);
+            const errBody = await loginRes.text();
+            console.error(`[dji-auto-sync] Login failed for ${cred.dji_email}: ${loginRes.status} ${errBody.slice(0, 200)}`);
+            loginFailures++;
             if (loginRes.status === 429) { rateLimited = true; companyErrors++; break; }
             companyErrors++;
             continue;
@@ -534,7 +536,10 @@ Deno.serve(async (req) => {
 
       totalSynced += companySynced;
       totalErrors += companyErrors;
-      results.push({ company: company.navn, synced: companySynced, errors: companyErrors, details: rateLimited ? 'Rate limited by DJI API' : undefined });
+      const detail = rateLimited ? 'For mange påloggingsforsøk mot DJI API' 
+        : loginFailures > 0 ? `DJI-innlogging feilet for ${loginFailures} bruker(e)` 
+        : undefined;
+      results.push({ company: company.navn, synced: companySynced, errors: companyErrors, details: detail });
     }
 
     const elapsed = Date.now() - startMs;

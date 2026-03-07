@@ -1590,10 +1590,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       body: { companyId },
                     });
                     if (error) throw error;
-                    if (data?.rate_limited) {
-                      toast.warning('DJI API er midlertidig utilgjengelig (rate limit). Vent noen minutter og prøv igjen.');
-                    } else if (data?.errors > 0 && data?.synced === 0) {
-                      toast.error(`Sync feilet: ${data.errors} feil. ${data.companies?.[0]?.details || ''}`);
+                    const companyDetails = data?.companies?.[0]?.details || '';
+                    const isRateLimited = data?.rate_limited || companyDetails.toLowerCase().includes('rate limit');
+                    const isLoginError = companyDetails.toLowerCase().includes('login failed') || 
+                      (data?.errors > 0 && data?.synced === 0 && companyDetails.toLowerCase().includes('login'));
+                    
+                    if (isRateLimited) {
+                      toast.warning('For mange påloggingsforsøk mot DJI. Vent noen minutter og prøv igjen.');
+                    } else if (isLoginError || (data?.errors > 0 && data?.synced === 0)) {
+                      const detail = companyDetails || `${data.errors} feil oppsto`;
+                      toast.error(`Sync feilet: ${detail}`);
                     } else {
                       toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
                     }
