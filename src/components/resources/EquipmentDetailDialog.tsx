@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
-import { getStatusColorClasses } from "@/lib/maintenanceStatus";
+import { getStatusColorClasses, calculateUsageStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 
 interface Equipment {
@@ -399,8 +399,51 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (dager)</p>
                   <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                </div>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (timer)</p>
+                  <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? `${equipment.inspection_interval_hours} timer` : "Ikke angitt"}</p>
+                </div>
+              </div>
+
+              {/* Hours progress */}
+              {equipment.inspection_interval_hours != null && equipment.inspection_interval_hours > 0 && (() => {
+                const hoursSince = (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0);
+                const pct = Math.min(100, (hoursSince / equipment.inspection_interval_hours) * 100);
+                const status = calculateUsageStatus(hoursSince, equipment.inspection_interval_hours, equipment.varsel_timer);
+                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
+                return (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Timer siden vedlikehold: {hoursSince.toFixed(1)} / {equipment.inspection_interval_hours}</p>
+                    <div className="w-full h-2 rounded-full bg-muted">
+                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Missions progress */}
+              {equipment.inspection_interval_missions != null && equipment.inspection_interval_missions > 0 && (() => {
+                const missionsSince = (equipment as any)._missionsSinceMaintenance || 0;
+                const pct = Math.min(100, (missionsSince / equipment.inspection_interval_missions) * 100);
+                const status = calculateUsageStatus(missionsSince, equipment.inspection_interval_missions, equipment.varsel_oppdrag);
+                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
+                return (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Oppdrag siden vedlikehold: {missionsSince} / {equipment.inspection_interval_missions}</p>
+                    <div className="w-full h-2 rounded-full bg-muted">
+                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (oppdrag)</p>
+                  <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? `${equipment.inspection_interval_missions} oppdrag` : "Ikke angitt"}</p>
                 </div>
               </div>
 
@@ -570,6 +613,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     placeholder="30"
                     value={formData.vedlikeholdsintervall_dager}
                     onChange={(e) => setFormData({ ...formData, vedlikeholdsintervall_dager: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Label htmlFor="inspection_interval_hours" className="text-xs sm:text-sm">Vedl.intervall (timer)</Label>
+                  <Input
+                    id="inspection_interval_hours"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="F.eks. 50"
+                    value={formData.inspection_interval_hours}
+                    onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">Vedl.intervall (oppdrag)</Label>
+                  <Input
+                    id="inspection_interval_missions"
+                    type="number"
+                    min="1"
+                    placeholder="F.eks. 100"
+                    value={formData.inspection_interval_missions}
+                    onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
                     className="text-sm"
                   />
                 </div>
