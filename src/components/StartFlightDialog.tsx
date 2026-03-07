@@ -306,8 +306,48 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setIsFetchingMissionChecklists(false);
       setActiveMissionChecklistId(null);
       setMissionChecklistTitles({});
+      setMissionIn5kmZone(false);
+      setNinoxApproved(false);
+      setNinoxChecking(false);
+      setShowNinoxConfirm(false);
     }
   }, [open]);
+
+  // Check if selected mission is in a 5km zone
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none') {
+      setMissionIn5kmZone(false);
+      setNinoxApproved(false);
+      return;
+    }
+    const m = missions.find(mi => mi.id === selectedMissionId);
+    if (!m) return;
+    
+    setNinoxApproved(!!m.ninox_approved);
+    
+    const lat = m.latitude ?? (m.route as any)?.coordinates?.[0]?.lat;
+    const lng = m.longitude ?? (m.route as any)?.coordinates?.[0]?.lng;
+    if (!lat || !lng) {
+      setMissionIn5kmZone(false);
+      return;
+    }
+    
+    setNinoxChecking(true);
+    const routePoints = (m.route as any)?.coordinates || null;
+    
+    supabase.rpc("check_mission_airspace", {
+      p_lat: lat,
+      p_lng: lng,
+      p_route: routePoints ? JSON.parse(JSON.stringify(routePoints)) : null,
+    }).then(({ data }) => {
+      const rawArray = (data as any[]) || [];
+      const has5km = rawArray.some((r: any) => r.z_type === '5KM');
+      setMissionIn5kmZone(has5km);
+      setNinoxChecking(false);
+    }).catch(() => {
+      setNinoxChecking(false);
+    });
+  }, [selectedMissionId, missions]);
 
   // Fetch nearest air traffic when GPS position is available
   useEffect(() => {
