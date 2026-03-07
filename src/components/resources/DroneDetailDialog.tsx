@@ -1315,7 +1315,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 mt-3">
+                <div className="grid grid-cols-3 gap-4 mt-3">
                   <div>
                     <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
                     <Input 
@@ -1324,6 +1324,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       placeholder="14"
                       value={formData.varsel_dager}
                       onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="varsel_timer">Varsel timer før gul</Label>
+                    <Input 
+                      id="varsel_timer" 
+                      type="number" 
+                      step="0.1"
+                      placeholder="f.eks. 10"
+                      value={formData.varsel_timer}
+                      onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="varsel_oppdrag">Varsel oppdrag før gul</Label>
+                    <Input 
+                      id="varsel_oppdrag" 
+                      type="number" 
+                      placeholder="f.eks. 20"
+                      value={formData.varsel_oppdrag}
+                      onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
                     />
                   </div>
                 </div>
