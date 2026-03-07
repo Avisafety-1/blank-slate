@@ -451,6 +451,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return {
       type: 'Batteri',
       serienummer: unmatchedBatterySN,
+      internal_serial: unmatchedBatterySN,
       navn: `Batteri ${unmatchedBatterySN}`,
       merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : undefined,
     };
@@ -459,6 +460,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const droneDefaultValues: DroneDefaultValues | undefined = unmatchedDroneSN ? {
     modell: result?.aircraftName || result?.droneType || '',
     serienummer: unmatchedDroneSN,
+    internal_serial: unmatchedDroneSN,
     merknader: 'Importert fra DJI-logg',
   } : undefined;
 
