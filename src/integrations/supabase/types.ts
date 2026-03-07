@@ -386,7 +386,9 @@ export type Database = {
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
           created_at: string
+          dji_auto_sync_enabled: boolean
           dji_flightlog_enabled: boolean
+          dji_sync_from_date: string | null
           dronelog_api_key: string | null
           eccairs_enabled: boolean | null
           id: string
@@ -406,7 +408,9 @@ export type Database = {
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           created_at?: string
+          dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
+          dji_sync_from_date?: string | null
           dronelog_api_key?: string | null
           eccairs_enabled?: boolean | null
           id?: string
@@ -426,7 +430,9 @@ export type Database = {
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           created_at?: string
+          dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
+          dji_sync_from_date?: string | null
           dronelog_api_key?: string | null
           eccairs_enabled?: boolean | null
           id?: string
@@ -582,6 +588,7 @@ export type Database = {
           dji_email: string
           dji_password_encrypted: string
           id: string
+          last_sync_at: string | null
           updated_at: string | null
           user_id: string
         }
@@ -591,6 +598,7 @@ export type Database = {
           dji_email: string
           dji_password_encrypted: string
           id?: string
+          last_sync_at?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -600,6 +608,7 @@ export type Database = {
           dji_email?: string
           dji_password_encrypted?: string
           id?: string
+          last_sync_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -2823,6 +2832,88 @@ export type Database = {
           type?: string | null
         }
         Relationships: []
+      }
+      pending_dji_logs: {
+        Row: {
+          aircraft_name: string | null
+          aircraft_sn: string | null
+          company_id: string
+          created_at: string
+          dji_log_id: string
+          duration_seconds: number | null
+          error_message: string | null
+          flight_date: string | null
+          id: string
+          matched_battery_id: string | null
+          matched_drone_id: string | null
+          max_height_m: number | null
+          parsed_result: Json | null
+          processed_flight_log_id: string | null
+          status: string
+          total_distance_m: number | null
+          user_id: string
+        }
+        Insert: {
+          aircraft_name?: string | null
+          aircraft_sn?: string | null
+          company_id: string
+          created_at?: string
+          dji_log_id: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          flight_date?: string | null
+          id?: string
+          matched_battery_id?: string | null
+          matched_drone_id?: string | null
+          max_height_m?: number | null
+          parsed_result?: Json | null
+          processed_flight_log_id?: string | null
+          status?: string
+          total_distance_m?: number | null
+          user_id: string
+        }
+        Update: {
+          aircraft_name?: string | null
+          aircraft_sn?: string | null
+          company_id?: string
+          created_at?: string
+          dji_log_id?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          flight_date?: string | null
+          id?: string
+          matched_battery_id?: string | null
+          matched_drone_id?: string | null
+          max_height_m?: number | null
+          parsed_result?: Json | null
+          processed_flight_log_id?: string | null
+          status?: string
+          total_distance_m?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_dji_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_dji_logs_matched_battery_id_fkey"
+            columns: ["matched_battery_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_dji_logs_matched_drone_id_fkey"
+            columns: ["matched_drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnel_competencies: {
         Row: {
