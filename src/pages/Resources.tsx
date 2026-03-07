@@ -140,7 +140,17 @@ const Resources = () => {
           .map((link: any) => link.equipment)
           .filter(Boolean);
         const { status } = calculateDroneAggregatedStatus(
-          { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+          {
+            neste_inspeksjon: drone.neste_inspeksjon,
+            varsel_dager: drone.varsel_dager,
+            flyvetimer: drone.flyvetimer ?? 0,
+            hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+            inspection_interval_hours: drone.inspection_interval_hours,
+            varsel_timer: drone.varsel_timer,
+            missions_since_inspection: 0, // Will be enriched below if needed
+            inspection_interval_missions: drone.inspection_interval_missions,
+            varsel_oppdrag: drone.varsel_oppdrag,
+          },
           accessories,
           linkedEquipment
         );
