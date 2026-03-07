@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1516,6 +1516,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 )}
               </button>
             </div>
+
+            {/* Sync now button */}
+            {hasSavedCredentials && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    toast.info('Starter synkronisering...');
+                    const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
+                      body: { companyId },
+                    });
+                    if (error) throw error;
+                    toast.success(`Sync fullført: ${data?.processed || 0} logger behandlet`);
+                  } catch (err: any) {
+                    console.error('Manual sync error:', err);
+                    toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
+                  }
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Sync nå
+              </Button>
+            )}
 
             {/* Pending auto-synced logs */}
             <PendingDjiLogsSection onSelectLog={handleSelectPendingLog} />
