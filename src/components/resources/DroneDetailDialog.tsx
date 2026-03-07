@@ -805,7 +805,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         const hoursSince = drone.flyvetimer - (drone.hours_at_last_inspection ?? 0);
                         const limit = drone.inspection_interval_hours;
                         const pct = Math.min((hoursSince / limit) * 100, 100);
-                        const status = calculateUsageStatus(hoursSince, limit);
+                        const status = calculateUsageStatus(hoursSince, limit, drone.varsel_timer);
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
@@ -827,7 +827,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {(() => {
                         const limit = drone.inspection_interval_missions;
                         const pct = Math.min((missionsSinceInspection / limit) * 100, 100);
-                        const status = calculateUsageStatus(missionsSinceInspection, limit);
+                        const status = calculateUsageStatus(missionsSinceInspection, limit, drone.varsel_oppdrag);
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
