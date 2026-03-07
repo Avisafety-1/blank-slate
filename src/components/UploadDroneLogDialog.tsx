@@ -225,6 +225,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
+  const [syncJustTriggered, setSyncJustTriggered] = useState(false);
 
   // Logbook state
   const [pilotId, setPilotId] = useState("");
@@ -408,6 +409,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setSaveCredentials(false);
     setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
+    setSyncJustTriggered(false);
   };
 
   // ── Battery matching helper ──
@@ -1060,7 +1062,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       
       await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
-      onOpenChange(false);
+      // Return to method step so user can continue processing pending logs
+      resetState();
+      pendingLogsRef.current?.refresh();
     } catch (error: any) {
       console.error('Update error:', error);
       toast.error(t('dronelog.updateError', 'Kunne ikke oppdatere flyloggen'));
@@ -1122,7 +1126,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
-      onOpenChange(false);
+      // Return to method step so user can continue processing pending logs
+      resetState();
+      pendingLogsRef.current?.refresh();
     } catch (error: any) {
       console.error('Create error:', error);
       toast.error(t('dronelog.createError', 'Kunne ikke opprette oppdrag'));
@@ -1180,7 +1186,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
-      onOpenChange(false);
+      // Return to method step so user can continue processing pending logs
+      resetState();
+      pendingLogsRef.current?.refresh();
     } catch (error: any) {
       console.error('Link to mission error:', error);
       toast.error('Kunne ikke lagre flyloggen');
@@ -1527,7 +1535,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 onClick={async () => {
                   if ((window as any).__djiSyncing) return;
                   (window as any).__djiSyncing = true;
-                  try {
+                   try {
                     toast.info('Starter synkronisering...');
                     const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
                       body: { companyId },
@@ -1540,9 +1548,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     } else {
                       toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
                     }
+                    setSyncJustTriggered(true);
                   } catch (err: any) {
                     console.error('Manual sync error:', err);
                     toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
+                    setSyncJustTriggered(true);
                   } finally {
                     // Always refresh pending logs list (even after errors)
                     pendingLogsRef.current?.refresh();
@@ -1554,6 +1564,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Sync nå
               </Button>
+            )}
+
+            {/* Post-sync feedback */}
+            {syncJustTriggered && (
+              <div className="flex flex-col items-center gap-3 py-4 px-3 rounded-xl border border-primary/20 bg-primary/5 animate-in fade-in-0 slide-in-from-bottom-2">
+                <div className="relative">
+                  <Plane className="w-8 h-8 text-primary animate-bounce" />
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                  </span>
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-semibold">Synkronisering startet! 🚀</p>
+                  <p className="text-xs text-muted-foreground">Loggene hentes fra DJI-skyen i bakgrunnen. Kom tilbake om noen minutter for å se og behandle dem.</p>
+                </div>
+              </div>
             )}
 
             {/* Pending auto-synced logs */}
