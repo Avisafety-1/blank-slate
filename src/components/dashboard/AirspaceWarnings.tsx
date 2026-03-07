@@ -62,8 +62,17 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, onAirspaceR
         // Map raw RPC response to expected format
         const rawArray = (data as unknown as AirspaceWarningRaw[]) || [];
         const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
-          const level: AirspaceWarning["level"] =
-            r.severity === "WARNING" ? "warning" : r.severity === "CAUTION" ? "caution" : "note";
+          // Severity hierarchy: inside a zone is more severe, nearby is one step less
+          const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
+          let level: AirspaceWarning["level"];
+          
+          if (r.route_inside) {
+            // Inside any zone → upgrade: CAUTION→warning, WARNING→warning, INFO→caution
+            level = baseSeverity === "INFO" ? "caution" : "warning";
+          } else {
+            // Nearby (not inside) → downgrade: WARNING→caution, CAUTION→note, INFO→note
+            level = baseSeverity === "WARNING" ? "caution" : baseSeverity === "CAUTION" ? "note" : "note";
+          }
           const distMeters = Math.round(r.min_distance);
           let message: string;
 
