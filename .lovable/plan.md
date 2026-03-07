@@ -1,28 +1,44 @@
 
 
-## Plan: Knytt til eksisterende ressurs ved umatched SN
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Oversikt
-Når DJI-logg ikke matcher en drone/batteri, vises i dag «Opprett» og «Hopp over». Vi legger til et tredje alternativ: «Knytt til eksisterende», som lar brukeren velge en eksisterende drone/batteri fra en dropdown. Ved valg oppdateres ressursens `internal_serial` med SN fra loggen, slik at fremtidige logger matcher automatisk.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Endringer i `src/components/UploadDroneLogDialog.tsx`
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**Ny state:**
-- `linkBatteryToExisting: boolean` — viser dropdown for å velge eksisterende batteri
-- `linkDroneToExisting: boolean` — viser dropdown for å velge eksisterende drone
+### Endringer
 
-**Batteri-prompt (linje ~1769-1791):**
-- Legg til tredje knapp «Knytt til eksisterende» som setter `linkBatteryToExisting = true`
-- Når `linkBatteryToExisting` er true, vis en `<Select>` med alle batterier i `equipmentList` (type Batteri)
-- Ved valg: kall `supabase.from('equipment').update({ internal_serial: unmatchedBatterySN }).eq('id', valgtId)`, oppdater lokal `equipmentList` med nytt `internal_serial`, legg til i `selectedEquipment`, nullstill `unmatchedBatterySN` og `linkBatteryToExisting`
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**Drone-prompt (linje ~1813-1836):**
-- Legg til tredje knapp «Knytt til eksisterende» som setter `linkDroneToExisting = true`
-- Når `linkDroneToExisting` er true, vis en `<Select>` med alle `drones`
-- Ved valg: kall `supabase.from('drones').update({ internal_serial: unmatchedDroneSN }).eq('id', valgtId)`, oppdater lokal `drones`-state, sett `selectedDroneId`, nullstill `unmatchedDroneSN` og `linkDroneToExisting`
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**Reset:** Legg til `linkBatteryToExisting` og `linkDroneToExisting` i `resetState()`.
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-### Berørte filer
-- `src/components/UploadDroneLogDialog.tsx` (eneste fil)
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
