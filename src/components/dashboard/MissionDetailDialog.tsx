@@ -81,6 +81,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
+  const [has5kmZone, setHas5kmZone] = useState(false);
+  const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(false);
 
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
@@ -270,6 +273,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
                     routePoints={routeCoords}
+                    onAirspaceResult={(warnings) => {
+                      setHas5kmZone(warnings.some(w => w.zone_type === '5KM'));
+                    }}
                   />
                   <DroneWeatherPanel 
                     latitude={effectiveLat} 
