@@ -1,31 +1,44 @@
 
 
-## Plan: Fjern auto-advancing av sync-dato, bruk dedup-sjekk i stedet
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-Når `dji_sync_from_date` auto-avanseres til nyeste loggdato, vil logger som lastes opp til DJI Cloud flere dager etter flyturen bli filtrert bort og aldri dukke opp i AviSafe.
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
-Fjern auto-advancing av `dji_sync_from_date`. La datoen stå fast som en **minimumsgrense** satt av superadmin — den definerer kun "ikke sync eldre enn dette". Deduplisering håndteres allerede av to mekanismer:
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-1. **`pending_dji_logs`-sjekk** (linje 434-441): Sjekker om `dji_log_id` allerede finnes for selskapet — skipper hvis ja
-2. **SHA-256 dedup** (linje 449-461): Sjekker om loggens hash allerede finnes i `flight_logs` — markerer som "approved" hvis ja
+### Endringer
 
-Disse to sjekkene gjør at selv om alle 50 logger fra API-et evalueres hver gang, vil kun genuint nye logger lastes ned og behandles. Allerede synkede logger hoppes over på millisekunder (én DB-spørring per logg).
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### Endring
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**`supabase/functions/dji-auto-sync/index.ts`**
-1. Fjern `newestLogDate`-variabelen og all tracking av den (linje 330, 421-425)
-2. Fjern auto-advance-blokken som oppdaterer `dji_sync_from_date` (linje 540-547)
-3. Behold `syncFromDate`-filteret (linje 413, 428-431) — superadmin-datoen fungerer fortsatt som en nedre grense
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-### Konsekvens
-- `dji_sync_from_date` blir en statisk grense satt av superadmin, ikke en auto-advancing markør
-- Hver sync-kjøring sjekker alle logger nyere enn grensen, men hopper over allerede behandlede via `pending_dji_logs`-oppslaget
-- Logger som lastes opp til DJI Cloud sent vil fanges opp ved neste sync
-- API-kostnad: 2 faste kall (login + list) + 1 DB-spørring per kjent logg (billig) + 2 API-kall per genuint ny logg
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### Filer
-1. `supabase/functions/dji-auto-sync/index.ts` — fjern auto-advance, behold dedup
+Ingen nye avhengigheter. Ingen databaseendringer.
 
