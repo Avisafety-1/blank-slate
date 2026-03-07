@@ -191,8 +191,25 @@ const Resources = () => {
         .order("opprettet_dato", { ascending: false });
       
       if (error) throw error;
-      setEquipment(data || []);
-      if (companyId) setCachedData(`offline_equipment_${companyId}`, data || []);
+
+      // Count missions for equipment with mission-based intervals
+      const equipmentWithMissions = await Promise.all((data || []).map(async (item: any) => {
+        let _missionsSinceMaintenance = 0;
+        if (item.inspection_interval_missions) {
+          const { data: meData } = await supabase
+            .from("mission_equipment")
+            .select("mission_id")
+            .eq("equipment_id", item.id);
+          if (meData) {
+            const totalMissions = new Set(meData.map((r: any) => r.mission_id)).size;
+            _missionsSinceMaintenance = Math.max(0, totalMissions - (item.missions_at_last_maintenance ?? 0));
+          }
+        }
+        return { ...item, _missionsSinceMaintenance };
+      }));
+
+      setEquipment(equipmentWithMissions);
+      if (companyId) setCachedData(`offline_equipment_${companyId}`, equipmentWithMissions);
     } catch (err) {
       console.error("Error fetching equipment:", err);
       toast.error(t('resources.couldNotLoadEquipment'));
