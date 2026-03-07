@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import {
@@ -10,6 +21,8 @@ import {
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
   Send, CheckCircle2, Upload
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
@@ -75,6 +88,23 @@ export const MissionCard = ({
   fetchMissions,
   onRiskBadgeClick,
 }: MissionCardProps) => {
+  const [has5kmZone, setHas5kmZone] = useState(false);
+  const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
+
+  const handleNinoxConfirm = async () => {
+    const { error } = await supabase
+      .from('missions')
+      .update({ ninox_approved: true } as any)
+      .eq('id', mission.id);
+    if (!error) {
+      setNinoxApproved(true);
+      fetchMissions();
+      toast.success('Ninox-godkjenning bekreftet');
+    }
+    setNinoxConfirmOpen(false);
+  };
+
   return (
     <GlassCard className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header */}
