@@ -124,6 +124,25 @@ const Oppdrag = () => {
     return true;
   });
 
+  const visibleMissions = filteredMissions.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredMissions.length;
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore]);
+
   // Handlers
   const clearInitialData = () => {
     setInitialRouteData(null);
@@ -263,7 +282,7 @@ const Oppdrag = () => {
               </GlassCard>
             ) : (
               <div className="space-y-3 sm:space-y-4">
-                {filteredMissions.map((mission) => (
+                {visibleMissions.map((mission) => (
                   <MissionCard
                     key={mission.id}
                     mission={mission}
@@ -308,6 +327,11 @@ const Oppdrag = () => {
                     }}
                   />
                 ))}
+                {hasMore && (
+                  <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
               </div>
             )}
           </div>
