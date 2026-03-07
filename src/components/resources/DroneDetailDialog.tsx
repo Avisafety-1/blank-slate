@@ -497,6 +497,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           payload: formData.payload ? parseFloat(formData.payload) : null,
           inspection_start_date: formData.inspection_start_date || null,
           inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
+          inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
+          inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
         })
@@ -540,7 +542,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   // Calculate aggregated status based on drone + accessories + linked equipment
   const linkedEquipmentData = linkedEquipment.map((link: any) => link.equipment).filter(Boolean);
   const { status: maintenanceAggregated, affectedItems } = calculateDroneAggregatedStatus(
-    { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+    {
+      neste_inspeksjon: drone.neste_inspeksjon,
+      varsel_dager: drone.varsel_dager,
+      flyvetimer: drone.flyvetimer,
+      hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+      inspection_interval_hours: drone.inspection_interval_hours,
+      missions_since_inspection: missionsSinceInspection,
+      inspection_interval_missions: drone.inspection_interval_missions,
+    },
     accessories,
     linkedEquipmentData
   );
@@ -692,7 +702,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days) && (
+              {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days || drone.inspection_interval_hours || drone.inspection_interval_missions) && (
                 <div className="border-t border-border pt-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -706,13 +716,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       onClick={async () => {
                         if (!user || !companyId) return;
                         
-                        // If checklist is configured, open checklist dialog
                         if (drone.sjekkliste_id) {
                           setChecklistDialogOpen(true);
                           return;
                         }
                         
-                        // Otherwise, perform inspection directly
                         try {
                           const today = new Date().toISOString().split('T')[0];
                           let nextInspection: string | null = null;
@@ -727,6 +735,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             .update({
                               sist_inspeksjon: today,
                               neste_inspeksjon: nextInspection,
+                              hours_at_last_inspection: drone.flyvetimer,
+                              missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,
                             })
                             .eq('id', drone.id);
                           
@@ -776,6 +786,51 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <p className="text-sm text-muted-foreground mt-2">
                       Inspeksjonsintervall: {drone.inspection_interval_days} dager
                     </p>
+                  )}
+
+                  {/* Hours-based progress */}
+                  {drone.inspection_interval_hours && (
+                    <div className="mt-3">
+                      {(() => {
+                        const hoursSince = drone.flyvetimer - (drone.hours_at_last_inspection ?? 0);
+                        const limit = drone.inspection_interval_hours;
+                        const pct = Math.min((hoursSince / limit) * 100, 100);
+                        const status = calculateUsageStatus(hoursSince, limit);
+                        return (
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Flytimer siden inspeksjon</span>
+                              <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
+                                {hoursSince.toFixed(1)} / {limit} t
+                              </span>
+                            </div>
+                            <Progress value={pct} className={`h-2 ${status === 'Rød' ? '[&>div]:bg-destructive' : status === 'Gul' ? '[&>div]:bg-yellow-500' : ''}`} />
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Missions-based progress */}
+                  {drone.inspection_interval_missions && (
+                    <div className="mt-3">
+                      {(() => {
+                        const limit = drone.inspection_interval_missions;
+                        const pct = Math.min((missionsSinceInspection / limit) * 100, 100);
+                        const status = calculateUsageStatus(missionsSinceInspection, limit);
+                        return (
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Oppdrag siden inspeksjon</span>
+                              <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
+                                {missionsSinceInspection} / {limit}
+                              </span>
+                            </div>
+                            <Progress value={pct} className={`h-2 ${status === 'Rød' ? '[&>div]:bg-destructive' : status === 'Gul' ? '[&>div]:bg-yellow-500' : ''}`} />
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
               )}
@@ -1206,7 +1261,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               {/* Inspection interval section */}
               <div className="border-t pt-4 mt-4">
                 <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="inspection_start_date">Startdato</Label>
                     <Input 
@@ -1226,6 +1281,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
+                    <Input 
+                      id="inspection_interval_hours" 
+                      type="number" 
+                      step="0.1"
+                      placeholder="f.eks. 50"
+                      value={formData.inspection_interval_hours}
+                      onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="inspection_interval_missions">Oppdrag mellom inspeksjoner</Label>
+                    <Input 
+                      id="inspection_interval_missions" 
+                      type="number" 
+                      placeholder="f.eks. 100"
+                      value={formData.inspection_interval_missions}
+                      onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 mt-3">
                   <div>
                     <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
                     <Input 
@@ -1239,9 +1319,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
                 {formData.inspection_start_date && formData.inspection_interval_days && (
                   <p className="text-sm text-muted-foreground mt-2">
-                    Neste inspeksjon beregnes automatisk basert på intervall
+                    Neste inspeksjon beregnes automatisk basert på dagsintervall
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Status trigges av det som kommer først av dager, flytimer eller oppdrag
+                </p>
               </div>
 
               {/* Checklist selection in edit mode */}
