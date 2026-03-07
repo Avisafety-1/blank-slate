@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Check if already in pending_dji_logs
+            // Check if already in pending_dji_logs (any status: pending, approved, dismissed, error)
             const { data: existing } = await serviceClient
               .from("pending_dji_logs")
               .select("id")
