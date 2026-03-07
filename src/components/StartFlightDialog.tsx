@@ -339,12 +339,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       p_lat: lat,
       p_lng: lng,
       p_route: routePoints ? JSON.parse(JSON.stringify(routePoints)) : null,
-    }).then(({ data }) => {
+    }).then(({ data, error }) => {
+      if (error) { setNinoxChecking(false); return; }
       const rawArray = (data as any[]) || [];
       const has5km = rawArray.some((r: any) => r.z_type === '5KM');
       setMissionIn5kmZone(has5km);
-      setNinoxChecking(false);
-    }).catch(() => {
       setNinoxChecking(false);
     });
   }, [selectedMissionId, missions]);
