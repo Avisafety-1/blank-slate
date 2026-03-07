@@ -1458,6 +1458,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               .update({
                 sist_inspeksjon: today,
                 neste_inspeksjon: nextInspection,
+                hours_at_last_inspection: drone.flyvetimer,
+                missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,
               })
               .eq('id', drone.id);
             
