@@ -111,9 +111,9 @@ const Resources = () => {
     }
   }, [equipment]);
 
-  const fetchDrones = async () => {
-    // 1. Load cache first
-    if (companyId) {
+  const fetchDrones = async (skipCache = false) => {
+    // 1. Load cache first (unless skipping after mutation)
+    if (!skipCache && companyId) {
       const cached = getCachedData<any[]>(`offline_drones_${companyId}`);
       if (cached) setDrones(cached);
     }
@@ -133,26 +133,18 @@ const Resources = () => {
       
       if (error) throw error;
 
-      // Calculate aggregated status for each drone (including missions since inspection)
+      // Calculate aggregated status for each drone (including unique missions since inspection)
+      const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
       const dronesWithStatus = await Promise.all((data || []).map(async (drone: any) => {
         const accessories = drone.drone_accessories || [];
         const linkedEquipment = (drone.drone_equipment || [])
           .map((link: any) => link.equipment)
           .filter(Boolean);
 
-        // Count missions since last inspection if interval is configured
+        // Count unique missions since last inspection if interval is configured
         let missionsSinceInspection = 0;
         if (drone.inspection_interval_missions) {
-          let query = supabase
-            .from("flight_logs")
-            .select("mission_id", { count: "exact", head: true })
-            .eq("drone_id", drone.id)
-            .not("mission_id", "is", null);
-          if (drone.sist_inspeksjon) {
-            query = query.gt("flight_date", drone.sist_inspeksjon);
-          }
-          const { count } = await query;
-          missionsSinceInspection = count || 0;
+          missionsSinceInspection = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
         }
 
         const { status } = calculateDroneAggregatedStatus(
@@ -174,6 +166,7 @@ const Resources = () => {
         const finalStatus = worstStatus(status, dbStatus);
         return { ...drone, _aggregatedStatus: finalStatus };
       }));
+      setDrones(dronesWithStatus);
       if (companyId) setCachedData(`offline_drones_${companyId}`, dronesWithStatus);
     } catch (err) {
       console.error("Error fetching drones:", err);

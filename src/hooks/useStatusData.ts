@@ -34,6 +34,8 @@ const fetchDrones = async () => {
   }
 
   // For each drone, count missions since last inspection from flight_logs
+  const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
+
   const dronesWithMissions = await Promise.all(dronesData.map(async (drone: any) => {
     const accessories = drone.drone_accessories || [];
     const linkedEquipment = (drone.drone_equipment || [])
@@ -43,18 +45,7 @@ const fetchDrones = async () => {
     // Count unique missions from flight_logs since last inspection
     let missionsSinceInspection = 0;
     if (drone.inspection_interval_missions) {
-      let query = supabase
-        .from("flight_logs")
-        .select("mission_id", { count: "exact", head: true })
-        .eq("drone_id", drone.id)
-        .not("mission_id", "is", null);
-      
-      if (drone.sist_inspeksjon) {
-        query = query.gt("flight_date", drone.sist_inspeksjon);
-      }
-
-      const { count } = await query;
-      missionsSinceInspection = count || 0;
+      missionsSinceInspection = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
     }
 
     const { status } = calculateDroneAggregatedStatus(
