@@ -733,7 +733,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         }
                         
                         try {
-                          const today = new Date().toISOString().split('T')[0];
+                          const now = new Date().toISOString();
                           let nextInspection: string | null = null;
                           if (drone.inspection_interval_days) {
                             const nextDate = new Date();
@@ -744,7 +744,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           const { error: updateError } = await supabase
                             .from('drones')
                             .update({
-                              sist_inspeksjon: today,
+                              sist_inspeksjon: now,
                               neste_inspeksjon: nextInspection,
                               hours_at_last_inspection: drone.flyvetimer,
                               missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,
@@ -780,7 +780,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Sist inspeksjon</p>
-                          <p className="text-base">{new Date(drone.sist_inspeksjon).toLocaleDateString('nb-NO')}</p>
+                          <p className="text-base">{new Date(drone.sist_inspeksjon).toLocaleDateString('nb-NO')} {new Date(drone.sist_inspeksjon).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                       </div>
                     )}
@@ -1486,18 +1486,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           onComplete={async () => {
             if (!user || !companyId) return;
             
-            const today = new Date().toISOString().split('T')[0];
-            let nextInspection: string | null = null;
-            if (drone.inspection_interval_days) {
-              const nextDate = new Date();
-              nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
-              nextInspection = nextDate.toISOString().split('T')[0];
-            }
-            
-            const { error: updateError } = await supabase
-              .from('drones')
-              .update({
-                sist_inspeksjon: today,
+            const now = new Date().toISOString();
+             let nextInspection: string | null = null;
+             if (drone.inspection_interval_days) {
+               const nextDate = new Date();
+               nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
+               nextInspection = nextDate.toISOString().split('T')[0];
+             }
+             
+             const { error: updateError } = await supabase
+               .from('drones')
+               .update({
+                 sist_inspeksjon: now,
                 neste_inspeksjon: nextInspection,
                 hours_at_last_inspection: drone.flyvetimer,
                 missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,

@@ -1,32 +1,44 @@
 
 
-## Buggfix: Lagre inspeksjonstidspunkt med klokkeslett
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Rotårsak
-`sist_inspeksjon` lagres som en ren dato (`2026-03-07`), som tolkes som midnatt (`2026-03-07T00:00:00`). Men `flight_date` i `flight_logs` lagres som full timestamp (f.eks. `2026-03-07T06:30:00`). Når vi filtrerer `flight_date > sist_inspeksjon`, blir alle flyvninger på inspeksjonsdagen telt med fordi de har tidsstempel etter midnatt -- selv om inspeksjonen ble utført etter flyvningene.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-#### 1. Database: Endre `sist_inspeksjon` til timestamptz
-- Migrasjon: `ALTER TABLE drones ALTER COLUMN sist_inspeksjon TYPE timestamptz USING sist_inspeksjon::timestamptz`
-- Eksisterende dato-verdier konverteres automatisk til midnatt UTC
+### Endringer
 
-#### 2. DroneDetailDialog.tsx -- Lagre full timestamp ved inspeksjon
-- Linje 736: Endre `const today = new Date().toISOString().split('T')[0]` til `const today = new Date().toISOString()` (full ISO-string med tid)
-- Linje 747: `sist_inspeksjon: today` sender nå full timestamp
-- Samme endring i sjekkliste-inspeksjon-handleren (ca. linje 1490)
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-#### 3. DroneDetailDialog.tsx -- Visning av sist_inspeksjon
-- Vis dato+tid i view-mode (linje ~783): Bruk `format(date, "dd.MM.yyyy HH:mm")` i stedet for bare dato
-- Edit-mode (linje ~161): Behold date-input men aksepter at lagret verdi har tid
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-#### 4. useStatusData.ts og Resources.tsx
-- Queryen `.gt("flight_date", drone.sist_inspeksjon)` fungerer nå korrekt fordi `sist_inspeksjon` inneholder eksakt tidspunkt
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-#### 5. Oppdater types.ts-kommentar
-- Ingen manuell endring nødvendig -- filen regenereres automatisk etter migrasjonen
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### Berørte filer
-- Database-migrasjon (sist_inspeksjon → timestamptz)
-- `src/components/resources/DroneDetailDialog.tsx`
+Ingen nye avhengigheter. Ingen databaseendringer.
 
