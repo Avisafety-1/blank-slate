@@ -1,44 +1,24 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Superadmin-kontroll for sync-startdato per selskap
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Hva
+Legg til et datofelt i selskapsadministrasjonen (CompanyManagementSection) der superadmin kan sette `dji_sync_from_date` — den tidligste datoen et selskap kan synce DJI-logger fra. Kolonnen finnes allerede i databasen, så ingen migrasjon trengs.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/components/admin/CompanyManagementSection.tsx`**
+1. Legg til `dji_sync_from_date` i Company-interface og i fetch-queryen
+2. Ved siden av auto-sync-bryteren (eller som en ny kolonne/rad), vis en datepicker (Popover + Calendar) for `dji_sync_from_date` — kun synlig når `dji_flightlog_enabled` er true
+3. Ved endring: oppdater `companies.dji_sync_from_date` via supabase og vis toast
+4. Vis gjeldende dato som tekst med en "Endre"-knapp, eller en inline kalender-popover
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Flyt
+- Superadmin åpner selskapsadministrasjonen
+- For selskaper med DJI aktivert, vises en "Sync fra dato"-kolonne med gjeldende dato
+- Klikk åpner en kalender-popover der superadmin velger ny dato
+- Dato lagres umiddelbart, og neste auto-sync vil kun hente logger fra denne datoen og fremover
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Ingen backend-endring nødvendig
+`dji_sync_from_date` eksisterer allerede i `companies`-tabellen og brukes allerede av `dji-auto-sync` edge-funksjonen for filtrering og auto-advancing.
 
