@@ -78,6 +78,7 @@ const MobileCompanyCard = ({
   onToggleEccairs,
   onToggleDji,
   onToggleAutoSync,
+  onSyncDateChange,
   onEdit,
   onDelete,
 }: {
