@@ -178,6 +178,23 @@ export const MissionCard = ({
                   : 'Utfør sjekkliste/r'}
               </Badge>
             )}
+            {has5kmZone && (
+              <Badge
+                variant="outline"
+                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
+                  ninoxApproved
+                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                    : 'bg-red-500/20 text-red-900 border-red-500/30'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!ninoxApproved) setNinoxConfirmOpen(true);
+                }}
+              >
+                <ShieldCheck className="h-3 w-3 mr-1" />
+                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+              </Badge>
+            )}
           </div>
         </div>
         <DropdownMenu>
