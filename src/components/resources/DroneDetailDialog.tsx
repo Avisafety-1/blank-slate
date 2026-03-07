@@ -506,6 +506,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
           inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
+          varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
+          varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
         })
         .eq("id", drone.id);
@@ -554,8 +556,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       flyvetimer: drone.flyvetimer,
       hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
       inspection_interval_hours: drone.inspection_interval_hours,
+      varsel_timer: drone.varsel_timer,
       missions_since_inspection: missionsSinceInspection,
       inspection_interval_missions: drone.inspection_interval_missions,
+      varsel_oppdrag: drone.varsel_oppdrag,
     },
     accessories,
     linkedEquipmentData
