@@ -1,44 +1,67 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Lazy sync + auto-advancing sync-dato
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Problemet
+Dagens auto-sync laster ned og parser *hver eneste logg* (2 API-kall per logg) selv om brukeren aldri behandler dem. Med 50 logger = 102 API-kall. I tillegg finnes ingen mekanisme for å flytte `dji_sync_from_date` fremover, så systemet risikerer å re-skanne gamle logger ved hver kjøring.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning: To endringer
 
-### Endringer
+**1. Lazy sync — kun metadata fra list-endepunktet**
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+DroneLog sin `GET /logs/{accountId}` returnerer allerede `id`, `date`, `duration`, `aircraft` per logg. Det er nok til å vise i "Logger til behandling".
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+I `dji-auto-sync/index.ts`:
+- Fjern hele download/parse-loopen for nye logger
+- For hver ny logg: lagre kun metadata i `pending_dji_logs` med `parsed_result = null`
+- Felter som settes: `dji_log_id`, `flight_date` (fra `log.date`), `duration_seconds` (fra `log.duration`), `aircraft_name` (fra `log.aircraft`), `status = 'pending'`
+- Behold `dji_log_id`-deduplisering (allerede på plass)
+- Fjern SHA-256-sjekk ved sync (den skjer ikke lenger siden vi ikke parser)
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**Resultat**: Fra ~102 til ~2 API-kall per bruker per sync.
 
-### UI per punkt
+**2. On-demand parsing når brukeren klikker en logg**
+
+I `handleSelectPendingLog` (UploadDroneLogDialog.tsx):
+- Når `parsed_result` er `null`: vis loading-state, kall en ny edge-funksjon (`dji-process-single`) som gjør login + download + parse for denne ene loggen
+- Lagre resultatet tilbake i `pending_dji_logs.parsed_result`
+- Fortsett med eksisterende flyt (match drone/batteri, vis resultat)
+
+Ny edge-funksjon `dji-process-single/index.ts`:
+- Tar inn `pending_log_id` + brukerens auth
+- Henter credentials fra `dji_credentials`, logger inn, laster ned og parser den ene loggen
+- Oppdaterer `pending_dji_logs` med `parsed_result`, `matched_drone_id`, `matched_battery_id`
+- Returnerer parsed result til klienten
+
+**3. Auto-advancing sync-dato**
+
+I `dji-auto-sync/index.ts`, etter at alle logger for en bruker er behandlet:
+- Finn den nyeste `log.date` blant alle hentede logger
+- Oppdater `companies.dji_sync_from_date` til denne datoen
+- Da starter neste sync kun fra dette tidspunktet — aldri bakover
+
+**4. UI-endringer i PendingDjiLogsSection**
+
+- Vis metadata-logger (dato, varighet, dronemodell) fra list-info — allerede fungerer med eksisterende felter
+- Ingen endring nødvendig siden `aircraft_name`, `flight_date`, `duration_seconds` allerede vises
+
+**5. UI-endringer i UploadDroneLogDialog**
+
+- I `handleSelectPendingLog`: når `parsed_result === null`, vis Loader2 + "Henter flydata..." og kall `dji-process-single`
+- Etter suksess, fortsett som før med `setResult(data)` og `setStep('result')`
+
+### API-kall-sammenligning
+
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+                    Nå              Etter
+Sync (50 logger):   102 kall        2 kall
+Behandle 1 logg:    0 kall          2 kall
+Behandle 10 av 50:  102 kall        22 kall
 ```
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer som endres
+1. `supabase/functions/dji-auto-sync/index.ts` — fjern download/parse, lagre kun metadata, oppdater `dji_sync_from_date` etter sync
+2. `supabase/functions/dji-process-single/index.ts` — ny edge-funksjon for on-demand parsing av én logg
+3. `supabase/config.toml` — registrer ny funksjon med `verify_jwt = false`
+4. `src/components/UploadDroneLogDialog.tsx` — kall `dji-process-single` når `parsed_result` mangler
 
