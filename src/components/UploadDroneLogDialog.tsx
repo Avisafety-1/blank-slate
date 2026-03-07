@@ -679,6 +679,73 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  // ── Pending DJI log handler ──
+
+  const handleSelectPendingLog = async (pendingLog: any) => {
+    if (!pendingLog.parsed_result) {
+      toast.error("Denne loggen mangler data og kan ikke importeres.");
+      return;
+    }
+    const parsed = pendingLog.parsed_result;
+    // Map parsed_result to DroneLogResult shape
+    const data: DroneLogResult = {
+      positions: parsed.positions || [],
+      durationMinutes: parsed.durationMinutes || Math.round((parsed.durationSeconds || 0) / 60),
+      durationMs: (parsed.durationSeconds || 0) * 1000,
+      maxSpeed: parsed.maxSpeed || 0,
+      minBattery: parsed.minBattery ?? -1,
+      batteryReadings: [],
+      startPosition: parsed.startPosition || null,
+      endPosition: parsed.endPosition || null,
+      totalRows: parsed.totalRows || 0,
+      sampledPositions: parsed.positions?.length || 0,
+      warnings: parsed.warnings || [],
+      startTime: parsed.startTime || pendingLog.flight_date,
+      endTimeUtc: parsed.endTimeUtc || null,
+      aircraftName: parsed.aircraftName || pendingLog.aircraft_name,
+      aircraftSN: parsed.aircraftSN || pendingLog.aircraft_sn,
+      aircraftSerial: parsed.aircraftSerial || parsed.aircraftSN || pendingLog.aircraft_sn,
+      droneType: parsed.droneType || null,
+      totalDistance: parsed.totalDistance || pendingLog.total_distance_m,
+      maxAltitude: parsed.maxAltitude || pendingLog.max_height_m,
+      detailsMaxSpeed: parsed.detailsMaxSpeed || null,
+      batteryTemperature: parsed.batteryTemperature || null,
+      batteryTempMin: parsed.batteryTempMin || null,
+      batteryMinVoltage: parsed.batteryMinVoltage || null,
+      batteryCycles: parsed.batteryCycles || null,
+      minGpsSatellites: parsed.minGpsSatellites || null,
+      maxGpsSatellites: parsed.maxGpsSatellites || null,
+      batterySN: parsed.batterySN || null,
+      batteryHealth: parsed.batteryHealth || null,
+      batteryFullCapacity: parsed.batteryFullCapacity || null,
+      batteryCurrentCapacity: parsed.batteryCurrentCapacity || null,
+      batteryStatus: parsed.batteryStatus || null,
+      batteryCellDeviationMax: parsed.batteryCellDeviationMax || null,
+      maxDistance: parsed.maxDistance || null,
+      maxVSpeed: parsed.maxVSpeed || null,
+      totalTimeSeconds: parsed.durationSeconds || null,
+      sha256Hash: parsed.sha256Hash || null,
+      guid: parsed.guid || null,
+      rthTriggered: parsed.rthTriggered || false,
+      events: parsed.events || [],
+    };
+    setResult(data);
+    
+    // Auto-match drone
+    if (pendingLog.matched_drone_id) {
+      setSelectedDroneId(pendingLog.matched_drone_id);
+    } else {
+      matchDroneFromResult(data);
+    }
+    matchBatteryFromResult(data);
+    await findMatchingFlightLog(data);
+    setStep('result');
+    
+    // Mark the pending log as processing (will be marked approved on save)
+    // Store the pending log id for later update
+    (window as any).__pendingDjiLogId = pendingLog.id;
+  };
+
   // ── Shared logic ──
 
   const findMatchingFlightLog = async (data: DroneLogResult) => {
