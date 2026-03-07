@@ -648,6 +648,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
+                  <Label htmlFor="varsel_timer" className="text-xs sm:text-sm">Varsel timer før gul</Label>
+                  <Input
+                    id="varsel_timer"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="F.eks. 5"
+                    value={formData.varsel_timer}
+                    onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">Varsel oppdrag før gul</Label>
+                  <Input
+                    id="varsel_oppdrag"
+                    type="number"
+                    min="1"
+                    placeholder="F.eks. 10"
+                    value={formData.varsel_oppdrag}
+                    onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
                   <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
                   <Input
                     id="varsel_dager"
