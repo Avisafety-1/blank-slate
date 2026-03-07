@@ -129,6 +129,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         vekt: equipment.vekt !== null && equipment.vekt !== undefined ? String(equipment.vekt) : "",
         vedlikeholdsintervall_dager: equipment.vedlikeholdsintervall_dager !== null && equipment.vedlikeholdsintervall_dager !== undefined ? String(equipment.vedlikeholdsintervall_dager) : "",
         sjekkliste_id: equipment.sjekkliste_id || "",
+        inspection_interval_hours: equipment.inspection_interval_hours != null ? String(equipment.inspection_interval_hours) : "",
+        inspection_interval_missions: equipment.inspection_interval_missions != null ? String(equipment.inspection_interval_missions) : "",
+        varsel_timer: equipment.varsel_timer != null ? String(equipment.varsel_timer) : "",
+        varsel_oppdrag: equipment.varsel_oppdrag != null ? String(equipment.varsel_oppdrag) : "",
       });
       setIsEditing(false);
     }
@@ -168,6 +172,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         .update({
           sist_vedlikeholdt: today,
           neste_vedlikehold,
+          hours_at_last_maintenance: equipment.flyvetimer || 0,
+          missions_at_last_maintenance: (equipment.missions_at_last_maintenance || 0),
         })
         .eq("id", equipment.id);
 
@@ -234,6 +240,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           vekt: formData.vekt ? parseFloat(formData.vekt) : null,
           vedlikeholdsintervall_dager: formData.vedlikeholdsintervall_dager ? parseInt(formData.vedlikeholdsintervall_dager) : null,
           sjekkliste_id: formData.sjekkliste_id || null,
+          inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
+          inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
+          varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
+          varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
         })
         .eq("id", equipment.id);
 
