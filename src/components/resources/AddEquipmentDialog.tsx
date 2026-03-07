@@ -123,6 +123,10 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         vedlikeholdsintervall_dager: vedlikeholdsintervallDager ? parseInt(vedlikeholdsintervallDager) : null,
         vedlikehold_startdato: vedlikeholdStartdato || null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
+        inspection_interval_hours: (formData.get("inspection_interval_hours") as string) ? parseFloat(formData.get("inspection_interval_hours") as string) : null,
+        inspection_interval_missions: (formData.get("inspection_interval_missions") as string) ? parseInt(formData.get("inspection_interval_missions") as string) : null,
+        varsel_timer: (formData.get("varsel_timer") as string) ? parseFloat(formData.get("varsel_timer") as string) : null,
+        varsel_oppdrag: (formData.get("varsel_oppdrag") as string) ? parseInt(formData.get("varsel_oppdrag") as string) : null,
       };
       const { data: insertedData, error } = await (supabase as any).from("equipment").insert([insertData]).select('id, navn, serienummer, type').single();
 
@@ -261,6 +265,28 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                 Neste vedlikehold: {format(new Date(nesteVedlikehold), "dd.MM.yyyy")}
               </p>
             )}
+          </div>
+
+          {/* Vedlikeholdsintervall timer og oppdrag */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="inspection_interval_hours">Intervall (timer)</Label>
+              <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder="F.eks. 50" />
+            </div>
+            <div>
+              <Label htmlFor="inspection_interval_missions">Intervall (oppdrag)</Label>
+              <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder="F.eks. 100" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="varsel_timer">Varsel timer</Label>
+              <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder="Timer før gul" />
+            </div>
+            <div>
+              <Label htmlFor="varsel_oppdrag">Varsel oppdrag</Label>
+              <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder="Oppdrag før gul" />
+            </div>
           </div>
 
           <div>

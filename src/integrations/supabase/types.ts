@@ -1515,9 +1515,13 @@ export type Database = {
           aktiv: boolean
           company_id: string
           flyvetimer: number
+          hours_at_last_maintenance: number | null
           id: string
+          inspection_interval_hours: number | null
+          inspection_interval_missions: number | null
           internal_serial: string | null
           merknader: string | null
+          missions_at_last_maintenance: number | null
           navn: string
           neste_vedlikehold: string | null
           oppdatert_dato: string
@@ -1530,6 +1534,8 @@ export type Database = {
           type: string
           user_id: string
           varsel_dager: number | null
+          varsel_oppdrag: number | null
+          varsel_timer: number | null
           vedlikehold_startdato: string | null
           vedlikeholdsintervall_dager: number | null
           vekt: number | null
@@ -1538,9 +1544,13 @@ export type Database = {
           aktiv?: boolean
           company_id: string
           flyvetimer?: number
+          hours_at_last_maintenance?: number | null
           id?: string
+          inspection_interval_hours?: number | null
+          inspection_interval_missions?: number | null
           internal_serial?: string | null
           merknader?: string | null
+          missions_at_last_maintenance?: number | null
           navn: string
           neste_vedlikehold?: string | null
           oppdatert_dato?: string
@@ -1553,6 +1563,8 @@ export type Database = {
           type: string
           user_id: string
           varsel_dager?: number | null
+          varsel_oppdrag?: number | null
+          varsel_timer?: number | null
           vedlikehold_startdato?: string | null
           vedlikeholdsintervall_dager?: number | null
           vekt?: number | null
@@ -1561,9 +1573,13 @@ export type Database = {
           aktiv?: boolean
           company_id?: string
           flyvetimer?: number
+          hours_at_last_maintenance?: number | null
           id?: string
+          inspection_interval_hours?: number | null
+          inspection_interval_missions?: number | null
           internal_serial?: string | null
           merknader?: string | null
+          missions_at_last_maintenance?: number | null
           navn?: string
           neste_vedlikehold?: string | null
           oppdatert_dato?: string
@@ -1576,6 +1592,8 @@ export type Database = {
           type?: string
           user_id?: string
           varsel_dager?: number | null
+          varsel_oppdrag?: number | null
+          varsel_timer?: number | null
           vedlikehold_startdato?: string | null
           vedlikeholdsintervall_dager?: number | null
           vekt?: number | null
