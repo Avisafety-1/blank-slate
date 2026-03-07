@@ -1,44 +1,40 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Internt serienummer for droner og utstyr (batterier)
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Oversikt
+Legge til et nytt valgfritt felt `internal_serial` på `drones` og `equipment`-tabellene, vise det i UI-kortene, og utvide DJI-logg-importens matching-logikk til å søke på **både** `serienummer` og `internal_serial`.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
-
-### Endringer
-
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+### 1. Databasemigrasjon
+Legg til kolonne `internal_serial text` (nullable) på begge tabeller:
+```sql
+ALTER TABLE public.drones ADD COLUMN internal_serial text;
+ALTER TABLE public.equipment ADD COLUMN internal_serial text;
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+### 2. UI-endringer – Droner
+- **DroneDetailDialog**: Legg til felt «Internt serienummer» i redigeringsmodus og visning, rett under eksisterende serienummer-felt. Oppdater `Drone`-interfacet med `internal_serial`.
+- **AddDroneDialog**: Legg til inputfelt for internt serienummer. Utvid `DroneDefaultValues` med `internal_serial`. Lagre ved opprettelse.
+- **DroneListDialog**: Vis internt serienummer under SN hvis det finnes.
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### 3. UI-endringer – Utstyr (batterier)
+- **EquipmentDetailDialog**: Legg til felt «Internt serienummer» i redigeringsmodus og visning.
+- **AddEquipmentDialog**: Legg til inputfelt. Utvid `EquipmentDefaultValues` med `internal_serial`.
+
+### 4. DJI-logg matching-logikk (`UploadDroneLogDialog.tsx`)
+- **`matchDroneFromResult`**: Utvid til å søke match på `d.serienummer` ELLER `d.internal_serial` mot DJI-loggens `aircraftSN`/`aircraftSerial`.
+- **`matchBatteryFromResult`**: Utvid til å søke match på `e.serienummer` ELLER `e.internal_serial` mot `batterySN`.
+- **Auto-opprettelse**: Når ingen match finnes og drone/batteri opprettes som ny ressurs, sett `internal_serial` til DJI-loggens serienummer (i tillegg til `serienummer`).
+
+### 5. Datahenting
+Sikre at `internal_serial` inkluderes i alle queries som henter droner og utstyr (Resources-siden, oppdragssiden, UploadDroneLogDialog).
+
+### Berørte filer
+- Ny migrasjon (SQL)
+- `src/components/resources/DroneDetailDialog.tsx`
+- `src/components/resources/AddDroneDialog.tsx`
+- `src/components/resources/EquipmentDetailDialog.tsx`
+- `src/components/resources/AddEquipmentDialog.tsx`
+- `src/components/UploadDroneLogDialog.tsx`
+- `src/components/dashboard/DroneListDialog.tsx`
 
