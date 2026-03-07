@@ -294,7 +294,19 @@ const Changelog = () => {
           {entries.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
           )}
-          {entries.map((entry) => {
+          {[...entries].sort((a, b) => {
+            if (sortBy === "status") {
+              const order = ["pågår", "testing", "ikke_startet", "implementert"];
+              return order.indexOf(a.status) - order.indexOf(b.status);
+            }
+            if (sortBy === "completed_at") {
+              if (!a.completed_at && !b.completed_at) return 0;
+              if (!a.completed_at) return 1;
+              if (!b.completed_at) return -1;
+              return new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime();
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          }).map((entry) => {
             const cfg = entryStatusConfig[entry.status] || entryStatusConfig.ikke_startet;
             return (
               <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/50">
