@@ -194,7 +194,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .not("mission_id", "is", null);
     
     if (drone.sist_inspeksjon) {
-      query = query.gte("flight_date", drone.sist_inspeksjon);
+      query = query.gt("flight_date", drone.sist_inspeksjon);
     }
 
     const { count } = await query;
@@ -763,6 +763,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           });
                           
                           toast.success('Inspeksjon registrert');
+                          setMissionsSinceInspection(0);
                           onDroneUpdated();
                         } catch (error: any) {
                           toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
@@ -1515,6 +1516,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             });
             
             toast.success('Inspeksjon fullført');
+            setMissionsSinceInspection(0);
             onDroneUpdated();
           }}
         />
