@@ -250,6 +250,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <ShieldCheck className="w-3 h-3 mr-1" />
               SORA: {soraStatus || 'Ikke startet'}
             </Badge>
+            {has5kmZone && (
+              <Badge
+                className={`border cursor-pointer hover:opacity-80 transition-opacity ${
+                  ninoxApproved
+                    ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30'
+                    : 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30'
+                }`}
+                onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
+              >
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3">
