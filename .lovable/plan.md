@@ -1,44 +1,23 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+The `dji-auto-sync` function is successfully downloading and parsing DJI logs, but ALL inserts into `pending_dji_logs` fail with:
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
-
-### Endringer
-
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+```
+invalid input syntax for type integer: "974.6"
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+The `duration_seconds` column is type `integer`, but the parsed `durationSeconds` value is a float (e.g. 974.6). Every single log fails on this insert, which is why the table is empty and the user sees "0 logger behandlet".
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+## Plan
+
+### 1. Fix the database column type
+Change `duration_seconds` from `integer` to `real` (float) via a migration to accept decimal values.
+
+### 2. Fix the edge function to round the value
+As a belt-and-suspenders approach, also `Math.round()` the `durationSeconds` value before insert in `dji-auto-sync/index.ts`. This ensures compatibility regardless of column type.
+
+### Expected result
+After these fixes, re-running "Sync nå" should successfully insert logs into `pending_dji_logs`, and they will appear in the "Logger til behandling" (pending logs) section in the upload dialog.
 
