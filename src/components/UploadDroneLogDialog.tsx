@@ -220,6 +220,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
   const [saveCredentials, setSaveCredentials] = useState(false);
+  const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
@@ -404,6 +405,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setLinkBatteryToExisting(false);
     setLinkDroneToExisting(false);
     setSaveCredentials(false);
+    setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
   };
 
@@ -581,6 +583,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           setHasSavedCredentials(true);
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
+          
+          // Enable auto-sync on company if checkbox is checked
+          if (enableAutoSync && companyId) {
+            try {
+              await supabase
+                .from("companies")
+                .update({ dji_auto_sync_enabled: true })
+                .eq("id", companyId);
+              toast.success('Automatisk sync aktivert');
+            } catch (syncErr) {
+              console.error('Failed to enable auto sync:', syncErr);
+            }
+          }
         } catch (saveErr) {
           console.error('Failed to save DJI credentials:', saveErr);
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
@@ -1594,6 +1609,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   />
                   <span className="text-sm">Husk innlogging</span>
                 </label>
+                {saveCredentials && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={enableAutoSync}
+                      onCheckedChange={(checked) => setEnableAutoSync(checked === true)}
+                    />
+                    <span className="text-sm">Aktiver automatisk sync (daglig kl. 03:00)</span>
+                  </label>
+                )}
                 <p className="text-xs text-muted-foreground -mt-2">
                   Passordet lagres kryptert på serveren. Du kan logge ut når som helst.
                 </p>
