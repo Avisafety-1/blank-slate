@@ -1,44 +1,57 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Legg til timer- og oppdragsbaserte vedlikeholdsintervaller for utstyr
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Droner har i dag tre typer vedlikeholdsintervaller: dager, flytimer og oppdrag. Utstyr har kun dager. Denne planen legger til de to manglende typene.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### 1. Database-migrasjon (`equipment`-tabellen)
 
-### Endringer
+Legg til 6 nye kolonner:
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+```sql
+ALTER TABLE equipment
+  ADD COLUMN inspection_interval_hours numeric DEFAULT NULL,
+  ADD COLUMN inspection_interval_missions integer DEFAULT NULL,
+  ADD COLUMN hours_at_last_maintenance numeric DEFAULT 0,
+  ADD COLUMN missions_at_last_maintenance integer DEFAULT 0,
+  ADD COLUMN varsel_timer numeric DEFAULT NULL,
+  ADD COLUMN varsel_oppdrag integer DEFAULT NULL;
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+### 2. `EquipmentDetailDialog.tsx` — Redigeringsmodus
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Legg til felter for:
+- **Flytimer mellom vedlikehold** (`inspection_interval_hours`)
+- **Oppdrag mellom vedlikehold** (`inspection_interval_missions`)
+- **Varsel timer før gul** (`varsel_timer`)
+- **Varsel oppdrag før gul** (`varsel_oppdrag`)
+
+Oppdater `formData` state, `handleSave`, og `performMaintenanceUpdate` (sett `hours_at_last_maintenance` og `missions_at_last_maintenance` ved vedlikehold).
+
+### 3. `EquipmentDetailDialog.tsx` — Visningsmodus
+
+Vis progress-barer for timer og oppdrag (som droner gjør), med status-farger basert på `calculateUsageStatus`.
+
+### 4. `AddEquipmentDialog.tsx`
+
+Legg til valgfrie felter for timer- og oppdragsintervall ved opprettelse.
+
+### 5. `maintenanceStatus.ts` — Statusberegning
+
+Lag `calculateEquipmentMaintenanceStatus` som kombinerer alle tre kriterier (dager, timer, oppdrag) og returnerer verste status — tilsvarende `calculateDroneInspectionStatus`.
+
+### 6. `Resources.tsx` — Statusvisning i listen
+
+Oppdater utstyrslisten til å bruke den nye kombinerte statusberegningen i stedet for kun datobasert status.
+
+### 7. Oppdrag-telling
+
+Utstyr kobles til oppdrag via `mission_equipment`-tabellen. Ved vedlikehold telles unike oppdrag siden siste vedlikehold, tilsvarende drone-logikken.
+
+### Filer som endres
+1. **Database-migrasjon** — 6 nye kolonner
+2. `src/components/resources/EquipmentDetailDialog.tsx` — form, visning, vedlikehold
+3. `src/components/resources/AddEquipmentDialog.tsx` — nye felter
+4. `src/lib/maintenanceStatus.ts` — ny funksjon
+5. `src/pages/Resources.tsx` — oppdatert statusberegning
 
