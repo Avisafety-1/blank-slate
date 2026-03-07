@@ -6,11 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
@@ -1246,117 +1247,125 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
-                  <Input
-                    id="sist_inspeksjon"
-                    type="date"
-                    value={formData.sist_inspeksjon}
-                    onChange={(e) => setFormData({ ...formData, sist_inspeksjon: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="neste_inspeksjon">Neste inspeksjon</Label>
-                  <Input
-                    id="neste_inspeksjon"
-                    type="date"
-                    value={formData.neste_inspeksjon}
-                    onChange={(e) => setFormData({ ...formData, neste_inspeksjon: e.target.value })}
-                    disabled={!!formData.inspection_interval_days}
-                  />
-                </div>
-              </div>
+              {/* Collapsible inspection section */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="flex items-center gap-2 w-full border-t pt-4 mt-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    <Calendar className="w-4 h-4" />
+                    Inspeksjon og vedlikeholdsintervall
+                    <ChevronDown className="w-4 h-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
+                      <Input
+                        id="sist_inspeksjon"
+                        type="date"
+                        value={formData.sist_inspeksjon}
+                        onChange={(e) => setFormData({ ...formData, sist_inspeksjon: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="neste_inspeksjon">Neste inspeksjon</Label>
+                      <Input
+                        id="neste_inspeksjon"
+                        type="date"
+                        value={formData.neste_inspeksjon}
+                        onChange={(e) => setFormData({ ...formData, neste_inspeksjon: e.target.value })}
+                        disabled={!!formData.inspection_interval_days}
+                      />
+                    </div>
+                  </div>
 
-              {/* Inspection interval section */}
-              <div className="border-t pt-4 mt-4">
-                <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="inspection_start_date">Startdato</Label>
-                    <Input 
-                      id="inspection_start_date" 
-                      type="date" 
-                      value={formData.inspection_start_date}
-                      onChange={(e) => setFormData({ ...formData, inspection_start_date: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="inspection_start_date">Startdato</Label>
+                      <Input 
+                        id="inspection_start_date" 
+                        type="date" 
+                        value={formData.inspection_start_date}
+                        onChange={(e) => setFormData({ ...formData, inspection_start_date: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                      <Input 
+                        id="inspection_interval_days" 
+                        type="number" 
+                        placeholder="f.eks. 90"
+                        value={formData.inspection_interval_days}
+                        onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
-                    <Input 
-                      id="inspection_interval_days" 
-                      type="number" 
-                      placeholder="f.eks. 90"
-                      value={formData.inspection_interval_days}
-                      onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
+                      <Input 
+                        id="inspection_interval_hours" 
+                        type="number" 
+                        step="0.1"
+                        placeholder="f.eks. 50"
+                        value={formData.inspection_interval_hours}
+                        onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="inspection_interval_missions">Oppdrag mellom inspeksjoner</Label>
+                      <Input 
+                        id="inspection_interval_missions" 
+                        type="number" 
+                        placeholder="f.eks. 100"
+                        value={formData.inspection_interval_missions}
+                        onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
-                    <Input 
-                      id="inspection_interval_hours" 
-                      type="number" 
-                      step="0.1"
-                      placeholder="f.eks. 50"
-                      value={formData.inspection_interval_hours}
-                      onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
-                    />
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                      <Input 
+                        id="varsel_dager" 
+                        type="number" 
+                        placeholder="14"
+                        value={formData.varsel_dager}
+                        onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="varsel_timer">Varsel timer før gul</Label>
+                      <Input 
+                        id="varsel_timer" 
+                        type="number" 
+                        step="0.1"
+                        placeholder="f.eks. 10"
+                        value={formData.varsel_timer}
+                        onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="varsel_oppdrag">Varsel oppdrag før gul</Label>
+                      <Input 
+                        id="varsel_oppdrag" 
+                        type="number" 
+                        placeholder="f.eks. 20"
+                        value={formData.varsel_oppdrag}
+                        onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="inspection_interval_missions">Oppdrag mellom inspeksjoner</Label>
-                    <Input 
-                      id="inspection_interval_missions" 
-                      type="number" 
-                      placeholder="f.eks. 100"
-                      value={formData.inspection_interval_missions}
-                      onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4 mt-3">
-                  <div>
-                    <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
-                    <Input 
-                      id="varsel_dager" 
-                      type="number" 
-                      placeholder="14"
-                      value={formData.varsel_dager}
-                      onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="varsel_timer">Varsel timer før gul</Label>
-                    <Input 
-                      id="varsel_timer" 
-                      type="number" 
-                      step="0.1"
-                      placeholder="f.eks. 10"
-                      value={formData.varsel_timer}
-                      onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="varsel_oppdrag">Varsel oppdrag før gul</Label>
-                    <Input 
-                      id="varsel_oppdrag" 
-                      type="number" 
-                      placeholder="f.eks. 20"
-                      value={formData.varsel_oppdrag}
-                      onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
-                    />
-                  </div>
-                </div>
-                {formData.inspection_start_date && formData.inspection_interval_days && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Neste inspeksjon beregnes automatisk basert på dagsintervall
+                  {formData.inspection_start_date && formData.inspection_interval_days && (
+                    <p className="text-sm text-muted-foreground">
+                      Neste inspeksjon beregnes automatisk basert på dagsintervall
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Status trigges av det som kommer først av dager, flytimer eller oppdrag
                   </p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  Status trigges av det som kommer først av dager, flytimer eller oppdrag
-                </p>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Checklist selection in edit mode */}
               {isEditing && checklists.length > 0 && (
