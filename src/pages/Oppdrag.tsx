@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -50,6 +50,31 @@ const Oppdrag = () => {
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
   const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
   const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
+
+  // Infinite scroll
+  const [visibleCount, setVisibleCount] = useState(10);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [searchQuery, customerFilter, pilotFilter, droneFilter, data.filterTab]);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredMissions.length]);
 
   // Route planner navigation state
   const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
