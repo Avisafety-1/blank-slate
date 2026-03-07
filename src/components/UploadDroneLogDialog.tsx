@@ -1447,7 +1447,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         </DialogHeader>
 
         {/* ── Step: Method selection ── */}
-        {step === 'method' && (
+         {step === 'method' && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
@@ -1487,6 +1487,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 )}
               </button>
             </div>
+
+            {/* Pending auto-synced logs */}
+            <PendingDjiLogsSection onSelectLog={handleSelectPendingLog} />
           </div>
         )}
 
