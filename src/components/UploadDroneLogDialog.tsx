@@ -102,6 +102,7 @@ interface Drone {
   id: string;
   modell: string;
   serienummer: string;
+  internal_serial: string | null;
 }
 
 interface Personnel {
@@ -114,6 +115,7 @@ interface EquipmentItem {
   id: string;
   navn: string;
   serienummer: string;
+  internal_serial: string | null;
   type: string;
 }
 
@@ -408,7 +410,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
     const sn = data.batterySN.trim().toLowerCase();
     const match = equipmentList.find(e => 
-      e.serienummer && e.serienummer.trim().toLowerCase() === sn
+      (e.serienummer && e.serienummer.trim().toLowerCase() === sn) ||
+      (e.internal_serial && e.internal_serial.trim().toLowerCase() === sn)
     );
     if (match) {
       setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
@@ -426,7 +429,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
-    const match = drones.find(d => d.serienummer && d.serienummer.trim().toLowerCase() === sn);
+    const match = drones.find(d => 
+      (d.serienummer && d.serienummer.trim().toLowerCase() === sn) ||
+      (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+    );
     if (match) {
       setSelectedDroneId(match.id);
       toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
@@ -459,7 +465,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const fetchDrones = async () => {
     const { data } = await supabase
       .from("drones")
-      .select("id, modell, serienummer")
+      .select("id, modell, serienummer, internal_serial")
       .eq("aktiv", true)
       .order("modell");
     if (data) setDrones(data);
