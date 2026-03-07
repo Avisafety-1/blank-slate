@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,7 @@ const severityColors = {
 export const ProfileDialog = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
@@ -693,7 +695,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-24 md:mt-16 lg:mt-4 mb-4">
+                <div className="mt-24 md:mt-16 lg:mt-4 mb-4 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -702,6 +704,15 @@ export const ProfileDialog = () => {
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                     Gi tilbakemelding
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/changelog")}
+                    className="w-full sm:w-auto"
+                  >
+                    <Activity className="h-4 w-4 mr-1" />
+                    Status og endringslogg
                   </Button>
                 </div>
               )}
