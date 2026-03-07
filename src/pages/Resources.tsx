@@ -768,7 +768,7 @@ const Resources = () => {
         open={droneDetailOpen}
         onOpenChange={setDroneDetailOpen}
         drone={selectedDrone}
-        onDroneUpdated={fetchDrones}
+        onDroneUpdated={() => fetchDrones(true)}
       />
 
       <EquipmentDetailDialog
