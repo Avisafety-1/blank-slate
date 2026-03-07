@@ -29,7 +29,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2 } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +68,7 @@ interface Company {
   eccairs_enabled: boolean | null;
   dji_flightlog_enabled: boolean;
   dji_auto_sync_enabled: boolean;
+  dji_sync_from_date: string | null;
 }
 
 // Mobile expandable company card component
@@ -81,6 +86,7 @@ const MobileCompanyCard = ({
   onToggleEccairs: (company: Company) => void;
   onToggleDji: (company: Company) => void;
   onToggleAutoSync: (company: Company) => void;
+  onSyncDateChange: (company: Company, date: Date | undefined) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
 }) => {
@@ -177,13 +183,36 @@ const MobileCompanyCard = ({
                 <Label className="text-sm">DJI Flylogg</Label>
               </div>
               {company.dji_flightlog_enabled && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={company.dji_auto_sync_enabled}
-                    onCheckedChange={() => onToggleAutoSync(company)}
-                  />
-                  <Label className="text-sm">Auto-sync</Label>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.dji_auto_sync_enabled}
+                      onCheckedChange={() => onToggleAutoSync(company)}
+                    />
+                    <Label className="text-sm">Auto-sync</Label>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3 w-3 mr-1" />
+                          {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
+                          onSelect={(date) => onSyncDateChange(company, date)}
+                          disabled={(date) => date > new Date()}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </>
               )}
             </div>
 
@@ -360,6 +389,26 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleSyncDateChange = async (company: Company, date: Date | undefined) => {
+    const newValue = date ? date.toISOString().split('T')[0] : null;
+    const oldValue = company.dji_sync_from_date;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_sync_from_date: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ dji_sync_from_date: newValue })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? `Sync-startdato satt til ${format(date!, "dd.MM.yyyy")}` : "Sync-startdato fjernet");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_sync_from_date: oldValue } : c));
+      console.error("Error updating sync date:", error);
+      toast.error("Kunne ikke oppdatere sync-startdato");
+    }
+  };
+
   const handleDeleteClick = (company: Company) => {
     setCompanyToDelete(company);
     setDeleteDialogOpen(true);
@@ -474,6 +523,7 @@ export const CompanyManagementSection = () => {
                 onToggleEccairs={handleToggleEccairs}
                 onToggleDji={handleToggleDji}
                 onToggleAutoSync={handleToggleAutoSync}
+                onSyncDateChange={handleSyncDateChange}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
               />
@@ -494,6 +544,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                     <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
                     <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Sync fra dato</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -624,6 +675,30 @@ export const CompanyManagementSection = () => {
                               </Badge>
                             </Label>
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {company.dji_flightlog_enabled ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal text-xs", !company.dji_sync_from_date && "text-muted-foreground")}>
+                                <CalendarIcon className="h-3 w-3 mr-1" />
+                                {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
+                                onSelect={(date) => handleSyncDateChange(company, date)}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
