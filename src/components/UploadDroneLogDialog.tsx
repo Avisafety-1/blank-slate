@@ -14,6 +14,7 @@ import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, B
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PendingDjiLogsSection } from "@/components/PendingDjiLogsSection";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useQueryClient } from "@tanstack/react-query";
@@ -678,6 +679,73 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  // ── Pending DJI log handler ──
+
+  const handleSelectPendingLog = async (pendingLog: any) => {
+    if (!pendingLog.parsed_result) {
+      toast.error("Denne loggen mangler data og kan ikke importeres.");
+      return;
+    }
+    const parsed = pendingLog.parsed_result;
+    // Map parsed_result to DroneLogResult shape
+    const data: DroneLogResult = {
+      positions: parsed.positions || [],
+      durationMinutes: parsed.durationMinutes || Math.round((parsed.durationSeconds || 0) / 60),
+      durationMs: (parsed.durationSeconds || 0) * 1000,
+      maxSpeed: parsed.maxSpeed || 0,
+      minBattery: parsed.minBattery ?? -1,
+      batteryReadings: [],
+      startPosition: parsed.startPosition || null,
+      endPosition: parsed.endPosition || null,
+      totalRows: parsed.totalRows || 0,
+      sampledPositions: parsed.positions?.length || 0,
+      warnings: parsed.warnings || [],
+      startTime: parsed.startTime || pendingLog.flight_date,
+      endTimeUtc: parsed.endTimeUtc || null,
+      aircraftName: parsed.aircraftName || pendingLog.aircraft_name,
+      aircraftSN: parsed.aircraftSN || pendingLog.aircraft_sn,
+      aircraftSerial: parsed.aircraftSerial || parsed.aircraftSN || pendingLog.aircraft_sn,
+      droneType: parsed.droneType || null,
+      totalDistance: parsed.totalDistance || pendingLog.total_distance_m,
+      maxAltitude: parsed.maxAltitude || pendingLog.max_height_m,
+      detailsMaxSpeed: parsed.detailsMaxSpeed || null,
+      batteryTemperature: parsed.batteryTemperature || null,
+      batteryTempMin: parsed.batteryTempMin || null,
+      batteryMinVoltage: parsed.batteryMinVoltage || null,
+      batteryCycles: parsed.batteryCycles || null,
+      minGpsSatellites: parsed.minGpsSatellites || null,
+      maxGpsSatellites: parsed.maxGpsSatellites || null,
+      batterySN: parsed.batterySN || null,
+      batteryHealth: parsed.batteryHealth || null,
+      batteryFullCapacity: parsed.batteryFullCapacity || null,
+      batteryCurrentCapacity: parsed.batteryCurrentCapacity || null,
+      batteryStatus: parsed.batteryStatus || null,
+      batteryCellDeviationMax: parsed.batteryCellDeviationMax || null,
+      maxDistance: parsed.maxDistance || null,
+      maxVSpeed: parsed.maxVSpeed || null,
+      totalTimeSeconds: parsed.durationSeconds || null,
+      sha256Hash: parsed.sha256Hash || null,
+      guid: parsed.guid || null,
+      rthTriggered: parsed.rthTriggered || false,
+      events: parsed.events || [],
+    };
+    setResult(data);
+    
+    // Auto-match drone
+    if (pendingLog.matched_drone_id) {
+      setSelectedDroneId(pendingLog.matched_drone_id);
+    } else {
+      matchDroneFromResult(data);
+    }
+    matchBatteryFromResult(data);
+    await findMatchingFlightLog(data);
+    setStep('result');
+    
+    // Mark the pending log as processing (will be marked approved on save)
+    // Store the pending log id for later update
+    (window as any).__pendingDjiLogId = pendingLog.id;
+  };
+
   // ── Shared logic ──
 
   const findMatchingFlightLog = async (data: DroneLogResult) => {
@@ -974,6 +1042,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
       await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
+      await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       onOpenChange(false);
     } catch (error: any) {
@@ -1035,6 +1104,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       onOpenChange(false);
     } catch (error: any) {
@@ -1091,6 +1161,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
       onOpenChange(false);
@@ -1100,6 +1171,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Mark pending DJI log as approved after successful save
+  const markPendingLogApproved = async (flightLogId?: string) => {
+    const pendingId = (window as any).__pendingDjiLogId;
+    if (!pendingId) return;
+    await supabase
+      .from('pending_dji_logs')
+      .update({ status: 'approved', processed_flight_log_id: flightLogId || null })
+      .eq('id', pendingId);
+    delete (window as any).__pendingDjiLogId;
   };
 
   // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
@@ -1379,7 +1461,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         </DialogHeader>
 
         {/* ── Step: Method selection ── */}
-        {step === 'method' && (
+         {step === 'method' && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
@@ -1419,6 +1501,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 )}
               </button>
             </div>
+
+            {/* Pending auto-synced logs */}
+            <PendingDjiLogsSection onSelectLog={handleSelectPendingLog} />
           </div>
         )}
 
