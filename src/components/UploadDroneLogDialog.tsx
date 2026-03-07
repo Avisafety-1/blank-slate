@@ -1779,7 +1779,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       Ukjent batteri: {unmatchedBatterySN}
                     </p>
                     <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                      Batteriet ble ikke funnet i ressursene. Ønsker du å opprette det som nytt utstyr?
+                      Batteriet ble ikke funnet i ressursene. Opprett nytt eller knytt til eksisterende.
                     </p>
                   </div>
                 </div>
@@ -1854,7 +1854,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       Ukjent {terminology.vehicleLower}: {unmatchedDroneSN}
                     </p>
                     <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                      {terminology.vehicle} ble ikke funnet i ressursene. Ønsker du å opprette den?
+                      {terminology.vehicle} ble ikke funnet i ressursene. Opprett ny eller knytt til eksisterende.
                     </p>
                   </div>
                 </div>
