@@ -198,6 +198,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const terminology = useTerminology();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingLogsRef = useRef<{ refresh: () => void }>(null);
 
   const [step, setStep] = useState<Step>('method');
   const [file, setFile] = useState<File | null>(null);
