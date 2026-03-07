@@ -1043,6 +1043,8 @@ export type Database = {
           tilgjengelig: boolean
           user_id: string
           varsel_dager: number | null
+          varsel_oppdrag: number | null
+          varsel_timer: number | null
           vekt: number | null
         }
         Insert: {
@@ -1072,6 +1074,8 @@ export type Database = {
           tilgjengelig?: boolean
           user_id: string
           varsel_dager?: number | null
+          varsel_oppdrag?: number | null
+          varsel_timer?: number | null
           vekt?: number | null
         }
         Update: {
@@ -1101,6 +1105,8 @@ export type Database = {
           tilgjengelig?: boolean
           user_id?: string
           varsel_dager?: number | null
+          varsel_oppdrag?: number | null
+          varsel_timer?: number | null
           vekt?: number | null
         }
         Relationships: [
