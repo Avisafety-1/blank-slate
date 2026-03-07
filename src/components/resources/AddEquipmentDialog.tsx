@@ -263,6 +263,28 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
             )}
           </div>
 
+          {/* Vedlikeholdsintervall timer og oppdrag */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="inspection_interval_hours">Intervall (timer)</Label>
+              <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder="F.eks. 50" />
+            </div>
+            <div>
+              <Label htmlFor="inspection_interval_missions">Intervall (oppdrag)</Label>
+              <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder="F.eks. 100" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="varsel_timer">Varsel timer</Label>
+              <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder="Timer før gul" />
+            </div>
+            <div>
+              <Label htmlFor="varsel_oppdrag">Varsel oppdrag</Label>
+              <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder="Oppdrag før gul" />
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
             <Input id="sist_vedlikeholdt" name="sist_vedlikeholdt" type="date" />
