@@ -123,6 +123,10 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         vedlikeholdsintervall_dager: vedlikeholdsintervallDager ? parseInt(vedlikeholdsintervallDager) : null,
         vedlikehold_startdato: vedlikeholdStartdato || null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
+        inspection_interval_hours: (formData.get("inspection_interval_hours") as string) ? parseFloat(formData.get("inspection_interval_hours") as string) : null,
+        inspection_interval_missions: (formData.get("inspection_interval_missions") as string) ? parseInt(formData.get("inspection_interval_missions") as string) : null,
+        varsel_timer: (formData.get("varsel_timer") as string) ? parseFloat(formData.get("varsel_timer") as string) : null,
+        varsel_oppdrag: (formData.get("varsel_oppdrag") as string) ? parseInt(formData.get("varsel_oppdrag") as string) : null,
       };
       const { data: insertedData, error } = await (supabase as any).from("equipment").insert([insertData]).select('id, navn, serienummer, type').single();
 
