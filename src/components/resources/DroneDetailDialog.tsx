@@ -18,8 +18,9 @@ import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
-import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
+import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Drone {
@@ -40,6 +41,10 @@ interface Drone {
   payload: number | null;
   inspection_start_date: string | null;
   inspection_interval_days: number | null;
+  inspection_interval_hours: number | null;
+  inspection_interval_missions: number | null;
+  hours_at_last_inspection: number;
+  missions_at_last_inspection: number;
   varsel_dager: number | null;
   sjekkliste_id: string | null;
 }
