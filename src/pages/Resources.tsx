@@ -23,7 +23,7 @@ import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDia
 import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
-import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, worstStatus } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
@@ -480,7 +480,18 @@ const Resources = () => {
                     }
                     if (equipmentTypeFilter !== "alle" && item.type !== equipmentTypeFilter) return false;
                     if (equipmentStatusFilter !== "alle") {
-                      const status = worstStatus(calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status, (item.status as Status) || "Grønn");
+                      const eqStatus = calculateEquipmentMaintenanceStatus({
+                        neste_vedlikehold: item.neste_vedlikehold,
+                        varsel_dager: item.varsel_dager,
+                        flyvetimer: item.flyvetimer ?? 0,
+                        hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
+                        inspection_interval_hours: item.inspection_interval_hours,
+                        varsel_timer: item.varsel_timer,
+                        missions_since_maintenance: 0,
+                        inspection_interval_missions: item.inspection_interval_missions,
+                        varsel_oppdrag: item.varsel_oppdrag,
+                      });
+                      const status = worstStatus(eqStatus, (item.status as Status) || "Grønn");
                       if (status !== equipmentStatusFilter) return false;
                     }
                     return true;
@@ -499,7 +510,17 @@ const Resources = () => {
                         <h3 className="font-semibold">{item.navn}</h3>
                         <p className="text-sm text-muted-foreground">{item.type}</p>
                       </div>
-                      <StatusBadge status={worstStatus(calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status, (item.status as Status) || "Grønn")} />
+                      <StatusBadge status={worstStatus(calculateEquipmentMaintenanceStatus({
+                        neste_vedlikehold: item.neste_vedlikehold,
+                        varsel_dager: item.varsel_dager,
+                        flyvetimer: item.flyvetimer ?? 0,
+                        hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
+                        inspection_interval_hours: item.inspection_interval_hours,
+                        varsel_timer: item.varsel_timer,
+                        missions_since_maintenance: 0,
+                        inspection_interval_missions: item.inspection_interval_missions,
+                        varsel_oppdrag: item.varsel_oppdrag,
+                      }), (item.status as Status) || "Grønn")} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>
@@ -515,7 +536,17 @@ const Resources = () => {
                       if (!(item.navn?.toLowerCase().includes(searchLower) || item.type?.toLowerCase().includes(searchLower) || item.serienummer?.toLowerCase().includes(searchLower) || item.merknader?.toLowerCase().includes(searchLower))) return false;
                     }
                     if (equipmentTypeFilter !== "alle" && item.type !== equipmentTypeFilter) return false;
-                    if (equipmentStatusFilter !== "alle" && worstStatus(calculateMaintenanceStatus(item.neste_vedlikehold, item.varsel_dager ?? 14) as Status, (item.status as Status) || "Grønn") !== equipmentStatusFilter) return false;
+                    if (equipmentStatusFilter !== "alle" && worstStatus(calculateEquipmentMaintenanceStatus({
+                      neste_vedlikehold: item.neste_vedlikehold,
+                      varsel_dager: item.varsel_dager,
+                      flyvetimer: item.flyvetimer ?? 0,
+                      hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
+                      inspection_interval_hours: item.inspection_interval_hours,
+                      varsel_timer: item.varsel_timer,
+                      missions_since_maintenance: 0,
+                      inspection_interval_missions: item.inspection_interval_missions,
+                      varsel_oppdrag: item.varsel_oppdrag,
+                    }), (item.status as Status) || "Grønn") !== equipmentStatusFilter) return false;
                     return true;
                 }).length === 0 && (equipmentSearch || equipmentTypeFilter !== "alle" || equipmentStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
