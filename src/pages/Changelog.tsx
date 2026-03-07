@@ -60,10 +60,10 @@ const statusColors: Record<string, string> = {
 };
 
 const entryStatusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  ikke_startet: { label: "Ikke startet", color: "bg-muted text-muted-foreground", icon: <Circle className="w-3 h-3" /> },
-  pågår: { label: "Pågår", color: "bg-status-yellow/20 text-status-yellow border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  testing: { label: "Testing", color: "bg-blue-500/20 text-blue-400 border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
-  implementert: { label: "Implementert", color: "bg-status-green/20 text-status-green border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
+  ikke_startet: { label: "Ikke startet", color: "bg-muted text-foreground", icon: <Circle className="w-3 h-3" /> },
+  pågår: { label: "Pågår", color: "bg-status-yellow/20 text-foreground border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+  testing: { label: "Testing", color: "bg-blue-500/20 text-foreground border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
+  implementert: { label: "Implementert", color: "bg-status-green/20 text-foreground border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
 const Changelog = () => {
@@ -210,7 +210,7 @@ const Changelog = () => {
         <Card className={maintenance?.active ? "border-status-yellow bg-status-yellow/10" : "border-dashed"}>
           <CardContent className="flex items-center gap-3 py-4">
             {maintenance?.active && <Wrench className="w-5 h-5 text-status-yellow animate-spin" />}
-            <span className={`flex-1 font-medium ${maintenance?.active ? "text-status-yellow" : "text-muted-foreground"}`}>
+            <span className={`flex-1 font-medium ${maintenance?.active ? "text-foreground" : "text-muted-foreground"}`}>
               {maintenance?.message || "Drift og vedlikehold pågår"}
             </span>
             {isSuperAdmin && (
