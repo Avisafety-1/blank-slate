@@ -43,6 +43,7 @@ interface ChangelogEntry {
   status: string;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
 }
 
 interface Maintenance {
@@ -86,6 +87,7 @@ const Changelog = () => {
   const [formTitle, setFormTitle] = useState("");
   const [formEntryDesc, setFormEntryDesc] = useState("");
   const [formEntryStatus, setFormEntryStatus] = useState("ikke_startet");
+  const [formCompletedAt, setFormCompletedAt] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchAll = async () => {
@@ -156,20 +158,22 @@ const Changelog = () => {
     setFormTitle(entry?.title || "");
     setFormEntryDesc(entry?.description || "");
     setFormEntryStatus(entry?.status || "ikke_startet");
+    setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
     setEntryDialog({ open: true, entry });
   };
 
   const saveEntry = async () => {
     setSaving(true);
+    const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, completed_at: completedAt, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error("Feil ved lagring");
       else toast.success("Oppføring oppdatert");
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, completed_at: completedAt });
       if (error) toast.error("Feil ved opprettelse");
       else toast.success("Oppføring lagt til");
     }
@@ -290,9 +294,12 @@ const Changelog = () => {
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}
-                  </p>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
+                    <span>Opprettet: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
+                    {entry.completed_at && (
+                      <span>Utført: {format(new Date(entry.completed_at), "d. MMM yyyy", { locale: nb })}</span>
+                    )}
+                  </div>
                 </div>
                 {isSuperAdmin && (
                   <div className="flex gap-1 flex-shrink-0">
@@ -377,6 +384,10 @@ const Changelog = () => {
                   <SelectItem value="implementert">Implementert</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Utført dato (valgfri)</Label>
+              <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
