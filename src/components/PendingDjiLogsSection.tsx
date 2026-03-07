@@ -75,8 +75,10 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
 
     if (error) {
       toast.error("Kunne ikke avvise loggen");
+      console.error("Dismiss error:", error);
     } else {
       setLogs(prev => prev.filter(l => l.id !== logId));
+      toast.success("Logg fjernet");
     }
     setDismissingId(null);
   };
