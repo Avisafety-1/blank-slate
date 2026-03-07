@@ -710,7 +710,7 @@ export const ProfileDialog = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate("/changelog")}
+                    onClick={() => { setProfileDialogOpen(false); navigate("/changelog"); }}
                     className="w-full sm:w-auto"
                   >
                     <Activity className="h-4 w-4 mr-1" />
