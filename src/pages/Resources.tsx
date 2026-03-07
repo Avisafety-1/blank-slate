@@ -133,23 +133,47 @@ const Resources = () => {
       
       if (error) throw error;
 
-      // Calculate aggregated status for each drone
-      const dronesWithStatus = (data || []).map((drone: any) => {
+      // Calculate aggregated status for each drone (including missions since inspection)
+      const dronesWithStatus = await Promise.all((data || []).map(async (drone: any) => {
         const accessories = drone.drone_accessories || [];
         const linkedEquipment = (drone.drone_equipment || [])
           .map((link: any) => link.equipment)
           .filter(Boolean);
+
+        // Count missions since last inspection if interval is configured
+        let missionsSinceInspection = 0;
+        if (drone.inspection_interval_missions) {
+          let query = supabase
+            .from("flight_logs")
+            .select("mission_id", { count: "exact", head: true })
+            .eq("drone_id", drone.id)
+            .not("mission_id", "is", null);
+          if (drone.sist_inspeksjon) {
+            query = query.gt("flight_date", drone.sist_inspeksjon);
+          }
+          const { count } = await query;
+          missionsSinceInspection = count || 0;
+        }
+
         const { status } = calculateDroneAggregatedStatus(
-          { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+          {
+            neste_inspeksjon: drone.neste_inspeksjon,
+            varsel_dager: drone.varsel_dager,
+            flyvetimer: drone.flyvetimer ?? 0,
+            hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+            inspection_interval_hours: drone.inspection_interval_hours,
+            varsel_timer: drone.varsel_timer,
+            missions_since_inspection: missionsSinceInspection,
+            inspection_interval_missions: drone.inspection_interval_missions,
+            varsel_oppdrag: drone.varsel_oppdrag,
+          },
           accessories,
           linkedEquipment
         );
         const dbStatus = (drone.status as Status) || "Grønn";
         const finalStatus = worstStatus(status, dbStatus);
         return { ...drone, _aggregatedStatus: finalStatus };
-      });
-
-      setDrones(dronesWithStatus);
+      }));
       if (companyId) setCachedData(`offline_drones_${companyId}`, dronesWithStatus);
     } catch (err) {
       console.error("Error fetching drones:", err);
