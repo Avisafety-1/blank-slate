@@ -63,6 +63,7 @@ interface Company {
   updated_at: string;
   eccairs_enabled: boolean | null;
   dji_flightlog_enabled: boolean;
+  dji_auto_sync_enabled: boolean;
 }
 
 // Mobile expandable company card component
@@ -71,6 +72,7 @@ const MobileCompanyCard = ({
   onToggleActive,
   onToggleEccairs,
   onToggleDji,
+  onToggleAutoSync,
   onEdit,
   onDelete,
 }: {
@@ -78,6 +80,7 @@ const MobileCompanyCard = ({
   onToggleActive: (company: Company) => void;
   onToggleEccairs: (company: Company) => void;
   onToggleDji: (company: Company) => void;
+  onToggleAutoSync: (company: Company) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
 }) => {
@@ -173,6 +176,15 @@ const MobileCompanyCard = ({
                 />
                 <Label className="text-sm">DJI Flylogg</Label>
               </div>
+              {company.dji_flightlog_enabled && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={company.dji_auto_sync_enabled}
+                    onCheckedChange={() => onToggleAutoSync(company)}
+                  />
+                  <Label className="text-sm">Auto-sync</Label>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -320,12 +332,31 @@ export const CompanyManagementSection = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
-      toast.success(newValue ? "DJI Flylogg aktivert" : "DJI Flylogg deaktivert");
+    toast.success(newValue ? "DJI Flylogg aktivert" : "DJI Flylogg deaktivert");
     } catch (error: any) {
       // Revert on error
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_flightlog_enabled: !newValue } : c));
       console.error("Error toggling DJI status:", error);
       toast.error("Kunne ikke oppdatere DJI Flylogg-status: " + (error.message || "Ukjent feil"));
+    }
+  };
+
+  const handleToggleAutoSync = async (company: Company) => {
+    const newValue = !company.dji_auto_sync_enabled;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ dji_auto_sync_enabled: newValue })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? "Automatisk sync aktivert" : "Automatisk sync deaktivert");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: !newValue } : c));
+      console.error("Error toggling auto sync:", error);
+      toast.error("Kunne ikke oppdatere auto-sync status");
     }
   };
 
@@ -442,6 +473,7 @@ export const CompanyManagementSection = () => {
                 onToggleActive={handleToggleActive}
                 onToggleEccairs={handleToggleEccairs}
                 onToggleDji={handleToggleDji}
+                onToggleAutoSync={handleToggleAutoSync}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
               />
@@ -461,6 +493,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                     <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -574,6 +607,26 @@ export const CompanyManagementSection = () => {
                             </Badge>
                           </Label>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {company.dji_flightlog_enabled ? (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={company.dji_auto_sync_enabled}
+                              onCheckedChange={() => handleToggleAutoSync(company)}
+                            />
+                            <Label className="cursor-pointer">
+                              <Badge
+                                variant={company.dji_auto_sync_enabled ? "default" : "secondary"}
+                                className="text-xs"
+                              >
+                                {company.dji_auto_sync_enabled ? "På" : "Av"}
+                              </Badge>
+                            </Label>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
