@@ -1522,17 +1522,31 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <Button
                 variant="outline"
                 className="w-full"
+                disabled={(window as any).__djiSyncing}
                 onClick={async () => {
+                  if ((window as any).__djiSyncing) return;
+                  (window as any).__djiSyncing = true;
                   try {
                     toast.info('Starter synkronisering...');
                     const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
                       body: { companyId },
                     });
                     if (error) throw error;
-                    toast.success(`Sync fullført: ${data?.processed || 0} logger behandlet`);
+                    if (data?.rate_limited) {
+                      toast.warning('DJI API er midlertidig utilgjengelig (rate limit). Vent noen minutter og prøv igjen.');
+                    } else if (data?.errors > 0 && data?.synced === 0) {
+                      toast.error(`Sync feilet: ${data.errors} feil. ${data.companies?.[0]?.details || ''}`);
+                    } else {
+                      toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
+                    }
+                    // Refresh pending logs list
+                    pendingLogsRef.current?.refresh();
                   } catch (err: any) {
                     console.error('Manual sync error:', err);
                     toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
+                  } finally {
+                    // Cooldown 15s
+                    setTimeout(() => { (window as any).__djiSyncing = false; }, 15000);
                   }
                 }}
               >
@@ -1542,7 +1556,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             )}
 
             {/* Pending auto-synced logs */}
-            <PendingDjiLogsSection onSelectLog={handleSelectPendingLog} />
+            <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} />
           </div>
         )}
 
