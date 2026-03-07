@@ -163,6 +163,45 @@ export const calculateDroneInspectionStatus = (params: {
 };
 
 /**
+ * Calculates combined equipment maintenance status from date, hours, and missions.
+ * Returns worst of all three criteria — mirrors calculateDroneInspectionStatus.
+ */
+export const calculateEquipmentMaintenanceStatus = (params: {
+  neste_vedlikehold?: string | null;
+  varsel_dager?: number | null;
+  flyvetimer: number;
+  hours_at_last_maintenance: number;
+  inspection_interval_hours?: number | null;
+  varsel_timer?: number | null;
+  missions_since_maintenance: number;
+  inspection_interval_missions?: number | null;
+  varsel_oppdrag?: number | null;
+}): Status => {
+  const dateStatus = calculateMaintenanceStatus(
+    params.neste_vedlikehold,
+    params.varsel_dager ?? 14
+  );
+
+  const hoursSinceMaintenance = params.flyvetimer - params.hours_at_last_maintenance;
+  const hoursStatus = calculateUsageStatus(
+    hoursSinceMaintenance,
+    params.inspection_interval_hours,
+    params.varsel_timer
+  );
+
+  const missionsStatus = calculateUsageStatus(
+    params.missions_since_maintenance,
+    params.inspection_interval_missions,
+    params.varsel_oppdrag
+  );
+
+  return [dateStatus, hoursStatus, missionsStatus].reduce(
+    (worst, s) => worstStatus(worst, s),
+    "Grønn" as Status
+  );
+};
+
+/**
  * Interface for items with maintenance/inspection dates
  */
 interface MaintenanceItem {

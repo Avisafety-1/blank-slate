@@ -37,6 +37,12 @@ interface Equipment {
   vekt?: number | null;
   vedlikeholdsintervall_dager?: number | null;
   sjekkliste_id?: string | null;
+  inspection_interval_hours?: number | null;
+  inspection_interval_missions?: number | null;
+  hours_at_last_maintenance?: number;
+  missions_at_last_maintenance?: number;
+  varsel_timer?: number | null;
+  varsel_oppdrag?: number | null;
 }
 
 interface EquipmentDetailDialogProps {
@@ -71,6 +77,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
     vekt: "",
     vedlikeholdsintervall_dager: "",
     sjekkliste_id: "",
+    inspection_interval_hours: "",
+    inspection_interval_missions: "",
+    varsel_timer: "",
+    varsel_oppdrag: "",
   });
 
   // Update local equipment state when prop changes
