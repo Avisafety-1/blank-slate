@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Check if already in pending_dji_logs
+            // Check if already in pending_dji_logs (any status: pending, approved, dismissed, error)
             const { data: existing } = await serviceClient
               .from("pending_dji_logs")
               .select("id")
@@ -415,6 +415,32 @@ Deno.serve(async (req) => {
               console.log(`[dji-auto-sync] Processing log ${logId} (${bytes.length} bytes, ${ext})`);
 
               const parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
+
+              // Check if SHA-256 already exists in flight_logs (imported manually or via previous sync)
+              if (parsed.sha256Hash) {
+                const { data: existingFlight } = await serviceClient
+                  .from("flight_logs")
+                  .select("id")
+                  .eq("company_id", company.id)
+                  .eq("dronelog_sha256", parsed.sha256Hash)
+                  .maybeSingle();
+
+                if (existingFlight) {
+                  console.log(`[dji-auto-sync] Log ${logId} already in flight_logs (sha256 match), skipping`);
+                  // Mark in pending_dji_logs so we don't re-download next time
+                  await serviceClient.from("pending_dji_logs").upsert({
+                    company_id: company.id,
+                    user_id: cred.user_id,
+                    dji_log_id: String(logId),
+                    status: "approved",
+                    processed_flight_log_id: existingFlight.id,
+                    aircraft_sn: parsed.aircraftSN || null,
+                    flight_date: parsed.startTime || normalizeDateToISO(log.date) || null,
+                    duration_seconds: Math.round(parsed.durationSeconds),
+                  }, { onConflict: "company_id,dji_log_id" }).catch(() => {});
+                  continue;
+                }
+              }
 
               // Auto-match drone by serial number
               let matchedDroneId: string | null = null;
