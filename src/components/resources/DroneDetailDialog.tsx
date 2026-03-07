@@ -158,7 +158,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         status: drone.status,
         flyvetimer: drone.flyvetimer,
         merknader: drone.merknader || "",
-        sist_inspeksjon: drone.sist_inspeksjon ? new Date(drone.sist_inspeksjon).toISOString().split('T')[0] : "",
+        sist_inspeksjon: drone.sist_inspeksjon || "",
         neste_inspeksjon: drone.neste_inspeksjon ? new Date(drone.neste_inspeksjon).toISOString().split('T')[0] : "",
         kjøpsdato: drone.kjøpsdato ? new Date(drone.kjøpsdato).toISOString().split('T')[0] : "",
         klasse: drone.klasse || "",
@@ -187,17 +187,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   const fetchMissionsSinceInspection = async () => {
     if (!drone) return;
-    let query = supabase
-      .from("flight_logs")
-      .select("mission_id", { count: "exact", head: true })
-      .eq("drone_id", drone.id)
-      .not("mission_id", "is", null);
-    
-    if (drone.sist_inspeksjon) {
-      query = query.gt("flight_date", drone.sist_inspeksjon);
-    }
-
-    const { count } = await query;
+    const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
+    const count = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
     setMissionsSinceInspection(count || 0);
   };
 
@@ -496,7 +487,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
-          sist_inspeksjon: formData.sist_inspeksjon || null,
+          // Preserve full timestamp if user hasn't changed the date part
+          sist_inspeksjon: formData.sist_inspeksjon
+            ? (formData.sist_inspeksjon.includes('T') ? formData.sist_inspeksjon : formData.sist_inspeksjon || null)
+            : null,
           neste_inspeksjon: formData.neste_inspeksjon || null,
           kjøpsdato: formData.kjøpsdato || null,
           klasse: formData.klasse || null,
@@ -733,37 +727,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         }
                         
                         try {
-                          const now = new Date().toISOString();
-                          let nextInspection: string | null = null;
-                          if (drone.inspection_interval_days) {
-                            const nextDate = new Date();
-                            nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
-                            nextInspection = nextDate.toISOString().split('T')[0];
-                          }
-                          
-                          const { error: updateError } = await supabase
-                            .from('drones')
-                            .update({
-                              sist_inspeksjon: now,
-                              neste_inspeksjon: nextInspection,
-                              hours_at_last_inspection: drone.flyvetimer,
-                              missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,
-                            })
-                            .eq('id', drone.id);
-                          
-                          if (updateError) throw updateError;
-                          
-                          await supabase.from('drone_inspections').insert({
-                            drone_id: drone.id,
-                            company_id: companyId,
-                            user_id: user.id,
-                            inspection_date: new Date().toISOString(),
-                            inspection_type: 'Manuell inspeksjon',
+                          const { performDroneInspection } = await import("@/lib/droneInspection");
+                          await performDroneInspection({
+                            droneId: drone.id,
+                            companyId,
+                            userId: user.id,
+                            currentFlyvetimer: drone.flyvetimer,
+                            inspectionIntervalDays: drone.inspection_interval_days,
+                            inspectionType: 'Manuell inspeksjon',
                             notes: 'Utført fra dronekort',
                           });
                           
                           toast.success('Inspeksjon registrert');
                           setMissionsSinceInspection(0);
+                          queryClient.invalidateQueries({ queryKey: ['drones'] });
                           onDroneUpdated();
                         } catch (error: any) {
                           toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
@@ -1486,37 +1463,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           onComplete={async () => {
             if (!user || !companyId) return;
             
-            const now = new Date().toISOString();
-             let nextInspection: string | null = null;
-             if (drone.inspection_interval_days) {
-               const nextDate = new Date();
-               nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
-               nextInspection = nextDate.toISOString().split('T')[0];
-             }
-             
-             const { error: updateError } = await supabase
-               .from('drones')
-               .update({
-                 sist_inspeksjon: now,
-                neste_inspeksjon: nextInspection,
-                hours_at_last_inspection: drone.flyvetimer,
-                missions_at_last_inspection: (drone.missions_at_last_inspection ?? 0) + missionsSinceInspection,
-              })
-              .eq('id', drone.id);
-            
-            if (updateError) throw updateError;
-            
-            await supabase.from('drone_inspections').insert({
-              drone_id: drone.id,
-              company_id: companyId,
-              user_id: user.id,
-              inspection_date: new Date().toISOString(),
-              inspection_type: 'Manuell inspeksjon',
+            const { performDroneInspection } = await import("@/lib/droneInspection");
+            await performDroneInspection({
+              droneId: drone.id,
+              companyId,
+              userId: user.id,
+              currentFlyvetimer: drone.flyvetimer,
+              inspectionIntervalDays: drone.inspection_interval_days,
+              inspectionType: 'Manuell inspeksjon',
               notes: 'Utført via sjekkliste fra dronekort',
             });
             
             toast.success('Inspeksjon fullført');
             setMissionsSinceInspection(0);
+            queryClient.invalidateQueries({ queryKey: ['drones'] });
             onDroneUpdated();
           }}
         />

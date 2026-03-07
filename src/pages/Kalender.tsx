@@ -434,47 +434,28 @@ export default function Kalender() {
     
     try {
       if (event.sourceTable === 'drones') {
-        // Fetch drone to get interval
+        if (!user || !companyId) return;
+        
+        // Fetch drone to get interval + current flyvetimer
         const { data: drone, error: fetchError } = await supabase
           .from('drones')
-          .select('inspection_interval_days')
+          .select('inspection_interval_days, flyvetimer')
           .eq('id', event.id)
           .single();
         
         if (fetchError) throw fetchError;
         
-        let nextInspection: string | null = null;
-        if (drone?.inspection_interval_days) {
-          const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + drone.inspection_interval_days);
-          nextInspection = nextDate.toISOString().split('T')[0];
-        }
-        
-        const { data, error } = await supabase
-          .from('drones')
-          .update({
-            sist_inspeksjon: today,
-            neste_inspeksjon: nextInspection,
-          })
-          .eq('id', event.id)
-          .select();
-        
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          throw new Error('Ingen rettighet til å oppdatere dette');
-        }
-
-        // Also log to drone_inspections for the logbook
-        if (user && companyId) {
-          await supabase.from('drone_inspections').insert({
-            drone_id: event.id,
-            company_id: companyId,
-            user_id: user.id,
-            inspection_date: new Date().toISOString(),
-            inspection_type: 'Planlagt inspeksjon',
-            notes: `Utført via kalender`,
-          });
-        }
+        // Use shared helper for consistent inspection logic
+        const { performDroneInspection } = await import("@/lib/droneInspection");
+        await performDroneInspection({
+          droneId: event.id,
+          companyId,
+          userId: user.id,
+          currentFlyvetimer: drone?.flyvetimer ?? 0,
+          inspectionIntervalDays: drone?.inspection_interval_days ?? null,
+          inspectionType: 'Planlagt inspeksjon',
+          notes: 'Utført via kalender',
+        });
         
         toast.success('Inspeksjon registrert som utført');
         
