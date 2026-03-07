@@ -161,6 +161,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         payload: drone.payload !== null ? String(drone.payload) : "",
         inspection_start_date: drone.inspection_start_date ? new Date(drone.inspection_start_date).toISOString().split('T')[0] : "",
         inspection_interval_days: drone.inspection_interval_days !== null ? String(drone.inspection_interval_days) : "",
+        inspection_interval_hours: drone.inspection_interval_hours !== null ? String(drone.inspection_interval_hours) : "",
+        inspection_interval_missions: drone.inspection_interval_missions !== null ? String(drone.inspection_interval_missions) : "",
         varsel_dager: drone.varsel_dager !== null ? String(drone.varsel_dager) : "14",
         sjekkliste_id: drone.sjekkliste_id || "",
       });
@@ -172,8 +174,25 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedPersonnel();
       fetchLinkedDronetags();
       fetchAccessories();
+      fetchMissionsSinceInspection();
     }
   }, [drone]);
+
+  const fetchMissionsSinceInspection = async () => {
+    if (!drone) return;
+    let query = supabase
+      .from("flight_logs")
+      .select("mission_id", { count: "exact", head: true })
+      .eq("drone_id", drone.id)
+      .not("mission_id", "is", null);
+    
+    if (drone.sist_inspeksjon) {
+      query = query.gte("flight_date", drone.sist_inspeksjon);
+    }
+
+    const { count } = await query;
+    setMissionsSinceInspection(count || 0);
+  };
 
   // Calculate next inspection when start date, interval, or sist_inspeksjon changes
   useEffect(() => {
