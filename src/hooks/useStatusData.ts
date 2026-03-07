@@ -50,7 +50,7 @@ const fetchDrones = async () => {
         .not("mission_id", "is", null);
       
       if (drone.sist_inspeksjon) {
-        query = query.gte("flight_date", drone.sist_inspeksjon);
+        query = query.gt("flight_date", drone.sist_inspeksjon);
       }
 
       const { count } = await query;
