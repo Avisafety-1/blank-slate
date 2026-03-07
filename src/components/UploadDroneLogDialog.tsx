@@ -1042,6 +1042,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
       await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
+      await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       onOpenChange(false);
     } catch (error: any) {
@@ -1103,6 +1104,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       onOpenChange(false);
     } catch (error: any) {
@@ -1159,6 +1161,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
       onOpenChange(false);
