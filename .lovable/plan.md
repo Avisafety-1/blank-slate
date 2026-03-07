@@ -1,30 +1,44 @@
 
 
-## Plan: Full download/parse under auto-sync, filtrert av sync-dato
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Endring
-Gjeninnfør nedlasting og parsing i `dji-auto-sync` slik at logger behandles ferdig ved sync — men kun for logger nyere enn `dji_sync_from_date`. Dato-filteret og auto-advancing er allerede på plass, så dette er trygt mot re-skanning.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Hva endres
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**`supabase/functions/dji-auto-sync/index.ts`**
-- Etter at en ny logg passerer dato-filteret og dedupliserings-sjekken, legg til:
-  1. Download logfilen via `GET /logs/{accountId}/{logId}/download`
-  2. Upload + parse via DroneLog (gjenbruk `uploadAndParse`-logikken fra `dji-process-single`)
-  3. Auto-match drone/batteri via serienummer
-  4. SHA-256 deduplisering mot `flight_logs`
-  5. Lagre ferdig parset resultat i `pending_dji_logs` med `parsed_result`, `aircraft_sn`, `matched_drone_id`, `matched_battery_id` osv.
-- Importer `JSZip` og legg til CSV-parser + upload-hjelpefunksjoner (kopier fra `dji-process-single`)
-- Behold rate-limit-håndtering (429) — bryt ut av loopen ved throttling
+### Endringer
 
-**`dji-process-single`** beholdes uendret som fallback for logger der `parsed_result` er null (f.eks. eldre metadata-only rader).
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### API-kall per sync (med dato-filter)
-Siden sync-datoen avanserer til nyeste logg etter hver kjøring, vil neste sync typisk bare se 0-5 nye logger:
-- 2 faste kall (login + list) + 2 per ny logg (download + parse)
-- 5 nye logger = 12 kall totalt — akseptabelt
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### Filer
-1. `supabase/functions/dji-auto-sync/index.ts` — legg til download/parse-logikk, CSV-parser, JSZip, drone/batteri-matching, SHA-256 dedup
-2. Redeploy edge function
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
