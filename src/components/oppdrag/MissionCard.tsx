@@ -726,5 +726,26 @@ export const MissionCard = ({
         </div>
       )}
     </GlassCard>
+
+    <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-amber-500" />
+            Ninox-godkjenning påkrevd
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction onClick={handleNinoxConfirm}>
+            Bekreft godkjenning
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
