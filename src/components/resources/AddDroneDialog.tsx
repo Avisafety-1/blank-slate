@@ -22,6 +22,7 @@ interface DroneModel {
 export interface DroneDefaultValues {
   modell?: string;
   serienummer?: string;
+  internal_serial?: string;
   merknader?: string;
 }
 
@@ -54,6 +55,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [vekt, setVekt] = useState("");
   const [payload, setPayload] = useState("");
   const [merknader, setMerknader] = useState("");
+  const [internalSerial, setInternalSerial] = useState("");
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -100,6 +102,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setVekt("");
       setPayload("");
       setMerknader("");
+      setInternalSerial("");
       setInspectionStartDate("");
       setInspectionIntervalDays("");
       setCalculatedNextInspection("");
@@ -107,6 +110,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     } else if (defaultValues) {
       if (defaultValues.modell) setModell(defaultValues.modell);
       if (defaultValues.merknader) setMerknader(defaultValues.merknader);
+      if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
     }
   }, [open, defaultValues]);
 
@@ -170,6 +174,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         company_id: companyId,
         modell: modell || (formData.get("modell") as string),
         serienummer: (formData.get("serienummer") as string) || '',
+        internal_serial: internalSerial || null,
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
         merknader: merknader || null,
@@ -204,6 +209,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         setVekt("");
         setPayload("");
         setMerknader("");
+        setInternalSerial("");
         if (onDroneCreated && droneData) {
           onDroneCreated({ id: droneData.id, modell: droneData.modell, serienummer: droneData.serienummer });
         }
@@ -256,6 +262,15 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           <div>
             <Label htmlFor="serienummer">Serienummer</Label>
             <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ''} />
+          </div>
+          <div>
+            <Label htmlFor="internal_serial">Internt serienummer</Label>
+            <Input 
+              id="internal_serial" 
+              value={internalSerial}
+              onChange={(e) => setInternalSerial(e.target.value)}
+              placeholder="Valgfritt"
+            />
           </div>
           <div>
             <Label htmlFor="klasse">Klasse</Label>

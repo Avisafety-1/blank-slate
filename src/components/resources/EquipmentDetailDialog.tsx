@@ -25,6 +25,7 @@ interface Equipment {
   navn: string;
   type: string;
   serienummer: string;
+  internal_serial: string | null;
   status: string;
   merknader: string | null;
   sist_vedlikeholdt: string | null;
@@ -61,6 +62,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
     navn: "",
     type: "",
     serienummer: "",
+    internal_serial: "",
     merknader: "",
     sist_vedlikeholdt: "",
     neste_vedlikehold: "",
@@ -108,6 +110,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         navn: equipment.navn,
         type: equipment.type,
         serienummer: equipment.serienummer,
+        internal_serial: equipment.internal_serial || "",
         merknader: equipment.merknader || "",
         sist_vedlikeholdt: equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toISOString().split('T')[0] : "",
         neste_vedlikehold: equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toISOString().split('T')[0] : "",
@@ -212,6 +215,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           navn: formData.navn,
           type: formData.type === "__other__" ? customType : formData.type,
           serienummer: formData.serienummer,
+          internal_serial: formData.internal_serial || null,
           merknader: formData.merknader || null,
           sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
           neste_vedlikehold: formData.neste_vedlikehold || null,
@@ -303,6 +307,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Serienummer</p>
                   <p className="text-sm sm:text-base">{equipment.serienummer}</p>
                 </div>
+                <div className="flex justify-between sm:block">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Internt SN</p>
+                  <p className="text-sm sm:text-base">{equipment.internal_serial || "-"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vekt</p>
                   <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
@@ -490,6 +501,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     className="text-sm"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="internal_serial" className="text-xs sm:text-sm">Internt serienummer</Label>
+                  <Input
+                    id="internal_serial"
+                    value={formData.internal_serial}
+                    onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
+                    className="text-sm"
+                    placeholder="Valgfritt"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="vekt" className="text-xs sm:text-sm">Vekt (kg)</Label>
                   <Input

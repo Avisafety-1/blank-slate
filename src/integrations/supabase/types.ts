@@ -1023,6 +1023,7 @@ export type Database = {
           id: string
           inspection_interval_days: number | null
           inspection_start_date: string | null
+          internal_serial: string | null
           kjøpsdato: string | null
           klasse: string | null
           merknader: string | null
@@ -1047,6 +1048,7 @@ export type Database = {
           id?: string
           inspection_interval_days?: number | null
           inspection_start_date?: string | null
+          internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
@@ -1071,6 +1073,7 @@ export type Database = {
           id?: string
           inspection_interval_days?: number | null
           inspection_start_date?: string | null
+          internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
@@ -1486,6 +1489,7 @@ export type Database = {
           company_id: string
           flyvetimer: number
           id: string
+          internal_serial: string | null
           merknader: string | null
           navn: string
           neste_vedlikehold: string | null
@@ -1508,6 +1512,7 @@ export type Database = {
           company_id: string
           flyvetimer?: number
           id?: string
+          internal_serial?: string | null
           merknader?: string | null
           navn: string
           neste_vedlikehold?: string | null
@@ -1530,6 +1535,7 @@ export type Database = {
           company_id?: string
           flyvetimer?: number
           id?: string
+          internal_serial?: string | null
           merknader?: string | null
           navn?: string
           neste_vedlikehold?: string | null

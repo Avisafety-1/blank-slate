@@ -102,6 +102,7 @@ interface Drone {
   id: string;
   modell: string;
   serienummer: string;
+  internal_serial: string | null;
 }
 
 interface Personnel {
@@ -114,6 +115,7 @@ interface EquipmentItem {
   id: string;
   navn: string;
   serienummer: string;
+  internal_serial: string | null;
   type: string;
 }
 
@@ -408,7 +410,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
     const sn = data.batterySN.trim().toLowerCase();
     const match = equipmentList.find(e => 
-      e.serienummer && e.serienummer.trim().toLowerCase() === sn
+      (e.serienummer && e.serienummer.trim().toLowerCase() === sn) ||
+      (e.internal_serial && e.internal_serial.trim().toLowerCase() === sn)
     );
     if (match) {
       setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
@@ -426,7 +429,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
-    const match = drones.find(d => d.serienummer && d.serienummer.trim().toLowerCase() === sn);
+    const match = drones.find(d => 
+      (d.serienummer && d.serienummer.trim().toLowerCase() === sn) ||
+      (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+    );
     if (match) {
       setSelectedDroneId(match.id);
       toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
@@ -445,6 +451,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return {
       type: 'Batteri',
       serienummer: unmatchedBatterySN,
+      internal_serial: unmatchedBatterySN,
       navn: `Batteri ${unmatchedBatterySN}`,
       merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : undefined,
     };
@@ -453,13 +460,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const droneDefaultValues: DroneDefaultValues | undefined = unmatchedDroneSN ? {
     modell: result?.aircraftName || result?.droneType || '',
     serienummer: unmatchedDroneSN,
+    internal_serial: unmatchedDroneSN,
     merknader: 'Importert fra DJI-logg',
   } : undefined;
 
   const fetchDrones = async () => {
     const { data } = await supabase
       .from("drones")
-      .select("id, modell, serienummer")
+      .select("id, modell, serienummer, internal_serial")
       .eq("aktiv", true)
       .order("modell");
     if (data) setDrones(data);
@@ -480,7 +488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!companyId) return;
     const { data } = await supabase
       .from("equipment")
-      .select("id, navn, serienummer, type")
+      .select("id, navn, serienummer, internal_serial, type")
       .eq("company_id", companyId)
       .eq("aktiv", true)
       .order("navn");
@@ -1794,7 +1802,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 userId={user.id}
                 defaultValues={batteryDefaultValues}
                 onEquipmentCreated={(newEq) => {
-                  setEquipmentList(prev => [...prev, newEq]);
+                  setEquipmentList(prev => [...prev, { ...newEq, internal_serial: null }]);
                   setSelectedEquipment(prev => [...prev, newEq.id]);
                   setUnmatchedBatterySN(null);
                   setShowAddEquipmentDialog(false);
@@ -1839,7 +1847,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 userId={user.id}
                 defaultValues={droneDefaultValues}
                 onDroneCreated={(newDrone) => {
-                  setDrones(prev => [...prev, newDrone]);
+                  setDrones(prev => [...prev, { ...newDrone, internal_serial: null }]);
                   setSelectedDroneId(newDrone.id);
                   setUnmatchedDroneSN(null);
                   setShowAddDroneDialog(false);

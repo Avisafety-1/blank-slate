@@ -14,6 +14,7 @@ import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 export interface EquipmentDefaultValues {
   type?: string;
   serienummer?: string;
+  internal_serial?: string;
   navn?: string;
   merknader?: string;
 }
@@ -36,6 +37,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [customType, setCustomType] = useState<string>("");
+  const [internalSerial, setInternalSerial] = useState<string>("");
   const { checklists } = useChecklists();
   const equipmentTypes = useEquipmentTypes(companyId, open);
 
@@ -61,9 +63,9 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   useEffect(() => {
     if (open && defaultValues) {
       if (defaultValues.type) setSelectedType(defaultValues.type);
-      if (defaultValues.serienummer) {
-        // Will be set via defaultValue on Input
-      }
+      if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
+    } else if (!open) {
+      setInternalSerial("");
     }
   }, [open, defaultValues]);
 
@@ -111,6 +113,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         navn: formData.get("navn") as string,
         type: selectedType === "__other__" ? customType : selectedType,
         serienummer: (formData.get("serienummer") as string) || '',
+        internal_serial: internalSerial || null,
         status: (formData.get("status") as string) || "Grønn",
         merknader: (formData.get("merknader") as string) || null,
         sist_vedlikeholdt: (formData.get("sist_vedlikeholdt") as string) || null,
@@ -142,6 +145,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         setSelectedChecklistId("");
         setSelectedType("");
         setCustomType("");
+        setInternalSerial("");
         onEquipmentAdded();
         onOpenChange(false);
       }
@@ -191,6 +195,17 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
               <Label htmlFor="serienummer">Serienummer</Label>
               <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ""} />
             </div>
+            <div>
+              <Label htmlFor="internal_serial">Internt serienummer</Label>
+              <Input 
+                id="internal_serial" 
+                value={internalSerial}
+                onChange={(e) => setInternalSerial(e.target.value)}
+                placeholder="Valgfritt"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="vekt">Vekt (kg)</Label>
               <Input id="vekt" name="vekt" type="number" step="0.01" min="0" />
