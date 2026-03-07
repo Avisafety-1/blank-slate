@@ -480,7 +480,7 @@ Deno.serve(async (req) => {
 
       totalSynced += companySynced;
       totalErrors += companyErrors;
-      results.push({ company: company.navn, synced: companySynced, errors: companyErrors });
+      results.push({ company: company.navn, synced: companySynced, errors: companyErrors, details: rateLimited ? 'Rate limited by DJI API' : undefined });
     }
 
     const elapsed = Date.now() - startMs;
