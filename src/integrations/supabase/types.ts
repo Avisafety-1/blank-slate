@@ -2581,6 +2581,7 @@ export type Database = {
           lokasjon: string
           longitude: number | null
           merknader: string | null
+          ninox_approved: boolean | null
           oppdatert_dato: string
           opprettet_dato: string
           risk_nivå: string
@@ -2609,6 +2610,7 @@ export type Database = {
           lokasjon: string
           longitude?: number | null
           merknader?: string | null
+          ninox_approved?: boolean | null
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string
@@ -2637,6 +2639,7 @@ export type Database = {
           lokasjon?: string
           longitude?: number | null
           merknader?: string | null
+          ninox_approved?: boolean | null
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string
