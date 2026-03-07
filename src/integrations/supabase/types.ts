@@ -296,6 +296,81 @@ export type Database = {
           },
         ]
       }
+      changelog_entries: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      changelog_maintenance: {
+        Row: {
+          active: boolean
+          id: string
+          message: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          message?: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          message?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      changelog_systems: {
+        Row: {
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           adresse: string | null
