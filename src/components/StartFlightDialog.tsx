@@ -124,6 +124,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   } | null>(null);
   const [trafficLoading, setTrafficLoading] = useState(false);
 
+  // Ninox approval state
+  const [missionIn5kmZone, setMissionIn5kmZone] = useState(false);
+  const [ninoxApproved, setNinoxApproved] = useState(false);
+  const [ninoxChecking, setNinoxChecking] = useState(false);
+  const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
+
   // Fetch company-level checklist settings
   useEffect(() => {
     const fetchCompanyChecklists = async () => {
