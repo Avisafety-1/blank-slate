@@ -14,6 +14,7 @@ import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, B
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PendingDjiLogsSection } from "@/components/PendingDjiLogsSection";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useQueryClient } from "@tanstack/react-query";
