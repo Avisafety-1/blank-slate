@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
   Loader2, Plus, Pencil, Trash2, Wrench, CheckCircle2,
-  Clock, FlaskConical, Circle, Settings2, Save
+  Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +74,7 @@ const Changelog = () => {
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
   const [maintenance, setMaintenance] = useState<Maintenance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"created_at" | "status" | "completed_at">("created_at");
 
   // Dialogs
   const [systemDialog, setSystemDialog] = useState<{ open: boolean; system?: SystemStatus }>({ open: false });
@@ -267,20 +268,45 @@ const Changelog = () => {
       {/* Changelog Entries */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">Endringslogg</CardTitle>
-            {isSuperAdmin && (
-              <Button variant="ghost" size="sm" onClick={() => openEntryDialog()}>
-                <Plus className="w-4 h-4 mr-1" /> Legg til
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="h-8 w-[160px] text-xs">
+                  <ArrowUpDown className="w-3 h-3 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Opprettet dato</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="completed_at">Utført dato</SelectItem>
+                </SelectContent>
+              </Select>
+              {isSuperAdmin && (
+                <Button variant="ghost" size="sm" onClick={() => openEntryDialog()}>
+                  <Plus className="w-4 h-4 mr-1" /> Legg til
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {entries.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
           )}
-          {entries.map((entry) => {
+          {[...entries].sort((a, b) => {
+            if (sortBy === "status") {
+              const order = ["pågår", "testing", "ikke_startet", "implementert"];
+              return order.indexOf(a.status) - order.indexOf(b.status);
+            }
+            if (sortBy === "completed_at") {
+              if (!a.completed_at && !b.completed_at) return 0;
+              if (!a.completed_at) return 1;
+              if (!b.completed_at) return -1;
+              return new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime();
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          }).map((entry) => {
             const cfg = entryStatusConfig[entry.status] || entryStatusConfig.ikke_startet;
             return (
               <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/50">
