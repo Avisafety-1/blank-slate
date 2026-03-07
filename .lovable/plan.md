@@ -1,41 +1,44 @@
 
 
-## Problem
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Every log insert fails with:
-```
-invalid input syntax for type timestamp with time zone: "10/15/2022T3:10:09.16 PMZ"
-```
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-The `startTime` parsing logic in `dji-auto-sync/index.ts` does:
-1. Try `new Date(startTime.replace(/Z$/, '').replace('T', ' '))` 
-2. If that parses successfully, it keeps the **original string** as-is
-3. PostgreSQL rejects the US date format
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-The fix: when the Date constructor successfully parses the value, convert it to ISO format using `toISOString()` instead of keeping the original string.
+### Endringer
 
-## Plan
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### 1. Fix date conversion in `dji-auto-sync/index.ts`
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-In the `parseCsvMinimal` function around the startTime parsing block, after confirming the date is valid, replace the original string with the ISO representation:
-
+### Hjelpefunksjon (i begge filer)
 ```typescript
-if (startTime) {
-    const testParsed = new Date(startTime.replace(/Z$/, '').replace('T', ' '));
-    if (!isNaN(testParsed.getTime())) {
-      // Convert to ISO format for PostgreSQL compatibility
-      startTime = testParsed.toISOString();
-    } else {
-      // Try regex fallback for unusual formats
-      // ... existing regex logic ...
-    }
-}
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-This single change fixes all the failing inserts since every date that JS can parse will be stored as a valid ISO 8601 timestamp.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### 2. Redeploy and test
-
-After the fix, the user can click "Sync nå" again and logs should successfully appear in `pending_dji_logs`.
+Ingen nye avhengigheter. Ingen databaseendringer.
 

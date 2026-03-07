@@ -65,7 +65,10 @@ function parseCsvMinimal(csvText: string) {
   let startTime = get("DETAILS.startTime");
   if (startTime) {
     const testParsed = new Date(startTime.replace(/Z$/, '').replace('T', ' '));
-    if (isNaN(testParsed.getTime())) {
+    if (!isNaN(testParsed.getTime())) {
+      // Convert to ISO format for PostgreSQL compatibility
+      startTime = testParsed.toISOString();
+    } else {
       const dtMatch = startTime.match(
         /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
       );
