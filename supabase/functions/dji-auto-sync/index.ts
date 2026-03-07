@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
                   dji_log_id: String(logId),
                   aircraft_sn: parsed.aircraftSN || null,
                   flight_date: parsed.startTime || (log.date ? new Date(log.date).toISOString() : null),
-                  duration_seconds: parsed.durationSeconds,
+                  duration_seconds: Math.round(parsed.durationSeconds),
                   parsed_result: parsed as any,
                   matched_drone_id: matchedDroneId,
                   matched_battery_id: matchedBatteryId,
