@@ -327,9 +327,11 @@ const Changelog = () => {
                     <Badge variant="outline" className={`text-[10px] gap-1 ${cfg.color}`}>
                       {cfg.icon} {cfg.label}
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] gap-1 ${pri.color}`}>
-                      {pri.icon} {pri.label}
-                    </Badge>
+                    {entry.status !== "implementert" && (
+                      <Badge variant="outline" className={`text-[10px] gap-1 ${pri.color}`}>
+                        {pri.icon} {pri.label}
+                      </Badge>
+                    )}
                   </div>
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
