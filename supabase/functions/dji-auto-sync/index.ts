@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
     let totalSynced = 0;
     let totalErrors = 0;
     const results: Array<{ company: string; synced: number; errors: number; details?: string }> = [];
+    let rateLimited = false;
 
     for (const company of companies) {
       const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
