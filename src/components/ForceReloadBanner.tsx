@@ -1,7 +1,9 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getForceReloadState, subscribeForceReload, performReload } from '@/hooks/useForceReload';
+import { Link } from 'react-router-dom';
 
 export const ForceReloadBanner = () => {
   const state = useSyncExternalStore(subscribeForceReload, getForceReloadState);
@@ -26,6 +28,9 @@ export const ForceReloadBanner = () => {
       >
         {reloading ? 'Oppdaterer...' : 'Oppdater nå'}
       </Button>
+      <Link to="/changelog" className="text-sm underline underline-offset-2 hover:opacity-80">
+        Se endringslogg
+      </Link>
     </div>
   );
 };
