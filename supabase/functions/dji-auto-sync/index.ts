@@ -490,6 +490,7 @@ Deno.serve(async (req) => {
       success: true,
       synced: totalSynced,
       errors: totalErrors,
+      rate_limited: rateLimited,
       elapsed_ms: elapsed,
       companies: results,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
