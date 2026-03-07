@@ -1049,6 +1049,33 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </p>
               </div>
             )}
+
+            {/* Ninox approval warning */}
+            {missionIn5kmZone && !ninoxApproved && !ninoxChecking && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-500/10 p-3 text-sm">
+                <ShieldCheck className="h-4 w-4 text-red-500 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <p className="font-medium text-red-700 dark:text-red-300">
+                    Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/30 hover:bg-red-500/10"
+                    onClick={() => setShowNinoxConfirm(true)}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                    Bekreft Ninox-godkjenning
+                  </Button>
+                </div>
+              </div>
+            )}
+            {missionIn5kmZone && ninoxApproved && (
+              <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
+                <ShieldCheck className="h-4 w-4 text-green-500 mt-0.5" />
+                <p className="text-green-700 dark:text-green-300">Ninox-godkjenning bekreftet ✓</p>
+              </div>
+            )}
             </div>
           </div>
 
@@ -1058,7 +1085,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading || isFetchingMissionChecklists || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
+              disabled={loading || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition))}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
