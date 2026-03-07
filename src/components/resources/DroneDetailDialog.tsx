@@ -168,6 +168,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         inspection_interval_hours: drone.inspection_interval_hours !== null ? String(drone.inspection_interval_hours) : "",
         inspection_interval_missions: drone.inspection_interval_missions !== null ? String(drone.inspection_interval_missions) : "",
         varsel_dager: drone.varsel_dager !== null ? String(drone.varsel_dager) : "14",
+        varsel_timer: drone.varsel_timer !== null ? String(drone.varsel_timer) : "",
+        varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
         sjekkliste_id: drone.sjekkliste_id || "",
       });
       setSelectedChecklistId(drone.sjekkliste_id || "");
