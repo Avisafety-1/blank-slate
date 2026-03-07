@@ -1170,6 +1170,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  // Mark pending DJI log as approved after successful save
+  const markPendingLogApproved = async (flightLogId?: string) => {
+    const pendingId = (window as any).__pendingDjiLogId;
+    if (!pendingId) return;
+    await supabase
+      .from('pending_dji_logs')
+      .update({ status: 'approved', processed_flight_log_id: flightLogId || null })
+      .eq('id', pendingId);
+    delete (window as any).__pendingDjiLogId;
+  };
+
   // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
 
   // ── Helpers ──
