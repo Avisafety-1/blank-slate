@@ -68,11 +68,10 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const handleDismiss = async (e: React.MouseEvent, logId: string) => {
     e.stopPropagation();
     setDismissingId(logId);
-    const { error, count } = await supabase
+    const { error } = await supabase
       .from("pending_dji_logs")
       .update({ status: "dismissed" })
-      .eq("id", logId)
-      .select('id', { count: 'exact', head: true });
+      .eq("id", logId);
 
     if (error) {
       toast.error("Kunne ikke avvise loggen");
