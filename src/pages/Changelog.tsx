@@ -60,10 +60,10 @@ const statusColors: Record<string, string> = {
 };
 
 const entryStatusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  ikke_startet: { label: "Ikke startet", color: "bg-muted text-muted-foreground", icon: <Circle className="w-3 h-3" /> },
-  pågår: { label: "Pågår", color: "bg-status-yellow/20 text-status-yellow border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  testing: { label: "Testing", color: "bg-blue-500/20 text-blue-400 border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
-  implementert: { label: "Implementert", color: "bg-status-green/20 text-status-green border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
+  ikke_startet: { label: "Ikke startet", color: "bg-muted text-foreground", icon: <Circle className="w-3 h-3" /> },
+  pågår: { label: "Pågår", color: "bg-status-yellow/20 text-foreground border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+  testing: { label: "Testing", color: "bg-blue-500/20 text-foreground border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
+  implementert: { label: "Implementert", color: "bg-status-green/20 text-foreground border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
 const Changelog = () => {
