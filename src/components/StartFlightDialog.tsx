@@ -1194,6 +1194,40 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           onComplete={handleMissionChecklistComplete}
         />
       )}
+
+      {/* Ninox Approval Confirm Dialog */}
+      <AlertDialog open={showNinoxConfirm} onOpenChange={setShowNinoxConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-amber-500" />
+              Ninox-godkjenning påkrevd
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!selectedMissionId || selectedMissionId === 'none') return;
+              const { error } = await supabase
+                .from('missions')
+                .update({ ninox_approved: true } as any)
+                .eq('id', selectedMissionId);
+              if (!error) {
+                setNinoxApproved(true);
+                // Update local missions list
+                setMissions(prev => prev.map(m => m.id === selectedMissionId ? { ...m, ninox_approved: true } : m));
+                toast.success('Ninox-godkjenning bekreftet');
+              }
+              setShowNinoxConfirm(false);
+            }}>
+              Bekreft godkjenning
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
