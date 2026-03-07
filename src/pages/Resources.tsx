@@ -504,7 +504,7 @@ const Resources = () => {
                         hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
                         inspection_interval_hours: item.inspection_interval_hours,
                         varsel_timer: item.varsel_timer,
-                        missions_since_maintenance: 0,
+                        missions_since_maintenance: item._missionsSinceMaintenance ?? 0,
                         inspection_interval_missions: item.inspection_interval_missions,
                         varsel_oppdrag: item.varsel_oppdrag,
                       });
@@ -534,7 +534,7 @@ const Resources = () => {
                         hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
                         inspection_interval_hours: item.inspection_interval_hours,
                         varsel_timer: item.varsel_timer,
-                        missions_since_maintenance: 0,
+                        missions_since_maintenance: item._missionsSinceMaintenance ?? 0,
                         inspection_interval_missions: item.inspection_interval_missions,
                         varsel_oppdrag: item.varsel_oppdrag,
                       }), (item.status as Status) || "Grønn")} />
@@ -560,7 +560,7 @@ const Resources = () => {
                       hours_at_last_maintenance: item.hours_at_last_maintenance ?? 0,
                       inspection_interval_hours: item.inspection_interval_hours,
                       varsel_timer: item.varsel_timer,
-                      missions_since_maintenance: 0,
+                      missions_since_maintenance: item._missionsSinceMaintenance ?? 0,
                       inspection_interval_missions: item.inspection_interval_missions,
                       varsel_oppdrag: item.varsel_oppdrag,
                     }), (item.status as Status) || "Grønn") !== equipmentStatusFilter) return false;
