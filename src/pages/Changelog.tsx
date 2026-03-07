@@ -210,7 +210,7 @@ const Changelog = () => {
         <Card className={maintenance?.active ? "border-status-yellow bg-status-yellow/10" : "border-dashed"}>
           <CardContent className="flex items-center gap-3 py-4">
             {maintenance?.active && <Wrench className="w-5 h-5 text-status-yellow animate-spin" />}
-            <span className={`flex-1 font-medium ${maintenance?.active ? "text-status-yellow" : "text-muted-foreground"}`}>
+            <span className={`flex-1 font-medium ${maintenance?.active ? "text-foreground" : "text-muted-foreground"}`}>
               {maintenance?.message || "Drift og vedlikehold pågår"}
             </span>
             {isSuperAdmin && (
