@@ -1,44 +1,31 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Buggfix: Oppdragstelling nullstilles ikke etter inspeksjon
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Når «Utfør inspeksjon» kjøres, skjer to feil:
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+1. **`>=`-operator**: Flylogs telles med `flight_date >= sist_inspeksjon`. Etter inspeksjon settes `sist_inspeksjon` til **i dag**, men flights logget **i dag** telles fortsatt med pga `>=`. Bør bruke `>` (strictly after).
 
-### Endringer
+2. **Lokalt state oppdateres ikke**: Etter inspeksjonen kalles `onDroneUpdated()` (som refetcher dronen), men `fetchMissionsSinceInspection()` kjøres kun i `useEffect` basert på `drone`-prop. Selv om dronen refetches, kan rekkefølgen gjøre at den lokale `missionsSinceInspection`-staten viser gammel verdi.
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+3. **`missions_at_last_inspection` brukes aldri**: Feltet skrives til i DB men leses aldri — oppdragstellingen er 100% basert på flight_logs-query. Feltet er dermed overflødig men ufarlig.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Løsning
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+#### 1. Endre `>=` til `>` i begge steder
+- `DroneDetailDialog.tsx` linje 197: `.gte(...)` → `.gt(...)`
+- `useStatusData.ts` linje 53: `.gte(...)` → `.gt(...)`
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+Dette sikrer at flights logget **på** inspeksjonsdatoen ikke telles som «etter inspeksjon».
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+#### 2. Re-fetch missions etter inspeksjon
+I inspeksjons-handleren (linje 766), kall `fetchMissionsSinceInspection()` etter `onDroneUpdated()` for å oppdatere lokalt state umiddelbart. Alternativt sett `setMissionsSinceInspection(0)` optimistisk etter vellykket inspeksjon.
+
+#### 3. Samme fix i sjekkliste-inspeksjon
+Sjekk den andre inspeksjons-handleren (linje ~1500) for samme problem.
+
+### Berørte filer
+- `src/components/resources/DroneDetailDialog.tsx`
+- `src/hooks/useStatusData.ts`
 
