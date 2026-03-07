@@ -105,6 +105,56 @@ export const calculatePersonnelAggregatedStatus = (
 };
 
 /**
+ * Calculates status based on a usage-based interval (hours or missions).
+ * Rød: usage >= limit, Gul: usage >= limit * warningRatio, Grønn: otherwise.
+ */
+export const calculateUsageStatus = (
+  currentUsage: number,
+  limit: number | null | undefined,
+  warningRatio: number = 0.8
+): Status => {
+  if (!limit || limit <= 0) return "Grønn";
+  if (currentUsage >= limit) return "Rød";
+  if (currentUsage >= limit * warningRatio) return "Gul";
+  return "Grønn";
+};
+
+/**
+ * Calculates combined drone inspection status from date, hours, and missions.
+ * Returns worst of all three criteria.
+ */
+export const calculateDroneInspectionStatus = (params: {
+  neste_inspeksjon?: string | null;
+  varsel_dager?: number | null;
+  flyvetimer: number;
+  hours_at_last_inspection: number;
+  inspection_interval_hours?: number | null;
+  missions_since_inspection: number;
+  inspection_interval_missions?: number | null;
+}): Status => {
+  const dateStatus = calculateMaintenanceStatus(
+    params.neste_inspeksjon,
+    params.varsel_dager ?? 14
+  );
+
+  const hoursSinceInspection = params.flyvetimer - params.hours_at_last_inspection;
+  const hoursStatus = calculateUsageStatus(
+    hoursSinceInspection,
+    params.inspection_interval_hours
+  );
+
+  const missionsStatus = calculateUsageStatus(
+    params.missions_since_inspection,
+    params.inspection_interval_missions
+  );
+
+  return [dateStatus, hoursStatus, missionsStatus].reduce(
+    (worst, s) => worstStatus(worst, s),
+    "Grønn" as Status
+  );
+};
+
+/**
  * Interface for items with maintenance/inspection dates
  */
 interface MaintenanceItem {
@@ -114,26 +164,42 @@ interface MaintenanceItem {
 }
 
 /**
+ * Extended interface for drones with hours/missions inspection criteria
+ */
+interface DroneMaintenanceItem extends MaintenanceItem {
+  flyvetimer?: number;
+  hours_at_last_inspection?: number;
+  inspection_interval_hours?: number | null;
+  missions_since_inspection?: number;
+  inspection_interval_missions?: number | null;
+}
+
+/**
  * Calculates aggregated status for a drone based on:
- * - The drone's own inspection status
+ * - The drone's own inspection status (date + hours + missions)
  * - All linked accessories
  * - All linked equipment
  * 
  * Returns the "worst" status (Rød > Gul > Grønn)
  */
 export const calculateDroneAggregatedStatus = (
-  drone: MaintenanceItem,
+  drone: DroneMaintenanceItem,
   accessories: MaintenanceItem[],
   linkedEquipment: MaintenanceItem[]
 ): { status: Status; affectedItems: string[] } => {
   const affectedItems: string[] = [];
   let worstPriority = 0;
   
-  // Calculate drone's own status
-  const droneStatus = calculateMaintenanceStatus(
-    drone.neste_inspeksjon,
-    drone.varsel_dager ?? 14
-  );
+  // Calculate drone's own status (date + hours + missions)
+  const droneStatus = calculateDroneInspectionStatus({
+    neste_inspeksjon: drone.neste_inspeksjon,
+    varsel_dager: drone.varsel_dager,
+    flyvetimer: drone.flyvetimer ?? 0,
+    hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+    inspection_interval_hours: drone.inspection_interval_hours,
+    missions_since_inspection: drone.missions_since_inspection ?? 0,
+    inspection_interval_missions: drone.inspection_interval_missions,
+  });
   worstPriority = STATUS_PRIORITY[droneStatus];
   
   // Check all accessories

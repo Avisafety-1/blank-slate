@@ -33,21 +33,49 @@ const fetchDrones = async () => {
     throw error;
   }
 
-  return dronesData.map((drone: any) => {
+  // For each drone, count missions since last inspection from flight_logs
+  const dronesWithMissions = await Promise.all(dronesData.map(async (drone: any) => {
     const accessories = drone.drone_accessories || [];
     const linkedEquipment = (drone.drone_equipment || [])
       .map((link: any) => link.equipment)
       .filter(Boolean);
 
+    // Count unique missions from flight_logs since last inspection
+    let missionsSinceInspection = 0;
+    if (drone.inspection_interval_missions) {
+      let query = supabase
+        .from("flight_logs")
+        .select("mission_id", { count: "exact", head: true })
+        .eq("drone_id", drone.id)
+        .not("mission_id", "is", null);
+      
+      if (drone.sist_inspeksjon) {
+        query = query.gte("flight_date", drone.sist_inspeksjon);
+      }
+
+      const { count } = await query;
+      missionsSinceInspection = count || 0;
+    }
+
     const { status } = calculateDroneAggregatedStatus(
-      { neste_inspeksjon: drone.neste_inspeksjon, varsel_dager: drone.varsel_dager },
+      {
+        neste_inspeksjon: drone.neste_inspeksjon,
+        varsel_dager: drone.varsel_dager,
+        flyvetimer: drone.flyvetimer,
+        hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+        inspection_interval_hours: drone.inspection_interval_hours,
+        missions_since_inspection: missionsSinceInspection,
+        inspection_interval_missions: drone.inspection_interval_missions,
+      },
       accessories,
       linkedEquipment
     );
 
     const dbStatus = (drone.status as Status) || "Grønn";
     return { ...drone, status: worstStatus(status, dbStatus) };
-  });
+  }));
+
+  return dronesWithMissions;
 };
 
 const fetchEquipment = async () => {

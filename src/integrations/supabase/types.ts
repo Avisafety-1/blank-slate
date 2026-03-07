@@ -1020,13 +1020,17 @@ export type Database = {
           aktiv: boolean
           company_id: string
           flyvetimer: number
+          hours_at_last_inspection: number | null
           id: string
           inspection_interval_days: number | null
+          inspection_interval_hours: number | null
+          inspection_interval_missions: number | null
           inspection_start_date: string | null
           internal_serial: string | null
           kjøpsdato: string | null
           klasse: string | null
           merknader: string | null
+          missions_at_last_inspection: number | null
           modell: string
           neste_inspeksjon: string | null
           oppdatert_dato: string
@@ -1045,13 +1049,17 @@ export type Database = {
           aktiv?: boolean
           company_id: string
           flyvetimer?: number
+          hours_at_last_inspection?: number | null
           id?: string
           inspection_interval_days?: number | null
+          inspection_interval_hours?: number | null
+          inspection_interval_missions?: number | null
           inspection_start_date?: string | null
           internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
+          missions_at_last_inspection?: number | null
           modell: string
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
@@ -1070,13 +1078,17 @@ export type Database = {
           aktiv?: boolean
           company_id?: string
           flyvetimer?: number
+          hours_at_last_inspection?: number | null
           id?: string
           inspection_interval_days?: number | null
+          inspection_interval_hours?: number | null
+          inspection_interval_missions?: number | null
           inspection_start_date?: string | null
           internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
           merknader?: string | null
+          missions_at_last_inspection?: number | null
           modell?: string
           neste_inspeksjon?: string | null
           oppdatert_dato?: string
