@@ -354,7 +354,6 @@ Deno.serve(async (req) => {
 
       let companySynced = 0;
       let companyErrors = 0;
-      let newestLogDate: string | null = null;
 
       for (const cred of credentials) {
         if (rateLimited) break;
@@ -418,11 +417,7 @@ Deno.serve(async (req) => {
             const logId = log.id || log.logId;
             if (!logId) continue;
 
-            // Track newest log date for auto-advancing
             const logDateStr = normalizeDateToISO(log.date);
-            if (logDateStr && (!newestLogDate || logDateStr > newestLogDate)) {
-              newestLogDate = logDateStr;
-            }
 
             // Check date filter
             if (syncFromDate && log.date) {
@@ -535,15 +530,6 @@ Deno.serve(async (req) => {
           console.error(`[dji-auto-sync] Error for user ${cred.dji_email}:`, credErr);
           companyErrors++;
         }
-      }
-
-      // Auto-advance sync date to the newest log we saw
-      if (newestLogDate) {
-        await serviceClient
-          .from("companies")
-          .update({ dji_sync_from_date: newestLogDate })
-          .eq("id", company.id);
-        console.log(`[dji-auto-sync] Advanced sync date for ${company.navn} to ${newestLogDate}`);
       }
 
       totalSynced += companySynced;
