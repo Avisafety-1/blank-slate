@@ -1540,12 +1540,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     } else {
                       toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
                     }
-                    // Refresh pending logs list
-                    pendingLogsRef.current?.refresh();
                   } catch (err: any) {
                     console.error('Manual sync error:', err);
                     toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
                   } finally {
+                    // Always refresh pending logs list (even after errors)
+                    pendingLogsRef.current?.refresh();
                     // Cooldown 15s
                     setTimeout(() => { (window as any).__djiSyncing = false; }, 15000);
                   }

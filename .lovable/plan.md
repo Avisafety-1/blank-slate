@@ -1,51 +1,44 @@
 
-Feilen er funnet i eksisterende implementasjon, ikke i selve sync-flyten:
 
-1) Hovedfeil (som stopper inserts)
-- `supabase/functions/dji-auto-sync/index.ts` bygger fallback-tid slik:
-  - `CUSTOM.date [UTC] + CUSTOM.updateTime [UTC] -> "${date}T${time}Z"`
-- Når `time` er i DJI-format (`2:23:51.84 PM`), blir resultatet f.eks.:
-  - `10/16/2024T2:23:51.84 PMZ`
-- Dette er ugyldig for `timestamptz`, og matcher nøyaktig feilen i loggene (`22007 invalid input syntax for timestamp with time zone`).
-- Derfor blir ingenting lagret i `pending_dji_logs`, og “ventende logger” er tom.
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-2) Sekundær svakhet i UI
-- `pendingLogsRef.current?.refresh()` kjøres kun i suksess-grenen i “Sync nå”.
-- Hvis edge-kallet feiler/timeouter etter delvis prosessering, blir ikke listen oppdatert automatisk.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-Implementeringsplan
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-1. Normaliser all DJI-dato i edge-funksjonen
-- Legg inn én felles helper i `dji-auto-sync/index.ts`:
-  - håndterer ISO-strenger
-  - håndterer `M/D/YYYY h:mm:ss(.SS) AM/PM`
-  - returnerer alltid ISO (`toISOString()`) eller `null`.
+### Endringer
 
-2. Bruk helper konsekvent i fallback-kjeden
-- I `parseCsvMinimal`, normaliser:
-  - `DETAILS.startTime`
-  - `CUSTOM.date [UTC] + CUSTOM.updateTime [UTC]`
-  - `CUSTOM.dateTime`
-- Ikke bygg `"...PMZ"`-strenger direkte.
-- Sett `startTime = null` hvis ikke tolkbar.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-3. Hardening ved insert
-- `flight_date` settes til:
-  - normalisert `parsed.startTime`
-  - ellers normalisert `log.date`
-  - ellers `null` (ikke ugyldig tekst).
-- Da stopper vi timestamp-crash.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-4. Gjør resultat synlig selv ved feil
-- I “Sync nå”-handleren (`UploadDroneLogDialog.tsx`), flytt `pendingLogsRef.current?.refresh()` til `finally` slik at listen oppdateres også etter error/timeout.
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-5. Verifisering
-- Kjør “Sync nå” igjen.
-- Bekreft i edge-logger at `22007` er borte.
-- Bekreft at nye rader faktisk finnes i `pending_dji_logs` med `status='pending'`.
-- Bekreft at “Ventende flylogger fra auto-sync” viser rader uten å reåpne dialogen.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-Tekniske detaljer
-- Loggene viser at sync faktisk henter og parser filer (ZIP->TXT fallback fungerer), men insert feiler på `flight_date`.
-- Dette betyr at importkjeden er OK; problemet er kun dato-normalisering før DB insert.
-- Den konkrete bugen ligger i fallback-formatet for tid, ikke i autentisering, ikke i RLS, og ikke i “pending”-visningen i seg selv.
+Ingen nye avhengigheter. Ingen databaseendringer.
+

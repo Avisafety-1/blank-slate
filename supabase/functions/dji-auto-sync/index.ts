@@ -26,6 +26,39 @@ const FIELDS = [
   "APP.warn",
 ].join(",");
 
+// ── Date normalisation helper ──
+
+function normalizeDateToISO(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return null;
+  const s = raw.trim();
+
+  // Already valid ISO?
+  const iso = new Date(s);
+  if (!isNaN(iso.getTime()) && /^\d{4}-\d{2}/.test(s)) return iso.toISOString();
+
+  // M/D/YYYY (T| )h:mm:ss(.SS)? (AM|PM)?  — DJI cloud format
+  const m = s.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})[\sT]+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
+  );
+  if (m) {
+    const [, month, day, year, hours, mins, secs, , ampm] = m;
+    let h = parseInt(hours);
+    if (ampm?.toUpperCase() === "PM" && h < 12) h += 12;
+    if (ampm?.toUpperCase() === "AM" && h === 12) h = 0;
+    const d = new Date(Date.UTC(
+      parseInt(year), parseInt(month) - 1, parseInt(day),
+      h, parseInt(mins), parseInt(secs)
+    ));
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // Last resort: try native parsing
+  const fallback = new Date(s);
+  if (!isNaN(fallback.getTime())) return fallback.toISOString();
+
+  return null;
+}
+
 // ── Minimal CSV parser (same logic as process-dronelog) ──
 
 function findHeaderIndex(headers: string[], target: string): number {
@@ -61,34 +94,18 @@ function parseCsvMinimal(csvText: string) {
   const totalTimeSec = getNum("DETAILS.totalTime [s]");
   const durationMinutes = totalTimeSec ? Math.round(totalTimeSec / 60) : Math.round((lines.length - 1) / 600);
 
-  // Start time
-  let startTime = get("DETAILS.startTime");
-  if (startTime) {
-    const testParsed = new Date(startTime.replace(/Z$/, '').replace('T', ' '));
-    if (!isNaN(testParsed.getTime())) {
-      // Convert to ISO format for PostgreSQL compatibility
-      startTime = testParsed.toISOString();
-    } else {
-      const dtMatch = startTime.match(
-        /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*T?\s*(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?\s*(AM|PM)?/i
-      );
-      if (dtMatch) {
-        const [, month, day, year, hours, mins, secs, , ampm] = dtMatch;
-        let h = parseInt(hours);
-        if (ampm?.toUpperCase() === 'PM' && h < 12) h += 12;
-        if (ampm?.toUpperCase() === 'AM' && h === 12) h = 0;
-        startTime = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${String(h).padStart(2,'0')}:${mins}:${secs}Z`;
-      } else {
-        startTime = "";
-      }
-    }
-  }
+  // Start time – normalise through helper to guarantee valid ISO or null
+  let startTime = normalizeDateToISO(get("DETAILS.startTime"));
   if (!startTime) {
     const customDate = get("CUSTOM.date [UTC]");
     const customTime = get("CUSTOM.updateTime [UTC]");
-    if (customDate) startTime = customTime ? `${customDate}T${customTime}Z` : `${customDate}T00:00:00Z`;
+    if (customDate) {
+      // Combine date + time, then normalise (handles AM/PM in time part)
+      const combined = customTime ? `${customDate} ${customTime}` : `${customDate} 00:00:00`;
+      startTime = normalizeDateToISO(combined);
+    }
   }
-  if (!startTime) startTime = get("CUSTOM.dateTime");
+  if (!startTime) startTime = normalizeDateToISO(get("CUSTOM.dateTime"));
 
   // Build full parsed_result (same shape as process-dronelog output for compatibility)
   // We store the full CSV result so the user can review/approve it later
@@ -429,7 +446,7 @@ Deno.serve(async (req) => {
                   user_id: cred.user_id,
                   dji_log_id: String(logId),
                   aircraft_sn: parsed.aircraftSN || null,
-                  flight_date: parsed.startTime || (log.date ? new Date(log.date).toISOString() : null),
+                  flight_date: parsed.startTime || normalizeDateToISO(log.date) || null,
                   duration_seconds: Math.round(parsed.durationSeconds),
                   parsed_result: parsed as any,
                   matched_drone_id: matchedDroneId,
