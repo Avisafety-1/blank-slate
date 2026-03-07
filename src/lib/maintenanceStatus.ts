@@ -111,11 +111,15 @@ export const calculatePersonnelAggregatedStatus = (
 export const calculateUsageStatus = (
   currentUsage: number,
   limit: number | null | undefined,
-  warningRatio: number = 0.8
+  warningMargin?: number | null
 ): Status => {
   if (!limit || limit <= 0) return "Grønn";
   if (currentUsage >= limit) return "Rød";
-  if (currentUsage >= limit * warningRatio) return "Gul";
+  // Use absolute margin if provided, otherwise fall back to 80% ratio
+  const threshold = (warningMargin != null && warningMargin > 0)
+    ? limit - warningMargin
+    : limit * 0.8;
+  if (currentUsage >= threshold) return "Gul";
   return "Grønn";
 };
 
@@ -129,8 +133,10 @@ export const calculateDroneInspectionStatus = (params: {
   flyvetimer: number;
   hours_at_last_inspection: number;
   inspection_interval_hours?: number | null;
+  varsel_timer?: number | null;
   missions_since_inspection: number;
   inspection_interval_missions?: number | null;
+  varsel_oppdrag?: number | null;
 }): Status => {
   const dateStatus = calculateMaintenanceStatus(
     params.neste_inspeksjon,
@@ -140,12 +146,14 @@ export const calculateDroneInspectionStatus = (params: {
   const hoursSinceInspection = params.flyvetimer - params.hours_at_last_inspection;
   const hoursStatus = calculateUsageStatus(
     hoursSinceInspection,
-    params.inspection_interval_hours
+    params.inspection_interval_hours,
+    params.varsel_timer
   );
 
   const missionsStatus = calculateUsageStatus(
     params.missions_since_inspection,
-    params.inspection_interval_missions
+    params.inspection_interval_missions,
+    params.varsel_oppdrag
   );
 
   return [dateStatus, hoursStatus, missionsStatus].reduce(
@@ -170,8 +178,10 @@ interface DroneMaintenanceItem extends MaintenanceItem {
   flyvetimer?: number;
   hours_at_last_inspection?: number;
   inspection_interval_hours?: number | null;
+  varsel_timer?: number | null;
   missions_since_inspection?: number;
   inspection_interval_missions?: number | null;
+  varsel_oppdrag?: number | null;
 }
 
 /**
@@ -197,8 +207,10 @@ export const calculateDroneAggregatedStatus = (
     flyvetimer: drone.flyvetimer ?? 0,
     hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
     inspection_interval_hours: drone.inspection_interval_hours,
+    varsel_timer: drone.varsel_timer,
     missions_since_inspection: drone.missions_since_inspection ?? 0,
     inspection_interval_missions: drone.inspection_interval_missions,
+    varsel_oppdrag: drone.varsel_oppdrag,
   });
   worstPriority = STATUS_PRIORITY[droneStatus];
   

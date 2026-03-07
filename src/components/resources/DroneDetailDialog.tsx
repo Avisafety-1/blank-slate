@@ -46,6 +46,8 @@ interface Drone {
   hours_at_last_inspection: number;
   missions_at_last_inspection: number;
   varsel_dager: number | null;
+  varsel_timer: number | null;
+  varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
 }
 
@@ -107,6 +109,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     inspection_interval_hours: "",
     inspection_interval_missions: "",
     varsel_dager: "14",
+    varsel_timer: "",
+    varsel_oppdrag: "",
     sjekkliste_id: "",
   });
 
@@ -164,6 +168,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         inspection_interval_hours: drone.inspection_interval_hours !== null ? String(drone.inspection_interval_hours) : "",
         inspection_interval_missions: drone.inspection_interval_missions !== null ? String(drone.inspection_interval_missions) : "",
         varsel_dager: drone.varsel_dager !== null ? String(drone.varsel_dager) : "14",
+        varsel_timer: drone.varsel_timer !== null ? String(drone.varsel_timer) : "",
+        varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
         sjekkliste_id: drone.sjekkliste_id || "",
       });
       setSelectedChecklistId(drone.sjekkliste_id || "");
@@ -500,6 +506,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
           inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
           varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
+          varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
+          varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
         })
         .eq("id", drone.id);
@@ -548,8 +556,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       flyvetimer: drone.flyvetimer,
       hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
       inspection_interval_hours: drone.inspection_interval_hours,
+      varsel_timer: drone.varsel_timer,
       missions_since_inspection: missionsSinceInspection,
       inspection_interval_missions: drone.inspection_interval_missions,
+      varsel_oppdrag: drone.varsel_oppdrag,
     },
     accessories,
     linkedEquipmentData
@@ -795,7 +805,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         const hoursSince = drone.flyvetimer - (drone.hours_at_last_inspection ?? 0);
                         const limit = drone.inspection_interval_hours;
                         const pct = Math.min((hoursSince / limit) * 100, 100);
-                        const status = calculateUsageStatus(hoursSince, limit);
+                        const status = calculateUsageStatus(hoursSince, limit, drone.varsel_timer);
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
@@ -817,7 +827,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {(() => {
                         const limit = drone.inspection_interval_missions;
                         const pct = Math.min((missionsSinceInspection / limit) * 100, 100);
-                        const status = calculateUsageStatus(missionsSinceInspection, limit);
+                        const status = calculateUsageStatus(missionsSinceInspection, limit, drone.varsel_oppdrag);
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
@@ -1305,7 +1315,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 mt-3">
+                <div className="grid grid-cols-3 gap-4 mt-3">
                   <div>
                     <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
                     <Input 
@@ -1314,6 +1324,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       placeholder="14"
                       value={formData.varsel_dager}
                       onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="varsel_timer">Varsel timer før gul</Label>
+                    <Input 
+                      id="varsel_timer" 
+                      type="number" 
+                      step="0.1"
+                      placeholder="f.eks. 10"
+                      value={formData.varsel_timer}
+                      onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="varsel_oppdrag">Varsel oppdrag før gul</Label>
+                    <Input 
+                      id="varsel_oppdrag" 
+                      type="number" 
+                      placeholder="f.eks. 20"
+                      value={formData.varsel_oppdrag}
+                      onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
                     />
                   </div>
                 </div>
