@@ -695,7 +695,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-24 md:mt-16 lg:mt-4 mb-4">
+                <div className="mt-24 md:mt-16 lg:mt-4 mb-4 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -704,6 +704,15 @@ export const ProfileDialog = () => {
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                     Gi tilbakemelding
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/changelog")}
+                    className="w-full sm:w-auto"
+                  >
+                    <Activity className="h-4 w-4 mr-1" />
+                    Status og endringslogg
                   </Button>
                 </div>
               )}
