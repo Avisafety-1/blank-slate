@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
   Loader2, Plus, Pencil, Trash2, Wrench, CheckCircle2,
-  Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown
+  Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown,
+  ArrowUp, ArrowDown, Minus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ interface ChangelogEntry {
   title: string;
   description: string | null;
   status: string;
+  priority: string;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -66,6 +68,12 @@ const entryStatusConfig: Record<string, { label: string; color: string; icon: Re
   implementert: { label: "Implementert", color: "bg-status-green/20 text-foreground border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
+const priorityConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  high: { label: "Høy", color: "bg-destructive/15 text-foreground border border-destructive/40", icon: <ArrowUp className="w-3 h-3" /> },
+  medium: { label: "Medium", color: "bg-status-yellow/15 text-foreground border border-status-yellow/40", icon: <Minus className="w-3 h-3" /> },
+  low: { label: "Lav", color: "bg-muted text-foreground", icon: <ArrowDown className="w-3 h-3" /> },
+};
+
 const Changelog = () => {
   const { isSuperAdmin } = useAuth();
   const { t } = useTranslation();
@@ -89,6 +97,7 @@ const Changelog = () => {
   const [formEntryDesc, setFormEntryDesc] = useState("");
   const [formEntryStatus, setFormEntryStatus] = useState("ikke_startet");
   const [formCompletedAt, setFormCompletedAt] = useState("");
+  const [formPriority, setFormPriority] = useState("medium");
   const [saving, setSaving] = useState(false);
 
   const fetchAll = async () => {
@@ -159,6 +168,7 @@ const Changelog = () => {
     setFormTitle(entry?.title || "");
     setFormEntryDesc(entry?.description || "");
     setFormEntryStatus(entry?.status || "ikke_startet");
+    setFormPriority(entry?.priority || "medium");
     setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
     setEntryDialog({ open: true, entry });
   };
@@ -168,13 +178,13 @@ const Changelog = () => {
     const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, completed_at: completedAt, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error("Feil ved lagring");
       else toast.success("Oppføring oppdatert");
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, completed_at: completedAt });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt });
       if (error) toast.error("Feil ved opprettelse");
       else toast.success("Oppføring lagt til");
     }
@@ -308,6 +318,7 @@ const Changelog = () => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           }).map((entry) => {
             const cfg = entryStatusConfig[entry.status] || entryStatusConfig.ikke_startet;
+            const pri = priorityConfig[entry.priority] || priorityConfig.medium;
             return (
               <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/50">
                 <div className="flex-1 min-w-0">
@@ -315,6 +326,9 @@ const Changelog = () => {
                     <span className="font-medium text-sm">{entry.title}</span>
                     <Badge variant="outline" className={`text-[10px] gap-1 ${cfg.color}`}>
                       {cfg.icon} {cfg.label}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[10px] gap-1 ${pri.color}`}>
+                      {pri.icon} {pri.label}
                     </Badge>
                   </div>
                   {entry.description && (
@@ -408,6 +422,17 @@ const Changelog = () => {
                   <SelectItem value="pågår">Pågår</SelectItem>
                   <SelectItem value="testing">Testing</SelectItem>
                   <SelectItem value="implementert">Implementert</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Prioritet</Label>
+              <Select value={formPriority} onValueChange={setFormPriority}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">Høy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Lav</SelectItem>
                 </SelectContent>
               </Select>
             </div>
