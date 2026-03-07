@@ -1,75 +1,44 @@
 
 
-## Ny side: `/changelog` — Driftstatus og endringslogg
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Oversikt
-En offentlig (for innloggede brukere) side som viser:
-1. **Driftsstatus-bar** øverst med integrasjonsstatus (SafeSky, DJI, Dronetag, Kartlag, ECCAIRS, m.fl.)
-2. **"Drift og vedlikehold"-banner** med spinne-ikon når vedlikehold pågår
-3. **Changelog-liste** med oppgaver/endringer, sortert nyeste først
-4. Superadmin kan opprette, redigere og slette alt. Andre brukere ser kun.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Database
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**Tabell: `changelog_systems`** — integrasjonsstatus
-```sql
-create table public.changelog_systems (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,               -- "SafeSky", "DJI", etc.
-  status text not null default 'green', -- 'green' | 'yellow' | 'red'
-  description text,                 -- Valgfri forklaring
-  sort_order int not null default 0,
-  updated_at timestamptz default now()
-);
+### Endringer
+
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-**Tabell: `changelog_entries`** — endringslogg
-```sql
-create table public.changelog_entries (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  description text,
-  status text not null default 'ikke_startet', 
-    -- 'ikke_startet' | 'pågår' | 'testing' | 'implementert'
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
 ```
 
-**Tabell: `changelog_maintenance`** — vedlikeholdsmelding
-```sql
-create table public.changelog_maintenance (
-  id uuid primary key default gen_random_uuid(),
-  active boolean not null default false,
-  message text not null default 'Drift og vedlikehold pågår',
-  updated_at timestamptz default now()
-);
-```
-
-**RLS**: Alle tabeller — SELECT for alle authenticated, INSERT/UPDATE/DELETE kun via `has_role(auth.uid(), 'superadmin')`.
-
-Forhåndspopulere `changelog_systems` med: SafeSky, DJI Cloud, Dronetag, Kartlag, ECCAIRS, E-post.
-
-### Frontend
-
-**`src/pages/Changelog.tsx`** — Ny side:
-- Bruker `useAuth()` for `isSuperAdmin`
-- Henter data fra de tre tabellene via Supabase client
-- **Topp**: Vedlikeholdsbanner (hvis aktiv) med `Loader2` spinne-ikon
-- **Statusbar**: Rad med kort, hvert system viser navn + farget sirkel (grønn/gul/rød). Superadmin kan klikke for å endre status og legge til beskrivelse
-- **Changelog-liste**: Kort/rader med tittel, beskrivelse, dato, statusbadge. Superadmin ser "Legg til", "Rediger", "Slett"-knapper
-- Statusbadges: Ikke startet (grå), Pågår (gul), Testing (blå), Implementert (grønn)
-
-**Ruting** (`App.tsx`):
-- Legg til `/changelog` som public-ish route (innenfor `AuthenticatedLayout`)
-- Import `Changelog` page
-
-**Header** (`Header.tsx`):
-- Legg til navigasjonslenke til `/changelog`
-
-### Superadmin-redigering
-Inline redigering via dialoger (Dialog-komponenter som allerede brukes i prosjektet):
-- **SystemStatusDialog**: Endre status + beskrivelse per system, legge til/fjerne systemer
-- **ChangelogEntryDialog**: Opprett/rediger oppgave med tittel, beskrivelse, status
-- **MaintenanceToggle**: Switch for å aktivere/deaktivere vedlikeholdsbanner + melding
+Ingen nye avhengigheter. Ingen databaseendringer.
 

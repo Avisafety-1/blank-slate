@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3 } from "lucide-react";
+import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,6 +139,10 @@ export const Header = () => {
                     Plattformstatistikk
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/changelog")}>
+                  <Activity className="w-4 h-4 mr-2" />
+                  Driftstatus
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/installer")}>
                    <Download className="w-4 h-4 mr-2" />
                    {t('nav.installApp', 'Installer app')}
@@ -190,6 +194,9 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
+              <Activity className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/installer")} title={t('nav.installApp', 'Installer app')}>
               <Download className="w-4 h-4" />
             </Button>
