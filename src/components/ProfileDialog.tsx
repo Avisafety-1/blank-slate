@@ -631,8 +631,10 @@ export const ProfileDialog = () => {
     return expiryDate < today;
   };
 
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+
   return (
-    <Dialog>
+    <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" title={t('profile.title')} className="relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8">
           <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -708,7 +710,7 @@ export const ProfileDialog = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate("/changelog")}
+                    onClick={() => { setProfileDialogOpen(false); navigate("/changelog"); }}
                     className="w-full sm:w-auto"
                   >
                     <Activity className="h-4 w-4 mr-1" />
