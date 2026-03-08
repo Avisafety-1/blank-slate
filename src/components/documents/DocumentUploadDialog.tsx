@@ -102,7 +102,7 @@ export const DocumentUploadDialog = ({
 
       if (uploadType === "file" && selectedFile) {
         const fileExt = selectedFile.name.split(".").pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+        const filePath = `${companyId}/${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("documents")
