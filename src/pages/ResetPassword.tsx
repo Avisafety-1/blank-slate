@@ -210,7 +210,13 @@ const ResetPassword = () => {
       );
     }
 
-    // idle — landing page
+    // idle — landing page (only shown if token_hash exists)
+    if (!tokenHash) {
+      // No token in URL — show resend form directly
+      setStage("resend");
+      return null;
+    }
+
     return (
       <Card className="bg-card/95 backdrop-blur-sm border-border/50">
         <CardHeader className="space-y-4">
