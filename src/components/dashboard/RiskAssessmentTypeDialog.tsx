@@ -6,14 +6,14 @@ interface RiskAssessmentTypeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectAI: () => void;
-  onSelectSORA: () => void;
+  onSelectManualSORA: () => void;
 }
 
 export const RiskAssessmentTypeDialog = ({
   open,
   onOpenChange,
   onSelectAI,
-  onSelectSORA,
+  onSelectManualSORA,
 }: RiskAssessmentTypeDialogProps) => {
   const { t } = useTranslation();
 
@@ -24,7 +24,7 @@ export const RiskAssessmentTypeDialog = ({
 
   const handleSelectSORA = () => {
     onOpenChange(false);
-    onSelectSORA();
+    onSelectManualSORA();
   };
 
   return (

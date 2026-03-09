@@ -18,7 +18,6 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
-import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 
 type Mission = any;
@@ -74,8 +73,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
-  const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
-  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
+  const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
@@ -124,11 +122,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     fetchLogs();
   }, [expandedMapOpen, mission?.id, mission?.flightLogs]);
 
-  // Use live data merged with prop data (live takes priority for fields like route)
   const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
 
-  // Memoize flightTracks to prevent re-creating array references on every render,
-  // which would cancel in-progress terrain elevation fetches in ExpandedMapDialog
   const memoizedFlightTracks = useMemo(() => {
     if (!flightLogs || flightLogs.length === 0) return null;
     const tracks = flightLogs
@@ -192,7 +187,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               currentStatus={currentMission.status}
               onStatusChanged={() => {
                 onMissionUpdated?.();
-                // Re-fetch live mission
                 supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
                   if (data) setLiveMission(data);
                 });
@@ -225,7 +219,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <Badge 
                 className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
                 onClick={() => {
-                  setRiskDialogShowHistory(true);
+                  setRiskDialogInitialTab('history');
                   setRiskDialogOpen(true);
                 }}
               >
@@ -245,7 +239,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 soraStatus === 'Revidert' ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30' :
                 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30'
               }`}
-              onClick={() => setSoraDialogOpen(true)}
+              onClick={() => {
+                setRiskDialogInitialTab('manual-sora');
+                setRiskDialogOpen(true);
+              }}
             >
               <ShieldCheck className="w-3 h-3 mr-1" />
               SORA: {soraStatus || 'Ikke startet'}
@@ -385,11 +382,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       onOpenChange={setRiskTypeDialogOpen}
       onSelectAI={() => {
         setRiskTypeDialogOpen(false);
+        setRiskDialogInitialTab('input');
         setRiskDialogOpen(true);
       }}
-      onSelectSORA={() => {
+      onSelectManualSORA={() => {
         setRiskTypeDialogOpen(false);
-        setSoraDialogOpen(true);
+        setRiskDialogInitialTab('manual-sora');
+        setRiskDialogOpen(true);
       }}
     />
 
@@ -397,16 +396,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       open={riskDialogOpen}
       onOpenChange={(open) => {
         setRiskDialogOpen(open);
-        if (!open) setRiskDialogShowHistory(false);
+        if (!open) {
+          setRiskDialogInitialTab('input');
+          onMissionUpdated?.();
+        }
       }}
       mission={currentMission}
-      initialTab={riskDialogShowHistory ? 'history' : 'input'}
-    />
-
-    <SoraAnalysisDialog
-      open={soraDialogOpen}
-      onOpenChange={setSoraDialogOpen}
-      missionId={currentMission.id}
+      initialTab={riskDialogInitialTab}
+      onSoraSaved={onMissionUpdated}
     />
 
     {currentMission.latitude && currentMission.longitude && (
@@ -423,6 +420,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       />
     )}
 
+    {/* Approval Confirmation */}
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -434,14 +432,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         <AlertDialogFooter>
           <AlertDialogCancel>Avbryt</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
-            const { error } = await supabase
+            await supabase
               .from('missions')
               .update({ approval_status: 'pending_approval' })
               .eq('id', currentMission.id);
-            if (!error) {
-              setLiveMission({ ...currentMission, approval_status: 'pending_approval' });
-              onMissionUpdated?.();
-              // Send email notification to approvers
+            setApprovalConfirmOpen(false);
+            onMissionUpdated?.();
+            if (companyId) {
               try {
                 await supabase.functions.invoke('send-notification-email', {
                   body: {
@@ -459,7 +456,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 console.error('Error sending approval notification:', emailError);
               }
             }
-            setApprovalConfirmOpen(false);
           }}>
             Send til godkjenning
           </AlertDialogAction>
@@ -467,37 +463,31 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       </AlertDialogContent>
     </AlertDialog>
 
+    {/* Ninox Confirmation */}
     <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-amber-500" />
-            Ninox-godkjenning påkrevd
-          </AlertDialogTitle>
+          <AlertDialogTitle>Godkjenn i Ninox?</AlertDialogTitle>
           <AlertDialogDescription>
-            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+            Bekreft at oppdraget er godkjent i Ninox.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Avbryt</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
-            const { error } = await supabase
+            await supabase
               .from('missions')
               .update({ ninox_approved: true } as any)
               .eq('id', currentMission.id);
-            if (!error) {
-              setNinoxApproved(true);
-              setLiveMission({ ...liveMission, ninox_approved: true });
-              onMissionUpdated?.();
-            }
+            setNinoxApproved(true);
             setNinoxConfirmOpen(false);
+            onMissionUpdated?.();
           }}>
-            Bekreft godkjenning
+            Godkjenn
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-
     </>
   );
 };
