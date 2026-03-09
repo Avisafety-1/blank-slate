@@ -1,44 +1,58 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Forenkle brukersletting — SET NULL i stedet for DELETE
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Nåværende `admin-delete-user` sletter all data knyttet til brukeren (droner, utstyr, oppdrag, hendelser, dokumenter, flylogg osv.). Dette er unødvendig destruktivt — dataene tilhører bedriften, ikke brukeren.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Tilnærming
+Erstatt alle DELETE-operasjoner med `UPDATE ... SET user_id/profile_id = NULL`, unntatt:
+- **user_roles** — må slettes (ingen mening uten bruker)
+- **profiles** — må slettes (1:1 med auth.users)
+- **push_subscriptions**, **map_viewer_heartbeats**, **calendar_subscriptions**, **active_flights**, **notification_preferences** — ren session/device-data, kan slettes
+- **auth.users** — slettes til slutt
 
-### Endringer
+### Komplett liste over tabeller og handling
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**SET NULL** (behold raden, fjern brukerreferansen):
+| Tabell | Kolonne |
+|--------|---------|
+| calendar_events | user_id |
+| customers | user_id |
+| dji_credentials | user_id |
+| documents | user_id |
+| drone_accessories | user_id |
+| drone_equipment_history | user_id |
+| drone_inspections | user_id |
+| drone_log_entries | user_id |
+| drone_personnel | profile_id |
+| drones | user_id |
+| dronetag_devices | user_id |
+| equipment | user_id |
+| equipment_log_entries | user_id |
+| flight_log_personnel | profile_id |
+| flight_logs | user_id |
+| incident_comments | user_id |
+| incident_eccairs_mappings | created_by |
+| incidents | user_id |
+| incidents | oppfolgingsansvarlig_id |
+| mission_personnel | profile_id |
+| mission_risk_assessments | pilot_id |
+| mission_sora | prepared_by, approved_by |
+| missions | user_id, approved_by |
+| news | user_id |
+| pending_dji_logs | user_id |
+| personnel_competencies | profile_id |
+| personnel_log_entries | profile_id, user_id |
+| profiles | approved_by |
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**DELETE** (session/bruker-spesifikk data):
+- push_subscriptions, map_viewer_heartbeats, calendar_subscriptions, active_flights, notification_preferences, user_roles, profiles
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+### Databasemigrasjon
+Noen kolonner kan ha `NOT NULL`-constraint som hindrer SET NULL. Må kjøre en migrasjon for å endre disse til nullable der det trengs (f.eks. `drones.user_id`, `flight_logs.user_id`, `missions.user_id`).
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer som endres
+1. **`supabase/functions/admin-delete-user/index.ts`** — erstatt alle delete-kall med update-set-null, behold delete kun for session-tabeller + user_roles + profiles
+2. **Database-migrasjon** — gjør relevante user_id/profile_id-kolonner nullable der de ikke allerede er det
 
