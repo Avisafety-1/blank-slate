@@ -34,7 +34,7 @@ const ResetPassword = () => {
       }
     );
 
-    // Check URL hash for errors
+    // Check URL hash for errors or recovery token
     const hash = window.location.hash;
     if (hash) {
       const params = new URLSearchParams(hash.substring(1));
@@ -46,16 +46,22 @@ const ResetPassword = () => {
         navigate("/auth");
         return;
       }
+      // Fallback: if hash contains type=recovery, treat as valid
+      const type = params.get('type');
+      if (type === 'recovery') {
+        setIsValidToken(true);
+        setCheckingToken(false);
+      }
     }
 
-    // Timeout to avoid hanging forever
+    // Timeout to avoid hanging forever (increased to 15s for slow connections)
     const timeout = setTimeout(() => {
       if (!isValidToken) {
         console.error('Token validation timeout');
         toast.error("Kunne ikke verifisere tilbakestillingslenken");
         navigate("/auth");
       }
-    }, 5000);
+    }, 15000);
 
     return () => {
       subscription.unsubscribe();

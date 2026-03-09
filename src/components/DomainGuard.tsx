@@ -20,8 +20,8 @@ export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) 
   const { user, loading } = useAuth();
   const location = useLocation();
   
-  // Check if we're on the auth page - let Auth.tsx handle its own redirects
-  const isAuthPage = location.pathname === '/auth';
+  // Check if we're on auth or reset-password page - let them handle their own redirects
+  const isAuthPage = location.pathname === '/auth' || location.pathname === '/reset-password';
 
   useEffect(() => {
     // Skip domain checks in development
