@@ -147,14 +147,6 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         initialSelectedCustomer={props.initialSelectedCustomer}
       />
 
-      {/* SORA Analysis Dialog */}
-      <SoraAnalysisDialog
-        open={props.soraDialogOpen}
-        onOpenChange={props.setSoraDialogOpen}
-        missionId={props.soraEditingMissionId || undefined}
-        onSaved={props.onSoraSaved}
-      />
-
       {/* Incident Detail Dialog */}
       <IncidentDetailDialog
         open={props.incidentDialogOpen}
