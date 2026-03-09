@@ -225,7 +225,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -237,7 +237,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -249,7 +249,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -590,7 +590,7 @@ export type Database = {
           id: string
           last_sync_at: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -600,7 +600,7 @@ export type Database = {
           id?: string
           last_sync_at?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -610,7 +610,7 @@ export type Database = {
           id?: string
           last_sync_at?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -692,7 +692,7 @@ export type Database = {
           neste_vedlikehold: string | null
           sist_vedlikehold: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           varsel_dager: number | null
           vedlikeholdsintervall_dager: number | null
         }
@@ -705,7 +705,7 @@ export type Database = {
           neste_vedlikehold?: string | null
           sist_vedlikehold?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           varsel_dager?: number | null
           vedlikeholdsintervall_dager?: number | null
         }
@@ -718,7 +718,7 @@ export type Database = {
           neste_vedlikehold?: string | null
           sist_vedlikehold?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           varsel_dager?: number | null
           vedlikeholdsintervall_dager?: number | null
         }
@@ -785,7 +785,7 @@ export type Database = {
           item_id: string | null
           item_name: string
           item_type: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           action: string
@@ -796,7 +796,7 @@ export type Database = {
           item_id?: string | null
           item_name: string
           item_type: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           action?: string
@@ -807,7 +807,7 @@ export type Database = {
           item_id?: string | null
           item_name?: string
           item_type?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -835,7 +835,7 @@ export type Database = {
           inspection_date: string
           inspection_type: string | null
           notes: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -845,7 +845,7 @@ export type Database = {
           inspection_date: string
           inspection_type?: string | null
           notes?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -855,7 +855,7 @@ export type Database = {
           inspection_date?: string
           inspection_type?: string | null
           notes?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -885,7 +885,7 @@ export type Database = {
           id: string
           image_url: string | null
           title: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -897,7 +897,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           title: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -909,7 +909,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           title?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1050,7 +1050,7 @@ export type Database = {
           sjekkliste_id: string | null
           status: string
           tilgjengelig: boolean
-          user_id: string
+          user_id: string | null
           varsel_dager: number | null
           varsel_oppdrag: number | null
           varsel_timer: number | null
@@ -1081,7 +1081,7 @@ export type Database = {
           sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
-          user_id: string
+          user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
           varsel_timer?: number | null
@@ -1112,7 +1112,7 @@ export type Database = {
           sjekkliste_id?: string | null
           status?: string
           tilgjengelig?: boolean
-          user_id?: string
+          user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
           varsel_timer?: number | null
@@ -1532,7 +1532,7 @@ export type Database = {
           status: string
           tilgjengelig: boolean
           type: string
-          user_id: string
+          user_id: string | null
           varsel_dager: number | null
           varsel_oppdrag: number | null
           varsel_timer: number | null
@@ -1561,7 +1561,7 @@ export type Database = {
           status?: string
           tilgjengelig?: boolean
           type: string
-          user_id: string
+          user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
           varsel_timer?: number | null
@@ -1590,7 +1590,7 @@ export type Database = {
           status?: string
           tilgjengelig?: boolean
           type?: string
-          user_id?: string
+          user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
           varsel_timer?: number | null
@@ -1626,7 +1626,7 @@ export type Database = {
           id: string
           image_url: string | null
           title: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -1638,7 +1638,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           title: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -1650,7 +1650,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           title?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1824,7 +1824,7 @@ export type Database = {
           source: string | null
           start_time_utc: string | null
           total_distance_m: number | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           aircraft_serial?: string | null
@@ -1863,7 +1863,7 @@ export type Database = {
           source?: string | null
           start_time_utc?: string | null
           total_distance_m?: number | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           aircraft_serial?: string | null
@@ -1902,7 +1902,7 @@ export type Database = {
           source?: string | null
           start_time_utc?: string | null
           total_distance_m?: number | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1969,7 +1969,7 @@ export type Database = {
           created_by_name: string
           id: string
           incident_id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           comment_text: string
@@ -1977,7 +1977,7 @@ export type Database = {
           created_by_name: string
           id?: string
           incident_id: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           comment_text?: string
@@ -1985,7 +1985,7 @@ export type Database = {
           created_by_name?: string
           id?: string
           incident_id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2591,7 +2591,7 @@ export type Database = {
           submitted_for_approval_at: string | null
           tidspunkt: string
           tittel: string
-          user_id: string
+          user_id: string | null
           weather_data_snapshot: Json | null
         }
         Insert: {
@@ -2620,7 +2620,7 @@ export type Database = {
           submitted_for_approval_at?: string | null
           tidspunkt: string
           tittel: string
-          user_id: string
+          user_id?: string | null
           weather_data_snapshot?: Json | null
         }
         Update: {
@@ -2649,7 +2649,7 @@ export type Database = {
           submitted_for_approval_at?: string | null
           tidspunkt?: string
           tittel?: string
-          user_id?: string
+          user_id?: string | null
           weather_data_snapshot?: Json | null
         }
         Relationships: [
@@ -2681,7 +2681,7 @@ export type Database = {
           publisert: string
           synlighet: string
           tittel: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -2694,7 +2694,7 @@ export type Database = {
           publisert?: string
           synlighet?: string
           tittel: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -2707,7 +2707,7 @@ export type Database = {
           publisert?: string
           synlighet?: string
           tittel?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

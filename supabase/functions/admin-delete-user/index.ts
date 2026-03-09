@@ -30,6 +30,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // ---- Authenticate requester ----
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -52,6 +53,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // ---- Parse body ----
     const body = (await req.json().catch(() => ({}))) as Body;
     const userIdFromBody = typeof body.user_id === "string" ? body.user_id.trim() : "";
     const emailFromBody = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
@@ -63,8 +65,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Authorization: allow superadmin to delete anyone.
-    // Allow admin to delete users within their own company (only when user_id is provided).
+    // ---- Authorization: superadmin or admin ----
     const { data: requesterRoleRows, error: requesterRoleErr } = await admin
       .from("user_roles")
       .select("role")
@@ -89,7 +90,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Resolve target user id
+    // ---- Resolve target user id ----
     let targetUserId = userIdFromBody;
 
     if (!targetUserId && emailFromBody) {
@@ -100,21 +101,15 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Try profiles first
-      const { data: prof, error: profErr } = await admin
+      const { data: prof } = await admin
         .from("profiles")
         .select("id")
         .eq("email", emailFromBody)
         .maybeSingle();
 
-      if (profErr) {
-        console.error("Failed lookup profile by email", profErr);
-      }
-
       if (prof?.id) {
         targetUserId = prof.id;
       } else {
-        // Fallback: search auth users
         const { data: listData, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000, page: 1 });
         if (listErr) {
           console.error("admin.listUsers failed", listErr);
@@ -141,28 +136,22 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // If requester is only admin (not superadmin), enforce same-company deletion
+    // ---- If requester is only admin (not superadmin), enforce same-company ----
     if (!isSuperadmin) {
-      const { data: requesterProfile, error: requesterProfileErr } = await admin
+      const { data: requesterProfile } = await admin
         .from("profiles")
         .select("company_id")
         .eq("id", requester.id)
         .maybeSingle();
 
-      const { data: targetProfile, error: targetProfileErr } = await admin
+      const { data: targetProfile } = await admin
         .from("profiles")
         .select("company_id")
         .eq("id", targetUserId)
         .maybeSingle();
 
-      if (requesterProfileErr || targetProfileErr || !requesterProfile?.company_id || !targetProfile?.company_id) {
-        return new Response(
-          JSON.stringify({ error: "Forbidden" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
-        );
-      }
-
-      if (requesterProfile.company_id !== targetProfile.company_id) {
+      if (!requesterProfile?.company_id || !targetProfile?.company_id ||
+          requesterProfile.company_id !== targetProfile.company_id) {
         return new Response(
           JSON.stringify({ error: "Forbidden" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
@@ -170,90 +159,72 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log("admin-delete-user: deleting", { targetUserId, requestedBy: requester.id, email: emailFromBody || undefined });
+    console.log("admin-delete-user: deleting", { targetUserId, requestedBy: requester.id });
 
-    // ---- Delete/nullify data in public schema (best effort) ----
+    // ============================================================
+    // SET NULL — preserve company data, just remove user reference
+    // ============================================================
+    const nullifyErrors: string[] = [];
 
-    // 1. Tables referencing profiles that the original code missed
-    await admin.from("mission_risk_assessments").delete().eq("pilot_id", targetUserId);
-    await admin.from("mission_personnel").delete().eq("profile_id", targetUserId);
-    await admin.from("personnel_competencies").delete().eq("profile_id", targetUserId);
-    await admin.from("flight_log_personnel").delete().eq("profile_id", targetUserId);
-    await admin.from("drone_personnel").delete().eq("profile_id", targetUserId);
+    const setNull = async (table: string, column: string) => {
+      const { error } = await admin.from(table).update({ [column]: null }).eq(column, targetUserId);
+      if (error) {
+        console.error(`SET NULL failed: ${table}.${column}`, error.message);
+        nullifyErrors.push(`${table}.${column}: ${error.message}`);
+      }
+    };
 
-    // 2. Tables referencing auth.users
-    await admin.from("incident_comments").delete().eq("user_id", targetUserId);
-    await admin.from("push_subscriptions").delete().eq("user_id", targetUserId);
-    await admin.from("map_viewer_heartbeats").delete().eq("user_id", targetUserId);
-    await admin.from("calendar_subscriptions").delete().eq("user_id", targetUserId);
+    // Run all SET NULL operations (order doesn't matter)
+    await Promise.all([
+      setNull("calendar_events", "user_id"),
+      setNull("customers", "user_id"),
+      setNull("dji_credentials", "user_id"),
+      setNull("documents", "user_id"),
+      setNull("drone_accessories", "user_id"),
+      setNull("drone_equipment_history", "user_id"),
+      setNull("drone_inspections", "user_id"),
+      setNull("drone_log_entries", "user_id"),
+      setNull("drone_personnel", "profile_id"),
+      setNull("drones", "user_id"),
+      setNull("dronetag_devices", "user_id"),
+      setNull("equipment", "user_id"),
+      setNull("equipment_log_entries", "user_id"),
+      setNull("flight_log_personnel", "profile_id"),
+      setNull("flight_logs", "user_id"),
+      setNull("incident_comments", "user_id"),
+      setNull("incidents", "user_id"),
+      setNull("incidents", "oppfolgingsansvarlig_id"),
+      setNull("mission_personnel", "profile_id"),
+      setNull("mission_risk_assessments", "pilot_id"),
+      setNull("mission_sora", "prepared_by"),
+      setNull("mission_sora", "approved_by"),
+      setNull("missions", "user_id"),
+      setNull("missions", "approved_by"),
+      setNull("news", "user_id"),
+      setNull("personnel_competencies", "profile_id"),
+      setNull("profiles", "approved_by"),
+    ]);
 
-    // 3. SET NULL on columns where we want to keep the row but remove the reference
-    await admin.from("mission_sora").update({ prepared_by: null }).eq("prepared_by", targetUserId);
-    await admin.from("mission_sora").update({ approved_by: null }).eq("approved_by", targetUserId);
-    await admin.from("missions").update({ approved_by: null }).eq("approved_by", targetUserId);
-    await admin.from("incidents").update({ oppfolgingsansvarlig_id: null }).eq("oppfolgingsansvarlig_id", targetUserId);
-    await admin.from("profiles").update({ approved_by: null }).eq("approved_by", targetUserId);
+    // Best-effort: tables that may or may not exist
+    await Promise.all([
+      setNull("pending_dji_logs", "user_id"),
+      setNull("personnel_log_entries", "profile_id"),
+      setNull("personnel_log_entries", "user_id"),
+      setNull("incident_eccairs_mappings", "created_by"),
+    ]);
 
-    // ---- Original cleanup ----
+    // ============================================================
+    // DELETE — session/device-only data + identity tables
+    // ============================================================
+    await Promise.all([
+      admin.from("push_subscriptions").delete().eq("user_id", targetUserId),
+      admin.from("map_viewer_heartbeats").delete().eq("user_id", targetUserId),
+      admin.from("calendar_subscriptions").delete().eq("user_id", targetUserId),
+      admin.from("active_flights").delete().eq("profile_id", targetUserId),
+      admin.from("notification_preferences").delete().eq("user_id", targetUserId),
+    ]);
 
-    // Flight logs + join tables
-    const { data: flightLogs } = await admin
-      .from("flight_logs")
-      .select("id")
-      .eq("user_id", targetUserId);
-
-    const flightLogIds = (flightLogs ?? []).map((r: { id: string }) => r.id);
-
-    if (flightLogIds.length) {
-      await admin.from("flight_log_equipment").delete().in("flight_log_id", flightLogIds);
-      await admin.from("flight_log_personnel").delete().in("flight_log_id", flightLogIds);
-      await admin.from("flight_logs").delete().eq("user_id", targetUserId);
-    }
-
-    // Drones + dependent tables
-    const { data: drones } = await admin
-      .from("drones")
-      .select("id")
-      .eq("user_id", targetUserId);
-
-    const droneIds = (drones ?? []).map((r: { id: string }) => r.id);
-
-    if (droneIds.length) {
-      await admin.from("drone_equipment").delete().in("drone_id", droneIds);
-      await admin.from("drone_personnel").delete().in("drone_id", droneIds);
-      await admin.from("drone_accessories").delete().in("drone_id", droneIds);
-      await admin.from("drone_inspections").delete().in("drone_id", droneIds);
-      await admin.from("drone_log_entries").delete().in("drone_id", droneIds);
-      await admin.from("drones").delete().eq("user_id", targetUserId);
-    }
-
-    // Equipment + dependent tables
-    const { data: equipments } = await admin
-      .from("equipment")
-      .select("id")
-      .eq("user_id", targetUserId);
-
-    const equipmentIds = (equipments ?? []).map((r: { id: string }) => r.id);
-
-    if (equipmentIds.length) {
-      await admin.from("drone_equipment").delete().in("equipment_id", equipmentIds);
-      await admin.from("equipment_log_entries").delete().in("equipment_id", equipmentIds);
-      await admin.from("equipment").delete().eq("user_id", targetUserId);
-    }
-
-    // Other user-owned tables
-    await admin.from("active_flights").delete().eq("profile_id", targetUserId);
-    await admin.from("calendar_events").delete().eq("user_id", targetUserId);
-    // Keep customers but remove user reference (customers belong to the company, not the user)
-    await admin.from("customers").update({ user_id: null }).eq("user_id", targetUserId);
-    await admin.from("documents").delete().eq("user_id", targetUserId);
-    await admin.from("incidents").delete().eq("user_id", targetUserId);
-    await admin.from("missions").delete().eq("user_id", targetUserId);
-    await admin.from("news").delete().eq("user_id", targetUserId);
-    await admin.from("notification_preferences").delete().eq("user_id", targetUserId);
-    await admin.from("dronetag_devices").delete().eq("user_id", targetUserId);
-
-    // roles + profile
+    // Roles + profile (must be before auth delete)
     await admin.from("user_roles").delete().eq("user_id", targetUserId);
     await admin.from("profiles").delete().eq("id", targetUserId);
 
@@ -262,15 +233,15 @@ serve(async (req: Request): Promise<Response> => {
     if (delAuthErr) {
       console.error("auth.admin.deleteUser failed", delAuthErr);
       return new Response(
-        JSON.stringify({ error: "Failed to delete auth user" }),
+        JSON.stringify({ error: "Failed to delete auth user", details: delAuthErr.message, nullifyErrors }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
       );
     }
 
-    console.log("admin-delete-user: deleted", { targetUserId });
+    console.log("admin-delete-user: deleted", { targetUserId, nullifyErrors });
 
     return new Response(
-      JSON.stringify({ success: true, user_id: targetUserId }),
+      JSON.stringify({ success: true, user_id: targetUserId, warnings: nullifyErrors }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     );
   } catch (error: unknown) {
