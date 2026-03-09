@@ -1,44 +1,38 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Fjern «Slett bruker via e-post» og legg til «Inviter ny bruker via e-post»
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Tilnærming
+Brukeren har helt rett — invitasjonen skal **ikke** opprette en bruker i systemet. Den skal bare sende en e-post med instruksjoner om hvordan mottakeren kan registrere seg selv, inkludert selskapets registreringskode og en lenke til appen.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**1. `src/pages/Admin.tsx`**
+- Fjern «Slett bruker via e-post»-seksjonen (linje 645-694) og tilhørende state (`deleteEmail`, `deletingByEmail`)
+- Legg til ny Card rett under registreringskode-seksjonen: «Inviter ny bruker via e-post»
+  - Input for e-postadresse + «Send invitasjon»-knapp
+  - Synlig for admin og superadmin
+  - Kaller ny edge-funksjon `invite-user` med `{ email, companyName, registrationCode }`
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**2. Ny edge-funksjon `supabase/functions/invite-user/index.ts`**
+- Mottar `{ email, companyName, registrationCode }` fra klienten
+- Verifiserer at innlogget bruker har admin-rolle
+- Henter selskapets SMTP-innstillinger (same pattern som andre e-postfunksjoner via `email-config.ts`)
+- Sender e-post med ny mal `user_invite` — inneholder:
+  - Velkomstmelding fra selskapet
+  - Registreringskoden
+  - Lenke til app.avisafe.no for å registrere seg
+  - Instruksjoner for registrering
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**3. `supabase/functions/_shared/template-utils.ts`**
+- Legg til ny default template `user_invite` med variabler: `{{company_name}}`, `{{registration_code}}`, `{{app_url}}`
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+**4. `supabase/config.toml`**
+- Registrer `[functions.invite-user]` med `verify_jwt = false`
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer som endres/opprettes
+1. `src/pages/Admin.tsx` — fjern slett-seksjon, legg til invitasjonsseksjon
+2. `supabase/functions/invite-user/index.ts` — ny edge-funksjon (kun send e-post)
+3. `supabase/functions/_shared/template-utils.ts` — ny `user_invite` template
+4. `supabase/config.toml` — registrer ny funksjon
 
