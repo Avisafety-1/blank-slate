@@ -35,11 +35,6 @@ export interface OppdragDialogsProps {
   onMissionUpdated: () => void;
   editingMission: Mission | null;
 
-  // SORA dialog
-  soraDialogOpen: boolean;
-  setSoraDialogOpen: (open: boolean) => void;
-  soraEditingMissionId: string | null;
-  onSoraSaved: () => void;
 
   // Incident detail
   incidentDialogOpen: boolean;
