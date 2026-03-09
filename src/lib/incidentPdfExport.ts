@@ -124,6 +124,8 @@ export const exportIncidentPDF = async ({
           0: { cellWidth: 35 },
           1: { cellWidth: 35 },
           2: { cellWidth: 'auto' }
+        }
+      });
     }
 
     // Vedlagt bilde
@@ -133,7 +135,6 @@ export const exportIncidentPDF = async ({
         const blob = await response.blob();
         const imgData = await blobToBase64(blob);
 
-        // Load image to get dimensions
         const img = new Image();
         await new Promise<void>((resolve, reject) => {
           img.onload = () => resolve();
@@ -145,7 +146,6 @@ export const exportIncidentPDF = async ({
         const ratio = maxWidth / img.width;
         const imgHeight = img.height * ratio;
 
-        // Get current Y position after autoTable
         const finalY = (doc as any).lastAutoTable?.finalY;
         if (finalY) yPos = finalY + 10;
 
@@ -157,8 +157,6 @@ export const exportIncidentPDF = async ({
       } catch (imgErr) {
         console.warn("Could not add image to PDF:", imgErr);
       }
-    }
-      });
     }
 
     // Generer filnavn og blob
