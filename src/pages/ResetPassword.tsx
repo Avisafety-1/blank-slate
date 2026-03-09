@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ShieldCheck, Send, ArrowLeft } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
-import avisafeLogo from "@/assets/avisafe-logo.png";
+
+const avisafeLogoText = "/avisafe-logo-text.png";
 
 type Stage = "idle" | "verifying" | "verified" | "resend";
 
@@ -143,7 +144,7 @@ const ResetPassword = () => {
         <Card className="bg-card/95 backdrop-blur-sm border-border/50">
           <CardHeader className="space-y-4">
             <div className="flex items-center justify-center">
-              <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
+              <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
               <CardTitle className="text-xl">Sett nytt passord</CardTitle>
@@ -179,7 +180,7 @@ const ResetPassword = () => {
         <Card className="bg-card/95 backdrop-blur-sm border-border/50">
           <CardHeader className="space-y-4">
             <div className="flex items-center justify-center">
-              <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
+              <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
               <CardTitle className="text-xl">Send ny tilbakestillingslenke</CardTitle>
@@ -227,7 +228,7 @@ const ResetPassword = () => {
       <Card className="bg-card/95 backdrop-blur-sm border-border/50">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-center">
-            <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
+            <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
           </div>
           <div className="text-center">
             <CardTitle className="text-xl">Tilbakestill passord</CardTitle>
