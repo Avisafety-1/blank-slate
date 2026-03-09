@@ -272,7 +272,8 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             }
           }}
           mission={props.riskAssessmentMission}
-          initialTab={props.riskDialogShowHistory ? 'history' : 'input'}
+          initialTab={props.riskDialogShowHistory ? 'history' : props.riskDialogInitialTab}
+          onSoraSaved={props.fetchMissions}
         />
       )}
 
