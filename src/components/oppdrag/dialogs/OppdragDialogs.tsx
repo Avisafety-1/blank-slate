@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDialog";
-import { SoraAnalysisDialog } from "@/components/dashboard/SoraAnalysisDialog";
+
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
@@ -35,11 +35,6 @@ export interface OppdragDialogsProps {
   onMissionUpdated: () => void;
   editingMission: Mission | null;
 
-  // SORA dialog
-  soraDialogOpen: boolean;
-  setSoraDialogOpen: (open: boolean) => void;
-  soraEditingMissionId: string | null;
-  onSoraSaved: () => void;
 
   // Incident detail
   incidentDialogOpen: boolean;
@@ -75,7 +70,8 @@ export interface OppdragDialogsProps {
   riskTypeDialogOpen: boolean;
   setRiskTypeDialogOpen: (open: boolean) => void;
   onSelectAI: () => void;
-  onSelectSORA: () => void;
+  onSelectManualSORA: () => void;
+  riskDialogInitialTab: 'input' | 'result' | 'history' | 'sora' | 'manual-sora';
 
   // Risk assessment
   riskDialogOpen: boolean;
@@ -149,14 +145,6 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         initialSelectedEquipment={props.initialSelectedEquipment}
         initialSelectedDrones={props.initialSelectedDrones}
         initialSelectedCustomer={props.initialSelectedCustomer}
-      />
-
-      {/* SORA Analysis Dialog */}
-      <SoraAnalysisDialog
-        open={props.soraDialogOpen}
-        onOpenChange={props.setSoraDialogOpen}
-        missionId={props.soraEditingMissionId || undefined}
-        onSaved={props.onSoraSaved}
       />
 
       {/* Incident Detail Dialog */}
@@ -268,7 +256,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         open={props.riskTypeDialogOpen}
         onOpenChange={props.setRiskTypeDialogOpen}
         onSelectAI={props.onSelectAI}
-        onSelectSORA={props.onSelectSORA}
+        onSelectManualSORA={props.onSelectManualSORA}
       />
 
       {/* AI Risk Assessment Dialog */}
@@ -284,7 +272,8 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             }
           }}
           mission={props.riskAssessmentMission}
-          initialTab={props.riskDialogShowHistory ? 'history' : 'input'}
+          initialTab={props.riskDialogShowHistory ? 'history' : props.riskDialogInitialTab}
+          onSoraSaved={props.fetchMissions}
         />
       )}
 

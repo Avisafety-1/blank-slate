@@ -7,7 +7,6 @@ import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AddMissionDialog } from "./AddMissionDialog";
-import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,31 +36,29 @@ export const MissionsSection = () => {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
-  const [selectedSoraMissionId, setSelectedSoraMissionId] = useState<string | undefined>(undefined);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
   const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
   
-  // New states for risk assessment type dialog
+  // Risk assessment states
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
-  const [aiRiskDialogOpen, setAIRiskDialogOpen] = useState(false);
+  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
+  // For SORA badge click - open RiskAssessmentDialog with manual-sora tab
+  const [soraMissionForDialog, setSoraMissionForDialog] = useState<Mission | null>(null);
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   useEffect(() => {
-    // Auto-complete old missions on load (skip if offline)
     if (navigator.onLine) {
       supabase.functions.invoke('auto-complete-missions').catch(console.error);
     }
-    
     fetchMissions();
   }, [companyId]);
 
-  // Real-time via shared dashboard channel
   useEffect(() => {
     const unregister = registerMain('missions', () => {
       if (!navigator.onLine) return;
@@ -71,16 +68,12 @@ export const MissionsSection = () => {
   }, [registerMain]);
 
   const fetchMissions = async () => {
-    // 1. Load cache first
     if (companyId) {
       const cached = getCachedData<any[]>(`offline_dashboard_missions_${companyId}`);
       if (cached) setMissions(cached);
     }
-
-    // 2. Skip network if offline
     if (!navigator.onLine) return;
 
-    // 3. Fetch fresh data
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
@@ -152,7 +145,6 @@ export const MissionsSection = () => {
     if (error) {
       console.error("Error fetching mission AI risks:", error);
     } else if (data) {
-      // Get the latest assessment for each mission
       const riskMap: Record<string, MissionAIRisk> = {};
       data.forEach((risk: any) => {
         if (!riskMap[risk.mission_id]) {
@@ -167,7 +159,6 @@ export const MissionsSection = () => {
   };
 
   const handleMissionClick = (mission: Mission) => {
-    // Include AI risk data in the mission object
     const missionWithRisk = {
       ...mission,
       aiRisk: missionAIRisks[mission.id] || null
@@ -176,10 +167,11 @@ export const MissionsSection = () => {
     setDialogOpen(true);
   };
 
-  const handleSoraClick = (missionId: string, e: React.MouseEvent) => {
+  const handleSoraClick = (mission: Mission, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedSoraMissionId(missionId);
-    setSoraDialogOpen(true);
+    setSoraMissionForDialog(mission);
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleNewRiskAssessment = () => {
@@ -187,19 +179,16 @@ export const MissionsSection = () => {
   };
 
   const handleSelectAI = () => {
-    setAIRiskDialogOpen(true);
+    setRiskDialogInitialTab('input');
+    setRiskDialogOpen(true);
   };
 
-  const handleSelectSORA = () => {
-    setSelectedSoraMissionId(undefined);
-    setSoraDialogOpen(true);
+  const handleSelectManualSORA = () => {
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleRiskAssessmentSaved = () => {
-    fetchMissions();
-  };
-
-  const handleSoraSaved = () => {
     fetchMissions();
   };
 
@@ -290,7 +279,7 @@ export const MissionsSection = () => {
                       );
                     })()}
                     <Badge 
-                      onClick={(e) => handleSoraClick(mission.id, e)}
+                      onClick={(e) => handleSoraClick(mission, e)}
                       className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
                     >
                       {missionSoras[mission.id]?.sora_status 
@@ -303,7 +292,8 @@ export const MissionsSection = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedAIRiskMission(mission);
-                          setAIRiskDialogOpen(true);
+                          setRiskDialogInitialTab('history');
+                          setRiskDialogOpen(true);
                         }}
                       >
                         <Brain className="w-3 h-3 mr-1" />
@@ -348,31 +338,26 @@ export const MissionsSection = () => {
         onMissionAdded={fetchMissions}
       />
       
-      <SoraAnalysisDialog
-        open={soraDialogOpen}
-        onOpenChange={setSoraDialogOpen}
-        missionId={selectedSoraMissionId}
-        onSaved={handleSoraSaved}
-      />
-      
       <RiskAssessmentTypeDialog
         open={riskTypeDialogOpen}
         onOpenChange={setRiskTypeDialogOpen}
         onSelectAI={handleSelectAI}
-        onSelectSORA={handleSelectSORA}
+        onSelectManualSORA={handleSelectManualSORA}
       />
       
       <RiskAssessmentDialog
-        open={aiRiskDialogOpen}
+        open={riskDialogOpen}
         onOpenChange={(open) => {
-          setAIRiskDialogOpen(open);
+          setRiskDialogOpen(open);
           if (!open) {
             setSelectedAIRiskMission(null);
+            setSoraMissionForDialog(null);
             handleRiskAssessmentSaved();
           }
         }}
-        mission={selectedAIRiskMission}
-        initialTab="history"
+        mission={selectedAIRiskMission || soraMissionForDialog}
+        initialTab={riskDialogInitialTab}
+        onSoraSaved={fetchMissions}
       />
 
       <AlertDialog open={!!approvalConfirmMissionId} onOpenChange={(open) => !open && setApprovalConfirmMissionId(null)}>
@@ -394,7 +379,6 @@ export const MissionsSection = () => {
                 .eq('id', approvalConfirmMissionId);
               setApprovalConfirmMissionId(null);
               fetchMissions();
-              // Send email notification to approvers
               if (missionToApprove && companyId) {
                 try {
                   await supabase.functions.invoke('send-notification-email', {

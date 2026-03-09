@@ -30,8 +30,6 @@ const Oppdrag = () => {
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
-  const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [expandedMapMission, setExpandedMapMission] = useState<Mission | null>(null);
@@ -41,7 +39,7 @@ const Oppdrag = () => {
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskAssessmentMission, setRiskAssessmentMission] = useState<Mission | null>(null);
-  const [riskDialogShowHistory, setRiskDialogShowHistory] = useState(false);
+  const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [pdfSections, setPdfSections] = useState<PdfSections>(DEFAULT_PDF_SECTIONS);
@@ -170,14 +168,14 @@ const Oppdrag = () => {
   };
 
   const handleEditSora = (missionId: string) => {
-    setSoraEditingMissionId(missionId);
-    setSoraDialogOpen(true);
+    const m = data.missions.find((mi: any) => mi.id === missionId);
+    setRiskAssessmentMission(m || null);
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleSoraSaved = () => {
     data.fetchMissions();
-    setSoraDialogOpen(false);
-    setSoraEditingMissionId(null);
   };
 
   const handleNewRiskAssessment = (mission: Mission) => {
@@ -187,15 +185,14 @@ const Oppdrag = () => {
 
   const handleSelectAI = () => {
     setRiskTypeDialogOpen(false);
+    setRiskDialogInitialTab('input');
     setRiskDialogOpen(true);
   };
 
-  const handleSelectSORA = () => {
+  const handleSelectManualSORA = () => {
     setRiskTypeDialogOpen(false);
-    if (riskAssessmentMission) {
-      setSoraEditingMissionId(riskAssessmentMission.id);
-      setSoraDialogOpen(true);
-    }
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleExportPdfClick = (mission: Mission) => {
@@ -322,7 +319,7 @@ const Oppdrag = () => {
                     fetchMissions={data.fetchMissions}
                     onRiskBadgeClick={(m) => {
                       setRiskAssessmentMission(m);
-                      setRiskDialogShowHistory(true);
+                      setRiskDialogInitialTab('history');
                       setRiskDialogOpen(true);
                     }}
                   />
@@ -352,10 +349,7 @@ const Oppdrag = () => {
           setEditDialogOpen={setEditDialogOpen}
           onMissionUpdated={handleMissionUpdated}
           editingMission={editingMission}
-          soraDialogOpen={soraDialogOpen}
-          setSoraDialogOpen={setSoraDialogOpen}
-          soraEditingMissionId={soraEditingMissionId}
-          onSoraSaved={handleSoraSaved}
+          
           incidentDialogOpen={incidentDialogOpen}
           setIncidentDialogOpen={setIncidentDialogOpen}
           selectedIncident={selectedIncident}
@@ -385,13 +379,14 @@ const Oppdrag = () => {
           riskTypeDialogOpen={riskTypeDialogOpen}
           setRiskTypeDialogOpen={setRiskTypeDialogOpen}
           onSelectAI={handleSelectAI}
-          onSelectSORA={handleSelectSORA}
+          onSelectManualSORA={handleSelectManualSORA}
+          riskDialogInitialTab={riskDialogInitialTab}
           riskDialogOpen={riskDialogOpen}
           setRiskDialogOpen={setRiskDialogOpen}
           riskAssessmentMission={riskAssessmentMission}
           setRiskAssessmentMission={setRiskAssessmentMission}
-          riskDialogShowHistory={riskDialogShowHistory}
-          setRiskDialogShowHistory={setRiskDialogShowHistory}
+          riskDialogShowHistory={false}
+          setRiskDialogShowHistory={() => {}}
           exportPdfDialogOpen={exportPdfDialogOpen}
           setExportPdfDialogOpen={setExportPdfDialogOpen}
           exportPdfMission={exportPdfMission}

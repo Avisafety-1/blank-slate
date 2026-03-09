@@ -5,15 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3 } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText } from "lucide-react";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
@@ -26,7 +29,8 @@ interface RiskAssessmentDialogProps {
   onOpenChange: (open: boolean) => void;
   mission?: any;
   droneId?: string;
-  initialTab?: 'input' | 'result' | 'history' | 'sora';
+  initialTab?: 'input' | 'result' | 'history' | 'sora' | 'manual-sora';
+  onSoraSaved?: () => void;
 }
 
 interface PilotInputs {
@@ -51,9 +55,9 @@ interface Assessment {
   sora_output?: any;
 }
 
-export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input' }: RiskAssessmentDialogProps) => {
+export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input', onSoraSaved }: RiskAssessmentDialogProps) => {
   const { t } = useTranslation();
-  const { companyId } = useAuth();
+  const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
@@ -69,6 +73,29 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
   const [loadingMissions, setLoadingMissions] = useState(false);
+
+  // Manual SORA states
+  const [soraFormData, setSoraFormData] = useState({
+    environment: "",
+    conops_summary: "",
+    igrc: "",
+    ground_mitigations: "",
+    fgrc: "",
+    arc_initial: "",
+    airspace_mitigations: "",
+    arc_residual: "",
+    sail: "",
+    residual_risk_level: "",
+    residual_risk_comment: "",
+    operational_limits: "",
+    sora_status: "Ikke startet",
+    approved_by: "",
+  });
+  const [existingSora, setExistingSora] = useState<any>(null);
+  const [soraProfiles, setSoraProfiles] = useState<any[]>([]);
+  const [preparedByProfile, setPreparedByProfile] = useState<{ email?: string; full_name?: string } | null>(null);
+  const [soraSaving, setSoraSaving] = useState(false);
+  const [soraMissionDetails, setSoraMissionDetails] = useState<any>(null);
 
   const [pilotInputs, setPilotInputs] = useState<PilotInputs>({
     flightHeight: 120,
@@ -138,14 +165,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   useEffect(() => {
     if (open) {
-      // Set active tab based on initialTab prop
       setActiveTab(initialTab);
-      // If no mission prop, fetch available missions
       if (!mission && companyId) {
         fetchMissions();
       }
       if (currentMissionId) {
         loadPreviousAssessments();
+      }
+      // Fetch SORA data when opening with manual-sora tab or always
+      fetchSoraProfiles();
+      if (currentMissionId) {
+        fetchExistingSora();
+        fetchSoraMissionDetails();
       }
     }
   }, [open, mission?.id, companyId, currentMissionId, initialTab]);
@@ -156,6 +187,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       setSelectedMissionId(mission.id);
     }
   }, [mission?.id]);
+
+  // Fetch SORA data when mission selection changes
+  useEffect(() => {
+    if (currentMissionId && open) {
+      fetchExistingSora();
+      fetchSoraMissionDetails();
+    }
+  }, [currentMissionId]);
 
   const fetchMissions = async () => {
     setLoadingMissions(true);
@@ -180,6 +219,158 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
+  // Manual SORA functions
+  const fetchSoraProfiles = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("approved", true);
+    if (!error) setSoraProfiles(data || []);
+  };
+
+  const fetchSoraMissionDetails = async () => {
+    if (!currentMissionId) return;
+    const { data } = await supabase
+      .from("missions")
+      .select("*")
+      .eq("id", currentMissionId)
+      .single();
+    if (data) setSoraMissionDetails(data);
+  };
+
+  const fetchExistingSora = async () => {
+    if (!currentMissionId) return;
+    const { data, error } = await supabase
+      .from("mission_sora")
+      .select("*")
+      .eq("mission_id", currentMissionId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching existing SORA:", error);
+    } else if (data) {
+      setExistingSora(data);
+      setSoraFormData({
+        environment: data.environment || "",
+        conops_summary: data.conops_summary || "",
+        igrc: data.igrc?.toString() || "",
+        ground_mitigations: data.ground_mitigations || "",
+        fgrc: data.fgrc?.toString() || "",
+        arc_initial: data.arc_initial || "",
+        airspace_mitigations: data.airspace_mitigations || "",
+        arc_residual: data.arc_residual || "",
+        sail: data.sail || "",
+        residual_risk_level: data.residual_risk_level || "",
+        residual_risk_comment: data.residual_risk_comment || "",
+        operational_limits: data.operational_limits || "",
+        sora_status: data.sora_status || "Ikke startet",
+        approved_by: data.approved_by || "",
+      });
+      if (data.prepared_by) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("email, full_name")
+          .eq("id", data.prepared_by)
+          .maybeSingle();
+        setPreparedByProfile(profile);
+      } else {
+        setPreparedByProfile(null);
+      }
+    } else {
+      setExistingSora(null);
+      setPreparedByProfile(null);
+      setSoraFormData({
+        environment: "",
+        conops_summary: "",
+        igrc: "",
+        ground_mitigations: "",
+        fgrc: "",
+        arc_initial: "",
+        airspace_mitigations: "",
+        arc_residual: "",
+        sail: "",
+        residual_risk_level: "",
+        residual_risk_comment: "",
+        operational_limits: "",
+        sora_status: "Ikke startet",
+        approved_by: "",
+      });
+    }
+  };
+
+  const handleSoraSave = async () => {
+    if (!currentMissionId) {
+      toast.error("Vennligst velg et oppdrag");
+      return;
+    }
+    if (!companyId) {
+      toast.error("Kunne ikke finne selskaps-ID");
+      return;
+    }
+    if (!user?.id) {
+      toast.error("Kunne ikke finne bruker-ID");
+      return;
+    }
+
+    setSoraSaving(true);
+
+    let effectiveStatus = soraFormData.sora_status;
+    if (effectiveStatus === "Ikke startet") {
+      const hasData = soraFormData.environment || soraFormData.conops_summary || soraFormData.igrc ||
+        soraFormData.ground_mitigations || soraFormData.fgrc || soraFormData.arc_initial ||
+        soraFormData.airspace_mitigations || soraFormData.arc_residual || soraFormData.sail ||
+        soraFormData.residual_risk_level || soraFormData.residual_risk_comment || soraFormData.operational_limits;
+      if (hasData) {
+        effectiveStatus = "Under arbeid";
+        setSoraFormData(prev => ({ ...prev, sora_status: "Under arbeid" }));
+      }
+    }
+
+    const soraData = {
+      mission_id: currentMissionId,
+      company_id: companyId,
+      environment: soraFormData.environment || null,
+      conops_summary: soraFormData.conops_summary || null,
+      igrc: soraFormData.igrc ? parseInt(soraFormData.igrc) : null,
+      ground_mitigations: soraFormData.ground_mitigations || null,
+      fgrc: soraFormData.fgrc ? parseInt(soraFormData.fgrc) : null,
+      arc_initial: soraFormData.arc_initial || null,
+      airspace_mitigations: soraFormData.airspace_mitigations || null,
+      arc_residual: soraFormData.arc_residual || null,
+      sail: soraFormData.sail || null,
+      residual_risk_level: soraFormData.residual_risk_level || null,
+      residual_risk_comment: soraFormData.residual_risk_comment || null,
+      operational_limits: soraFormData.operational_limits || null,
+      sora_status: effectiveStatus,
+      approved_by: soraFormData.approved_by || null,
+      approved_at: effectiveStatus === "Ferdig" && !existingSora?.approved_at
+        ? new Date().toISOString()
+        : existingSora?.approved_at || null,
+      prepared_by: existingSora?.prepared_by || user.id,
+      prepared_at: existingSora?.prepared_at || new Date().toISOString(),
+    };
+
+    try {
+      const { error } = await supabase
+        .from("mission_sora")
+        .upsert(soraData, {
+          onConflict: 'mission_id',
+          ignoreDuplicates: false
+        });
+
+      if (error) throw error;
+
+      toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
+      onSoraSaved?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error saving SORA:", error);
+      toast.error("Kunne ikke lagre SORA-analyse: " + error.message);
+    } finally {
+      setSoraSaving(false);
+    }
+  };
+
   const loadPreviousAssessments = async () => {
     if (!currentMissionId) return;
     setLoadingHistory(true);
@@ -194,15 +385,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       if (error) throw error;
       setPreviousAssessments(data || []);
       
-      // If opening with result tab and we have a current assessment but no comments loaded,
-      // restore comments from the latest matching assessment
       if (data && data.length > 0 && currentAssessmentId) {
         const match = data.find((a: any) => a.id === currentAssessmentId);
         if (match?.pilot_comments) {
           setCategoryComments(match.pilot_comments as Record<string, string>);
         }
       } else if (data && data.length > 0 && !currentAssessmentId && initialTab === 'result') {
-        // Reopening dialog - restore from latest assessment
         const latest = data[0];
         setCurrentAssessment(latest.ai_analysis);
         setCurrentAssessmentId(latest.id);
@@ -331,33 +519,41 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
+  const isManualSoraActive = activeTab === 'manual-sora';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className={`w-[95vw] ${isManualSoraActive ? 'max-w-4xl' : 'max-w-2xl'} max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5" />
-            {t('riskAssessment.title', 'AI Risikovurdering')}
+            {t('riskAssessment.title', 'Risikovurdering')}
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'input' | 'result' | 'history' | 'sora')} className="flex-1 flex flex-col min-h-0">
-          <TabsList className={`grid w-full ${soraOutput ? 'grid-cols-4' : 'grid-cols-3'}`}>
-            <TabsTrigger value="input">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="input" className="text-xs sm:text-sm">
               {t('riskAssessment.inputTab', 'Input')}
             </TabsTrigger>
-            <TabsTrigger value="result" disabled={!currentAssessment}>
+            <TabsTrigger value="result" disabled={!currentAssessment} className="text-xs sm:text-sm">
               {t('riskAssessment.resultTab', 'Resultat')}
             </TabsTrigger>
             {soraOutput && (
-              <TabsTrigger value="sora">
-                <BarChart3 className="w-4 h-4 mr-1" />
-                SORA
+              <TabsTrigger value="sora" className="text-xs sm:text-sm">
+                <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                AI SORA
               </TabsTrigger>
             )}
-            <TabsTrigger value="history">
-              <History className="w-4 h-4 mr-1" />
-              {t('riskAssessment.historyTab', 'Historikk')}
+            <TabsTrigger value="manual-sora" className="text-xs sm:text-sm">
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="hidden sm:inline">Manuell SORA</span>
+              <span className="sm:hidden">SORA</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">
+              <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="hidden sm:inline">{t('riskAssessment.historyTab', 'Historikk')}</span>
+              <span className="sm:hidden">Hist.</span>
             </TabsTrigger>
           </TabsList>
 
@@ -675,6 +871,324 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     Ingen SORA-analyse tilgjengelig
                   </p>
                 )}
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Manual SORA Tab */}
+            <TabsContent value="manual-sora" className="h-full m-0">
+              <ScrollArea className="h-[calc(90vh-220px)]">
+                <div className="space-y-6 pr-4">
+                  {/* Mission Selector - only show when no mission prop */}
+                  {!mission && (
+                    <div className="space-y-2">
+                      <Label>Oppdrag *</Label>
+                      <Select
+                        value={currentMissionId || ""}
+                        onValueChange={(v) => setSelectedMissionId(v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Velg et oppdrag" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {missions.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.tittel} - {m.lokasjon}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Mission Info Card */}
+                  {soraMissionDetails && (
+                    <Card className="bg-muted/50">
+                      <CardContent className="pt-6">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-semibold">Oppdrag:</span> {soraMissionDetails.tittel}
+                          </div>
+                          <div>
+                            <span className="font-semibold">Dato/tid:</span>{" "}
+                            {format(new Date(soraMissionDetails.tidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
+                            {soraMissionDetails.slutt_tidspunkt &&
+                              ` - ${format(new Date(soraMissionDetails.slutt_tidspunkt), "HH:mm", { locale: nb })}`
+                            }
+                          </div>
+                          <div>
+                            <span className="font-semibold">Sted:</span> {soraMissionDetails.lokasjon}
+                          </div>
+                          <div>
+                            <span className="font-semibold">Risk-nivå:</span> {soraMissionDetails.risk_nivå}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* SORA Form Sections */}
+                  <Accordion type="multiple" defaultValue={["section1", "section2", "section3", "section4", "section5"]} className="w-full">
+                    {/* Section 1: Operasjonsmiljø og ConOps */}
+                    <AccordionItem value="section1">
+                      <AccordionTrigger>Operasjonsmiljø og ConOps</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>Miljø</Label>
+                          <Select value={soraFormData.environment} onValueChange={(value) => setSoraFormData({ ...soraFormData, environment: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg miljø" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Tettbygd">Tettbygd</SelectItem>
+                              <SelectItem value="Landlig">Landlig</SelectItem>
+                              <SelectItem value="Sjø">Sjø</SelectItem>
+                              <SelectItem value="Industriområde">Industriområde</SelectItem>
+                              <SelectItem value="Annet">Annet</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Kort ConOps-beskrivelse</Label>
+                          <Textarea
+                            value={soraFormData.conops_summary}
+                            onChange={(e) => setSoraFormData({ ...soraFormData, conops_summary: e.target.value })}
+                            placeholder="Kort beskrivelse av hva som skal gjøres, hvor og hvordan (3–5 linjer)."
+                            rows={4}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    {/* Section 2: Bakkebasert risiko (GRC) */}
+                    <AccordionItem value="section2">
+                      <AccordionTrigger>Bakkebasert risiko (GRC)</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>iGRC (grunnrisiko på bakken)</Label>
+                          <Select value={soraFormData.igrc} onValueChange={(value) => setSoraFormData({ ...soraFormData, igrc: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg iGRC" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+                                <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Tiltak for bakkebasert risiko</Label>
+                          <Textarea
+                            value={soraFormData.ground_mitigations}
+                            onChange={(e) => setSoraFormData({ ...soraFormData, ground_mitigations: e.target.value })}
+                            placeholder="Beskriv sperringer, buffersoner, fallskjerm, ERP osv."
+                            rows={4}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>fGRC (endelig risiko på bakken)</Label>
+                          <Select value={soraFormData.fgrc} onValueChange={(value) => setSoraFormData({ ...soraFormData, fgrc: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg fGRC" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+                                <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    {/* Section 3: Luftromsrisiko (ARC) */}
+                    <AccordionItem value="section3">
+                      <AccordionTrigger>Luftromsrisiko (ARC)</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>Initial ARC</Label>
+                          <Select value={soraFormData.arc_initial} onValueChange={(value) => setSoraFormData({ ...soraFormData, arc_initial: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg initial ARC" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ARC-A">ARC-A</SelectItem>
+                              <SelectItem value="ARC-B">ARC-B</SelectItem>
+                              <SelectItem value="ARC-C">ARC-C</SelectItem>
+                              <SelectItem value="ARC-D">ARC-D</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Tiltak for luftromsrisiko</Label>
+                          <Textarea
+                            value={soraFormData.airspace_mitigations}
+                            onChange={(e) => setSoraFormData({ ...soraFormData, airspace_mitigations: e.target.value })}
+                            placeholder="Beskriv strategiske og taktiske tiltak (NOTAM, ATC-koordinering, observatører osv.)."
+                            rows={4}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Residual ARC</Label>
+                          <Select value={soraFormData.arc_residual} onValueChange={(value) => setSoraFormData({ ...soraFormData, arc_residual: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg residual ARC" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ARC-A">ARC-A</SelectItem>
+                              <SelectItem value="ARC-B">ARC-B</SelectItem>
+                              <SelectItem value="ARC-C">ARC-C</SelectItem>
+                              <SelectItem value="ARC-D">ARC-D</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    {/* Section 4: SAIL og rest-risiko */}
+                    <AccordionItem value="section4">
+                      <AccordionTrigger>SAIL og rest-risiko</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>SAIL-nivå</Label>
+                          <Select value={soraFormData.sail} onValueChange={(value) => setSoraFormData({ ...soraFormData, sail: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg SAIL-nivå" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SAIL I">SAIL I</SelectItem>
+                              <SelectItem value="SAIL II">SAIL II</SelectItem>
+                              <SelectItem value="SAIL III">SAIL III</SelectItem>
+                              <SelectItem value="SAIL IV">SAIL IV</SelectItem>
+                              <SelectItem value="SAIL V">SAIL V</SelectItem>
+                              <SelectItem value="SAIL VI">SAIL VI</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Vurdering av rest-risiko</Label>
+                          <Select value={soraFormData.residual_risk_level} onValueChange={(value) => setSoraFormData({ ...soraFormData, residual_risk_level: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg rest-risiko" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Lav">Lav</SelectItem>
+                              <SelectItem value="Moderat">Moderat</SelectItem>
+                              <SelectItem value="Høy">Høy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Begrunnelse for rest-risiko</Label>
+                          <Textarea
+                            value={soraFormData.residual_risk_comment}
+                            onChange={(e) => setSoraFormData({ ...soraFormData, residual_risk_comment: e.target.value })}
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Operative begrensninger</Label>
+                          <Textarea
+                            value={soraFormData.operational_limits}
+                            onChange={(e) => setSoraFormData({ ...soraFormData, operational_limits: e.target.value })}
+                            placeholder="F.eks. maks vind, min. sikt, min. avstand til folk, bare dagslys osv."
+                            rows={3}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    {/* Section 5: Status og godkjenning */}
+                    <AccordionItem value="section5">
+                      <AccordionTrigger>Status og godkjenning</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>SORA-status *</Label>
+                          <Select value={soraFormData.sora_status} onValueChange={(value) => setSoraFormData({ ...soraFormData, sora_status: value })}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Ikke startet">Ikke startet</SelectItem>
+                              <SelectItem value="Under arbeid">Under arbeid</SelectItem>
+                              <SelectItem value="Ferdig">Ferdig</SelectItem>
+                              <SelectItem value="Revidert">Revidert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Utført av</Label>
+                          <Input
+                            value={
+                              existingSora?.prepared_by
+                                ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
+                                : (user?.email || "")
+                            }
+                            disabled
+                          />
+                          {!existingSora?.prepared_by && (
+                            <p className="text-xs text-muted-foreground">Dette feltet settes automatisk til innlogget bruker</p>
+                          )}
+                        </div>
+
+                        {existingSora?.prepared_at && (
+                          <div className="space-y-2">
+                            <Label>Dato utført</Label>
+                            <Input
+                              value={format(new Date(existingSora.prepared_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                              disabled
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <Label>Godkjent av</Label>
+                          <Select value={soraFormData.approved_by} onValueChange={(value) => setSoraFormData({ ...soraFormData, approved_by: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg godkjenner (valgfritt)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {soraProfiles.map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id}>
+                                  {profile.full_name || "Ukjent"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {existingSora?.approved_at && (
+                          <div className="space-y-2">
+                            <Label>Dato godkjent</Label>
+                            <Input
+                              value={format(new Date(existingSora.approved_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                              disabled
+                            />
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                      Avbryt
+                    </Button>
+                    <Button onClick={handleSoraSave} disabled={soraSaving}>
+                      {soraSaving ? "Lagrer..." : "Lagre"}
+                    </Button>
+                  </div>
+                </div>
               </ScrollArea>
             </TabsContent>
 

@@ -1,53 +1,44 @@
 
 
-## Plan: Slå sammen manuell SORA i RiskAssessmentDialog
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Planen fra forrige runde ble ikke implementert. Her er den oppdaterte planen.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Konsept
-Flytt det manuelle SORA-skjemaet inn som en ny tab «Manuell SORA» i `RiskAssessmentDialog`. Fjern den separate `SoraAnalysisDialog` fra alle steder unntatt `AISearchBar` (som bruker den direkte uten type-valg).
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
 ### Endringer
 
-**1. `src/components/dashboard/RiskAssessmentDialog.tsx`**
-- Utvid `initialTab` type til å inkludere `'manual-sora'`
-- Legg til all SORA-skjemastate fra `SoraAnalysisDialog` (formData, existingSora, profiles, preparedByProfile, etc.)
-- Legg til fetchExistingSora, fetchProfiles, handleSoraSave logikk
-- Ny `TabsTrigger value="manual-sora"` — alltid synlig (ikke betinget)
-- `TabsContent value="manual-sora"` med hele Accordion-skjemaet fra SoraAnalysisDialog (5 seksjoner + lagre-knapp)
-- Dialog-bredde dynamisk: `max-w-4xl` når manual-sora tab er aktiv, ellers eksisterende bredde
-- Ny prop: `onSoraSaved?: () => void`
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**2. `src/components/dashboard/RiskAssessmentTypeDialog.tsx`**
-- Endre `onSelectSORA` til `onSelectManualSORA`
-- Begge knapper lukker dialogen og kaller sin respektive callback
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**3. `src/components/oppdrag/dialogs/OppdragDialogs.tsx`**
-- Fjern `SoraAnalysisDialog` import og bruk (linje 4, 155-160)
-- Fjern props: `soraDialogOpen`, `setSoraDialogOpen`, `soraEditingMissionId`, `onSoraSaved`
-- Endre `onSelectSORA` til `onSelectManualSORA` som åpner RiskAssessmentDialog med `initialTab='manual-sora'`
-- Send `onSoraSaved={props.fetchMissions}` til RiskAssessmentDialog
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-**4. `src/pages/Oppdrag.tsx`**
-- Fjern `soraDialogOpen`, `soraEditingMissionId`, `handleEditSora`, `handleSoraSaved` state/handlers
-- `handleSelectSORA` → setter `initialTab='manual-sora'` og åpner RiskAssessmentDialog
-- `handleEditSora` (fra MissionCard) → åpner RiskAssessmentDialog med `initialTab='manual-sora'`
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-**5. `src/components/dashboard/MissionsSection.tsx`**
-- Fjern `SoraAnalysisDialog` import og bruk
-- Rut SORA gjennom RiskAssessmentDialog med `initialTab='manual-sora'`
-
-**6. `src/components/dashboard/MissionDetailDialog.tsx`**
-- Fjern `SoraAnalysisDialog` import og bruk
-- Rut SORA gjennom RiskAssessmentDialog med `initialTab='manual-sora'`
-
-**AISearchBar.tsx** — beholdes uendret (bruker SoraAnalysisDialog direkte).
-
-### Filer som endres
-1. `src/components/dashboard/RiskAssessmentDialog.tsx`
-2. `src/components/dashboard/RiskAssessmentTypeDialog.tsx`
-3. `src/components/oppdrag/dialogs/OppdragDialogs.tsx`
-4. `src/pages/Oppdrag.tsx`
-5. `src/components/dashboard/MissionsSection.tsx`
-6. `src/components/dashboard/MissionDetailDialog.tsx`
+Ingen nye avhengigheter. Ingen databaseendringer.
 
