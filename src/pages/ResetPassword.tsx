@@ -22,50 +22,37 @@ const ResetPassword = () => {
   const [resendEmail, setResendEmail] = useState("");
   const [resendSent, setResendSent] = useState(false);
 
-  const startVerification = () => {
+  // Read token_hash from URL query params
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenHash = urlParams.get("token_hash");
+
+  const startVerification = async () => {
+    if (!tokenHash) {
+      toast.error("Ingen gyldig token funnet i lenken.");
+      setStage("resend");
+      return;
+    }
+
     setStage("verifying");
 
-    // Check URL hash for errors first
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const error = params.get("error");
-      const errorDescription = params.get("error_description");
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "recovery",
+      });
+
       if (error) {
-        console.error("Password reset error:", error, errorDescription);
-        toast.error(errorDescription || "Lenken er ugyldig eller utløpt. Prøv å sende en ny link.");
+        console.error("verifyOtp error:", error);
+        toast.error("Lenken er ugyldig eller utløpt. Prøv å sende en ny link.");
         setStage("resend");
-        return;
-      }
-    }
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Auth event:", event);
-        if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-          setStage("verified");
-          subscription.unsubscribe();
-          clearTimeout(timeout);
-        }
-      }
-    );
-
-    // Also check hash for recovery type as fallback
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      if (params.get("type") === "recovery") {
+      } else {
         setStage("verified");
-        subscription.unsubscribe();
-        return;
       }
-    }
-
-    const timeout = setTimeout(() => {
-      subscription.unsubscribe();
-      toast.error("Kunne ikke verifisere lenken. Den kan være utløpt.");
+    } catch (err: any) {
+      console.error("verifyOtp exception:", err);
+      toast.error("En feil oppstod. Prøv å sende en ny link.");
       setStage("resend");
-    }, 15000);
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
