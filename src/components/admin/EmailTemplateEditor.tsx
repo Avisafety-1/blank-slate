@@ -382,6 +382,51 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </div>
 </body>
 </html>`,
+  user_invite: `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invitasjon</title>
+<style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+.container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.header { background: linear-gradient(135deg, #1a365d 0%, #2d5a8e 100%); color: white; padding: 30px; text-align: center; }
+.header h1 { margin: 0; font-size: 24px; }
+.content { padding: 30px; color: #333; line-height: 1.6; }
+.code-box { background: #f0f4f8; border: 2px dashed #2d5a8e; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+.code-box .code { font-size: 28px; font-weight: bold; color: #1a365d; letter-spacing: 3px; }
+.button { display: inline-block; background: #2d5a8e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+ol { padding-left: 20px; }
+ol li { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Du er invitert til {{company_name}}</h1>
+</div>
+<div class="content">
+<p>Hei!</p>
+<p>Du har blitt invitert til å bli med i <strong>{{company_name}}</strong> på AviSafe – en plattform for droneoperasjoner.</p>
+<p>For å komme i gang, følg disse stegene:</p>
+<ol>
+<li>Gå til <a href="{{app_url}}">{{app_url}}</a></li>
+<li>Klikk «Registrer deg»</li>
+<li>Bruk følgende registreringskode:</li>
+</ol>
+<div class="code-box">
+<div class="code">{{registration_code}}</div>
+</div>
+<p>Etter registrering vil en administrator godkjenne kontoen din.</p>
+<p style="text-align: center;">
+<a href="{{app_url}}" class="button">Gå til AviSafe</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
 };
 
 // Basic templates available to all admins
