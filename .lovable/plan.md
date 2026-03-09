@@ -1,44 +1,39 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Mellomside for passord-reset + «Send ny link»-knapp
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+E-postklienters sikkerhetsskannere (spesielt Microsoft 365/Outlook) klikker på lenken automatisk og forbruker Supabase sitt engångstoken før brukeren rekker å klikke selv.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning
+Endre `ResetPassword.tsx` til en to-stegs flyt:
+
+**Steg 1 — Mellomside (landing)**
+Når brukeren lander på `/reset-password`, vis en side med:
+- AviSafe-logo og forklaring: «Klikk knappen under for å sette nytt passord»
+- En **«Verifiser og sett nytt passord»**-knapp som starter token-verifiseringen
+- Under knappen: **«Fungerte ikke lenken? Send ny link»**-knapp/lenke
+
+Token-verifiseringen (hash-parsing, `onAuthStateChange`) kjøres IKKE ved sidelasting — kun når brukeren klikker knappen. Dette hindrer e-postskannere fra å forbruke tokenet.
+
+**Steg 2 — Passordskjema**
+Etter vellykket verifisering vises passorskjemaet (eksisterende UI).
+
+**«Send ny link»-flyt**
+- Viser et e-postfelt der brukeren skriver inn sin e-post
+- Kaller `send-password-reset` edge-funksjonen (allerede eksisterende)
+- Viser bekreftelsesmelding
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/pages/ResetPassword.tsx`** — omskrives med tre states:
+1. `idle` — mellomside med «Verifiser»-knapp og «Send ny link»
+2. `verifying` — spinner (eksisterende loading-state)
+3. `verified` — passorskjema (eksisterende form)
+4. `resend` — e-postfelt for å sende ny link
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+Flytt all token-logikk (useEffect med onAuthStateChange og hash-parsing) inn i en `startVerification()`-funksjon som kalles ved klikk.
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Fil som endres
+- `src/pages/ResetPassword.tsx`
 
