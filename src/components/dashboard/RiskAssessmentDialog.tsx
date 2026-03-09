@@ -537,9 +537,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             <TabsTrigger value="input" className="text-xs sm:text-sm">
               {t('riskAssessment.inputTab', 'Input')}
             </TabsTrigger>
-            <TabsTrigger value="result" disabled={!currentAssessment} className="text-xs sm:text-sm">
-              {t('riskAssessment.resultTab', 'Resultat')}
-            </TabsTrigger>
             {soraOutput && (
               <TabsTrigger value="sora" className="text-xs sm:text-sm">
                 <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -555,6 +552,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
               <span className="hidden sm:inline">{t('riskAssessment.historyTab', 'Historikk')}</span>
               <span className="sm:hidden">Hist.</span>
+            </TabsTrigger>
+            <TabsTrigger value="result" disabled={!currentAssessment} className="text-xs sm:text-sm">
+              {t('riskAssessment.resultTab', 'Resultat')}
             </TabsTrigger>
           </TabsList>
 
