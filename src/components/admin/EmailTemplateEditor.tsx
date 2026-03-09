@@ -462,6 +462,17 @@ const basicTemplateTypes = [
     },
   },
   {
+    value: "user_invite",
+    label: "Inviter ny bruker",
+    variables: ["{{company_name}}", "{{registration_code}}", "{{app_url}}"],
+    defaultSubject: "Du er invitert til {{company_name}}",
+    previewData: {
+      company_name: "Ditt Selskap AS",
+      registration_code: "ABC123",
+      app_url: "https://app.avisafe.no",
+    },
+  },
+  {
     value: "mission_confirmation",
     label: "Oppdragsbekreftelse",
     variables: [
