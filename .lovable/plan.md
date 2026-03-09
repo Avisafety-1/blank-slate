@@ -1,44 +1,40 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Legg til hendelsesbilder i PDF-eksport
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Når en hendelse har et opplastet bilde (`bilde_url`), inkluderes det ikke i den eksporterte PDF-rapporten.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning
+Utvid `exportIncidentPDF` i `src/lib/incidentPdfExport.ts`:
 
-### Endringer
+1. **Utvid `Incident`-typen** med `bilde_url: string | null`
+2. **Hent bildet som base64** — last ned bildet via `fetch()` fra den offentlige URL-en, konverter til base64 data-URL
+3. **Legg til en VEDLEGG-seksjon** etter kommentarer:
+   - Ny seksjon med header «VEDLEGG»
+   - Bruk `checkPageBreak` for å sikre plass (evt. ny side)
+   - Sett inn bildet med `doc.addImage()` — skalert til å passe sidebredden (maks ~170mm bred, behold proporsjoner)
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+### Filer som endres
+1. `src/lib/incidentPdfExport.ts` — legg til bildenedlasting og `addImage` i PDF-genereringen
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
+### Teknisk detalj
 ```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+// Etter kommentarer-seksjonen:
+if (incident.bilde_url) {
+  // Fetch image, convert to base64
+  const response = await fetch(incident.bilde_url);
+  const blob = await response.blob();
+  const imgData = await blobToBase64(blob);
+  
+  yPos = checkPageBreak(doc, yPos, 120);
+  yPos = addSectionHeader(doc, "VEDLEGG", yPos);
+  
+  // Add image scaled to fit page width
+  const maxWidth = pageWidth - 28;
+  doc.addImage(imgData, 'JPEG', 14, yPos, maxWidth, 0); // height=0 => auto
+}
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+Ingen database-endringer nødvendig — `bilde_url` finnes allerede på `incidents`-tabellen.
 
