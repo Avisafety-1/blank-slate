@@ -532,7 +532,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className={cn("grid w-full", soraOutput ? "grid-cols-5" : "grid-cols-4")}>
             <TabsTrigger value="input" className="text-xs sm:text-sm">
               {t('riskAssessment.inputTab', 'Input')}
             </TabsTrigger>
