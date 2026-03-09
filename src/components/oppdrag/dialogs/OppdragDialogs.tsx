@@ -70,7 +70,8 @@ export interface OppdragDialogsProps {
   riskTypeDialogOpen: boolean;
   setRiskTypeDialogOpen: (open: boolean) => void;
   onSelectAI: () => void;
-  onSelectSORA: () => void;
+  onSelectManualSORA: () => void;
+  riskDialogInitialTab: 'input' | 'result' | 'history' | 'sora' | 'manual-sora';
 
   // Risk assessment
   riskDialogOpen: boolean;
