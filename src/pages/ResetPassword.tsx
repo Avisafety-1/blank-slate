@@ -15,7 +15,10 @@ type Stage = "idle" | "verifying" | "verified" | "resend";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>("idle");
+  const [stage, setStage] = useState<Stage>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("token_hash") ? "idle" : "resend";
+  });
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
