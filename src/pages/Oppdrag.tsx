@@ -319,7 +319,7 @@ const Oppdrag = () => {
                     fetchMissions={data.fetchMissions}
                     onRiskBadgeClick={(m) => {
                       setRiskAssessmentMission(m);
-                      setRiskDialogShowHistory(true);
+                      setRiskDialogInitialTab('history');
                       setRiskDialogOpen(true);
                     }}
                   />
