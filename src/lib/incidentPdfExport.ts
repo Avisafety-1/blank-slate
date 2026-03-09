@@ -16,6 +16,16 @@ type Incident = {
   rapportert_av: string | null;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
+  bilde_url: string | null;
+};
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 type IncidentComment = {
