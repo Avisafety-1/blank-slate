@@ -168,14 +168,14 @@ const Oppdrag = () => {
   };
 
   const handleEditSora = (missionId: string) => {
-    setSoraEditingMissionId(missionId);
-    setSoraDialogOpen(true);
+    const m = data.missions.find((mi: any) => mi.id === missionId);
+    setRiskAssessmentMission(m || null);
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleSoraSaved = () => {
     data.fetchMissions();
-    setSoraDialogOpen(false);
-    setSoraEditingMissionId(null);
   };
 
   const handleNewRiskAssessment = (mission: Mission) => {
