@@ -336,6 +336,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
         rapportert_av: incident.rapportert_av,
         hovedaarsak: incident.hovedaarsak,
         medvirkende_aarsak: incident.medvirkende_aarsak,
+        bilde_url: (incident as any).bilde_url || null,
       },
       comments,
       oppfolgingsansvarligName: oppfolgingsansvarlig?.full_name || null,

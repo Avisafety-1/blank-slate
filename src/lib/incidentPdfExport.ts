@@ -124,7 +124,40 @@ export const exportIncidentPDF = async ({
           0: { cellWidth: 35 },
           1: { cellWidth: 35 },
           2: { cellWidth: 'auto' }
-        }
+    }
+
+    // Vedlagt bilde
+    if (incident.bilde_url) {
+      try {
+        const response = await fetch(incident.bilde_url);
+        const blob = await response.blob();
+        const imgData = await blobToBase64(blob);
+
+        // Load image to get dimensions
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = imgData;
+        });
+
+        const maxWidth = pageWidth - 28;
+        const ratio = maxWidth / img.width;
+        const imgHeight = img.height * ratio;
+
+        // Get current Y position after autoTable
+        const finalY = (doc as any).lastAutoTable?.finalY;
+        if (finalY) yPos = finalY + 10;
+
+        yPos = checkPageBreak(doc, yPos, imgHeight + 20);
+        yPos = addSectionHeader(doc, "VEDLEGG", yPos);
+
+        doc.addImage(imgData, 'JPEG', 14, yPos, maxWidth, imgHeight);
+        yPos += imgHeight + 10;
+      } catch (imgErr) {
+        console.warn("Could not add image to PDF:", imgErr);
+      }
+    }
       });
     }
 
