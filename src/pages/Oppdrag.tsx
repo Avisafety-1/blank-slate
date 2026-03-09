@@ -385,8 +385,8 @@ const Oppdrag = () => {
           setRiskDialogOpen={setRiskDialogOpen}
           riskAssessmentMission={riskAssessmentMission}
           setRiskAssessmentMission={setRiskAssessmentMission}
-          riskDialogShowHistory={riskDialogShowHistory}
-          setRiskDialogShowHistory={setRiskDialogShowHistory}
+          riskDialogShowHistory={false}
+          setRiskDialogShowHistory={() => {}}
           exportPdfDialogOpen={exportPdfDialogOpen}
           setExportPdfDialogOpen={setExportPdfDialogOpen}
           exportPdfMission={exportPdfMission}
