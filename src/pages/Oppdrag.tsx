@@ -379,7 +379,8 @@ const Oppdrag = () => {
           riskTypeDialogOpen={riskTypeDialogOpen}
           setRiskTypeDialogOpen={setRiskTypeDialogOpen}
           onSelectAI={handleSelectAI}
-          onSelectSORA={handleSelectSORA}
+          onSelectManualSORA={handleSelectManualSORA}
+          riskDialogInitialTab={riskDialogInitialTab}
           riskDialogOpen={riskDialogOpen}
           setRiskDialogOpen={setRiskDialogOpen}
           riskAssessmentMission={riskAssessmentMission}
