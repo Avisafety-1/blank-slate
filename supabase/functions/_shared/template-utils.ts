@@ -566,6 +566,59 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </div>
 </body>
 </html>`
+  },
+
+  user_invite: {
+    subject: 'Du er invitert til {{company_name}}',
+    content: `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.code-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px dashed #3b82f6; text-align: center; }
+.code { font-family: monospace; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #1e40af; }
+.steps { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+.step { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+.step:last-child { border-bottom: none; }
+.step-number { display: inline-block; background: #1e40af; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; margin-right: 10px; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+.footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Du er invitert!</h1>
+</div>
+<div class="content">
+<p>Hei!</p>
+<p>Du har blitt invitert til å bli med i <strong>{{company_name}}</strong> sitt droneoperasjonssystem.</p>
+<div class="code-box">
+<p style="margin: 0 0 10px 0; color: #666;">Din registreringskode:</p>
+<div class="code">{{registration_code}}</div>
+</div>
+<div class="steps">
+<p style="margin-top: 0;"><strong>Slik kommer du i gang:</strong></p>
+<div class="step"><span class="step-number">1</span> Gå til <a href="{{app_url}}">{{app_url}}</a></div>
+<div class="step"><span class="step-number">2</span> Klikk «Opprett konto»</div>
+<div class="step"><span class="step-number">3</span> Skriv inn registreringskoden ovenfor</div>
+<div class="step"><span class="step-number">4</span> Fyll ut navn, e-post og passord</div>
+</div>
+<p style="text-align: center;">
+<a href="{{app_url}}" class="button">Gå til AviSafe</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<div class="footer">
+<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+</div>
+</div>
+</div>
+</body>
+</html>`
   }
 };
 
