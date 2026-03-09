@@ -349,7 +349,7 @@ const Oppdrag = () => {
           setEditDialogOpen={setEditDialogOpen}
           onMissionUpdated={handleMissionUpdated}
           editingMission={editingMission}
-          onSoraSaved={handleSoraSaved}
+          
           incidentDialogOpen={incidentDialogOpen}
           setIncidentDialogOpen={setIncidentDialogOpen}
           selectedIncident={selectedIncident}
