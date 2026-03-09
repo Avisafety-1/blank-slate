@@ -30,8 +30,6 @@ const Oppdrag = () => {
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [soraDialogOpen, setSoraDialogOpen] = useState(false);
-  const [soraEditingMissionId, setSoraEditingMissionId] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [expandedMapMission, setExpandedMapMission] = useState<Mission | null>(null);
