@@ -1019,6 +1019,7 @@ Returner en JSON-respons med denne strukturen:
         recommendation: aiAnalysis.recommendation,
         ai_analysis: aiAnalysis,
         pilot_inputs: pilotInputs || {},
+        pilot_comments: pilotComments || {},
         weather_data: weatherData,
         airspace_warnings: airspaceWarnings,
       })
