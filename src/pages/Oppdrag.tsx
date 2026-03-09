@@ -185,15 +185,14 @@ const Oppdrag = () => {
 
   const handleSelectAI = () => {
     setRiskTypeDialogOpen(false);
+    setRiskDialogInitialTab('input');
     setRiskDialogOpen(true);
   };
 
-  const handleSelectSORA = () => {
+  const handleSelectManualSORA = () => {
     setRiskTypeDialogOpen(false);
-    if (riskAssessmentMission) {
-      setSoraEditingMissionId(riskAssessmentMission.id);
-      setSoraDialogOpen(true);
-    }
+    setRiskDialogInitialTab('manual-sora');
+    setRiskDialogOpen(true);
   };
 
   const handleExportPdfClick = (mission: Mission) => {
