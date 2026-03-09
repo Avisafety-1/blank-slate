@@ -256,7 +256,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         open={props.riskTypeDialogOpen}
         onOpenChange={props.setRiskTypeDialogOpen}
         onSelectAI={props.onSelectAI}
-        onSelectSORA={props.onSelectSORA}
+        onSelectManualSORA={props.onSelectManualSORA}
       />
 
       {/* AI Risk Assessment Dialog */}
