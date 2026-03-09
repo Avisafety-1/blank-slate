@@ -16,6 +16,16 @@ type Incident = {
   rapportert_av: string | null;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
+  bilde_url: string | null;
+};
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 type IncidentComment = {
@@ -116,6 +126,37 @@ export const exportIncidentPDF = async ({
           2: { cellWidth: 'auto' }
         }
       });
+    }
+
+    // Vedlagt bilde
+    if (incident.bilde_url) {
+      try {
+        const response = await fetch(incident.bilde_url);
+        const blob = await response.blob();
+        const imgData = await blobToBase64(blob);
+
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = imgData;
+        });
+
+        const maxWidth = pageWidth - 28;
+        const ratio = maxWidth / img.width;
+        const imgHeight = img.height * ratio;
+
+        const finalY = (doc as any).lastAutoTable?.finalY;
+        if (finalY) yPos = finalY + 10;
+
+        yPos = checkPageBreak(doc, yPos, imgHeight + 20);
+        yPos = addSectionHeader(doc, "VEDLEGG", yPos);
+
+        doc.addImage(imgData, 'JPEG', 14, yPos, maxWidth, imgHeight);
+        yPos += imgHeight + 10;
+      } catch (imgErr) {
+        console.warn("Could not add image to PDF:", imgErr);
+      }
     }
 
     // Generer filnavn og blob
