@@ -242,6 +242,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             missionId: currentMissionId,
             pilotInputs,
             droneId,
+            pilotComments: categoryComments,
           }),
         }
       );
