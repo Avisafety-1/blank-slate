@@ -228,7 +228,7 @@ const ResetPassword = () => {
       <Card className="bg-card/95 backdrop-blur-sm border-border/50">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-center">
-            <img src={avisafeLogo} alt="AviSafe" className="h-24 w-auto" />
+            <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
           </div>
           <div className="text-center">
             <CardTitle className="text-xl">Tilbakestill passord</CardTitle>
