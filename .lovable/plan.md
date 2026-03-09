@@ -1,44 +1,19 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Bevar pilot-kommentarer ved re-vurdering
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Når brukeren kjører en ny risikovurdering, nullstilles kommentarene i UI (`setCategoryComments({})` linje 264) og de sendes ikke med til edge-funksjonen. Kommentarene skal bare bli stående slik de var — som om brukeren hadde trykket «lagre kommentarer» først.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**1. `src/components/dashboard/RiskAssessmentDialog.tsx`**
+- Fjern `setCategoryComments({})` på linje 264 — kommentarene skal bli stående i UI etter ny vurdering
+- Send `categoryComments` med i request-body (`pilotComments: categoryComments`)
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**2. `supabase/functions/ai-risk-assessment/index.ts`**
+- Les `pilotComments` fra request-body i den vanlige flyten (linje ~1007-1024)
+- Legg til `pilot_comments: pilotComments || {}` i insert-objektet
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+Ingen andre endringer — dette påvirker bare at kommentarene lagres og vises, akkurat som «lagre kommentarer».
 
