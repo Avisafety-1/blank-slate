@@ -77,8 +77,8 @@ const Admin = () => {
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
 
-  const [deleteEmail, setDeleteEmail] = useState("");
-  const [deletingByEmail, setDeletingByEmail] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
 
   useEffect(() => {
