@@ -583,7 +583,7 @@ export const ExpandedMapDialog = ({
 
         {route?.coordinates && route.coordinates.length >= 3 && (
           <div>
-            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} />
+            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} onDroneSelected={setSoraDroneId} />
             {soraDirty && missionId && (
               <div className="px-3 pb-2 sm:px-4">
                 <button
