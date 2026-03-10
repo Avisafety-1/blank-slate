@@ -83,6 +83,7 @@ const Changelog = () => {
   const [maintenance, setMaintenance] = useState<Maintenance | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"created_at" | "status" | "completed_at">("created_at");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Dialogs
   const [systemDialog, setSystemDialog] = useState<{ open: boolean; system?: SystemStatus }>({ open: false });
