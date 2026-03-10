@@ -1941,7 +1941,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             {!isBulkProcessing && (
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CheckCircle className="w-4 h-4 text-primary" />
-                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagret, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
+                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagt til behandling, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
               </div>
             )}
 
