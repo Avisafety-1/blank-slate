@@ -136,7 +136,6 @@ interface BulkResult {
   status: 'pending' | 'processing' | 'done' | 'error' | 'duplicate';
   error?: string;
   droneModel?: string;
-  missionTitle?: string;
   durationMinutes?: number;
 }
 
@@ -597,16 +596,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // ── Bulk upload flow ──
 
+  const bulkAbortRef = useRef(false);
+
   const handleBulkUpload = async () => {
     if (bulkFiles.length === 0 || !companyId || !user) return;
     setIsBulkProcessing(true);
+    bulkAbortRef.current = false;
     const results: BulkResult[] = bulkFiles.map(f => ({ fileName: f.name, status: 'pending' as const }));
     setBulkResults([...results]);
     setStep('bulk-result');
 
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { toast.error('Ikke autentisert'); setIsBulkProcessing(false); return; }
+    if (!session) { toast.error('Ikke autentisert'); setIsBulkProcessing(false); return;  }
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+    // Keep refs to allow background processing after dialog close
+    const localCompanyId = companyId;
+    const localDrones = [...drones];
+    const localEquipment = [...equipmentList];
 
     for (let i = 0; i < bulkFiles.length; i++) {
       setBulkProgress(i);
@@ -628,9 +635,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         const data: DroneLogResult = await response.json();
 
-        // 2. SHA-256 dedup check
+        // 2. SHA-256 dedup check (pending_dji_logs + flight_logs)
         if (data.sha256Hash) {
-          const isDup = await checkDuplicate(data.sha256Hash);
+          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId);
           if (isDup) {
             results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
             setBulkResults([...results]);
@@ -643,7 +650,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
         if (sn) {
-          const match = drones.find(d =>
+          const match = localDrones.find(d =>
             d.serienummer.trim().toLowerCase() === sn ||
             (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
           );
@@ -651,98 +658,42 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
 
         // 4. Auto-match battery
-        let batteryIds: string[] = [];
+        let batteryId: string | null = null;
         if (data.batterySN) {
           const bsn = data.batterySN.trim().toLowerCase();
-          const bMatch = equipmentList.find(e =>
+          const bMatch = localEquipment.find(e =>
             (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
             (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
           );
-          if (bMatch) batteryIds = [bMatch.id];
+          if (bMatch) batteryId = bMatch.id;
         }
 
-        // 5. Auto-match mission (within 1 hour)
-        let missionId: string | null = null;
-        let missionTitle: string | undefined;
+        // 5. Save to pending_dji_logs
         const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
 
-        if (data.startTime) {
-          const flightStart = parseFlightDate(data.startTime);
-          if (flightStart) {
-            const windowMs = 60 * 60 * 1000;
-            const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
-            const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
-            const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
-            const { data: missions } = await supabase
-              .from('missions')
-              .select('id, tittel, tidspunkt')
-              .eq('company_id', companyId)
-              .gte('tidspunkt', rangeStart)
-              .lte('tidspunkt', rangeEnd)
-              .order('tidspunkt', { ascending: true })
-              .limit(1);
-            if (missions && missions.length > 0) {
-              missionId = missions[0].id;
-              missionTitle = missions[0].tittel;
-            }
-          }
-        }
+        const { error: insertError } = await supabase
+          .from('pending_dji_logs')
+          .insert({
+            company_id: localCompanyId,
+            dji_log_id: data.sha256Hash || crypto.randomUUID(),
+            aircraft_name: data.aircraftName || data.droneType || null,
+            aircraft_sn: data.aircraftSN || data.aircraftSerial || null,
+            flight_date: effectiveDate.toISOString(),
+            duration_seconds: data.totalTimeSeconds ?? Math.round(data.durationMinutes * 60),
+            max_height_m: data.maxAltitude ?? null,
+            total_distance_m: data.totalDistance ?? null,
+            matched_drone_id: droneId,
+            matched_battery_id: batteryId,
+            status: 'pending',
+            parsed_result: data as any,
+          } as any);
 
-        // 6. Create mission if none matched
-        if (!missionId) {
-          const { data: mission } = await supabase.from('missions').insert({
-            company_id: companyId, user_id: user.id,
-            tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
-            lokasjon: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
-            tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
-            beskrivelse: `Importert fra DJI-flylogg (bulk). Flytid: ${data.durationMinutes} min`,
-            latitude: data.startPosition?.lat ?? null,
-            longitude: data.startPosition?.lng ?? null,
-          }).select('id, tittel').single();
-          if (mission) { missionId = mission.id; missionTitle = mission.tittel; }
-        }
-
-        // Link drone/pilot to mission
-        if (missionId && droneId) await supabase.from('mission_drones').upsert({ mission_id: missionId, drone_id: droneId }, { onConflict: 'mission_id,drone_id' });
-        if (missionId) await supabase.from('mission_personnel').upsert({ mission_id: missionId, profile_id: user.id }, { onConflict: 'mission_id,profile_id' });
-
-        // 7. Save flight log
-        const rawTrack = data.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
-        const maxPts = 200;
-        let flightTrack = rawTrack;
-        if (rawTrack.length > maxPts) {
-          const step = Math.ceil(rawTrack.length / maxPts);
-          flightTrack = rawTrack.filter((_, idx) => idx % step === 0 || idx === rawTrack.length - 1);
-        }
-
-        const { data: logData } = await supabase.from('flight_logs').insert({
-          company_id: companyId, user_id: user.id, drone_id: droneId,
-          mission_id: missionId,
-          flight_date: effectiveDate.toISOString(),
-          flight_duration_minutes: data.durationMinutes,
-          departure_location: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
-          landing_location: data.endPosition ? `${data.endPosition.lat.toFixed(5)}, ${data.endPosition.lng.toFixed(5)}` : 'Ukjent',
-          movements: 1,
-          flight_track: { positions: flightTrack } as any,
-          notes: `Importert fra DJI-flylogg (bulk). Maks hastighet: ${data.maxSpeed} m/s, Min batteri: ${data.minBattery}%`,
-          ...buildExtendedFields(data),
-        } as any).select('id').single();
-
-        if (logData) {
-          await saveFlightEvents(logData.id, data);
-          // Pilot logbook
-          await supabase.from('flight_log_personnel').insert({ flight_log_id: logData.id, profile_id: user.id });
-          // Battery logbook
-          for (const eqId of batteryIds) {
-            await supabase.from('flight_log_equipment').insert({ flight_log_id: logData.id, equipment_id: eqId });
-          }
-        }
+        if (insertError) throw new Error(insertError.message);
 
         results[i] = {
           ...results[i],
           status: 'done',
           droneModel: droneModel || data.aircraftName || data.droneType || undefined,
-          missionTitle,
           durationMinutes: data.durationMinutes,
         };
       } catch (error: any) {
@@ -754,11 +705,33 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     setBulkProgress(bulkFiles.length);
     setIsBulkProcessing(false);
-    queryClient.invalidateQueries({ queryKey: ['missions'] });
-    queryClient.invalidateQueries({ queryKey: ['drones'] });
-    queryClient.invalidateQueries({ queryKey: ['equipment'] });
+
+    // Refresh pending logs list
+    pendingLogsRef.current?.refresh();
+
     const savedCount = results.filter(r => r.status === 'done').length;
-    if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} flylogger lagret!`);
+    if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} logger lagt til behandlingskøen`);
+  };
+
+  // Dedup check against both pending_dji_logs and flight_logs
+  const checkDuplicateAll = async (sha256: string, cid: string): Promise<boolean> => {
+    if (!cid || !sha256) return false;
+    // Check flight_logs
+    const { data: flData } = await (supabase
+      .from('flight_logs')
+      .select('id')
+      .eq('company_id', cid) as any)
+      .eq('dronelog_sha256', sha256)
+      .limit(1);
+    if (flData && flData.length > 0) return true;
+    // Check pending_dji_logs
+    const { data: pdData } = await supabase
+      .from('pending_dji_logs')
+      .select('id')
+      .eq('company_id', cid)
+      .eq('dji_log_id', sha256)
+      .limit(1);
+    return !!(pdData && pdData.length > 0);
   };
 
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
@@ -1780,7 +1753,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+        if (!newOpen && isBulkProcessing) {
+          toast.info('Prosessering fortsetter i bakgrunnen. Filene dukker opp i «Logger til behandling» når de er klare.');
+        }
+        onOpenChange(newOpen);
+      }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -1968,7 +1946,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             {!isBulkProcessing && (
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CheckCircle className="w-4 h-4 text-primary" />
-                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagret, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
+                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagt til behandling, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
               </div>
             )}
 
@@ -1978,7 +1956,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <tr className="border-b bg-muted/40">
                     <th className="text-left p-2 font-medium text-xs">Fil</th>
                     <th className="text-left p-2 font-medium text-xs">{terminology.vehicle}</th>
-                    <th className="text-left p-2 font-medium text-xs">Oppdrag</th>
                     <th className="text-center p-2 font-medium text-xs">Status</th>
                   </tr>
                 </thead>
@@ -1987,11 +1964,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <tr key={i} className="border-b last:border-0">
                       <td className="p-2 text-xs truncate max-w-[120px]" title={r.fileName}>{r.fileName}</td>
                       <td className="p-2 text-xs text-muted-foreground">{r.droneModel || '—'}</td>
-                      <td className="p-2 text-xs text-muted-foreground truncate max-w-[120px]" title={r.missionTitle}>{r.missionTitle || '—'}</td>
                       <td className="p-2 text-center">
                         {r.status === 'pending' && <span className="text-xs text-muted-foreground">Venter</span>}
                         {r.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin mx-auto text-primary" />}
-                        {r.status === 'done' && <span className="text-xs text-primary">✅ Lagret</span>}
+                        {r.status === 'done' && <span className="text-xs text-primary">✅ Til behandling</span>}
                         {r.status === 'duplicate' && <span className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Duplikat</span>}
                         {r.status === 'error' && (
                           <span className="text-xs text-destructive" title={r.error}>❌ Feil</span>
@@ -2004,7 +1980,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
 
             <DialogFooter>
-              <Button onClick={() => { resetState(); onOpenChange(false); }} disabled={isBulkProcessing}>
+              <Button onClick={() => { resetState(); onOpenChange(false); }}>
                 Lukk
               </Button>
             </DialogFooter>
