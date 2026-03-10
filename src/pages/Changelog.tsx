@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   Loader2, Plus, Pencil, Trash2, Wrench, CheckCircle2,
   Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown,
-  ArrowUp, ArrowDown, Minus
+  ArrowUp, ArrowDown, Minus, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +83,7 @@ const Changelog = () => {
   const [maintenance, setMaintenance] = useState<Maintenance | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"created_at" | "status" | "completed_at">("created_at");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Dialogs
   const [systemDialog, setSystemDialog] = useState<{ open: boolean; system?: SystemStatus }>({ open: false });
@@ -281,6 +282,15 @@ const Changelog = () => {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">Endringslogg</CardTitle>
             <div className="flex items-center gap-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Søk..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 w-[160px] text-xs pl-7"
+                />
+              </div>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="h-8 w-[160px] text-xs">
                   <ArrowUpDown className="w-3 h-3 mr-1" />
@@ -304,7 +314,11 @@ const Changelog = () => {
           {entries.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
           )}
-          {[...entries].sort((a, b) => {
+          {[...entries].filter((e) => {
+            if (!searchQuery.trim()) return true;
+            const q = searchQuery.toLowerCase();
+            return e.title.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q);
+          }).sort((a, b) => {
             if (sortBy === "status") {
               const order = ["pågår", "testing", "ikke_startet", "implementert"];
               return order.indexOf(a.status) - order.indexOf(b.status);
