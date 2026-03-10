@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   Loader2, Plus, Pencil, Trash2, Wrench, CheckCircle2,
   Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown,
-  ArrowUp, ArrowDown, Minus
+  ArrowUp, ArrowDown, Minus, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
