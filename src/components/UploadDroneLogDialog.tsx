@@ -131,7 +131,16 @@ interface DjiLog {
   url?: string;
 }
 
-type Step = 'method' | 'upload' | 'dji-login' | 'dji-logs' | 'result';
+interface BulkResult {
+  fileName: string;
+  status: 'pending' | 'processing' | 'done' | 'error' | 'duplicate';
+  error?: string;
+  droneModel?: string;
+  missionTitle?: string;
+  durationMinutes?: number;
+}
+
+type Step = 'method' | 'upload' | 'dji-login' | 'dji-logs' | 'result' | 'bulk-result';
 
 interface UploadDroneLogDialogProps {
   open: boolean;
@@ -202,6 +211,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const [step, setStep] = useState<Step>('method');
   const [file, setFile] = useState<File | null>(null);
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -382,6 +395,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const resetState = () => {
     setStep('method');
     setFile(null);
+    setBulkFiles([]);
+    setBulkResults([]);
+    setBulkProgress(0);
+    setIsBulkProcessing(false);
     setResult(null);
     setMatchedLog(null);
     setMatchCandidates([]);
@@ -508,14 +525,31 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── File upload flow ──
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const valid = files.filter(f => {
       const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
-      if (!['.txt', '.zip'].includes(ext)) {
-        toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
-        return;
-      }
-      setFile(f);
+      return ['.txt', '.zip'].includes(ext);
+    });
+
+    if (valid.length !== files.length) {
+      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
+    }
+
+    if (valid.length === 0) return;
+
+    if (valid.length > 10) {
+      toast.warning('Maks 10 filer om gangen.');
+      const sliced = valid.slice(0, 10);
+      setBulkFiles(sliced);
+      setFile(sliced[0]);
+    } else if (valid.length === 1) {
+      setFile(valid[0]);
+      setBulkFiles([]);
+    } else {
+      setBulkFiles(valid);
+      setFile(valid[0]); // keep first for fallback
     }
   };
 
@@ -561,7 +595,171 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  // ── DJI login flow ──
+  // ── Bulk upload flow ──
+
+  const handleBulkUpload = async () => {
+    if (bulkFiles.length === 0 || !companyId || !user) return;
+    setIsBulkProcessing(true);
+    const results: BulkResult[] = bulkFiles.map(f => ({ fileName: f.name, status: 'pending' as const }));
+    setBulkResults([...results]);
+    setStep('bulk-result');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error('Ikke autentisert'); setIsBulkProcessing(false); return; }
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+    for (let i = 0; i < bulkFiles.length; i++) {
+      setBulkProgress(i);
+      results[i].status = 'processing';
+      setBulkResults([...results]);
+
+      try {
+        // 1. Upload & parse
+        const formData = new FormData();
+        formData.append('file', bulkFiles[i]);
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(err.error || err.details || 'Upload failed');
+        }
+        const data: DroneLogResult = await response.json();
+
+        // 2. SHA-256 dedup check
+        if (data.sha256Hash) {
+          const isDup = await checkDuplicate(data.sha256Hash);
+          if (isDup) {
+            results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
+            setBulkResults([...results]);
+            continue;
+          }
+        }
+
+        // 3. Auto-match drone
+        let droneId: string | null = null;
+        let droneModel: string | undefined;
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        if (sn) {
+          const match = drones.find(d =>
+            d.serienummer.trim().toLowerCase() === sn ||
+            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+          );
+          if (match) { droneId = match.id; droneModel = match.modell; }
+        }
+
+        // 4. Auto-match battery
+        let batteryIds: string[] = [];
+        if (data.batterySN) {
+          const bsn = data.batterySN.trim().toLowerCase();
+          const bMatch = equipmentList.find(e =>
+            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
+            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+          );
+          if (bMatch) batteryIds = [bMatch.id];
+        }
+
+        // 5. Auto-match mission (within 1 hour)
+        let missionId: string | null = null;
+        let missionTitle: string | undefined;
+        const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
+
+        if (data.startTime) {
+          const flightStart = parseFlightDate(data.startTime);
+          if (flightStart) {
+            const windowMs = 60 * 60 * 1000;
+            const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
+            const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
+            const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
+            const { data: missions } = await supabase
+              .from('missions')
+              .select('id, tittel, tidspunkt')
+              .eq('company_id', companyId)
+              .gte('tidspunkt', rangeStart)
+              .lte('tidspunkt', rangeEnd)
+              .order('tidspunkt', { ascending: true })
+              .limit(1);
+            if (missions && missions.length > 0) {
+              missionId = missions[0].id;
+              missionTitle = missions[0].tittel;
+            }
+          }
+        }
+
+        // 6. Create mission if none matched
+        if (!missionId) {
+          const { data: mission } = await supabase.from('missions').insert({
+            company_id: companyId, user_id: user.id,
+            tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
+            lokasjon: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
+            tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
+            beskrivelse: `Importert fra DJI-flylogg (bulk). Flytid: ${data.durationMinutes} min`,
+            latitude: data.startPosition?.lat ?? null,
+            longitude: data.startPosition?.lng ?? null,
+          }).select('id, tittel').single();
+          if (mission) { missionId = mission.id; missionTitle = mission.tittel; }
+        }
+
+        // Link drone/pilot to mission
+        if (missionId && droneId) await supabase.from('mission_drones').upsert({ mission_id: missionId, drone_id: droneId }, { onConflict: 'mission_id,drone_id' });
+        if (missionId) await supabase.from('mission_personnel').upsert({ mission_id: missionId, profile_id: user.id }, { onConflict: 'mission_id,profile_id' });
+
+        // 7. Save flight log
+        const rawTrack = data.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+        const maxPts = 200;
+        let flightTrack = rawTrack;
+        if (rawTrack.length > maxPts) {
+          const step = Math.ceil(rawTrack.length / maxPts);
+          flightTrack = rawTrack.filter((_, idx) => idx % step === 0 || idx === rawTrack.length - 1);
+        }
+
+        const { data: logData } = await supabase.from('flight_logs').insert({
+          company_id: companyId, user_id: user.id, drone_id: droneId,
+          mission_id: missionId,
+          flight_date: effectiveDate.toISOString(),
+          flight_duration_minutes: data.durationMinutes,
+          departure_location: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
+          landing_location: data.endPosition ? `${data.endPosition.lat.toFixed(5)}, ${data.endPosition.lng.toFixed(5)}` : 'Ukjent',
+          movements: 1,
+          flight_track: { positions: flightTrack } as any,
+          notes: `Importert fra DJI-flylogg (bulk). Maks hastighet: ${data.maxSpeed} m/s, Min batteri: ${data.minBattery}%`,
+          ...buildExtendedFields(data),
+        } as any).select('id').single();
+
+        if (logData) {
+          await saveFlightEvents(logData.id, data);
+          // Pilot logbook
+          await supabase.from('flight_log_personnel').insert({ flight_log_id: logData.id, profile_id: user.id });
+          // Battery logbook
+          for (const eqId of batteryIds) {
+            await supabase.from('flight_log_equipment').insert({ flight_log_id: logData.id, equipment_id: eqId });
+          }
+        }
+
+        results[i] = {
+          ...results[i],
+          status: 'done',
+          droneModel: droneModel || data.aircraftName || data.droneType || undefined,
+          missionTitle,
+          durationMinutes: data.durationMinutes,
+        };
+      } catch (error: any) {
+        console.error(`[Bulk] Error processing ${bulkFiles[i].name}:`, error);
+        results[i] = { ...results[i], status: 'error', error: error.message || 'Ukjent feil' };
+      }
+      setBulkResults([...results]);
+    }
+
+    setBulkProgress(bulkFiles.length);
+    setIsBulkProcessing(false);
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
+    queryClient.invalidateQueries({ queryKey: ['drones'] });
+    queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    const savedCount = results.filter(r => r.status === 'done').length;
+    if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} flylogger lagret!`);
+  };
 
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
   const [djiImportCooldown, setDjiImportCooldown] = useState(false);
@@ -1706,12 +1904,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           <div className="space-y-4">
             {backButton('method')}
             <div className="space-y-2">
-              <Label>{t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
+              <Label>{bulkFiles.length > 1 ? `Velg flylogg-filer (maks 10)` : t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
               <div
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {file ? (
+                {bulkFiles.length > 1 ? (
+                  <div className="space-y-2">
+                    <FileText className="w-6 h-6 mx-auto text-primary" />
+                    <p className="text-sm font-medium">{bulkFiles.length} filer valgt</p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {bulkFiles.map((f, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">{f.name} ({(f.size / 1024).toFixed(0)} KB)</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : file ? (
                   <div className="flex items-center justify-center gap-2">
                     <FileText className="w-5 h-5 text-primary" />
                     <span className="text-sm font-medium">{file.name}</span>
@@ -1720,17 +1928,84 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t('dronelog.dropOrClick', 'Klikk for å velge fil (TXT eller ZIP)')}</p>
+                    <p className="text-sm text-muted-foreground">Klikk for å velge filer (TXT eller ZIP, maks 10)</p>
                   </div>
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.zip" className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept=".txt,.zip" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
-              <Button onClick={handleUpload} disabled={!file || isProcessing}>
-                {isProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><Upload className="w-4 h-4 mr-2" />{t('dronelog.process', 'Behandle flylogg')}</>}
+              {bulkFiles.length > 1 ? (
+                <Button onClick={handleBulkUpload} disabled={isBulkProcessing}>
+                  {isBulkProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Behandler...</> : <><Upload className="w-4 h-4 mr-2" />Behandle {bulkFiles.length} filer</>}
+                </Button>
+              ) : (
+                <Button onClick={handleUpload} disabled={!file || isProcessing}>
+                  {isProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><Upload className="w-4 h-4 mr-2" />{t('dronelog.process', 'Behandle flylogg')}</>}
+                </Button>
+              )}
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* ── Step: Bulk result ── */}
+        {step === 'bulk-result' && (
+          <div className="space-y-4">
+            {isBulkProcessing && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Behandler fil {bulkProgress + 1} av {bulkFiles.length}...</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkFiles.length) * 100}%` }} />
+                </div>
+              </div>
+            )}
+
+            {!isBulkProcessing && (
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagret, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left p-2 font-medium text-xs">Fil</th>
+                    <th className="text-left p-2 font-medium text-xs">{terminology.vehicle}</th>
+                    <th className="text-left p-2 font-medium text-xs">Oppdrag</th>
+                    <th className="text-center p-2 font-medium text-xs">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkResults.map((r, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="p-2 text-xs truncate max-w-[120px]" title={r.fileName}>{r.fileName}</td>
+                      <td className="p-2 text-xs text-muted-foreground">{r.droneModel || '—'}</td>
+                      <td className="p-2 text-xs text-muted-foreground truncate max-w-[120px]" title={r.missionTitle}>{r.missionTitle || '—'}</td>
+                      <td className="p-2 text-center">
+                        {r.status === 'pending' && <span className="text-xs text-muted-foreground">Venter</span>}
+                        {r.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin mx-auto text-primary" />}
+                        {r.status === 'done' && <span className="text-xs text-primary">✅ Lagret</span>}
+                        {r.status === 'duplicate' && <span className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Duplikat</span>}
+                        {r.status === 'error' && (
+                          <span className="text-xs text-destructive" title={r.error}>❌ Feil</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => { resetState(); onOpenChange(false); }} disabled={isBulkProcessing}>
+                Lukk
               </Button>
             </DialogFooter>
           </div>

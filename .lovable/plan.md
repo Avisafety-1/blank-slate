@@ -1,50 +1,44 @@
 
 
-## Bulk-opplasting via flervalg i eksisterende filvelger
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Tilnærming
-Utvide den eksisterende manuelle opplastingen til å støtte flere filer (maks 10) ved å legge til `multiple` på file-inputen. Når flere filer er valgt, prosesseres de sekvensielt med automatisk drone/oppdrag-matching og lagring — en progressindikator og en oppsummeringstabell vises til slutt.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Endringer i `src/components/UploadDroneLogDialog.tsx`
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**1. State-endringer**
-- `file: File | null` → `files: File[]`
-- Ny: `bulkResults: Array<{ fileName, status, error?, droneModel?, missionTitle? }>`
-- Ny: `bulkProgress: number` (nåværende fil-indeks)
-- Ny: `isBulkMode: boolean` (true når files.length > 1)
-- Nytt steg: `'bulk-result'` i Step-typen
+### Endringer
 
-**2. `handleFileSelect`** — Aksepter alle valgte filer (maks 10), valider filtype
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
 ```typescript
-const selected = Array.from(e.target.files || []).slice(0, 10);
-// validate extensions, setFiles(selected)
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-**3. File input** — Legg til `multiple`, maks 10
-```html
-<input multiple type="file" accept=".txt,.zip" ... />
-```
-
-**4. Upload-steget UI** — Vis filliste når flere er valgt
-- Vis antall valgte filer og filnavn
-- Knapp: «Behandle X filer»
-
-**5. `handleBulkUpload`** — Ny funksjon for sekvensielt prosessering
-- For hver fil: kall edge function, auto-match drone (serienummer), auto-match oppdrag (tidspunkt innen 1 time), SHA-256 duplikatsjekk, lagre automatisk med innlogget bruker som pilot
-- Oppdater `bulkProgress` og `bulkResults` for hver fil
-- Gå til `'bulk-result'` når ferdig
-
-**6. Nytt steg `'bulk-result'`** — Oppsummeringstabell
+### UI per punkt
 ```text
-| Fil              | Drone       | Oppdrag        | Status    |
-|------------------|-------------|----------------|-----------|
-| log1.txt         | DJI Mini 4  | Inspeksjon #3  | ✅ Lagret  |
-| log2.txt         | DJI Mini 4  | —              | ✅ Lagret  |
-| log3.txt         | —           | —              | ⚠️ Duplikat|
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
 ```
-- «Lukk»-knapp
-
-**7. Én fil** — Eksisterende flyt beholdes uendret (velger man kun 1 fil, brukes dagens steg-for-steg-flyt)
 
 Ingen nye avhengigheter. Ingen databaseendringer.
 
