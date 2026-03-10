@@ -1,44 +1,31 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Når en DJI-logg lastes opp for et oppdrag som allerede har en flylogg (f.eks. fra SafeSky), opprettes en **ny** flylogg i stedet for å oppdatere den eksisterende. Dette skjer fordi:
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+1. SHA-256 duplikatsjekken finner ingen match (SafeSky-loggen har ingen DJI-hash)
+2. Systemet finner oppdraget i tidsvinduet og tilbyr «Knytt til eksisterende oppdrag»
+3. `handleLinkToMission` oppretter alltid en ny `flight_logs`-rad → 2 flylogger på samme oppdrag
+
+Den andre loggen får tidspunkt 01:00 fordi DJI-loggens startTime ble feilparsed eller brukt direkte som flight_date.
+
+## Løsning
+
+Utvid `findMatchingFlightLog` til å søke etter eksisterende flylogger på matchede oppdrag. Hvis en flylogg allerede finnes på oppdraget (innenfor tidsvinduet), sett `matchedLog` slik at brukeren får «Oppdater eksisterende»-knappen i stedet for «Opprett ny».
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/components/UploadDroneLogDialog.tsx`** — i `findMatchingFlightLog`:
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+Etter at matchede oppdrag er funnet (linje ~860-870), legg til et ekstra steg:
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+1. Hent flight_logs for de matchede oppdragene: `SELECT id, flight_date, flight_duration_minutes, drone_id, mission_id FROM flight_logs WHERE mission_id IN (matched_mission_ids)`
+2. Hvis en eller flere flylogger finnes, sorter etter nærmest flytidspunkt og sett `setMatchedLog(closestLog)` — dette gjør at UI-en automatisk viser «Oppdater eksisterende flylogg» i stedet for å opprette en ny
+3. Pre-select oppdraget via `setSelectedMissionId`
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+Resultatet: Når brukeren laster opp DJI-loggen, ser de «Eksisterende flylogg funnet!» med mulighet til å oppdatere (legge til flight_track, DJI-metadata osv.) i stedet for å opprette duplikat.
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Fil
+- `src/components/UploadDroneLogDialog.tsx`
 
