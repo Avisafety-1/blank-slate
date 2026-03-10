@@ -16,6 +16,8 @@ interface DroneModel {
   eu_class: string;
   weight_kg: number;
   payload_kg: number;
+  weight_without_payload_kg: number | null;
+  standard_takeoff_weight_kg: number | null;
   comment: string | null;
 }
 
