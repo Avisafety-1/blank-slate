@@ -1,24 +1,44 @@
 
 
-## Plan: Anonymiser pilotnavn ved live-publisering
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-Når en flytur startes med «live»-modus, lagres pilotens fulle navn i `pilot_name`-feltet og vises offentlig på kartet og i aktive flyvninger-seksjonen.
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
-Endre `StartFlightDialog.tsx` til å lagre «Pilot» (eller bare fornavn) + selskapsnavn i stedet for fullt navn når publish-modus er live.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
 ### Endringer
 
-**`src/components/StartFlightDialog.tsx`**
-- I `fetchPilotName` (linje 472-482): hent også selskapsnavn (allerede tilgjengelig via `useAuth`-konteksten som `companyName`)
-- Endre `pilot`-verdien som sendes til `onStart` (linje 644 og 680): når `publishMode` er `'live_uav'` eller `'advisory'`, bruk `"Pilot – {companyName}"` i stedet for fullt navn
-- Preview-teksten (linje 998-1001) viser fortsatt fullt navn lokalt — dette er kun synlig for brukeren selv
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**Ingen andre filer endres** — `pilot_name`-feltet i databasen vil automatisk inneholde den anonymiserte verdien, og kart-popup og aktive flyvninger-seksjonen viser det som er lagret.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### Resultat
-- Kartet viser: «Pilot – Firmanavn AS»
-- Aktive flyvninger (intern): viser `profileName` (fullt navn) som fallback for eget selskap, men `pilot_name` lagret i DB er anonymisert
-- Flyloggen beholder fullt navn via `profile_id`-relasjonen
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 

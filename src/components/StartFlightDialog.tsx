@@ -72,7 +72,7 @@ interface StartFlightDialogProps {
 }
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
-  const { user, companyId } = useAuth();
+  const { user, companyId, companyName } = useAuth();
   const { isAdmin } = useRoleCheck();
   const { t } = useTranslation();
   const { checklists } = useChecklists();
@@ -641,7 +641,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       
       // Always pass GPS position for departure auto-fill, pilot name and DroneTag for live_uav
       const startPosition = gpsPosition ? gpsPosition : undefined;
-      const pilot = pilotName ? pilotName : undefined;
+      const pilot = (publishMode === 'advisory' || publishMode === 'live_uav') && companyName
+        ? `Pilot – ${companyName}`
+        : pilotName ? pilotName : undefined;
       const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
         ? selectedDronetagId 
         : undefined;
@@ -677,7 +679,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
       
       const startPosition = gpsPosition ? gpsPosition : undefined;
-      const pilot = pilotName ? pilotName : undefined;
+      const pilot = companyName
+        ? `Pilot – ${companyName}`
+        : pilotName ? pilotName : undefined;
       const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none'
         ? selectedDronetagId 
         : undefined;
