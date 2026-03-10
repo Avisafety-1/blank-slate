@@ -1753,7 +1753,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+        if (!newOpen && isBulkProcessing) {
+          toast.info('Prosessering fortsetter i bakgrunnen. Filene dukker opp i «Logger til behandling» når de er klare.');
+        }
+        onOpenChange(newOpen);
+      }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
