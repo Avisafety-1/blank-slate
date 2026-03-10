@@ -136,7 +136,6 @@ interface BulkResult {
   status: 'pending' | 'processing' | 'done' | 'error' | 'duplicate';
   error?: string;
   droneModel?: string;
-  missionTitle?: string;
   durationMinutes?: number;
 }
 
