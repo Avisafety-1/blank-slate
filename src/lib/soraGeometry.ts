@@ -199,10 +199,10 @@ function intersectLines(
   return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
 }
 
-export function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[] {
+export function bufferPolygon(hull: RoutePoint[], distanceMeters: number, refPointOverride?: RoutePoint, avgLatOverride?: number): RoutePoint[] {
   if (hull.length < 3 || distanceMeters <= 0) return hull;
   if (hull.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return hull;
-  const avgLat = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
+  const avgLat = avgLatOverride ?? hull.reduce((s, p) => s + p.lat, 0) / hull.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
   const ref = hull[0];
