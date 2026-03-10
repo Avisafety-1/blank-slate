@@ -1,44 +1,18 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Scrollbar og søk i sjekkliste-popover
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Popoveren som viser tilgjengelige sjekklister i StartFlightDialog har ingen scrollbar eller søkefunksjon — på mobil (360px) kan listen gå utenfor skjermen.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/components/StartFlightDialog.tsx`** (linje 845-858)
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+Erstatt den enkle `PopoverContent` med:
+1. Et søkefelt (`Input`) øverst med placeholder «Søk sjekklister…»
+2. En `ScrollArea` med `max-h-48` rundt listen
+3. Filtrer `availableChecklists` basert på søketekst (case-insensitive match på tittel)
+4. Vis «Ingen treff»-melding når filtreringen gir 0 resultater
+5. Legg til lokal state `checklistSearch` som nullstilles når popoveren lukkes
 
