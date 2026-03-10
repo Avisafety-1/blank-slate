@@ -99,6 +99,20 @@ export const ExpandedMapDialog = ({
       .from("missions")
       .update({ route: updatedRoute as any })
       .eq("id", missionId);
+
+    // Auto-add selected drone to mission_drones
+    if (!error && soraDroneId) {
+      const { data: existing } = await supabase
+        .from("mission_drones")
+        .select("id")
+        .eq("mission_id", missionId)
+        .eq("drone_id", soraDroneId)
+        .maybeSingle();
+      if (!existing) {
+        await supabase.from("mission_drones").insert({ mission_id: missionId, drone_id: soraDroneId } as any);
+      }
+    }
+
     setSoraSaving(false);
     if (error) {
       toast.error("Kunne ikke lagre SORA-innstillinger");
