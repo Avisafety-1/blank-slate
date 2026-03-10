@@ -868,24 +868,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setMatchedMissions(sorted);
       setSelectedMissionId(sorted[0].id); // Pre-select closest
 
-      // Check if any matched mission already has a flight log — offer update instead of duplicate
+      // Fetch all existing flight logs for matched missions so user can choose
       const missionIds = sorted.map(m => m.id);
       const { data: existingLogs } = await supabase
         .from('flight_logs')
-        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id')
-        .in('mission_id', missionIds);
+        .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
+        .in('mission_id', missionIds)
+        .order('flight_date', { ascending: false });
 
       if (existingLogs && existingLogs.length > 0) {
-        // Find the log on the closest mission, or the one closest in time
-        const closestLog = existingLogs.sort((a, b) => {
-          const missionA = sorted.findIndex(m => m.id === a.mission_id);
-          const missionB = sorted.findIndex(m => m.id === b.mission_id);
-          return missionA - missionB;
-        })[0];
-        console.log('[DroneLog] Found existing flight log on matched mission, offering update:', closestLog.id);
-        setMatchedLog(closestLog as any);
-        setSelectedMissionId(closestLog.mission_id!);
-        toast.info('Oppdraget har allerede en flylogg. Du kan oppdatere den med DJI-data.');
+        console.log('[DroneLog] Found', existingLogs.length, 'existing flight logs on matched missions');
+        setMatchCandidates(existingLogs as any[]);
+        // Don't auto-set matchedLog — let user choose
+        toast.info('Oppdraget har eksisterende flyturer. Velg om du vil oppdatere en eller legge til ny.');
       }
     }
   };
@@ -2180,7 +2175,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
                     : `${matchedMissions.length} oppdrag matcher tidspunktet. Velg hvilket oppdrag flyloggen tilhører:`}
                 </p>
-                <RadioGroup value={selectedMissionId} onValueChange={setSelectedMissionId}>
+                <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); }}>
                   {matchedMissions.map((m) => (
                     <label key={m.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                       <RadioGroupItem value={m.id} />
@@ -2203,15 +2198,57 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
+            {/* Show existing flight logs for chosen mission */}
+            {selectedMissionId && selectedMissionId !== '__new__' && matchCandidates.filter(c => c.mission_id === selectedMissionId).length > 0 && (
+              <div className="p-3 rounded-lg bg-accent/30 border border-border">
+                <p className="text-sm font-medium mb-2">{t('dronelog.existingFlights', 'Eksisterende flyturer på dette oppdraget:')}</p>
+                <RadioGroup
+                  value={matchedLog ? matchedLog.id : '__new_flight__'}
+                  onValueChange={(val) => {
+                    if (val === '__new_flight__') {
+                      setMatchedLog(null);
+                    } else {
+                      const found = matchCandidates.find(c => c.id === val);
+                      if (found) setMatchedLog(found);
+                    }
+                  }}
+                >
+                  {matchCandidates
+                    .filter(c => c.mission_id === selectedMissionId)
+                    .map((log) => (
+                      <label key={log.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                        <RadioGroupItem value={log.id} />
+                        <div className="text-sm">
+                          <span className="font-medium">
+                            {log.flight_date ? format(new Date(log.flight_date), 'dd.MM.yyyy HH:mm') : 'Ukjent dato'}
+                          </span>
+                          <span className="text-muted-foreground"> — {log.flight_duration_minutes || 0} min</span>
+                          {(log as any).drones?.modell && (
+                            <span className="text-muted-foreground"> — {(log as any).drones.modell}</span>
+                          )}
+                          <span className="ml-1 text-xs text-muted-foreground">(Oppdater)</span>
+                        </div>
+                      </label>
+                    ))}
+                  <label className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer border-t border-border mt-1 pt-3">
+                    <RadioGroupItem value="__new_flight__" />
+                    <div className="flex items-center gap-1 text-sm">
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>{t('dronelog.addNewFlight', 'Legg til som ny flytur')}</span>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
+
             {matchedLog ? (
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                 <div className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('dronelog.matchFound', 'Eksisterende flylogg funnet!')}</p>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('dronelog.matchFound', 'Eksisterende flylogg valgt for oppdatering')}</p>
                     <p className="text-xs text-green-700 dark:text-green-400">
                       {matchedLog.flight_date ? format(new Date(matchedLog.flight_date), 'dd.MM.yyyy') : 'Ukjent dato'} — {matchedLog.flight_duration_minutes} min
-                      {matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
                     </p>
                   </div>
                 </div>
