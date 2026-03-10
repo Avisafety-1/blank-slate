@@ -260,8 +260,9 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
                   className="h-8 text-sm"
                 />
               </div>
-            </div>
+            </>
           )}
+          </div>
 
           {/* ── Suggestion result ── */}
           {suggestion && (
