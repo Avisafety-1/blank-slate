@@ -16,6 +16,8 @@ interface DroneModel {
   eu_class: string;
   weight_kg: number;
   payload_kg: number;
+  weight_without_payload_kg: number | null;
+  standard_takeoff_weight_kg: number | null;
   comment: string | null;
 }
 
@@ -290,7 +292,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
+              <Label htmlFor="vekt">MTOW (kg)</Label>
               <Input 
                 id="vekt" 
                 name="vekt" 
@@ -314,6 +316,24 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               />
             </div>
           </div>
+          {selectedModelId && selectedModelId !== "manual" && (() => {
+            const model = droneModels.find(m => m.id === selectedModelId);
+            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg)) return null;
+            return (
+              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+                {model.weight_without_payload_kg != null && (
+                  <div>
+                    <span className="font-medium">Vekt uten payload:</span> {model.weight_without_payload_kg} kg
+                  </div>
+                )}
+                {model.standard_takeoff_weight_kg != null && (
+                  <div>
+                    <span className="font-medium">Standard takeoff:</span> {model.standard_takeoff_weight_kg} kg
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <div>
             <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
             <Input id="kjøpsdato" name="kjøpsdato" type="date" />
