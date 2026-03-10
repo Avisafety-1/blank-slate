@@ -1951,7 +1951,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <tr className="border-b bg-muted/40">
                     <th className="text-left p-2 font-medium text-xs">Fil</th>
                     <th className="text-left p-2 font-medium text-xs">{terminology.vehicle}</th>
-                    <th className="text-left p-2 font-medium text-xs">Oppdrag</th>
                     <th className="text-center p-2 font-medium text-xs">Status</th>
                   </tr>
                 </thead>
