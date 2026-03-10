@@ -1,44 +1,31 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Foreslått SORA-buffer: Bruk selskapets egne droner
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Korreksjon fra opprinnelig plan
+Dronevalg i SORA-panelet skal hente fra **`drones`-tabellen** (selskapets egne droner, RLS-filtrert), ikke fra `drone_models`-katalogen. Katalogen brukes kun som oppslag for tekniske spesifikasjoner.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Ny fil: `src/lib/soraBufferCalculator.ts`
+Ren beregningsfunksjon — uendret fra forrige plan. Tar inn `DroneProfile` + `MissionParams`, returnerer foreslåtte bufferverdier med summary og warnings.
 
-### Endringer
+### Endring: `src/components/SoraSettingsPanel.tsx`
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+1. **Dronevalg** — Select som henter fra `drones`-tabellen (aktive droner i selskapet). Viser modellnavn + registreringsnummer.
+2. Når en drone velges, slå opp `drone_models` via `ilike('name', drone.modell)` for å hente specs (MTOW, max_wind, endurance, sensor).
+3. **Oppdragsparametere** — VLOS/BVLOS, containment-nivå, fallskjerm/FTS-switches, vind-overstyring.
+4. **Beregningsresultat** — Info-boks med foreslåtte verdier + "Bruk foreslått buffer"-knapp.
+5. Eksisterende slidere forblir tilgjengelige for manuell overstyring.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Props-endring
+Ingen endring i `SoraSettingsPanel` props — den trenger `companyId` fra `useAuth()` internt for å filtrere droner.
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+### Filer
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+| Fil | Handling |
+|-----|----------|
+| `src/lib/soraBufferCalculator.ts` | **Ny** |
+| `src/components/SoraSettingsPanel.tsx` | **Utvides** |
+| `src/types/map.ts` | Uendret |
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Ingen DB-endringer.
 
