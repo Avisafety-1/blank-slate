@@ -18,10 +18,15 @@ interface RouteData {
   soraSettings?: SoraSettings;
 }
 
+interface FlightTrack {
+  positions: Array<{ lat: number; lng: number }>;
+}
+
 interface MapSnapshotInput {
   latitude?: number | null;
   longitude?: number | null;
   route?: RouteData | null;
+  flightTracks?: FlightTrack[];
 }
 
 // Web Mercator helpers
