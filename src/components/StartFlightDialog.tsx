@@ -140,7 +140,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
       const { data } = await supabase
         .from('companies')
-        .select('before_takeoff_checklist_ids')
+        .select('before_takeoff_checklist_ids, dronetag_enabled')
         .eq('id', companyId)
         .maybeSingle();
 
