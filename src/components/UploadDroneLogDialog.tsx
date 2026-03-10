@@ -395,6 +395,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const resetState = () => {
     setStep('method');
     setFile(null);
+    setBulkFiles([]);
+    setBulkResults([]);
+    setBulkProgress(0);
+    setIsBulkProcessing(false);
     setResult(null);
     setMatchedLog(null);
     setMatchCandidates([]);
