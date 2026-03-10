@@ -84,6 +84,7 @@ export const ExpandedMapDialog = ({
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);
+  const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
   const handleSoraChange = (newSettings: SoraSettings) => {
     setSoraSettings(newSettings);
