@@ -131,7 +131,16 @@ interface DjiLog {
   url?: string;
 }
 
-type Step = 'method' | 'upload' | 'dji-login' | 'dji-logs' | 'result';
+interface BulkResult {
+  fileName: string;
+  status: 'pending' | 'processing' | 'done' | 'error' | 'duplicate';
+  error?: string;
+  droneModel?: string;
+  missionTitle?: string;
+  durationMinutes?: number;
+}
+
+type Step = 'method' | 'upload' | 'dji-login' | 'dji-logs' | 'result' | 'bulk-result';
 
 interface UploadDroneLogDialogProps {
   open: boolean;
