@@ -675,6 +675,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           .from('pending_dji_logs')
           .insert({
             company_id: localCompanyId,
+            user_id: user?.id,
             dji_log_id: data.sha256Hash || crypto.randomUUID(),
             aircraft_name: data.aircraftName || data.droneType || null,
             aircraft_sn: data.aircraftSN || data.aircraftSerial || null,
