@@ -375,10 +375,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         // Candidates: { callsign, type, lat, lng, altitudeFt }
         const candidates: Array<{ callsign: string; type: string; lat: number; lng: number; altitudeFt: number | null }> = [];
 
-        // 1. SafeSky beacons
+        // 1. SafeSky beacons (bounding box ~20 km to avoid 1000-row limit)
+        const delta = 0.18;
         const { data: beacons } = await supabase
           .from('safesky_beacons')
-          .select('id, callsign, beacon_type, latitude, longitude, altitude');
+          .select('id, callsign, beacon_type, latitude, longitude, altitude')
+          .gte('latitude', gpsPosition.lat - delta)
+          .lte('latitude', gpsPosition.lat + delta)
+          .gte('longitude', gpsPosition.lng - delta)
+          .lte('longitude', gpsPosition.lng + delta);
 
         if (beacons) {
           const MAX_ALT_M = 1524; // 5000ft
