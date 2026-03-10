@@ -942,7 +942,9 @@ export type Database = {
           id: string
           name: string
           payload_kg: number
+          standard_takeoff_weight_kg: number | null
           weight_kg: number
+          weight_without_payload_kg: number | null
         }
         Insert: {
           comment?: string | null
@@ -951,7 +953,9 @@ export type Database = {
           id?: string
           name: string
           payload_kg?: number
+          standard_takeoff_weight_kg?: number | null
           weight_kg: number
+          weight_without_payload_kg?: number | null
         }
         Update: {
           comment?: string | null
@@ -960,7 +964,9 @@ export type Database = {
           id?: string
           name?: string
           payload_kg?: number
+          standard_takeoff_weight_kg?: number | null
           weight_kg?: number
+          weight_without_payload_kg?: number | null
         }
         Relationships: []
       }
