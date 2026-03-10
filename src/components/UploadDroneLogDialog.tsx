@@ -1202,7 +1202,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
-        flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
+        flight_date: effectiveDate.toISOString(), flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
