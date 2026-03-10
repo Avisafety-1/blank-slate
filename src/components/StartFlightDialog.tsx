@@ -1059,40 +1059,46 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </div>
                 
                 {/* DroneTag device selector */}
-                {dronetagDevices.length > 0 && (
-                  <div className="space-y-2 pl-1">
-                    <Label className="text-sm">{t('flight.dronetagDevice')} ({t('common.optional')})</Label>
-                    <Select
-                      value={selectedDronetagId}
-                      onValueChange={(val) => {
-                        setSelectedDronetagId(val);
-                        setAutoSelectedDronetag(false);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('flight.selectDronetag')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('flight.noDronetag')}</SelectItem>
-                        {dronetagDevices.map((device) => (
-                          <SelectItem key={device.id} value={device.id}>
-                            {device.name || device.callsign} {device.callsign && `(${device.callsign})`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {autoSelectedDronetag ? (
-                      <p className="flex items-center gap-1 text-xs text-primary">
-                        <Info className="h-3 w-3" />
-                        Automatisk valgt fra oppdragets drone
-                      </p>
+                <div className="space-y-2 pl-1">
+                    <Label className="text-sm">{t('flight.dronetagDevice')} *</Label>
+                    {dronetagDevices.length > 0 ? (
+                      <>
+                        <Select
+                          value={selectedDronetagId}
+                          onValueChange={(val) => {
+                            setSelectedDronetagId(val);
+                            setAutoSelectedDronetag(false);
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={t('flight.selectDronetag')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dronetagDevices.map((device) => (
+                              <SelectItem key={device.id} value={device.id}>
+                                {device.name || device.callsign} {device.callsign && `(${device.callsign})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {autoSelectedDronetag ? (
+                          <p className="flex items-center gap-1 text-xs text-primary">
+                            <Info className="h-3 w-3" />
+                            Automatisk valgt fra oppdragets drone
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            {t('flight.dronetagInfo')}
+                          </p>
+                        )}
+                      </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {t('flight.dronetagInfo')}
-                      </p>
+                      <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <span>Ingen Dronetag-enheter registrert. Legg til en under Ressurser.</span>
+                      </div>
                     )}
                   </div>
-                )}
               </div>
             )}
 
