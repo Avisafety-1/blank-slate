@@ -81,6 +81,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
+  const [catalogModel, setCatalogModel] = useState<any>(null);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
@@ -185,6 +186,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchMissionsSinceInspection();
     }
   }, [drone]);
+
+  // Fetch matching catalog model for extra specs
+  useEffect(() => {
+    if (!drone?.modell) { setCatalogModel(null); return; }
+    const fetchCatalogModel = async () => {
+      const { data } = await supabase
+        .from("drone_models")
+        .select("*")
+        .ilike("name", drone.modell)
+        .maybeSingle();
+      setCatalogModel(data);
+    };
+    fetchCatalogModel();
+  }, [drone?.modell]);
 
   const fetchMissionsSinceInspection = async () => {
     if (!drone) return;
@@ -650,6 +665,41 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-sm sm:text-base">{drone.payload !== null ? `${drone.payload} kg` : "-"}</p>
                 </div>
               </div>
+
+              {catalogModel && (catalogModel.endurance_min || catalogModel.max_wind_mps || catalogModel.sensor_type || catalogModel.category || catalogModel.weight_without_payload_kg || catalogModel.standard_takeoff_weight_kg) && (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+                  {catalogModel.weight_without_payload_kg != null && (
+                    <div>
+                      <span className="font-medium">Vekt uten payload:</span> {catalogModel.weight_without_payload_kg} kg
+                    </div>
+                  )}
+                  {catalogModel.standard_takeoff_weight_kg != null && (
+                    <div>
+                      <span className="font-medium">Standard takeoff:</span> {catalogModel.standard_takeoff_weight_kg} kg
+                    </div>
+                  )}
+                  {catalogModel.endurance_min != null && (
+                    <div>
+                      <span className="font-medium">Flygetid:</span> {catalogModel.endurance_min} min
+                    </div>
+                  )}
+                  {catalogModel.max_wind_mps != null && (
+                    <div>
+                      <span className="font-medium">Maks vind:</span> {catalogModel.max_wind_mps} m/s
+                    </div>
+                  )}
+                  {catalogModel.sensor_type && (
+                    <div>
+                      <span className="font-medium">Sensor:</span> {catalogModel.sensor_type}
+                    </div>
+                  )}
+                  {catalogModel.category && (
+                    <div>
+                      <span className="font-medium">Kategori:</span> {catalogModel.category}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
