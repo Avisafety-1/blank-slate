@@ -868,24 +868,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setMatchedMissions(sorted);
       setSelectedMissionId(sorted[0].id); // Pre-select closest
 
-      // Check if any matched mission already has a flight log — offer update instead of duplicate
+      // Fetch all existing flight logs for matched missions so user can choose
       const missionIds = sorted.map(m => m.id);
       const { data: existingLogs } = await supabase
         .from('flight_logs')
-        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id')
-        .in('mission_id', missionIds);
+        .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
+        .in('mission_id', missionIds)
+        .order('flight_date', { ascending: false });
 
       if (existingLogs && existingLogs.length > 0) {
-        // Find the log on the closest mission, or the one closest in time
-        const closestLog = existingLogs.sort((a, b) => {
-          const missionA = sorted.findIndex(m => m.id === a.mission_id);
-          const missionB = sorted.findIndex(m => m.id === b.mission_id);
-          return missionA - missionB;
-        })[0];
-        console.log('[DroneLog] Found existing flight log on matched mission, offering update:', closestLog.id);
-        setMatchedLog(closestLog as any);
-        setSelectedMissionId(closestLog.mission_id!);
-        toast.info('Oppdraget har allerede en flylogg. Du kan oppdatere den med DJI-data.');
+        console.log('[DroneLog] Found', existingLogs.length, 'existing flight logs on matched missions');
+        setMatchCandidates(existingLogs as any[]);
+        // Don't auto-set matchedLog — let user choose
+        toast.info('Oppdraget har eksisterende flyturer. Velg om du vil oppdatere en eller legge til ny.');
       }
     }
   };
