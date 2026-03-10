@@ -149,6 +149,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       } else {
         setCompanyChecklistIds([]);
       }
+      setDronetagEnabled(data?.dronetag_enabled ?? false);
     };
 
     fetchCompanyChecklists();
