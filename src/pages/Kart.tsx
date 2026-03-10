@@ -59,6 +59,7 @@ export default function KartPage() {
     groundRiskDistance: 100,
     bufferMode: "convexHull",
   });
+  const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -154,7 +155,9 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           formData: routePlanningState.formData,
           selectedPersonnel: routePlanningState.selectedPersonnel,
           selectedEquipment: routePlanningState.selectedEquipment,
-          selectedDrones: routePlanningState.selectedDrones,
+          selectedDrones: soraDroneId
+            ? [...new Set([...(routePlanningState.selectedDrones || []), soraDroneId])]
+            : routePlanningState.selectedDrones,
           selectedCustomer: routePlanningState.selectedCustomer,
           missionId: routePlanningState.missionId,
         }
@@ -165,6 +168,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
         state: {
           routeData: routeToSave,
           openDialog: true,
+          selectedDrones: soraDroneId ? [soraDroneId] : [],
         }
       });
     }
@@ -479,7 +483,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           </div>
           
           {/* SORA Settings Panel */}
-          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} />
+          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} />
         </div>
       )}
 
