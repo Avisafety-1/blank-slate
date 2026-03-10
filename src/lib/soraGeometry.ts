@@ -29,10 +29,10 @@ export function bufferPolyline(
   if (points.length === 0 || distanceMeters <= 0) return points;
   if (points.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return points;
 
-  const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const avgLat = avgLatOverride ?? points.reduce((s, p) => s + p.lat, 0) / points.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
-  const ref = points[0];
+  const ref = refPointOverride ?? points[0];
 
   // Convert to local metric coords
   const pts = points.map(p => ({
