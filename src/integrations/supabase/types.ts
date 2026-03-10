@@ -21,6 +21,7 @@ export type Database = {
           drone_id: string | null
           dronetag_device_id: string | null
           id: string
+          long_flight_notified_at: string | null
           mission_id: string | null
           pilot_name: string | null
           profile_id: string
@@ -37,6 +38,7 @@ export type Database = {
           drone_id?: string | null
           dronetag_device_id?: string | null
           id?: string
+          long_flight_notified_at?: string | null
           mission_id?: string | null
           pilot_name?: string | null
           profile_id: string
@@ -53,6 +55,7 @@ export type Database = {
           drone_id?: string | null
           dronetag_device_id?: string | null
           id?: string
+          long_flight_notified_at?: string | null
           mission_id?: string | null
           pilot_name?: string | null
           profile_id?: string
