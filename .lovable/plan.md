@@ -1,44 +1,36 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Utvid DJI-import: Vis eksisterende flyturer på valgt oppdrag
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Når brukeren velger et oppdrag som allerede har flylogger, viser systemet i dag automatisk den nærmeste loggen og tilbyr kun «Oppdater». Brukeren får ikke valget mellom å oppdatere en spesifikk flytur eller legge til DJI-dataen som en ny flytur.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/components/UploadDroneLogDialog.tsx`**
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+1. **Matching-logikk (linje 871-889)**: I stedet for å automatisk sette `matchedLog` til den nærmeste loggen, lagre alle eksisterende logger i `matchCandidates` (som allerede finnes som state). Ikke sett `matchedLog` automatisk — la brukeren velge.
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+2. **Ny UI-seksjon**: Når `matchCandidates.length > 0` og brukeren har valgt et oppdrag (`selectedMissionId`), vis en liste over eksisterende flyturer på det oppdraget med en RadioGroup:
+   - Hver flytur viser dato, varighet, drone og pilot
+   - Alternativ for «Legg til som ny flytur» nederst
+   - Valg av en eksisterende flytur setter `matchedLog` og viser «Oppdater flylogg»-knappen
+   - Valg av «ny flytur» nullstiller `matchedLog` og viser «Lagre flylogg»-knappen
 
-### UI per punkt
+3. **Oppdater ved misjon-bytte**: Når brukeren bytter `selectedMissionId` i oppdrags-listen, filtrer `matchCandidates` for den valgte misjonen og oppdater visningen.
+
+4. **Footer-logikk (linje 2225-2244)**: Tilpass slik at når bruker har valgt et oppdrag med eksisterende logger men velger «ny flytur», brukes `handleLinkToMission` (oppretter ny logg på eksisterende oppdrag).
+
+### Flyt
+
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+Bruker importerer DJI-fil
+  → Systemet finner matchende oppdrag (som nå)
+  → Systemet henter ALLE flylogger på matchende oppdrag
+  → Hvis flylogger finnes på valgt oppdrag:
+      Vis liste:
+        ○ Flytur 15.03 – 23 min – DJI Mini 4 Pro  [Oppdater denne]
+        ○ Flytur 15.03 – 12 min – DJI Mini 4 Pro  [Oppdater denne]
+        ○ Legg til som ny flytur                   [Opprett ny]
+  → Bruker velger, trykker lagre/oppdater
 ```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
 
