@@ -1904,12 +1904,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           <div className="space-y-4">
             {backButton('method')}
             <div className="space-y-2">
-              <Label>{t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
+              <Label>{bulkFiles.length > 1 ? `Velg flylogg-filer (maks 10)` : t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
               <div
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {file ? (
+                {bulkFiles.length > 1 ? (
+                  <div className="space-y-2">
+                    <FileText className="w-6 h-6 mx-auto text-primary" />
+                    <p className="text-sm font-medium">{bulkFiles.length} filer valgt</p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {bulkFiles.map((f, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">{f.name} ({(f.size / 1024).toFixed(0)} KB)</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : file ? (
                   <div className="flex items-center justify-center gap-2">
                     <FileText className="w-5 h-5 text-primary" />
                     <span className="text-sm font-medium">{file.name}</span>
@@ -1918,17 +1928,84 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t('dronelog.dropOrClick', 'Klikk for å velge fil (TXT eller ZIP)')}</p>
+                    <p className="text-sm text-muted-foreground">Klikk for å velge filer (TXT eller ZIP, maks 10)</p>
                   </div>
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.zip" className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept=".txt,.zip" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
-              <Button onClick={handleUpload} disabled={!file || isProcessing}>
-                {isProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><Upload className="w-4 h-4 mr-2" />{t('dronelog.process', 'Behandle flylogg')}</>}
+              {bulkFiles.length > 1 ? (
+                <Button onClick={handleBulkUpload} disabled={isBulkProcessing}>
+                  {isBulkProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Behandler...</> : <><Upload className="w-4 h-4 mr-2" />Behandle {bulkFiles.length} filer</>}
+                </Button>
+              ) : (
+                <Button onClick={handleUpload} disabled={!file || isProcessing}>
+                  {isProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.processing')}</> : <><Upload className="w-4 h-4 mr-2" />{t('dronelog.process', 'Behandle flylogg')}</>}
+                </Button>
+              )}
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* ── Step: Bulk result ── */}
+        {step === 'bulk-result' && (
+          <div className="space-y-4">
+            {isBulkProcessing && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Behandler fil {bulkProgress + 1} av {bulkFiles.length}...</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkFiles.length) * 100}%` }} />
+                </div>
+              </div>
+            )}
+
+            {!isBulkProcessing && (
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                Ferdig — {bulkResults.filter(r => r.status === 'done').length} lagret, {bulkResults.filter(r => r.status === 'duplicate').length} duplikater, {bulkResults.filter(r => r.status === 'error').length} feil
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left p-2 font-medium text-xs">Fil</th>
+                    <th className="text-left p-2 font-medium text-xs">{terminology.vehicle}</th>
+                    <th className="text-left p-2 font-medium text-xs">Oppdrag</th>
+                    <th className="text-center p-2 font-medium text-xs">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkResults.map((r, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="p-2 text-xs truncate max-w-[120px]" title={r.fileName}>{r.fileName}</td>
+                      <td className="p-2 text-xs text-muted-foreground">{r.droneModel || '—'}</td>
+                      <td className="p-2 text-xs text-muted-foreground truncate max-w-[120px]" title={r.missionTitle}>{r.missionTitle || '—'}</td>
+                      <td className="p-2 text-center">
+                        {r.status === 'pending' && <span className="text-xs text-muted-foreground">Venter</span>}
+                        {r.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin mx-auto text-primary" />}
+                        {r.status === 'done' && <span className="text-xs text-primary">✅ Lagret</span>}
+                        {r.status === 'duplicate' && <span className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Duplikat</span>}
+                        {r.status === 'error' && (
+                          <span className="text-xs text-destructive" title={r.error}>❌ Feil</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => { resetState(); onOpenChange(false); }} disabled={isBulkProcessing}>
+                Lukk
               </Button>
             </DialogFooter>
           </div>
