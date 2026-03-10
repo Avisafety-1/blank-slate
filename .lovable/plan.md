@@ -1,44 +1,26 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem: Klokkeslett «01:00» på flylogger
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Årsak
+`flight_date` er en **date**-kolonne i databasen (kun dato, ingen tid). Ved lagring strippes klokkeslettet med `.toISOString().split('T')[0]` → `"2026-03-10"`. Men visningen på oppdragskortet bruker `format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm")` — JavaScript tolker en dato uten tid som midnatt UTC, som i norsk tidssone (CET/CEST) blir 01:00 eller 02:00.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning (to deler)
+
+**1. Lagre starttidspunkt i `flight_date` med klokkeslett**
+
+Kolonnen `flight_date` er definert som `date` i databasen. Vi må endre den til `timestamptz` slik at den kan lagre klokkeslett.
+
+- **Migrering**: `ALTER TABLE flight_logs ALTER COLUMN flight_date TYPE timestamptz USING flight_date::timestamptz;`
+- **`src/components/UploadDroneLogDialog.tsx`**: Endre alle forekomster av `effectiveDate.toISOString().split('T')[0]` til `effectiveDate.toISOString()` (linje 1205 og 1265) slik at fullt tidspunkt lagres.
+
+**2. Vis korrekt tid på oppdragskortet**
+
+- **`src/components/oppdrag/MissionCard.tsx`** (linje 667): Formatet er allerede `"dd. MMMM yyyy HH:mm"` — dette vil nå vise riktig tid etter migreringen.
 
 ### Endringer
-
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+| Fil | Hva |
+|---|---|
+| SQL-migrering | Endre `flight_date` fra `date` til `timestamptz` |
+| `UploadDroneLogDialog.tsx` (2 steder) | Lagre fullt ISO-tidspunkt i stedet for kun dato |
 
