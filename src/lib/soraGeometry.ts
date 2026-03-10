@@ -263,6 +263,10 @@ export function renderSoraZones(
   );
   if (validCoords.length < 1) return;
 
+  // Shared projection reference for all buffer calculations — prevents zone shift when switching modes
+  const refPoint = validCoords[0];
+  const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
+
   // Helper: filter NaN coordinates from buffered output before passing to Leaflet
   function safeLatLngs(zone: RoutePoint[]): [number, number][] {
     return zone
@@ -281,9 +285,9 @@ export function renderSoraZones(
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return bufferPolygon(hull, dist);
+      return bufferPolygon(hull, dist, refPoint, avgLat);
     }
-    return bufferPolyline(validCoords, dist);
+    return bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
   }
 
   // Flight Geography Area (new innermost layer, only when > 0)
