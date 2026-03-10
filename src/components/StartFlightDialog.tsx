@@ -679,7 +679,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
       
       const startPosition = gpsPosition ? gpsPosition : undefined;
-      const pilot = pilotName ? pilotName : undefined;
+      const pilot = companyName
+        ? `Pilot – ${companyName}`
+        : pilotName ? pilotName : undefined;
       const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none'
         ? selectedDronetagId 
         : undefined;
