@@ -22,7 +22,9 @@ export interface SoraSettings {
 export function bufferPolyline(
   points: RoutePoint[],
   distanceMeters: number,
-  numCapSegments = 16
+  numCapSegments = 16,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
 ): RoutePoint[] {
   if (points.length === 0 || distanceMeters <= 0) return points;
   if (points.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return points;
