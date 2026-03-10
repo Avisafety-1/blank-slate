@@ -390,6 +390,7 @@ export type Database = {
           dji_flightlog_enabled: boolean
           dji_sync_from_date: string | null
           dronelog_api_key: string | null
+          dronetag_enabled: boolean
           eccairs_enabled: boolean | null
           id: string
           kontakt_epost: string | null
@@ -412,6 +413,7 @@ export type Database = {
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null
           dronelog_api_key?: string | null
+          dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
           id?: string
           kontakt_epost?: string | null
@@ -434,6 +436,7 @@ export type Database = {
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null
           dronelog_api_key?: string | null
+          dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
           id?: string
           kontakt_epost?: string | null

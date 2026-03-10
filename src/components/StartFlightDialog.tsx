@@ -130,6 +130,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [ninoxChecking, setNinoxChecking] = useState(false);
   const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
 
+  // DroneTag enabled flag for the company
+  const [dronetagEnabled, setDronetagEnabled] = useState(false);
+
   // Fetch company-level checklist settings
   useEffect(() => {
     const fetchCompanyChecklists = async () => {
@@ -137,7 +140,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
       const { data } = await supabase
         .from('companies')
-        .select('before_takeoff_checklist_ids')
+        .select('before_takeoff_checklist_ids, dronetag_enabled')
         .eq('id', companyId)
         .maybeSingle();
 
@@ -146,6 +149,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       } else {
         setCompanyChecklistIds([]);
       }
+      setDronetagEnabled(data?.dronetag_enabled ?? false);
     };
 
     fetchCompanyChecklists();
@@ -960,16 +964,18 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
                 <label 
                   htmlFor="mode-live" 
-                  className="flex items-start space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                  className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!dronetagEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
                 >
-                  <RadioGroupItem value="live_uav" id="mode-live" className="mt-0.5" />
-                  <div className="space-y-0.5">
+                  <RadioGroupItem value="live_uav" id="mode-live" disabled={!dronetagEnabled} className="mt-0.5" />
+                  <div className="flex-1 space-y-0.5">
                     <div className="flex items-center gap-2">
                       <Navigation className="h-4 w-4 text-green-500" />
                       <span className="font-medium">{t('flight.safeskyLivePosition')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {t('flight.safeskyLivePositionDesc')}
+                      {dronetagEnabled
+                        ? t('flight.safeskyLivePositionDesc')
+                        : 'Krever DroneTag-integrasjon'}
                     </p>
                   </div>
                 </label>

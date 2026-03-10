@@ -69,6 +69,7 @@ interface Company {
   dji_flightlog_enabled: boolean;
   dji_auto_sync_enabled: boolean;
   dji_sync_from_date: string | null;
+  dronetag_enabled: boolean;
 }
 
 // Mobile expandable company card component
@@ -78,6 +79,7 @@ const MobileCompanyCard = ({
   onToggleEccairs,
   onToggleDji,
   onToggleAutoSync,
+  onToggleDronetag,
   onSyncDateChange,
   onEdit,
   onDelete,
@@ -87,6 +89,7 @@ const MobileCompanyCard = ({
   onToggleEccairs: (company: Company) => void;
   onToggleDji: (company: Company) => void;
   onToggleAutoSync: (company: Company) => void;
+  onToggleDronetag: (company: Company) => void;
   onSyncDateChange: (company: Company, date: Date | undefined) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
@@ -109,6 +112,9 @@ const MobileCompanyCard = ({
               )}
               {company.dji_flightlog_enabled && (
                 <Badge variant="outline" className="text-xs">DJI</Badge>
+              )}
+              {company.dronetag_enabled && (
+                <Badge variant="outline" className="text-xs">DroneTag</Badge>
               )}
             </div>
           </div>
@@ -182,6 +188,13 @@ const MobileCompanyCard = ({
                   onCheckedChange={() => onToggleDji(company)}
                 />
                 <Label className="text-sm">DJI Flylogg</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={company.dronetag_enabled}
+                  onCheckedChange={() => onToggleDronetag(company)}
+                />
+                <Label className="text-sm">DroneTag</Label>
               </div>
               {company.dji_flightlog_enabled && (
                 <>
@@ -371,6 +384,25 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleToggleDronetag = async (company: Company) => {
+    const newValue = !company.dronetag_enabled;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dronetag_enabled: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ dronetag_enabled: newValue })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? "DroneTag aktivert" : "DroneTag deaktivert");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dronetag_enabled: !newValue } : c));
+      console.error("Error toggling DroneTag status:", error);
+      toast.error("Kunne ikke oppdatere DroneTag-status");
+    }
+  };
+
   const handleToggleAutoSync = async (company: Company) => {
     const newValue = !company.dji_auto_sync_enabled;
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: newValue } : c));
@@ -524,6 +556,7 @@ export const CompanyManagementSection = () => {
                 onToggleEccairs={handleToggleEccairs}
                 onToggleDji={handleToggleDji}
                 onToggleAutoSync={handleToggleAutoSync}
+                onToggleDronetag={handleToggleDronetag}
                 onSyncDateChange={handleSyncDateChange}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
@@ -543,7 +576,8 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
-                    <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
+                     <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
+                    <TableHead className="text-xs sm:text-sm">DroneTag</TableHead>
                     <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
                     <TableHead className="text-xs sm:text-sm">Sync fra dato</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
@@ -656,6 +690,22 @@ export const CompanyManagementSection = () => {
                               className="text-xs"
                             >
                               {company.dji_flightlog_enabled ? "På" : "Av"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={company.dronetag_enabled}
+                            onCheckedChange={() => handleToggleDronetag(company)}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={company.dronetag_enabled ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {company.dronetag_enabled ? "På" : "Av"}
                             </Badge>
                           </Label>
                         </div>
