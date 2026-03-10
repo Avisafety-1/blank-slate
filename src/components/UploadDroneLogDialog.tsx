@@ -525,14 +525,31 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── File upload flow ──
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const valid = files.filter(f => {
       const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
-      if (!['.txt', '.zip'].includes(ext)) {
-        toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
-        return;
-      }
-      setFile(f);
+      return ['.txt', '.zip'].includes(ext);
+    });
+
+    if (valid.length !== files.length) {
+      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
+    }
+
+    if (valid.length === 0) return;
+
+    if (valid.length > 10) {
+      toast.warning('Maks 10 filer om gangen.');
+      const sliced = valid.slice(0, 10);
+      setBulkFiles(sliced);
+      setFile(sliced[0]);
+    } else if (valid.length === 1) {
+      setFile(valid[0]);
+      setBulkFiles([]);
+    } else {
+      setBulkFiles(valid);
+      setFile(valid[0]); // keep first for fallback
     }
   };
 
