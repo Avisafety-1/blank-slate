@@ -1,44 +1,28 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Plan: Vis faktisk fløyet rute på PDF-kartutsnitt
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Hva
+Når et oppdrag har flylogger med `flight_track`-data (fra DJI-import eller SafeSky), tegnes den faktiske ruten på kartbildet i PDF-eksporten — i tillegg til den planlagte ruten.
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**`src/lib/mapSnapshotUtils.ts`**
+- Utvid `MapSnapshotInput` med valgfri `flightTracks?: Array<{ positions: Array<{lat, lng}> }>` 
+- Inkluder flight track-koordinater i bounds-beregningen (allPoints) for riktig zoom
+- Tegn hver flight track som en solid linje i en distinkt farge (f.eks. oransje `#f97316`) etter den planlagte ruten, slik at den synes oppå
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**`src/lib/oppdragPdfExport.ts`**
+- Send `mission.flightLogs` sine `flight_track`-data inn til `generateMissionMapSnapshot` via det nye feltet
+- Filtrer ut logger som faktisk har track-data (`flight_track?.positions?.length > 0`)
+- Legg til «Faktisk fløyet rute» i kart-legenden (solid oransje linje)
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+### Visuelt
+- Planlagt rute: blå stiplet linje (som nå)
+- Faktisk fløyet rute: oransje solid linje
+- Flere flylogger tegnes alle (typisk overlappende)
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer
+- `src/lib/mapSnapshotUtils.ts`
+- `src/lib/oppdragPdfExport.ts`
 
