@@ -851,7 +851,27 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         onChange={(e) => setChecklistSearch(e.target.value)}
                         className="mb-2 h-8 text-sm"
                       />
-                      <div className="max-h-48 overflow-y-auto">
+                      <div
+                        ref={(el) => {
+                          if (!el) return;
+                          const handler = (e: WheelEvent) => {
+                            const { scrollTop, scrollHeight, clientHeight } = el;
+                            const isScrollable = scrollHeight > clientHeight;
+                            if (!isScrollable) return;
+                            const atTop = scrollTop === 0 && e.deltaY < 0;
+                            const atBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 1 && e.deltaY > 0;
+                            if (!atTop && !atBottom) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              el.scrollTop += e.deltaY;
+                            }
+                          };
+                          el.addEventListener('wheel', handler, { passive: false });
+                        }}
+                        className="max-h-48 overflow-y-auto overflow-x-hidden [touch-action:pan-y] overscroll-contain"
+                        onTouchMove={(e) => e.stopPropagation()}
+                        style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+                      >
                         <div className="space-y-1">
                           {availableChecklists
                             .filter((c) => c.tittel.toLowerCase().includes(checklistSearch.toLowerCase()))
