@@ -84,10 +84,16 @@ export const exportToPDF = async (
     // Add map snapshot
     if (sections.map) {
       try {
+        // Extract flight tracks from flight logs
+        const flightTracks = (mission.flightLogs || [])
+          .map((log: any) => log.flight_track)
+          .filter((ft: any) => ft?.positions?.length > 0);
+
         const mapDataUrl = await generateMissionMapSnapshot({
           latitude: effectiveLat,
           longitude: effectiveLng,
           route: mission.route as any,
+          flightTracks: flightTracks.length > 0 ? flightTracks : undefined,
         });
 
         if (mapDataUrl) {
