@@ -162,7 +162,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraS
             <Label className="text-xs text-muted-foreground flex items-center gap-1">
               <Plane className="h-3 w-3" /> Velg drone
             </Label>
-            <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); }}>
+            <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); onDroneSelected?.(v || null); }}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="Velg drone fra flåten" />
               </SelectTrigger>
