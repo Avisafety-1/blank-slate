@@ -2175,7 +2175,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
                     : `${matchedMissions.length} oppdrag matcher tidspunktet. Velg hvilket oppdrag flyloggen tilhører:`}
                 </p>
-                <RadioGroup value={selectedMissionId} onValueChange={setSelectedMissionId}>
+                <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); }}>
                   {matchedMissions.map((m) => (
                     <label key={m.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                       <RadioGroupItem value={m.id} />
