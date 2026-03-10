@@ -480,7 +480,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           </div>
           
           {/* SORA Settings Panel */}
-          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} />
+          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} />
         </div>
       )}
 
