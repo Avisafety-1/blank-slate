@@ -784,7 +784,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
                 <Plane className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Ingen lufttrafikk under 5 000 ft i nærheten
+                  Ingen lufttrafikk innen 20 km
                 </p>
               </div>
             )}
