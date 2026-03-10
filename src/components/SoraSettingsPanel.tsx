@@ -108,8 +108,8 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
       mtow_kg: mtow,
       max_speed_mps: undefined,
       max_wind_mps: catalogSpecs?.max_wind_mps ?? undefined,
-      has_parachute_support: false,
-      has_fts_support: false,
+      has_parachute_support: true,
+      has_fts_support: true,
     };
   }, [selectedDrone, catalogSpecs]);
 
@@ -192,8 +192,10 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
                 type="number"
                 min={0}
                 max={500}
-                value={settings.flightAltitude}
-                onChange={(e) => { update({ flightAltitude: Number(e.target.value) || 0 }); setManualOverride(true); }}
+                value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
+                onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
+                onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
+                placeholder="0"
                 className="h-8 text-sm"
               />
             </div>
