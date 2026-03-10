@@ -92,7 +92,9 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     );
   }
 
-  if (logs.length === 0) return null;
+  if (logs.length === 0) return (
+    <p className="text-xs text-muted-foreground">Ingen logger til behandling</p>
+  );
 
   return (
     <div className="space-y-2">
