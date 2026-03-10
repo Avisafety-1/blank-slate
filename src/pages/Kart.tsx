@@ -165,6 +165,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
         state: {
           routeData: routeToSave,
           openDialog: true,
+          selectedDrones: soraDroneId ? [soraDroneId] : [],
         }
       });
     }
