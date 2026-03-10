@@ -115,6 +115,9 @@ export const exportToPDF = async (
           const legendItems: Array<{ color: RGB; dash?: boolean; label: string }> = [
             { color: [29, 78, 216], dash: true, label: "Planlagt flyrute" },
           ];
+          if (flightTracks.length > 0) {
+            legendItems.push({ color: [249, 115, 22], label: "Faktisk fløyet rute" });
+          }
           if (soraSettings?.enabled) {
             legendItems.push(
               { color: [34, 197, 94], label: "Flight Geography (SORA)" },

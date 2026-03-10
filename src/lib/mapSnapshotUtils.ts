@@ -294,6 +294,17 @@ export async function generateMissionMapSnapshot(
       allPoints.push(...soraGroundRisk);
     }
 
+    // Include flight track points in bounds
+    if (input.flightTracks) {
+      for (const track of input.flightTracks) {
+        for (const p of track.positions || []) {
+          if (Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)) {
+            allPoints.push({ lat: p.lat, lng: p.lng });
+          }
+        }
+      }
+    }
+
     // Fall back to single point if no route
     if (allPoints.length === 0 && input.latitude && input.longitude) {
       allPoints.push({ lat: input.latitude, lng: input.longitude });
