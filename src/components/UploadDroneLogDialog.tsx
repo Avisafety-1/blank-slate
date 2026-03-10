@@ -1959,11 +1959,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <tr key={i} className="border-b last:border-0">
                       <td className="p-2 text-xs truncate max-w-[120px]" title={r.fileName}>{r.fileName}</td>
                       <td className="p-2 text-xs text-muted-foreground">{r.droneModel || '—'}</td>
-                      <td className="p-2 text-xs text-muted-foreground truncate max-w-[120px]" title={r.missionTitle}>{r.missionTitle || '—'}</td>
                       <td className="p-2 text-center">
                         {r.status === 'pending' && <span className="text-xs text-muted-foreground">Venter</span>}
                         {r.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin mx-auto text-primary" />}
-                        {r.status === 'done' && <span className="text-xs text-primary">✅ Lagret</span>}
+                        {r.status === 'done' && <span className="text-xs text-primary">✅ Til behandling</span>}
                         {r.status === 'duplicate' && <span className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Duplikat</span>}
                         {r.status === 'error' && (
                           <span className="text-xs text-destructive" title={r.error}>❌ Feil</span>
