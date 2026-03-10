@@ -2233,7 +2233,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             {renderLogbookSection()}
 
             {/* Mission candidates from direct mission search */}
-            {!matchedLog && matchedMissions.length > 0 && (
+            {matchedMissions.length > 0 && (
               <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   {matchedMissions.length === 1
