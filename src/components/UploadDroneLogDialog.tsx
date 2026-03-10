@@ -1400,7 +1400,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() && (
+                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && (selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() || selectedDrone?.internal_serial === (result.aircraftSN || result.aircraftSerial)?.trim()) && (
                     <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />Auto-matchet via SN
                     </p>
