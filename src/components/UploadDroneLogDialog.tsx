@@ -1058,8 +1058,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     // Derive flight date from result.startTime, fall back to today
     const flightDate = result?.startTime
-      ? (parseFlightDate(result.startTime)?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0])
-      : new Date().toISOString().split('T')[0];
+      ? (parseFlightDate(result.startTime)?.toISOString() ?? new Date().toISOString())
+      : new Date().toISOString();
 
     const statusPriority: Record<string, number> = { 'Grønn': 0, 'Gul': 1, 'Rød': 2 };
     // Track worst status per resource
