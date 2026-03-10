@@ -1,23 +1,44 @@
 
 
-## Horisontal scrolling for nyheter (>3 stk)
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Endring i `src/components/dashboard/NewsSection.tsx`
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-Erstatt grid-layouten (linje 111) med en horisontal flex-container med `overflow-x-auto` og faste bredder på kortene:
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-```tsx
-<div className="flex gap-2 sm:gap-3 flex-1 overflow-x-auto pb-2">
-  {sortedNews.map((news) => (
-    <div
-      key={news.id}
-      onClick={() => handleNewsClick(news)}
-      className="p-3 sm:p-4 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer flex-shrink-0 w-[280px] sm:w-[320px]"
-    >
+### Endringer
+
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-- Fjern `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3` og `overflow-y-auto`
-- Bruk `flex overflow-x-auto` med `flex-shrink-0` og fast bredde på hvert kort
-- Legger til `pb-2` for plass til scrollbar
-- Når ≤3 kort vises de side om side; flere kort scrolles horisontalt uten å bryte layouten
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 

@@ -108,12 +108,12 @@ export const NewsSection = () => {
           </Button>
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 flex-1 overflow-y-auto">
+      <div className="flex gap-2 sm:gap-3 flex-1 overflow-x-auto pb-2">
         {sortedNews.map((news) => (
           <div
             key={news.id}
             onClick={() => handleNewsClick(news)}
-            className="p-3 sm:p-4 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer flex-1"
+            className="p-3 sm:p-4 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer flex-shrink-0 w-[280px] sm:w-[320px]"
           >
             <div className="flex items-start gap-1.5 sm:gap-2">
               {news.pin_on_top && (
