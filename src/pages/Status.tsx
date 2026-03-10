@@ -570,6 +570,133 @@ const Status = () => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const sep = ";";
+      const sections: string[][] = [];
+
+      // KPI
+      sections.push(["Nøkkeltall (KPI)", ""]);
+      sections.push(["Totale oppdrag", String(kpiData.totalMissions)]);
+      sections.push(["Fullførte oppdrag", String(kpiData.completedMissions)]);
+      sections.push(["Fullføringsgrad", `${completionRate}%`]);
+      sections.push(["Totale flyvetimer", String(kpiData.totalFlightHours)]);
+      sections.push(["Hendelsesfrekvens", kpiData.incidentRate.toFixed(2)]);
+      sections.push(["Aktive ressurser", String(kpiData.activeResources)]);
+      sections.push([]);
+
+      // Missions by Month
+      sections.push(["Måned", "Antall oppdrag"]);
+      missionsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
+      sections.push([]);
+
+      // Missions by Status
+      sections.push(["Status", "Antall"]);
+      missionsByStatus.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Missions by Risk
+      sections.push(["Risikonivå", "Antall"]);
+      missionsByRisk.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Incidents by Month
+      sections.push(["Måned", "Antall hendelser"]);
+      incidentsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
+      sections.push([]);
+
+      // Incidents by Main Cause
+      sections.push(["Hovedårsak", "Antall"]);
+      incidentsByMainCause.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Incidents by Contributing Cause
+      sections.push(["Medvirkende årsak", "Antall"]);
+      incidentsByContributingCause.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Incidents by Severity
+      sections.push(["Alvorlighetsgrad", "Antall"]);
+      incidentsBySeverity.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Drone Status
+      sections.push(["Dronestatus", "Antall"]);
+      droneStatus.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Equipment Status
+      sections.push(["Utstyrstatus", "Antall"]);
+      equipmentStatus.forEach(item => sections.push([item.name, String(item.value)]));
+      sections.push([]);
+
+      // Flight Hours by Drone
+      sections.push(["Drone", "Flyvetimer"]);
+      flightHoursByDrone.forEach(item => sections.push([item.name, String(item.hours)]));
+      sections.push([]);
+
+      // Expiring Documents
+      sections.push(["Dokumenter som utløper", "Antall"]);
+      sections.push(["Innen 30 dager", String(expiringDocs.thirtyDays)]);
+      sections.push(["Innen 60 dager", String(expiringDocs.sixtyDays)]);
+      sections.push(["Innen 90 dager", String(expiringDocs.ninetyDays)]);
+
+      const bom = "\uFEFF";
+      const csvContent = bom + sections.map(row => row.join(sep)).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+      const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`;
+
+      // Upload to Supabase Storage + documents table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id, full_name")
+        .eq("id", user?.id)
+        .single();
+
+      if (!profile?.company_id) throw new Error("Kunne ikke hente firmaopplysninger");
+
+      const filePath = `${profile.company_id}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, blob, { contentType: "text/csv", upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const periodLabel = timePeriod === "month" ? "Siste måned" :
+                          timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+
+      await supabase.from("documents").insert({
+        tittel: `Statistikkrapport CSV - ${periodLabel}`,
+        kategori: "Rapporter",
+        beskrivelse: `CSV-rapport generert ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`,
+        fil_navn: fileName,
+        fil_url: filePath,
+        fil_storrelse: blob.size,
+        company_id: profile.company_id,
+        user_id: user?.id,
+        opprettet_av: profile?.full_name || user?.email || "Ukjent",
+      });
+
+      // Download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("CSV-rapport lagret", {
+        description: "Rapporten er lagret i dokumenter under kategorien Rapporter",
+      });
+    } catch (error) {
+      console.error("Error exporting to CSV:", error);
+      toast.error("Feil ved eksport", { description: "Kunne ikke generere CSV-rapport" });
+    }
+  };
+
   const handleExportPDF = async () => {
     try {
       // Get company name and company_id from profile
@@ -1086,6 +1213,10 @@ const Status = () => {
                   <DropdownMenuItem onClick={handleExportPDF}>
                     <Download className="w-4 h-4 mr-2" />
                     Eksporter til PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Eksporter til CSV
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

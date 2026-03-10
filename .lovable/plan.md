@@ -1,23 +1,44 @@
 
 
-## Legg til CSV-eksport på /status
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Endring i `src/pages/Status.tsx`
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-**1. Ny funksjon `handleExportCSV`** (etter `handleExportPDF`):
-- Bygger en CSV-streng med alle samme datasett som Excel-eksporten (KPI, oppdrag per måned, status, risiko, hendelser, årsaker, alvorlighetsgrad, dronestatus, utstyrstatus, flyvetimer, dokumenter)
-- Separerer seksjoner med en tom linje mellom hver
-- Bruker semikolon som separator (norsk standard)
-- Laster ned som `.csv`-fil via `Blob` + `URL.createObjectURL`
-- Lagrer også til Supabase Storage + documents-tabellen (samme mønster som Excel)
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**2. Ny menyvalg i dropdown** (linje ~1086):
-```tsx
-<DropdownMenuItem onClick={handleExportCSV}>
-  <Download className="w-4 h-4 mr-2" />
-  Eksporter til CSV
-</DropdownMenuItem>
+### Endringer
+
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-Dropdown vil da ha 3 valg: Excel, PDF, CSV.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
