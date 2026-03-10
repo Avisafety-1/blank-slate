@@ -2198,15 +2198,57 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
+            {/* Show existing flight logs for chosen mission */}
+            {selectedMissionId && selectedMissionId !== '__new__' && matchCandidates.filter(c => c.mission_id === selectedMissionId).length > 0 && (
+              <div className="p-3 rounded-lg bg-accent/30 border border-border">
+                <p className="text-sm font-medium mb-2">{t('dronelog.existingFlights', 'Eksisterende flyturer på dette oppdraget:')}</p>
+                <RadioGroup
+                  value={matchedLog ? matchedLog.id : '__new_flight__'}
+                  onValueChange={(val) => {
+                    if (val === '__new_flight__') {
+                      setMatchedLog(null);
+                    } else {
+                      const found = matchCandidates.find(c => c.id === val);
+                      if (found) setMatchedLog(found);
+                    }
+                  }}
+                >
+                  {matchCandidates
+                    .filter(c => c.mission_id === selectedMissionId)
+                    .map((log) => (
+                      <label key={log.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                        <RadioGroupItem value={log.id} />
+                        <div className="text-sm">
+                          <span className="font-medium">
+                            {log.flight_date ? format(new Date(log.flight_date), 'dd.MM.yyyy HH:mm') : 'Ukjent dato'}
+                          </span>
+                          <span className="text-muted-foreground"> — {log.flight_duration_minutes || 0} min</span>
+                          {(log as any).drones?.modell && (
+                            <span className="text-muted-foreground"> — {(log as any).drones.modell}</span>
+                          )}
+                          <span className="ml-1 text-xs text-muted-foreground">(Oppdater)</span>
+                        </div>
+                      </label>
+                    ))}
+                  <label className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer border-t border-border mt-1 pt-3">
+                    <RadioGroupItem value="__new_flight__" />
+                    <div className="flex items-center gap-1 text-sm">
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>{t('dronelog.addNewFlight', 'Legg til som ny flytur')}</span>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
+
             {matchedLog ? (
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                 <div className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('dronelog.matchFound', 'Eksisterende flylogg funnet!')}</p>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('dronelog.matchFound', 'Eksisterende flylogg valgt for oppdatering')}</p>
                     <p className="text-xs text-green-700 dark:text-green-400">
                       {matchedLog.flight_date ? format(new Date(matchedLog.flight_date), 'dd.MM.yyyy') : 'Ukjent dato'} — {matchedLog.flight_duration_minutes} min
-                      {matchedLog.missions ? ` — ${(matchedLog.missions as any).tittel}` : ''}
                     </p>
                   </div>
                 </div>
