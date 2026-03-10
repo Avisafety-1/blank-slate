@@ -695,6 +695,22 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={company.dronetag_enabled}
+                            onCheckedChange={() => handleToggleDronetag(company)}
+                          />
+                          <Label className="cursor-pointer">
+                            <Badge
+                              variant={company.dronetag_enabled ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {company.dronetag_enabled ? "På" : "Av"}
+                            </Badge>
+                          </Label>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {company.dji_flightlog_enabled ? (
                           <div className="flex items-center gap-2">
                             <Switch
