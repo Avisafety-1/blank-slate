@@ -61,6 +61,7 @@ export const useOppdragData = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, handler)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_personnel' }, handler)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_drones' }, handler)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flight_logs' }, handler)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
