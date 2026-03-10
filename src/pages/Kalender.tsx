@@ -99,6 +99,8 @@ export default function Kalender() {
   // Checklist dialog state
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [pendingMaintenanceEvent, setPendingMaintenanceEvent] = useState<CalendarEvent | null>(null);
+  const [confirmCalendarMaintenance, setConfirmCalendarMaintenance] = useState(false);
+  const [pendingConfirmEvent, setPendingConfirmEvent] = useState<CalendarEvent | null>(null);
 
   // Export dialog state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);

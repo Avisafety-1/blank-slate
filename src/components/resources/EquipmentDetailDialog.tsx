@@ -63,6 +63,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
   const [customType, setCustomType] = useState("");
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);

@@ -85,6 +85,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [confirmInspectionOpen, setConfirmInspectionOpen] = useState(false);
   const [showAddAccessory, setShowAddAccessory] = useState(false);
   const [newAccessory, setNewAccessory] = useState({
     navn: "",
