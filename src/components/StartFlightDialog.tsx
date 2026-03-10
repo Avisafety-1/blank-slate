@@ -460,12 +460,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           }
         }
 
-        setNearestTraffic({
-          callsign: nearest.callsign,
-          type: nearest.type,
-          distanceKm: minDist,
-          altitudeFt: nearest.altitudeFt,
-        });
+        const MAX_DISTANCE_KM = 20;
+        if (minDist > MAX_DISTANCE_KM) {
+          setNearestTraffic(null);
+        } else {
+          setNearestTraffic({
+            callsign: nearest.callsign,
+            type: nearest.type,
+            distanceKm: minDist,
+            altitudeFt: nearest.altitudeFt,
+          });
+        }
       } catch (err) {
         console.error('Error fetching nearest traffic:', err);
       } finally {
