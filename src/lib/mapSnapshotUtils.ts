@@ -18,10 +18,15 @@ interface RouteData {
   soraSettings?: SoraSettings;
 }
 
+interface FlightTrack {
+  positions: Array<{ lat: number; lng: number }>;
+}
+
 interface MapSnapshotInput {
   latitude?: number | null;
   longitude?: number | null;
   route?: RouteData | null;
+  flightTracks?: FlightTrack[];
 }
 
 // Web Mercator helpers
@@ -289,6 +294,17 @@ export async function generateMissionMapSnapshot(
       allPoints.push(...soraGroundRisk);
     }
 
+    // Include flight track points in bounds
+    if (input.flightTracks) {
+      for (const track of input.flightTracks) {
+        for (const p of track.positions || []) {
+          if (Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)) {
+            allPoints.push({ lat: p.lat, lng: p.lng });
+          }
+        }
+      }
+    }
+
     // Fall back to single point if no route
     if (allPoints.length === 0 && input.latitude && input.longitude) {
       allPoints.push({ lat: input.latitude, lng: input.longitude });
@@ -394,6 +410,18 @@ export async function generateMissionMapSnapshot(
     if (routeCoords.length >= 2) {
       drawPolyline(ctx, routeCoords, originX, originY, zoom,
         "#1d4ed8", 3, [8, 5]);
+    }
+
+    // Draw actual flight tracks (solid orange)
+    if (input.flightTracks) {
+      for (const track of input.flightTracks) {
+        const pts = (track.positions || []).filter(
+          (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+        );
+        if (pts.length >= 2) {
+          drawPolyline(ctx, pts, originX, originY, zoom, "#f97316", 2.5);
+        }
+      }
     }
 
     // Draw waypoints (numbered)
