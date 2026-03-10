@@ -282,6 +282,15 @@ const Changelog = () => {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">Endringslogg</CardTitle>
             <div className="flex items-center gap-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Søk..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 w-[160px] text-xs pl-7"
+                />
+              </div>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="h-8 w-[160px] text-xs">
                   <ArrowUpDown className="w-3 h-3 mr-1" />
