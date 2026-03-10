@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar as CalendarIcon, Plus, Download, ChevronDown, LayoutGrid, GanttChart } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -99,6 +100,8 @@ export default function Kalender() {
   // Checklist dialog state
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [pendingMaintenanceEvent, setPendingMaintenanceEvent] = useState<CalendarEvent | null>(null);
+  const [confirmCalendarMaintenance, setConfirmCalendarMaintenance] = useState(false);
+  const [pendingConfirmEvent, setPendingConfirmEvent] = useState<CalendarEvent | null>(null);
 
   // Export dialog state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -423,8 +426,9 @@ export default function Kalender() {
       return;
     }
     
-    // No checklist - proceed directly
-    await performMaintenanceUpdate(event);
+    // No checklist - show confirmation dialog
+    setPendingConfirmEvent(event);
+    setConfirmCalendarMaintenance(true);
   };
 
   const performMaintenanceUpdate = async (event: CalendarEvent) => {
@@ -1176,11 +1180,34 @@ export default function Kalender() {
         />
       )}
 
-      {/* Calendar Export Dialog */}
       <CalendarExportDialog
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
       />
+
+      <AlertDialog open={confirmCalendarMaintenance} onOpenChange={setConfirmCalendarMaintenance}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil markere vedlikehold som utført for {pendingConfirmEvent?.title}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingConfirmEvent) {
+                  await performMaintenanceUpdate(pendingConfirmEvent);
+                  setPendingConfirmEvent(null);
+                }
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -63,6 +63,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
   const [customType, setCustomType] = useState("");
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
@@ -226,8 +227,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       return;
     }
     
-    // Otherwise perform maintenance directly
-    await performMaintenanceUpdate();
+    // Otherwise show confirmation dialog
+    setConfirmMaintenanceOpen(true);
   };
 
   const handleChecklistComplete = async () => {
@@ -840,6 +841,26 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           onComplete={handleChecklistComplete}
         />
       )}
+      <AlertDialog open={confirmMaintenanceOpen} onOpenChange={setConfirmMaintenanceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil registrere vedlikehold for {equipment.navn}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await performMaintenanceUpdate();
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
