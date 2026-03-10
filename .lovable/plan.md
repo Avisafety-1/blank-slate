@@ -1,26 +1,44 @@
 
 
-## Fix: Legg til `user_id` i bulk-insert til `pending_dji_logs`
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-Insertet til `pending_dji_logs` mangler `user_id`-feltet. Databasen krever dette feltet (NOT NULL constraint), og alle bulk-opplastinger feiler med: `"null value in column \"user_id\" of relation \"pending_dji_logs\" violates not-null constraint"`.
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
-Legg til `user_id: session.user.id` i insert-objektet på linje 676-689. Brukerens ID er allerede tilgjengelig via `useAuth()` (eller session).
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-### Endring i `src/components/UploadDroneLogDialog.tsx`
+### Endringer
 
-Linje 676-689 — legg til `user_id`:
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
 ```typescript
-.insert({
-  company_id: localCompanyId,
-  user_id: userId,  // <-- legg til denne
-  dji_log_id: data.sha256Hash || crypto.randomUUID(),
-  // ... resten uendret
-})
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-`userId` hentes fra `useAuth()` eller `supabase.auth.getUser()` som allerede er tilgjengelig i komponenten.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-En enkelt linje fikser hele problemet.
+Ingen nye avhengigheter. Ingen databaseendringer.
 
