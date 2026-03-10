@@ -1,44 +1,25 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Krev Dronetag-valg for Live UAV-modus
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Hva
+Dronetag-velgeren i Live UAV-modus skal være **obligatorisk**, ikke valgfri. Man kan ikke starte flyging i Live-modus uten å ha valgt en Dronetag-enhet.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Endringer i `src/components/StartFlightDialog.tsx`
 
-### Endringer
+1. **Fjern "(Valgfritt)"-teksten** fra Dronetag-velgerens label (linje 1064) -- vis bare `t('flight.dronetagDevice')` uten `(${t('common.optional')})`.
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+2. **Vis Dronetag-velgeren alltid i live_uav-modus** -- fjern `dronetagDevices.length > 0`-sjekken (linje 1062). Hvis ingen enheter finnes, vis en melding om at man må legge til en Dronetag først.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+3. **Fjern "Ingen"-alternativet** fra dropdown (linje 1076, `SelectItem value="none"`).
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+4. **Deaktiver Start-knappen** når `publishMode === 'live_uav'` og ingen gyldig Dronetag er valgt:
+   - Legg til `(publishMode === 'live_uav' && (!selectedDronetagId || selectedDronetagId === 'none'))` i `disabled`-betingelsen på linje 1143.
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+5. **Vis varsel hvis ingen Dronetag-enheter finnes** -- når `dronetagDevices.length === 0` og `publishMode === 'live_uav'`, vis en advarsel: "Ingen Dronetag-enheter registrert. Legg til en under Ressurser."
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Resultat
+- Live UAV-modus krever obligatorisk Dronetag-valg
+- Autoselect fra oppdrag fungerer som før
+- Tydelig tilbakemelding hvis ingen enheter er tilgjengelige
 
