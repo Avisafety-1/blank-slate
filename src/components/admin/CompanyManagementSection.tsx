@@ -384,6 +384,25 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleToggleDronetag = async (company: Company) => {
+    const newValue = !company.dronetag_enabled;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dronetag_enabled: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ dronetag_enabled: newValue })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? "DroneTag aktivert" : "DroneTag deaktivert");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dronetag_enabled: !newValue } : c));
+      console.error("Error toggling DroneTag status:", error);
+      toast.error("Kunne ikke oppdatere DroneTag-status");
+    }
+  };
+
   const handleToggleAutoSync = async (company: Company) => {
     const newValue = !company.dji_auto_sync_enabled;
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: newValue } : c));
