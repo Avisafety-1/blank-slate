@@ -189,6 +189,13 @@ const MobileCompanyCard = ({
                 />
                 <Label className="text-sm">DJI Flylogg</Label>
               </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={company.dronetag_enabled}
+                  onCheckedChange={() => onToggleDronetag(company)}
+                />
+                <Label className="text-sm">DroneTag</Label>
+              </div>
               {company.dji_flightlog_enabled && (
                 <>
                   <div className="flex items-center gap-2">
