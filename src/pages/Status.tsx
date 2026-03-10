@@ -1214,6 +1214,10 @@ const Status = () => {
                     <Download className="w-4 h-4 mr-2" />
                     Eksporter til PDF
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Eksporter til CSV
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
