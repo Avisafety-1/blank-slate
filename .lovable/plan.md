@@ -1,22 +1,44 @@
 
 
-## Fix: «Kunne ikke lagre flyloggen» ved «Legg til som ny flytur»
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-Når SHA-256-duplikat allerede finnes i `flight_logs` og brukeren velger «Legg til som ny flytur», forsøker `handleLinkToMission` å gjøre en ny `INSERT` med samme `dronelog_sha256`. Den unike constrainten `idx_flight_logs_sha256_company` avviser dette.
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning
-I `handleLinkToMission`: Når det allerede finnes en duplikat-logg (SHA-256 match finnes i databasen), skal systemet **oppdatere** den eksisterende loggen med ny `mission_id` i stedet for å opprette en ny rad. Alternativt, hvis brukeren eksplisitt velger «ny flytur» på et oppdrag der duplikaten allerede er koblet, sett `dronelog_sha256` til `null` i den nye raden for å unngå constraint-feil (siden det teknisk sett er en ny flytur-registrering basert på samme data).
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**Valgt tilnærming**: Sjekk om `matchedLog` er `null` men det finnes en SHA-256-duplikat i `matchCandidates` eller databasen. Hvis ja:
-- Oppdater den eksisterende loggens `mission_id` til `selectedMissionId` og oppdater tilhørende felter
-- Hvis brukeren eksplisitt vil ha en helt ny flytur-rad (ikke oppdatering), utelat `dronelog_sha256` fra insert for å unngå constraint-brudd
+### Endringer
 
-### Endring
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**`src/components/UploadDroneLogDialog.tsx` — `handleLinkToMission` (linje 1239-1296)**:
-1. Før insert, sjekk om det allerede finnes en `flight_logs`-rad med samme SHA-256 hash for dette selskapet
-2. Hvis ja: oppdater den eksisterende radens `mission_id` og andre felter i stedet for å inserte
-3. Hvis nei: gjør insert som normalt
-4. Sørg for at ressurser (drone, pilot, utstyr) fortsatt kobles til oppdraget uansett
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
