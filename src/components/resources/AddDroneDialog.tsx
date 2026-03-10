@@ -18,6 +18,10 @@ interface DroneModel {
   payload_kg: number;
   weight_without_payload_kg: number | null;
   standard_takeoff_weight_kg: number | null;
+  category: string | null;
+  endurance_min: number | null;
+  max_wind_mps: number | null;
+  sensor_type: string | null;
   comment: string | null;
 }
 
