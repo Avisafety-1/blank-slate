@@ -89,6 +89,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
+  const [checklistSearch, setChecklistSearch] = useState('');
 
   // Mission-level checklist state
   const [missionChecklistIds, setMissionChecklistIds] = useState<string[]>([]);
