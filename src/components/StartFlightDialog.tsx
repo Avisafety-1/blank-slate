@@ -375,10 +375,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         // Candidates: { callsign, type, lat, lng, altitudeFt }
         const candidates: Array<{ callsign: string; type: string; lat: number; lng: number; altitudeFt: number | null }> = [];
 
-        // 1. SafeSky beacons
+        // 1. SafeSky beacons (bounding box ~20 km to avoid 1000-row limit)
+        const delta = 0.18;
         const { data: beacons } = await supabase
           .from('safesky_beacons')
-          .select('id, callsign, beacon_type, latitude, longitude, altitude');
+          .select('id, callsign, beacon_type, latitude, longitude, altitude')
+          .gte('latitude', gpsPosition.lat - delta)
+          .lte('latitude', gpsPosition.lat + delta)
+          .gte('longitude', gpsPosition.lng - delta)
+          .lte('longitude', gpsPosition.lng + delta);
 
         if (beacons) {
           const MAX_ALT_M = 1524; // 5000ft
@@ -455,12 +460,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           }
         }
 
-        setNearestTraffic({
-          callsign: nearest.callsign,
-          type: nearest.type,
-          distanceKm: minDist,
-          altitudeFt: nearest.altitudeFt,
-        });
+        const MAX_DISTANCE_KM = 20;
+        if (minDist > MAX_DISTANCE_KM) {
+          setNearestTraffic(null);
+        } else {
+          setNearestTraffic({
+            callsign: nearest.callsign,
+            type: nearest.type,
+            distanceKm: minDist,
+            altitudeFt: nearest.altitudeFt,
+          });
+        }
       } catch (err) {
         console.error('Error fetching nearest traffic:', err);
       } finally {
@@ -774,7 +784,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
                 <Plane className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Ingen lufttrafikk under 5 000 ft i nærheten
+                  Ingen lufttrafikk innen 20 km
                 </p>
               </div>
             )}
