@@ -43,7 +43,7 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const { companyId } = useAuth();
 
