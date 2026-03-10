@@ -59,6 +59,7 @@ export default function KartPage() {
     groundRiskDistance: 100,
     bufferMode: "convexHull",
   });
+  const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
