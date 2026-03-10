@@ -828,6 +828,40 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         .limit(1)
         .maybeSingle();
       if (dupMatch) {
+        // If the duplicate belongs to a mission, fetch all logs for that mission
+        // and let user choose, rather than returning early
+        if (dupMatch.mission_id) {
+          const { data: missionData } = await supabase
+            .from('missions')
+            .select('id, tittel, tidspunkt, status, lokasjon')
+            .eq('id', dupMatch.mission_id)
+            .single();
+
+          if (missionData) {
+            setMatchedMissions([missionData]);
+            setSelectedMissionId(missionData.id);
+
+            const { data: existingLogs } = await supabase
+              .from('flight_logs')
+              .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
+              .eq('mission_id', dupMatch.mission_id)
+              .order('flight_date', { ascending: false });
+
+            if (existingLogs && existingLogs.length > 0) {
+              setMatchCandidates(existingLogs as any[]);
+              setMatchedLog(dupMatch as any); // Pre-select the duplicate
+              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eller velge en annen flytur.');
+            } else {
+              setMatchedLog(dupMatch as any);
+              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+            }
+          } else {
+            setMatchedLog(dupMatch as any);
+            toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+          }
+          return;
+        }
+        // No mission — just pre-select the duplicate
         setMatchedLog(dupMatch as any);
         toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
         return;
@@ -1366,7 +1400,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() && (
+                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && (selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() || selectedDrone?.internal_serial === (result.aircraftSN || result.aircraftSerial)?.trim()) && (
                     <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />Auto-matchet via SN
                     </p>

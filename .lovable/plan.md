@@ -1,24 +1,44 @@
 
 
-## Fiks to problemer i DJI-import
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Problem 1: Flytur-valg vises ikke
-Når SHA-256 duplicate-sjekken finner en match (linje 830), settes `matchedLog` direkte og funksjonen returnerer tidlig (`return`). Da kjøres aldri oppdrags-søket som populerer `matchCandidates`, og RadioGroup-listen over flyturer vises aldri.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-**Løsning**: Når SHA-256-duplikat finnes, hent likevel alle flylogger for det matchede oppdraget og populer `matchCandidates`. Fjern `return` slik at brukeren kan se alle flyturer og velge. Pre-select den dupliserte loggen i stedet for å hardkode den.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**Endring i `findMatchingFlightLog`** (linje 822-834):
-- Hvis duplikat finnes og den har en `mission_id`, hent alle flylogger for det oppdraget, sett `matchCandidates`, og pre-select duplikaten via `setMatchedLog`
-- Hvis duplikaten har en mission, hent og sett `matchedMissions` og `selectedMissionId` også, slik at hele UI-flyten fungerer
-- Fjern tidlig `return` — la resten av funksjonen håndtere oppdragssøk dersom duplikaten mangler mission
+### Endringer
 
-### Problem 2: «Drone auto-matchet via SN» vises ikke
-Linje 1369 sjekker kun `selectedDrone?.serienummer === sn`, men `matchDroneFromResult` (linje 442-444) matcher også mot `internal_serial`. Hvis dronen ble matchet via `internal_serial`, vises ikke bekreftelsesteksten.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**Endring i UI** (linje 1369):
-- Utvid sjekken til å også sammenligne mot `selectedDrone?.internal_serial`
-- Slik at «Auto-matchet via SN» vises uansett om det var vanlig serienummer eller internt serienummer som matchet
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### Oppsummering av filer
-- `src/components/UploadDroneLogDialog.tsx`: To endringer — duplikat-logikk og SN-visningssjekk
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
+
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
