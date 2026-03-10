@@ -1982,8 +1982,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
 
             <DialogFooter>
-              <Button onClick={() => { resetState(); onOpenChange(false); }}>
-                Lukk
+              <Button onClick={() => { resetState(); setStep('method'); pendingLogsRef.current?.refresh(); }}>
+                Se ventende logger
               </Button>
             </DialogFooter>
           </div>
