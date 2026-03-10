@@ -1,44 +1,34 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Bulk-opplasting: Lagre til behandlingskø + tillat lukking
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+1. Bulk-opplastede filer lagres direkte i `flight_logs` — bør i stedet havne i `pending_dji_logs` (behandlingskøen) slik at brukeren kan se over og godkjenne dem
+2. Dialogen bør kunne lukkes under prosessering, men prosessen skal fortsette i bakgrunnen
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning
 
-### Endringer
+**Fil: `src/components/UploadDroneLogDialog.tsx`**
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**1. Endre `handleBulkUpload` til å lagre i `pending_dji_logs` i stedet for `flight_logs`:**
+- Fjern steg 5-7 (mission-opprettelse, flight_log-lagring, personnel/equipment-linking)
+- For hver fil: parse via edge function → SHA-256 duplikatsjekk (mot både `pending_dji_logs.dji_log_id` og `flight_logs.dronelog_sha256`) → auto-match drone → lagre i `pending_dji_logs` med:
+  - `dji_log_id`: SHA-256 hash (for dedup)
+  - `aircraft_name`, `aircraft_sn`, `flight_date`, `duration_seconds`, `max_height_m`, `total_distance_m`
+  - `matched_drone_id`, `matched_battery_id`
+  - `parsed_result`: hele DroneLogResult-objektet
+  - `status: 'pending'`
+- Oppdater resultat-tabellens statusvisning til «Lagt til behandlingskø» i stedet for «Lagret»
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**2. Tillat lukking under prosessering:**
+- Bruk en `useRef` for å holde prosesseringsstate slik at async-løkken fortsetter selv om dialogen lukkes
+- Når dialogen lukkes under prosessering: vis en toast «Prosessering fortsetter i bakgrunnen»
+- Når prosessen er ferdig (uavhengig av om dialogen er åpen): refresh `PendingDjiLogsSection` via `pendingLogsRef.current?.refresh()` og vis toast med oppsummering
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**3. Refresh behandlingskøen:**
+- Etter bulk er ferdig, kall `pendingLogsRef.current?.refresh()` for å oppdatere «Logger til behandling»-listen
+- Brukeren ser de nye loggene umiddelbart når de åpner dialogen igjen
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Resultat
+Bulk-filer havner i behandlingskøen der brukeren kan koble dem til riktig oppdrag og godkjenne — konsistent med DJI Cloud-synkroniseringsflyten. Dialogen kan trygt lukkes uten å avbryte prosessering.
 
