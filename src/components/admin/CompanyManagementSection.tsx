@@ -79,6 +79,7 @@ const MobileCompanyCard = ({
   onToggleEccairs,
   onToggleDji,
   onToggleAutoSync,
+  onToggleDronetag,
   onSyncDateChange,
   onEdit,
   onDelete,
@@ -88,6 +89,7 @@ const MobileCompanyCard = ({
   onToggleEccairs: (company: Company) => void;
   onToggleDji: (company: Company) => void;
   onToggleAutoSync: (company: Company) => void;
+  onToggleDronetag: (company: Company) => void;
   onSyncDateChange: (company: Company, date: Date | undefined) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
