@@ -187,6 +187,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     }
   }, [drone]);
 
+  // Fetch matching catalog model for extra specs
+  useEffect(() => {
+    if (!drone?.modell) { setCatalogModel(null); return; }
+    const fetchCatalogModel = async () => {
+      const { data } = await supabase
+        .from("drone_models")
+        .select("*")
+        .ilike("name", drone.modell)
+        .maybeSingle();
+      setCatalogModel(data);
+    };
+    fetchCatalogModel();
+  }, [drone?.modell]);
+
   const fetchMissionsSinceInspection = async () => {
     if (!drone) return;
     const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
