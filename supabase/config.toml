@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.dji-process-single]
 verify_jwt = false
+
+[functions.check-long-flights]
+verify_jwt = false

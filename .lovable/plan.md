@@ -1,35 +1,44 @@
 
 
-## Varsel for aktive flyturer over 3 timer
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Hva
-Ny edge function som kjøres periodisk (cron), finner aktive flyturer som har pågått i over 3 timer, og sender push-varsel + e-post til piloten med påminnelse om å avslutte flyturen.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Ny edge function: `check-long-flights/index.ts`
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-1. Query `active_flights` der `start_time < now() - 3 timer`
-2. For å unngå gjentatte varsler: sjekk mot en ny kolonne `long_flight_notified_at` på `active_flights` — hopp over flyturer som allerede er varslet
-3. For hver treff:
-   - Hent pilotens profil (e-post, navn) via `profile_id` → `profiles` + `auth.users`
-   - Send push-varsel via `send-push-notification` (intern invoke)
-   - Send e-post via SMTP (bruk `email-config.ts` shared-logikk)
-   - Oppdater `long_flight_notified_at = now()` på flyturen
+### Endringer
 
-### Database-migrasjon
-- Legg til kolonne `long_flight_notified_at timestamptz` (nullable) på `active_flights` for å spore at varsel er sendt
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### Config
-- `supabase/config.toml`: legg til `[functions.check-long-flights]` med `verify_jwt = false`
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### Cron-jobb (SQL, kjøres via Supabase SQL Editor)
-- Schedule `check-long-flights` hver 15. minutt for å fange opp flyturer som passerer 3-timersgrensen
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-### E-postinnhold
-- Tittel: "Påminnelse: Du har en aktiv flytur"
-- Innhold: "Du har en pågående flytur som har vart i over 3 timer. Har du glemt å avslutte den? Logg inn i Avisafe for å avslutte flyturen."
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### Push-innhold
-- Tittel: "Aktiv flytur pågår"
-- Body: "Du har en flytur som har vart over 3 timer. Har du glemt å avslutte?"
-- URL: "/" (dashboard)
+Ingen nye avhengigheter. Ingen databaseendringer.
 
