@@ -1058,8 +1058,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     // Derive flight date from result.startTime, fall back to today
     const flightDate = result?.startTime
-      ? (parseFlightDate(result.startTime)?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0])
-      : new Date().toISOString().split('T')[0];
+      ? (parseFlightDate(result.startTime)?.toISOString() ?? new Date().toISOString())
+      : new Date().toISOString();
 
     const statusPriority: Record<string, number> = { 'Grønn': 0, 'Gul': 1, 'Rød': 2 };
     // Track worst status per resource
@@ -1202,7 +1202,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
-        flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
+        flight_date: effectiveDate.toISOString(), flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
@@ -1262,7 +1262,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       const logPayload = {
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: selectedMissionId,
-        flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
+        flight_date: effectiveDate.toISOString(), flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
