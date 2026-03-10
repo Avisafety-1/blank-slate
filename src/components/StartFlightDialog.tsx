@@ -851,7 +851,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         onChange={(e) => setChecklistSearch(e.target.value)}
                         className="mb-2 h-8 text-sm"
                       />
-                      <ScrollArea className="max-h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="space-y-1">
                           {availableChecklists
                             .filter((c) => c.tittel.toLowerCase().includes(checklistSearch.toLowerCase()))
@@ -869,7 +869,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                             <p className="text-xs text-muted-foreground text-center py-2">Ingen treff</p>
                           )}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </PopoverContent>
                   </Popover>
                 )}
