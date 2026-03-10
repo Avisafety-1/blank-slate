@@ -314,7 +314,11 @@ const Changelog = () => {
           {entries.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
           )}
-          {[...entries].sort((a, b) => {
+          {[...entries].filter((e) => {
+            if (!searchQuery.trim()) return true;
+            const q = searchQuery.toLowerCase();
+            return e.title.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q);
+          }).sort((a, b) => {
             if (sortBy === "status") {
               const order = ["pågår", "testing", "ikke_startet", "implementert"];
               return order.indexOf(a.status) - order.indexOf(b.status);
