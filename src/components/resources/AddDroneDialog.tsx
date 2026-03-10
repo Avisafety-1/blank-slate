@@ -322,7 +322,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           </div>
           {selectedModelId && selectedModelId !== "manual" && (() => {
             const model = droneModels.find(m => m.id === selectedModelId);
-            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg)) return null;
+            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg && !model.endurance_min && !model.max_wind_mps && !model.sensor_type && !model.category)) return null;
             return (
           <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
                 {model.weight_without_payload_kg != null && (
