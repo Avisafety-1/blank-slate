@@ -423,8 +423,9 @@ export default function Kalender() {
       return;
     }
     
-    // No checklist - proceed directly
-    await performMaintenanceUpdate(event);
+    // No checklist - show confirmation dialog
+    setPendingConfirmEvent(event);
+    setConfirmCalendarMaintenance(true);
   };
 
   const performMaintenanceUpdate = async (event: CalendarEvent) => {

@@ -226,8 +226,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       return;
     }
     
-    // Otherwise perform maintenance directly
-    await performMaintenanceUpdate();
+    // Otherwise show confirmation dialog
+    setConfirmMaintenanceOpen(true);
   };
 
   const handleChecklistComplete = async () => {

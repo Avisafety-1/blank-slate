@@ -718,7 +718,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       size="sm"
                       variant="outline"
                       className="w-full sm:w-auto"
-                      onClick={async () => {
+                      onClick={() => {
                         if (!user || !companyId) return;
                         
                         if (drone.sjekkliste_id) {
@@ -726,25 +726,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           return;
                         }
                         
-                        try {
-                          const { performDroneInspection } = await import("@/lib/droneInspection");
-                          await performDroneInspection({
-                            droneId: drone.id,
-                            companyId,
-                            userId: user.id,
-                            currentFlyvetimer: drone.flyvetimer,
-                            inspectionIntervalDays: drone.inspection_interval_days,
-                            inspectionType: 'Manuell inspeksjon',
-                            notes: 'Utført fra dronekort',
-                          });
-                          
-                          toast.success('Inspeksjon registrert');
-                          setMissionsSinceInspection(0);
-                          queryClient.invalidateQueries({ queryKey: ['drones'] });
-                          onDroneUpdated();
-                        } catch (error: any) {
-                          toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
-                        }
+                        setConfirmInspectionOpen(true);
                       }}
                     >
                       <Wrench className="w-4 h-4 mr-1" />
