@@ -72,7 +72,7 @@ interface StartFlightDialogProps {
 }
 
 export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFlightDialogProps) {
-  const { user, companyId } = useAuth();
+  const { user, companyId, companyName } = useAuth();
   const { isAdmin } = useRoleCheck();
   const { t } = useTranslation();
   const { checklists } = useChecklists();
