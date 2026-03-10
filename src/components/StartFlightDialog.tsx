@@ -130,6 +130,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [ninoxChecking, setNinoxChecking] = useState(false);
   const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
 
+  // DroneTag enabled flag for the company
+  const [dronetagEnabled, setDronetagEnabled] = useState(false);
+
   // Fetch company-level checklist settings
   useEffect(() => {
     const fetchCompanyChecklists = async () => {
