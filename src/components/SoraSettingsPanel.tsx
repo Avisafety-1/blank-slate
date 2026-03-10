@@ -108,8 +108,8 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
       mtow_kg: mtow,
       max_speed_mps: undefined,
       max_wind_mps: catalogSpecs?.max_wind_mps ?? undefined,
-      has_parachute_support: false,
-      has_fts_support: false,
+      has_parachute_support: true,
+      has_fts_support: true,
     };
   }, [selectedDrone, catalogSpecs]);
 
