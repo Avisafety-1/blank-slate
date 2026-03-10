@@ -1,44 +1,30 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Bekreftelsesdialog for vedlikehold uten sjekkliste
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Hva
+Når bruker klikker "Utfør inspeksjon" (drone) eller "Utfør vedlikehold" (utstyr) **uten tilknyttet sjekkliste**, skal en bekreftelsesdialog vises i stedet for å utføre handlingen direkte. Dette gjelder tre steder:
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**1. `src/components/resources/DroneDetailDialog.tsx`** (linje 721-747)
+- Legg til state `confirmInspectionOpen` (boolean)
+- Når `!drone.sjekkliste_id`: sett `confirmInspectionOpen = true` i stedet for å kjøre `performDroneInspection` direkte
+- Legg til en `AlertDialog` med tekst: "Er du sikker på at du vil registrere inspeksjon for {drone.modell}?" og knappene "Avbryt" / "Bekreft"
+- "Bekreft" kjører den eksisterende inspeksjonslogikken
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**2. `src/components/resources/EquipmentDetailDialog.tsx`** (linje 220-231)
+- Legg til state `confirmMaintenanceOpen` (boolean)
+- `handlePerformMaintenance`: når `!equipment.sjekkliste_id`, sett `confirmMaintenanceOpen = true` i stedet for `performMaintenanceUpdate()`
+- Legg til `AlertDialog`: "Er du sikker på at du vil registrere vedlikehold for {equipment.navn}?"
+- "Bekreft" kjører `performMaintenanceUpdate()`
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**3. `src/pages/Kalender.tsx`** (linje 414-428)
+- Legg til state `confirmCalendarMaintenance` og `pendingConfirmEvent`
+- `handleMarkMaintenanceComplete`: når `!event.checklistId`, sett state i stedet for å kalle `performMaintenanceUpdate` direkte
+- Legg til `AlertDialog`: "Er du sikker på at du vil markere vedlikehold som utført for {event.title}?"
+- "Bekreft" kjører `performMaintenanceUpdate(pendingConfirmEvent)`
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### UI
+Bruker eksisterende `AlertDialog` fra `@radix-ui/react-alert-dialog` (allerede i prosjektet). Konsistent design på tvers av alle tre steder.
 
