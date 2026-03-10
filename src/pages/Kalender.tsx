@@ -1179,11 +1179,29 @@ export default function Kalender() {
         />
       )}
 
-      {/* Calendar Export Dialog */}
-      <CalendarExportDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-      />
+      <AlertDialog open={confirmCalendarMaintenance} onOpenChange={setConfirmCalendarMaintenance}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil markere vedlikehold som utført for {pendingConfirmEvent?.title}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingConfirmEvent) {
+                  await performMaintenanceUpdate(pendingConfirmEvent);
+                  setPendingConfirmEvent(null);
+                }
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

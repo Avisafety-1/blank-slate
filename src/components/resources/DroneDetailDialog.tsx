@@ -1494,6 +1494,43 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={confirmInspectionOpen} onOpenChange={setConfirmInspectionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft inspeksjon</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil registrere inspeksjon for {drone.modell}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  const { performDroneInspection } = await import("@/lib/droneInspection");
+                  await performDroneInspection({
+                    droneId: drone.id,
+                    companyId: companyId!,
+                    userId: user!.id,
+                    currentFlyvetimer: drone.flyvetimer,
+                    inspectionIntervalDays: drone.inspection_interval_days,
+                    inspectionType: 'Manuell inspeksjon',
+                    notes: 'Utført fra dronekort',
+                  });
+                  toast.success('Inspeksjon registrert');
+                  setMissionsSinceInspection(0);
+                  queryClient.invalidateQueries({ queryKey: ['drones'] });
+                  onDroneUpdated();
+                } catch (error: any) {
+                  toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
+                }
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

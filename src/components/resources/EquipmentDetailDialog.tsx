@@ -841,6 +841,26 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           onComplete={handleChecklistComplete}
         />
       )}
+      <AlertDialog open={confirmMaintenanceOpen} onOpenChange={setConfirmMaintenanceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil registrere vedlikehold for {equipment.navn}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await performMaintenanceUpdate();
+              }}
+            >
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
