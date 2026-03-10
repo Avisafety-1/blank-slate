@@ -401,6 +401,18 @@ export async function generateMissionMapSnapshot(
         "#1d4ed8", 3, [8, 5]);
     }
 
+    // Draw actual flight tracks (solid orange)
+    if (input.flightTracks) {
+      for (const track of input.flightTracks) {
+        const pts = (track.positions || []).filter(
+          (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+        );
+        if (pts.length >= 2) {
+          drawPolyline(ctx, pts, originX, originY, zoom, "#f97316", 2.5);
+        }
+      }
+    }
+
     // Draw waypoints (numbered)
     if (routeCoords.length > 0) {
       // Start marker (green)
