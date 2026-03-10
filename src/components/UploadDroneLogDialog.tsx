@@ -595,7 +595,171 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  // ── DJI login flow ──
+  // ── Bulk upload flow ──
+
+  const handleBulkUpload = async () => {
+    if (bulkFiles.length === 0 || !companyId || !user) return;
+    setIsBulkProcessing(true);
+    const results: BulkResult[] = bulkFiles.map(f => ({ fileName: f.name, status: 'pending' as const }));
+    setBulkResults([...results]);
+    setStep('bulk-result');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error('Ikke autentisert'); setIsBulkProcessing(false); return; }
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+    for (let i = 0; i < bulkFiles.length; i++) {
+      setBulkProgress(i);
+      results[i].status = 'processing';
+      setBulkResults([...results]);
+
+      try {
+        // 1. Upload & parse
+        const formData = new FormData();
+        formData.append('file', bulkFiles[i]);
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(err.error || err.details || 'Upload failed');
+        }
+        const data: DroneLogResult = await response.json();
+
+        // 2. SHA-256 dedup check
+        if (data.sha256Hash) {
+          const isDup = await checkDuplicate(data.sha256Hash);
+          if (isDup) {
+            results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
+            setBulkResults([...results]);
+            continue;
+          }
+        }
+
+        // 3. Auto-match drone
+        let droneId: string | null = null;
+        let droneModel: string | undefined;
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        if (sn) {
+          const match = drones.find(d =>
+            d.serienummer.trim().toLowerCase() === sn ||
+            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+          );
+          if (match) { droneId = match.id; droneModel = match.modell; }
+        }
+
+        // 4. Auto-match battery
+        let batteryIds: string[] = [];
+        if (data.batterySN) {
+          const bsn = data.batterySN.trim().toLowerCase();
+          const bMatch = equipmentList.find(e =>
+            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
+            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+          );
+          if (bMatch) batteryIds = [bMatch.id];
+        }
+
+        // 5. Auto-match mission (within 1 hour)
+        let missionId: string | null = null;
+        let missionTitle: string | undefined;
+        const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
+
+        if (data.startTime) {
+          const flightStart = parseFlightDate(data.startTime);
+          if (flightStart) {
+            const windowMs = 60 * 60 * 1000;
+            const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
+            const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
+            const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
+            const { data: missions } = await supabase
+              .from('missions')
+              .select('id, tittel, tidspunkt')
+              .eq('company_id', companyId)
+              .gte('tidspunkt', rangeStart)
+              .lte('tidspunkt', rangeEnd)
+              .order('tidspunkt', { ascending: true })
+              .limit(1);
+            if (missions && missions.length > 0) {
+              missionId = missions[0].id;
+              missionTitle = missions[0].tittel;
+            }
+          }
+        }
+
+        // 6. Create mission if none matched
+        if (!missionId) {
+          const { data: mission } = await supabase.from('missions').insert({
+            company_id: companyId, user_id: user.id,
+            tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
+            lokasjon: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
+            tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
+            beskrivelse: `Importert fra DJI-flylogg (bulk). Flytid: ${data.durationMinutes} min`,
+            latitude: data.startPosition?.lat ?? null,
+            longitude: data.startPosition?.lng ?? null,
+          }).select('id, tittel').single();
+          if (mission) { missionId = mission.id; missionTitle = mission.tittel; }
+        }
+
+        // Link drone/pilot to mission
+        if (missionId && droneId) await supabase.from('mission_drones').upsert({ mission_id: missionId, drone_id: droneId }, { onConflict: 'mission_id,drone_id' });
+        if (missionId) await supabase.from('mission_personnel').upsert({ mission_id: missionId, profile_id: user.id }, { onConflict: 'mission_id,profile_id' });
+
+        // 7. Save flight log
+        const rawTrack = data.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+        const maxPts = 200;
+        let flightTrack = rawTrack;
+        if (rawTrack.length > maxPts) {
+          const step = Math.ceil(rawTrack.length / maxPts);
+          flightTrack = rawTrack.filter((_, idx) => idx % step === 0 || idx === rawTrack.length - 1);
+        }
+
+        const { data: logData } = await supabase.from('flight_logs').insert({
+          company_id: companyId, user_id: user.id, drone_id: droneId,
+          mission_id: missionId,
+          flight_date: effectiveDate.toISOString(),
+          flight_duration_minutes: data.durationMinutes,
+          departure_location: data.startPosition ? `${data.startPosition.lat.toFixed(5)}, ${data.startPosition.lng.toFixed(5)}` : 'Ukjent',
+          landing_location: data.endPosition ? `${data.endPosition.lat.toFixed(5)}, ${data.endPosition.lng.toFixed(5)}` : 'Ukjent',
+          movements: 1,
+          flight_track: { positions: flightTrack } as any,
+          notes: `Importert fra DJI-flylogg (bulk). Maks hastighet: ${data.maxSpeed} m/s, Min batteri: ${data.minBattery}%`,
+          ...buildExtendedFields(data),
+        } as any).select('id').single();
+
+        if (logData) {
+          await saveFlightEvents(logData.id, data);
+          // Pilot logbook
+          await supabase.from('flight_log_personnel').insert({ flight_log_id: logData.id, profile_id: user.id });
+          // Battery logbook
+          for (const eqId of batteryIds) {
+            await supabase.from('flight_log_equipment').insert({ flight_log_id: logData.id, equipment_id: eqId });
+          }
+        }
+
+        results[i] = {
+          ...results[i],
+          status: 'done',
+          droneModel: droneModel || data.aircraftName || data.droneType || undefined,
+          missionTitle,
+          durationMinutes: data.durationMinutes,
+        };
+      } catch (error: any) {
+        console.error(`[Bulk] Error processing ${bulkFiles[i].name}:`, error);
+        results[i] = { ...results[i], status: 'error', error: error.message || 'Ukjent feil' };
+      }
+      setBulkResults([...results]);
+    }
+
+    setBulkProgress(bulkFiles.length);
+    setIsBulkProcessing(false);
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
+    queryClient.invalidateQueries({ queryKey: ['drones'] });
+    queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    const savedCount = results.filter(r => r.status === 'done').length;
+    if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} flylogger lagret!`);
+  };
 
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
   const [djiImportCooldown, setDjiImportCooldown] = useState(false);
