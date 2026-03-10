@@ -84,6 +84,7 @@ export const ExpandedMapDialog = ({
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);
+  const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
   const handleSoraChange = (newSettings: SoraSettings) => {
     setSoraSettings(newSettings);
@@ -98,6 +99,20 @@ export const ExpandedMapDialog = ({
       .from("missions")
       .update({ route: updatedRoute as any })
       .eq("id", missionId);
+
+    // Auto-add selected drone to mission_drones
+    if (!error && soraDroneId) {
+      const { data: existing } = await supabase
+        .from("mission_drones")
+        .select("id")
+        .eq("mission_id", missionId)
+        .eq("drone_id", soraDroneId)
+        .maybeSingle();
+      if (!existing) {
+        await supabase.from("mission_drones").insert({ mission_id: missionId, drone_id: soraDroneId } as any);
+      }
+    }
+
     setSoraSaving(false);
     if (error) {
       toast.error("Kunne ikke lagre SORA-innstillinger");
@@ -568,7 +583,7 @@ export const ExpandedMapDialog = ({
 
         {route?.coordinates && route.coordinates.length >= 3 && (
           <div>
-            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} />
+            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} onDroneSelected={setSoraDroneId} />
             {soraDirty && missionId && (
               <div className="px-3 pb-2 sm:px-4">
                 <button

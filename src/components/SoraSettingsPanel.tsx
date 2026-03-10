@@ -23,6 +23,7 @@ import {
 interface SoraSettingsPanelProps {
   settings: SoraSettings;
   onChange: (settings: SoraSettings) => void;
+  onDroneSelected?: (droneId: string | null) => void;
 }
 
 interface CompanyDrone {
@@ -42,7 +43,7 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const { companyId } = useAuth();
 
@@ -161,7 +162,7 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
             <Label className="text-xs text-muted-foreground flex items-center gap-1">
               <Plane className="h-3 w-3" /> Velg drone
             </Label>
-            <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); }}>
+            <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); onDroneSelected?.(v || null); }}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="Velg drone fra flåten" />
               </SelectTrigger>
