@@ -22,15 +22,17 @@ export interface SoraSettings {
 export function bufferPolyline(
   points: RoutePoint[],
   distanceMeters: number,
-  numCapSegments = 16
+  numCapSegments = 16,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
 ): RoutePoint[] {
   if (points.length === 0 || distanceMeters <= 0) return points;
   if (points.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return points;
 
-  const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const avgLat = avgLatOverride ?? points.reduce((s, p) => s + p.lat, 0) / points.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
-  const ref = points[0];
+  const ref = refPointOverride ?? points[0];
 
   // Convert to local metric coords
   const pts = points.map(p => ({
@@ -197,13 +199,13 @@ function intersectLines(
   return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
 }
 
-export function bufferPolygon(hull: RoutePoint[], distanceMeters: number): RoutePoint[] {
+export function bufferPolygon(hull: RoutePoint[], distanceMeters: number, refPointOverride?: RoutePoint, avgLatOverride?: number): RoutePoint[] {
   if (hull.length < 3 || distanceMeters <= 0) return hull;
   if (hull.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return hull;
-  const avgLat = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
+  const avgLat = avgLatOverride ?? hull.reduce((s, p) => s + p.lat, 0) / hull.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
-  const ref = hull[0];
+  const ref = refPointOverride ?? hull[0];
   const pts = hull.map(p => ({
     x: (p.lng - ref.lng) * lngScale,
     y: (p.lat - ref.lat) * latScale,
@@ -261,6 +263,10 @@ export function renderSoraZones(
   );
   if (validCoords.length < 1) return;
 
+  // Shared projection reference for all buffer calculations — prevents zone shift when switching modes
+  const refPoint = validCoords[0];
+  const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
+
   // Helper: filter NaN coordinates from buffered output before passing to Leaflet
   function safeLatLngs(zone: RoutePoint[]): [number, number][] {
     return zone
@@ -279,9 +285,9 @@ export function renderSoraZones(
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return bufferPolygon(hull, dist);
+      return bufferPolygon(hull, dist, refPoint, avgLat);
     }
-    return bufferPolyline(validCoords, dist);
+    return bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
   }
 
   // Flight Geography Area (new innermost layer, only when > 0)
@@ -295,7 +301,7 @@ export function renderSoraZones(
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  const flightGeo = bufferPolyline(validCoords, 1);
+  const flightGeo = bufferPolyline(validCoords, 1, 16, refPoint, avgLat);
   const flightGeoLatLngs = safeLatLngs(flightGeo);
   if (flightGeoLatLngs.length >= 3) {
     L.polygon(flightGeoLatLngs, { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 })
