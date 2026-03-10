@@ -18,6 +18,10 @@ interface DroneModel {
   payload_kg: number;
   weight_without_payload_kg: number | null;
   standard_takeoff_weight_kg: number | null;
+  category: string | null;
+  endurance_min: number | null;
+  max_wind_mps: number | null;
+  sensor_type: string | null;
   comment: string | null;
 }
 
@@ -318,9 +322,9 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           </div>
           {selectedModelId && selectedModelId !== "manual" && (() => {
             const model = droneModels.find(m => m.id === selectedModelId);
-            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg)) return null;
+            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg && !model.endurance_min && !model.max_wind_mps && !model.sensor_type && !model.category)) return null;
             return (
-              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
                 {model.weight_without_payload_kg != null && (
                   <div>
                     <span className="font-medium">Vekt uten payload:</span> {model.weight_without_payload_kg} kg
@@ -329,6 +333,26 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 {model.standard_takeoff_weight_kg != null && (
                   <div>
                     <span className="font-medium">Standard takeoff:</span> {model.standard_takeoff_weight_kg} kg
+                  </div>
+                )}
+                {model.endurance_min != null && (
+                  <div>
+                    <span className="font-medium">Flygetid:</span> {model.endurance_min} min
+                  </div>
+                )}
+                {model.max_wind_mps != null && (
+                  <div>
+                    <span className="font-medium">Maks vind:</span> {model.max_wind_mps} m/s
+                  </div>
+                )}
+                {model.sensor_type && (
+                  <div>
+                    <span className="font-medium">Sensor:</span> {model.sensor_type}
+                  </div>
+                )}
+                {model.category && (
+                  <div>
+                    <span className="font-medium">Kategori:</span> {model.category}
                   </div>
                 )}
               </div>
