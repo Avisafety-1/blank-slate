@@ -205,7 +205,7 @@ export function bufferPolygon(hull: RoutePoint[], distanceMeters: number, refPoi
   const avgLat = avgLatOverride ?? hull.reduce((s, p) => s + p.lat, 0) / hull.length;
   const latScale = 111320;
   const lngScale = 111320 * Math.cos(avgLat * Math.PI / 180);
-  const ref = hull[0];
+  const ref = refPointOverride ?? hull[0];
   const pts = hull.map(p => ({
     x: (p.lng - ref.lng) * lngScale,
     y: (p.lat - ref.lat) * latScale,
