@@ -301,7 +301,7 @@ export function renderSoraZones(
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  const flightGeo = bufferPolyline(validCoords, 1);
+  const flightGeo = bufferPolyline(validCoords, 1, 16, refPoint, avgLat);
   const flightGeoLatLngs = safeLatLngs(flightGeo);
   if (flightGeoLatLngs.length >= 3) {
     L.polygon(flightGeoLatLngs, { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 })
