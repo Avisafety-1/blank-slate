@@ -1180,6 +1180,11 @@ export default function Kalender() {
         />
       )}
 
+      <CalendarExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+      />
+
       <AlertDialog open={confirmCalendarMaintenance} onOpenChange={setConfirmCalendarMaintenance}>
         <AlertDialogContent>
           <AlertDialogHeader>
