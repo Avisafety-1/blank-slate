@@ -113,6 +113,9 @@ const MobileCompanyCard = ({
               {company.dji_flightlog_enabled && (
                 <Badge variant="outline" className="text-xs">DJI</Badge>
               )}
+              {company.dronetag_enabled && (
+                <Badge variant="outline" className="text-xs">DroneTag</Badge>
+              )}
             </div>
           </div>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
