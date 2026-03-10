@@ -81,6 +81,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
+  const [catalogModel, setCatalogModel] = useState<any>(null);
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
