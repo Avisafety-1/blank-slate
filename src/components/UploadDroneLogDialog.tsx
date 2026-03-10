@@ -1758,6 +1758,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         if (!newOpen && isBulkProcessing) {
           toast.info('Prosessering fortsetter i bakgrunnen. Filene dukker opp i «Logger til behandling» når de er klare.');
         }
+        if (newOpen && !open) {
+          pendingLogsRef.current?.refresh();
+        }
         onOpenChange(newOpen);
       }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
