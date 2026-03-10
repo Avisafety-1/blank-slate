@@ -666,7 +666,41 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {catalogModel && (catalogModel.endurance_min || catalogModel.max_wind_mps || catalogModel.sensor_type || catalogModel.category || catalogModel.weight_without_payload_kg || catalogModel.standard_takeoff_weight_kg) && (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+                  {catalogModel.weight_without_payload_kg != null && (
+                    <div>
+                      <span className="font-medium">Vekt uten payload:</span> {catalogModel.weight_without_payload_kg} kg
+                    </div>
+                  )}
+                  {catalogModel.standard_takeoff_weight_kg != null && (
+                    <div>
+                      <span className="font-medium">Standard takeoff:</span> {catalogModel.standard_takeoff_weight_kg} kg
+                    </div>
+                  )}
+                  {catalogModel.endurance_min != null && (
+                    <div>
+                      <span className="font-medium">Flygetid:</span> {catalogModel.endurance_min} min
+                    </div>
+                  )}
+                  {catalogModel.max_wind_mps != null && (
+                    <div>
+                      <span className="font-medium">Maks vind:</span> {catalogModel.max_wind_mps} m/s
+                    </div>
+                  )}
+                  {catalogModel.sensor_type && (
+                    <div>
+                      <span className="font-medium">Sensor:</span> {catalogModel.sensor_type}
+                    </div>
+                  )}
+                  {catalogModel.category && (
+                    <div>
+                      <span className="font-medium">Kategori:</span> {catalogModel.category}
+                    </div>
+                  )}
+                </div>
+              )}
+
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
