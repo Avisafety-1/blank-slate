@@ -1975,7 +1975,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
 
             <DialogFooter>
-              <Button onClick={() => { resetState(); onOpenChange(false); }} disabled={isBulkProcessing}>
+              <Button onClick={() => { resetState(); onOpenChange(false); }}>
                 Lukk
               </Button>
             </DialogFooter>
