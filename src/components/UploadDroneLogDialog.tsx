@@ -1260,7 +1260,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         await supabase.from('mission_equipment').upsert(selectedEquipment.map(eqId => ({ mission_id: selectedMissionId, equipment_id: eqId })), { onConflict: 'mission_id,equipment_id' });
       }
 
-      const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
+      const logPayload = {
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: selectedMissionId,
         flight_date: effectiveDate.toISOString().split('T')[0], flight_duration_minutes: result.durationMinutes,
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
@@ -1268,8 +1268,39 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery}%`,
         ...buildExtendedFields(result),
-      } as any).select('id').single();
-      if (logError) throw logError;
+      };
+
+      // Check if a flight_log with same SHA-256 already exists (to avoid unique constraint violation)
+      let existingDupId: string | null = null;
+      if (result.sha256Hash) {
+        const { data: existingDup } = await (supabase
+          .from('flight_logs')
+          .select('id')
+          .eq('company_id', companyId) as any)
+          .eq('dronelog_sha256', result.sha256Hash)
+          .limit(1)
+          .maybeSingle();
+        if (existingDup) existingDupId = existingDup.id;
+      }
+
+      let logData: { id: string } | null = null;
+
+      if (existingDupId) {
+        // Update existing log instead of inserting a duplicate
+        const { dronelog_sha256, ...updatePayload } = logPayload as any;
+        const { data: updated, error: updateError } = await supabase
+          .from('flight_logs')
+          .update({ ...updatePayload, mission_id: selectedMissionId } as any)
+          .eq('id', existingDupId)
+          .select('id')
+          .single();
+        if (updateError) throw updateError;
+        logData = updated;
+      } else {
+        const { data: inserted, error: logError } = await supabase.from('flight_logs').insert(logPayload as any).select('id').single();
+        if (logError) throw logError;
+        logData = inserted;
+      }
 
       if (logData) {
         await saveFlightEvents(logData.id, result);
