@@ -304,7 +304,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
     <div className="flex-1 min-h-0 flex flex-col w-full">
       {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
-        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0">
+        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0 max-h-[50vh] overflow-y-auto">
           {/* Mobile: stacked layout, Desktop: side-by-side */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             {/* Info section */}
