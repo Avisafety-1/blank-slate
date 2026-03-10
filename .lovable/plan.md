@@ -1,44 +1,26 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Forbedring: Vis ventende logger ved lukking under prosessering
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Endringer i `src/components/UploadDroneLogDialog.tsx`
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+**1. Vis melding under prosessering (bulk-result step):**
+- Legg til en infomelding under progress-baren: «Du kan lukke dialogen, kom tilbake om litt for å se resultatene»
 
-### Endringer
+**2. Ved lukking under prosessering → gå til method-steget neste gang:**
+- I `onOpenChange`-handleren: når dialogen lukkes mens `isBulkProcessing` er true, sett en ref/flag som husker at prosessering pågår
+- Når dialogen åpnes igjen (eller prosessering fullføres): sett `step` til `'method'` der `PendingDjiLogsSection` er synlig, og kall `pendingLogsRef.current?.refresh()`
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**3. Ved ferdig prosessering mens dialogen er lukket:**
+- Vis toast med oppsummering: «X filer lagt til behandlingskø»
+- Neste gang dialogen åpnes, vises method-steget med oppdatert liste over ventende logger
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+**4. «Lukk»-knappen i bulk-result (etter ferdig):**
+- Endre oppførsel: i stedet for å lukke dialogen, gå til `step = 'method'` der PendingDjiLogsSection vises med de nye loggene
+- Endre knappetekst til «Se ventende logger»
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Konkret
+- Linje 1935-1944 (under progress): legg til info-tekst
+- Linje 1757-1761 (onOpenChange): refresh pending logs ved gjenåpning
+- Linje 1983-1987 (Lukk-knapp): endre til å navigere til method-steget
 
