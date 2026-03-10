@@ -1270,37 +1270,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         ...buildExtendedFields(result),
       };
 
-      // Check if a flight_log with same SHA-256 already exists (to avoid unique constraint violation)
-      let existingDupId: string | null = null;
-      if (result.sha256Hash) {
-        const { data: existingDup } = await (supabase
-          .from('flight_logs')
-          .select('id')
-          .eq('company_id', companyId) as any)
-          .eq('dronelog_sha256', result.sha256Hash)
-          .limit(1)
-          .maybeSingle();
-        if (existingDup) existingDupId = existingDup.id;
-      }
-
-      let logData: { id: string } | null = null;
-
-      if (existingDupId) {
-        // Update existing log instead of inserting a duplicate
-        const { dronelog_sha256, ...updatePayload } = logPayload as any;
-        const { data: updated, error: updateError } = await supabase
-          .from('flight_logs')
-          .update({ ...updatePayload, mission_id: selectedMissionId } as any)
-          .eq('id', existingDupId)
-          .select('id')
-          .single();
-        if (updateError) throw updateError;
-        logData = updated;
-      } else {
-        const { data: inserted, error: logError } = await supabase.from('flight_logs').insert(logPayload as any).select('id').single();
-        if (logError) throw logError;
-        logData = inserted;
-      }
+      // User chose "add as new flight" — always insert, skip SHA-256 dedup to avoid updating existing log
+      const { dronelog_sha256, ...insertPayload } = logPayload as any;
+      const { data: inserted, error: logError } = await supabase
+        .from('flight_logs')
+        .insert(insertPayload as any)
+        .select('id')
+        .single();
+      if (logError) throw logError;
+      const logData: { id: string } | null = inserted;
 
       if (logData) {
         await saveFlightEvents(logData.id, result);
