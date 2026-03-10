@@ -181,23 +181,25 @@ export function SoraSettingsPanel({ settings, onChange }: SoraSettingsPanelProps
             )}
           </div>
 
-          {/* ── Flight altitude ── */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={500}
-              value={settings.flightAltitude}
-              onChange={(e) => { update({ flightAltitude: Number(e.target.value) || 0 }); setManualOverride(true); }}
-              className="h-8 text-sm"
-            />
-          </div>
+          {/* ── Mission params (always show altitude, rest when drone selected) ── */}
+          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+            <p className="text-xs font-medium text-foreground">Oppdragsparametere</p>
 
-          {/* ── Mission params (only when drone selected) ── */}
+            {/* Flight altitude */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={settings.flightAltitude}
+                onChange={(e) => { update({ flightAltitude: Number(e.target.value) || 0 }); setManualOverride(true); }}
+                className="h-8 text-sm"
+              />
+            </div>
+
           {selectedDrone && (
-            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-              <p className="text-xs font-medium text-foreground">Oppdragsparametere</p>
+            <>
 
               {/* Operation profile */}
               <div className="space-y-1">
