@@ -1758,6 +1758,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         if (!newOpen && isBulkProcessing) {
           toast.info('Prosessering fortsetter i bakgrunnen. Filene dukker opp i «Logger til behandling» når de er klare.');
         }
+        if (newOpen && !open) {
+          pendingLogsRef.current?.refresh();
+        }
         onOpenChange(newOpen);
       }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1938,9 +1941,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <span className="text-sm font-medium">Behandler fil {bulkProgress + 1} av {bulkFiles.length}...</span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkFiles.length) * 100}%` }} />
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Du kan lukke dialogen, kom tilbake om litt for å se resultatene.</p>
               </div>
             )}
 
@@ -1981,8 +1985,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
 
             <DialogFooter>
-              <Button onClick={() => { resetState(); onOpenChange(false); }}>
-                Lukk
+              <Button onClick={() => { resetState(); setStep('method'); pendingLogsRef.current?.refresh(); }}>
+                Se ventende logger
               </Button>
             </DialogFooter>
           </div>
