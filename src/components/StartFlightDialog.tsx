@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +89,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [activeChecklistId, setActiveChecklistId] = useState<string | null>(null);
   const [showChecklistWarning, setShowChecklistWarning] = useState(false);
   const [checklistPopoverOpen, setChecklistPopoverOpen] = useState(false);
+  const [checklistSearch, setChecklistSearch] = useState('');
 
   // Mission-level checklist state
   const [missionChecklistIds, setMissionChecklistIds] = useState<string[]>([]);
@@ -835,7 +837,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
                 {/* Link checklist button - only for admins */}
                 {isAdmin && availableChecklists.length > 0 && (
-                  <Popover open={checklistPopoverOpen} onOpenChange={setChecklistPopoverOpen}>
+                  <Popover open={checklistPopoverOpen} onOpenChange={(open) => { setChecklistPopoverOpen(open); if (!open) setChecklistSearch(''); }}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1">
                         <Plus className="h-4 w-4" />
@@ -843,18 +845,31 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-64 p-2" align="start">
-                      <div className="space-y-1">
-                        {availableChecklists.map((checklist) => (
-                          <Button
-                            key={checklist.id}
-                            variant="ghost"
-                            className="w-full justify-start text-sm"
-                            onClick={() => linkChecklist(checklist.id)}
-                          >
-                            {checklist.tittel}
-                          </Button>
-                        ))}
-                      </div>
+                      <Input
+                        placeholder="Søk sjekklister…"
+                        value={checklistSearch}
+                        onChange={(e) => setChecklistSearch(e.target.value)}
+                        className="mb-2 h-8 text-sm"
+                      />
+                      <ScrollArea className="max-h-48">
+                        <div className="space-y-1">
+                          {availableChecklists
+                            .filter((c) => c.tittel.toLowerCase().includes(checklistSearch.toLowerCase()))
+                            .map((checklist) => (
+                              <Button
+                                key={checklist.id}
+                                variant="ghost"
+                                className="w-full justify-start text-sm"
+                                onClick={() => linkChecklist(checklist.id)}
+                              >
+                                {checklist.tittel}
+                              </Button>
+                            ))}
+                          {availableChecklists.filter((c) => c.tittel.toLowerCase().includes(checklistSearch.toLowerCase())).length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">Ingen treff</p>
+                          )}
+                        </div>
+                      </ScrollArea>
                     </PopoverContent>
                   </Popover>
                 )}
