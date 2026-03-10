@@ -1050,9 +1050,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     {gpsError && (
                       <p className="text-xs text-destructive">{gpsError}</p>
                     )}
-                    {gpsPosition && pilotName && (
+                    {gpsPosition && (
                       <p className="text-xs text-green-600 dark:text-green-400">
-                        ✓ {pilotName} @ {gpsPosition.lat.toFixed(4)}, {gpsPosition.lng.toFixed(4)}
+                        ✓ {t('flight.gpsPositionOk', 'Posisjon OK')}
                       </p>
                     )}
                   </div>
