@@ -155,7 +155,9 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           formData: routePlanningState.formData,
           selectedPersonnel: routePlanningState.selectedPersonnel,
           selectedEquipment: routePlanningState.selectedEquipment,
-          selectedDrones: routePlanningState.selectedDrones,
+          selectedDrones: soraDroneId
+            ? [...new Set([...(routePlanningState.selectedDrones || []), soraDroneId])]
+            : routePlanningState.selectedDrones,
           selectedCustomer: routePlanningState.selectedCustomer,
           missionId: routePlanningState.missionId,
         }
