@@ -936,34 +936,46 @@ export type Database = {
       }
       drone_models: {
         Row: {
+          category: string | null
           comment: string | null
           created_at: string | null
+          endurance_min: number | null
           eu_class: string
           id: string
+          max_wind_mps: number | null
           name: string
           payload_kg: number
+          sensor_type: string | null
           standard_takeoff_weight_kg: number | null
           weight_kg: number
           weight_without_payload_kg: number | null
         }
         Insert: {
+          category?: string | null
           comment?: string | null
           created_at?: string | null
+          endurance_min?: number | null
           eu_class: string
           id?: string
+          max_wind_mps?: number | null
           name: string
           payload_kg?: number
+          sensor_type?: string | null
           standard_takeoff_weight_kg?: number | null
           weight_kg: number
           weight_without_payload_kg?: number | null
         }
         Update: {
+          category?: string | null
           comment?: string | null
           created_at?: string | null
+          endurance_min?: number | null
           eu_class?: string
           id?: string
+          max_wind_mps?: number | null
           name?: string
           payload_kg?: number
+          sensor_type?: string | null
           standard_takeoff_weight_kg?: number | null
           weight_kg?: number
           weight_without_payload_kg?: number | null
