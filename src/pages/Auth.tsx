@@ -356,13 +356,7 @@ const Auth = () => {
         return;
       }
 
-      // Assign default role
-      await supabase
-        .from('user_roles')
-        .insert({
-          user_id: googleUser.id,
-          role: 'bruker'
-        });
+      // Role is now assigned automatically by database trigger (handle_new_profile_role)
 
       // Send notifications to admins
       await supabase.functions.invoke('send-notification-email', {
