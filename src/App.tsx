@@ -31,6 +31,7 @@ import Statistikk from "./pages/Statistikk";
 import NotFound from "./pages/NotFound";
 import SoraProcess from "./pages/SoraProcess";
 import Changelog from "./pages/Changelog";
+import Marketing from "./pages/Marketing";
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
