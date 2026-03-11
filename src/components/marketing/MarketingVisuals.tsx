@@ -57,9 +57,13 @@ export const MarketingVisuals = () => {
         </Button>
       </div>
 
-      {isLoading ? (
+      {authLoading || isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : isError ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>Kunne ikke laste visuelle akkurat nå.</p>
         </div>
       ) : media.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
