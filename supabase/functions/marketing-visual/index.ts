@@ -86,6 +86,9 @@ Layout:
 - Professional spacing and alignment`;
 }
 
+// Logo URL – served from the published app's public folder
+const AVISAFE_LOGO_URL = "https://avisafev2.lovable.app/avisafe-logo-text.png";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -129,19 +132,22 @@ serve(async (req) => {
         throw new Error(`Unknown visual type: ${type}`);
     }
 
-    // Call Gemini image generation
-    const messages: any[] = [{ role: "user", content: prompt }];
+    // Always include the AviSafe logo as a reference image so the AI reproduces it exactly
+    const contentParts: any[] = [
+      { type: "text", text: prompt + "\n\nIMPORTANT: The attached image is the official AviSafe logo. You MUST place this exact logo (reproduced faithfully) in the corner of the generated visual. Do not redesign or approximate it." },
+      { type: "image_url", image_url: { url: AVISAFE_LOGO_URL } },
+    ];
 
-    // If screenshot URL provided, include it as image input for editing
+    // If screenshot URL provided, include it as additional image input
     if (screenshotUrl && type === "screenshot_layout") {
-      messages[0] = {
-        role: "user",
-        content: [
-          { type: "text", text: prompt + "\n\nUse the provided screenshot as the main UI visual in the layout. Frame it professionally within the marketing layout." },
-          { type: "image_url", image_url: { url: screenshotUrl } },
-        ],
+      contentParts.push({ type: "image_url", image_url: { url: screenshotUrl } });
+      contentParts[0] = {
+        type: "text",
+        text: prompt + "\n\nIMPORTANT: The first attached image is the official AviSafe logo — reproduce it exactly in the corner. The second attached image is a screenshot — use it as the main UI visual in the layout, framed professionally.",
       };
     }
+
+    const messages: any[] = [{ role: "user", content: contentParts }];
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
