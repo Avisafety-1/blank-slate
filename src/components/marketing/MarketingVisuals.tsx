@@ -13,7 +13,7 @@ export const MarketingVisuals = () => {
   const queryClient = useQueryClient();
   const [generatorOpen, setGeneratorOpen] = useState(false);
 
-  const { data: media = [], isLoading } = useQuery({
+  const { data: media = [], isLoading, isError } = useQuery({
     queryKey: ["marketing-media", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -22,10 +22,18 @@ export const MarketingVisuals = () => {
         .eq("company_id", companyId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!companyId,
   });
+
+  if (!companyId) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>Laster...</p>
+      </div>
+    );
+  }
 
   const handleDelete = async (id: string, fileUrl: string) => {
     // Extract path from URL for storage deletion
