@@ -33,12 +33,47 @@ import {
   ChevronDown,
   Save,
   BookmarkPlus,
+  Image,
 } from "lucide-react";
 import {
   GENERATION_PRESETS,
   POST_STRUCTURES,
   BRAND_VOICE_DEFAULTS,
 } from "./marketingPresets";
+import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
+import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
+
+const DraftVisualSection = ({ draftId }: { draftId: string }) => {
+  const [genOpen, setGenOpen] = useState(false);
+  const { data: media = [] } = useQuery({
+    queryKey: ["marketing-draft-media", draftId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_media")
+        .select("*")
+        .eq("draft_id", draftId)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  return (
+    <div className="space-y-2 p-2">
+      {media.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {media.map((m: any) => (
+            <img key={m.id} src={m.file_url} alt={m.title || ""} className="rounded-md border border-border w-full object-cover aspect-video" />
+          ))}
+        </div>
+      )}
+      <Button variant="outline" size="sm" className="gap-1 w-full" onClick={() => setGenOpen(true)}>
+        <Image className="w-3.5 h-3.5" />
+        Generer visuell
+      </Button>
+      <VisualGeneratorDialog open={genOpen} onOpenChange={setGenOpen} draftId={draftId} />
+    </div>
+  );
+};
 
 interface Draft {
   id: string;
@@ -472,6 +507,21 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
                     <p className="text-muted-foreground">{review.followUpVariation}</p>
                   </div>
                 </div>
+              </CollapsibleContent>
+            </Collapsible>
+           )}
+
+          {/* Visual section */}
+          {draft && (
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground w-full justify-between">
+                  <span className="flex items-center gap-1"><Image className="w-3.5 h-3.5" /> Visuelt</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <DraftVisualSection draftId={draft.id} />
               </CollapsibleContent>
             </Collapsible>
           )}

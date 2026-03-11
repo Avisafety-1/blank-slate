@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.marketing-ai]
 verify_jwt = true
+
+[functions.marketing-visual]
+verify_jwt = true

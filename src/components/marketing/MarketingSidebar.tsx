@@ -1,13 +1,14 @@
-import { LayoutDashboard, Lightbulb, FileEdit, Settings } from "lucide-react";
+import { LayoutDashboard, Lightbulb, FileEdit, Settings, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type MarketingSection = "overview" | "ideas" | "drafts" | "settings";
+export type MarketingSection = "overview" | "ideas" | "drafts" | "visuals" | "settings";
 
 const items: { key: MarketingSection; label: string; icon: React.ElementType }[] = [
   { key: "overview", label: "Oversikt", icon: LayoutDashboard },
   { key: "ideas", label: "Idéer", icon: Lightbulb },
   { key: "drafts", label: "Utkast", icon: FileEdit },
+  { key: "visuals", label: "Visuelt", icon: Image },
   { key: "settings", label: "Innstillinger", icon: Settings },
 ];
 

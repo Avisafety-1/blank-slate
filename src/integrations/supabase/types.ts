@@ -2388,6 +2388,69 @@ export type Database = {
           },
         ]
       }
+      marketing_media: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          draft_id: string | null
+          file_url: string
+          id: string
+          image_format: string | null
+          layout_template: string | null
+          media_type: string
+          metadata: Json | null
+          source_type: string
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          draft_id?: string | null
+          file_url: string
+          id?: string
+          image_format?: string | null
+          layout_template?: string | null
+          media_type?: string
+          metadata?: Json | null
+          source_type?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          draft_id?: string | null
+          file_url?: string
+          id?: string
+          image_format?: string | null
+          layout_template?: string | null
+          media_type?: string
+          metadata?: Json | null
+          source_type?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_media_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_media_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_documents: {
         Row: {
           created_at: string | null

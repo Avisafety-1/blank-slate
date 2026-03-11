@@ -6,6 +6,7 @@ import { MarketingSidebar, type MarketingSection } from "@/components/marketing/
 import { MarketingOverview } from "@/components/marketing/MarketingOverview";
 import { MarketingIdeas } from "@/components/marketing/MarketingIdeas";
 import { MarketingDrafts } from "@/components/marketing/MarketingDrafts";
+import { MarketingVisuals } from "@/components/marketing/MarketingVisuals";
 import { MarketingSettings } from "@/components/marketing/MarketingSettings";
 
 const Marketing = () => {
@@ -24,6 +25,7 @@ const Marketing = () => {
           {section === "overview" && <MarketingOverview />}
           {section === "ideas" && <MarketingIdeas onNavigate={setSection} />}
           {section === "drafts" && <MarketingDrafts />}
+          {section === "visuals" && <MarketingVisuals />}
           {section === "settings" && <MarketingSettings />}
         </main>
       </div>

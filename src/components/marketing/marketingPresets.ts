@@ -138,6 +138,14 @@ export const POST_STRUCTURES: PostStructure[] = [
   },
 ];
 
+export const VISUAL_TEMPLATES = [
+  { id: "feature_highlight", label: "Feature Highlight" },
+  { id: "safety_tip_card", label: "Safety Tip Card" },
+  { id: "product_update", label: "Product Update Visual" },
+  { id: "dashboard_highlight", label: "Aviation Dashboard" },
+  { id: "mission_planning", label: "Drone Mission Planning" },
+];
+
 export const BRAND_VOICE_DEFAULTS = {
   rules: [
     "Professional B2B tone — write for drone operators and aviation professionals",
