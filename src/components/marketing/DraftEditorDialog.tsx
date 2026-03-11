@@ -43,7 +43,7 @@ import {
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
 
-const DraftVisualSection = ({ draftId }: { draftId: string }) => {
+const DraftVisualSection = ({ draftId, draftTitle, draftHook }: { draftId: string; draftTitle: string; draftHook: string }) => {
   const [genOpen, setGenOpen] = useState(false);
   const { data: media = [] } = useQuery({
     queryKey: ["marketing-draft-media", draftId],
@@ -70,7 +70,13 @@ const DraftVisualSection = ({ draftId }: { draftId: string }) => {
         <Image className="w-3.5 h-3.5" />
         Generer visuell
       </Button>
-      <VisualGeneratorDialog open={genOpen} onOpenChange={setGenOpen} draftId={draftId} />
+      <VisualGeneratorDialog
+        open={genOpen}
+        onOpenChange={setGenOpen}
+        draftId={draftId}
+        initialTitle={draftTitle}
+        initialSubtitle={draftHook}
+      />
     </div>
   );
 };
