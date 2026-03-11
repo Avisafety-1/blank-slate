@@ -34,6 +34,7 @@ import {
   Save,
   BookmarkPlus,
   Image,
+  Eye,
 } from "lucide-react";
 import {
   GENERATION_PRESETS,
@@ -41,6 +42,7 @@ import {
   BRAND_VOICE_DEFAULTS,
 } from "./marketingPresets";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
+import { VisualPreview } from "./VisualPreview";
 import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
 
 const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { draftId: string; draftTitle: string; draftHook: string; composedText: string }) => {
