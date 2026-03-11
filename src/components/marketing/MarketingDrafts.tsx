@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Copy } from "lucide-react";
 import { DraftEditorDialog } from "./DraftEditorDialog";
 
 export const MarketingDrafts = () => {
@@ -45,6 +45,25 @@ export const MarketingDrafts = () => {
     }
     queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
     setEditDraft(data);
+  };
+
+  const duplicateDraft = async (source: any) => {
+    const { error } = await supabase.from("marketing_drafts").insert({
+      company_id: companyId!,
+      created_by: user?.id,
+      title: `${source.title} (kopi)`,
+      content: source.content,
+      platform: source.platform,
+      status: "draft",
+      metadata: source.metadata,
+    });
+    if (error) {
+      toast.error("Kunne ikke duplisere utkast");
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-drafts-count"] });
+    toast.success("Utkast duplisert");
   };
 
   const deleteDraft = async (id: string) => {
@@ -91,53 +110,61 @@ export const MarketingDrafts = () => {
         </p>
       ) : (
         <div className="space-y-3">
-          {drafts.map((draft) => (
-            <Card key={draft.id} className="bg-card border-border">
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium text-foreground">{draft.title}</h3>
-                      <Badge variant="secondary" className={statusColors[draft.status] || ""}>
-                        {statusLabels[draft.status] || draft.status}
-                      </Badge>
-                      {draft.platform && (
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {draft.platform}
+          {drafts.map((draft) => {
+            const meta = draft.metadata as any;
+            const lang = meta?.language;
+            const isTemplate = meta?.isTemplate;
+            return (
+              <Card key={draft.id} className="bg-card border-border">
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-foreground">{draft.title}</h3>
+                        <Badge variant="secondary" className={statusColors[draft.status] || ""}>
+                          {statusLabels[draft.status] || draft.status}
                         </Badge>
+                        {draft.platform && (
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {draft.platform}
+                          </Badge>
+                        )}
+                        {lang && (
+                          <Badge variant="outline" className="text-xs">
+                            {lang === "en" ? "EN" : "NO"}
+                          </Badge>
+                        )}
+                        {isTemplate && (
+                          <Badge variant="outline" className="text-xs bg-accent/10">
+                            Mal
+                          </Badge>
+                        )}
+                      </div>
+                      {draft.content && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {draft.content.slice(0, 150)}...
+                        </p>
                       )}
-                    </div>
-                    {draft.content && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {draft.content.slice(0, 150)}...
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
                       </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
-                    </p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => setEditDraft(draft)} title="Rediger">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => duplicateDraft(draft)} title="Dupliser">
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)} title="Slett">
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditDraft(draft)}
-                      title="Rediger"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteDraft(draft.id)}
-                      title="Slett"
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
