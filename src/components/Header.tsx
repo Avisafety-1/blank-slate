@@ -211,6 +211,11 @@ export const Header = () => {
                 <BarChart3 className="w-4 h-4" />
               </Button>
             )}
+            {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/marketing")} title="Marketing">
+                <Megaphone className="w-4 h-4" />
+              </Button>
+            )}
           </nav>
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">

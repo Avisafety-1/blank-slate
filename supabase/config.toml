@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.check-long-flights]
 verify_jwt = false
+
+[functions.marketing-ai]
+verify_jwt = true

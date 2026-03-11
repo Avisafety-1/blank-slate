@@ -147,6 +147,7 @@ const App = () => {
                 {/* Admin has its own header */}
                 <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
                 <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
+                <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
