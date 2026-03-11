@@ -13,7 +13,7 @@ VISUAL BRAND RULES:
 - Use a neutral aviation-style color palette: navy (#1a2332), slate grays, white, with subtle blue accents
 - Clean, minimalistic SaaS design — think Figma, Linear, or Notion marketing materials
 - Professional B2B aesthetic appropriate for aviation/drone industry
-- Include the text "AviSafe" as a small logo/watermark in the corner when appropriate
+- IMPORTANT: You are provided with the official AviSafe logo as a reference image. You MUST reproduce it exactly as shown — do NOT invent, redesign, or approximate the logo. Place the exact AviSafe logo (as seen in the reference image) in the bottom-right or top-left corner of the visual. The logo should be small, clean, and clearly legible.
 - Modern, sharp typography — no playful or rounded fonts
 
 STRICTLY AVOID:
@@ -22,7 +22,8 @@ STRICTLY AVOID:
 - Unrealistic or toy-like drones
 - Flashy gradients, neon colors, or party aesthetics
 - Stock photo clichés (handshakes, generic offices)
-- Busy or cluttered layouts`;
+- Busy or cluttered layouts
+- Making up your own version of the AviSafe logo — always use the provided reference exactly`;
 
 function buildSafetyGraphicPrompt(params: { title: string; subtitle?: string; template: string; format: string }) {
   const aspect = params.format === "1200x628" ? "landscape 16:9" : "square 1:1";
