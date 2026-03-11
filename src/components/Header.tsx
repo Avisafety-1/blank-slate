@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity } from "lucide-react";
+import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,6 +139,12 @@ export const Header = () => {
                     Plattformstatistikk
                   </DropdownMenuItem>
                 )}
+                {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+                  <DropdownMenuItem onClick={() => navigate("/marketing")}>
+                    <Megaphone className="w-4 h-4 mr-2" />
+                    Marketing
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/changelog")}>
                   <Activity className="w-4 h-4 mr-2" />
                   Driftstatus
@@ -203,6 +209,11 @@ export const Header = () => {
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/statistikk")} title="Plattformstatistikk">
                 <BarChart3 className="w-4 h-4" />
+              </Button>
+            )}
+            {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/marketing")} title="Marketing">
+                <Megaphone className="w-4 h-4" />
               </Button>
             )}
           </nav>

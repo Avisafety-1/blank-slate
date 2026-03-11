@@ -2275,6 +2275,119 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_content_ideas: {
+        Row: {
+          ai_generated: boolean | null
+          category: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          category?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_generated?: boolean | null
+          category?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_content_ideas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_drafts: {
+        Row: {
+          ai_generated: boolean | null
+          company_id: string
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          idea_id: string | null
+          metadata: Json | null
+          platform: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          company_id: string
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          idea_id?: string | null
+          metadata?: Json | null
+          platform?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_generated?: boolean | null
+          company_id?: string
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          idea_id?: string | null
+          metadata?: Json | null
+          platform?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_drafts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_drafts_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_content_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_documents: {
         Row: {
           created_at: string | null

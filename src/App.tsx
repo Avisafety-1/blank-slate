@@ -31,6 +31,7 @@ import Statistikk from "./pages/Statistikk";
 import NotFound from "./pages/NotFound";
 import SoraProcess from "./pages/SoraProcess";
 import Changelog from "./pages/Changelog";
+import Marketing from "./pages/Marketing";
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -146,6 +147,7 @@ const App = () => {
                 {/* Admin has its own header */}
                 <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
                 <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
+                <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
