@@ -6,9 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Sparkles, Plus, Trash2, FileEdit, Loader2 } from "lucide-react";
 import type { MarketingSection } from "./MarketingSidebar";
+import { GENERATION_PRESETS } from "./marketingPresets";
 
 interface Props {
   onNavigate: (section: MarketingSection) => void;
@@ -19,6 +27,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
   const queryClient = useQueryClient();
   const [topic, setTopic] = useState("");
   const [newTitle, setNewTitle] = useState("");
+  const [presetFilter, setPresetFilter] = useState("all");
 
   const { data: ideas = [], isLoading } = useQuery({
     queryKey: ["marketing-ideas", companyId],
@@ -37,14 +46,17 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
   const generateMutation = useMutation({
     mutationFn: async (t: string) => {
       const { data, error } = await supabase.functions.invoke("marketing-ai", {
-        body: { type: "ideas", topic: t },
+        body: {
+          type: "ideas",
+          topic: t,
+          preset: presetFilter !== "all" ? presetFilter : undefined,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data.ideas as { title: string; description: string; category: string }[];
+      return data.ideas as { title: string; description: string; category: string; suggestedPreset?: string }[];
     },
     onSuccess: async (ideas) => {
-      // Save to DB
       const rows = ideas.map((i) => ({
         company_id: companyId!,
         created_by: user?.id,
@@ -85,13 +97,20 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
     queryClient.invalidateQueries({ queryKey: ["marketing-ideas-count"] });
   };
 
-  const createDraftFromIdea = async (idea: { id: string; title: string }) => {
+  const createDraftFromIdea = async (idea: { id: string; title: string; category?: string | null }) => {
+    const matchedPreset = GENERATION_PRESETS.find((p) => {
+      if (idea.category === "blog") return p.id === "industry_insight";
+      if (idea.category === "social") return p.id === "safety_tip";
+      return false;
+    });
+
     const { error } = await supabase.from("marketing_drafts").insert({
       company_id: companyId!,
       created_by: user?.id,
       idea_id: idea.id,
       title: idea.title,
       platform: "linkedin",
+      metadata: matchedPreset ? { preset: matchedPreset.id } : {},
     });
     if (error) {
       toast.error("Kunne ikke opprette utkast");
@@ -131,19 +150,30 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
               onChange={(e) => setTopic(e.target.value)}
               className="flex-1"
             />
-            <Button
-              onClick={() => generateMutation.mutate(topic)}
-              disabled={generateMutation.isPending}
-              className="gap-2"
-            >
-              {generateMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
-              Generer idéer
-            </Button>
+            <Select value={presetFilter} onValueChange={setPresetFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Alle typer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle typer</SelectItem>
+                {GENERATION_PRESETS.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          <Button
+            onClick={() => generateMutation.mutate(topic)}
+            disabled={generateMutation.isPending}
+            className="gap-2"
+          >
+            {generateMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            Generer idéer
+          </Button>
         </CardContent>
       </Card>
 
