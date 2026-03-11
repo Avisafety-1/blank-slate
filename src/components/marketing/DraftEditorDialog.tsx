@@ -40,6 +40,40 @@ import {
   POST_STRUCTURES,
   BRAND_VOICE_DEFAULTS,
 } from "./marketingPresets";
+import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
+import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
+
+const DraftVisualSection = ({ draftId }: { draftId: string }) => {
+  const [genOpen, setGenOpen] = useState(false);
+  const { data: media = [] } = useQuery({
+    queryKey: ["marketing-draft-media", draftId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_media")
+        .select("*")
+        .eq("draft_id", draftId)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  return (
+    <div className="space-y-2 p-2">
+      {media.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {media.map((m: any) => (
+            <img key={m.id} src={m.file_url} alt={m.title || ""} className="rounded-md border border-border w-full object-cover aspect-video" />
+          ))}
+        </div>
+      )}
+      <Button variant="outline" size="sm" className="gap-1 w-full" onClick={() => setGenOpen(true)}>
+        <Image className="w-3.5 h-3.5" />
+        Generer visuell
+      </Button>
+      <VisualGeneratorDialog open={genOpen} onOpenChange={setGenOpen} draftId={draftId} />
+    </div>
+  );
+};
 
 interface Draft {
   id: string;
