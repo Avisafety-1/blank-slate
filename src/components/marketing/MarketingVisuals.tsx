@@ -9,31 +9,28 @@ import { Plus, Trash2, Download, Loader2, Image } from "lucide-react";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 
 export const MarketingVisuals = () => {
-  const { companyId } = useAuth();
+  const { companyId, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [generatorOpen, setGeneratorOpen] = useState(false);
 
   const { data: media = [], isLoading, isError } = useQuery({
-    queryKey: ["marketing-media", companyId],
+    queryKey: ["marketing-media", companyId ?? "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("marketing_media")
         .select("*")
-        .eq("company_id", companyId!)
         .order("created_at", { ascending: false });
+
+      if (companyId) {
+        query = query.eq("company_id", companyId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!companyId,
+    enabled: !authLoading,
   });
-
-  if (!companyId) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>Laster...</p>
-      </div>
-    );
-  }
 
   const handleDelete = async (id: string, fileUrl: string) => {
     // Extract path from URL for storage deletion
@@ -60,9 +57,13 @@ export const MarketingVisuals = () => {
         </Button>
       </div>
 
-      {isLoading ? (
+      {authLoading || isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : isError ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>Kunne ikke laste visuelle akkurat nå.</p>
         </div>
       ) : media.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
