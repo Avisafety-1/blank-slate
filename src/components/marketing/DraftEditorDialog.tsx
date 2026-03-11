@@ -34,6 +34,7 @@ import {
   Save,
   BookmarkPlus,
   Image,
+  Eye,
 } from "lucide-react";
 import {
   GENERATION_PRESETS,
@@ -41,10 +42,13 @@ import {
   BRAND_VOICE_DEFAULTS,
 } from "./marketingPresets";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
+import { VisualPreview } from "./VisualPreview";
 import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
 
-const DraftVisualSection = ({ draftId, draftTitle, draftHook }: { draftId: string; draftTitle: string; draftHook: string }) => {
+const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { draftId: string; draftTitle: string; draftHook: string; composedText: string }) => {
   const [genOpen, setGenOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const queryClient = useQueryClient();
   const { data: media = [] } = useQuery({
     queryKey: ["marketing-draft-media", draftId],
     queryFn: async () => {
@@ -57,19 +61,44 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook }: { draftId: strin
     },
   });
 
+  const handleRemove = async (mediaId: string) => {
+    const { error } = await supabase.from("marketing_media").delete().eq("id", mediaId);
+    if (error) {
+      toast.error("Kunne ikke fjerne bilde");
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["marketing-draft-media", draftId] });
+    toast.success("Bilde fjernet");
+  };
+
   return (
     <div className="space-y-2 p-2">
       {media.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {media.map((m: any) => (
-            <img key={m.id} src={m.file_url} alt={m.title || ""} className="rounded-md border border-border w-full object-cover aspect-video" />
+            <div key={m.id} className="relative group">
+              <img src={m.file_url} alt={m.title || ""} className="rounded-md border border-border w-full object-cover aspect-video" />
+              <button
+                onClick={() => handleRemove(m.id)}
+                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Fjern"
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
       )}
-      <Button variant="outline" size="sm" className="gap-1 w-full" onClick={() => setGenOpen(true)}>
-        <Image className="w-3.5 h-3.5" />
-        Generer visuell
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setGenOpen(true)}>
+          <Image className="w-3.5 h-3.5" />
+          Generer visuell
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setPreviewOpen(true)}>
+          <Eye className="w-3.5 h-3.5" />
+          Forhåndsvisning
+        </Button>
+      </div>
       <VisualGeneratorDialog
         open={genOpen}
         onOpenChange={setGenOpen}
@@ -77,6 +106,14 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook }: { draftId: strin
         initialTitle={draftTitle}
         initialSubtitle={draftHook}
       />
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>LinkedIn-forhåndsvisning</DialogTitle>
+          </DialogHeader>
+          <VisualPreview text={composedText} imageUrl={media[0]?.file_url} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -527,7 +564,7 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <DraftVisualSection draftId={draft.id} draftTitle={title} draftHook={hook || body.substring(0, 100)} />
+                <DraftVisualSection draftId={draft.id} draftTitle={title} draftHook={hook || body.substring(0, 100)} composedText={composePlainContent()} />
               </CollapsibleContent>
             </Collapsible>
           )}
