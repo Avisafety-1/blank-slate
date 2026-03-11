@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Save,
   BookmarkPlus,
+  Image,
 } from "lucide-react";
 import {
   GENERATION_PRESETS,
