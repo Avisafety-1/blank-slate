@@ -527,7 +527,7 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <DraftVisualSection draftId={draft.id} />
+                <DraftVisualSection draftId={draft.id} draftTitle={title} draftHook={hook || body.substring(0, 100)} />
               </CollapsibleContent>
             </Collapsible>
           )}
