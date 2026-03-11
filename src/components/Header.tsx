@@ -139,6 +139,12 @@ export const Header = () => {
                     Plattformstatistikk
                   </DropdownMenuItem>
                 )}
+                {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+                  <DropdownMenuItem onClick={() => navigate("/marketing")}>
+                    <Megaphone className="w-4 h-4 mr-2" />
+                    Marketing
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/changelog")}>
                   <Activity className="w-4 h-4 mr-2" />
                   Driftstatus
