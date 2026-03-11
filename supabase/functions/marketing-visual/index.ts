@@ -13,7 +13,7 @@ VISUAL BRAND RULES:
 - Use a neutral aviation-style color palette: navy (#1a2332), slate grays, white, with subtle blue accents
 - Clean, minimalistic SaaS design — think Figma, Linear, or Notion marketing materials
 - Professional B2B aesthetic appropriate for aviation/drone industry
-- Include the text "AviSafe" as a small logo/watermark in the corner when appropriate
+- IMPORTANT: You are provided with the official AviSafe logo as a reference image. You MUST reproduce it exactly as shown — do NOT invent, redesign, or approximate the logo. Place the exact AviSafe logo (as seen in the reference image) in the bottom-right or top-left corner of the visual. The logo should be small, clean, and clearly legible.
 - Modern, sharp typography — no playful or rounded fonts
 
 STRICTLY AVOID:
@@ -22,7 +22,8 @@ STRICTLY AVOID:
 - Unrealistic or toy-like drones
 - Flashy gradients, neon colors, or party aesthetics
 - Stock photo clichés (handshakes, generic offices)
-- Busy or cluttered layouts`;
+- Busy or cluttered layouts
+- Making up your own version of the AviSafe logo — always use the provided reference exactly`;
 
 function buildSafetyGraphicPrompt(params: { title: string; subtitle?: string; template: string; format: string }) {
   const aspect = params.format === "1200x628" ? "landscape 16:9" : "square 1:1";
@@ -85,6 +86,9 @@ Layout:
 - Professional spacing and alignment`;
 }
 
+// Logo URL – served from the published app's public folder
+const AVISAFE_LOGO_URL = "https://avisafev2.lovable.app/avisafe-logo-text.png";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -128,19 +132,22 @@ serve(async (req) => {
         throw new Error(`Unknown visual type: ${type}`);
     }
 
-    // Call Gemini image generation
-    const messages: any[] = [{ role: "user", content: prompt }];
+    // Always include the AviSafe logo as a reference image so the AI reproduces it exactly
+    const contentParts: any[] = [
+      { type: "text", text: prompt + "\n\nIMPORTANT: The attached image is the official AviSafe logo. You MUST place this exact logo (reproduced faithfully) in the corner of the generated visual. Do not redesign or approximate it." },
+      { type: "image_url", image_url: { url: AVISAFE_LOGO_URL } },
+    ];
 
-    // If screenshot URL provided, include it as image input for editing
+    // If screenshot URL provided, include it as additional image input
     if (screenshotUrl && type === "screenshot_layout") {
-      messages[0] = {
-        role: "user",
-        content: [
-          { type: "text", text: prompt + "\n\nUse the provided screenshot as the main UI visual in the layout. Frame it professionally within the marketing layout." },
-          { type: "image_url", image_url: { url: screenshotUrl } },
-        ],
+      contentParts.push({ type: "image_url", image_url: { url: screenshotUrl } });
+      contentParts[0] = {
+        type: "text",
+        text: prompt + "\n\nIMPORTANT: The first attached image is the official AviSafe logo — reproduce it exactly in the corner. The second attached image is a screenshot — use it as the main UI visual in the layout, framed professionally.",
       };
     }
+
+    const messages: any[] = [{ role: "user", content: contentParts }];
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
