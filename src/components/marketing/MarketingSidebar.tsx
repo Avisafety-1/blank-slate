@@ -8,6 +8,7 @@ const items: { key: MarketingSection; label: string; icon: React.ElementType }[]
   { key: "overview", label: "Oversikt", icon: LayoutDashboard },
   { key: "ideas", label: "Idéer", icon: Lightbulb },
   { key: "drafts", label: "Utkast", icon: FileEdit },
+  { key: "visuals", label: "Visuelt", icon: Image },
   { key: "settings", label: "Innstillinger", icon: Settings },
 ];
 

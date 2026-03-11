@@ -25,6 +25,7 @@ const Marketing = () => {
           {section === "overview" && <MarketingOverview />}
           {section === "ideas" && <MarketingIdeas onNavigate={setSection} />}
           {section === "drafts" && <MarketingDrafts />}
+          {section === "visuals" && <MarketingVisuals />}
           {section === "settings" && <MarketingSettings />}
         </main>
       </div>
