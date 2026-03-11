@@ -38,9 +38,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   draftId?: string | null;
+  initialTitle?: string;
+  initialSubtitle?: string;
 }
 
-export const VisualGeneratorDialog = ({ open, onOpenChange, draftId }: Props) => {
+export const VisualGeneratorDialog = ({ open, onOpenChange, draftId, initialTitle, initialSubtitle }: Props) => {
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
 
