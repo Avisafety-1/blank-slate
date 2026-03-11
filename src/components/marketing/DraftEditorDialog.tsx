@@ -475,6 +475,21 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
                 </div>
               </CollapsibleContent>
             </Collapsible>
+           )}
+
+          {/* Visual section */}
+          {draft && (
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground w-full justify-between">
+                  <span className="flex items-center gap-1"><Image className="w-3.5 h-3.5" /> Visuelt</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <DraftVisualSection draftId={draft.id} />
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
 
