@@ -56,6 +56,20 @@ export const VisualGeneratorDialog = ({ open, onOpenChange, draftId, initialTitl
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Auto-fill from draft content when dialog opens
+  useEffect(() => {
+    if (open) {
+      if (initialTitle && !title) setTitle(initialTitle);
+      if (initialSubtitle && !subtitle) setSubtitle(initialSubtitle);
+    }
+    if (!open) {
+      setTitle("");
+      setSubtitle("");
+      setPreviewUrl(null);
+      setScreenshotUrl("");
+    }
+  }, [open]);
+
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !companyId) return;
