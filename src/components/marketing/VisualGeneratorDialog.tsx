@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,9 +38,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   draftId?: string | null;
+  initialTitle?: string;
+  initialSubtitle?: string;
 }
 
-export const VisualGeneratorDialog = ({ open, onOpenChange, draftId }: Props) => {
+export const VisualGeneratorDialog = ({ open, onOpenChange, draftId, initialTitle, initialSubtitle }: Props) => {
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
 
@@ -53,6 +55,20 @@ export const VisualGeneratorDialog = ({ open, onOpenChange, draftId }: Props) =>
   const [generating, setGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Auto-fill from draft content when dialog opens
+  useEffect(() => {
+    if (open) {
+      if (initialTitle && !title) setTitle(initialTitle);
+      if (initialSubtitle && !subtitle) setSubtitle(initialSubtitle);
+    }
+    if (!open) {
+      setTitle("");
+      setSubtitle("");
+      setPreviewUrl(null);
+      setScreenshotUrl("");
+    }
+  }, [open]);
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
