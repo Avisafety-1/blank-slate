@@ -622,6 +622,16 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             <BookmarkPlus className="w-4 h-4" />
             Lagre som mal
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmFbOpen(true)}
+            disabled={publishing || !composePlainContent().trim()}
+            className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
+          >
+            {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
+            Publiser til Facebook
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">
             <Save className="w-4 h-4" />
@@ -629,6 +639,24 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmFbOpen} onOpenChange={setConfirmFbOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Publiser til Facebook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Innlegget vil bli publisert direkte på Facebook-siden. Denne handlingen kan ikke angres fra AviSafe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishFacebook} className="gap-1">
+              <Facebook className="w-4 h-4" />
+              Publiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
