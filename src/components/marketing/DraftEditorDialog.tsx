@@ -22,9 +22,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   Sparkles,
   Loader2,
@@ -36,6 +45,8 @@ import {
   Image,
   Eye,
   Facebook,
+  CalendarIcon,
+  Clock,
 } from "lucide-react";
 import {
   AlertDialog,
