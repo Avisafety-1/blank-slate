@@ -192,6 +192,26 @@ export const MarketingSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Facebook configuration */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Facebook-konfigurasjon</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Facebook Page Access Token og Page ID konfigureres som Supabase secrets.
+            Kontakt superadmin for oppsett. Tokenet må ha <code>pages_manage_posts</code>-tillatelse.
+          </p>
+          <div className="rounded-md bg-muted/30 border border-border p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Slik setter du opp:</p>
+            <p>1. Gå til <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">developers.facebook.com</a></p>
+            <p>2. Opprett en app → legg til «Pages API»</p>
+            <p>3. Generer en langvarig Page Access Token</p>
+            <p>4. Legg til som Supabase secrets: <code>FACEBOOK_PAGE_ACCESS_TOKEN</code> og <code>FACEBOOK_PAGE_ID</code></p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Platform integrations */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
@@ -204,7 +224,7 @@ export const MarketingSettings = () => {
                 <p className="text-sm font-medium text-foreground">{p.name}</p>
                 <p className="text-xs text-muted-foreground">{p.desc}</p>
               </div>
-              <Badge variant="outline" className="text-xs">{p.status}</Badge>
+              <Badge variant="outline" className={`text-xs ${p.status === "Aktiv" ? "border-green-500 text-green-600" : ""}`}>{p.status}</Badge>
             </div>
           ))}
         </CardContent>
