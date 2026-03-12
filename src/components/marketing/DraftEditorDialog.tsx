@@ -202,6 +202,10 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [structure, setStructure] = useState("hook_insight_cta");
   const [language, setLanguage] = useState<"no" | "en">("no");
 
+  // Scheduler
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [scheduledTime, setScheduledTime] = useState("09:00");
+
   // Review helper
   const [review, setReview] = useState<{
     whyItWorks: string;
@@ -222,6 +226,17 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
       setVariants([]);
       setActiveVariant(0);
       setReview(null);
+
+      // Load scheduled_at
+      const draftAny = draft as any;
+      if (draftAny.scheduled_at) {
+        const d = new Date(draftAny.scheduled_at);
+        setScheduledDate(d);
+        setScheduledTime(format(d, "HH:mm"));
+      } else {
+        setScheduledDate(undefined);
+        setScheduledTime("09:00");
+      }
 
       const meta = draft.metadata as any;
       if (meta?.structured) {
