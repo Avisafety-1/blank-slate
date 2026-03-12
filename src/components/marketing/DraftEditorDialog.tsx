@@ -425,6 +425,49 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
     }
   };
 
+  const handleSchedule = async () => {
+    if (!draft || !scheduledDate) return;
+    const [hours, minutes] = scheduledTime.split(":").map(Number);
+    const scheduledAt = new Date(scheduledDate);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
+    if (scheduledAt <= new Date()) {
+      toast.error("Planlagt tidspunkt må være i fremtiden");
+      return;
+    }
+
+    const content = composePlainContent();
+    const metadata = {
+      ...(draft.metadata as any || {}),
+      structured: {
+        hook, body, cta,
+        hashtags: hashtags.split(",").map((h) => h.trim()).filter(Boolean),
+        ...(review || {}),
+      },
+      preset, structure, language,
+    };
+
+    const { error } = await supabase
+      .from("marketing_drafts")
+      .update({
+        title, content, platform,
+        status: "scheduled",
+        scheduled_at: scheduledAt.toISOString(),
+        metadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id);
+    if (error) {
+      toast.error("Kunne ikke planlegge");
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-scheduled-count"] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-next-scheduled"] });
+    toast.success(`Planlagt for ${format(scheduledAt, "d. MMM yyyy HH:mm", { locale: nb })}`);
+    onOpenChange(false);
+  };
+
   const selectVariant = (idx: number) => {
     setActiveVariant(idx);
     applyStructured(variants[idx]);
