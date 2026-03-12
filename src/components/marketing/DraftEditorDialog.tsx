@@ -65,6 +65,7 @@ import {
 } from "./marketingPresets";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 import { VisualPreview } from "./VisualPreview";
+import { MediaLibraryPickerDialog } from "./MediaLibraryPickerDialog";
 import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
 
 const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { draftId: string; draftTitle: string; draftHook: string; composedText: string }) => {
