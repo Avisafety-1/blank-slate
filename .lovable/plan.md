@@ -1,44 +1,56 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Marketing-modul forbedringer
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Nåværende tilstand
+- Utkast-listen viser alle utkast i en flat liste med små ghost-knapper for redigering
+- Publisering skjer kun fra inne i DraftEditorDialog
+- DB har allerede `scheduled_at` og `published_at` kolonner, men de brukes ikke i UI
+- Ingen scheduler-funksjonalitet
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Plan
 
-### Endringer
+#### 1. Forbedret utkast-liste med publiseringsknapp og kø-visning
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+Oppdater `MarketingDrafts.tsx`:
+- Legg til faner øverst: **Alle** | **Klare til publisering** (status=approved) | **Planlagt** | **Publisert**
+- For utkast med status "approved": Vis en tydelig blå **"Publiser"**-knapp direkte i kortet (ikke bare inne i editoren)
+- For planlagte poster: Vis planlagt dato/klokkeslett
+- For publiserte poster: Vis publiseringstidspunkt og lenke til Facebook-innlegget
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+#### 2. Scheduler i DraftEditorDialog
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+Oppdater `DraftEditorDialog.tsx`:
+- Legg til et nytt "Planlegg publisering"-felt med dato- og tidsvelger (Popover + Calendar + klokkeslett-input)
+- Ny status "scheduled" som settes når bruker velger dato/tid
+- Lagre valgt tidspunkt i `scheduled_at`-kolonnen
+- Vis knapp "Planlegg" ved siden av "Publiser til Facebook"
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+#### 3. Cron Edge Function for planlagt publisering
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Opprett `supabase/functions/publish-scheduled/index.ts`:
+- Kjører periodisk via pg_cron (hvert 5. minutt)
+- Henter alle drafts der `status = 'scheduled'` og `scheduled_at <= now()`
+- Kaller Facebook Graph API for hver (med samme logikk som publish-facebook)
+- Oppdaterer status til "published" og setter `published_at`
+- Logger feil per draft
+
+#### 4. Oversikt-forbedring
+
+Oppdater `MarketingOverview.tsx`:
+- Legg til en "Neste planlagte" seksjon som viser de neste 3 planlagte postene med nedtelling
+- Legg til "Nylig publisert" seksjon med de siste 3 publiserte postene
+
+### Tekniske detaljer
+
+**Filer som endres:**
+- `src/components/marketing/MarketingDrafts.tsx` — faner og publiseringsknapp i liste
+- `src/components/marketing/DraftEditorDialog.tsx` — scheduler UI med dato/tid-velger
+- `src/components/marketing/MarketingOverview.tsx` — neste planlagte og nylig publisert
+- `supabase/functions/publish-scheduled/index.ts` — ny cron-funksjon
+- `supabase/config.toml` — registrer ny funksjon med `verify_jwt = false`
+
+**Cron-jobb:** SQL via insert-tool for å sette opp pg_cron som kaller publish-scheduled hvert 5. minutt.
+
+**Ingen DB-migrasjoner nødvendig** — `scheduled_at` og `published_at` finnes allerede.
 
