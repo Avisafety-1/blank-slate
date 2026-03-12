@@ -65,11 +65,13 @@ import {
 } from "./marketingPresets";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 import { VisualPreview } from "./VisualPreview";
+import { MediaLibraryPickerDialog } from "./MediaLibraryPickerDialog";
 import { useQuery, useQueryClient as useQC2 } from "@tanstack/react-query";
 
 const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { draftId: string; draftTitle: string; draftHook: string; composedText: string }) => {
   const [genOpen, setGenOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const queryClient = useQueryClient();
   const { data: media = [] } = useQuery({
     queryKey: ["marketing-draft-media", draftId],
@@ -84,13 +86,35 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { 
   });
 
   const handleRemove = async (mediaId: string) => {
-    const { error } = await supabase.from("marketing_media").delete().eq("id", mediaId);
+    // Unlink from draft (set draft_id to null) instead of deleting
+    const { error } = await supabase
+      .from("marketing_media")
+      .update({ draft_id: null })
+      .eq("id", mediaId);
     if (error) {
       toast.error("Kunne ikke fjerne bilde");
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["marketing-draft-media", draftId] });
-    toast.success("Bilde fjernet");
+    queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
+    toast.success("Bilde fjernet fra utkast");
+  };
+
+  const handlePickFromLibrary = async (mediaIds: string[]) => {
+    // Link selected media to this draft
+    for (const id of mediaIds) {
+      const { error } = await supabase
+        .from("marketing_media")
+        .update({ draft_id: draftId })
+        .eq("id", id);
+      if (error) {
+        toast.error("Kunne ikke knytte bilde");
+        return;
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["marketing-draft-media", draftId] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
+    toast.success(`${mediaIds.length} bilde(r) lagt til`);
   };
 
   return (
@@ -112,15 +136,24 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { 
         </div>
       )}
       <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setPickerOpen(true)}>
+          <Image className="w-3.5 h-3.5" />
+          Fra bibliotek
+        </Button>
         <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setGenOpen(true)}>
           <Image className="w-3.5 h-3.5" />
-          Generer visuell
+          Generer ny
         </Button>
-        <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setPreviewOpen(true)}>
+        <Button variant="outline" size="sm" className="gap-1" onClick={() => setPreviewOpen(true)}>
           <Eye className="w-3.5 h-3.5" />
-          Forhåndsvisning
         </Button>
       </div>
+      <MediaLibraryPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        excludeIds={media.map((m: any) => m.id)}
+        onSelect={handlePickFromLibrary}
+      />
       <VisualGeneratorDialog
         open={genOpen}
         onOpenChange={setGenOpen}
