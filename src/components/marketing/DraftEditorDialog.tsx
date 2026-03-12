@@ -177,6 +177,8 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [platform, setPlatform] = useState("linkedin");
   const [status, setStatus] = useState("draft");
   const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [confirmFbOpen, setConfirmFbOpen] = useState(false);
 
   // Structured fields
   const [hook, setHook] = useState("");
