@@ -365,6 +365,40 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
     }
   };
 
+  const handlePublishFacebook = async () => {
+    if (!draft) return;
+    setPublishing(true);
+    setConfirmFbOpen(false);
+    try {
+      const text = composePlainContent();
+      // Get first media image if available
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url || undefined;
+
+      const { data, error } = await supabase.functions.invoke("publish-facebook", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Facebook!", {
+        description: data.postUrl ? "Se innlegget på Facebook" : undefined,
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+      setStatus("published");
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Facebook");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const selectVariant = (idx: number) => {
     setActiveVariant(idx);
     applyStructured(variants[idx]);
