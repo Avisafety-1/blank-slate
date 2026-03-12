@@ -96,12 +96,28 @@ Deno.serve(async (req) => {
     }
 
     // Update draft status if draftId provided
+    const postId = fbData.id || fbData.post_id;
+    const postUrl = `https://facebook.com/${postId}`;
+
     if (draftId) {
+      // First get current metadata
+      const { data: currentDraft } = await supabase
+        .from("marketing_drafts")
+        .select("metadata")
+        .eq("id", draftId)
+        .single();
+
       await supabase
         .from("marketing_drafts")
         .update({
           status: "published",
+          published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          metadata: {
+            ...((currentDraft?.metadata as any) || {}),
+            facebook_post_id: postId,
+            facebook_post_url: postUrl,
+          },
         })
         .eq("id", draftId);
     }
