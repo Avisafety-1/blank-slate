@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lightbulb, FileEdit, CheckCircle, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Lightbulb, FileEdit, CheckCircle, Clock, Facebook, Calendar } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { nb } from "date-fns/locale";
 
 export const MarketingOverview = () => {
   const { companyId } = useAuth();
@@ -58,6 +61,39 @@ export const MarketingOverview = () => {
     enabled: !!companyId,
   });
 
+  const { data: nextScheduled = [] } = useQuery({
+    queryKey: ["marketing-next-scheduled", companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_drafts")
+        .select("id, title, platform, scheduled_at")
+        .eq("company_id", companyId!)
+        .eq("status", "scheduled")
+        .not("scheduled_at", "is", null)
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(3);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: recentPublished = [] } = useQuery({
+    queryKey: ["marketing-recent-published", companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_drafts")
+        .select("id, title, platform, published_at")
+        .eq("company_id", companyId!)
+        .eq("status", "published")
+        .not("published_at", "is", null)
+        .order("published_at", { ascending: false })
+        .limit(3);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const stats = [
     { label: "Idéer", value: ideaCount, icon: Lightbulb, color: "text-yellow-500" },
     { label: "Utkast", value: draftCount, icon: FileEdit, color: "text-blue-500" },
@@ -87,6 +123,60 @@ export const MarketingOverview = () => {
           </Card>
         ))}
       </div>
+
+      {/* Next scheduled */}
+      {nextScheduled.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4 text-orange-500" />
+              Neste planlagte
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {nextScheduled.map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-medium">{item.title}</span>
+                  {item.platform && (
+                    <Badge variant="outline" className="text-xs capitalize">{item.platform}</Badge>
+                  )}
+                </div>
+                <span className="text-orange-600 dark:text-orange-400 text-xs">
+                  {formatDistanceToNow(new Date(item.scheduled_at), { addSuffix: true, locale: nb })}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recently published */}
+      {recentPublished.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Facebook className="w-4 h-4 text-blue-500" />
+              Nylig publisert
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentPublished.map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-medium">{item.title}</span>
+                  {item.platform && (
+                    <Badge variant="outline" className="text-xs capitalize">{item.platform}</Badge>
+                  )}
+                </div>
+                <span className="text-muted-foreground text-xs">
+                  {format(new Date(item.published_at), "d. MMM HH:mm", { locale: nb })}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
