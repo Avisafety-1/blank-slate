@@ -684,6 +684,58 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
               </CollapsibleContent>
             </Collapsible>
           )}
+
+          {/* Scheduler */}
+          <div className="border border-border rounded-md p-3 space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              Planlegg publisering
+            </label>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn("gap-1 w-[180px] justify-start text-left font-normal", !scheduledDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {scheduledDate ? format(scheduledDate, "d. MMM yyyy", { locale: nb }) : "Velg dato"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    disabled={(date) => date < new Date()}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-[120px] h-9"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSchedule}
+                disabled={!scheduledDate || !composePlainContent().trim()}
+                className="gap-1 text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                Planlegg
+              </Button>
+              {scheduledDate && (
+                <Button variant="ghost" size="sm" onClick={() => setScheduledDate(undefined)} className="text-xs text-muted-foreground">
+                  Fjern
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-wrap gap-2">
@@ -699,7 +751,7 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
-            Publiser til Facebook
+            Publiser nå
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">
