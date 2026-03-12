@@ -22,9 +22,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   Sparkles,
   Loader2,
@@ -36,6 +45,8 @@ import {
   Image,
   Eye,
   Facebook,
+  CalendarIcon,
+  Clock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -191,6 +202,10 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [structure, setStructure] = useState("hook_insight_cta");
   const [language, setLanguage] = useState<"no" | "en">("no");
 
+  // Scheduler
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [scheduledTime, setScheduledTime] = useState("09:00");
+
   // Review helper
   const [review, setReview] = useState<{
     whyItWorks: string;
@@ -211,6 +226,17 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
       setVariants([]);
       setActiveVariant(0);
       setReview(null);
+
+      // Load scheduled_at
+      const draftAny = draft as any;
+      if (draftAny.scheduled_at) {
+        const d = new Date(draftAny.scheduled_at);
+        setScheduledDate(d);
+        setScheduledTime(format(d, "HH:mm"));
+      } else {
+        setScheduledDate(undefined);
+        setScheduledTime("09:00");
+      }
 
       const meta = draft.metadata as any;
       if (meta?.structured) {
@@ -397,6 +423,49 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
     } finally {
       setPublishing(false);
     }
+  };
+
+  const handleSchedule = async () => {
+    if (!draft || !scheduledDate) return;
+    const [hours, minutes] = scheduledTime.split(":").map(Number);
+    const scheduledAt = new Date(scheduledDate);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
+    if (scheduledAt <= new Date()) {
+      toast.error("Planlagt tidspunkt må være i fremtiden");
+      return;
+    }
+
+    const content = composePlainContent();
+    const metadata = {
+      ...(draft.metadata as any || {}),
+      structured: {
+        hook, body, cta,
+        hashtags: hashtags.split(",").map((h) => h.trim()).filter(Boolean),
+        ...(review || {}),
+      },
+      preset, structure, language,
+    };
+
+    const { error } = await supabase
+      .from("marketing_drafts")
+      .update({
+        title, content, platform,
+        status: "scheduled",
+        scheduled_at: scheduledAt.toISOString(),
+        metadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id);
+    if (error) {
+      toast.error("Kunne ikke planlegge");
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-scheduled-count"] });
+    queryClient.invalidateQueries({ queryKey: ["marketing-next-scheduled"] });
+    toast.success(`Planlagt for ${format(scheduledAt, "d. MMM yyyy HH:mm", { locale: nb })}`);
+    onOpenChange(false);
   };
 
   const selectVariant = (idx: number) => {
@@ -615,6 +684,58 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
               </CollapsibleContent>
             </Collapsible>
           )}
+
+          {/* Scheduler */}
+          <div className="border border-border rounded-md p-3 space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              Planlegg publisering
+            </label>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn("gap-1 w-[180px] justify-start text-left font-normal", !scheduledDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {scheduledDate ? format(scheduledDate, "d. MMM yyyy", { locale: nb }) : "Velg dato"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    disabled={(date) => date < new Date()}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-[120px] h-9"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSchedule}
+                disabled={!scheduledDate || !composePlainContent().trim()}
+                className="gap-1 text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                Planlegg
+              </Button>
+              {scheduledDate && (
+                <Button variant="ghost" size="sm" onClick={() => setScheduledDate(undefined)} className="text-xs text-muted-foreground">
+                  Fjern
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-wrap gap-2">
@@ -630,7 +751,7 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
-            Publiser til Facebook
+            Publiser nå
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">

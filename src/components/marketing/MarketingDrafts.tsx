@@ -5,14 +5,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Copy } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Copy, Facebook, ExternalLink, Clock, Calendar } from "lucide-react";
 import { DraftEditorDialog } from "./DraftEditorDialog";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
 
 export const MarketingDrafts = () => {
   const { companyId, user } = useAuth();
   const queryClient = useQueryClient();
   const [editDraft, setEditDraft] = useState<any>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [tab, setTab] = useState("all");
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ["marketing-drafts", companyId],
@@ -26,6 +31,14 @@ export const MarketingDrafts = () => {
       return data;
     },
     enabled: !!companyId,
+  });
+
+  const filteredDrafts = drafts.filter((d) => {
+    if (tab === "all") return true;
+    if (tab === "ready") return d.status === "approved";
+    if (tab === "scheduled") return d.status === "scheduled";
+    if (tab === "published") return d.status === "published";
+    return true;
   });
 
   const createBlank = async () => {
@@ -72,6 +85,39 @@ export const MarketingDrafts = () => {
     queryClient.invalidateQueries({ queryKey: ["marketing-drafts-count"] });
   };
 
+  const handleQuickPublish = async (draft: any) => {
+    setPublishingId(draft.id);
+    try {
+      const text = draft.content;
+      if (!text?.trim()) {
+        toast.error("Innlegget har ingen tekst");
+        return;
+      }
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url || undefined;
+
+      const { data, error } = await supabase.functions.invoke("publish-facebook", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Facebook!", {
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   const statusLabels: Record<string, string> = {
     draft: "Utkast",
     review: "Gjennomgang",
@@ -88,6 +134,110 @@ export const MarketingDrafts = () => {
     published: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
   };
 
+  const readyCnt = drafts.filter((d) => d.status === "approved").length;
+  const scheduledCnt = drafts.filter((d) => d.status === "scheduled").length;
+  const publishedCnt = drafts.filter((d) => d.status === "published").length;
+
+  const renderDraftCard = (draft: any) => {
+    const meta = draft.metadata as any;
+    const lang = meta?.language;
+    const isTemplate = meta?.isTemplate;
+    const isApproved = draft.status === "approved";
+    const isScheduled = draft.status === "scheduled";
+    const isPublished = draft.status === "published";
+
+    return (
+      <Card key={draft.id} className="bg-card border-border">
+        <CardContent className="pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-medium text-foreground">{draft.title}</h3>
+                <Badge variant="secondary" className={statusColors[draft.status] || ""}>
+                  {statusLabels[draft.status] || draft.status}
+                </Badge>
+                {draft.platform && (
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {draft.platform}
+                  </Badge>
+                )}
+                {lang && (
+                  <Badge variant="outline" className="text-xs">
+                    {lang === "en" ? "EN" : "NO"}
+                  </Badge>
+                )}
+                {isTemplate && (
+                  <Badge variant="outline" className="text-xs bg-accent/10">
+                    Mal
+                  </Badge>
+                )}
+              </div>
+              {draft.content && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {draft.content.slice(0, 150)}...
+                </p>
+              )}
+              <div className="flex items-center gap-3 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
+                </p>
+                {isScheduled && draft.scheduled_at && (
+                  <span className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {format(new Date(draft.scheduled_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                  </span>
+                )}
+                {isPublished && draft.published_at && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Publisert {format(new Date(draft.published_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1 flex-shrink-0 items-center">
+              {isApproved && (
+                <Button
+                  size="sm"
+                  onClick={() => handleQuickPublish(draft)}
+                  disabled={publishingId === draft.id}
+                  className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
+                >
+                  {publishingId === draft.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Facebook className="w-4 h-4" />
+                  )}
+                  Publiser
+                </Button>
+              )}
+              {isPublished && (meta?.postUrl || meta?.facebook_post_url) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(meta.postUrl || meta.facebook_post_url, "_blank")}
+                  className="gap-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Se innlegg
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setEditDraft(draft)} title="Rediger">
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => duplicateDraft(draft)} title="Dupliser">
+                <Copy className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)} title="Slett">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -100,73 +250,42 @@ export const MarketingDrafts = () => {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : drafts.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">
-          Ingen utkast ennå. Opprett et nytt eller generer fra en idé.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {drafts.map((draft) => {
-            const meta = draft.metadata as any;
-            const lang = meta?.language;
-            const isTemplate = meta?.isTemplate;
-            return (
-              <Card key={draft.id} className="bg-card border-border">
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-foreground">{draft.title}</h3>
-                        <Badge variant="secondary" className={statusColors[draft.status] || ""}>
-                          {statusLabels[draft.status] || draft.status}
-                        </Badge>
-                        {draft.platform && (
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {draft.platform}
-                          </Badge>
-                        )}
-                        {lang && (
-                          <Badge variant="outline" className="text-xs">
-                            {lang === "en" ? "EN" : "NO"}
-                          </Badge>
-                        )}
-                        {isTemplate && (
-                          <Badge variant="outline" className="text-xs bg-accent/10">
-                            Mal
-                          </Badge>
-                        )}
-                      </div>
-                      {draft.content && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {draft.content.slice(0, 150)}...
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <Button variant="ghost" size="sm" onClick={() => setEditDraft(draft)} title="Rediger">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => duplicateDraft(draft)} title="Dupliser">
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)} title="Slett">
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="all">Alle ({drafts.length})</TabsTrigger>
+          <TabsTrigger value="ready">
+            Klare ({readyCnt})
+          </TabsTrigger>
+          <TabsTrigger value="scheduled">
+            Planlagt ({scheduledCnt})
+          </TabsTrigger>
+          <TabsTrigger value="published">
+            Publisert ({publishedCnt})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={tab}>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredDrafts.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              {tab === "ready"
+                ? "Ingen godkjente utkast klare til publisering."
+                : tab === "scheduled"
+                ? "Ingen planlagte innlegg."
+                : tab === "published"
+                ? "Ingen publiserte innlegg ennå."
+                : "Ingen utkast ennå. Opprett et nytt eller generer fra en idé."}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {filteredDrafts.map(renderDraftCard)}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <DraftEditorDialog
         draft={editDraft}
