@@ -122,13 +122,11 @@ Deno.serve(async (req) => {
         .eq("id", draftId);
     }
 
-    const postId = fbData.id || fbData.post_id;
-
     return new Response(
       JSON.stringify({
         success: true,
         postId,
-        postUrl: `https://facebook.com/${postId}`,
+        postUrl,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
