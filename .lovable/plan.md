@@ -1,58 +1,44 @@
 
 
-# Facebook-publisering via Graph API
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-## Oversikt
-Bygge en "Publiser til Facebook"-funksjon direkte i marketing-modulen. Når et utkast er ferdig, kan superadmin klikke en publiser-knapp som sender tekst + bilde til en Facebook Page via Meta Graph API.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-## Forutsetninger
-- En **Facebook Page** (ikke personlig profil)
-- En **Page Access Token** med `pages_manage_posts` og `pages_read_engagement` tillatelser
-- Token og Page ID lagres som Supabase secrets
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-## Arkitektur
+### Endringer
 
-```text
-DraftEditorDialog
-  └─ "Publiser til Facebook" knapp
-       └─ supabase.functions.invoke("publish-facebook")
-            └─ Edge Function
-                 └─ POST graph.facebook.com/{page-id}/photos (eller /feed)
-                      ├─ message = composedText
-                      └─ url = image file_url (hvis bilde finnes)
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-## Implementasjonsplan
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### 1. Legg til secrets
-- `FACEBOOK_PAGE_ACCESS_TOKEN` — langvarig Page Access Token
-- `FACEBOOK_PAGE_ID` — ID-en til Facebook-siden
-
-### 2. Ny edge function: `publish-facebook`
-- Mottar `{ text, imageUrl?, draftId }` i body
-- Hvis bilde: POST til `https://graph.facebook.com/v22.0/{PAGE_ID}/photos` med `message` + `url`
-- Hvis bare tekst: POST til `https://graph.facebook.com/v22.0/{PAGE_ID}/feed` med `message`
-- Ved suksess: oppdater `marketing_drafts` med `status = 'published'` og `published_at = now()`
-- Returner Facebook post-ID
-
-### 3. UI-endringer i `DraftEditorDialog.tsx`
-- Legg til en «Publiser til Facebook»-knapp (med Facebook-ikon) i footer-området
-- Vis bekreftelsesdialog før publisering
-- Vis laste-indikator under publisering
-- Ved suksess: oppdater utkast-status og vis toast med lenke til posten
-
-### 4. MarketingSettings — Facebook-konfigurasjon
-- Legg til en seksjon i innstillinger der superadmin kan lime inn Page Access Token og Page ID
-- Lagres som Supabase secrets via edge function (ikke localStorage)
-
-## Oppsett for brukeren
-1. Gå til [Facebook Developer Portal](https://developers.facebook.com)
-2. Opprett en app → legg til «Pages API»-produktet
-3. Generer en langvarig Page Access Token med `pages_manage_posts`-tillatelse
-4. Lim inn token og Page ID i AviSafe-innstillingene
-
-## Sikkerhet
-- Token lagres kun som Supabase secret, aldri eksponert til frontend
-- Edge function validerer autentisering via JWT
-- Kun superadmin har tilgang til marketing-modulen
+Ingen nye avhengigheter. Ingen databaseendringer.
 

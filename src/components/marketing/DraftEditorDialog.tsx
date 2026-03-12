@@ -35,7 +35,18 @@ import {
   BookmarkPlus,
   Image,
   Eye,
+  Facebook,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   GENERATION_PRESETS,
   POST_STRUCTURES,
@@ -166,6 +177,8 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [platform, setPlatform] = useState("linkedin");
   const [status, setStatus] = useState("draft");
   const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [confirmFbOpen, setConfirmFbOpen] = useState(false);
 
   // Structured fields
   const [hook, setHook] = useState("");
@@ -349,6 +362,40 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
         followUpVariation: s.followUpVariation || "",
       });
       setReviewOpen(true);
+    }
+  };
+
+  const handlePublishFacebook = async () => {
+    if (!draft) return;
+    setPublishing(true);
+    setConfirmFbOpen(false);
+    try {
+      const text = composePlainContent();
+      // Get first media image if available
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url || undefined;
+
+      const { data, error } = await supabase.functions.invoke("publish-facebook", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Facebook!", {
+        description: data.postUrl ? "Se innlegget på Facebook" : undefined,
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+      setStatus("published");
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Facebook");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -575,6 +622,16 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             <BookmarkPlus className="w-4 h-4" />
             Lagre som mal
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmFbOpen(true)}
+            disabled={publishing || !composePlainContent().trim()}
+            className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
+          >
+            {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
+            Publiser til Facebook
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">
             <Save className="w-4 h-4" />
@@ -582,6 +639,24 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmFbOpen} onOpenChange={setConfirmFbOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Publiser til Facebook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Innlegget vil bli publisert direkte på Facebook-siden. Denne handlingen kan ikke angres fra AviSafe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishFacebook} className="gap-1">
+              <Facebook className="w-4 h-4" />
+              Publiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

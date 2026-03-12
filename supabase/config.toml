@@ -125,3 +125,6 @@ verify_jwt = true
 
 [functions.marketing-visual]
 verify_jwt = true
+
+[functions.publish-facebook]
+verify_jwt = false
