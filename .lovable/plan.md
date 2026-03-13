@@ -1,44 +1,28 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+The function currently uses `https://graph.instagram.com/v22.0` for all API calls. The Instagram Content Publishing API actually requires `https://graph.facebook.com/v22.0` for the media container creation and publish endpoints - even when using "Instagram Login" tokens.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+The `graph.instagram.com` domain is primarily for basic display / token operations, not content publishing.
 
-### Endringer
+## Plan
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**File: `supabase/functions/publish-instagram/index.ts`**
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+1. Change `IG_API` to `https://graph.facebook.com/v22.0` for the publishing endpoints (`/{userId}/media` and `/{userId}/media_publish`)
+2. Keep `https://graph.instagram.com/v22.0` only for the token exchange endpoint (`/access_token`) since that's where `ig_exchange_token` lives
+3. Keep the `/me` verification call on `graph.facebook.com` as well (works on both)
+4. Deploy the updated function
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+Also update `publish-scheduled/index.ts` which already uses `graph.facebook.com` for Instagram publishing - this is actually correct, so no change needed there.
 
-### UI per punkt
+## Technical Detail
+
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+Before:  graph.instagram.com/v22.0/{userId}/media
+After:   graph.facebook.com/v22.0/{userId}/media
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Token exchange stays on: graph.instagram.com/access_token
+```
 
