@@ -113,7 +113,7 @@ function parseCsvToResult(csvText: string) {
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
   const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
-  // Individual cell voltage indices for manual deviation calculation
+  // Individual cell voltage indices for manual deviation fallback
   const cellVoltIdx1 = findHeaderIndex(headers, "BATTERY.cellVoltage1 [V]");
   const cellVoltIdx2 = findHeaderIndex(headers, "BATTERY.cellVoltage2 [V]");
   const cellVoltIdx3 = findHeaderIndex(headers, "BATTERY.cellVoltage3 [V]");
@@ -121,6 +121,10 @@ function parseCsvToResult(csvText: string) {
   const cellVoltIdx5 = findHeaderIndex(headers, "BATTERY.cellVoltage5 [V]");
   const cellVoltIdx6 = findHeaderIndex(headers, "BATTERY.cellVoltage6 [V]");
   const cellVoltIndices = [cellVoltIdx1, cellVoltIdx2, cellVoltIdx3, cellVoltIdx4, cellVoltIdx5, cellVoltIdx6];
+  // API-native cell deviation fields (supports all cell counts incl. enterprise 7-14 cells)
+  const cellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
+  const cellDevHighIdx = findHeaderIndex(headers, "BATTERY.isCellVoltageDeviationHigh");
+  const cellDevMaxIdx = findHeaderIndex(headers, "BATTERY.maxCellVoltageDeviation [V]");
 
   // RTH indices
   const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
