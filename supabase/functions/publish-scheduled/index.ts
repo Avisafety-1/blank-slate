@@ -108,14 +108,15 @@ Deno.serve(async (req) => {
           }
 
           // Step 2: Publish
-          const publishParams = new URLSearchParams({
-            creation_id: containerData.id,
-            access_token: IG_ACCESS_TOKEN,
-          });
-          const publishRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media_publish`, {
+          const publishRes = await fetch(`${IG_API}/${IG_ACCOUNT_ID}/media_publish`, {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: publishParams.toString(),
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${IG_ACCESS_TOKEN}`,
+            },
+            body: JSON.stringify({
+              creation_id: containerData.id,
+            }),
           });
           const publishData = await publishRes.json();
           if (!publishRes.ok) {
