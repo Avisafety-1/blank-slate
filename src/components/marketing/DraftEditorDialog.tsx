@@ -510,6 +510,44 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
     }
   };
 
+  const handlePublishInstagram = async () => {
+    if (!draft) return;
+    setPublishingIg(true);
+    setConfirmIgOpen(false);
+    try {
+      const text = composePlainContent();
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url;
+
+      if (!imageUrl) {
+        toast.error("Instagram krever et bilde. Legg til et bilde i utkastet først.");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("publish-instagram", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Instagram!", {
+        description: data.postUrl ? "Se innlegget på Instagram" : undefined,
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+      setStatus("published");
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Instagram");
+    } finally {
+      setPublishingIg(false);
+    }
+  };
+
   const handleSchedule = async () => {
     if (!draft || !scheduledDate) return;
     const [hours, minutes] = scheduledTime.split(":").map(Number);
