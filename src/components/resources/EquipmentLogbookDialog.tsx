@@ -110,7 +110,32 @@ export const EquipmentLogbookDialog = ({
     setSignatureUrl(data?.signature_url || null);
   };
 
-  const fetchAllLogs = async () => {
+  const fetchBatteryTrend = async () => {
+    if (!equipmentSerienummer || !companyId) return;
+    try {
+      const { data } = await (supabase
+        .from('flight_logs')
+        .select('flight_date, battery_cycles, battery_health_pct')
+        .eq('company_id', companyId) as any)
+        .eq('battery_sn', equipmentSerienummer)
+        .not('battery_cycles', 'is', null)
+        .order('flight_date', { ascending: true })
+        .limit(100);
+
+      if (data) {
+        setBatteryTrend(
+          data.map((r: any) => ({
+            date: new Date(r.flight_date),
+            cycles: r.battery_cycles,
+            health: r.battery_health_pct,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Error fetching battery trend:', e);
+    }
+  };
+
     setIsLoading(true);
     try {
       const logs: LogEntry[] = [];
