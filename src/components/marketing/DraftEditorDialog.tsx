@@ -911,6 +911,24 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmIgOpen} onOpenChange={setConfirmIgOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Publiser til Instagram?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Innlegget vil bli publisert direkte på Instagram Business-kontoen. Et bilde er påkrevd. Denne handlingen kan ikke angres fra AviSafe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishInstagram} className="gap-1 bg-[#E1306C] hover:bg-[#E1306C]/90">
+              <Instagram className="w-4 h-4" />
+              Publiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
