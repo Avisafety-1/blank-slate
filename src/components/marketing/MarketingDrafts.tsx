@@ -149,64 +149,108 @@ export const MarketingDrafts = () => {
     return (
       <Card key={draft.id} className="bg-card border-border">
         <CardContent className="pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-medium text-foreground">{draft.title}</h3>
-                <Badge variant="secondary" className={statusColors[draft.status] || ""}>
-                  {statusLabels[draft.status] || draft.status}
-                </Badge>
-                {draft.platform && (
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {draft.platform}
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-medium text-foreground text-sm sm:text-base">{draft.title}</h3>
+                  <Badge variant="secondary" className={`text-[10px] sm:text-xs ${statusColors[draft.status] || ""}`}>
+                    {statusLabels[draft.status] || draft.status}
                   </Badge>
-                )}
-                {lang && (
-                  <Badge variant="outline" className="text-xs">
-                    {lang === "en" ? "EN" : "NO"}
-                  </Badge>
-                )}
-                {isTemplate && (
-                  <Badge variant="outline" className="text-xs bg-accent/10">
-                    Mal
-                  </Badge>
+                  {draft.platform && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs capitalize">
+                      {draft.platform}
+                    </Badge>
+                  )}
+                  {lang && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      {lang === "en" ? "EN" : "NO"}
+                    </Badge>
+                  )}
+                  {isTemplate && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs bg-accent/10">
+                      Mal
+                    </Badge>
+                  )}
+                </div>
+                {draft.content && (
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {draft.content.slice(0, 150)}...
+                  </p>
                 )}
               </div>
-              {draft.content && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {draft.content.slice(0, 150)}...
-                </p>
-              )}
-              <div className="flex items-center gap-3 mt-2">
-                <p className="text-xs text-muted-foreground">
-                  Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
-                </p>
-                {isScheduled && draft.scheduled_at && (
-                  <span className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {format(new Date(draft.scheduled_at), "d. MMM yyyy HH:mm", { locale: nb })}
-                  </span>
+              {/* Desktop action buttons */}
+              <div className="hidden sm:flex gap-1 flex-shrink-0 items-center">
+                {isApproved && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublish(draft)}
+                    disabled={publishingId === draft.id}
+                    className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
+                  >
+                    {publishingId === draft.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Facebook className="w-4 h-4" />
+                    )}
+                    Publiser
+                  </Button>
                 )}
-                {isPublished && draft.published_at && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Publisert {format(new Date(draft.published_at), "d. MMM yyyy HH:mm", { locale: nb })}
-                  </span>
+                {isPublished && (meta?.postUrl || meta?.facebook_post_url) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(meta.postUrl || meta.facebook_post_url, "_blank")}
+                    className="gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Se innlegg
+                  </Button>
                 )}
+                <Button variant="ghost" size="sm" onClick={() => setEditDraft(draft)} title="Rediger">
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => duplicateDraft(draft)} title="Dupliser">
+                  <Copy className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)} title="Slett">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
             </div>
-            <div className="flex gap-1 flex-shrink-0 items-center">
+
+            {/* Info row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-muted-foreground">
+                Oppdatert {new Date(draft.updated_at).toLocaleDateString("nb-NO")}
+              </p>
+              {isScheduled && draft.scheduled_at && (
+                <span className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {format(new Date(draft.scheduled_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                </span>
+              )}
+              {isPublished && draft.published_at && (
+                <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {format(new Date(draft.published_at), "d. MMM HH:mm", { locale: nb })}
+                </span>
+              )}
+            </div>
+
+            {/* Mobile action buttons */}
+            <div className="flex sm:hidden gap-1 flex-wrap">
               {isApproved && (
                 <Button
                   size="sm"
                   onClick={() => handleQuickPublish(draft)}
                   disabled={publishingId === draft.id}
-                  className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
+                  className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs h-8"
                 >
                   {publishingId === draft.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Facebook className="w-4 h-4" />
+                    <Facebook className="w-3.5 h-3.5" />
                   )}
                   Publiser
                 </Button>
@@ -216,20 +260,20 @@ export const MarketingDrafts = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(meta.postUrl || meta.facebook_post_url, "_blank")}
-                  className="gap-1"
+                  className="gap-1 text-xs h-8"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  Se innlegg
+                  Se
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={() => setEditDraft(draft)} title="Rediger">
-                <Edit className="w-4 h-4" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditDraft(draft)} title="Rediger">
+                <Edit className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => duplicateDraft(draft)} title="Dupliser">
-                <Copy className="w-4 h-4" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => duplicateDraft(draft)} title="Dupliser">
+                <Copy className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)} title="Slett">
-                <Trash2 className="w-4 h-4 text-destructive" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => deleteDraft(draft.id)} title="Slett">
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
               </Button>
             </div>
           </div>
