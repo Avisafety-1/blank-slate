@@ -1115,6 +1115,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
   });
 
+  // ── Update battery equipment card with latest telemetry ──
+  const updateBatteryEquipment = async (r: DroneLogResult) => {
+    if (!companyId || selectedEquipment.length === 0) return;
+    // Find which selected equipment is a battery
+    const batteryEquipment = equipmentList.filter(
+      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+    );
+    if (batteryEquipment.length === 0) return;
+
+    for (const bat of batteryEquipment) {
+      const updates: Record<string, any> = {};
+      if (r.batteryCycles != null) updates.battery_cycles = r.batteryCycles;
+      if (r.batteryHealth != null) updates.battery_health_pct = r.batteryHealth;
+      if (r.batteryFullCapacity != null) updates.battery_full_capacity_mah = r.batteryFullCapacity;
+      if (r.batteryCellDeviationMax != null) {
+        // Only update if new value is worse (higher)
+        updates.battery_max_cell_deviation_v = r.batteryCellDeviationMax;
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('equipment').update(updates).eq('id', bat.id);
+      }
+    }
+  };
+
   const saveFlightEvents = async (flightLogId: string, r: DroneLogResult) => {
     if (!companyId || !r.events || r.events.length === 0) return;
     const rows = r.events.map(e => ({
