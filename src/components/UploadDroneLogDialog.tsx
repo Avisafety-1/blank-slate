@@ -1488,6 +1488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await updateBatteryEquipment(result);
       await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
