@@ -575,6 +575,7 @@ export const EquipmentLogbookDialog = ({
               <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
               <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
               <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
+              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm">Batteritrend</TabsTrigger>}
             </TabsList>
 
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
