@@ -285,14 +285,19 @@ function parseCsvToResult(csvText: string) {
       if (battTemp < minBattTemp) minBattTemp = battTemp;
     }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
-    // Calculate cell deviation from individual cell voltages
-    const cellVoltages = cellVoltIndices
-      .filter(idx => idx >= 0)
-      .map(idx => parseFloat(cols[idx]))
-      .filter(v => !isNaN(v) && v > 0);
-    if (cellVoltages.length >= 2) {
-      const rowDev = Math.max(...cellVoltages) - Math.min(...cellVoltages);
-      if (rowDev > maxBattCellDev) maxBattCellDev = rowDev;
+    // Cell deviation: prefer API-native field, fallback to manual from cellVoltage1-6
+    const apiCellDev = cellDevIdx >= 0 ? parseFloat(cols[cellDevIdx]) : NaN;
+    if (!isNaN(apiCellDev) && apiCellDev > maxBattCellDev) {
+      maxBattCellDev = apiCellDev;
+    } else {
+      const cellVoltages = cellVoltIndices
+        .filter(idx => idx >= 0)
+        .map(idx => parseFloat(cols[idx]))
+        .filter(v => !isNaN(v) && v > 0);
+      if (cellVoltages.length >= 2) {
+        const rowDev = Math.max(...cellVoltages) - Math.min(...cellVoltages);
+        if (rowDev > maxBattCellDev) maxBattCellDev = rowDev;
+      }
     }
     if (!isNaN(gpsSats)) {
       if (gpsSats < minGpsSats) minGpsSats = gpsSats;
