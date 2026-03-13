@@ -272,7 +272,9 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [status, setStatus] = useState("draft");
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishingIg, setPublishingIg] = useState(false);
   const [confirmFbOpen, setConfirmFbOpen] = useState(false);
+  const [confirmIgOpen, setConfirmIgOpen] = useState(false);
 
   // Structured fields
   const [hook, setHook] = useState("");
