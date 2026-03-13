@@ -17,6 +17,7 @@ export const MarketingDrafts = () => {
   const queryClient = useQueryClient();
   const [editDraft, setEditDraft] = useState<any>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [publishingIgId, setPublishingIgId] = useState<string | null>(null);
   const [tab, setTab] = useState("all");
 
   const { data: drafts = [], isLoading } = useQuery({
