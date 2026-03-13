@@ -139,11 +139,56 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { 
           ))}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setPickerOpen(true)}>
           <Image className="w-3.5 h-3.5" />
           Fra bibliotek
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 flex-1"
+          disabled={uploading || !companyId}
+          onClick={() => document.getElementById(`draft-upload-${draftId}`)?.click()}
+        >
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          Last opp
+        </Button>
+        <input
+          id={`draft-upload-${draftId}`}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file || !companyId) return;
+            setUploading(true);
+            try {
+              const ext = file.name.split('.').pop();
+              const path = `${companyId}/uploads/${Date.now()}-${file.name}`;
+              const { error: upErr } = await supabase.storage.from("marketing-media").upload(path, file);
+              if (upErr) throw upErr;
+              const { data: urlData } = supabase.storage.from("marketing-media").getPublicUrl(path);
+              const { error: dbErr } = await supabase.from("marketing_media").insert({
+                company_id: companyId,
+                title: file.name.replace(/\.[^.]+$/, ''),
+                file_url: urlData.publicUrl,
+                source_type: "upload",
+                image_format: ext || "jpg",
+                draft_id: draftId,
+              });
+              if (dbErr) throw dbErr;
+              queryClient.invalidateQueries({ queryKey: ["marketing-draft-media", draftId] });
+              queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
+              toast.success("Bilde lastet opp");
+            } catch (err: any) {
+              toast.error(err.message || "Opplasting feilet");
+            } finally {
+              setUploading(false);
+              e.target.value = "";
+            }
+          }}
+        />
         <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => setGenOpen(true)}>
           <Image className="w-3.5 h-3.5" />
           Generer ny
