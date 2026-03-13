@@ -92,7 +92,7 @@ export const EquipmentLogbookDialog = ({
     entry_date: new Date().toISOString().split('T')[0],
   });
 
-  const isBattery = equipmentType === 'Batteri';
+  const isBattery = isBatteryType(equipmentType);
 
   useEffect(() => {
     if (open && equipmentId) {
