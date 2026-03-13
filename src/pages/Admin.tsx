@@ -322,14 +322,25 @@ const Admin = () => {
         body: { user_id: userId },
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error("Delete failed");
+      if (error) {
+        console.error("Edge function invoke error:", error);
+        throw error;
+      }
+      if (!data?.success) {
+        const detail = data?.error || data?.detail || "Delete failed";
+        console.error("admin-delete-user returned failure:", data);
+        throw new Error(detail);
+      }
 
       toast.success(t('admin.userDeleted'));
+      if (data?.warnings?.length) {
+        console.warn("Delete warnings:", data.warnings);
+      }
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting user:", error);
-      toast.error(t('admin.errorDeletingUser'));
+      const msg = error?.message || t('admin.errorDeletingUser');
+      toast.error(`${t('admin.errorDeletingUser')}: ${msg}`);
     }
   };
 

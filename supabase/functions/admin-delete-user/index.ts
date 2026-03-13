@@ -81,14 +81,18 @@ serve(async (req: Request): Promise<Response> => {
 
     const requesterRoles = new Set((requesterRoleRows ?? []).map((r) => r.role));
     const isSuperadmin = requesterRoles.has("superadmin");
-    const isAdmin = requesterRoles.has("admin");
+    const isAdmin = requesterRoles.has("administrator") || requesterRoles.has("admin");
 
     if (!isSuperadmin && !isAdmin) {
+      console.error("admin-delete-user: requester has no admin role", { roles: [...requesterRoles] });
       return new Response(
-        JSON.stringify({ error: "Forbidden" }),
+        JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Requester lacks admin role" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
       );
     }
+
+    // ---- Prevent non-superadmin from deleting superadmin ----
+    // (checked after target user is resolved below)
 
     // ---- Resolve target user id ----
     let targetUserId = userIdFromBody;
@@ -136,6 +140,23 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // ---- Prevent non-superadmin from deleting a superadmin ----
+    if (!isSuperadmin) {
+      const { data: targetRoleRows } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", targetUserId);
+
+      const targetRoles = new Set((targetRoleRows ?? []).map((r) => r.role));
+      if (targetRoles.has("superadmin")) {
+        console.error("admin-delete-user: non-superadmin tried to delete superadmin");
+        return new Response(
+          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Cannot delete superadmin" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
+        );
+      }
+    }
+
     // ---- If requester is only admin (not superadmin), enforce same-company ----
     if (!isSuperadmin) {
       const { data: requesterProfile } = await admin
@@ -153,7 +174,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!requesterProfile?.company_id || !targetProfile?.company_id ||
           requesterProfile.company_id !== targetProfile.company_id) {
         return new Response(
-          JSON.stringify({ error: "Forbidden" }),
+          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Different company" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
         );
       }
