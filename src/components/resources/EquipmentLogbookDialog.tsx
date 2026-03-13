@@ -1,3 +1,4 @@
+import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,7 @@ export const EquipmentLogbookDialog = ({
     entry_date: new Date().toISOString().split('T')[0],
   });
 
-  const isBattery = equipmentType === 'Batteri';
+  const isBattery = isBatteryType(equipmentType);
 
   useEffect(() => {
     if (open && equipmentId) {

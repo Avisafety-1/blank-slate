@@ -1,3 +1,4 @@
+import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -1120,7 +1121,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!companyId || selectedEquipment.length === 0) return;
     // Find which selected equipment is a battery
     const batteryEquipment = equipmentList.filter(
-      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+      eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
 
@@ -1143,7 +1144,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const ensureDroneEquipmentHistory = async () => {
     if (!companyId || !selectedDroneId || selectedEquipment.length === 0) return;
     const batteryEquipment = equipmentList.filter(
-      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+      eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
     for (const bat of batteryEquipment) {
@@ -2419,7 +2420,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         <SelectValue placeholder="Velg batteri..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipmentList.filter(e => e.type === 'Batteri').map(e => (
+                        {equipmentList.filter(e => isBatteryType(e.type)).map(e => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.navn} {e.serienummer ? `(${e.serienummer})` : ''}
                           </SelectItem>

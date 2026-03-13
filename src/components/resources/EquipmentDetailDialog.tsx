@@ -1,3 +1,4 @@
+import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -418,7 +419,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               </div>
 
               {/* Battery info section — only for batteries with data */}
-              {equipment.type === 'Batteri' && (equipment.battery_cycles != null || equipment.battery_health_pct != null || equipment.battery_full_capacity_mah != null || equipment.battery_max_cell_deviation_v != null) && (
+              {isBatteryType(equipment.type) && (equipment.battery_cycles != null || equipment.battery_health_pct != null || equipment.battery_full_capacity_mah != null || equipment.battery_max_cell_deviation_v != null) && (
                 <div className="border border-border rounded-lg p-3 space-y-3">
                   <p className="text-sm font-medium flex items-center gap-2">
                     <Battery className="w-4 h-4 text-primary" />
