@@ -148,31 +148,30 @@ export const MarketingDrafts = () => {
 
     return (
       <Card key={draft.id} className="bg-card border-border">
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 pb-3">
           <div className="space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="font-medium text-foreground text-sm sm:text-base">{draft.title}</h3>
-                  <Badge variant="secondary" className={`text-[10px] sm:text-xs ${statusColors[draft.status] || ""}`}>
-                    {statusLabels[draft.status] || draft.status}
-                  </Badge>
-                  {draft.platform && (
-                    <Badge variant="outline" className="text-[10px] sm:text-xs capitalize">
-                      {draft.platform}
-                    </Badge>
-                  )}
-                  {lang && (
-                    <Badge variant="outline" className="text-[10px] sm:text-xs">
-                      {lang === "en" ? "EN" : "NO"}
-                    </Badge>
-                  )}
-                  {isTemplate && (
-                    <Badge variant="outline" className="text-[10px] sm:text-xs bg-accent/10">
-                      Mal
-                    </Badge>
-                  )}
-                </div>
+            {/* Title + badges */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge variant="secondary" className={`text-[10px] ${statusColors[draft.status] || ""}`}>
+                {statusLabels[draft.status] || draft.status}
+              </Badge>
+              {draft.platform && (
+                <Badge variant="outline" className="text-[10px] capitalize">
+                  {draft.platform}
+                </Badge>
+              )}
+              {lang && (
+                <Badge variant="outline" className="text-[10px]">
+                  {lang === "en" ? "EN" : "NO"}
+                </Badge>
+              )}
+              {isTemplate && (
+                <Badge variant="outline" className="text-[10px] bg-accent/10">
+                  Mal
+                </Badge>
+              )}
+            </div>
+            <h3 className="font-medium text-foreground text-sm leading-snug">{draft.title}</h3>
                 {draft.content && (
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
                     {draft.content.slice(0, 150)}...
