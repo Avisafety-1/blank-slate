@@ -1418,6 +1418,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
 
+      await updateBatteryEquipment(result);
       await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       // Return to method step so user can continue processing pending logs
