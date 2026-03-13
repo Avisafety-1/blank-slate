@@ -5,13 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Download, Loader2, Image } from "lucide-react";
+import { Plus, Trash2, Download, Loader2, Image, Upload } from "lucide-react";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 
 export const MarketingVisuals = () => {
   const { companyId, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const { data: media = [], isLoading, isError } = useQuery({
     queryKey: ["marketing-media", companyId ?? "all"],
@@ -51,10 +52,55 @@ export const MarketingVisuals = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Visuelle</h2>
-        <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5">
-          <Plus className="w-4 h-4" />
-          Generer visuell
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={uploading || !companyId}
+            onClick={() => document.getElementById('visuals-upload')?.click()}
+            className="gap-1.5"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            Last opp
+          </Button>
+          <input
+            id="visuals-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file || !companyId) return;
+              setUploading(true);
+              try {
+                const ext = file.name.split('.').pop();
+                const path = `${companyId}/uploads/${Date.now()}-${file.name}`;
+                const { error: upErr } = await supabase.storage.from("marketing-media").upload(path, file);
+                if (upErr) throw upErr;
+                const { data: urlData } = supabase.storage.from("marketing-media").getPublicUrl(path);
+                const { error: dbErr } = await supabase.from("marketing_media").insert({
+                  company_id: companyId,
+                  title: file.name.replace(/\.[^.]+$/, ''),
+                  file_url: urlData.publicUrl,
+                  source_type: "upload",
+                  image_format: ext || "jpg",
+                });
+                if (dbErr) throw dbErr;
+                queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
+                toast.success("Bilde lastet opp");
+              } catch (err: any) {
+                toast.error(err.message || "Opplasting feilet");
+              } finally {
+                setUploading(false);
+                e.target.value = "";
+              }
+            }}
+          />
+          <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5">
+            <Plus className="w-4 h-4" />
+            Generer visuell
+          </Button>
+        </div>
       </div>
 
       {authLoading || isLoading ? (
