@@ -45,6 +45,7 @@ import {
   Image,
   Eye,
   Facebook,
+  Instagram,
   CalendarIcon,
   Clock,
   Upload,
