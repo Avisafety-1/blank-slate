@@ -31,6 +31,7 @@ import {
   Calendar
 } from "lucide-react";
 import { format } from "date-fns";
+import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 
