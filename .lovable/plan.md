@@ -1,44 +1,32 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Fix: Batteritrend-tabben viser flylogg-innhold i stedet for batteridata
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+`TabsContent` på linje 581 bruker `value={activeTab}` som dynamisk matcher *alle* tab-verdier — inkludert `"battery"`. Når brukeren klikker «Batteritrend», vises det generelle loggbok-innholdet (filteredLogs) i stedet for den dedikerte batteritrend-visningen på linje 659.
 
-### Endringer
+### Løsning
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+Endre den generelle `TabsContent` til å **ikke** rendere når `activeTab === "battery"`. Batteritrend-tabben har allerede sin egen separate `TabsContent value="battery"` som viser riktig innhold.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Endring
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+**`src/components/resources/EquipmentLogbookDialog.tsx`**
+
+Wrap den generelle TabsContent (linje 581) slik at den bare renderes for de vanlige tabbene:
+
+```tsx
+// Linje 581: Endre fra
+<TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
+
+// Til: Ikke render for battery-tab
+{activeTab !== 'battery' && (
+  <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
+    ...
+  </TabsContent>
+)}
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+En liten endring — kun denne ene wrappingen trengs.
 
