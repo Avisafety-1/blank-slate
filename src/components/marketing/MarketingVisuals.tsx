@@ -50,7 +50,7 @@ export const MarketingVisuals = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-foreground">Visuelle</h2>
         <div className="flex gap-2">
           <Button
@@ -58,7 +58,7 @@ export const MarketingVisuals = () => {
             variant="outline"
             disabled={uploading || !companyId}
             onClick={() => document.getElementById('visuals-upload')?.click()}
-            className="gap-1.5"
+            className="gap-1.5 flex-1 sm:flex-none"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             Last opp
@@ -96,7 +96,7 @@ export const MarketingVisuals = () => {
               }
             }}
           />
-          <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5">
+          <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5 flex-1 sm:flex-none">
             <Plus className="w-4 h-4" />
             Generer visuell
           </Button>
@@ -117,7 +117,7 @@ export const MarketingVisuals = () => {
           <p>Ingen visuelle ennå. Generer din første!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {media.map((item: any) => (
             <div key={item.id} className="rounded-lg border border-border bg-card overflow-hidden group">
               <div className="aspect-square bg-muted/30 relative">

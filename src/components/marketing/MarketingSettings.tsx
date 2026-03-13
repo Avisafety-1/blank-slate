@@ -75,10 +75,10 @@ export const MarketingSettings = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Innstillinger</h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Innstillinger</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Konfigurer merkevare-stemme, regler og plattforminnstillinger.
         </p>
       </div>
@@ -140,7 +140,7 @@ export const MarketingSettings = () => {
           <CardTitle className="text-base">Stil-preferanser</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-foreground">Foretrukket CTA-stil</label>
               <Select value={ctaStyle} onValueChange={setCtaStyle}>

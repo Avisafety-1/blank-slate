@@ -134,16 +134,16 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Innholdsidéer</h1>
-        <p className="text-muted-foreground text-sm mt-1">Generer idéer med AI eller legg til manuelt.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Innholdsidéer</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Generer idéer med AI eller legg til manuelt.</p>
       </div>
 
       {/* AI Generate */}
       <Card className="bg-card border-border">
         <CardContent className="pt-4 space-y-3">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="Tema for idéer (valgfritt)..."
               value={topic}
@@ -151,7 +151,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
               className="flex-1"
             />
             <Select value={presetFilter} onValueChange={setPresetFilter}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Alle typer" />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +165,8 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
           <Button
             onClick={() => generateMutation.mutate(topic)}
             disabled={generateMutation.isPending}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
+            size="sm"
           >
             {generateMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -184,9 +185,10 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addManual()}
+          className="flex-1"
         />
-        <Button variant="outline" onClick={addManual} className="gap-1">
-          <Plus className="w-4 h-4" /> Legg til
+        <Button variant="outline" onClick={addManual} className="gap-1 flex-shrink-0" size="sm">
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Legg til</span>
         </Button>
       </div>
 

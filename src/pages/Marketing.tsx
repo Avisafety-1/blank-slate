@@ -21,7 +21,7 @@ const Marketing = () => {
       <Header />
       <div className="flex flex-1 flex-col md:flex-row">
         <MarketingSidebar active={section} onChange={setSection} />
-        <main className="flex-1 p-4 md:p-6 max-w-4xl">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-4xl w-full">
           {section === "overview" && <MarketingOverview />}
           {section === "ideas" && <MarketingIdeas onNavigate={setSection} />}
           {section === "drafts" && <MarketingDrafts />}
