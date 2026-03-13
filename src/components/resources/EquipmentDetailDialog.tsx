@@ -884,6 +884,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         equipmentId={equipment.id}
         equipmentNavn={equipment.navn}
         flyvetimer={equipment.flyvetimer || 0}
+        equipmentType={equipment.type}
+        equipmentSerienummer={equipment.serienummer}
       />
 
       {equipment.sjekkliste_id && (
