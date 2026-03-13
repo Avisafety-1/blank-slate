@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GRAPH_API = "https://graph.facebook.com/v22.0";
+const IG_API = "https://graph.instagram.com/v22.0";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ACCESS_TOKEN = Deno.env.get("INSTAGRAM_ACCESS_TOKEN")?.trim();
+    let ACCESS_TOKEN = Deno.env.get("INSTAGRAM_ACCESS_TOKEN")?.trim();
     const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
     const APP_SECRET = Deno.env.get("INSTAGRAM_APP_SECRET")?.trim();
 
@@ -48,19 +48,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try to exchange for long-lived token if app secret is available
-    let activeToken = ACCESS_TOKEN;
+    // Try to exchange short-lived token for long-lived token if app secret is available
     if (APP_SECRET) {
       try {
-        const exchangeUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${APP_SECRET}&access_token=${ACCESS_TOKEN}`;
+        const exchangeUrl = `${IG_API}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(APP_SECRET)}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
         const exchangeRes = await fetch(exchangeUrl);
         const exchangeData = await exchangeRes.json();
         if (exchangeRes.ok && exchangeData.access_token) {
-          activeToken = exchangeData.access_token;
-          console.log("Successfully exchanged for long-lived token");
+          ACCESS_TOKEN = exchangeData.access_token;
+          console.log("Successfully exchanged for long-lived token, expires_in:", exchangeData.expires_in);
         } else {
-          // Token might already be long-lived, or exchange failed - try with original
-          console.log("Token exchange response:", JSON.stringify(exchangeData));
+          // Token might already be long-lived — continue with original
+          console.log("Token exchange skipped (may already be long-lived):", JSON.stringify(exchangeData));
         }
       } catch (e) {
         console.log("Token exchange failed, using original token:", e);
@@ -76,14 +75,30 @@ Deno.serve(async (req) => {
       );
     }
 
+    // First: verify the token works by checking the account
+    const meRes = await fetch(`${IG_API}/me?fields=id,username&access_token=${encodeURIComponent(ACCESS_TOKEN)}`);
+    const meData = await meRes.json();
+    console.log("Instagram /me response:", JSON.stringify(meData));
+
+    if (!meRes.ok) {
+      return new Response(
+        JSON.stringify({ error: `Instagram token ugyldig: ${meData?.error?.message || "Ukjent feil"}. Generer et nytt token i developers.facebook.com.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use the user ID from the token (more reliable than the configured account ID)
+    const userId = meData.id || IG_ACCOUNT_ID;
+
     // Step 1: Create media container
     const containerParams = new URLSearchParams({
       image_url: imageUrl,
       caption: text || "",
-      access_token: activeToken,
+      access_token: ACCESS_TOKEN,
     });
 
-    const containerRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media`, {
+    console.log("Creating container for user:", userId);
+    const containerRes = await fetch(`${IG_API}/${userId}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: containerParams.toString(),
@@ -101,14 +116,15 @@ Deno.serve(async (req) => {
     }
 
     const creationId = containerData.id;
+    console.log("Container created:", creationId);
 
     // Step 2: Publish the container
     const publishParams = new URLSearchParams({
       creation_id: creationId,
-      access_token: activeToken,
+      access_token: ACCESS_TOKEN,
     });
 
-    const publishRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media_publish`, {
+    const publishRes = await fetch(`${IG_API}/${userId}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: publishParams.toString(),
@@ -127,6 +143,7 @@ Deno.serve(async (req) => {
 
     const postId = publishData.id;
     const postUrl = `https://www.instagram.com/p/${postId}/`;
+    console.log("Published successfully:", postUrl);
 
     // Update draft if draftId provided
     if (draftId) {
