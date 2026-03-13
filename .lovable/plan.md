@@ -1,44 +1,30 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem: `auto_assign_admin_on_approval` trigger overskriver rollen
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Jeg har funnet rotårsaken. Det er **to triggere** som kjører i sekvens:
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+1. **Ved registrering** → `handle_new_profile_role` → setter rolle til `'administrator'` ✅
+2. **Ved godkjenning** → `auto_assign_admin_on_approval` → **overskriver rollen til `'admin'`** (legacy!) ❌
 
-### Endringer
+Så når admin godkjenner en ny bruker, overskrives den korrekte `administrator`-rollen med den gamle `admin`-verdien. Dette forklarer:
+- Blank rolle i dropdown (fordi `admin` ikke er i `availableRoles`)
+- Ingen admin-tilgang (fordi `has_role('administrator')` ikke matcher `admin` i selve databasen, selv om `has_role()` funksjonen har backward compat)
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+I tillegg: Du ønsker at nye brukere skal få `bruker`-rollen (ikke `administrator`).
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+## Løsning
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+### 1. Database-migrasjon
+- **Oppdater `auto_assign_admin_on_approval()`**: Endre fra `'admin'` til `'bruker'`
+- **Oppdater `handle_new_profile_role()`**: Endre fra `'administrator'` til `'bruker'`
+- **Fiks `gard@avisafe.no`**: Konverter `admin` → `administrator` (igjen, siden godkjenningstrigger overskrev)
+- **Oppdater RLS på `email_template_attachments`**: Legg til `'administrator'` i tillegg til `'admin'`
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+### 2. Frontend-endring
+- **`useRoleCheck.ts`**: Legg til `'admin'` som alias i `roleHierarchy` slik at eldre roller fortsatt gir riktig tilgangsnivå
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer som endres
+- **Database-migrasjon** (ny SQL)
+- **`src/hooks/useRoleCheck.ts`** — roleHierarchy-oppdatering
 
