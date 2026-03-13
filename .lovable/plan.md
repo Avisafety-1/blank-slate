@@ -1,44 +1,52 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Analyse: Batteridata lagres bare per flylogg, ikke på ressurskortene
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Nåværende situasjon
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+| Data | Lagres i `flight_logs` | Lagres på `equipment` (batterikortet) |
+|------|----------------------|--------------------------------------|
+| Sykluser (`battery_cycles`) | Ja, per logg | Nei |
+| Helse (`battery_health_pct`) | Ja, per logg | Nei |
+| Serienummer (`battery_sn`) | Ja, per logg | Ja (`serienummer`) |
+| Temperatur min/maks | Ja, per logg | Nei |
+| Kapasitet (full/current) | Nei (bare i edge function) | Nei |
+| Celleavvik | Ja (via warnings) | Nei |
 
-### Endringer
+Batterier er lagret som `equipment` med `type = 'Batteri'`, men tabellen har kun generiske felter (navn, serienummer, vedlikehold, flyvetimer). Ingen batterspesifikke kolonner.
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**Konsekvens:** Etter loggimport kan man se sykluser i den enkelte flyloggen, men batterikortet på Ressurser-siden viser aldri denne informasjonen. Man kan ikke se "dette batteriet har 142 sykluser og 87% helse" uten å grave i loggene.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Plan
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+#### 1. Legg til batterspesifikke kolonner på `equipment`-tabellen
+
+Ny migrasjon:
+```sql
+ALTER TABLE equipment
+  ADD COLUMN battery_cycles integer,
+  ADD COLUMN battery_health_pct numeric,
+  ADD COLUMN battery_full_capacity_mah integer,
+  ADD COLUMN battery_max_cell_deviation_v numeric;
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+#### 2. Oppdater equipment automatisk etter loggimport
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+I `UploadDroneLogDialog.tsx` sin `saveFlightLog`-funksjon, etter at loggen er lagret og batteriet er matchet: oppdater det matchede equipment-kortet med siste verdier fra loggen (sykluser, helse, kapasitet, maks celleavvik) — men bare hvis verdien er nyere/høyere.
+
+#### 3. Vis batteriinfo på EquipmentDetailDialog
+
+For equipment med `type = 'Batteri'`: vis en dedikert seksjon med sykluser, helse-%, kapasitet og maks celleavvik. Fargekod helse (grønn > 80%, gul 60-80%, rød < 60%) og sykluser (varsel ved høye tall).
+
+#### 4. Vis aggregert batteriinfo i EquipmentLogbookDialog
+
+Vis en trend/historikk over sykluser og helse fra `flight_logs` der `battery_sn` matcher utstyrets serienummer — så man kan se degraderingen over tid.
+
+### Filer som endres
+
+- **Ny migrasjon** — `ALTER TABLE equipment ADD COLUMN ...`
+- **`src/integrations/supabase/types.ts`** — regenereres
+- **`src/components/UploadDroneLogDialog.tsx`** — oppdater equipment etter save
+- **`src/components/resources/EquipmentDetailDialog.tsx`** — vis batteridata
+- **`src/components/resources/EquipmentLogbookDialog.tsx`** — vis historikk fra flight_logs
 
