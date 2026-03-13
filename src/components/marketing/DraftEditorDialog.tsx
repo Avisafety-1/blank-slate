@@ -74,7 +74,9 @@ const DraftVisualSection = ({ draftId, draftTitle, draftHook, composedText }: { 
   const [genOpen, setGenOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
+  const { companyId } = useAuth();
   const { data: media = [] } = useQuery({
     queryKey: ["marketing-draft-media", draftId],
     queryFn: async () => {
