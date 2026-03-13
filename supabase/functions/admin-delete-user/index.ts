@@ -81,14 +81,18 @@ serve(async (req: Request): Promise<Response> => {
 
     const requesterRoles = new Set((requesterRoleRows ?? []).map((r) => r.role));
     const isSuperadmin = requesterRoles.has("superadmin");
-    const isAdmin = requesterRoles.has("admin");
+    const isAdmin = requesterRoles.has("administrator") || requesterRoles.has("admin");
 
     if (!isSuperadmin && !isAdmin) {
+      console.error("admin-delete-user: requester has no admin role", { roles: [...requesterRoles] });
       return new Response(
-        JSON.stringify({ error: "Forbidden" }),
+        JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Requester lacks admin role" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
       );
     }
+
+    // ---- Prevent non-superadmin from deleting superadmin ----
+    // (checked after target user is resolved below)
 
     // ---- Resolve target user id ----
     let targetUserId = userIdFromBody;
