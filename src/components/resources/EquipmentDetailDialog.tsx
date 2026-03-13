@@ -44,6 +44,10 @@ interface Equipment {
   missions_at_last_maintenance?: number;
   varsel_timer?: number | null;
   varsel_oppdrag?: number | null;
+  battery_cycles?: number | null;
+  battery_health_pct?: number | null;
+  battery_full_capacity_mah?: number | null;
+  battery_max_cell_deviation_v?: number | null;
 }
 
 interface EquipmentDetailDialogProps {
