@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     }
 
     // First: verify the token works by checking the account
-    const meRes = await fetch(`${IG_API}/me?fields=id,username&access_token=${encodeURIComponent(ACCESS_TOKEN)}`);
+    const meRes = await fetch(`${FB_GRAPH_API}/me?fields=id,username&access_token=${encodeURIComponent(ACCESS_TOKEN)}`);
     const meData = await meRes.json();
     console.log("Instagram /me response:", JSON.stringify(meData));
 
