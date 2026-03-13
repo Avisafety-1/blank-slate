@@ -12,6 +12,7 @@ export const MarketingVisuals = () => {
   const { companyId, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const { data: media = [], isLoading, isError } = useQuery({
     queryKey: ["marketing-media", companyId ?? "all"],
