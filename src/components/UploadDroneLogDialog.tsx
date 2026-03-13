@@ -1139,6 +1139,38 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  // ── Ensure drone↔battery link exists in drone_equipment_history ──
+  const ensureDroneEquipmentHistory = async () => {
+    if (!companyId || !selectedDroneId || selectedEquipment.length === 0) return;
+    const batteryEquipment = equipmentList.filter(
+      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+    );
+    if (batteryEquipment.length === 0) return;
+    for (const bat of batteryEquipment) {
+      try {
+        const { data: latest } = await supabase
+          .from('drone_equipment_history')
+          .select('action')
+          .eq('drone_id', selectedDroneId)
+          .eq('item_id', bat.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (latest && latest.length > 0 && latest[0].action === 'added') continue;
+        await supabase.from('drone_equipment_history').insert({
+          drone_id: selectedDroneId,
+          company_id: companyId,
+          item_id: bat.id,
+          item_type: 'equipment',
+          item_name: bat.navn,
+          action: 'added',
+          user_id: user?.id || null,
+        });
+      } catch (err) {
+        console.error('Failed to ensure drone equipment history:', err);
+      }
+    }
+  };
+
   const saveFlightEvents = async (flightLogId: string, r: DroneLogResult) => {
     if (!companyId || !r.events || r.events.length === 0) return;
     const rows = r.events.map(e => ({
@@ -1355,6 +1387,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await saveLogbookEntries(matchedLog.id, result.durationMinutes, true, matchedLog.flight_duration_minutes);
       
       await updateBatteryEquipment(result);
+      await ensureDroneEquipmentHistory();
       await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       // Return to method step so user can continue processing pending logs
@@ -1420,6 +1453,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       await updateBatteryEquipment(result);
+      await ensureDroneEquipmentHistory();
       await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
       // Return to method step so user can continue processing pending logs
@@ -1489,6 +1523,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       await updateBatteryEquipment(result);
+      await ensureDroneEquipmentHistory();
       await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);

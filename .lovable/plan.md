@@ -1,35 +1,44 @@
 
 
-## Automatisk dronekobling i batterilogg ved DJI-import
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-Når en DJI-logg importeres, matcher systemet **både** drone og batteri korrekt. Men det opprettes aldri en `drone_equipment_history`-post — den tabellen fylles kun ved manuell kobling via "Legg til utstyr"-dialogen. Resultatet er at batteriets "Droner"-fane i loggboken forblir tom, selv om batteriet har fløyet med en bestemt drone.
-
-### Løsning
-
-Etter at en flylogg lagres med matchet drone og batteri, sjekk om det allerede finnes en aktiv kobling i `drone_equipment_history` for dette paret. Hvis ikke, opprett en `added`-hendelse automatisk. Dette krever **ingen databaseendringer** — bare en ny funksjon i `UploadDroneLogDialog.tsx`.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
 ### Endringer
 
-**`src/components/UploadDroneLogDialog.tsx`**
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Legg til en hjelpefunksjon `ensureDroneEquipmentHistory` som:
-1. Tar drone-ID og equipment-ID (batteri) som input
-2. Sjekker om det finnes en eksisterende `added`-post uten tilhørende `removed` for dette paret
-3. Hvis ikke, oppretter en ny `added`-post i `drone_equipment_history`
-4. Kalles etter `updateBatteryEquipment()` i alle tre lagringsstier (oppdater eksisterende, nytt oppdrag, koble til oppdrag)
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-```text
-saveFlightLog()
-  → updateBatteryEquipment()
-  → ensureDroneEquipmentHistory(droneId, batteryEquipmentId)
-      ├─ SELECT siste entry for dette paret
-      ├─ Hvis action='added' → gjør ingenting (allerede koblet)
-      └─ Ellers → INSERT { action: 'added', drone_id, item_id, item_type: 'equipment', item_name }
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-### Filer som endres
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-- **`src/components/UploadDroneLogDialog.tsx`** — ny `ensureDroneEquipmentHistory`-funksjon + kalle den etter lagring
+Ingen nye avhengigheter. Ingen databaseendringer.
 
