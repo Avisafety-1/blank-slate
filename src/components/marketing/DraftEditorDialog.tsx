@@ -874,7 +874,17 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
-            Publiser nå
+            Facebook
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmIgOpen(true)}
+            disabled={publishingIg || !composePlainContent().trim()}
+            className="gap-1 text-[#E1306C] border-[#E1306C]/30 hover:bg-[#E1306C]/10"
+          >
+            {publishingIg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Instagram className="w-4 h-4" />}
+            Instagram
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">
