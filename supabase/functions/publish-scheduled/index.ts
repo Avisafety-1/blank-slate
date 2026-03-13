@@ -107,7 +107,26 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Step 2: Publish
+          // Step 2: Wait for container to be ready
+          const MAX_POLLS = 15;
+          const POLL_INTERVAL_MS = 2000;
+          let containerReady = false;
+          for (let p = 0; p < MAX_POLLS; p++) {
+            const statusRes = await fetch(`${IG_API}/${containerData.id}?fields=status_code`, {
+              headers: { "Authorization": `Bearer ${IG_ACCESS_TOKEN}` },
+            });
+            const statusData = await statusRes.json();
+            console.log(`Draft ${draft.id} poll ${p + 1}/${MAX_POLLS}: status_code=${statusData.status_code}`);
+            if (statusData.status_code === "FINISHED") { containerReady = true; break; }
+            if (statusData.status_code === "ERROR") { break; }
+            await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+          }
+          if (!containerReady) {
+            results.push({ id: draft.id, error: "Instagram media processing timeout or error" });
+            continue;
+          }
+
+          // Step 3: Publish
           const publishRes = await fetch(`${IG_API}/${IG_ACCOUNT_ID}/media_publish`, {
             method: "POST",
             headers: {
