@@ -119,6 +119,40 @@ export const MarketingDrafts = () => {
     }
   };
 
+  const handleQuickPublishInstagram = async (draft: any) => {
+    setPublishingIgId(draft.id);
+    try {
+      const text = draft.content;
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url;
+
+      if (!imageUrl) {
+        toast.error("Instagram krever et bilde. Legg til et bilde i utkastet først.");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("publish-instagram", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Instagram!", {
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Instagram");
+    } finally {
+      setPublishingIgId(null);
+    }
+  };
+
   const statusLabels: Record<string, string> = {
     draft: "Utkast",
     review: "Gjennomgang",
