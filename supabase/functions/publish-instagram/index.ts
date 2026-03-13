@@ -39,12 +39,32 @@ Deno.serve(async (req) => {
 
     const ACCESS_TOKEN = Deno.env.get("INSTAGRAM_ACCESS_TOKEN")?.trim();
     const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
+    const APP_SECRET = Deno.env.get("INSTAGRAM_APP_SECRET")?.trim();
 
     if (!ACCESS_TOKEN || !IG_ACCOUNT_ID) {
       return new Response(
         JSON.stringify({ error: "Instagram er ikke konfigurert. Legg til INSTAGRAM_ACCESS_TOKEN og INSTAGRAM_BUSINESS_ACCOUNT_ID i secrets." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Try to exchange for long-lived token if app secret is available
+    let activeToken = ACCESS_TOKEN;
+    if (APP_SECRET) {
+      try {
+        const exchangeUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${APP_SECRET}&access_token=${ACCESS_TOKEN}`;
+        const exchangeRes = await fetch(exchangeUrl);
+        const exchangeData = await exchangeRes.json();
+        if (exchangeRes.ok && exchangeData.access_token) {
+          activeToken = exchangeData.access_token;
+          console.log("Successfully exchanged for long-lived token");
+        } else {
+          // Token might already be long-lived, or exchange failed - try with original
+          console.log("Token exchange response:", JSON.stringify(exchangeData));
+        }
+      } catch (e) {
+        console.log("Token exchange failed, using original token:", e);
+      }
     }
 
     const { text, imageUrl, draftId } = await req.json();
@@ -60,7 +80,7 @@ Deno.serve(async (req) => {
     const containerParams = new URLSearchParams({
       image_url: imageUrl,
       caption: text || "",
-      access_token: ACCESS_TOKEN,
+      access_token: activeToken,
     });
 
     const containerRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media`, {
@@ -85,7 +105,7 @@ Deno.serve(async (req) => {
     // Step 2: Publish the container
     const publishParams = new URLSearchParams({
       creation_id: creationId,
-      access_token: ACCESS_TOKEN,
+      access_token: activeToken,
     });
 
     const publishRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media_publish`, {
