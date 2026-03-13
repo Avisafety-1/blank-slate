@@ -1,44 +1,34 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Dataen bekrefter at `gard@avisafe.no` fortsatt har rollen `admin` (ikke `administrator`). Migrasjonen ble opprettet men ser ikke ut til å ha oppdatert denne raden.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Resultatet:
+- **Header**: Viser tannhjulet fordi AuthContext godtar både `admin` og `administrator`
+- **Admin-siden**: Kaller `has_role(user_id, 'administrator')` som returnerer `false` for brukere med `admin`-rolle -- viser "no access"
+- **Rolle-dropdown**: Viser blank fordi `admin` ikke finnes i `availableRoles`-listen
 
-### Endringer
+## Plan
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+### 1. Oppdater data: Konverter `admin` → `administrator`
+Bruk data-oppdateringsverktøyet (ikke migrasjon) for å kjøre:
+```sql
+UPDATE user_roles SET role = 'administrator' WHERE role = 'admin';
+```
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
+### 2. Oppdater `Admin.tsx` `checkAdminStatus` for å godta begge roller
+Legg til en fallback-sjekk slik at admin-siden også godtar den gamle `admin`-rollen:
 ```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+// Sjekk begge roller
+const [adminResult, legacyResult] = await Promise.all([
+  supabase.rpc('has_role', { _user_id: user?.id, _role: 'administrator' }),
+  supabase.rpc('has_role', { _user_id: user?.id, _role: 'admin' }),
+]);
+if (adminResult.data || legacyResult.data) { ... }
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+### 3. Filer som endres
+- **Data-oppdatering**: `user_roles` tabellen
+- **`src/pages/Admin.tsx`**: `checkAdminStatus`-funksjonen
 
