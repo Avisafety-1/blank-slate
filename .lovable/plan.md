@@ -1,44 +1,62 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Koden bruker `graph.facebook.com` for media container og publish, men siden vi bruker "Instagram Login"-flyten (med `instagram_business_basic` / `instagram_business_content_publish`), skal alle kall gå mot `graph.instagram.com` i henhold til dokumentasjonen.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+I tillegg viser Meta-dokumentasjonen at API-et foretrekker JSON body med `Authorization: Bearer`-header fremfor URL-encoded params med access_token i body.
 
-### Endringer
+## Plan
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**File: `supabase/functions/publish-instagram/index.ts`**
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+1. Endre alle publiserings-endepunkter tilbake til `graph.instagram.com`
+2. Bytte fra URL-encoded form body til JSON body med `Authorization: Bearer` header for container creation og publish
+3. Beholde token exchange på `graph.instagram.com` (som allerede er riktig)
+4. Deploy funksjonen
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+### Endringer i detalj
 
-### UI per punkt
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+Before:
+  POST graph.facebook.com/v22.0/{userId}/media  (form-encoded, token in body)
+  POST graph.facebook.com/v22.0/{userId}/media_publish  (form-encoded, token in body)
+
+After:
+  POST graph.instagram.com/v22.0/{userId}/media  (JSON body, Bearer header)
+  POST graph.instagram.com/v22.0/{userId}/media_publish  (JSON body, Bearer header)
 ```
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+**Container creation:**
+```typescript
+const containerRes = await fetch(`${IG_API}/${userId}/media`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${ACCESS_TOKEN}`,
+  },
+  body: JSON.stringify({
+    image_url: imageUrl,
+    caption: text || "",
+  }),
+});
+```
+
+**Publish:**
+```typescript
+const publishRes = await fetch(`${IG_API}/${userId}/media_publish`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${ACCESS_TOKEN}`,
+  },
+  body: JSON.stringify({
+    creation_id: creationId,
+  }),
+});
+```
+
+**/me verification** -- also switch to Bearer header on `graph.instagram.com`.
+
+Same changes applied to `publish-scheduled/index.ts` for the Instagram path.
 
