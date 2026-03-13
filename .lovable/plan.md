@@ -1,44 +1,51 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Lagre DroneLog API-feltreferanse og fikse celleavvik
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Funn
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+API-et har tre dedikerte felter vi ikke bruker:
 
-### Endringer
+| Felt | Beskrivelse | Prioritet |
+|------|-------------|-----------|
+| `BATTERY.cellVoltageDeviation [V]` | Celleavvik per rad (beregnet av API) | Must-have |
+| `BATTERY.isCellVoltageDeviationHigh` | Boolean-flagg når avvik er over terskel | Must-have |
+| `BATTERY.maxCellVoltageDeviation [V]` | Maks avvik i hele flyturen | Useful |
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+**Nåværende problem:** Koden beregner celleavvik manuelt fra `cellVoltage1-6`, men:
+1. API-et støtter opptil **14 celler** -- vi sjekker bare 6
+2. API-et tilbyr ferdigberegnet avvik som er mer pålitelig
+3. Vi bruker unødvendig båndbredde på å hente 6 individuelle cellespenninger
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Plan
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**1. Lagre Excel-filen som referansedokument**
+- Kopiere `dronelogapi_feltoversikt_sokbar.xlsx` til `docs/`
 
-### UI per punkt
+**2. Oppdatere `docs/dronelog-api-fields.md`** med de nye feltene fra Excel-filen (cellVoltageDeviation, isCellVoltageDeviationHigh, maxCellVoltageDeviation, celler 7-14)
+
+**3. Fikse `supabase/functions/process-dronelog/index.ts`**
+- Legge til `BATTERY.cellVoltageDeviation [V]` og `BATTERY.isCellVoltageDeviationHigh` i FIELDS-listen
+- Bruke API-ets ferdigberegnede avvik i stedet for manuell beregning
+- Beholde manuell beregning som fallback dersom API-feltet returnerer tom verdi
+- Fjerne individuelle cellVoltage1-6 fra FIELDS (ikke lenger nødvendig som primærkilde)
+
+**4. Fikse `supabase/functions/dji-auto-sync/index.ts`**
+- Samme endringer som process-dronelog
+
+**5. Deploy begge edge-funksjonene**
+
+### Teknisk detalj
+
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+Before (manuell beregning fra 6 celler):
+  FIELDS: cellVoltage1..6 → manuelt max-min per rad → maxBattCellDev
+
+After (API-beregnet + fallback):
+  FIELDS: cellVoltageDeviation, isCellVoltageDeviationHigh, maxCellVoltageDeviation
+  → Bruk API-verdien direkte
+  → Fallback til manuell beregning fra cellVoltage1-6 hvis feltet er tomt
 ```
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Warnings-logikken forblir uendret (terskel > 0.1V), men vi får nå korrekt avvik for droner med 7-14 celler (enterprise-modeller).
 
