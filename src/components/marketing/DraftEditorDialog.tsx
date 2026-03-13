@@ -47,7 +47,9 @@ import {
   Facebook,
   CalendarIcon,
   Clock,
+  Upload,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
