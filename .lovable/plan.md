@@ -1,42 +1,44 @@
 
 
-## Fiks: Duplikat user_roles-innsetting ved registrering
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
-`handle_new_user()` gjør to ting:
-1. INSERT INTO profiles → dette trigger `handle_new_profile_role()` som setter inn i `user_roles`
-2. INSERT INTO user_roles → dette feiler fordi raden allerede finnes (unique constraint på `user_id`)
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-Resultatet er "database error saving new user" for alle nye registreringer.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-### Løsning
-Fjern den overflødige `INSERT INTO user_roles` fra `handle_new_user()`-funksjonen. `handle_new_profile_role()`-triggeren på profiles-tabellen håndterer allerede rolletildelingen.
+### Endringer
 
-### Migrasjon
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  IF NEW.raw_user_meta_data->>'company_id' IS NOT NULL THEN
-    INSERT INTO public.profiles (id, full_name, company_id, email, approved)
-    VALUES (
-      NEW.id,
-      COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-      (NEW.raw_user_meta_data->>'company_id')::uuid,
-      NEW.email,
-      false
-    );
-    -- Removed duplicate INSERT INTO user_roles here.
-    -- The on_profile_created_assign_role trigger handles this automatically.
-  END IF;
-  RETURN NEW;
-END;
-$$;
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
+
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
+
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-Ingen frontend-endringer nødvendig.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
