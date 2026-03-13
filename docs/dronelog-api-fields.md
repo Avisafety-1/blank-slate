@@ -36,6 +36,17 @@ DroneLog API tilbyr 200+ felter organisert i kategorier. Disse feltene kan bruke
 | `BATTERY.cellVoltage4 [V]` | Celle 4 spenning |
 | `BATTERY.cellVoltage5 [V]` | Celle 5 spenning |
 | `BATTERY.cellVoltage6 [V]` | Celle 6 spenning |
+| `BATTERY.cellVoltage7 [V]` | Celle 7 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage8 [V]` | Celle 8 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage9 [V]` | Celle 9 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage10 [V]` | Celle 10 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage11 [V]` | Celle 11 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage12 [V]` | Celle 12 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage13 [V]` | Celle 13 spenning (enterprise-droner) |
+| `BATTERY.cellVoltage14 [V]` | Celle 14 spenning (enterprise-droner) |
+| `BATTERY.cellVoltageDeviation [V]` | Celleavvik per rad (API-beregnet, støtter alle celleantall) |
+| `BATTERY.isCellVoltageDeviationHigh` | Boolean-flagg når avvik er over terskel |
+| `BATTERY.maxCellVoltageDeviation [V]` | Maks celleavvik i hele flyturen |
 | `BATTERY.chargeLevel [%]` | Batterinivå (prosent) |
 | `BATTERY.current [A]` | Strøm (ampere) |
 | `BATTERY.currentCapacity [mAh]` | Gjeldende kapasitet |

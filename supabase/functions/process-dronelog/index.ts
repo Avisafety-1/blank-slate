@@ -18,6 +18,8 @@ const FIELDS = [
   "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
   "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
+  // API-native cell deviation fields (supports up to 14 cells)
+  "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
   "BATTERY.goHomeStatus",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
@@ -111,7 +113,7 @@ function parseCsvToResult(csvText: string) {
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
   const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
-  // Individual cell voltage indices for manual deviation calculation
+  // Individual cell voltage indices for manual deviation fallback
   const cellVoltIdx1 = findHeaderIndex(headers, "BATTERY.cellVoltage1 [V]");
   const cellVoltIdx2 = findHeaderIndex(headers, "BATTERY.cellVoltage2 [V]");
   const cellVoltIdx3 = findHeaderIndex(headers, "BATTERY.cellVoltage3 [V]");
@@ -119,6 +121,10 @@ function parseCsvToResult(csvText: string) {
   const cellVoltIdx5 = findHeaderIndex(headers, "BATTERY.cellVoltage5 [V]");
   const cellVoltIdx6 = findHeaderIndex(headers, "BATTERY.cellVoltage6 [V]");
   const cellVoltIndices = [cellVoltIdx1, cellVoltIdx2, cellVoltIdx3, cellVoltIdx4, cellVoltIdx5, cellVoltIdx6];
+  // API-native cell deviation fields (supports all cell counts incl. enterprise 7-14 cells)
+  const cellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
+  const cellDevHighIdx = findHeaderIndex(headers, "BATTERY.isCellVoltageDeviationHigh");
+  const cellDevMaxIdx = findHeaderIndex(headers, "BATTERY.maxCellVoltageDeviation [V]");
 
   // RTH indices
   const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
@@ -279,14 +285,19 @@ function parseCsvToResult(csvText: string) {
       if (battTemp < minBattTemp) minBattTemp = battTemp;
     }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
-    // Calculate cell deviation from individual cell voltages
-    const cellVoltages = cellVoltIndices
-      .filter(idx => idx >= 0)
-      .map(idx => parseFloat(cols[idx]))
-      .filter(v => !isNaN(v) && v > 0);
-    if (cellVoltages.length >= 2) {
-      const rowDev = Math.max(...cellVoltages) - Math.min(...cellVoltages);
-      if (rowDev > maxBattCellDev) maxBattCellDev = rowDev;
+    // Cell deviation: prefer API-native field, fallback to manual from cellVoltage1-6
+    const apiCellDev = cellDevIdx >= 0 ? parseFloat(cols[cellDevIdx]) : NaN;
+    if (!isNaN(apiCellDev) && apiCellDev > maxBattCellDev) {
+      maxBattCellDev = apiCellDev;
+    } else {
+      const cellVoltages = cellVoltIndices
+        .filter(idx => idx >= 0)
+        .map(idx => parseFloat(cols[idx]))
+        .filter(v => !isNaN(v) && v > 0);
+      if (cellVoltages.length >= 2) {
+        const rowDev = Math.max(...cellVoltages) - Math.min(...cellVoltages);
+        if (rowDev > maxBattCellDev) maxBattCellDev = rowDev;
+      }
     }
     if (!isNaN(gpsSats)) {
       if (gpsSats < minGpsSats) minGpsSats = gpsSats;
