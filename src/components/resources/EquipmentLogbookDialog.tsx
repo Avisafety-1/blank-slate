@@ -82,6 +82,7 @@ export const EquipmentLogbookDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [batteryTrend, setBatteryTrend] = useState<BatteryTrendEntry[]>([]);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -89,10 +90,13 @@ export const EquipmentLogbookDialog = ({
     entry_date: new Date().toISOString().split('T')[0],
   });
 
+  const isBattery = equipmentType === 'Batteri';
+
   useEffect(() => {
     if (open && equipmentId) {
       fetchAllLogs();
       fetchSignature();
+      if (isBattery && equipmentSerienummer) fetchBatteryTrend();
     }
   }, [open, equipmentId]);
 
