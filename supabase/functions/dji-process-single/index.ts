@@ -343,7 +343,7 @@ Deno.serve(async (req) => {
         .from("equipment")
         .select("id, serienummer, internal_serial")
         .eq("company_id", pendingLog.company_id)
-        .eq("type", "Batteri");
+        .ilike("type", "batteri");
 
       if (batteries) {
         const bsnLower = parsed.batterySN.toLowerCase();

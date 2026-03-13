@@ -275,7 +275,7 @@ async function matchDroneAndBattery(
       .from("equipment")
       .select("id, serienummer, internal_serial")
       .eq("company_id", companyId)
-      .eq("type", "Batteri");
+      .ilike("type", "batteri");
 
     if (batteries) {
       const bsnLower = parsed.batterySN.toLowerCase();

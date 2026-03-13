@@ -1,3 +1,4 @@
+import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
