@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Copy, Facebook, ExternalLink, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Copy, Facebook, Instagram, ExternalLink, Clock, Calendar } from "lucide-react";
 import { DraftEditorDialog } from "./DraftEditorDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
