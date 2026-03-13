@@ -1143,7 +1143,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const ensureDroneEquipmentHistory = async () => {
     if (!companyId || !selectedDroneId || selectedEquipment.length === 0) return;
     const batteryEquipment = equipmentList.filter(
-      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+      eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
     for (const bat of batteryEquipment) {
