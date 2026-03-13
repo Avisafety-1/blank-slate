@@ -27,9 +27,11 @@ import {
   ZoomIn,
   Battery,
   Heart,
-  TrendingDown
+  TrendingDown,
+  Calendar
 } from "lucide-react";
 import { format } from "date-fns";
+import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
 
@@ -578,6 +580,7 @@ export const EquipmentLogbookDialog = ({
               {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm">Batteritrend</TabsTrigger>}
             </TabsList>
 
+            {activeTab !== 'battery' && (
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
               <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
                 {isLoading ? (
@@ -593,60 +596,68 @@ export const EquipmentLogbookDialog = ({
                     {filteredLogs.map((log) => (
                       <div 
                         key={log.id} 
-                        className="border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors"
+                        className="border rounded-lg p-2 sm:p-3 bg-card hover:bg-accent/50 transition-colors overflow-hidden"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <div className="text-muted-foreground mt-0.5">
-                              {log.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className={`${log.badgeColor} text-xs`}>
-                                  {log.badgeText}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(log.date, 'dd.MM.yyyy HH:mm')}
-                                </span>
-                              </div>
-                              <p className="font-medium text-sm mt-1 break-words">{log.title}</p>
-                              {log.description && (
-                                <p className="text-sm text-muted-foreground mt-0.5 break-words">{log.description}</p>
-                              )}
-                              {log.imageUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxUrl(log.imageUrl!)}
-                                  className="mt-2 relative group"
-                                >
-                                  <img
-                                    src={log.imageUrl}
-                                    alt="Vedlegg"
-                                    className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
-                                    <ZoomIn className="w-4 h-4 text-white" />
-                                  </div>
-                                </button>
-                              )}
-                              {log.userName && (
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                  <User className="w-3 h-3" />
-                                  {log.userName}
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className="text-muted-foreground mt-0.5 shrink-0">
+                            {log.icon}
+                          </div>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-start justify-between gap-1">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <Badge className={`${log.badgeColor} text-[10px] sm:text-xs shrink-0`}>
+                                    {log.badgeText}
+                                  </Badge>
                                 </div>
+                                <p className="font-medium text-xs sm:text-sm mt-1 break-words">
+                                  {log.title}
+                                </p>
+                              </div>
+                              {log.type === 'manual' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                  onClick={() => handleDeleteEntry(log.id)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </Button>
                               )}
+                            </div>
+                            {log.description && (
+                              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2 break-words">
+                                {log.description}
+                              </p>
+                            )}
+                            {log.imageUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setLightboxUrl(log.imageUrl!)}
+                                className="mt-2 relative group"
+                              >
+                                <img
+                                  src={log.imageUrl}
+                                  alt="Vedlegg"
+                                  className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
+                                  <ZoomIn className="w-4 h-4 text-white" />
+                                </div>
+                              </button>
+                            )}
+                            <div className="flex items-center gap-2 mt-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1 shrink-0">
+                                <Calendar className="w-3 h-3" />
+                                <span className="sm:hidden">{format(log.date, 'dd.MM.yy', { locale: nb })}</span>
+                                <span className="hidden sm:inline">{format(log.date, 'dd.MM.yyyy', { locale: nb })}</span>
+                              </span>
+                              <span className="flex items-center gap-1 min-w-0">
+                                <User className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{log.userName}</span>
+                              </span>
                             </div>
                           </div>
-                          {log.type === 'manual' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteEntry(log.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -654,6 +665,7 @@ export const EquipmentLogbookDialog = ({
                 )}
               </ScrollArea>
             </TabsContent>
+            )}
 
             {isBattery && (
               <TabsContent value="battery" className="flex-1 min-h-0 mt-2">
