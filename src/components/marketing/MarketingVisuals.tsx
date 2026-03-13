@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Download, Loader2, Image } from "lucide-react";
+import { Plus, Trash2, Download, Loader2, Image, Upload } from "lucide-react";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 
 export const MarketingVisuals = () => {
