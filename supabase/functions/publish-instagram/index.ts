@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     });
 
     console.log("Creating container for user:", userId);
-    const containerRes = await fetch(`${IG_API}/${userId}/media`, {
+    const containerRes = await fetch(`${FB_GRAPH_API}/${userId}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: containerParams.toString(),
