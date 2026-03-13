@@ -349,7 +349,9 @@ const Admin = () => {
   };
 
   const getRoleLabel = (role: string) => {
-    const found = availableRoles.find((r) => r.value === role);
+    // Map legacy 'admin' to 'administrator' for display
+    const normalizedRole = role === 'admin' ? 'administrator' : role;
+    const found = availableRoles.find((r) => r.value === normalizedRole);
     return found ? t(found.labelKey) : role;
   };
 
