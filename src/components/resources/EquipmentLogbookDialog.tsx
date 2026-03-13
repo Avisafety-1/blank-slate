@@ -27,7 +27,8 @@ import {
   ZoomIn,
   Battery,
   Heart,
-  TrendingDown
+  TrendingDown,
+  Calendar
 } from "lucide-react";
 import { format } from "date-fns";
 import autoTable from "jspdf-autotable";
