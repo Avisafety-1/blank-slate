@@ -1,44 +1,39 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Forhåndsdefinerte utstyrskategorier
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Batterilogikken (telemetri, trendvisning, dronekobling) matcher hardkodet mot `type === 'Batteri'`. Men utstyrstypen er fritekst — brukere kan skrive "battery", "batteri", "Batterier" osv., og da vil ingen batterifeatures fungere.
 
-### Endringer
+### Løsning
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+1. **Definere en kanonisk liste med utstyrskategorier** i en ny fil `src/config/equipmentCategories.ts`:
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
 ```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+Batteri, Sensor, Radio, Kamera, Lader, Propell, Verneutstyr, Verktøy, Bæresystem, Annet
 ```
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+Hver kategori får en `id` (brukt i DB) og et `label` (vist i UI). Batterier merkes med `isBattery: true` for enkel sjekk.
+
+2. **Oppdatere `useEquipmentTypes`-hooken** til å returnere de forhåndsdefinerte kategoriene **pluss** eventuelle egendefinerte typer som allerede finnes i databasen (bakoverkompatibilitet).
+
+3. **Oppdatere `AddEquipmentDialog`** til å vise de forhåndsdefinerte kategoriene i dropdown-en, med "Annet..." som siste valg for egendefinerte typer.
+
+4. **Erstatte alle `type === 'Batteri'`-sjekker** med en hjelpefunksjon `isBatteryType(type: string)` som matcher case-insensitivt mot kjente batteriverdier (`'Batteri'`, `'Battery'`, `'batteri'`). Dette fikser eksisterende data som kan ha variert casing.
+
+### Filer som endres
+
+- **Ny: `src/config/equipmentCategories.ts`** — kanonisk kategoriliste + `isBatteryType()` hjelpefunksjon
+- **`src/hooks/useEquipmentTypes.ts`** — merger forhåndsdefinerte + eksisterende typer
+- **`src/components/resources/AddEquipmentDialog.tsx`** — bruker forhåndsdefinert liste i Select
+- **`src/components/UploadDroneLogDialog.tsx`** — bruker `isBatteryType()` i stedet for `=== 'Batteri'`
+- **`src/components/resources/EquipmentDetailDialog.tsx`** — bruker `isBatteryType()`
+- **`src/components/resources/EquipmentLogbookDialog.tsx`** — bruker `isBatteryType()`
+- **`supabase/functions/dji-process-single/index.ts`** — `.ilike('type', 'batteri')` i stedet for `.eq('type', 'Batteri')`
+- **`supabase/functions/dji-auto-sync/index.ts`** — samme ilike-endring
+
+### Ingen databaseendringer nødvendig
+
+Typen lagres fortsatt som fritekst i `equipment.type`. De forhåndsdefinerte kategoriene er kun en UI-konvensjon + robust matching.
 
