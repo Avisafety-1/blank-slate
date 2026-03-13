@@ -67,7 +67,9 @@ export const EquipmentLogbookDialog = ({
   onOpenChange, 
   equipmentId, 
   equipmentNavn,
-  flyvetimer 
+  flyvetimer,
+  equipmentType,
+  equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
