@@ -39,6 +39,14 @@ interface EquipmentLogbookDialogProps {
   equipmentId: string;
   equipmentNavn: string;
   flyvetimer: number;
+  equipmentType?: string;
+  equipmentSerienummer?: string;
+}
+
+interface BatteryTrendEntry {
+  date: Date;
+  cycles: number | null;
+  health: number | null;
 }
 
 interface LogEntry {
