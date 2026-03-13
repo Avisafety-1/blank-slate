@@ -316,7 +316,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (roleResult.data) {
         profileData.userRole = roleResult.data.role;
         profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
-        profileData.isAdmin = roleResult.data.role === 'administrator' || roleResult.data.role === 'superadmin';
+        profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
       }
 
       // Apply to state

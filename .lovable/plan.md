@@ -1,40 +1,44 @@
 
 
-## Problem
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Databasen inneholder to ulike rolleverdier som betyr det samme:
-- **`admin`** — gammel enum-verdi, brukt av eldre brukere (f.eks. `gard@avisafe.no`)
-- **`administrator`** — ny enum-verdi, brukt av nyere brukere
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-`AuthContext` sjekker kun `administrator` for admin-tilgang, så brukere med `admin`-rollen får:
-- `isAdmin = false` → ingen tilgang til admin-panelet
-- Blank rolle-dropdown i admin-panelet (fordi `admin` ikke er i `availableRoles`)
-- Sletting feiler fordi edge-funksjonen ikke gjenkjenner rollen
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Verifisert i databasen:
-- `gard@avisafe.no` → rolle: **`admin`** ← gammel
-- `kontakt@avisafe.no` → rolle: **`administrator`** ← ny
+### Endringer
 
-## Løsning
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### 1. Database-migrasjon: Konverter alle `admin`-roller til `administrator`
-```sql
-UPDATE user_roles SET role = 'administrator' WHERE role = 'admin';
-```
-Dette fikser alle eksisterende brukere umiddelbart.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### 2. AuthContext: Legg til fallback for legacy `admin`
-I `src/contexts/AuthContext.tsx`, utvid `isAdmin`-sjekken til å også godta `admin`:
+### Hjelpefunksjon (i begge filer)
 ```typescript
-profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
-Dette sikrer bakoverkompatibilitet i tilfelle det finnes caching eller andre steder som bruker gammel verdi.
 
-### 3. Admin-panelet: Legg til `admin` → `administrator`-mapping i `getRoleLabel`
-Sørg for at hvis noen fortsatt har `admin`-rollen, vises den riktig i UI-et i stedet for å være blank.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### Filer som endres
-- **Database-migrasjon** — `UPDATE user_roles SET role = 'administrator' WHERE role = 'admin'`
-- **`src/contexts/AuthContext.tsx`** — utvid `isAdmin`-sjekken
-- **`src/pages/Admin.tsx`** — legg til fallback i `getRoleLabel`
+Ingen nye avhengigheter. Ingen databaseendringer.
 
