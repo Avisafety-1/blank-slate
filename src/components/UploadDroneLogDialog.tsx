@@ -1120,7 +1120,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!companyId || selectedEquipment.length === 0) return;
     // Find which selected equipment is a battery
     const batteryEquipment = equipmentList.filter(
-      eq => selectedEquipment.includes(eq.id) && eq.type === 'Batteri'
+      eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
 
