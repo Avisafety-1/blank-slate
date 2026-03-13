@@ -2419,7 +2419,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         <SelectValue placeholder="Velg batteri..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipmentList.filter(e => e.type === 'Batteri').map(e => (
+                        {equipmentList.filter(e => isBatteryType(e.type)).map(e => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.navn} {e.serienummer ? `(${e.serienummer})` : ''}
                           </SelectItem>
