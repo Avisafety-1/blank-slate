@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const IG_API = "https://graph.instagram.com/v22.0";
+const FB_GRAPH_API = "https://graph.facebook.com/v22.0";
+const IG_TOKEN_API = "https://graph.instagram.com/v22.0";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -51,7 +52,7 @@ Deno.serve(async (req) => {
     // Try to exchange short-lived token for long-lived token if app secret is available
     if (APP_SECRET) {
       try {
-        const exchangeUrl = `${IG_API}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(APP_SECRET)}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
+        const exchangeUrl = `${IG_TOKEN_API}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(APP_SECRET)}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
         const exchangeRes = await fetch(exchangeUrl);
         const exchangeData = await exchangeRes.json();
         if (exchangeRes.ok && exchangeData.access_token) {
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     }
 
     // First: verify the token works by checking the account
-    const meRes = await fetch(`${IG_API}/me?fields=id,username&access_token=${encodeURIComponent(ACCESS_TOKEN)}`);
+    const meRes = await fetch(`${FB_GRAPH_API}/me?fields=id,username&access_token=${encodeURIComponent(ACCESS_TOKEN)}`);
     const meData = await meRes.json();
     console.log("Instagram /me response:", JSON.stringify(meData));
 
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
     });
 
     console.log("Creating container for user:", userId);
-    const containerRes = await fetch(`${IG_API}/${userId}/media`, {
+    const containerRes = await fetch(`${FB_GRAPH_API}/${userId}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: containerParams.toString(),
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
       access_token: ACCESS_TOKEN,
     });
 
-    const publishRes = await fetch(`${IG_API}/${userId}/media_publish`, {
+    const publishRes = await fetch(`${FB_GRAPH_API}/${userId}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: publishParams.toString(),
