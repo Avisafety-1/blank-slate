@@ -219,16 +219,14 @@ export const MarketingSettings = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Instagram Business Account ID konfigureres som Supabase secret.
-            Facebook Page Access Token gjenbrukes (krever <code>instagram_basic</code> og <code>instagram_content_publish</code> tillatelser).
+            Instagram bruker en egen app med Instagram-login. Krever <code>instagram_business_basic</code> og <code>instagram_content_publish</code> tillatelser.
           </p>
           <div className="rounded-md bg-muted/30 border border-border p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">Slik setter du opp:</p>
-            <p>1. Gå til <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">developers.facebook.com</a></p>
-            <p>2. Koble en Instagram Business-konto til Facebook-siden din</p>
-            <p>3. Hent Instagram Business Account ID via Graph API Explorer: <code>GET /me/accounts</code> → <code>GET /&#123;page-id&#125;?fields=instagram_business_account</code></p>
-            <p>4. Legg til som Supabase secret: <code>INSTAGRAM_BUSINESS_ACCOUNT_ID</code></p>
-            <p>5. Sørg for at Facebook-appen har <code>instagram_basic</code> og <code>instagram_content_publish</code> tillatelser</p>
+            <p>1. Gå til <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">developers.facebook.com</a> → «API setup with Instagram login»</p>
+            <p>2. Legg til tillatelser: <code>instagram_business_basic</code>, <code>instagram_content_publish</code></p>
+            <p>3. Generer en Access Token for Instagram-kontoen din</p>
+            <p>4. Legg til som Supabase secrets: <code>INSTAGRAM_ACCESS_TOKEN</code> og <code>INSTAGRAM_BUSINESS_ACCOUNT_ID</code></p>
           </div>
         </CardContent>
       </Card>
