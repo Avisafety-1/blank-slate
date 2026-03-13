@@ -13,7 +13,7 @@ import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown } from "lucide-react";
+import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
@@ -44,6 +44,10 @@ interface Equipment {
   missions_at_last_maintenance?: number;
   varsel_timer?: number | null;
   varsel_oppdrag?: number | null;
+  battery_cycles?: number | null;
+  battery_health_pct?: number | null;
+  battery_full_capacity_mah?: number | null;
+  battery_max_cell_deviation_v?: number | null;
 }
 
 interface EquipmentDetailDialogProps {
@@ -412,6 +416,56 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   </div>
                 </div>
               </div>
+
+              {/* Battery info section — only for batteries with data */}
+              {equipment.type === 'Batteri' && (equipment.battery_cycles != null || equipment.battery_health_pct != null || equipment.battery_full_capacity_mah != null || equipment.battery_max_cell_deviation_v != null) && (
+                <div className="border border-border rounded-lg p-3 space-y-3">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Battery className="w-4 h-4 text-primary" />
+                    Batteristatus
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {equipment.battery_cycles != null && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Sykluser</p>
+                        <p className={`text-sm font-medium ${equipment.battery_cycles > 300 ? 'text-destructive' : equipment.battery_cycles > 200 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                          {equipment.battery_cycles}
+                        </p>
+                      </div>
+                    )}
+                    {equipment.battery_health_pct != null && (
+                      <div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse</p>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium ${equipment.battery_health_pct < 60 ? 'text-destructive' : equipment.battery_health_pct < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {equipment.battery_health_pct}%
+                          </p>
+                          <div className="flex-1 h-2 rounded-full bg-muted">
+                            <div
+                              className={`h-full rounded-full transition-all ${equipment.battery_health_pct < 60 ? 'bg-destructive' : equipment.battery_health_pct < 80 ? 'bg-yellow-500' : 'bg-emerald-500'}`}
+                              style={{ width: `${Math.min(100, equipment.battery_health_pct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {equipment.battery_full_capacity_mah != null && (
+                      <div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Kapasitet</p>
+                        <p className="text-sm">{equipment.battery_full_capacity_mah} mAh</p>
+                      </div>
+                    )}
+                    {equipment.battery_max_cell_deviation_v != null && (
+                      <div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> Maks celleavvik</p>
+                        <p className={`text-sm font-medium ${equipment.battery_max_cell_deviation_v > 0.1 ? 'text-destructive' : ''}`}>
+                          {equipment.battery_max_cell_deviation_v.toFixed(3)} V
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Hours progress */}
               {equipment.inspection_interval_hours != null && equipment.inspection_interval_hours > 0 && (() => {
@@ -830,6 +884,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         equipmentId={equipment.id}
         equipmentNavn={equipment.navn}
         flyvetimer={equipment.flyvetimer || 0}
+        equipmentType={equipment.type}
+        equipmentSerienummer={equipment.serienummer}
       />
 
       {equipment.sjekkliste_id && (

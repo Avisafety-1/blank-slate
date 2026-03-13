@@ -1537,6 +1537,10 @@ export type Database = {
       equipment: {
         Row: {
           aktiv: boolean
+          battery_cycles: number | null
+          battery_full_capacity_mah: number | null
+          battery_health_pct: number | null
+          battery_max_cell_deviation_v: number | null
           company_id: string
           flyvetimer: number
           hours_at_last_maintenance: number | null
@@ -1566,6 +1570,10 @@ export type Database = {
         }
         Insert: {
           aktiv?: boolean
+          battery_cycles?: number | null
+          battery_full_capacity_mah?: number | null
+          battery_health_pct?: number | null
+          battery_max_cell_deviation_v?: number | null
           company_id: string
           flyvetimer?: number
           hours_at_last_maintenance?: number | null
@@ -1595,6 +1603,10 @@ export type Database = {
         }
         Update: {
           aktiv?: boolean
+          battery_cycles?: number | null
+          battery_full_capacity_mah?: number | null
+          battery_health_pct?: number | null
+          battery_max_cell_deviation_v?: number | null
           company_id?: string
           flyvetimer?: number
           hours_at_last_maintenance?: number | null

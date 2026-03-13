@@ -24,7 +24,10 @@ import {
   Wrench,
   ImagePlus,
   X,
-  ZoomIn
+  ZoomIn,
+  Battery,
+  Heart,
+  TrendingDown
 } from "lucide-react";
 import { format } from "date-fns";
 import autoTable from "jspdf-autotable";
@@ -36,6 +39,14 @@ interface EquipmentLogbookDialogProps {
   equipmentId: string;
   equipmentNavn: string;
   flyvetimer: number;
+  equipmentType?: string;
+  equipmentSerienummer?: string;
+}
+
+interface BatteryTrendEntry {
+  date: Date;
+  cycles: number | null;
+  health: number | null;
 }
 
 interface LogEntry {
@@ -56,7 +67,9 @@ export const EquipmentLogbookDialog = ({
   onOpenChange, 
   equipmentId, 
   equipmentNavn,
-  flyvetimer 
+  flyvetimer,
+  equipmentType,
+  equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
@@ -69,6 +82,7 @@ export const EquipmentLogbookDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [batteryTrend, setBatteryTrend] = useState<BatteryTrendEntry[]>([]);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -76,10 +90,13 @@ export const EquipmentLogbookDialog = ({
     entry_date: new Date().toISOString().split('T')[0],
   });
 
+  const isBattery = equipmentType === 'Batteri';
+
   useEffect(() => {
     if (open && equipmentId) {
       fetchAllLogs();
       fetchSignature();
+      if (isBattery && equipmentSerienummer) fetchBatteryTrend();
     }
   }, [open, equipmentId]);
 
@@ -91,6 +108,32 @@ export const EquipmentLogbookDialog = ({
       .eq("id", user.id)
       .single();
     setSignatureUrl(data?.signature_url || null);
+  };
+
+  const fetchBatteryTrend = async () => {
+    if (!equipmentSerienummer || !companyId) return;
+    try {
+      const { data } = await (supabase
+        .from('flight_logs')
+        .select('flight_date, battery_cycles, battery_health_pct')
+        .eq('company_id', companyId) as any)
+        .eq('battery_sn', equipmentSerienummer)
+        .not('battery_cycles', 'is', null)
+        .order('flight_date', { ascending: true })
+        .limit(100);
+
+      if (data) {
+        setBatteryTrend(
+          data.map((r: any) => ({
+            date: new Date(r.flight_date),
+            cycles: r.battery_cycles,
+            health: r.battery_health_pct,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Error fetching battery trend:', e);
+    }
   };
 
   const fetchAllLogs = async () => {
@@ -532,6 +575,7 @@ export const EquipmentLogbookDialog = ({
               <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
               <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
               <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
+              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm">Batteritrend</TabsTrigger>}
             </TabsList>
 
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
@@ -610,6 +654,60 @@ export const EquipmentLogbookDialog = ({
                 )}
               </ScrollArea>
             </TabsContent>
+
+            {isBattery && (
+              <TabsContent value="battery" className="flex-1 min-h-0 mt-2">
+                <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
+                  {batteryTrend.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <div className="text-center space-y-2">
+                        <Battery className="w-8 h-8 mx-auto opacity-50" />
+                        <p>Ingen batterihistorikk funnet</p>
+                        <p className="text-xs">Importer flylogger med dette batteriet for å se trender</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Sykluser over tid</p>
+                          <p className="text-lg font-bold">{batteryTrend[batteryTrend.length - 1]?.cycles ?? '—'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Fra {batteryTrend[0]?.cycles ?? '?'} → {batteryTrend[batteryTrend.length - 1]?.cycles ?? '?'}
+                          </p>
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse over tid</p>
+                          <p className={`text-lg font-bold ${(batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 60 ? 'text-destructive' : (batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {batteryTrend[batteryTrend.length - 1]?.health ?? '—'}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Fra {batteryTrend[0]?.health ?? '?'}% → {batteryTrend[batteryTrend.length - 1]?.health ?? '?'}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
+                        {batteryTrend.slice().reverse().map((entry, idx) => (
+                          <div key={idx} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
+                            <div className="flex gap-4">
+                              {entry.cycles != null && <span>🔄 {entry.cycles} sykl.</span>}
+                              {entry.health != null && (
+                                <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
+                                  ❤️ {entry.health}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>
