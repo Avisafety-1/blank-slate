@@ -102,10 +102,10 @@ export const MarketingOverview = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Marketing Oversikt</h1>
-        <p className="text-muted-foreground text-sm mt-1">Administrer innholdsidéer og utkast for markedsføring.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Marketing Oversikt</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Administrer innholdsidéer og utkast for markedsføring.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
