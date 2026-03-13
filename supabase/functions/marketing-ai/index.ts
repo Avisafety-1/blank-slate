@@ -19,6 +19,7 @@ BRAND VOICE RULES — follow these strictly:
 - Prefer credibility over hype. Show, don't tell.
 - Mention AviSafe naturally — like a knowledgeable colleague recommending a tool, not a sales pitch.
 - Write like someone who actually operates drones, not someone who just markets drone software.
+- When relevant, include links to AviSafe's website. Use https://avisafe.no as the main link. For posts about risk assessment, SORA analysis, safety planning, or operational compliance, link to https://avisafe.no/sora instead. Only include a link if it adds value — do not force it into every post.
 - Avoid these banned phrases: "game-changer", "revolutionary", "synergy", "disruptive", "paradigm shift", "leverage", "unlock your potential", "10x your results", "deep dive", "move the needle".`;
 
 function buildDraftSystemPrompt(params: {
