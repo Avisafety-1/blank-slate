@@ -53,6 +53,9 @@ Deno.serve(async (req) => {
 
     const results: any[] = [];
 
+    const IG_ACCESS_TOKEN = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN")?.trim();
+    const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
+
     for (const draft of drafts) {
       try {
         const text = draft.content?.trim();
@@ -71,56 +74,131 @@ Deno.serve(async (req) => {
           .limit(1);
         const imageUrl = media?.[0]?.file_url;
 
-        let fbResponse: Response;
-        if (imageUrl) {
-          fbResponse = await fetch(`${GRAPH_API}/${PAGE_ID}/photos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: text,
-              url: imageUrl,
-              access_token: PAGE_ACCESS_TOKEN,
-            }),
+        const draftPlatform = draft.platform || "facebook";
+
+        if (draftPlatform === "instagram") {
+          // Instagram publishing
+          if (!IG_ACCESS_TOKEN || !IG_ACCOUNT_ID) {
+            results.push({ id: draft.id, error: "Instagram not configured" });
+            continue;
+          }
+          if (!imageUrl) {
+            results.push({ id: draft.id, error: "Instagram requires an image" });
+            continue;
+          }
+
+          // Step 1: Create container
+          const containerParams = new URLSearchParams({
+            image_url: imageUrl,
+            caption: text,
+            access_token: IG_ACCESS_TOKEN,
           });
+          const containerRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: containerParams.toString(),
+          });
+          const containerData = await containerRes.json();
+          if (!containerRes.ok) {
+            console.error(`Instagram container error for draft ${draft.id}:`, JSON.stringify(containerData));
+            results.push({ id: draft.id, error: containerData?.error?.message || "Instagram container error" });
+            continue;
+          }
+
+          // Step 2: Publish
+          const publishParams = new URLSearchParams({
+            creation_id: containerData.id,
+            access_token: IG_ACCESS_TOKEN,
+          });
+          const publishRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media_publish`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: publishParams.toString(),
+          });
+          const publishData = await publishRes.json();
+          if (!publishRes.ok) {
+            console.error(`Instagram publish error for draft ${draft.id}:`, JSON.stringify(publishData));
+            results.push({ id: draft.id, error: publishData?.error?.message || "Instagram publish error" });
+            continue;
+          }
+
+          const igPostId = publishData.id;
+          const igPostUrl = `https://www.instagram.com/p/${igPostId}/`;
+
+          await supabase
+            .from("marketing_drafts")
+            .update({
+              status: "published",
+              published_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...(draft.metadata || {}),
+                instagram_post_id: igPostId,
+                instagram_post_url: igPostUrl,
+              },
+            })
+            .eq("id", draft.id);
+
+          console.log(`Published draft ${draft.id} -> Instagram post ${igPostId}`);
+          results.push({ id: draft.id, success: true, postId: igPostId, platform: "instagram" });
+
         } else {
-          fbResponse = await fetch(`${GRAPH_API}/${PAGE_ID}/feed`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: text,
-              access_token: PAGE_ACCESS_TOKEN,
-            }),
-          });
+          // Facebook publishing (default)
+          if (!PAGE_ACCESS_TOKEN || !PAGE_ID) {
+            results.push({ id: draft.id, error: "Facebook not configured" });
+            continue;
+          }
+
+          let fbResponse: Response;
+          if (imageUrl) {
+            fbResponse = await fetch(`${GRAPH_API}/${PAGE_ID}/photos`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: text,
+                url: imageUrl,
+                access_token: PAGE_ACCESS_TOKEN,
+              }),
+            });
+          } else {
+            fbResponse = await fetch(`${GRAPH_API}/${PAGE_ID}/feed`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: text,
+                access_token: PAGE_ACCESS_TOKEN,
+              }),
+            });
+          }
+
+          const fbData = await fbResponse.json();
+
+          if (!fbResponse.ok) {
+            console.error(`Facebook error for draft ${draft.id}:`, JSON.stringify(fbData));
+            results.push({ id: draft.id, error: fbData?.error?.message || "Facebook error" });
+            continue;
+          }
+
+          const postId = fbData.id || fbData.post_id;
+          const postUrl = `https://facebook.com/${postId}`;
+
+          await supabase
+            .from("marketing_drafts")
+            .update({
+              status: "published",
+              published_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...(draft.metadata || {}),
+                facebook_post_id: postId,
+                facebook_post_url: postUrl,
+              },
+            })
+            .eq("id", draft.id);
+
+          console.log(`Published draft ${draft.id} -> Facebook post ${postId}`);
+          results.push({ id: draft.id, success: true, postId, platform: "facebook" });
         }
-
-        const fbData = await fbResponse.json();
-
-        if (!fbResponse.ok) {
-          console.error(`Facebook error for draft ${draft.id}:`, JSON.stringify(fbData));
-          results.push({ id: draft.id, error: fbData?.error?.message || "Facebook error" });
-          continue;
-        }
-
-        const postId = fbData.id || fbData.post_id;
-        const postUrl = `https://facebook.com/${postId}`;
-
-        // Update draft to published
-        await supabase
-          .from("marketing_drafts")
-          .update({
-            status: "published",
-            published_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            metadata: {
-              ...(draft.metadata || {}),
-              facebook_post_id: postId,
-              facebook_post_url: postUrl,
-            },
-          })
-          .eq("id", draft.id);
-
-        console.log(`Published draft ${draft.id} -> Facebook post ${postId}`);
-        results.push({ id: draft.id, success: true, postId });
       } catch (err) {
         console.error(`Error publishing draft ${draft.id}:`, err);
         results.push({ id: draft.id, error: err instanceof Error ? err.message : "Unknown error" });

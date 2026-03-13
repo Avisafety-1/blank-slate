@@ -229,21 +229,36 @@ export const MarketingDrafts = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-1 items-center pt-0.5">
+            <div className="flex gap-1 items-center pt-0.5 flex-wrap">
               {isApproved && (
-                <Button
-                  size="sm"
-                  onClick={() => handleQuickPublish(draft)}
-                  disabled={publishingId === draft.id}
-                  className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs h-7 px-2.5"
-                >
-                  {publishingId === draft.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Facebook className="w-3.5 h-3.5" />
-                  )}
-                  Publiser
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublish(draft)}
+                    disabled={publishingId === draft.id}
+                    className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs h-7 px-2.5"
+                  >
+                    {publishingId === draft.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Facebook className="w-3.5 h-3.5" />
+                    )}
+                    Facebook
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublishInstagram(draft)}
+                    disabled={publishingIgId === draft.id}
+                    className="gap-1 bg-[#E1306C] hover:bg-[#E1306C]/90 text-white text-xs h-7 px-2.5"
+                  >
+                    {publishingIgId === draft.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Instagram className="w-3.5 h-3.5" />
+                    )}
+                    Instagram
+                  </Button>
+                </>
               )}
               {isPublished && (meta?.postUrl || meta?.facebook_post_url) && (
                 <Button
@@ -253,7 +268,18 @@ export const MarketingDrafts = () => {
                   className="gap-1 text-xs h-7 px-2"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Se
+                  Facebook
+                </Button>
+              )}
+              {isPublished && meta?.instagram_post_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(meta.instagram_post_url, "_blank")}
+                  className="gap-1 text-xs h-7 px-2"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Instagram
                 </Button>
               )}
               <div className="ml-auto flex gap-0.5">
