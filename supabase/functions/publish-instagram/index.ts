@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       access_token: ACCESS_TOKEN,
     });
 
-    const publishRes = await fetch(`${IG_API}/${userId}/media_publish`, {
+    const publishRes = await fetch(`${FB_GRAPH_API}/${userId}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: publishParams.toString(),
