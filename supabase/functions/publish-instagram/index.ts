@@ -37,12 +37,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ACCESS_TOKEN = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN")?.trim();
+    const ACCESS_TOKEN = Deno.env.get("INSTAGRAM_ACCESS_TOKEN")?.trim();
     const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
 
     if (!ACCESS_TOKEN || !IG_ACCOUNT_ID) {
       return new Response(
-        JSON.stringify({ error: "Instagram er ikke konfigurert. Legg til FACEBOOK_PAGE_ACCESS_TOKEN og INSTAGRAM_BUSINESS_ACCOUNT_ID i secrets." }),
+        JSON.stringify({ error: "Instagram er ikke konfigurert. Legg til INSTAGRAM_ACCESS_TOKEN og INSTAGRAM_BUSINESS_ACCOUNT_ID i secrets." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
