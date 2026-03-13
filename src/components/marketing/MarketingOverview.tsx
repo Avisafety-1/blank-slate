@@ -118,7 +118,7 @@ export const MarketingOverview = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-foreground">{s.value}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">{s.value}</p>
             </CardContent>
           </Card>
         ))}
