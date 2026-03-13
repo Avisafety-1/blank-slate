@@ -118,7 +118,33 @@ Deno.serve(async (req) => {
     const creationId = containerData.id;
     console.log("Container created:", creationId);
 
-    // Step 2: Publish the container
+    // Step 2: Wait for container to be ready (poll status)
+    const MAX_POLLS = 15;
+    const POLL_INTERVAL_MS = 2000;
+    for (let i = 0; i < MAX_POLLS; i++) {
+      const statusRes = await fetch(`${IG_API}/${creationId}?fields=status_code`, {
+        headers: { "Authorization": `Bearer ${ACCESS_TOKEN}` },
+      });
+      const statusData = await statusRes.json();
+      console.log(`Poll ${i + 1}/${MAX_POLLS}: status_code=${statusData.status_code}`);
+
+      if (statusData.status_code === "FINISHED") break;
+      if (statusData.status_code === "ERROR") {
+        return new Response(
+          JSON.stringify({ error: `Instagram medieprosessering feilet: ${JSON.stringify(statusData)}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (i === MAX_POLLS - 1) {
+        return new Response(
+          JSON.stringify({ error: "Instagram brukte for lang tid på å prosessere bildet. Prøv igjen." }),
+          { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+
+    // Step 3: Publish the container
     const publishRes = await fetch(`${IG_API}/${userId}/media_publish`, {
       method: "POST",
       headers: {
