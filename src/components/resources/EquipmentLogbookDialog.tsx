@@ -654,6 +654,60 @@ export const EquipmentLogbookDialog = ({
                 )}
               </ScrollArea>
             </TabsContent>
+
+            {isBattery && (
+              <TabsContent value="battery" className="flex-1 min-h-0 mt-2">
+                <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
+                  {batteryTrend.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <div className="text-center space-y-2">
+                        <Battery className="w-8 h-8 mx-auto opacity-50" />
+                        <p>Ingen batterihistorikk funnet</p>
+                        <p className="text-xs">Importer flylogger med dette batteriet for å se trender</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Sykluser over tid</p>
+                          <p className="text-lg font-bold">{batteryTrend[batteryTrend.length - 1]?.cycles ?? '—'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Fra {batteryTrend[0]?.cycles ?? '?'} → {batteryTrend[batteryTrend.length - 1]?.cycles ?? '?'}
+                          </p>
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse over tid</p>
+                          <p className={`text-lg font-bold ${(batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 60 ? 'text-destructive' : (batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {batteryTrend[batteryTrend.length - 1]?.health ?? '—'}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Fra {batteryTrend[0]?.health ?? '?'}% → {batteryTrend[batteryTrend.length - 1]?.health ?? '?'}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
+                        {batteryTrend.slice().reverse().map((entry, idx) => (
+                          <div key={idx} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
+                            <div className="flex gap-4">
+                              {entry.cycles != null && <span>🔄 {entry.cycles} sykl.</span>}
+                              {entry.health != null && (
+                                <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
+                                  ❤️ {entry.health}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>
