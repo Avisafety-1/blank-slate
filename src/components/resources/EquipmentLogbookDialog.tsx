@@ -136,6 +136,7 @@ export const EquipmentLogbookDialog = ({
     }
   };
 
+  const fetchAllLogs = async () => {
     setIsLoading(true);
     try {
       const logs: LogEntry[] = [];
