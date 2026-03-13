@@ -39,7 +39,7 @@ export interface Person {
   aktiv: boolean;
 }
 
-export type EquipmentType = "Drone" | "Sensor" | "Batteri" | "Radio" | "Verneutstyr" | "Annet";
+export type EquipmentType = "Drone" | "Sensor" | "Batteri" | "Radio" | "Verneutstyr" | "Kamera" | "Lader" | "Propell" | "Verktøy" | "Bæresystem" | "Annet" | string;
 
 export interface Equipment {
   id: string;
