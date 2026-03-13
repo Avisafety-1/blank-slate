@@ -75,10 +75,10 @@ export const MarketingSettings = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Innstillinger</h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Innstillinger</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Konfigurer merkevare-stemme, regler og plattforminnstillinger.
         </p>
       </div>
