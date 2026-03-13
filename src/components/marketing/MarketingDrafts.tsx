@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Copy, Facebook, ExternalLink, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Copy, Facebook, Instagram, ExternalLink, Clock, Calendar } from "lucide-react";
 import { DraftEditorDialog } from "./DraftEditorDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -17,6 +17,7 @@ export const MarketingDrafts = () => {
   const queryClient = useQueryClient();
   const [editDraft, setEditDraft] = useState<any>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [publishingIgId, setPublishingIgId] = useState<string | null>(null);
   const [tab, setTab] = useState("all");
 
   const { data: drafts = [], isLoading } = useQuery({
@@ -118,6 +119,40 @@ export const MarketingDrafts = () => {
     }
   };
 
+  const handleQuickPublishInstagram = async (draft: any) => {
+    setPublishingIgId(draft.id);
+    try {
+      const text = draft.content;
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url;
+
+      if (!imageUrl) {
+        toast.error("Instagram krever et bilde. Legg til et bilde i utkastet først.");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("publish-instagram", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Instagram!", {
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Instagram");
+    } finally {
+      setPublishingIgId(null);
+    }
+  };
+
   const statusLabels: Record<string, string> = {
     draft: "Utkast",
     review: "Gjennomgang",
@@ -194,21 +229,36 @@ export const MarketingDrafts = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-1 items-center pt-0.5">
+            <div className="flex gap-1 items-center pt-0.5 flex-wrap">
               {isApproved && (
-                <Button
-                  size="sm"
-                  onClick={() => handleQuickPublish(draft)}
-                  disabled={publishingId === draft.id}
-                  className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs h-7 px-2.5"
-                >
-                  {publishingId === draft.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Facebook className="w-3.5 h-3.5" />
-                  )}
-                  Publiser
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublish(draft)}
+                    disabled={publishingId === draft.id}
+                    className="gap-1 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs h-7 px-2.5"
+                  >
+                    {publishingId === draft.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Facebook className="w-3.5 h-3.5" />
+                    )}
+                    Facebook
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublishInstagram(draft)}
+                    disabled={publishingIgId === draft.id}
+                    className="gap-1 bg-[#E1306C] hover:bg-[#E1306C]/90 text-white text-xs h-7 px-2.5"
+                  >
+                    {publishingIgId === draft.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Instagram className="w-3.5 h-3.5" />
+                    )}
+                    Instagram
+                  </Button>
+                </>
               )}
               {isPublished && (meta?.postUrl || meta?.facebook_post_url) && (
                 <Button
@@ -218,7 +268,18 @@ export const MarketingDrafts = () => {
                   className="gap-1 text-xs h-7 px-2"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Se
+                  Facebook
+                </Button>
+              )}
+              {isPublished && meta?.instagram_post_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(meta.instagram_post_url, "_blank")}
+                  className="gap-1 text-xs h-7 px-2"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Instagram
                 </Button>
               )}
               <div className="ml-auto flex gap-0.5">

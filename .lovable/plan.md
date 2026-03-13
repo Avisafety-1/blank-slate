@@ -1,55 +1,44 @@
 
 
-## Instagram-integrasjon for Marketing-modulen
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Instagram Business API bruker samme Facebook Graph API, men krever et ekstra steg: bilder MÅ lastes opp som container først, deretter publiseres. Instagram støtter IKKE rene tekstinnlegg -- et bilde er alltid påkrevd.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Forutsetninger (secrets)
-- `INSTAGRAM_BUSINESS_ACCOUNT_ID` -- hentes fra Facebook Page settings (Page → Instagram → Connected Account)
-- `FACEBOOK_PAGE_ACCESS_TOKEN` -- allerede konfigurert, gjenbrukes (trenger `instagram_basic`, `instagram_content_publish` permissions)
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
 ### Endringer
 
-**1. Ny Edge Function: `supabase/functions/publish-instagram/index.ts`**
-- Samme mønster som `publish-facebook`
-- To-stegs publisering via Graph API:
-  1. `POST /{ig-account-id}/media` med `image_url` + `caption` → returnerer `creation_id`
-  2. `POST /{ig-account-id}/media_publish` med `creation_id` → returnerer `id`
-- Valider at `imageUrl` finnes (påkrevd for Instagram)
-- Oppdater draft metadata med `instagram_post_id` og `instagram_post_url`
-- Bruker secrets: `FACEBOOK_PAGE_ACCESS_TOKEN` + `INSTAGRAM_BUSINESS_ACCOUNT_ID`
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**2. Oppdater `supabase/functions/publish-scheduled/index.ts`**
-- Etter Facebook-publisering, sjekk om draft.platform === "instagram"
-- Kall Instagram-logikken (same two-step) for planlagte innlegg
-- Lagre `instagram_post_id`/`instagram_post_url` i metadata
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**3. Oppdater `src/components/marketing/DraftEditorDialog.tsx`**
-- Importer `Instagram` ikon (lucide-react)
-- Legg til `handlePublishInstagram` funksjon som kaller `publish-instagram` edge function
-- Legg til Instagram-publiseringsknapp i DialogFooter (ved siden av Facebook-knappen), med rosa/gradient farge
-- Knappen vises kun når det finnes minst ett bilde knyttet til utkastet (Instagram krever bilde)
-- Legg til bekreftelses-AlertDialog for Instagram (som Facebook)
-- Vis feilmelding hvis bruker prøver å publisere uten bilde
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-**4. Oppdater `src/components/marketing/MarketingDrafts.tsx`**
-- Legg til Instagram-hurtigpubliseringsknapp på godkjente utkast (ved siden av Facebook-knappen)
-- Importer Instagram-ikon
-- `handleQuickPublishInstagram` som kaller edge function
-- Vis "Se"-lenke for publiserte Instagram-innlegg fra metadata
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-**5. Oppdater `src/components/marketing/MarketingSettings.tsx`**
-- Endre Instagram status fra "Planlagt" til "Aktiv"
-- Legg til Instagram-konfigurasjonsseksjon (som Facebook-seksjonen) med instruksjoner for å koble Instagram Business Account til Facebook Page og hente `INSTAGRAM_BUSINESS_ACCOUNT_ID`
-
-**6. Oppdater `supabase/config.toml`**
-- Legg til `[functions.publish-instagram]` med `verify_jwt = false`
-
-### Secret som må legges til
-- `INSTAGRAM_BUSINESS_ACCOUNT_ID` -- brukerens Instagram Business Account ID (hentes fra Facebook Page → Settings → Instagram)
-
-### Begrensninger
-- Instagram API krever alltid et bilde (ingen rene tekstinnlegg)
-- Bildet må være tilgjengelig via offentlig URL (Supabase storage fungerer)
-- Carousel/video støttes ikke i første versjon
+Ingen nye avhengigheter. Ingen databaseendringer.
 

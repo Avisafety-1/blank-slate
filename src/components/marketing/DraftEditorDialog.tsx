@@ -45,6 +45,7 @@ import {
   Image,
   Eye,
   Facebook,
+  Instagram,
   CalendarIcon,
   Clock,
   Upload,
@@ -271,7 +272,9 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
   const [status, setStatus] = useState("draft");
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishingIg, setPublishingIg] = useState(false);
   const [confirmFbOpen, setConfirmFbOpen] = useState(false);
+  const [confirmIgOpen, setConfirmIgOpen] = useState(false);
 
   // Structured fields
   const [hook, setHook] = useState("");
@@ -504,6 +507,44 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
       toast.error(e.message || "Kunne ikke publisere til Facebook");
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handlePublishInstagram = async () => {
+    if (!draft) return;
+    setPublishingIg(true);
+    setConfirmIgOpen(false);
+    try {
+      const text = composePlainContent();
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url;
+
+      if (!imageUrl) {
+        toast.error("Instagram krever et bilde. Legg til et bilde i utkastet først.");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("publish-instagram", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til Instagram!", {
+        description: data.postUrl ? "Se innlegget på Instagram" : undefined,
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+      setStatus("published");
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til Instagram");
+    } finally {
+      setPublishingIg(false);
     }
   };
 
@@ -833,7 +874,17 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             className="gap-1 text-[#1877F2] border-[#1877F2]/30 hover:bg-[#1877F2]/10"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Facebook className="w-4 h-4" />}
-            Publiser nå
+            Facebook
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmIgOpen(true)}
+            disabled={publishingIg || !composePlainContent().trim()}
+            className="gap-1 text-[#E1306C] border-[#E1306C]/30 hover:bg-[#E1306C]/10"
+          >
+            {publishingIg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Instagram className="w-4 h-4" />}
+            Instagram
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
           <Button onClick={handleSave} className="gap-1">
@@ -855,6 +906,24 @@ export const DraftEditorDialog = ({ draft, open, onOpenChange }: Props) => {
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={handlePublishFacebook} className="gap-1">
               <Facebook className="w-4 h-4" />
+              Publiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmIgOpen} onOpenChange={setConfirmIgOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Publiser til Instagram?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Innlegget vil bli publisert direkte på Instagram Business-kontoen. Et bilde er påkrevd. Denne handlingen kan ikke angres fra AviSafe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishInstagram} className="gap-1 bg-[#E1306C] hover:bg-[#E1306C]/90">
+              <Instagram className="w-4 h-4" />
               Publiser
             </AlertDialogAction>
           </AlertDialogFooter>
