@@ -295,15 +295,15 @@ export const MarketingDrafts = () => {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full sm:w-auto flex overflow-x-auto">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs sm:text-sm">Alle ({drafts.length})</TabsTrigger>
-          <TabsTrigger value="ready" className="flex-1 sm:flex-none text-xs sm:text-sm">
+        <TabsList className="w-full grid grid-cols-4 h-auto p-1">
+          <TabsTrigger value="all" className="text-[11px] sm:text-sm px-1 py-1.5">Alle ({drafts.length})</TabsTrigger>
+          <TabsTrigger value="ready" className="text-[11px] sm:text-sm px-1 py-1.5">
             Klare ({readyCnt})
           </TabsTrigger>
-          <TabsTrigger value="scheduled" className="flex-1 sm:flex-none text-xs sm:text-sm">
+          <TabsTrigger value="scheduled" className="text-[11px] sm:text-sm px-1 py-1.5">
             Planlagt ({scheduledCnt})
           </TabsTrigger>
-          <TabsTrigger value="published" className="flex-1 sm:flex-none text-xs sm:text-sm">
+          <TabsTrigger value="published" className="text-[11px] sm:text-sm px-1 py-1.5">
             Publisert ({publishedCnt})
           </TabsTrigger>
         </TabsList>
