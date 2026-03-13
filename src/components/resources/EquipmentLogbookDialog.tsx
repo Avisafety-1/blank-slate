@@ -578,6 +578,7 @@ export const EquipmentLogbookDialog = ({
               {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm">Batteritrend</TabsTrigger>}
             </TabsList>
 
+            {activeTab !== 'battery' && (
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
               <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
                 {isLoading ? (
@@ -598,62 +599,6 @@ export const EquipmentLogbookDialog = ({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             <div className="text-muted-foreground mt-0.5">
-                              {log.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className={`${log.badgeColor} text-xs`}>
-                                  {log.badgeText}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(log.date, 'dd.MM.yyyy HH:mm')}
-                                </span>
-                              </div>
-                              <p className="font-medium text-sm mt-1 break-words">{log.title}</p>
-                              {log.description && (
-                                <p className="text-sm text-muted-foreground mt-0.5 break-words">{log.description}</p>
-                              )}
-                              {log.imageUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxUrl(log.imageUrl!)}
-                                  className="mt-2 relative group"
-                                >
-                                  <img
-                                    src={log.imageUrl}
-                                    alt="Vedlegg"
-                                    className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
-                                    <ZoomIn className="w-4 h-4 text-white" />
-                                  </div>
-                                </button>
-                              )}
-                              {log.userName && (
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                  <User className="w-3 h-3" />
-                                  {log.userName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {log.type === 'manual' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteEntry(log.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
 
             {isBattery && (
               <TabsContent value="battery" className="flex-1 min-h-0 mt-2">
