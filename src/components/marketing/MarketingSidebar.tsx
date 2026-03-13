@@ -39,22 +39,20 @@ export const MarketingSidebar = ({ active, onChange }: Props) => (
       ))}
     </aside>
 
-    {/* Mobile tabs */}
-    <div className="flex md:hidden border-b border-border bg-card/50 overflow-x-auto">
+    {/* Mobile tabs - compact icon-only with label below */}
+    <div className="flex md:hidden border-b border-border bg-card/50">
       {items.map((item) => (
-        <Button
+        <button
           key={item.key}
-          variant="ghost"
-          size="sm"
           className={cn(
-            "gap-1.5 rounded-none border-b-2 border-transparent flex-shrink-0",
+            "flex-1 flex flex-col items-center gap-0.5 py-2 text-muted-foreground transition-colors border-b-2 border-transparent",
             active === item.key && "border-primary text-primary font-medium"
           )}
           onClick={() => onChange(item.key)}
         >
-          <item.icon className="w-3.5 h-3.5" />
-          <span className="text-xs">{item.label}</span>
-        </Button>
+          <item.icon className="w-4 h-4" />
+          <span className="text-[10px] leading-tight">{item.label}</span>
+        </button>
       ))}
     </div>
   </>
