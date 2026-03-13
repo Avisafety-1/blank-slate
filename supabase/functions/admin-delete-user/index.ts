@@ -214,9 +214,15 @@ serve(async (req: Request): Promise<Response> => {
     ]);
 
     // ============================================================
-    // DELETE — session/device-only data + identity tables
+    // DELETE — join tables with NOT NULL profile refs + session data
     // ============================================================
     await Promise.all([
+      // Join tables (NOT NULL profile_id — can't SET NULL, must DELETE)
+      admin.from("drone_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("mission_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("flight_log_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("personnel_competencies").delete().eq("profile_id", targetUserId),
+      // Session / device data
       admin.from("push_subscriptions").delete().eq("user_id", targetUserId),
       admin.from("map_viewer_heartbeats").delete().eq("user_id", targetUserId),
       admin.from("calendar_subscriptions").delete().eq("user_id", targetUserId),
