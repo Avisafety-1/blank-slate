@@ -162,14 +162,14 @@ export const MarketingOverview = () => {
           </CardHeader>
           <CardContent className="space-y-2">
             {recentPublished.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-foreground font-medium">{item.title}</span>
+              <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-foreground font-medium truncate">{item.title}</span>
                   {item.platform && (
-                    <Badge variant="outline" className="text-xs capitalize">{item.platform}</Badge>
+                    <Badge variant="outline" className="text-xs capitalize flex-shrink-0">{item.platform}</Badge>
                   )}
                 </div>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-muted-foreground text-xs flex-shrink-0">
                   {format(new Date(item.published_at), "d. MMM HH:mm", { locale: nb })}
                 </span>
               </div>

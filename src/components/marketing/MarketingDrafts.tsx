@@ -283,27 +283,27 @@ export const MarketingDrafts = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Utkast</h1>
-          <p className="text-muted-foreground text-sm mt-1">Rediger og administrer innholdsutkast.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Utkast</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Rediger og administrer innholdsutkast.</p>
         </div>
-        <Button onClick={createBlank} className="gap-2">
+        <Button onClick={createBlank} className="gap-2 w-full sm:w-auto" size="sm">
           <Plus className="w-4 h-4" /> Nytt utkast
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="all">Alle ({drafts.length})</TabsTrigger>
-          <TabsTrigger value="ready">
+        <TabsList className="w-full sm:w-auto flex overflow-x-auto">
+          <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs sm:text-sm">Alle ({drafts.length})</TabsTrigger>
+          <TabsTrigger value="ready" className="flex-1 sm:flex-none text-xs sm:text-sm">
             Klare ({readyCnt})
           </TabsTrigger>
-          <TabsTrigger value="scheduled">
+          <TabsTrigger value="scheduled" className="flex-1 sm:flex-none text-xs sm:text-sm">
             Planlagt ({scheduledCnt})
           </TabsTrigger>
-          <TabsTrigger value="published">
+          <TabsTrigger value="published" className="flex-1 sm:flex-none text-xs sm:text-sm">
             Publisert ({publishedCnt})
           </TabsTrigger>
         </TabsList>
