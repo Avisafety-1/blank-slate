@@ -87,16 +87,18 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Step 1: Create container
-          const containerParams = new URLSearchParams({
-            image_url: imageUrl,
-            caption: text,
-            access_token: IG_ACCESS_TOKEN,
-          });
-          const containerRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media`, {
+          // Step 1: Create container (Instagram Login uses graph.instagram.com)
+          const IG_API = "https://graph.instagram.com/v22.0";
+          const containerRes = await fetch(`${IG_API}/${IG_ACCOUNT_ID}/media`, {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: containerParams.toString(),
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${IG_ACCESS_TOKEN}`,
+            },
+            body: JSON.stringify({
+              image_url: imageUrl,
+              caption: text,
+            }),
           });
           const containerData = await containerRes.json();
           if (!containerRes.ok) {
