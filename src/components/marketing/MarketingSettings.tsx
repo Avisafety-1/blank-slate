@@ -20,7 +20,7 @@ const STORAGE_KEY = "avisafe-marketing-brand-settings";
 const platformIntegrations = [
   { name: "LinkedIn", status: "Planlagt", desc: "Automatisk publisering kommer snart." },
   { name: "Facebook", status: "Aktiv", desc: "Direkte publisering via Graph API." },
-  { name: "Instagram", status: "Planlagt", desc: "Automatisk publisering kommer snart." },
+  { name: "Instagram", status: "Aktiv", desc: "Direkte publisering via Instagram Graph API." },
   { name: "Blogg", status: "Planlagt", desc: "CMS-integrasjon kommer snart." },
   { name: "E-post", status: "Planlagt", desc: "Nyhetsbrev-integrasjon kommer snart." },
 ];
