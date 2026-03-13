@@ -1,33 +1,44 @@
 
 
-## Diagnose: Feil ved sletting av bruker
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Årsak
-`mission_risk_assessments.pilot_id` er **NOT NULL** med **NO ACTION** som FK-regel mot `profiles`. Når edge-funksjonen prøver å slette brukeren:
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-1. `setNull("mission_risk_assessments", "pilot_id")` → **feiler** fordi kolonnen er NOT NULL (logges som warning, funksjonen fortsetter)
-2. `profiles` slettes → blokkeres av FK-constraint fra `mission_risk_assessments`
-3. `auth.admin.deleteUser()` → feiler fordi auth.users CASCADE til profiles, som fortsatt er blokkert
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Brukeren som Sisjord prøvde å slette har sannsynligvis én eller flere risikovurderinger knyttet til seg.
+### Endringer
 
-### Løsning
-To endringer:
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-**1. Database-migrasjon**: Gjør `mission_risk_assessments.pilot_id` nullable og endre FK-regelen til SET NULL:
-```sql
-ALTER TABLE mission_risk_assessments 
-  ALTER COLUMN pilot_id DROP NOT NULL;
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-ALTER TABLE mission_risk_assessments 
-  DROP CONSTRAINT mission_risk_assessments_pilot_id_fkey,
-  ADD CONSTRAINT mission_risk_assessments_pilot_id_fkey 
-    FOREIGN KEY (pilot_id) REFERENCES profiles(id) ON DELETE SET NULL;
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-**2. Edge function**: Oppdater `admin-delete-user/index.ts` slik at NOT NULL join-tabeller (drone_personnel, mission_personnel, flight_log_personnel, personnel_competencies, personnel_log_entries) bruker DELETE i stedet for SET NULL, siden disse radene uansett blir cascade-slettet når profilen fjernes. Legg også til feilhåndtering på profiles-delete.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### Berørte filer
-- `supabase/migrations/` — ny migrasjon for `mission_risk_assessments.pilot_id`
-- `supabase/functions/admin-delete-user/index.ts` — flytt NOT NULL-kolonner fra setNull til delete-seksjonen
+Ingen nye avhengigheter. Ingen databaseendringer.
 

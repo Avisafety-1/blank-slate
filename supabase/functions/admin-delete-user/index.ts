@@ -184,24 +184,20 @@ serve(async (req: Request): Promise<Response> => {
       setNull("drone_equipment_history", "user_id"),
       setNull("drone_inspections", "user_id"),
       setNull("drone_log_entries", "user_id"),
-      setNull("drone_personnel", "profile_id"),
       setNull("drones", "user_id"),
       setNull("dronetag_devices", "user_id"),
       setNull("equipment", "user_id"),
       setNull("equipment_log_entries", "user_id"),
-      setNull("flight_log_personnel", "profile_id"),
       setNull("flight_logs", "user_id"),
       setNull("incident_comments", "user_id"),
       setNull("incidents", "user_id"),
       setNull("incidents", "oppfolgingsansvarlig_id"),
-      setNull("mission_personnel", "profile_id"),
       setNull("mission_risk_assessments", "pilot_id"),
       setNull("mission_sora", "prepared_by"),
       setNull("mission_sora", "approved_by"),
       setNull("missions", "user_id"),
       setNull("missions", "approved_by"),
       setNull("news", "user_id"),
-      setNull("personnel_competencies", "profile_id"),
       setNull("profiles", "approved_by"),
     ]);
 
@@ -214,9 +210,15 @@ serve(async (req: Request): Promise<Response> => {
     ]);
 
     // ============================================================
-    // DELETE — session/device-only data + identity tables
+    // DELETE — join tables with NOT NULL profile refs + session data
     // ============================================================
     await Promise.all([
+      // Join tables (NOT NULL profile_id — can't SET NULL, must DELETE)
+      admin.from("drone_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("mission_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("flight_log_personnel").delete().eq("profile_id", targetUserId),
+      admin.from("personnel_competencies").delete().eq("profile_id", targetUserId),
+      // Session / device data
       admin.from("push_subscriptions").delete().eq("user_id", targetUserId),
       admin.from("map_viewer_heartbeats").delete().eq("user_id", targetUserId),
       admin.from("calendar_subscriptions").delete().eq("user_id", targetUserId),

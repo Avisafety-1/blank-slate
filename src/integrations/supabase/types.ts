@@ -2603,7 +2603,7 @@ export type Database = {
           overall_score: number | null
           pilot_comments: Json | null
           pilot_experience_score: number | null
-          pilot_id: string
+          pilot_id: string | null
           pilot_inputs: Json | null
           recommendation: string
           sora_output: Json | null
@@ -2623,7 +2623,7 @@ export type Database = {
           overall_score?: number | null
           pilot_comments?: Json | null
           pilot_experience_score?: number | null
-          pilot_id: string
+          pilot_id?: string | null
           pilot_inputs?: Json | null
           recommendation: string
           sora_output?: Json | null
@@ -2643,7 +2643,7 @@ export type Database = {
           overall_score?: number | null
           pilot_comments?: Json | null
           pilot_experience_score?: number | null
-          pilot_id?: string
+          pilot_id?: string | null
           pilot_inputs?: Json | null
           recommendation?: string
           sora_output?: Json | null
@@ -2749,6 +2749,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "mission_sora_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "mission_sora_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2760,6 +2767,13 @@ export type Database = {
             columns: ["mission_id"]
             isOneToOne: true
             referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_sora_prepared_by_fkey"
+            columns: ["prepared_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
