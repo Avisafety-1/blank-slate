@@ -1,42 +1,44 @@
 
 
-## Problem
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Sletting feiler fordi tre tabeller har foreign keys mot `auth.users` med `NO ACTION` delete-regel:
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-| Tabell | Kolonne | Delete Rule |
-|--------|---------|-------------|
-| `missions` | `approved_by` | NO ACTION |
-| `profiles` | `approved_by` | NO ACTION |
-| `revenue_calculator_scenarios` | `updated_by` | NO ACTION |
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Når edge-funksjonen kjører `auth.admin.deleteUser()`, blokkerer disse FK-ene transaksjonen hvis brukeren har godkjent oppdrag, godkjent profiler, eller oppdatert kalkulatorscenarier.
+### Endringer
 
-Edge-funksjonen setter allerede `missions.approved_by` og `profiles.approved_by` til NULL manuelt, men dette gjøres via Supabase-klienten med RLS — og service_role-klienten brukes uten `.eq('approved_by', targetUserId)` for `missions.approved_by`. Men selv om SET NULL lykkes, så er FK-regelen fortsatt `NO ACTION` på databasenivå, som betyr at `auth.admin.deleteUser()` blokkeres.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-## Løsning
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**Database-migrasjon** — endre alle tre FK-er til `ON DELETE SET NULL`:
-
-```sql
--- missions.approved_by
-ALTER TABLE missions
-  DROP CONSTRAINT missions_approved_by_fkey,
-  ADD CONSTRAINT missions_approved_by_fkey
-    FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
--- profiles.approved_by  
-ALTER TABLE profiles
-  DROP CONSTRAINT profiles_approved_by_fkey,
-  ADD CONSTRAINT profiles_approved_by_fkey
-    FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
--- revenue_calculator_scenarios.updated_by
-ALTER TABLE revenue_calculator_scenarios
-  DROP CONSTRAINT revenue_calculator_scenarios_updated_by_fkey,
-  ADD CONSTRAINT revenue_calculator_scenarios_updated_by_fkey
-    FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
 ```
 
-Ingen kodeendringer nødvendig — edge-funksjonen håndterer allerede SET NULL manuelt, men databasenivå-constraintene må også tillate det.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
+
+Ingen nye avhengigheter. Ingen databaseendringer.
 
