@@ -1,0 +1,145 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const GRAPH_API = "https://graph.facebook.com/v22.0";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const ACCESS_TOKEN = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN")?.trim();
+    const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
+
+    if (!ACCESS_TOKEN || !IG_ACCOUNT_ID) {
+      return new Response(
+        JSON.stringify({ error: "Instagram er ikke konfigurert. Legg til FACEBOOK_PAGE_ACCESS_TOKEN og INSTAGRAM_BUSINESS_ACCOUNT_ID i secrets." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { text, imageUrl, draftId } = await req.json();
+
+    if (!imageUrl?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Instagram krever et bilde. Legg til et bilde i utkastet først." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Step 1: Create media container
+    const containerParams = new URLSearchParams({
+      image_url: imageUrl,
+      caption: text || "",
+      access_token: ACCESS_TOKEN,
+    });
+
+    const containerRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: containerParams.toString(),
+    });
+
+    const containerData = await containerRes.json();
+
+    if (!containerRes.ok) {
+      console.error("Instagram container error:", JSON.stringify(containerData));
+      const errMsg = containerData?.error?.message || "Ukjent feil fra Instagram (container)";
+      return new Response(
+        JSON.stringify({ error: `Instagram-feil: ${errMsg}` }),
+        { status: containerRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const creationId = containerData.id;
+
+    // Step 2: Publish the container
+    const publishParams = new URLSearchParams({
+      creation_id: creationId,
+      access_token: ACCESS_TOKEN,
+    });
+
+    const publishRes = await fetch(`${GRAPH_API}/${IG_ACCOUNT_ID}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: publishParams.toString(),
+    });
+
+    const publishData = await publishRes.json();
+
+    if (!publishRes.ok) {
+      console.error("Instagram publish error:", JSON.stringify(publishData));
+      const errMsg = publishData?.error?.message || "Ukjent feil fra Instagram (publish)";
+      return new Response(
+        JSON.stringify({ error: `Instagram-feil: ${errMsg}` }),
+        { status: publishRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const postId = publishData.id;
+    const postUrl = `https://www.instagram.com/p/${postId}/`;
+
+    // Update draft if draftId provided
+    if (draftId) {
+      const { data: currentDraft } = await supabase
+        .from("marketing_drafts")
+        .select("metadata")
+        .eq("id", draftId)
+        .single();
+
+      await supabase
+        .from("marketing_drafts")
+        .update({
+          status: "published",
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...((currentDraft?.metadata as any) || {}),
+            instagram_post_id: postId,
+            instagram_post_url: postUrl,
+          },
+        })
+        .eq("id", draftId);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, postId, postUrl }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("publish-instagram error:", err);
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Ukjent feil" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

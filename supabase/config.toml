@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.publish-scheduled]
 verify_jwt = false
+
+[functions.publish-instagram]
+verify_jwt = false
