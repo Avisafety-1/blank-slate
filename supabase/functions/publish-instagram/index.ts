@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // Try to exchange short-lived token for long-lived token if app secret is available
     if (APP_SECRET) {
       try {
-        const exchangeUrl = `${IG_API}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(APP_SECRET)}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
+        const exchangeUrl = `${IG_TOKEN_API}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(APP_SECRET)}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
         const exchangeRes = await fetch(exchangeUrl);
         const exchangeData = await exchangeRes.json();
         if (exchangeRes.ok && exchangeData.access_token) {
