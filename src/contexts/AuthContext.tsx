@@ -111,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isTrial, setIsTrial] = useState(false);
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [stripeExempt, setStripeExempt] = useState(false);
+  const [hadPreviousSubscription, setHadPreviousSubscription] = useState(false);
 
   const resetAuthState = () => {
     setSession(null);
