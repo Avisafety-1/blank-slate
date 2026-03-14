@@ -1,30 +1,44 @@
 
 
-## Legg til Eciton Atlas-droner i katalogen
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Eciton Corp har to dronemodeller: **Atlas MICRO** og **Atlas PRO**. Begge kan legges inn.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### Data å sette inn
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-| Felt | Atlas MICRO | Atlas PRO |
-|------|-------------|-----------|
-| name | Eciton Atlas MICRO | Eciton Atlas PRO |
-| eu_class | C0 | C1 |
-| weight_kg (MTOW) | 0.249 | ~2.0 (tri-copter, estimert) |
-| payload_kg | 0 | 0.5 (estimert) |
-| endurance_min | 35 | 32 |
-| max_wind_mps | 10 | 15.5 |
-| sensor_type | 4K/60fps daytime/low-light | EO/IR, 10x optical zoom |
-| category | enterprise | enterprise |
-| comment | Max 3500m ceiling, 61 km/h | Max 3000m ceiling, 56 km/h, NEST-kompatibel, MESH, kryptert |
+### Endringer
 
-Atlas MICRO er under 250g → C0-klasse. Atlas PRO er en tri-copter — vekten er ikke oppgitt på nettsiden, men basert på klassen anslår jeg C1 (under 4kg). Payload er heller ikke spesifisert eksplisitt.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-### Gjennomføring
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-Én SQL INSERT via Supabase insert-verktøyet med begge modellene.
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-### Usikkerheter
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-Atlas PRO mangler eksakt vekt og payload fra nettsiden. Jeg setter konservative estimater som kan justeres senere. Alternativt kan vi sette disse til NULL.
+Ingen nye avhengigheter. Ingen databaseendringer.
 
