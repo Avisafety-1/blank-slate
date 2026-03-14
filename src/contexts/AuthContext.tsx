@@ -45,6 +45,7 @@ interface AuthContextType {
   subscribed: boolean;
   subscriptionEnd: string | null;
   subscriptionLoading: boolean;
+  cancelAtPeriodEnd: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
