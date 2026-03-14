@@ -148,6 +148,7 @@ export const CompanyManagementDialog = ({
         adresse_lon: data.adresse_lon || null,
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
+        stripe_exempt: stripeExempt,
       };
 
       if (isCreating) {
