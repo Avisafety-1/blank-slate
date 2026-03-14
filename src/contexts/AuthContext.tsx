@@ -130,9 +130,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSubscribed(false);
     setSubscriptionEnd(null);
     setCancelAtPeriodEnd(false);
-    setIsTrial(false);
-    setTrialEnd(null);
-  };
+      setIsTrial(false);
+      setTrialEnd(null);
+      setHadPreviousSubscription(false);
+    };
 
   const getErrorMessage = (error: unknown): string => {
     if (!error) return '';
