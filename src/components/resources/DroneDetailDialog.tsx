@@ -185,8 +185,22 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedDronetags();
       fetchAccessories();
       fetchMissionsSinceInspection();
+      fetchLatestWarning();
     }
   }, [drone]);
+
+  const fetchLatestWarning = async () => {
+    if (!drone) { setLatestWarning(null); return; }
+    const { data } = await supabase
+      .from("drone_log_entries")
+      .select("title, entry_date")
+      .eq("drone_id", drone.id)
+      .eq("entry_type", "Advarsel")
+      .order("entry_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLatestWarning(data || null);
+  };
 
   // Fetch matching catalog model for extra specs
   useEffect(() => {
