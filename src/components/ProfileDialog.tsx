@@ -1515,7 +1515,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Oppfølging Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
+              <TabsContent value="incidents" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
