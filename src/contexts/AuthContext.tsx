@@ -317,6 +317,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin: false,
         isSuperAdmin: false,
         djiFlightlogEnabled: false,
+        stripeExempt: false,
       };
 
       // If both queries failed (e.g. network error), fall back to cache
