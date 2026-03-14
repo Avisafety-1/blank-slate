@@ -119,6 +119,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const [accessoryToMaintain, setAccessoryToMaintain] = useState<Accessory | null>(null);
+  const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
 
   // Update local drone state when prop changes
   useEffect(() => {
