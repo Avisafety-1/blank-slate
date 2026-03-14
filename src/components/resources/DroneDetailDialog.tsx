@@ -332,6 +332,76 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     }
   };
 
+  const fetchLinkedDocuments = async () => {
+    if (!drone) return;
+    const { data, error } = await (supabase as any)
+      .from("drone_documents")
+      .select(`
+        id,
+        document:document_id (
+          id,
+          tittel,
+          kategori,
+          fil_url,
+          fil_navn
+        )
+      `)
+      .eq("drone_id", drone.id);
+    if (error) {
+      console.error("Error fetching linked documents:", error);
+    } else {
+      setLinkedDocuments(data || []);
+    }
+  };
+
+  const handleAddDocuments = async (documents: any[]) => {
+    if (!drone || !companyId) return;
+    const existingIds = linkedDocuments.map((ld: any) => ld.document?.id);
+    const newDocs = documents.filter(d => !existingIds.includes(d.id));
+    if (newDocs.length === 0) return;
+    const rows = newDocs.map(d => ({
+      drone_id: drone.id,
+      document_id: d.id,
+      company_id: companyId,
+    }));
+    const { error } = await (supabase as any)
+      .from("drone_documents")
+      .insert(rows);
+    if (error) {
+      console.error("Error linking documents:", error);
+      toast.error("Kunne ikke legge til dokumenter");
+    } else {
+      toast.success(`${newDocs.length} dokument(er) tilknyttet`);
+      fetchLinkedDocuments();
+    }
+  };
+
+  const handleRemoveDocument = async (linkId: string, docTitle: string) => {
+    const { error } = await (supabase as any)
+      .from("drone_documents")
+      .delete()
+      .eq("id", linkId);
+    if (error) {
+      console.error("Error removing document link:", error);
+      toast.error("Kunne ikke fjerne dokument");
+    } else {
+      toast.success(`${docTitle} fjernet`);
+      fetchLinkedDocuments();
+    }
+  };
+
+  const handleOpenDocument = async (filUrl: string) => {
+    if (!filUrl) return;
+    const { data } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(filUrl, 300);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank");
+    } else {
+      toast.error("Kunne ikke åpne dokument");
+    }
+  };
+
   const logEquipmentHistory = async (action: 'added' | 'removed', itemType: 'equipment' | 'accessory' | 'dronetag', itemId: string | null, itemName: string) => {
     if (!user || !companyId || !drone) return;
     try {
