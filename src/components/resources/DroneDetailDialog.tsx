@@ -1167,21 +1167,21 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     Ingen dokumenter tilknyttet
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-full max-w-full overflow-x-hidden">
                     {linkedDocuments.map((link: any) => {
                       const doc = link.document;
                       if (!doc) return null;
                       return (
                         <div
                           key={link.id}
-                          className="flex items-center gap-2 p-2 bg-background/50 rounded border border-border overflow-hidden"
+                          className="w-full max-w-full min-w-0 flex items-start gap-2 p-2 bg-background/50 rounded border border-border overflow-hidden"
                         >
                           <div
-                            className="flex-1 min-w-0 cursor-pointer overflow-hidden"
+                            className="flex-1 w-0 min-w-0 cursor-pointer overflow-hidden"
                             onClick={() => doc.fil_url && handleOpenDocument(doc.fil_url)}
                           >
-                            <p className="text-sm font-medium break-words">{doc.tittel}</p>
-                            <p className="text-xs text-muted-foreground truncate">
+                            <p className="text-sm font-medium leading-snug break-words [overflow-wrap:anywhere]">{doc.tittel}</p>
+                            <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                               {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
                             </p>
                           </div>
