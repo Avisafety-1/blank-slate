@@ -1,44 +1,39 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
-
-### Endringer
-
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
+The `stripe-webhook` returns 500 with `"Invalid time value"` on line 66:
 ```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
+new Date((subscription as any).current_period_end * 1000).toISOString()
+```
+
+Your Stripe account uses API version `2026-02-25.clover`, but the SDK is initialized with `2025-08-27.basil`. The webhook receives raw event data from Stripe at your account's API version, where `current_period_end` is likely an ISO string (e.g. `"2026-04-14T14:54:55Z"`) instead of a Unix timestamp. Multiplying a string by 1000 produces `NaN`, and `new Date(NaN).toISOString()` throws "Invalid time value".
+
+The same bug exists in `check-subscription` (line 68).
+
+## Fix
+
+Create a safe date helper and use it in both files:
+
+```typescript
+const safeDate = (val: any): string => {
+  if (!val) return 'unknown';
+  if (typeof val === 'number') return new Date(val * 1000).toISOString();
+  return new Date(val).toISOString();
 };
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+### Changes
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+1. **`supabase/functions/stripe-webhook/index.ts`** line 66:
+   - Add `safeDate` helper
+   - Replace `new Date((subscription as any).current_period_end * 1000).toISOString()` with `safeDate((subscription as any).current_period_end)`
+
+2. **`supabase/functions/check-subscription/index.ts`** line 68:
+   - Add same `safeDate` helper
+   - Replace `new Date(subscription.current_period_end * 1000).toISOString()` with `safeDate(subscription.current_period_end)`
+
+3. **Deploy** both functions.
+
+After deploying, resend the failed event from the Stripe Dashboard to verify.
 
