@@ -1,30 +1,44 @@
 
 
-## Fikse visning av vedlegg på kompetansekort
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-Koden lagrer `fil_url` korrekt, men `getFileDisplayUrl` bruker alltid `logbook-images`-bøtten. Filer valgt fra `/dokumenter` ligger i `documents`-bøtten (som er privat og krever signerte URL-er). I tillegg mangler det tydelig visuell indikasjon på vedlegg i view-modus.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-### Løsning
+### Endringer
 
-**1. Fiks `getFileDisplayUrl` i `PersonCompetencyDialog.tsx`**
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Oppdater funksjonen til å sjekke hvilken bøtte filen tilhører:
-- Stier som inneholder `/competency-` → `logbook-images` (public, bruk `getPublicUrl`)
-- Andre stier → `documents` (privat, bruk `createSignedUrl`)
-- Fulle URL-er → returner direkte
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-**2. Gjør samme fix i `AddCompetencyDialog.tsx`**
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-Legg til visning av vedlegg etter lagring (vises allerede via `PersonCompetencyDialog`, men `AddCompetencyDialog` bruker også `getFileDisplayUrl`-lignende logikk).
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-**3. Forbedre visuell indikasjon i view-modus**
-
-Gjør vedleggslenken mer synlig med et ikon-badge eller en tydelig knapp i stedet for bare en liten tekstlenke.
-
-### Filer som endres
-
-- `src/components/resources/PersonCompetencyDialog.tsx` — fiks `getFileDisplayUrl` for begge bøtter, gjør vedleggsvisning tydeligere
-- `src/components/resources/AddCompetencyDialog.tsx` — same bucket-logikk for visning
+Ingen nye avhengigheter. Ingen databaseendringer.
 

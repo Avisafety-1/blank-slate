@@ -129,10 +129,20 @@ export function PersonCompetencyDialog({
     return filePath;
   };
 
-  const getFileDisplayUrl = (filUrl: string): string => {
+  const getFileDisplayUrl = async (filUrl: string): Promise<string> => {
     if (filUrl.startsWith('http')) return filUrl;
-    const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
-    return data?.publicUrl || '';
+    // Files uploaded directly for competencies go to logbook-images (public)
+    if (filUrl.includes('/competency-')) {
+      const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
+      return data?.publicUrl || '';
+    }
+    // Files from /dokumenter go to documents bucket (private, needs signed URL)
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(filUrl, 3600);
+    if (error || !data?.signedUrl) {
+      console.error('Signed URL error:', error);
+      return '';
+    }
+    return data.signedUrl;
   };
 
   const handleAddCompetency = async (e: React.FormEvent) => {
@@ -312,8 +322,8 @@ export function PersonCompetencyDialog({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => {
-                  const url = getFileDisplayUrl(existingFilUrl);
+                onClick={async () => {
+                  const url = await getFileDisplayUrl(existingFilUrl);
                   if (url) window.open(url, '_blank');
                 }}
               >
@@ -538,17 +548,20 @@ export function PersonCompetencyDialog({
                           )}
                         </div>
                         {competency.fil_url && (
-                          <button
+                          <Button
                             type="button"
-                            className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
-                            onClick={() => {
-                              const url = getFileDisplayUrl(competency.fil_url!);
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 mt-2 text-xs"
+                            onClick={async () => {
+                              const url = await getFileDisplayUrl(competency.fil_url!);
                               if (url) window.open(url, '_blank');
                             }}
                           >
                             <Paperclip className="h-3.5 w-3.5" />
                             Vis vedlegg
-                          </button>
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
                         )}
                         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
                           <Switch
