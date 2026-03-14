@@ -88,6 +88,7 @@ export const CompanyManagementDialog = ({
   onSuccess,
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stripeExempt, setStripeExempt] = useState(false);
   const isCreating = !company;
 
   const form = useForm<CompanyFormData>({
