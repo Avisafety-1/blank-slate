@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
@@ -111,6 +110,90 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [stripeExempt, setStripeExempt] = useState(false);
 
+  const resetAuthState = () => {
+    setSession(null);
+    setUser(null);
+    setCompanyId(null);
+    setCompanyName(null);
+    setCompanyType(null);
+    setCompanyLat(null);
+    setCompanyLon(null);
+    setIsSuperAdmin(false);
+    setIsAdmin(false);
+    setIsApproved(false);
+    setDjiFlightlogEnabled(false);
+    setUserRole(null);
+    setStripeExempt(false);
+    setSubscribed(false);
+    setSubscriptionEnd(null);
+    setCancelAtPeriodEnd(false);
+    setIsTrial(false);
+    setTrialEnd(null);
+  };
+
+  const getErrorMessage = (error: unknown): string => {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+
+    const err = error as {
+      message?: string;
+      code?: string;
+      context?: { error?: string; json?: { error?: string } };
+      error_description?: string;
+    };
+
+    return [
+      err.message,
+      err.error_description,
+      err.context?.error,
+      err.context?.json?.error,
+      err.code,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+  };
+
+  const isMissingAuthUserError = (error: unknown): boolean => {
+    const message = getErrorMessage(error);
+    return message.includes('user from sub claim in jwt does not exist') || message.includes('user_not_found');
+  };
+
+  const clearLocalAuthData = async (userId?: string) => {
+    try {
+      let cachedUserId = userId;
+      if (!cachedUserId) {
+        const raw = localStorage.getItem(SESSION_CACHE_KEY);
+        if (raw) {
+          const cached: CachedSession = JSON.parse(raw);
+          cachedUserId = cached.id;
+        }
+      }
+
+      localStorage.removeItem(SESSION_CACHE_KEY);
+      if (cachedUserId) {
+        localStorage.removeItem(PROFILE_CACHE_KEY(cachedUserId));
+      }
+
+      for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+
+    resetAuthState();
+
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignore - local clean-up above is enough
+    }
+  };
+
   const applyCachedProfile = (userId: string): boolean => {
     try {
       const raw = localStorage.getItem(PROFILE_CACHE_KEY(userId));
@@ -207,18 +290,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return;
           }
           // Online: genuine sign-out
-          setSession(null);
-          setUser(null);
-          setCompanyId(null);
-          setCompanyName(null);
-          setCompanyType(null);
-          setCompanyLat(null);
-          setCompanyLon(null);
-          setIsSuperAdmin(false);
-          setIsAdmin(false);
-          setIsApproved(false);
-          setDjiFlightlogEnabled(false);
-          setUserRole(null);
+          resetAuthState();
           setLoading(false);
         } else {
           // Offline guard: if session is null while offline, don't overwrite user state
@@ -242,32 +314,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        setLoading(false);
-        cacheSession(session.user);
-        // Offline: use cached profile; Online: fetch fresh data
-        if (!navigator.onLine) {
-          applyCachedProfile(session.user.id);
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          if (navigator.onLine) {
+            const { error: userError } = await supabase.auth.getUser();
+            if (userError && isMissingAuthUserError(userError)) {
+              console.warn('AuthContext: Found stale session for deleted user, clearing local auth');
+              await clearLocalAuthData(session.user.id);
+              setLoading(false);
+              return;
+            }
+          }
+
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          cacheSession(session.user);
+          // Offline: use cached profile; Online: fetch fresh data
+          if (!navigator.onLine) {
+            applyCachedProfile(session.user.id);
+          } else {
+            fetchUserInfo(session.user.id);
+          }
+        } else if (!navigator.onLine) {
+          // Offline fallback: restore user from cache
+          console.log('AuthContext: Offline with no session, trying cache');
+          const restored = restoreFromCache();
+          setLoading(false);
+          if (restored) {
+            console.log('AuthContext: Restored user from offline cache');
+          }
         } else {
-          fetchUserInfo(session.user.id);
+          resetAuthState();
+          setLoading(false);
         }
-      } else if (!navigator.onLine) {
-        // Offline fallback: restore user from cache
-        console.log('AuthContext: Offline with no session, trying cache');
-        const restored = restoreFromCache();
+      })
+      .catch(() => {
+        resetAuthState();
         setLoading(false);
-        if (restored) {
-          console.log('AuthContext: Restored user from offline cache');
-        }
-      } else {
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-      }
-    });
+      });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -372,16 +458,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    // Clear offline caches before signing out
-    try {
-      localStorage.removeItem(SESSION_CACHE_KEY);
-      if (user) {
-        localStorage.removeItem(PROFILE_CACHE_KEY(user.id));
-      }
-    } catch {
-      // ignore
-    }
-    await supabase.auth.signOut();
+    await clearLocalAuthData(user?.id);
   };
 
   const refetchUserInfo = async () => {
@@ -395,10 +472,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSubscriptionLoading(false);
       return;
     }
+
     try {
+      if (navigator.onLine) {
+        const { error: userError } = await supabase.auth.getUser();
+        if (userError && isMissingAuthUserError(userError)) {
+          console.warn('AuthContext: Invalid auth user during subscription check, clearing stale session');
+          await clearLocalAuthData(session.user.id);
+          setSubscriptionLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
         console.error('check-subscription error:', error);
+        if (isMissingAuthUserError(error)) {
+          await clearLocalAuthData(session.user.id);
+        }
         setSubscriptionLoading(false);
         return;
       }
@@ -409,6 +500,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTrialEnd(data?.trial_end ?? null);
     } catch (e) {
       console.error('check-subscription failed:', e);
+      if (isMissingAuthUserError(e)) {
+        await clearLocalAuthData(session.user.id);
+      }
     } finally {
       setSubscriptionLoading(false);
     }
