@@ -82,54 +82,6 @@ const Auth = () => {
     }
   }, [t]);
 
-  // Complete delayed company creation after email confirmation (when session exists)
-  useEffect(() => {
-    if (authLoading || !user) return;
-
-    let rawPending: string | null = null;
-    try {
-      rawPending = localStorage.getItem(PENDING_NEW_COMPANY_KEY);
-    } catch {
-      return;
-    }
-
-    if (!rawPending) return;
-
-    let pending: PendingNewCompanyRegistration | null = null;
-    try {
-      pending = JSON.parse(rawPending) as PendingNewCompanyRegistration;
-    } catch {
-      localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
-      return;
-    }
-
-    if (!pending || pending.userId !== user.id) return;
-
-    let cancelled = false;
-
-    const finalizePendingRegistration = async () => {
-      setCompletingPendingRegistration(true);
-      try {
-        await completeNewCompanyRegistration(pending!);
-        localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
-        toast.success('Konto og selskap opprettet!');
-        redirectToApp('/');
-      } catch (error: any) {
-        console.error('Error completing pending company registration:', error);
-        toast.error('Kunne ikke fullføre selskapsopprettelsen: ' + (error?.message || 'Ukjent feil'));
-      } finally {
-        if (!cancelled) {
-          setCompletingPendingRegistration(false);
-        }
-      }
-    };
-
-    finalizePendingRegistration();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user, authLoading]);
 
   // Handle Google OAuth users - check if they have a valid profile
   useEffect(() => {
