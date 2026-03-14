@@ -111,6 +111,16 @@ const Resources = () => {
     }
   }, [equipment]);
 
+  // Sync selectedPerson with updated personnel data
+  useEffect(() => {
+    if (selectedPerson && personnel.length > 0) {
+      const updatedPerson = personnel.find(p => p.id === selectedPerson.id);
+      if (updatedPerson) {
+        setSelectedPerson(updatedPerson);
+      }
+    }
+  }, [personnel]);
+
   const fetchDrones = async (skipCache = false) => {
     // 1. Load cache first (unless skipping after mutation)
     if (!skipCache && companyId) {
