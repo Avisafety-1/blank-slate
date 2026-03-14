@@ -993,7 +993,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="security" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.security')}</CardTitle>
