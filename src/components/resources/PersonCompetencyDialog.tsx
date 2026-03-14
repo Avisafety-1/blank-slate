@@ -129,10 +129,20 @@ export function PersonCompetencyDialog({
     return filePath;
   };
 
-  const getFileDisplayUrl = (filUrl: string): string => {
+  const getFileDisplayUrl = async (filUrl: string): Promise<string> => {
     if (filUrl.startsWith('http')) return filUrl;
-    const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
-    return data?.publicUrl || '';
+    // Files uploaded directly for competencies go to logbook-images (public)
+    if (filUrl.includes('/competency-')) {
+      const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
+      return data?.publicUrl || '';
+    }
+    // Files from /dokumenter go to documents bucket (private, needs signed URL)
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(filUrl, 3600);
+    if (error || !data?.signedUrl) {
+      console.error('Signed URL error:', error);
+      return '';
+    }
+    return data.signedUrl;
   };
 
   const handleAddCompetency = async (e: React.FormEvent) => {
