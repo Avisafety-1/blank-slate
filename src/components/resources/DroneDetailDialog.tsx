@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
@@ -1185,14 +1185,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                               {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRemoveDocument(link.id, doc.tittel)}
-                            className="h-8 w-8 p-0 shrink-0"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {doc.fil_url && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleOpenDocument(doc.fil_url)}
+                                className="h-8 w-8 p-0"
+                                title="Åpne dokument"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveDocument(link.id, doc.tittel)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
