@@ -1672,6 +1672,67 @@ export const ProfileDialog = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Subscription Tab */}
+              <TabsContent value="subscription" className="space-y-4 mt-28 md:mt-16 lg:mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Abonnement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {subscriptionLoading ? (
+                      <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
+                    ) : subscribed ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                          <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
+                        </div>
+                        {subscriptionEnd && (
+                          <p className="text-sm text-muted-foreground">
+                            Neste fornyelse: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.functions.invoke('customer-portal');
+                              if (error) throw error;
+                              if (data?.url) window.open(data.url, '_blank');
+                            } catch (e: any) {
+                              toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                            }
+                          }}
+                        >
+                          Administrer abonnement
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">Du har ikke et aktivt abonnement.</p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.functions.invoke('create-checkout');
+                              if (error) throw error;
+                              if (data?.url) window.open(data.url, '_blank');
+                            } catch (e: any) {
+                              toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+                            }
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Abonner nå – 599 NOK/mnd
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           )}
           <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
