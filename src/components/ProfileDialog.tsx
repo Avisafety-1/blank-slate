@@ -1674,7 +1674,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Subscription Tab */}
-              <TabsContent value="subscription" className="space-y-4 mt-28 md:mt-16 lg:mt-4">
+              <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
