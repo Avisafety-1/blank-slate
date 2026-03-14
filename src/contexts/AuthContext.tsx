@@ -94,6 +94,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [djiFlightlogEnabled, setDjiFlightlogEnabled] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
