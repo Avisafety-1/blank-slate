@@ -97,7 +97,9 @@ const AuthenticatedLayout = () => {
       <OfflineBanner />
       <IdleTimeoutWarning />
       <main className="flex-1 flex flex-col">
-        <Outlet />
+        <SubscriptionGate>
+          <Outlet />
+        </SubscriptionGate>
       </main>
     </div>
   );
