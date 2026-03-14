@@ -70,6 +70,7 @@ serve(async (req) => {
     );
 
     const hasActiveSub = !!subscription;
+    const hadPreviousSubscription = subscriptions.data.length > 0;
     let productId = null;
     let subscriptionEnd = null;
     let cancelAtPeriodEnd = false;
@@ -87,7 +88,7 @@ serve(async (req) => {
       }
       logStep("Subscription found", { subscriptionId: subscription.id, status: subscription.status, productId, endDate: subscriptionEnd, cancelAtPeriodEnd, isTrial, trialEnd });
     } else {
-      logStep("No active/trialing subscription found");
+      logStep("No active/trialing subscription found", { hadPreviousSubscription });
     }
 
     return new Response(JSON.stringify({
@@ -97,6 +98,7 @@ serve(async (req) => {
       cancel_at_period_end: cancelAtPeriodEnd,
       is_trial: isTrial,
       trial_end: trialEnd,
+      had_previous_subscription: hadPreviousSubscription,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

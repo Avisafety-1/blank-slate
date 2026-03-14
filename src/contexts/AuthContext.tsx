@@ -49,6 +49,7 @@ interface AuthContextType {
   isTrial: boolean;
   trialEnd: string | null;
   stripeExempt: boolean;
+  hadPreviousSubscription: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -75,6 +76,7 @@ const AuthContext = createContext<AuthContextType>({
   isTrial: false,
   trialEnd: null,
   stripeExempt: false,
+  hadPreviousSubscription: false,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -109,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isTrial, setIsTrial] = useState(false);
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [stripeExempt, setStripeExempt] = useState(false);
+  const [hadPreviousSubscription, setHadPreviousSubscription] = useState(false);
 
   const resetAuthState = () => {
     setSession(null);
@@ -127,9 +130,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSubscribed(false);
     setSubscriptionEnd(null);
     setCancelAtPeriodEnd(false);
-    setIsTrial(false);
-    setTrialEnd(null);
-  };
+      setIsTrial(false);
+      setTrialEnd(null);
+      setHadPreviousSubscription(false);
+    };
 
   const getErrorMessage = (error: unknown): string => {
     if (!error) return '';
@@ -518,6 +522,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
       setIsTrial(data?.is_trial ?? false);
       setTrialEnd(data?.trial_end ?? null);
+      setHadPreviousSubscription(data?.had_previous_subscription ?? false);
     } catch (e) {
       console.error('check-subscription failed:', e);
       if (isMissingAuthUserError(e)) {
@@ -563,6 +568,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isTrial,
       trialEnd,
       stripeExempt,
+      hadPreviousSubscription,
       signOut, 
       refetchUserInfo,
       checkSubscription,

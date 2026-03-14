@@ -61,6 +61,7 @@ const Priser = () => {
             <CardTitle className="text-4xl font-bold text-foreground">
               599 <span className="text-lg font-normal text-muted-foreground">NOK/mnd</span>
             </CardTitle>
+            <p className="text-sm text-primary font-medium">Inkluderer 5 dagers gratis prøveperiode</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
