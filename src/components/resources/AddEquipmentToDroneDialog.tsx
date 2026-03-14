@@ -249,13 +249,13 @@ export const AddEquipmentToDroneDialog = ({
                 return (
                   <div
                     key={item.id}
-                    className="flex flex-col p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors"
+                    className="flex flex-col p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors gap-2"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{item.navn}</h4>
-                          <Badge className={`${statusColors[item.status] || ""} border text-xs`}>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h4 className="font-medium break-words min-w-0">{item.navn}</h4>
+                          <Badge className={`${statusColors[item.status] || ""} border text-xs flex-shrink-0`}>
                             {item.status}
                           </Badge>
                         </div>
@@ -274,7 +274,7 @@ export const AddEquipmentToDroneDialog = ({
                         size="sm"
                         onClick={() => handleAddEquipment(item)}
                         disabled={adding === item.id}
-                        className="gap-2"
+                        className="gap-2 w-full sm:w-auto flex-shrink-0"
                       >
                         <Plus className="w-4 h-4" />
                         {adding === item.id ? "Legger til..." : "Legg til"}
