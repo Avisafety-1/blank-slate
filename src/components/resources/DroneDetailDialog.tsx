@@ -1144,6 +1144,62 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
 
+              {/* Tilknyttede dokumenter Section */}
+              <div className="border-t border-border pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Tilknyttede dokumenter</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDocumentPickerOpen(true)}
+                    className="gap-2 w-full sm:w-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                  </Button>
+                </div>
+
+                {linkedDocuments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen dokumenter tilknyttet
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedDocuments.map((link: any) => {
+                      const doc = link.document;
+                      if (!doc) return null;
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                        >
+                          <div
+                            className="flex-1 cursor-pointer min-w-0"
+                            onClick={() => doc.fil_url && handleOpenDocument(doc.fil_url)}
+                          >
+                            <p className="text-sm font-medium truncate">{doc.tittel}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveDocument(link.id, doc.tittel)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Valgfritt utstyr Section */}
               <div className="border-t border-border pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
