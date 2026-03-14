@@ -256,7 +256,8 @@ const Auth = () => {
         }
       } else if (regMode === 'new') {
         // --- New company registration ---
-        // 1. Create user
+        // Company/profile/role creation is handled server-side by the
+        // handle_new_user() database trigger using user metadata.
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -264,39 +265,21 @@ const Auth = () => {
             emailRedirectTo: 'https://login.avisafe.no/auth',
             data: {
               full_name: fullName,
+              new_company_name: newCompanyName.trim(),
+              new_company_org_nr: newCompanyOrgNr.trim() || null,
             }
           }
         });
 
         if (error) throw error;
 
-        if (data.user) {
-          const payload: PendingNewCompanyRegistration = {
-            userId: data.user.id,
-            email,
-            fullName,
-            companyName: newCompanyName.trim(),
-            companyOrgNr: newCompanyOrgNr.trim() || null,
-          };
-
-          // If email confirmation is enabled, signup returns no session.
-          // Save pending registration and complete it after email confirmation callback.
-          if (!data.session) {
-            localStorage.setItem(PENDING_NEW_COMPANY_KEY, JSON.stringify(payload));
-            toast.success('Bekreft e-posten din. Vi fullfører selskapsopprettelsen automatisk når du kommer tilbake.');
-          } else {
-            await completeNewCompanyRegistration(payload);
-            localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
-            toast.success('Konto og selskap opprettet!');
-          }
-
-          setEmail("");
-          setPassword("");
-          setFullName("");
-          setNewCompanyName("");
-          setNewCompanyOrgNr("");
-          setIsLogin(true);
-        }
+        toast.success('Bekreft e-posten din for å aktivere kontoen.');
+        setEmail("");
+        setPassword("");
+        setFullName("");
+        setNewCompanyName("");
+        setNewCompanyOrgNr("");
+        setIsLogin(true);
       } else {
         // --- Existing company with code ---
         const {
