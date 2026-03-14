@@ -108,6 +108,7 @@ export const CompanyManagementDialog = ({
   useEffect(() => {
     if (open) {
       if (company) {
+        setStripeExempt(company.stripe_exempt ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
