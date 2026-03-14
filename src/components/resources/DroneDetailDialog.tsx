@@ -1189,7 +1189,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveDocument(link.id, doc.tittel)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 shrink-0"
                           >
                             <X className="w-4 h-4" />
                           </Button>
