@@ -129,6 +129,7 @@ const App = () => {
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                 <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
                 <Route path="/installer" element={<Installer />} />
+                <Route path="/priser" element={<Priser />} />
                 <Route path="/sora-prosess" element={<SoraProcess />} />
                 <Route path="/bruksanvisning" element={<UserManualDownload />} />
                 
