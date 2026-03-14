@@ -279,20 +279,20 @@ const Changelog = () => {
       {/* Changelog Entries */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <CardTitle className="text-lg">Endringslogg</CardTitle>
-            <div className="flex items-center gap-1">
-              <div className="relative">
+            <div className="flex items-center gap-1 flex-wrap">
+              <div className="relative flex-1 min-w-0 sm:flex-none">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Søk..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 w-[160px] text-xs pl-7"
+                  className="h-8 w-full sm:w-[160px] text-xs pl-7"
                 />
               </div>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectTrigger className="h-8 w-[140px] sm:w-[160px] text-xs">
                   <ArrowUpDown className="w-3 h-3 mr-1" />
                   <SelectValue />
                 </SelectTrigger>
@@ -303,7 +303,7 @@ const Changelog = () => {
                 </SelectContent>
               </Select>
               {isSuperAdmin && (
-                <Button variant="ghost" size="sm" onClick={() => openEntryDialog()}>
+                <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => openEntryDialog()}>
                   <Plus className="w-4 h-4 mr-1" /> Legg til
                 </Button>
               )}
