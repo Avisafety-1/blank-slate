@@ -42,8 +42,12 @@ interface AuthContextType {
   isAdmin: boolean;
   isApproved: boolean;
   userRole: string | null;
+  subscribed: boolean;
+  subscriptionEnd: string | null;
+  subscriptionLoading: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
