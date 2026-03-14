@@ -1,34 +1,44 @@
 
 
-## Problem
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-New companies created via registration get `dji_flightlog_enabled = false` (column default). The superadmin must manually toggle it on per company in the admin panel, which also triggers an API call to generate a DroneLog API key.
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-## Approach
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Two changes needed:
+### Endringer
 
-### 1. Database: Set `dji_flightlog_enabled = true` in the registration trigger
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Update `handle_new_user()` to explicitly insert the company with `dji_flightlog_enabled = true`.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### 2. Edge function: Auto-generate DroneLog API key after company creation
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-The trigger cannot call external APIs, so we need to generate the key from the client side after registration completes. When the Auth flow detects a newly created company (via `PENDING_NEW_COMPANY_KEY` in localStorage), call `manage-dronelog-key` with `enable: true` right after the company is created.
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-However, `manage-dronelog-key` requires superadmin role — so we have two options:
-
-**Option A (simpler):** Create a new edge function `auto-provision-dronelog-key` that runs with service role and is triggered by the registration flow. It checks if the company was just created and has no key yet, then provisions one.
-
-**Option B (simplest):** Just set the flag in the trigger. The API key gets generated lazily — either when the user first tries to upload a DJI log, or by having the existing `manage-dronelog-key` function also accept a `self-provision` mode where an administrator can provision their own company's key.
-
-### Recommended: Option B with auto-provision
-
-| Step | File | Change |
-|------|------|--------|
-| 1 | Migration SQL | Update `handle_new_user()` to pass `dji_flightlog_enabled => true` in the company INSERT |
-| 2 | `manage-dronelog-key/index.ts` | Add a `selfProvision` mode: if caller is an administrator of the company, allow key creation without superadmin |
-| 3 | `src/contexts/AuthContext.tsx` | After `fetchUserInfo` detects `djiFlightlogEnabled = true` but company has no key, auto-call the provisioning function |
-
-This keeps the existing architecture clean while ensuring every new company gets DJI enabled with a working API key automatically.
+Ingen nye avhengigheter. Ingen databaseendringer.
 
