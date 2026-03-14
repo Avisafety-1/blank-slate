@@ -145,8 +145,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         varsel_oppdrag: equipment.varsel_oppdrag != null ? String(equipment.varsel_oppdrag) : "",
       });
       setIsEditing(false);
+      fetchLatestWarning();
+      fetchMissionsSinceMaintenance();
     }
   }, [equipment]);
+
+  const fetchLatestWarning = async () => {
+    if (!equipment) { setLatestWarning(null); return; }
+    const { data } = await supabase
+      .from("equipment_log_entries")
+      .select("title, entry_date")
+      .eq("equipment_id", equipment.id)
+      .eq("entry_type", "Advarsel")
+      .order("entry_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLatestWarning(data || null);
+  };
+
+  const fetchMissionsSinceMaintenance = async () => {
+    if (!equipment) return;
+    const { data } = await supabase
+      .from("mission_equipment")
+      .select("mission_id")
+      .eq("equipment_id", equipment.id);
+    if (!data) { setMissionsSinceMaintenance(0); return; }
+    const totalMissions = new Set(data.map((r: any) => r.mission_id)).size;
+    setMissionsSinceMaintenance(totalMissions - (equipment.missions_at_last_maintenance || 0));
+  };
 
   // Calculate next maintenance when last maintenance or interval changes
   useEffect(() => {
