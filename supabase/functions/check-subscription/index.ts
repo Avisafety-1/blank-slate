@@ -59,27 +59,35 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
+    // Fetch all subscriptions (not filtered by status) and find active or trialing
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      limit: 10,
     });
 
-    const hasActiveSub = subscriptions.data.length > 0;
+    const subscription = subscriptions.data.find(s => 
+      s.status === 'active' || s.status === 'trialing'
+    );
+
+    const hasActiveSub = !!subscription;
     let productId = null;
     let subscriptionEnd = null;
     let cancelAtPeriodEnd = false;
+    let isTrial = false;
+    let trialEnd = null;
 
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      // In newer Stripe SDK versions, current_period_end may be on items.data[0]
+    if (subscription) {
       const periodEnd = (subscription as any).current_period_end || subscription.items?.data[0]?.current_period_end;
       subscriptionEnd = safeDate(periodEnd);
       cancelAtPeriodEnd = (subscription as any).cancel_at_period_end ?? false;
       productId = subscription.items.data[0].price.product;
-      logStep("Active subscription found", { subscriptionId: subscription.id, productId, endDate: subscriptionEnd, cancelAtPeriodEnd });
+      isTrial = subscription.status === 'trialing';
+      if (isTrial && (subscription as any).trial_end) {
+        trialEnd = safeDate((subscription as any).trial_end);
+      }
+      logStep("Subscription found", { subscriptionId: subscription.id, status: subscription.status, productId, endDate: subscriptionEnd, cancelAtPeriodEnd, isTrial, trialEnd });
     } else {
-      logStep("No active subscription found");
+      logStep("No active/trialing subscription found");
     }
 
     return new Response(JSON.stringify({
@@ -87,6 +95,8 @@ serve(async (req) => {
       product_id: productId,
       subscription_end: subscriptionEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
+      is_trial: isTrial,
+      trial_end: trialEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

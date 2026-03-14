@@ -46,6 +46,8 @@ interface AuthContextType {
   subscriptionEnd: string | null;
   subscriptionLoading: boolean;
   cancelAtPeriodEnd: boolean;
+  isTrial: boolean;
+  trialEnd: string | null;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -69,6 +71,8 @@ const AuthContext = createContext<AuthContextType>({
   subscriptionEnd: null,
   subscriptionLoading: true,
   cancelAtPeriodEnd: false,
+  isTrial: false,
+  trialEnd: null,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -100,6 +104,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
@@ -390,6 +396,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSubscribed(data?.subscribed ?? false);
       setSubscriptionEnd(data?.subscription_end ?? null);
       setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
+      setIsTrial(data?.is_trial ?? false);
+      setTrialEnd(data?.trial_end ?? null);
     } catch (e) {
       console.error('check-subscription failed:', e);
     } finally {
@@ -429,6 +437,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscriptionEnd,
       subscriptionLoading,
       cancelAtPeriodEnd,
+      isTrial,
+      trialEnd,
       signOut, 
       refetchUserInfo,
       checkSubscription,
