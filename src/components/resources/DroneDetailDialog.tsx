@@ -1627,6 +1627,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         </DialogFooter>
       </DialogContent>
 
+      <AttachmentPickerDialog
+        open={documentPickerOpen}
+        onOpenChange={setDocumentPickerOpen}
+        selectedDocumentIds={linkedDocuments.map((ld: any) => ld.document?.id).filter(Boolean)}
+        onSelect={handleAddDocuments}
+        companyId={companyId || undefined}
+      />
+
       <AddEquipmentToDroneDialog
         open={addEquipmentDialogOpen}
         onOpenChange={setAddEquipmentDialogOpen}
