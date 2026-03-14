@@ -1,44 +1,102 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Trial-basert registreringsflyt med Stripe
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+### Oversikt
+Nye brukere kan registrere seg enten med selskapskode (eksisterende selskap) eller ved å opprette et nytt selskap. Alle nye brukere sendes gjennom Stripe Checkout med 5 dagers gratis prøveperiode. Etter utløp uten betaling blokkeres tilgang til appen med en betalingsside.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Flyt
+
+```text
+Registrering
+├── Nytt selskap (navn + org.nr)
+│   → Selskap opprettes i DB
+│   → Profil: approved = true (auto)
+│   → Rolle: administrator
+│   → Redirect til Stripe Checkout (5d trial)
+│   → Tilgang umiddelbart
+│
+└── Selskapskode (eksisterende)
+    → Profil: approved = false
+    → Admin godkjenner
+    → Abonnement sjekkes via selskapets eier
+    → Tilgang etter godkjenning
+```
 
 ### Endringer
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+#### 1. Stripe Checkout — legg til trial
+**`supabase/functions/create-checkout/index.ts`**
+- Legg til `subscription_data: { trial_period_days: 5 }` i `stripe.checkout.sessions.create()`
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+#### 2. check-subscription — inkluder trialing-status
+**`supabase/functions/check-subscription/index.ts`**
+- Utvid `subscriptions.list` til å inkludere `status: "trialing"` i tillegg til `"active"`
+- Legg til `trial_end`-felt i responsen
+- Returner `is_trial: true/false`
 
-### Hjelpefunksjon (i begge filer)
+#### 3. Auth-side — nytt selskap-alternativ
+**`src/pages/Auth.tsx`**
+- Legg til en toggle/tabs: «Bruk selskapskode» / «Opprett nytt selskap»
+- Nytt selskap-modus: felt for selskapsnavn og valgfritt org.nr
+- Ved registrering med nytt selskap:
+  1. `supabase.auth.signUp()` med user_metadata
+  2. Opprett selskap i `companies`-tabellen (med generert registration_code)
+  3. Opprett profil med `approved: true` og `company_id`
+  4. Tildel rolle `administrator`
+  5. Kall `create-checkout` og redirect til Stripe (trial)
+
+#### 4. Database-migrasjon
+- Tillat insert til `companies` for authenticated brukere (ny RLS policy)
+- Funksjon for å generere unik `registration_code` automatisk
+
+#### 5. AuthContext — trial-state
+**`src/contexts/AuthContext.tsx`**
+- Legg til `isTrial` og `trialEnd` state fra `check-subscription`
+
+#### 6. Subscription gate — blokker utløpte brukere
+**`src/App.tsx` / `src/pages/Index.tsx`**
+- Ny komponent `SubscriptionGate`:
+  - Hvis bruker er innlogget + godkjent, men `!subscribed` og ingen aktiv trial → vis betalingsside
+  - Betalingssiden viser: «Prøveperioden er utløpt. Abonner for å fortsette.» med checkout-knapp
+  - Bruker kan fortsatt åpne profil/abonnement-fanen
+
+#### 7. ProfileDialog — vis trial-info
+**`src/components/ProfileDialog.tsx`**
+- Vis «Prøveperiode» badge med utløpsdato når `isTrial`
+- Vis «X dager igjen» nedtelling
+
+### Tekniske detaljer
+
+**Stripe trial config:**
 ```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
+subscription_data: {
+  trial_period_days: 5,
+  trial_settings: {
+    end_behavior: { missing_payment_method: 'cancel' }
+  }
+}
+```
+Merk: Stripe kan kreve betalingsmetode ved checkout selv med trial. Med `missing_payment_method: 'cancel'` avsluttes abonnementet automatisk etter trial uten kort.
+
+**check-subscription utvidelse:**
+```typescript
+// Hent både active og trialing
+const subscriptions = await stripe.subscriptions.list({
+  customer: customerId,
+  limit: 1,
+});
+// Filtrer for active eller trialing
+const sub = subscriptions.data.find(s => 
+  s.status === 'active' || s.status === 'trialing'
+);
 ```
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+**Gate-logikk i frontend:**
+```typescript
+// I AuthenticatedLayout eller Index
+if (user && isApproved && !subscriptionLoading && !subscribed) {
+  return <SubscriptionExpiredPage />;
+}
 ```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
 
