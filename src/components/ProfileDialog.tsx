@@ -1719,7 +1719,7 @@ if (data?.url) window.open(data.url, '_blank');
                             try {
                               const { data, error } = await supabase.functions.invoke('create-checkout');
                               if (error) throw error;
-if (data?.url) window.location.href = data.url;
+if (data?.url) window.open(data.url, '_blank');
                             } catch (e: any) {
                               toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
                             }
