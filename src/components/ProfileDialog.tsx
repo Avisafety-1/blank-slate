@@ -1683,7 +1683,16 @@ export const ProfileDialog = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {subscriptionLoading ? (
+                    {stripeExempt ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary/10 text-primary border-primary/20">Faktureres separat</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Ditt selskap faktureres separat og trenger ikke Stripe-abonnement.
+                        </p>
+                      </div>
+                    ) : subscriptionLoading ? (
                       <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
                     ) : subscribed ? (
                       <div className="space-y-3">
