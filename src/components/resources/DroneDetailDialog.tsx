@@ -1174,7 +1174,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       return (
                         <div
                           key={link.id}
-                          className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                          className="flex items-center gap-2 p-2 bg-background/50 rounded border border-border overflow-hidden"
                         >
                           <div
                             className="flex-1 cursor-pointer min-w-0"
