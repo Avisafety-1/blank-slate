@@ -131,14 +131,6 @@ export function PersonCompetencyDialog({
 
   const getFileDisplayUrl = (filUrl: string): string => {
     if (filUrl.startsWith('http')) return filUrl;
-    // Check if it's a documents bucket path or logbook-images
-    const bucket = filUrl.includes('/competency-') ? 'logbook-images' : 'documents';
-    if (bucket === 'documents') {
-      // Documents bucket is private - return empty, will be fetched async
-      // For simplicity, use logbook-images public URL pattern
-      const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
-      return data?.publicUrl || '';
-    }
     const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
     return data?.publicUrl || '';
   };
