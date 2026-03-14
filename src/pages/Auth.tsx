@@ -15,6 +15,65 @@ import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 
+const PENDING_NEW_COMPANY_KEY = 'avisafe_pending_new_company_registration';
+
+interface PendingNewCompanyRegistration {
+  userId: string;
+  email: string;
+  fullName: string;
+  companyName: string;
+  companyOrgNr: string | null;
+}
+
+const completeNewCompanyRegistration = async (payload: PendingNewCompanyRegistration) => {
+  const { data: companyData, error: companyError } = await supabase
+    .from('companies')
+    .insert({
+      navn: payload.companyName.trim(),
+      org_nummer: payload.companyOrgNr?.trim() || null,
+    } as any)
+    .select('id, navn')
+    .single();
+
+  if (companyError || !companyData) {
+    throw companyError ?? new Error('Kunne ikke opprette selskap');
+  }
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: payload.userId,
+      full_name: payload.fullName,
+      company_id: companyData.id,
+      email: payload.email,
+      approved: true,
+    }, { onConflict: 'id' });
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  const { error: roleError } = await supabase
+    .from('user_roles')
+    .upsert({
+      user_id: payload.userId,
+      role: 'administrator',
+    }, { onConflict: 'user_id,role' });
+
+  if (roleError) {
+    throw roleError;
+  }
+
+  try {
+    const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
+    if (!checkoutError && checkoutData?.url) {
+      toast.success('Selskap opprettet! Du blir videresendt til aktivering…');
+      window.open(checkoutData.url, '_blank');
+    }
+  } catch (stripeErr) {
+    console.error('Stripe checkout error:', stripeErr);
+  }
+};
 
 const Auth = () => {
   const { t } = useTranslation();
@@ -45,6 +104,7 @@ const Auth = () => {
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
   const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
+  const [completingPendingRegistration, setCompletingPendingRegistration] = useState(false);
   
   // Handle email confirmation messages from URL hash
   useEffect(() => {
@@ -80,6 +140,55 @@ const Auth = () => {
       // being removed before Supabase could process the OAuth tokens.
     }
   }, [t]);
+
+  // Complete delayed company creation after email confirmation (when session exists)
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    let rawPending: string | null = null;
+    try {
+      rawPending = localStorage.getItem(PENDING_NEW_COMPANY_KEY);
+    } catch {
+      return;
+    }
+
+    if (!rawPending) return;
+
+    let pending: PendingNewCompanyRegistration | null = null;
+    try {
+      pending = JSON.parse(rawPending) as PendingNewCompanyRegistration;
+    } catch {
+      localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
+      return;
+    }
+
+    if (!pending || pending.userId !== user.id) return;
+
+    let cancelled = false;
+
+    const finalizePendingRegistration = async () => {
+      setCompletingPendingRegistration(true);
+      try {
+        await completeNewCompanyRegistration(pending!);
+        localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
+        toast.success('Konto og selskap opprettet!');
+        redirectToApp('/');
+      } catch (error: any) {
+        console.error('Error completing pending company registration:', error);
+        toast.error('Kunne ikke fullføre selskapsopprettelsen: ' + (error?.message || 'Ukjent feil'));
+      } finally {
+        if (!cancelled) {
+          setCompletingPendingRegistration(false);
+        }
+      }
+    };
+
+    finalizePendingRegistration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading]);
 
   // Handle Google OAuth users - check if they have a valid profile
   useEffect(() => {
@@ -153,16 +262,29 @@ const Auth = () => {
 
   // Regular redirect for non-OAuth users
   useEffect(() => {
-    if (authLoading || checkingGoogleUser || showGoogleRegistration) return;
-    
+    if (authLoading || checkingGoogleUser || showGoogleRegistration || completingPendingRegistration) return;
+
     const isOAuthUser = user?.app_metadata?.provider === 'google' || 
                         user?.app_metadata?.providers?.includes('google');
-    
+
     if (!isOAuthUser && user) {
+      let hasPendingCompanyRegistration = false;
+      try {
+        const rawPending = localStorage.getItem(PENDING_NEW_COMPANY_KEY);
+        if (rawPending) {
+          const pending = JSON.parse(rawPending) as PendingNewCompanyRegistration;
+          hasPendingCompanyRegistration = pending?.userId === user.id;
+        }
+      } catch {
+        hasPendingCompanyRegistration = false;
+      }
+
+      if (hasPendingCompanyRegistration) return;
+
       console.log('Redirecting to app domain');
       redirectToApp('/');
     }
-  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration]);
+  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration, completingPendingRegistration]);
 
   // Validate registration code when it changes
   useEffect(() => {
@@ -265,59 +387,29 @@ const Auth = () => {
             }
           }
         });
+
         if (error) throw error;
+
         if (data.user) {
-          // 2. Create company (registration_code auto-generated by trigger)
-          const { data: companyData, error: companyError } = await supabase
-            .from('companies')
-            .insert({
-              navn: newCompanyName.trim(),
-              org_nummer: newCompanyOrgNr.trim() || null,
-            } as any)
-            .select('id, navn')
-            .single();
+          const payload: PendingNewCompanyRegistration = {
+            userId: data.user.id,
+            email,
+            fullName,
+            companyName: newCompanyName.trim(),
+            companyOrgNr: newCompanyOrgNr.trim() || null,
+          };
 
-          if (companyError) {
-            console.error('Error creating company:', companyError);
-            toast.error('Kunne ikke opprette selskap: ' + companyError.message);
-            return;
+          // If email confirmation is enabled, signup returns no session.
+          // Save pending registration and complete it after email confirmation callback.
+          if (!data.session) {
+            localStorage.setItem(PENDING_NEW_COMPANY_KEY, JSON.stringify(payload));
+            toast.success('Bekreft e-posten din. Vi fullfører selskapsopprettelsen automatisk når du kommer tilbake.');
+          } else {
+            await completeNewCompanyRegistration(payload);
+            localStorage.removeItem(PENDING_NEW_COMPANY_KEY);
+            toast.success('Konto og selskap opprettet!');
           }
 
-          // 3. Upsert profile with approved = true
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              full_name: fullName,
-              company_id: companyData.id,
-              email: email,
-              approved: true
-            }, { onConflict: 'id' });
-
-          if (profileError) {
-            console.error('Error creating profile:', profileError);
-          }
-
-          // 4. Assign administrator role
-          await supabase
-            .from('user_roles')
-            .upsert({
-              user_id: data.user.id,
-              role: 'administrator'
-            }, { onConflict: 'user_id,role' });
-
-          // 5. Redirect to Stripe checkout (trial)
-          try {
-            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
-            if (!checkoutError && checkoutData?.url) {
-              toast.success('Selskap opprettet! Du blir videresendt til aktivering…');
-              window.open(checkoutData.url, '_blank');
-            }
-          } catch (stripeErr) {
-            console.error('Stripe checkout error:', stripeErr);
-          }
-
-          toast.success('Konto og selskap opprettet! Sjekk e-posten din for bekreftelse.');
           setEmail("");
           setPassword("");
           setFullName("");
