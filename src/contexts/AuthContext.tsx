@@ -49,6 +49,7 @@ interface AuthContextType {
   isTrial: boolean;
   trialEnd: string | null;
   stripeExempt: boolean;
+  hadPreviousSubscription: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
