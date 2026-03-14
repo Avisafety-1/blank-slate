@@ -64,8 +64,12 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isApproved: false,
   userRole: null,
+  subscribed: false,
+  subscriptionEnd: null,
+  subscriptionLoading: true,
   signOut: async () => {},
   refetchUserInfo: async () => {},
+  checkSubscription: async () => {},
 });
 
 export const useAuth = () => {
