@@ -262,16 +262,29 @@ const Auth = () => {
 
   // Regular redirect for non-OAuth users
   useEffect(() => {
-    if (authLoading || checkingGoogleUser || showGoogleRegistration) return;
-    
+    if (authLoading || checkingGoogleUser || showGoogleRegistration || completingPendingRegistration) return;
+
     const isOAuthUser = user?.app_metadata?.provider === 'google' || 
                         user?.app_metadata?.providers?.includes('google');
-    
+
     if (!isOAuthUser && user) {
+      let hasPendingCompanyRegistration = false;
+      try {
+        const rawPending = localStorage.getItem(PENDING_NEW_COMPANY_KEY);
+        if (rawPending) {
+          const pending = JSON.parse(rawPending) as PendingNewCompanyRegistration;
+          hasPendingCompanyRegistration = pending?.userId === user.id;
+        }
+      } catch {
+        hasPendingCompanyRegistration = false;
+      }
+
+      if (hasPendingCompanyRegistration) return;
+
       console.log('Redirecting to app domain');
       redirectToApp('/');
     }
-  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration]);
+  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration, completingPendingRegistration]);
 
   // Validate registration code when it changes
   useEffect(() => {
