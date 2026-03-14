@@ -428,6 +428,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscribed,
       subscriptionEnd,
       subscriptionLoading,
+      cancelAtPeriodEnd,
       signOut, 
       refetchUserInfo,
       checkSubscription,

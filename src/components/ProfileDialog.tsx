@@ -1688,12 +1688,21 @@ export const ProfileDialog = () => {
                     ) : subscribed ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                          {cancelAtPeriodEnd ? (
+                            <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
+                          ) : (
+                            <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                          )}
                           <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
                         </div>
-                        {subscriptionEnd && (
+                        {subscriptionEnd && subscriptionEnd !== 'unknown' && (
                           <p className="text-sm text-muted-foreground">
-                            Neste fornyelse: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                            {cancelAtPeriodEnd ? 'Utløper' : 'Neste fornyelse'}: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                          </p>
+                        )}
+                        {cancelAtPeriodEnd && (
+                          <p className="text-xs text-orange-600">
+                            Abonnementet er sagt opp og avsluttes ved periodens slutt. Du kan reaktivere det via «Administrer abonnement».
                           </p>
                         )}
                         <Button
