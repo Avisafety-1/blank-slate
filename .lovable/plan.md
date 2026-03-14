@@ -1,34 +1,44 @@
 
 
-## Problem
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-Two separate bugs:
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### 1. `endDate` always shows "unknown"
-The Stripe SDK (v18.5.0 with API `2025-08-27.basil`) moved `current_period_end` from the top-level subscription object to `items.data[0].current_period_end`. So `subscription.current_period_end` is `undefined`, and `safeDate(undefined)` returns `"unknown"`.
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-Confirmed by fetching the subscription directly:
-- `subscription.current_period_end` → missing
-- `subscription.items.data[0].current_period_end` → `1776178491` (Unix timestamp)
+### Endringer
 
-### 2. Cancellation status not shown
-When a user cancels via Customer Portal with "cancel at period end", Stripe keeps `status: "active"` but sets `cancel_at_period_end: true`. The current code doesn't check or return this flag, so the profile page still shows "Aktivt" with no indication the subscription is ending.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-## Fix
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-### `check-subscription/index.ts`
-- Read `current_period_end` from `items.data[0]` as fallback
-- Read `cancel_at_period_end` from the subscription
-- Return new field `cancel_at_period_end` in the response
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-### `stripe-webhook/index.ts`
-- Same fix for `current_period_end` path in logging
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-### `AuthContext.tsx`
-- Add `cancelAtPeriodEnd` state from `check-subscription` response
-
-### `ProfileDialog.tsx`
-- When `subscribed && cancelAtPeriodEnd`: show orange "Avsluttes" badge instead of green "Aktivt"
-- Change label from "Neste fornyelse" to "Utløper" when cancelling
-- Show a "Reaktiver abonnement" hint (links to customer portal)
+Ingen nye avhengigheter. Ingen databaseendringer.
 

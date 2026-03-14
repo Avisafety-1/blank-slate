@@ -45,6 +45,7 @@ interface AuthContextType {
   subscribed: boolean;
   subscriptionEnd: string | null;
   subscriptionLoading: boolean;
+  cancelAtPeriodEnd: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -67,6 +68,7 @@ const AuthContext = createContext<AuthContextType>({
   subscribed: false,
   subscriptionEnd: null,
   subscriptionLoading: true,
+  cancelAtPeriodEnd: false,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -97,6 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
@@ -386,6 +389,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setSubscribed(data?.subscribed ?? false);
       setSubscriptionEnd(data?.subscription_end ?? null);
+      setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
     } catch (e) {
       console.error('check-subscription failed:', e);
     } finally {
@@ -424,6 +428,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscribed,
       subscriptionEnd,
       subscriptionLoading,
+      cancelAtPeriodEnd,
       signOut, 
       refetchUserInfo,
       checkSubscription,
