@@ -214,26 +214,26 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                   </Button>
                 </div>
               ) : (
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 flex-1"
+                    className="gap-1.5"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Upload className="h-3.5 w-3.5" />
-                    Last opp / Ta bilde
+                    <Upload className="h-3.5 w-3.5 shrink-0" />
+                    Last opp
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 flex-1"
+                    className="gap-1.5"
                     onClick={() => setDocPickerOpen(true)}
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    Fra dokumenter
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    Dokumenter
                   </Button>
                   <input
                     ref={fileInputRef}
