@@ -45,6 +45,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://avisafev2.lovable.app";
 
+    // Check if customer has had a previous subscription (to prevent trial abuse)
+    let hadPreviousSub = false;
+    if (customerId) {
+      const subs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+      hadPreviousSub = subs.data.length > 0;
+      logStep("Previous subscription check", { hadPreviousSub });
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -55,12 +63,14 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      subscription_data: {
-        trial_period_days: 5,
-        trial_settings: {
-          end_behavior: { missing_payment_method: 'cancel' },
+      ...(hadPreviousSub ? {} : {
+        subscription_data: {
+          trial_period_days: 5,
+          trial_settings: {
+            end_behavior: { missing_payment_method: 'cancel' },
+          },
         },
-      },
+      }),
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,
     });
