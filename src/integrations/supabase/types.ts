@@ -402,6 +402,7 @@ export type Database = {
           org_nummer: string | null
           registration_code: string
           selskapstype: string | null
+          stripe_exempt: boolean
           updated_at: string
         }
         Insert: {
@@ -425,6 +426,7 @@ export type Database = {
           org_nummer?: string | null
           registration_code: string
           selskapstype?: string | null
+          stripe_exempt?: boolean
           updated_at?: string
         }
         Update: {
@@ -448,6 +450,7 @@ export type Database = {
           org_nummer?: string | null
           registration_code?: string
           selskapstype?: string | null
+          stripe_exempt?: boolean
           updated_at?: string
         }
         Relationships: [

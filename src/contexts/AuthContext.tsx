@@ -448,6 +448,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       cancelAtPeriodEnd,
       isTrial,
       trialEnd,
+      stripeExempt,
       signOut, 
       refetchUserInfo,
       checkSubscription,
