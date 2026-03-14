@@ -120,6 +120,7 @@ export const CompanyManagementDialog = ({
           kontakt_telefon: company.kontakt_telefon || "",
         });
       } else {
+        setStripeExempt(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
