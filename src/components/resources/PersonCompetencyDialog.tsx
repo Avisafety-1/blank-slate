@@ -322,8 +322,8 @@ export function PersonCompetencyDialog({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => {
-                  const url = getFileDisplayUrl(existingFilUrl);
+                onClick={async () => {
+                  const url = await getFileDisplayUrl(existingFilUrl);
                   if (url) window.open(url, '_blank');
                 }}
               >
