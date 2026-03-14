@@ -16,6 +16,7 @@ import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
