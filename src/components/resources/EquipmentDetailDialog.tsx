@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
-import { getStatusColorClasses, calculateUsageStatus } from "@/lib/maintenanceStatus";
+import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 
 interface Equipment {
