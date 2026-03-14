@@ -69,7 +69,7 @@ serve(async (req) => {
           subscriptionId: subscription.id,
           status: subscription.status,
           customerId: subscription.customer,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
+          currentPeriodEnd: safeDate((subscription as any).current_period_end),
         });
         break;
       }
