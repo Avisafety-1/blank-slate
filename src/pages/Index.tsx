@@ -32,7 +32,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
