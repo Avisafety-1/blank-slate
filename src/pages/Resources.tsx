@@ -1,6 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio, Filter } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,6 +110,16 @@ const Resources = () => {
       }
     }
   }, [equipment]);
+
+  // Sync selectedPerson with updated personnel data
+  useEffect(() => {
+    if (selectedPerson && personnel.length > 0) {
+      const updatedPerson = personnel.find(p => p.id === selectedPerson.id);
+      if (updatedPerson) {
+        setSelectedPerson(updatedPerson);
+      }
+    }
+  }, [personnel]);
 
   const fetchDrones = async (skipCache = false) => {
     // 1. Load cache first (unless skipping after mutation)
@@ -730,7 +740,7 @@ const Resources = () => {
                             return (
                               <span 
                                 key={comp.id} 
-                                className={`text-xs px-2 py-0.5 rounded-full truncate max-w-[140px] ${
+                                className={`text-xs px-2 py-0.5 rounded-full truncate max-w-[140px] inline-flex items-center gap-1 ${
                                   isExpired 
                                     ? 'bg-destructive/20 text-destructive' 
                                     : isExpiringSoon
@@ -738,6 +748,7 @@ const Resources = () => {
                                     : 'bg-primary/10 text-primary'
                                 }`}
                               >
+                                {comp.fil_url && <Paperclip className="h-3 w-3 shrink-0" />}
                                 {comp.navn}
                               </span>
                             );
