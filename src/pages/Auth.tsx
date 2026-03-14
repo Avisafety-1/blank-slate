@@ -273,7 +273,8 @@ const Auth = () => {
             .insert({
               navn: newCompanyName.trim(),
               org_nummer: newCompanyOrgNr.trim() || null,
-            })
+              registration_code: 'TEMP00', // Will be overwritten by database trigger
+            } as any)
             .select('id, navn')
             .single();
 
