@@ -740,7 +740,7 @@ const Resources = () => {
                             return (
                               <span 
                                 key={comp.id} 
-                                className={`text-xs px-2 py-0.5 rounded-full truncate max-w-[140px] ${
+                                className={`text-xs px-2 py-0.5 rounded-full truncate max-w-[140px] inline-flex items-center gap-1 ${
                                   isExpired 
                                     ? 'bg-destructive/20 text-destructive' 
                                     : isExpiringSoon
@@ -748,6 +748,7 @@ const Resources = () => {
                                     : 'bg-primary/10 text-primary'
                                 }`}
                               >
+                                {comp.fil_url && <Paperclip className="h-3 w-3 shrink-0" />}
                                 {comp.navn}
                               </span>
                             );
