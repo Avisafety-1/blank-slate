@@ -71,6 +71,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
   const [customType, setCustomType] = useState("");
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
+  const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [formData, setFormData] = useState({
     navn: "",
