@@ -104,7 +104,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
