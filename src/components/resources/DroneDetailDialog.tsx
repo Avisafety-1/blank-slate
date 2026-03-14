@@ -1177,11 +1177,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           className="flex items-center gap-2 p-2 bg-background/50 rounded border border-border overflow-hidden"
                         >
                           <div
-                            className="flex-1 cursor-pointer min-w-0"
+                            className="flex-1 min-w-0 cursor-pointer overflow-hidden"
                             onClick={() => doc.fil_url && handleOpenDocument(doc.fil_url)}
                           >
                             <p className="text-sm font-medium truncate">{doc.tittel}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground truncate">
                               {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
                             </p>
                           </div>
