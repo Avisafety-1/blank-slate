@@ -389,6 +389,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setSubscribed(data?.subscribed ?? false);
       setSubscriptionEnd(data?.subscription_end ?? null);
+      setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
     } catch (e) {
       console.error('check-subscription failed:', e);
     } finally {
