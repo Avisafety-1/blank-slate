@@ -36,6 +36,7 @@ interface Company {
   kontakt_telefon: string | null;
   aktiv: boolean;
   selskapstype?: string | null;
+  stripe_exempt?: boolean;
 }
 
 interface CompanyManagementDialogProps {
