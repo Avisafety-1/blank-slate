@@ -26,6 +26,7 @@ interface CachedProfile {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  stripeExempt: boolean;
 }
 
 interface AuthContextType {
@@ -48,6 +49,7 @@ interface AuthContextType {
   cancelAtPeriodEnd: boolean;
   isTrial: boolean;
   trialEnd: string | null;
+  stripeExempt: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -73,6 +75,7 @@ const AuthContext = createContext<AuthContextType>({
   cancelAtPeriodEnd: false,
   isTrial: false,
   trialEnd: null,
+  stripeExempt: false,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -106,6 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
+  const [stripeExempt, setStripeExempt] = useState(false);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
@@ -123,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(cached.isAdmin);
       setIsSuperAdmin(cached.isSuperAdmin);
       setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
+      setStripeExempt(cached.stripeExempt ?? false);
       console.log('AuthContext: Applied cached profile for offline use');
       return true;
     } catch {
@@ -288,7 +293,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               selskapstype,
               adresse_lat,
               adresse_lon,
-              dji_flightlog_enabled
+              dji_flightlog_enabled,
+              stripe_exempt
             )
           `)
           .eq('id', userId)
@@ -311,6 +317,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin: false,
         isSuperAdmin: false,
         djiFlightlogEnabled: false,
+        stripeExempt: false,
       };
 
       // If both queries failed (e.g. network error), fall back to cache
@@ -331,6 +338,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyLat = company?.adresse_lat || null;
         profileData.companyLon = company?.adresse_lon || null;
         profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
+        profileData.stripeExempt = company?.stripe_exempt ?? false;
       }
 
       if (roleResult.data) {
@@ -350,6 +358,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setStripeExempt(profileData.stripeExempt);
 
       // Cache for offline use
       saveCachedProfile(userId, profileData);
@@ -439,6 +448,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       cancelAtPeriodEnd,
       isTrial,
       trialEnd,
+      stripeExempt,
       signOut, 
       refetchUserInfo,
       checkSubscription,

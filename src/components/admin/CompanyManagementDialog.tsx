@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, Plane, Radio } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 interface Company {
@@ -36,6 +37,7 @@ interface Company {
   kontakt_telefon: string | null;
   aktiv: boolean;
   selskapstype?: string | null;
+  stripe_exempt?: boolean;
 }
 
 interface CompanyManagementDialogProps {
@@ -85,6 +87,7 @@ export const CompanyManagementDialog = ({
   onSuccess,
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stripeExempt, setStripeExempt] = useState(false);
   const isCreating = !company;
 
   const form = useForm<CompanyFormData>({
@@ -104,6 +107,7 @@ export const CompanyManagementDialog = ({
   useEffect(() => {
     if (open) {
       if (company) {
+        setStripeExempt(company.stripe_exempt ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
@@ -115,6 +119,7 @@ export const CompanyManagementDialog = ({
           kontakt_telefon: company.kontakt_telefon || "",
         });
       } else {
+        setStripeExempt(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
@@ -142,6 +147,7 @@ export const CompanyManagementDialog = ({
         adresse_lon: data.adresse_lon || null,
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
+        stripe_exempt: stripeExempt,
       };
 
       if (isCreating) {
@@ -320,6 +326,18 @@ export const CompanyManagementDialog = ({
                 </FormItem>
               )}
             />
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
+                <p className="text-xs text-muted-foreground">Selskapet faktureres separat og trenger ikke Stripe-abonnement</p>
+              </div>
+              <Switch
+                id="stripe_exempt"
+                checked={stripeExempt}
+                onCheckedChange={setStripeExempt}
+              />
+            </div>
 
             <DialogFooter>
               <Button

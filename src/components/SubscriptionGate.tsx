@@ -7,11 +7,11 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 export const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
-  const { user, isApproved, subscribed, subscriptionLoading, isSuperAdmin, signOut } = useAuth();
+  const { user, isApproved, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, signOut } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // Don't gate if: still loading, no user, not approved, superadmin, or has subscription
-  if (subscriptionLoading || !user || !isApproved || isSuperAdmin || subscribed) {
+  // Don't gate if: still loading, no user, not approved, superadmin, has subscription, or stripe exempt
+  if (subscriptionLoading || !user || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
     return <>{children}</>;
   }
 
