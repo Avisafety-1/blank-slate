@@ -32,6 +32,7 @@ import NotFound from "./pages/NotFound";
 import SoraProcess from "./pages/SoraProcess";
 import Changelog from "./pages/Changelog";
 import Marketing from "./pages/Marketing";
+import Priser from "./pages/Priser";
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -128,6 +129,7 @@ const App = () => {
                 <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                 <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
                 <Route path="/installer" element={<Installer />} />
+                <Route path="/priser" element={<Priser />} />
                 <Route path="/sora-prosess" element={<SoraProcess />} />
                 <Route path="/bruksanvisning" element={<UserManualDownload />} />
                 

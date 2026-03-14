@@ -42,8 +42,12 @@ interface AuthContextType {
   isAdmin: boolean;
   isApproved: boolean;
   userRole: string | null;
+  subscribed: boolean;
+  subscriptionEnd: string | null;
+  subscriptionLoading: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -60,8 +64,12 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isApproved: false,
   userRole: null,
+  subscribed: false,
+  subscriptionEnd: null,
+  subscriptionLoading: true,
   signOut: async () => {},
   refetchUserInfo: async () => {},
+  checkSubscription: async () => {},
 });
 
 export const useAuth = () => {
@@ -86,6 +94,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [djiFlightlogEnabled, setDjiFlightlogEnabled] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
@@ -361,6 +372,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkSubscription = async () => {
+    if (!session) {
+      setSubscriptionLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) {
+        console.error('check-subscription error:', error);
+        setSubscriptionLoading(false);
+        return;
+      }
+      setSubscribed(data?.subscribed ?? false);
+      setSubscriptionEnd(data?.subscription_end ?? null);
+    } catch (e) {
+      console.error('check-subscription failed:', e);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  // Check subscription on session change and periodically
+  useEffect(() => {
+    if (!session) {
+      setSubscribed(false);
+      setSubscriptionEnd(null);
+      setSubscriptionLoading(false);
+      return;
+    }
+    checkSubscription();
+    const interval = setInterval(checkSubscription, 60_000);
+    return () => clearInterval(interval);
+  }, [session]);
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -376,8 +421,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isAdmin,
       isApproved,
       userRole, 
+      subscribed,
+      subscriptionEnd,
+      subscriptionLoading,
       signOut, 
-      refetchUserInfo 
+      refetchUserInfo,
+      checkSubscription,
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -104,7 +104,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -659,7 +659,7 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
                   <span>{t('profile.info')}</span>
@@ -694,6 +694,10 @@ export const ProfileDialog = () => {
                   )}
                 </TabsTrigger>
                 )}
+                <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <CreditCard className="h-3 w-3" />
+                  <span>Abonnement</span>
+                </TabsTrigger>
               </TabsList>
 
               {activeTab === "profile" && (
@@ -1664,6 +1668,67 @@ export const ProfileDialog = () => {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">{t('profile.noIncidentsFollowUp')}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Subscription Tab */}
+              <TabsContent value="subscription" className="space-y-4 mt-28 md:mt-16 lg:mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Abonnement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {subscriptionLoading ? (
+                      <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
+                    ) : subscribed ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                          <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
+                        </div>
+                        {subscriptionEnd && (
+                          <p className="text-sm text-muted-foreground">
+                            Neste fornyelse: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.functions.invoke('customer-portal');
+                              if (error) throw error;
+                              if (data?.url) window.open(data.url, '_blank');
+                            } catch (e: any) {
+                              toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                            }
+                          }}
+                        >
+                          Administrer abonnement
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">Du har ikke et aktivt abonnement.</p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.functions.invoke('create-checkout');
+                              if (error) throw error;
+                              if (data?.url) window.open(data.url, '_blank');
+                            } catch (e: any) {
+                              toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+                            }
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Abonner nå – 599 NOK/mnd
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

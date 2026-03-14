@@ -15,7 +15,8 @@ import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import { DashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
@@ -31,7 +32,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -50,8 +50,22 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, djiFlightlogEnabled } = useAuth();
+  const { user, loading, isApproved, djiFlightlogEnabled, checkSubscription } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Handle checkout redirect
+  useEffect(() => {
+    const checkout = searchParams.get('checkout');
+    if (checkout === 'success') {
+      toast.success('Abonnement aktivert! Velkommen til AviSafe.');
+      checkSubscription();
+      setSearchParams({}, { replace: true });
+    } else if (checkout === 'cancelled') {
+      toast.info('Betaling ble avbrutt.');
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
   const dashboardRealtime = useDashboardRealtime();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: pushSubscribe } = usePushNotifications();
 

@@ -1,38 +1,44 @@
 
 
-## Stripe Subscription Integration for AviSafe
+## Legg til rekkefølge-endring for sjekklistepunkter
 
-### Existing Stripe Setup
-- **Product**: "AviSafe platform" (`prod_U9B1AxOIjwOEVM`)
-- **Price**: 599 NOK/month (`price_1TAsfcRwSSSiRYeAbi7Uhpnz`)
+### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-### What will be built
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-**3 Edge Functions:**
+### Endringer
 
-1. **`check-subscription`** — Checks if the authenticated user's email has an active Stripe subscription. Returns `{ subscribed, product_id, subscription_end }`. Called on login, page load, and periodically.
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-2. **`create-checkout`** — Creates a Stripe Checkout session for the AviSafe subscription (599 NOK/mo). Redirects user to Stripe's hosted checkout page. Reuses existing Stripe customer if found.
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-3. **`customer-portal`** — Creates a Stripe Customer Portal session so users can manage billing, cancel, or update payment methods.
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-**Frontend changes:**
+### UI per punkt
+```text
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-4. **AuthContext** — Add `subscribed`, `subscriptionEnd`, and `subscriptionLoading` state. Auto-check subscription on login and periodically (every 60s).
-
-5. **Pricing page** (`/priser`) — New public-ish route showing the AviSafe plan (599 NOK/mo) with a "Subscribe" button that triggers checkout. Accessible from auth page and for logged-in users.
-
-6. **ProfileDialog** — Add a "Subscription" tab showing current plan status, end date, and a "Manage Subscription" button linking to Stripe Customer Portal.
-
-7. **Config** — `supabase/config.toml` entries for the 3 new edge functions.
-
-### Technical details
-
-- Edge functions use `verify_jwt = false` with manual JWT validation via `getUser(token)`
-- Stripe API version: `2025-08-27.basil`
-- `STRIPE_SECRET_KEY` is already configured as a secret
-- No webhooks needed — subscription status is checked live via Stripe API
-- Price ID `price_1TAsfcRwSSSiRYeAbi7Uhpnz` hardcoded in checkout function
-- Success URL redirects back to app with a toast confirmation
-- Customer Portal requires activation in Stripe Dashboard: https://dashboard.stripe.com/test/settings/billing/portal
+Ingen nye avhengigheter. Ingen databaseendringer.
 
