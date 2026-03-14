@@ -659,7 +659,7 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
+              <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
                   <span>{t('profile.info')}</span>
