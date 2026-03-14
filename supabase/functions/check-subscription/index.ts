@@ -68,12 +68,16 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let productId = null;
     let subscriptionEnd = null;
+    let cancelAtPeriodEnd = false;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = safeDate(subscription.current_period_end);
+      // In newer Stripe SDK versions, current_period_end may be on items.data[0]
+      const periodEnd = (subscription as any).current_period_end || subscription.items?.data[0]?.current_period_end;
+      subscriptionEnd = safeDate(periodEnd);
+      cancelAtPeriodEnd = (subscription as any).cancel_at_period_end ?? false;
       productId = subscription.items.data[0].price.product;
-      logStep("Active subscription found", { subscriptionId: subscription.id, productId, endDate: subscriptionEnd });
+      logStep("Active subscription found", { subscriptionId: subscription.id, productId, endDate: subscriptionEnd, cancelAtPeriodEnd });
     } else {
       logStep("No active subscription found");
     }
@@ -82,6 +86,7 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      cancel_at_period_end: cancelAtPeriodEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

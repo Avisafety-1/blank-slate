@@ -65,11 +65,13 @@ serve(async (req) => {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
+        const periodEnd = (subscription as any).current_period_end || subscription.items?.data[0]?.current_period_end;
         logStep("Subscription created/updated", {
           subscriptionId: subscription.id,
           status: subscription.status,
           customerId: subscription.customer,
-          currentPeriodEnd: safeDate((subscription as any).current_period_end),
+          cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
+          currentPeriodEnd: safeDate(periodEnd),
         });
         break;
       }
