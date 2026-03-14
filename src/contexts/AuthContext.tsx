@@ -315,32 +315,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        setLoading(false);
-        cacheSession(session.user);
-        // Offline: use cached profile; Online: fetch fresh data
-        if (!navigator.onLine) {
-          applyCachedProfile(session.user.id);
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          if (navigator.onLine) {
+            const { error: userError } = await supabase.auth.getUser();
+            if (userError && isMissingAuthUserError(userError)) {
+              console.warn('AuthContext: Found stale session for deleted user, clearing local auth');
+              await clearLocalAuthData(session.user.id);
+              setLoading(false);
+              return;
+            }
+          }
+
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          cacheSession(session.user);
+          // Offline: use cached profile; Online: fetch fresh data
+          if (!navigator.onLine) {
+            applyCachedProfile(session.user.id);
+          } else {
+            fetchUserInfo(session.user.id);
+          }
+        } else if (!navigator.onLine) {
+          // Offline fallback: restore user from cache
+          console.log('AuthContext: Offline with no session, trying cache');
+          const restored = restoreFromCache();
+          setLoading(false);
+          if (restored) {
+            console.log('AuthContext: Restored user from offline cache');
+          }
         } else {
-          fetchUserInfo(session.user.id);
+          resetAuthState();
+          setLoading(false);
         }
-      } else if (!navigator.onLine) {
-        // Offline fallback: restore user from cache
-        console.log('AuthContext: Offline with no session, trying cache');
-        const restored = restoreFromCache();
+      })
+      .catch(() => {
+        resetAuthState();
         setLoading(false);
-        if (restored) {
-          console.log('AuthContext: Restored user from offline cache');
-        }
-      } else {
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-      }
-    });
+      });
 
     return () => subscription.unsubscribe();
   }, []);
