@@ -34,14 +34,33 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Check superadmin role
+    const { companyId, enable, selfProvision } = await req.json();
+    if (!companyId) {
+      return new Response(JSON.stringify({ error: "companyId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Check authorization: superadmin OR self-provision by company administrator
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (roleData?.role !== "superadmin") {
+    const isSuperAdmin = roleData?.role === "superadmin";
+    const isCompanyAdmin = ["administrator", "admin"].includes(roleData?.role || "");
+
+    if (selfProvision && isCompanyAdmin) {
+      // Verify the caller belongs to this company
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .single();
+
+      if (profileData?.company_id !== companyId) {
+        return new Response(JSON.stringify({ error: "Forbidden: not your company" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else if (!isSuperAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden: superadmin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -49,8 +68,6 @@ Deno.serve(async (req) => {
     if (!masterKey) {
       return new Response(JSON.stringify({ error: "DRONELOG_AVISAFE_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    const { companyId, enable } = await req.json();
     if (!companyId) {
       return new Response(JSON.stringify({ error: "companyId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
