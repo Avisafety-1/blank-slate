@@ -104,6 +104,7 @@ const Auth = () => {
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
   const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
+  const [completingPendingRegistration, setCompletingPendingRegistration] = useState(false);
   
   // Handle email confirmation messages from URL hash
   useEffect(() => {
