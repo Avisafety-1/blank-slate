@@ -1,44 +1,31 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Analysis
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+The user has configured these webhook events in Stripe Dashboard. The current handler covers:
+- ✅ `customer.subscription.created`
+- ✅ `customer.subscription.updated`
+- ✅ `customer.subscription.deleted`
+- ❌ `customer.subscription.paused`
+- ❌ `customer.subscription.resumed`
+- ❌ `customer.subscription.pending_update_applied`
+- ❌ `customer.subscription.pending_update_expired`
+- ❌ `payment_intent.canceled`
+- ❌ `payment_intent.created`
+- ❌ `payment_intent.payment_failed`
+- ❌ `payment_intent.processing`
+- ❌ `payment_intent.succeeded`
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+Also missing: `checkout.session.completed` is handled but not listed by the user (likely already configured separately).
 
-### Endringer
+## Plan
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+Update `supabase/functions/stripe-webhook/index.ts` to handle all the new event types:
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+1. Add `customer.subscription.paused` and `customer.subscription.resumed` cases with logging of subscription ID, status, and customer ID.
+2. Add `customer.subscription.pending_update_applied` and `customer.subscription.pending_update_expired` cases.
+3. Add `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `payment_intent.created`, and `payment_intent.processing` cases — all logging relevant PaymentIntent details (ID, status, amount, customer).
+4. Remove the existing `invoice.payment_failed` case since the user didn't subscribe to invoice events (keep it only if you want, but the `payment_intent.payment_failed` now covers failure detection).
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
+All cases will log details for now. No database writes needed at this stage — the webhook serves as an audit trail and can be extended later to trigger actions (e.g., pause access on `subscription.paused`).
 
