@@ -324,7 +324,18 @@ export const CompanyManagementDialog = ({
               )}
             />
 
-            <DialogFooter>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
+                <p className="text-xs text-muted-foreground">Selskapet faktureres separat og trenger ikke Stripe-abonnement</p>
+              </div>
+              <Switch
+                id="stripe_exempt"
+                checked={stripeExempt}
+                onCheckedChange={setStripeExempt}
+              />
+            </div>
+
               <Button
                 type="button"
                 variant="outline"
