@@ -573,35 +573,75 @@ const Auth = () => {
                 </div>
               )}
               {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="registrationCode">{t('auth.registrationCode')}</Label>
-                  <div className="relative">
-                    <Input 
-                      id="registrationCode" 
-                      type="text" 
-                      placeholder="ABC123" 
-                      value={registrationCode} 
-                      onChange={e => setRegistrationCode(e.target.value.toUpperCase().slice(0, 6))} 
-                      required={!isLogin}
-                      maxLength={6}
-                      className="font-mono uppercase tracking-wider"
-                    />
-                    {validatedCompany && (
-                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
-                    )}
-                  </div>
-                  {validatedCompany && (
-                    <p className="text-sm text-green-600 flex items-center gap-1">
-                      {t('auth.company')}: {validatedCompany.name}
-                    </p>
+                <>
+                  <Tabs value={regMode} onValueChange={(v) => setRegMode(v as 'code' | 'new')} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="code" className="text-xs gap-1">
+                        <KeyRound className="h-3.5 w-3.5" />
+                        Selskapskode
+                      </TabsTrigger>
+                      <TabsTrigger value="new" className="text-xs gap-1">
+                        <Building2 className="h-3.5 w-3.5" />
+                        Nytt selskap
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  {regMode === 'code' ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="registrationCode">{t('auth.registrationCode')}</Label>
+                      <div className="relative">
+                        <Input 
+                          id="registrationCode" 
+                          type="text" 
+                          placeholder="ABC123" 
+                          value={registrationCode} 
+                          onChange={e => setRegistrationCode(e.target.value.toUpperCase().slice(0, 6))} 
+                          required={regMode === 'code'}
+                          maxLength={6}
+                          className="font-mono uppercase tracking-wider"
+                        />
+                        {validatedCompany && (
+                          <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      {validatedCompany && (
+                        <p className="text-sm text-primary flex items-center gap-1">
+                          {t('auth.company')}: {validatedCompany.name}
+                        </p>
+                      )}
+                      {registrationCode.length === 6 && !validatedCompany && (
+                        <p className="text-sm text-destructive">{t('auth.invalidCode')}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {t('auth.contactAdmin')}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Selskapsnavn *</Label>
+                      <Input 
+                        id="companyName" 
+                        type="text" 
+                        placeholder="Mitt Droneselskap AS" 
+                        value={newCompanyName} 
+                        onChange={e => setNewCompanyName(e.target.value)} 
+                        required={regMode === 'new'}
+                      />
+                      <Label htmlFor="orgNr">Organisasjonsnummer (valgfritt)</Label>
+                      <Input 
+                        id="orgNr" 
+                        type="text" 
+                        placeholder="123 456 789" 
+                        value={newCompanyOrgNr} 
+                        onChange={e => setNewCompanyOrgNr(e.target.value)} 
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Du blir administrator for det nye selskapet. 5 dager gratis prøveperiode.
+                      </p>
+                    </div>
                   )}
-                  {registrationCode.length === 6 && !validatedCompany && (
-                    <p className="text-sm text-destructive">{t('auth.invalidCode')}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {t('auth.contactAdmin')}
-                  </p>
-                </div>
+                </>
               )}
               <div className="space-y-2">
                 <Label htmlFor="email">{t('auth.email')}</Label>
