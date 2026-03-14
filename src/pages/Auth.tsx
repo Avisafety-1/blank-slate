@@ -143,7 +143,7 @@ const Auth = () => {
 
   // Complete delayed company creation after email confirmation (when session exists)
   useEffect(() => {
-    if (authLoading || !user || completingPendingRegistration) return;
+    if (authLoading || !user) return;
 
     let rawPending: string | null = null;
     try {
@@ -188,7 +188,7 @@ const Auth = () => {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, completingPendingRegistration]);
+  }, [user, authLoading]);
 
   // Handle Google OAuth users - check if they have a valid profile
   useEffect(() => {
