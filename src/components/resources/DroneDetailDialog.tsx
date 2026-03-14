@@ -1174,14 +1174,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       return (
                         <div
                           key={link.id}
-                          className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                          className="flex items-center gap-2 p-2 bg-background/50 rounded border border-border overflow-hidden"
                         >
                           <div
-                            className="flex-1 cursor-pointer min-w-0"
+                            className="flex-1 min-w-0 cursor-pointer overflow-hidden"
                             onClick={() => doc.fil_url && handleOpenDocument(doc.fil_url)}
                           >
                             <p className="text-sm font-medium truncate">{doc.tittel}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground truncate">
                               {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
                             </p>
                           </div>
@@ -1189,7 +1189,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveDocument(link.id, doc.tittel)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 shrink-0"
                           >
                             <X className="w-4 h-4" />
                           </Button>
