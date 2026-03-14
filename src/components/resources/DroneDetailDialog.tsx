@@ -727,49 +727,74 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
                       {aggregatedStatus}
                     </Badge>
-                    {(drone.status === 'Gul' || drone.status === 'Rød') && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-xs h-6 px-2">
-                            Kvitter ut advarsel
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                            <AlertDialogAction onClick={async () => {
-                              if (!user || !companyId) return;
-                              const { error } = await supabase.from('drones').update({ status: 'Grønn' }).eq('id', drone.id);
-                              if (error) {
-                                toast.error(`Kunne ikke kvittere ut: ${error.message}`);
-                                return;
-                              }
-                              await supabase.from('drone_log_entries').insert({
-                                drone_id: drone.id,
-                                company_id: companyId,
-                                user_id: user.id,
-                                entry_date: new Date().toISOString().split('T')[0],
-                                entry_type: 'Kvittering',
-                                title: 'Advarsel kvittert ut',
-                                description: `Status endret fra ${drone.status} til Grønn`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ['drones'] });
-                              onDroneUpdated();
-                              toast.success('Advarsel kvittert ut — status satt til Grønn');
-                            }}>
-                              Kvitter ut
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
                   </div>
+                  {/* Status explanation */}
+                  {aggregatedStatus !== "Grønn" && (
+                    <div className="mt-1.5 space-y-1">
+                      {maintenanceAggregated !== "Grønn" && (
+                        <p className="text-xs text-muted-foreground">
+                          🔧 Vedlikehold {maintenanceAggregated === "Rød" ? "forfalt" : "nærmer seg"}
+                        </p>
+                      )}
+                      {dbStatus !== "Grønn" && (
+                        <p className="text-xs text-muted-foreground">
+                          ⚠️ {latestWarning ? `Advarsel: ${latestWarning.title}` : "Advarsel fra flylogg"}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* Show acknowledge button only when DB warning is actually driving the status */}
+                  {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceAggregated] && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
+                          Kvitter ut advarsel
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {latestWarning
+                              ? `Advarsel: «${latestWarning.title}» (${new Date(latestWarning.entry_date).toLocaleDateString('nb-NO')}). Vil du kvittere ut og sette status tilbake til Grønn?`
+                              : "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+                            }
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={async () => {
+                            if (!user || !companyId) return;
+                            const { error } = await supabase.from('drones').update({ status: 'Grønn' }).eq('id', drone.id);
+                            if (error) {
+                              toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                              return;
+                            }
+                            await supabase.from('drone_log_entries').insert({
+                              drone_id: drone.id,
+                              company_id: companyId,
+                              user_id: user.id,
+                              entry_date: new Date().toISOString().split('T')[0],
+                              entry_type: 'Kvittering',
+                              title: 'Advarsel kvittert ut',
+                              description: `Status endret fra ${drone.status} til Grønn${latestWarning ? ` (${latestWarning.title})` : ''}`,
+                            });
+                            queryClient.invalidateQueries({ queryKey: ['drones'] });
+                            onDroneUpdated();
+                            toast.success('Advarsel kvittert ut — status satt til Grønn');
+                          }}>
+                            Kvitter ut
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  {/* If DB warning exists but maintenance is already worse or equal */}
+                  {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] <= STATUS_PRIORITY[maintenanceAggregated] && (
+                    <p className="text-xs text-muted-foreground mt-1.5 italic">
+                      Advarsel fra flylogg kan kvitteres ut etter at vedlikehold er utført
+                    </p>
+                  )}
                 </div>
               </div>
 
