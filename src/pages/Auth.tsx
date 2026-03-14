@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Chrome, CheckCircle2 } from "lucide-react";
+import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 
