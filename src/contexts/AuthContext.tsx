@@ -449,7 +449,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Cache for offline use
       saveCachedProfile(userId, profileData);
-    } catch (error) {
+
+      // Auto-provision DroneLog API key if DJI is enabled but no key exists
+      const company = profileResult.data?.companies as any;
+      if (
+        profileData.djiFlightlogEnabled &&
+        !company?.dronelog_api_key &&
+        profileData.companyId &&
+        profileData.isAdmin
+      ) {
+        console.log('AuthContext: Auto-provisioning DroneLog API key for company', profileData.companyId);
+        try {
+          await supabase.functions.invoke('manage-dronelog-key', {
+            body: { companyId: profileData.companyId, enable: true, selfProvision: true },
+          });
+          console.log('AuthContext: DroneLog API key provisioned successfully');
+        } catch (provisionError) {
+          console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
+        }
+      }
       console.error('Error fetching user info:', error);
       // If fetch failed (likely offline), try cached profile
       if (!navigator.onLine) {
