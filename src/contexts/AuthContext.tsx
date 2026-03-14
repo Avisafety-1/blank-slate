@@ -291,18 +291,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return;
           }
           // Online: genuine sign-out
-          setSession(null);
-          setUser(null);
-          setCompanyId(null);
-          setCompanyName(null);
-          setCompanyType(null);
-          setCompanyLat(null);
-          setCompanyLon(null);
-          setIsSuperAdmin(false);
-          setIsAdmin(false);
-          setIsApproved(false);
-          setDjiFlightlogEnabled(false);
-          setUserRole(null);
+          resetAuthState();
           setLoading(false);
         } else {
           // Offline guard: if session is null while offline, don't overwrite user state
