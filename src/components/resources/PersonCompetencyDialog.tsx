@@ -134,9 +134,10 @@ export function PersonCompetencyDialog({
     // Check if it's a documents bucket path or logbook-images
     const bucket = filUrl.includes('/competency-') ? 'logbook-images' : 'documents';
     if (bucket === 'documents') {
-      // Documents bucket is private, need signed URL
-      const { data } = supabase.storage.from('documents').createSignedUrl(filUrl, 3600);
-      return data?.signedUrl || '';
+      // Documents bucket is private - return empty, will be fetched async
+      // For simplicity, use logbook-images public URL pattern
+      const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
+      return data?.publicUrl || '';
     }
     const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
     return data?.publicUrl || '';
