@@ -104,6 +104,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
 
   const applyCachedProfile = (userId: string): boolean => {
     try {
