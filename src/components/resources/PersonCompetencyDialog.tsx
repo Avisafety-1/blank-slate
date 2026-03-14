@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,12 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Book } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
+import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 
 interface Competency {
   id: string;
@@ -23,6 +25,7 @@ interface Competency {
   utstedt_dato: string | null;
   utloper_dato: string | null;
   påvirker_status?: boolean;
+  fil_url?: string | null;
 }
 
 interface Person {
@@ -44,6 +47,7 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
+  const { companyId } = useAuth();
   const [person, setPerson] = useState<Person | null>(initialPerson);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -57,6 +61,10 @@ export function PersonCompetencyDialog({
   const [newIssueDate, setNewIssueDate] = useState("");
   const [newExpiryDate, setNewExpiryDate] = useState("");
   const [newAffectsStatus, setNewAffectsStatus] = useState(true);
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [newDocumentUrl, setNewDocumentUrl] = useState<string | null>(null);
+  const [newDocPickerOpen, setNewDocPickerOpen] = useState(false);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit competency form state
   const [editType, setEditType] = useState("");
@@ -65,6 +73,11 @@ export function PersonCompetencyDialog({
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editExpiryDate, setEditExpiryDate] = useState("");
   const [editAffectsStatus, setEditAffectsStatus] = useState(true);
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editDocumentUrl, setEditDocumentUrl] = useState<string | null>(null);
+  const [editExistingFilUrl, setEditExistingFilUrl] = useState<string | null>(null);
+  const [editDocPickerOpen, setEditDocPickerOpen] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   // Update local person state when prop changes
   useEffect(() => {
@@ -86,7 +99,6 @@ export function PersonCompetencyDialog({
           filter: `profile_id=eq.${person.id}`,
         },
         async () => {
-          // Refetch person with competencies when changes occur
           const { data } = await supabase
             .from('profiles')
             .select('id, full_name, personnel_competencies(*)')
@@ -94,7 +106,6 @@ export function PersonCompetencyDialog({
             .single();
           
           if (data) {
-            console.log('Person competencies updated via realtime:', data);
             setPerson(data as Person);
           }
         }
@@ -105,6 +116,24 @@ export function PersonCompetencyDialog({
       supabase.removeChannel(channel);
     };
   }, [person?.id, open]);
+
+  const uploadFile = async (file: File, competencyId: string): Promise<string | null> => {
+    if (!companyId) return null;
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${companyId}/competency-${competencyId}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('logbook-images').upload(filePath, file);
+    if (error) {
+      console.error('Upload error:', error);
+      return null;
+    }
+    return filePath;
+  };
+
+  const getFileDisplayUrl = (filUrl: string): string => {
+    if (filUrl.startsWith('http')) return filUrl;
+    const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
+    return data?.publicUrl || '';
+  };
 
   const handleAddCompetency = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +147,7 @@ export function PersonCompetencyDialog({
       return;
     }
 
-    const { error } = await supabase.from("personnel_competencies").insert({
+    const { data, error } = await supabase.from("personnel_competencies").insert({
       profile_id: person.id,
       type: newType,
       navn: newName,
@@ -126,37 +155,28 @@ export function PersonCompetencyDialog({
       utstedt_dato: newIssueDate || null,
       utloper_dato: newExpiryDate || null,
       påvirker_status: newAffectsStatus,
-    });
+    }).select('id').single();
 
     if (error) {
       console.error("Error adding competency:", error);
-      console.error("Error details:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      
       if (error.code === "42501" || error.message?.includes("policy")) {
-        toast({
-          title: "Ingen tillatelse",
-          description: "Du har ikke tillatelse til å legge til kompetanse for denne personen",
-          variant: "destructive",
-        });
+        toast({ title: "Ingen tillatelse", description: "Du har ikke tillatelse til å legge til kompetanse for denne personen", variant: "destructive" });
       } else {
-        toast({
-          title: "Feil",
-          description: error.message || "Kunne ikke legge til kompetanse",
-          variant: "destructive",
-        });
+        toast({ title: "Feil", description: error.message || "Kunne ikke legge til kompetanse", variant: "destructive" });
       }
       return;
     }
 
-    toast({
-      title: "Suksess",
-      description: "Kompetanse lagt til",
-    });
+    // Upload file if selected
+    let filUrl: string | null = newDocumentUrl;
+    if (newFile && data?.id) {
+      filUrl = await uploadFile(newFile, data.id);
+    }
+    if (filUrl && data?.id) {
+      await (supabase as any).from("personnel_competencies").update({ fil_url: filUrl }).eq("id", data.id);
+    }
+
+    toast({ title: "Suksess", description: "Kompetanse lagt til" });
 
     // Reset form
     setNewType("");
@@ -165,6 +185,9 @@ export function PersonCompetencyDialog({
     setNewIssueDate("");
     setNewExpiryDate("");
     setNewAffectsStatus(true);
+    setNewFile(null);
+    setNewDocumentUrl(null);
+    if (newFileInputRef.current) newFileInputRef.current.value = '';
     
     onCompetencyUpdated();
   };
@@ -177,6 +200,9 @@ export function PersonCompetencyDialog({
     setEditIssueDate(competency.utstedt_dato || "");
     setEditExpiryDate(competency.utloper_dato || "");
     setEditAffectsStatus(competency.påvirker_status !== false);
+    setEditExistingFilUrl(competency.fil_url || null);
+    setEditFile(null);
+    setEditDocumentUrl(null);
   };
 
   const handleCancelEdit = () => {
@@ -187,19 +213,27 @@ export function PersonCompetencyDialog({
     setEditIssueDate("");
     setEditExpiryDate("");
     setEditAffectsStatus(true);
+    setEditFile(null);
+    setEditDocumentUrl(null);
+    setEditExistingFilUrl(null);
   };
 
   const handleUpdateCompetency = async (competencyId: string) => {
     if (!editType || !editName) {
-      toast({
-        title: "Feil",
-        description: "Type og navn er påkrevd",
-        variant: "destructive",
-      });
+      toast({ title: "Feil", description: "Type og navn er påkrevd", variant: "destructive" });
       return;
     }
 
-    const { error } = await supabase
+    let filUrl: string | null | undefined = editExistingFilUrl;
+    
+    // Upload new file if selected
+    if (editFile) {
+      filUrl = await uploadFile(editFile, competencyId);
+    } else if (editDocumentUrl) {
+      filUrl = editDocumentUrl;
+    }
+
+    const { error } = await (supabase as any)
       .from("personnel_competencies")
       .update({
         type: editType,
@@ -208,23 +242,16 @@ export function PersonCompetencyDialog({
         utstedt_dato: editIssueDate || null,
         utloper_dato: editExpiryDate || null,
         påvirker_status: editAffectsStatus,
+        fil_url: filUrl,
       })
       .eq("id", competencyId);
 
     if (error) {
-      toast({
-        title: "Feil",
-        description: "Kunne ikke oppdatere kompetanse",
-        variant: "destructive",
-      });
+      toast({ title: "Feil", description: "Kunne ikke oppdatere kompetanse", variant: "destructive" });
       return;
     }
 
-    toast({
-      title: "Suksess",
-      description: "Kompetanse oppdatert",
-    });
-
+    toast({ title: "Suksess", description: "Kompetanse oppdatert" });
     setEditingId(null);
     onCompetencyUpdated();
   };
@@ -237,28 +264,117 @@ export function PersonCompetencyDialog({
   const handleConfirmDelete = async () => {
     if (!competencyToDelete) return;
 
+    // Find the competency to check for file
+    const comp = person?.personnel_competencies?.find(c => c.id === competencyToDelete);
+    if (comp?.fil_url && comp.fil_url.includes('/competency-')) {
+      await supabase.storage.from('logbook-images').remove([comp.fil_url]);
+    }
+
     const { error } = await supabase
       .from("personnel_competencies")
       .delete()
       .eq("id", competencyToDelete);
 
     if (error) {
-      toast({
-        title: "Feil",
-        description: "Kunne ikke slette kompetanse",
-        variant: "destructive",
-      });
+      toast({ title: "Feil", description: "Kunne ikke slette kompetanse", variant: "destructive" });
       return;
     }
 
-    toast({
-      title: "Suksess",
-      description: "Kompetanse slettet",
-    });
-
+    toast({ title: "Suksess", description: "Kompetanse slettet" });
     setDeleteDialogOpen(false);
     setCompetencyToDelete(null);
     onCompetencyUpdated();
+  };
+
+  const renderFileInput = (
+    file: File | null,
+    docUrl: string | null,
+    existingFilUrl: string | null | undefined,
+    onFileChange: (f: File | null) => void,
+    onDocUrlChange: (url: string | null) => void,
+    onExistingRemove: (() => void) | null,
+    inputRef: React.RefObject<HTMLInputElement>,
+    onOpenDocPicker: () => void,
+  ) => {
+    const hasAttachment = file || docUrl || existingFilUrl;
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">Vedlegg (sertifikat/kompetansebevis)</Label>
+        {hasAttachment ? (
+          <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
+            <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs truncate flex-1">
+              {file ? file.name : docUrl ? "Dokument fra /dokumenter" : "Vedlegg"}
+            </span>
+            {(existingFilUrl && !file && !docUrl) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => {
+                  const url = getFileDisplayUrl(existingFilUrl);
+                  if (url) window.open(url, '_blank');
+                }}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                onFileChange(null);
+                onDocUrlChange(null);
+                if (onExistingRemove) onExistingRemove();
+                if (inputRef.current) inputRef.current.value = '';
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 flex-1"
+              onClick={() => inputRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Last opp / Ta bilde
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 flex-1"
+              onClick={onOpenDocPicker}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Fra dokumenter
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                if (f) {
+                  onFileChange(f);
+                  onDocUrlChange(null);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!person) return null;
@@ -345,6 +461,16 @@ export function PersonCompetencyDialog({
                             />
                           </div>
                         </div>
+                        {renderFileInput(
+                          editFile,
+                          editDocumentUrl,
+                          editExistingFilUrl,
+                          setEditFile,
+                          setEditDocumentUrl,
+                          () => setEditExistingFilUrl(null),
+                          editFileInputRef,
+                          () => setEditDocPickerOpen(true),
+                        )}
                         <div className="flex items-center gap-2 pt-2">
                           <Switch
                             id={`edit-affects-status-${competency.id}`}
@@ -411,6 +537,19 @@ export function PersonCompetencyDialog({
                             </span>
                           )}
                         </div>
+                        {competency.fil_url && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                            onClick={() => {
+                              const url = getFileDisplayUrl(competency.fil_url!);
+                              if (url) window.open(url, '_blank');
+                            }}
+                          >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            Vis vedlegg
+                          </button>
+                        )}
                         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
                           <Switch
                             id={`affects-status-${competency.id}`}
@@ -529,6 +668,17 @@ export function PersonCompetencyDialog({
                   </div>
                 </div>
 
+                {renderFileInput(
+                  newFile,
+                  newDocumentUrl,
+                  null,
+                  setNewFile,
+                  setNewDocumentUrl,
+                  null,
+                  newFileInputRef,
+                  () => setNewDocPickerOpen(true),
+                )}
+
                 <div className="flex items-center gap-2">
                   <Switch
                     id="new-affects-status"
@@ -572,6 +722,31 @@ export function PersonCompetencyDialog({
         onOpenChange={setLogbookDialogOpen}
         personId={person.id}
         personName={person.full_name}
+      />
+
+      {/* Document picker dialogs */}
+      <AttachmentPickerDialog
+        open={newDocPickerOpen}
+        onOpenChange={setNewDocPickerOpen}
+        selectedDocumentIds={[]}
+        onSelect={(docs) => {
+          if (docs.length > 0 && docs[0].fil_url) {
+            setNewDocumentUrl(docs[0].fil_url);
+            setNewFile(null);
+          }
+        }}
+      />
+      <AttachmentPickerDialog
+        open={editDocPickerOpen}
+        onOpenChange={setEditDocPickerOpen}
+        selectedDocumentIds={[]}
+        onSelect={(docs) => {
+          if (docs.length > 0 && docs[0].fil_url) {
+            setEditDocumentUrl(docs[0].fil_url);
+            setEditFile(null);
+            setEditExistingFilUrl(null);
+          }
+        }}
       />
     </>
   );

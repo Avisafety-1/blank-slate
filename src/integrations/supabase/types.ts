@@ -3165,6 +3165,7 @@ export type Database = {
       personnel_competencies: {
         Row: {
           beskrivelse: string | null
+          fil_url: string | null
           id: string
           navn: string
           oppdatert_dato: string
@@ -3177,6 +3178,7 @@ export type Database = {
         }
         Insert: {
           beskrivelse?: string | null
+          fil_url?: string | null
           id?: string
           navn: string
           oppdatert_dato?: string
@@ -3189,6 +3191,7 @@ export type Database = {
         }
         Update: {
           beskrivelse?: string | null
+          fil_url?: string | null
           id?: string
           navn?: string
           oppdatert_dato?: string
