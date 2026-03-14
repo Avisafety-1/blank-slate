@@ -340,6 +340,7 @@ export const CompanyManagementDialog = ({
               />
             </div>
 
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
