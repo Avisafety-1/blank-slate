@@ -400,7 +400,7 @@ export function OpenAIPMap({
 
     // Naturvern
     const naturvernLayer = L.tileLayer.wms("https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?", {
-      layers: "0", format: "image/png", transparent: true, opacity: 0.7, attribution: 'Miljødirektoratet - Verneområder',
+      layers: "0", format: "image/png", transparent: true, opacity: 0.7, attribution: '',
     }).addTo(map);
     layerConfigs.push({ id: "naturvern", name: "Naturvern-restriksjoner", layer: naturvernLayer, enabled: true, icon: "treePine" });
 
