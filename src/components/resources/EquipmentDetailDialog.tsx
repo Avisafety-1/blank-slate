@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
-import { getStatusColorClasses, calculateUsageStatus } from "@/lib/maintenanceStatus";
+import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 
 interface Equipment {
@@ -71,6 +71,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
   const [customType, setCustomType] = useState("");
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
+  const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [formData, setFormData] = useState({
     navn: "",
@@ -143,8 +145,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         varsel_oppdrag: equipment.varsel_oppdrag != null ? String(equipment.varsel_oppdrag) : "",
       });
       setIsEditing(false);
+      fetchLatestWarning();
+      fetchMissionsSinceMaintenance();
     }
   }, [equipment]);
+
+  const fetchLatestWarning = async () => {
+    if (!equipment) { setLatestWarning(null); return; }
+    const { data } = await supabase
+      .from("equipment_log_entries")
+      .select("title, entry_date")
+      .eq("equipment_id", equipment.id)
+      .eq("entry_type", "Advarsel")
+      .order("entry_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLatestWarning(data || null);
+  };
+
+  const fetchMissionsSinceMaintenance = async () => {
+    if (!equipment) return;
+    const { data } = await supabase
+      .from("mission_equipment")
+      .select("mission_id")
+      .eq("equipment_id", equipment.id);
+    if (!data) { setMissionsSinceMaintenance(0); return; }
+    const totalMissions = new Set(data.map((r: any) => r.mission_id)).size;
+    setMissionsSinceMaintenance(totalMissions - (equipment.missions_at_last_maintenance || 0));
+  };
 
   // Calculate next maintenance when last maintenance or interval changes
   useEffect(() => {
@@ -366,56 +394,99 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
                 </div>
-                <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={`${getStatusColorClasses(equipment.status as Status)} border`}>
-                      {equipment.status}
-                    </Badge>
-                    {(equipment.status === 'Gul' || equipment.status === 'Rød') && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-xs h-6 px-2">
-                            Kvitter ut advarsel
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                            <AlertDialogAction onClick={async () => {
-                              if (!user || !companyId) return;
-                              const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
-                              if (error) {
-                                toast.error(`Kunne ikke kvittere ut: ${error.message}`);
-                                return;
-                              }
-                              await supabase.from('equipment_log_entries').insert({
-                                equipment_id: equipment.id,
-                                company_id: companyId,
-                                user_id: user.id,
-                                entry_date: new Date().toISOString().split('T')[0],
-                                entry_type: 'Kvittering',
-                                title: 'Advarsel kvittert ut',
-                                description: `Status endret fra ${equipment.status} til Grønn`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ['equipment'] });
-                              onEquipmentUpdated();
-                              toast.success('Advarsel kvittert ut — status satt til Grønn');
-                            }}>
-                              Kvitter ut
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
+                {(() => {
+                  const maintenanceOnlyStatus = calculateEquipmentMaintenanceStatus({
+                    neste_vedlikehold: equipment.neste_vedlikehold,
+                    varsel_dager: equipment.varsel_dager,
+                    flyvetimer: equipment.flyvetimer || 0,
+                    hours_at_last_maintenance: equipment.hours_at_last_maintenance || 0,
+                    inspection_interval_hours: equipment.inspection_interval_hours,
+                    varsel_timer: equipment.varsel_timer,
+                    missions_since_maintenance: missionsSinceMaintenance,
+                    inspection_interval_missions: equipment.inspection_interval_missions,
+                    varsel_oppdrag: equipment.varsel_oppdrag,
+                  });
+                  const dbStatus = (equipment.status as Status) || "Grønn";
+                  const aggregatedStatus = STATUS_PRIORITY[dbStatus] >= STATUS_PRIORITY[maintenanceOnlyStatus] ? dbStatus : maintenanceOnlyStatus;
+                  const dbDriving = dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceOnlyStatus];
+
+                  return (
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
+                            {aggregatedStatus}
+                          </Badge>
+                        </div>
+                        {aggregatedStatus !== "Grønn" && (
+                          <div className="mt-1.5 space-y-1">
+                            {maintenanceOnlyStatus !== "Grønn" && (
+                              <p className="text-xs text-muted-foreground">
+                                🔧 Vedlikehold {maintenanceOnlyStatus === "Rød" ? "forfalt" : "nærmer seg"}
+                              </p>
+                            )}
+                            {dbStatus !== "Grønn" && (
+                              <p className="text-xs text-muted-foreground">
+                                ⚠️ {latestWarning ? `Advarsel: ${latestWarning.title}` : "Advarsel fra logg"}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {dbDriving && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
+                                Kvitter ut advarsel
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {latestWarning
+                                    ? `Advarsel: «${latestWarning.title}» (${new Date(latestWarning.entry_date).toLocaleDateString('nb-NO')}). Vil du kvittere ut og sette status tilbake til Grønn?`
+                                    : "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+                                  }
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => {
+                                  if (!user || !companyId) return;
+                                  const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
+                                  if (error) {
+                                    toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                                    return;
+                                  }
+                                  await supabase.from('equipment_log_entries').insert({
+                                    equipment_id: equipment.id,
+                                    company_id: companyId,
+                                    user_id: user.id,
+                                    entry_date: new Date().toISOString().split('T')[0],
+                                    entry_type: 'Kvittering',
+                                    title: 'Advarsel kvittert ut',
+                                    description: `Status endret fra ${equipment.status} til Grønn${latestWarning ? ` (${latestWarning.title})` : ''}`,
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: ['equipment'] });
+                                  onEquipmentUpdated();
+                                  toast.success('Advarsel kvittert ut — status satt til Grønn');
+                                }}>
+                                  Kvitter ut
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {dbStatus !== "Grønn" && !dbDriving && (
+                          <p className="text-xs text-muted-foreground mt-1.5 italic">
+                            Advarsel fra logg kan kvitteres ut etter at vedlikehold er utført
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Battery info section — only for batteries with data */}

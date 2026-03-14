@@ -1,60 +1,44 @@
 
 
-## Tydeliggjøring av «Kvitter ut advarsel»-knappen
+## Legg til rekkefølge-endring for sjekklistepunkter
 
 ### Problem
+GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
 
-«Kvitter ut advarsel»-knappen på drone- og utstyrskort er forvirrende:
-- Ingen forklaring på **hva** advarselen gjelder (f.eks. «lav batterihelse fra flylogg»)
-- Hvis gul/rød status er drevet av **vedlikehold** (dato/timer/oppdrag), hjelper det ikke å kvittere ut — statusen forblir gul/rød
-- Brukeren forventer at knappen gjør noe med den synlige statusen, men den endrer kun DB-flagget fra importerte advarsler
+### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
+Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
 
-### Løsning
+### Endringer
 
-**1. Vis kun knappen når DB-statusen faktisk påvirker den synlige statusen**
+**1. `src/components/documents/CreateChecklistDialog.tsx`**
+- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
+- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
+- Deaktiver opp-knapp på første element, ned-knapp på siste
 
-Beregn vedlikeholdsstatus separat. Vis «kvitter ut»-knappen **kun** når:
-- `drone.status` (DB) er Gul/Rød (fra importerte advarsler), **OG**
-- Vedlikeholdsstatus alene er bedre enn DB-status (dvs. kvittering vil faktisk endre synlig status)
+**2. `src/components/documents/DocumentCardModal.tsx`**
+- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
+- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
+- Erstatt `GripVertical` med opp/ned-knapper
 
-Hvis vedlikehold allerede gir Gul/Rød uavhengig av DB-flagget → skjul knappen, vis i stedet en tekst som forklarer at status er drevet av vedlikehold.
+### Hjelpefunksjon (i begge filer)
+```typescript
+const handleMoveItem = (id: string, direction: 'up' | 'down') => {
+  setItems(prev => {
+    const idx = prev.findIndex(item => item.id === id);
+    if (idx < 0) return prev;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    return next;
+  });
+};
+```
 
-**2. Vis årsaken til advarselen**
-
-Hent siste loggbokinnlegg med `entry_type = 'Advarsel'` for dronen/utstyret og vis tittelen i dialogen: «Advarsel: Lav batterihelse registrert — vil du kvittere ut?»
-
-**3. Vis tydelig statusforklaring**
-
-Under status-badgen, vis en kort forklaring:
-- «⚠️ Advarsel fra flylogg» — når DB-status driver
-- «🔧 Vedlikehold påkrevd» — når vedlikehold driver
-- Begge hvis begge gjelder
-
-### Filer som endres
-
-**`src/components/resources/DroneDetailDialog.tsx`**
-- Beregn `maintenanceOnlyStatus` (uten DB-status) — dette finnes allerede som `maintenanceAggregated`
-- Vis «Kvitter ut»-knappen kun hvis `drone.status !== 'Grønn'` OG `STATUS_PRIORITY[drone.status] > STATUS_PRIORITY[maintenanceAggregated]` (dvs. DB-advarselen gjør faktisk statusen verre)
-- Alternativt: vis alltid knappen men med forklarende tekst om at vedlikehold også påvirker
-- Hent siste advarsel fra `drone_log_entries` med `entry_type = 'Advarsel'` for å vise i bekreftelses-dialogen
-- Legg til forklarende tekst under status-badge
-
-**`src/components/resources/EquipmentDetailDialog.tsx`**
-- Samme logikk: beregn vedlikeholdsstatus separat, vis knapp kun når DB-advarsel driver statusen
-- Hent siste advarsel fra `equipment_log_entries`
-- Forklarende tekst under status
-
-### Eksempel på ny UX
-
+### UI per punkt
 ```text
-Status: 🟡 Gul
-  🔧 Vedlikehold nærmer seg (14 dager)
-  [ingen kvitter-knapp — vedlikehold løses ved å utføre vedlikehold]
+[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
+```
 
-Status: 🟡 Gul  
-  ⚠️ Advarsel: Lav batterihelse (fra flylogg 12.03.2026)
-  [Kvitter ut advarsel]
+Ingen nye avhengigheter. Ingen databaseendringer.
 
-Status: 🔴 Rød
-  🔧 Vedlikehold forfalt
-  ⚠️ Advarsel: Hø
