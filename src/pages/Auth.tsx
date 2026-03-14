@@ -15,65 +15,6 @@ import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 
-const PENDING_NEW_COMPANY_KEY = 'avisafe_pending_new_company_registration';
-
-interface PendingNewCompanyRegistration {
-  userId: string;
-  email: string;
-  fullName: string;
-  companyName: string;
-  companyOrgNr: string | null;
-}
-
-const completeNewCompanyRegistration = async (payload: PendingNewCompanyRegistration) => {
-  const { data: companyData, error: companyError } = await supabase
-    .from('companies')
-    .insert({
-      navn: payload.companyName.trim(),
-      org_nummer: payload.companyOrgNr?.trim() || null,
-    } as any)
-    .select('id, navn')
-    .single();
-
-  if (companyError || !companyData) {
-    throw companyError ?? new Error('Kunne ikke opprette selskap');
-  }
-
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .upsert({
-      id: payload.userId,
-      full_name: payload.fullName,
-      company_id: companyData.id,
-      email: payload.email,
-      approved: true,
-    }, { onConflict: 'id' });
-
-  if (profileError) {
-    throw profileError;
-  }
-
-  const { error: roleError } = await supabase
-    .from('user_roles')
-    .upsert({
-      user_id: payload.userId,
-      role: 'administrator',
-    }, { onConflict: 'user_id,role' });
-
-  if (roleError) {
-    throw roleError;
-  }
-
-  try {
-    const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
-    if (!checkoutError && checkoutData?.url) {
-      toast.success('Selskap opprettet! Du blir videresendt til aktivering…');
-      window.open(checkoutData.url, '_blank');
-    }
-  } catch (stripeErr) {
-    console.error('Stripe checkout error:', stripeErr);
-  }
-};
 
 const Auth = () => {
   const { t } = useTranslation();
