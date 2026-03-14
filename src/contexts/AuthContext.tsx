@@ -459,16 +459,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    // Clear offline caches before signing out
-    try {
-      localStorage.removeItem(SESSION_CACHE_KEY);
-      if (user) {
-        localStorage.removeItem(PROFILE_CACHE_KEY(user.id));
-      }
-    } catch {
-      // ignore
-    }
-    await supabase.auth.signOut();
+    await clearLocalAuthData(user?.id);
   };
 
   const refetchUserInfo = async () => {
@@ -482,10 +473,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSubscriptionLoading(false);
       return;
     }
+
     try {
+      if (navigator.onLine) {
+        const { error: userError } = await supabase.auth.getUser();
+        if (userError && isMissingAuthUserError(userError)) {
+          console.warn('AuthContext: Invalid auth user during subscription check, clearing stale session');
+          await clearLocalAuthData(session.user.id);
+          setSubscriptionLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
         console.error('check-subscription error:', error);
+        if (isMissingAuthUserError(error)) {
+          await clearLocalAuthData(session.user.id);
+        }
         setSubscriptionLoading(false);
         return;
       }
@@ -496,6 +501,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTrialEnd(data?.trial_end ?? null);
     } catch (e) {
       console.error('check-subscription failed:', e);
+      if (isMissingAuthUserError(e)) {
+        await clearLocalAuthData(session.user.id);
+      }
     } finally {
       setSubscriptionLoading(false);
     }
