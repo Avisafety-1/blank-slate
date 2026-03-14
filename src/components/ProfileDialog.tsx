@@ -1018,7 +1018,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Competencies Tab */}
-              <TabsContent value="competencies" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card className="border-0 shadow-none sm:border sm:shadow-sm">
                   <CardHeader className="px-2 sm:px-6">
                     <div className="flex flex-col items-center gap-2">
