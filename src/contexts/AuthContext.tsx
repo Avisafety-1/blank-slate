@@ -468,6 +468,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
         }
       }
+    } catch (error) {
       console.error('Error fetching user info:', error);
       // If fetch failed (likely offline), try cached profile
       if (!navigator.onLine) {
