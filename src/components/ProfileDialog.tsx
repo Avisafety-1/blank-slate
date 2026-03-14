@@ -701,7 +701,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-24 md:mt-16 lg:mt-4 mb-4 flex flex-wrap gap-2">
+                <div className="mt-20 md:mt-14 lg:mt-4 mb-4 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
