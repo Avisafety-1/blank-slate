@@ -1,44 +1,39 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Stripe-fritak for eksisterende selskaper
 
 ### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+Selskaper som allerede er godkjent og faktureres på annen måte (direkte faktura etc.) skal ikke møte Stripe-betaling. Brukere som registrerer seg med selskapskode til et slikt selskap skal slippe SubscriptionGate helt.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+### Løsning
 
-### Endringer
+#### 1. Database: Ny kolonne `stripe_exempt` på `companies`
+- `ALTER TABLE companies ADD COLUMN stripe_exempt BOOLEAN NOT NULL DEFAULT false;`
+- Eksisterende selskaper som faktureres separat settes til `true` manuelt eller via admin-panel
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+#### 2. AuthContext: Hent og eksponer `stripe_exempt`
+- Utvid `fetchUserInfo` sin company-query til å inkludere `stripe_exempt`
+- Legg til `stripeExempt` i context state og cache
+- Når `stripeExempt` er `true`, sett `subscribed = true` automatisk (eller legg til egen flag)
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+#### 3. SubscriptionGate: Respekter fritak
+- Legg til `stripeExempt` i gate-logikken:
+  ```typescript
+  if (subscriptionLoading || !user || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
+    return <>{children}</>;
+  }
+  ```
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+#### 4. ProfileDialog: Skjul Stripe-elementer
+- Når `stripeExempt`: skjul abonnement-fanen eller vis «Faktureres separat» i stedet for Stripe-knapper
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+#### 5. Admin-panel: Toggle for selskaper
+- Legg til en Switch i CompanyManagementDialog for å sette `stripe_exempt` per selskap
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+### Filer som endres
+- **DB-migrasjon**: Ny kolonne `stripe_exempt` på `companies`
+- `src/contexts/AuthContext.tsx`: Hent og eksponer `stripeExempt`
+- `src/components/SubscriptionGate.tsx`: Sjekk `stripeExempt`
+- `src/components/ProfileDialog.tsx`: Tilpass visning
+- `src/components/admin/CompanyManagementDialog.tsx` eller `CompanyManagementSection.tsx`: Admin-toggle
 
