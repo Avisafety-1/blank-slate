@@ -1696,32 +1696,37 @@ export const ProfileDialog = () => {
                       <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
                     ) : subscribed ? (
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          {isTrial ? (
-                            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Prøveperiode</Badge>
-                          ) : cancelAtPeriodEnd ? (
-                            <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
-                          ) : (
-                            <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
-                          )}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {isTrial ? (
+                              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Prøveperiode</Badge>
+                            ) : cancelAtPeriodEnd ? (
+                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
+                            ) : (
+                              <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                            )}
+                          </div>
                           <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
                         </div>
                         {isTrial && trialEnd && trialEnd !== 'unknown' && (() => {
                           const daysLeft = Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                           return (
-                            <p className="text-sm text-blue-600">
-                              {daysLeft} {daysLeft === 1 ? 'dag' : 'dager'} igjen av prøveperioden (utløper {new Date(trialEnd).toLocaleDateString('nb-NO')})
+                            <p className="text-sm text-blue-600 break-words">
+                              {daysLeft} {daysLeft === 1 ? 'dag' : 'dager'} igjen av prøveperioden
+                              <span className="block text-xs text-blue-500">
+                                Utløper {new Date(trialEnd).toLocaleDateString('nb-NO')}
+                              </span>
                             </p>
                           );
                         })()}
-                        {subscriptionEnd && subscriptionEnd !== 'unknown' && (
+                        {subscriptionEnd && subscriptionEnd !== 'unknown' && !isTrial && (
                           <p className="text-sm text-muted-foreground">
                             {cancelAtPeriodEnd ? 'Utløper' : 'Neste fornyelse'}: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
                           </p>
                         )}
                         {cancelAtPeriodEnd && (
-                          <p className="text-xs text-orange-600">
-                            Abonnementet er sagt opp og avsluttes ved periodens slutt. Du kan reaktivere det via «Administrer abonnement».
+                          <p className="text-xs text-orange-600 break-words">
+                            Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
                           </p>
                         )}
                         <Button
