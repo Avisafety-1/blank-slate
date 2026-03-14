@@ -104,7 +104,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -1688,13 +1688,23 @@ export const ProfileDialog = () => {
                     ) : subscribed ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          {cancelAtPeriodEnd ? (
+                          {isTrial ? (
+                            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Prøveperiode</Badge>
+                          ) : cancelAtPeriodEnd ? (
                             <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
                           ) : (
                             <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
                           )}
                           <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
                         </div>
+                        {isTrial && trialEnd && trialEnd !== 'unknown' && (() => {
+                          const daysLeft = Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                          return (
+                            <p className="text-sm text-blue-600">
+                              {daysLeft} {daysLeft === 1 ? 'dag' : 'dager'} igjen av prøveperioden (utløper {new Date(trialEnd).toLocaleDateString('nb-NO')})
+                            </p>
+                          );
+                        })()}
                         {subscriptionEnd && subscriptionEnd !== 'unknown' && (
                           <p className="text-sm text-muted-foreground">
                             {cancelAtPeriodEnd ? 'Utløper' : 'Neste fornyelse'}: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}

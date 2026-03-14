@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DomainGuard } from "@/components/DomainGuard";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { Header } from "@/components/Header";
 import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -83,7 +84,9 @@ const AuthenticatedLayout = () => {
         <OfflineBanner />
         <IdleTimeoutWarning />
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Outlet />
+          <SubscriptionGate>
+            <Outlet />
+          </SubscriptionGate>
         </main>
       </div>
     );
@@ -96,7 +99,9 @@ const AuthenticatedLayout = () => {
       <OfflineBanner />
       <IdleTimeoutWarning />
       <main className="flex-1 flex flex-col">
-        <Outlet />
+        <SubscriptionGate>
+          <Outlet />
+        </SubscriptionGate>
       </main>
     </div>
   );
