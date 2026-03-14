@@ -6,6 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const safeDate = (val: any): string => {
+  if (!val) return 'unknown';
+  if (typeof val === 'number') return new Date(val * 1000).toISOString();
+  return new Date(val).toISOString();
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
@@ -63,7 +69,7 @@ serve(async (req) => {
           subscriptionId: subscription.id,
           status: subscription.status,
           customerId: subscription.customer,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
+          currentPeriodEnd: safeDate((subscription as any).current_period_end),
         });
         break;
       }
