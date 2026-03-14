@@ -1,44 +1,22 @@
 
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+## Problem
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
+When clicking "Abonner nå" or "Administrer abonnement" in the profile dialog, `window.location.href` redirects the Lovable preview iframe to Stripe's checkout/portal page. Stripe blocks rendering inside iframes (via `X-Frame-Options`), resulting in a white loading screen.
 
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
+The network logs confirm the Edge Function succeeds and returns a valid Stripe URL — the issue is purely the redirect method.
 
-### Endringer
+## Solution
 
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
+Change both the checkout and customer-portal redirects in `ProfileDialog.tsx` (and `Priser.tsx`) to use `window.open(url, '_blank')` which opens Stripe in a new tab. This works reliably in both the Lovable preview iframe and the published app.
 
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
+### Changes
 
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
+**`src/components/ProfileDialog.tsx`** (lines 1705 and 1722):
+- Replace `window.location.href = data.url` with `window.open(data.url, '_blank')` in both the "Administrer abonnement" and "Abonner nå" button handlers.
 
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
+**`src/pages/Priser.tsx`**:
+- Same change for the checkout redirect there.
 
-Ingen nye avhengigheter. Ingen databaseendringer.
+This is a 3-line change across 2 files.
 
