@@ -392,12 +392,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   const handleOpenDocument = async (filUrl: string) => {
     if (!filUrl) return;
+    // Open window immediately to preserve user gesture context (mobile popup blocker)
+    const newWindow = window.open("about:blank", "_blank");
     const { data } = await supabase.storage
       .from("documents")
       .createSignedUrl(filUrl, 300);
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, "_blank");
+    if (data?.signedUrl && newWindow) {
+      newWindow.location.href = data.signedUrl;
     } else {
+      newWindow?.close();
       toast.error("Kunne ikke åpne dokument");
     }
   };
