@@ -37,8 +37,6 @@ const Auth = () => {
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyOrgNr, setNewCompanyOrgNr] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
   
   // Google OAuth registration state
   const [showGoogleRegistration, setShowGoogleRegistration] = useState(false);
