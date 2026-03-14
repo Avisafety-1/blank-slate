@@ -311,13 +311,13 @@ export const AddEquipmentToDroneDialog = ({
               filteredDronetags.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors"
+                  className="flex flex-col p-3 bg-background/50 rounded-lg border border-border hover:bg-background/70 transition-colors gap-2"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Radio className="w-4 h-4 text-primary" />
-                        <h4 className="font-medium">{item.name || item.device_id}</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Radio className="w-4 h-4 text-primary flex-shrink-0" />
+                        <h4 className="font-medium break-words min-w-0">{item.name || item.device_id}</h4>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                         <span>Device: {item.device_id}</span>
@@ -331,7 +331,7 @@ export const AddEquipmentToDroneDialog = ({
                       size="sm"
                       onClick={() => handleAddDronetag(item)}
                       disabled={adding === item.id}
-                      className="gap-2"
+                      className="gap-2 w-full sm:w-auto flex-shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       {adding === item.id ? "Legger til..." : "Legg til"}
