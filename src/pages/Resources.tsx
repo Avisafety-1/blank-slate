@@ -1,6 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio, Filter } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
