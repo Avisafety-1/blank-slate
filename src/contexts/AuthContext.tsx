@@ -75,6 +75,7 @@ const AuthContext = createContext<AuthContextType>({
   cancelAtPeriodEnd: false,
   isTrial: false,
   trialEnd: null,
+  stripeExempt: false,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
