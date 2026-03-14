@@ -745,6 +745,52 @@ export type Database = {
           },
         ]
       }
+      drone_documents: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          document_id: string
+          drone_id: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          document_id: string
+          drone_id: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          document_id?: string
+          drone_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_documents_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drone_equipment: {
         Row: {
           created_at: string | null
