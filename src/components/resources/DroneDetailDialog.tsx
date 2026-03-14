@@ -187,6 +187,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedPersonnel();
       fetchLinkedDronetags();
       fetchAccessories();
+      fetchLinkedDocuments();
       fetchMissionsSinceInspection();
       fetchLatestWarning();
     }
