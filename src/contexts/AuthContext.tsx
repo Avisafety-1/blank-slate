@@ -71,6 +71,8 @@ const AuthContext = createContext<AuthContextType>({
   subscriptionEnd: null,
   subscriptionLoading: true,
   cancelAtPeriodEnd: false,
+  isTrial: false,
+  trialEnd: null,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
