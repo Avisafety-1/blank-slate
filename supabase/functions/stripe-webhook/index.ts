@@ -59,7 +59,7 @@ serve(async (req) => {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        logStep("Subscription updated", {
+        logStep("Subscription created/updated", {
           subscriptionId: subscription.id,
           status: subscription.status,
           customerId: subscription.customer,
@@ -75,12 +75,37 @@ serve(async (req) => {
         });
         break;
       }
-      case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        logStep("Payment failed", {
-          invoiceId: invoice.id,
-          customerId: invoice.customer,
-          subscriptionId: invoice.subscription,
+      case "customer.subscription.paused":
+      case "customer.subscription.resumed": {
+        const subscription = event.data.object as Stripe.Subscription;
+        logStep(`Subscription ${event.type.split('.').pop()}`, {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          customerId: subscription.customer,
+        });
+        break;
+      }
+      case "customer.subscription.pending_update_applied":
+      case "customer.subscription.pending_update_expired": {
+        const subscription = event.data.object as Stripe.Subscription;
+        logStep(`Subscription ${event.type.split('.').pop()}`, {
+          subscriptionId: subscription.id,
+          customerId: subscription.customer,
+        });
+        break;
+      }
+      case "payment_intent.succeeded":
+      case "payment_intent.payment_failed":
+      case "payment_intent.canceled":
+      case "payment_intent.created":
+      case "payment_intent.processing": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        logStep(`PaymentIntent ${event.type.split('.').pop()}`, {
+          paymentIntentId: pi.id,
+          status: pi.status,
+          amount: pi.amount,
+          currency: pi.currency,
+          customerId: pi.customer,
         });
         break;
       }
