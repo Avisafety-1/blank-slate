@@ -11,11 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -86,6 +87,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [linkedDocuments, setLinkedDocuments] = useState<any[]>([]);
+  const [documentPickerOpen, setDocumentPickerOpen] = useState(false);
   const [confirmInspectionOpen, setConfirmInspectionOpen] = useState(false);
   const [showAddAccessory, setShowAddAccessory] = useState(false);
   const [newAccessory, setNewAccessory] = useState({
@@ -184,6 +187,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedPersonnel();
       fetchLinkedDronetags();
       fetchAccessories();
+      fetchLinkedDocuments();
       fetchMissionsSinceInspection();
       fetchLatestWarning();
     }
@@ -325,6 +329,76 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       console.error("Error fetching linked dronetags:", error);
     } else {
       setLinkedDronetags(data || []);
+    }
+  };
+
+  const fetchLinkedDocuments = async () => {
+    if (!drone) return;
+    const { data, error } = await (supabase as any)
+      .from("drone_documents")
+      .select(`
+        id,
+        document:document_id (
+          id,
+          tittel,
+          kategori,
+          fil_url,
+          fil_navn
+        )
+      `)
+      .eq("drone_id", drone.id);
+    if (error) {
+      console.error("Error fetching linked documents:", error);
+    } else {
+      setLinkedDocuments(data || []);
+    }
+  };
+
+  const handleAddDocuments = async (documents: any[]) => {
+    if (!drone || !companyId) return;
+    const existingIds = linkedDocuments.map((ld: any) => ld.document?.id);
+    const newDocs = documents.filter(d => !existingIds.includes(d.id));
+    if (newDocs.length === 0) return;
+    const rows = newDocs.map(d => ({
+      drone_id: drone.id,
+      document_id: d.id,
+      company_id: companyId,
+    }));
+    const { error } = await (supabase as any)
+      .from("drone_documents")
+      .insert(rows);
+    if (error) {
+      console.error("Error linking documents:", error);
+      toast.error("Kunne ikke legge til dokumenter");
+    } else {
+      toast.success(`${newDocs.length} dokument(er) tilknyttet`);
+      fetchLinkedDocuments();
+    }
+  };
+
+  const handleRemoveDocument = async (linkId: string, docTitle: string) => {
+    const { error } = await (supabase as any)
+      .from("drone_documents")
+      .delete()
+      .eq("id", linkId);
+    if (error) {
+      console.error("Error removing document link:", error);
+      toast.error("Kunne ikke fjerne dokument");
+    } else {
+      toast.success(`${docTitle} fjernet`);
+      fetchLinkedDocuments();
+    }
+  };
+
+  const handleOpenDocument = async (filUrl: string) => {
+    if (!filUrl) return;
+    const { data } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(filUrl, 300);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank");
+    } else {
+      toast.error("Kunne ikke åpne dokument");
     }
   };
 
@@ -1070,6 +1144,62 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
 
+              {/* Tilknyttede dokumenter Section */}
+              <div className="border-t border-border pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Tilknyttede dokumenter</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDocumentPickerOpen(true)}
+                    className="gap-2 w-full sm:w-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Legg til
+                  </Button>
+                </div>
+
+                {linkedDocuments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Ingen dokumenter tilknyttet
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedDocuments.map((link: any) => {
+                      const doc = link.document;
+                      if (!doc) return null;
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
+                        >
+                          <div
+                            className="flex-1 cursor-pointer min-w-0"
+                            onClick={() => doc.fil_url && handleOpenDocument(doc.fil_url)}
+                          >
+                            <p className="text-sm font-medium truncate">{doc.tittel}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.kategori}{doc.fil_navn ? ` · ${doc.fil_navn}` : ""}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveDocument(link.id, doc.tittel)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Valgfritt utstyr Section */}
               <div className="border-t border-border pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -1496,6 +1626,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <AttachmentPickerDialog
+        open={documentPickerOpen}
+        onOpenChange={setDocumentPickerOpen}
+        selectedDocumentIds={linkedDocuments.map((ld: any) => ld.document?.id).filter(Boolean)}
+        onSelect={handleAddDocuments}
+        companyId={companyId || undefined}
+      />
 
       <AddEquipmentToDroneDialog
         open={addEquipmentDialogOpen}
