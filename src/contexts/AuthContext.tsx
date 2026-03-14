@@ -26,6 +26,7 @@ interface CachedProfile {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  stripeExempt: boolean;
 }
 
 interface AuthContextType {
