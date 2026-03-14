@@ -677,8 +677,8 @@ const Auth = () => {
                   </button>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading || (!isLogin && !validatedCompany)}>
-                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : t('auth.signUp')}
+              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim())}>
+                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
               </Button>
             </form>
             
