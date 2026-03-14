@@ -372,6 +372,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkSubscription = async () => {
+    if (!session) {
+      setSubscriptionLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) {
+        console.error('check-subscription error:', error);
+        setSubscriptionLoading(false);
+        return;
+      }
+      setSubscribed(data?.subscribed ?? false);
+      setSubscriptionEnd(data?.subscription_end ?? null);
+    } catch (e) {
+      console.error('check-subscription failed:', e);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  // Check subscription on session change and periodically
+  useEffect(() => {
+    if (!session) {
+      setSubscribed(false);
+      setSubscriptionEnd(null);
+      setSubscriptionLoading(false);
+      return;
+    }
+    checkSubscription();
+    const interval = setInterval(checkSubscription, 60_000);
+    return () => clearInterval(interval);
+  }, [session]);
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -387,8 +421,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isAdmin,
       isApproved,
       userRole, 
+      subscribed,
+      subscriptionEnd,
+      subscriptionLoading,
       signOut, 
-      refetchUserInfo 
+      refetchUserInfo,
+      checkSubscription,
     }}>
       {children}
     </AuthContext.Provider>
