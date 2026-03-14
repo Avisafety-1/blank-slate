@@ -659,7 +659,7 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 p-2 lg:p-1 bg-transparent lg:bg-muted relative z-10">
+              <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
                   <span>{t('profile.info')}</span>
@@ -701,7 +701,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-24 md:mt-16 lg:mt-4 mb-4 flex flex-wrap gap-2">
+                <div className="mt-20 md:mt-14 lg:mt-4 mb-4 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -993,7 +993,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="security" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.security')}</CardTitle>
@@ -1018,7 +1018,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Competencies Tab */}
-              <TabsContent value="competencies" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card className="border-0 shadow-none sm:border sm:shadow-sm">
                   <CardHeader className="px-2 sm:px-6">
                     <div className="flex flex-col items-center gap-2">
@@ -1123,7 +1123,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Emergency Contact Tab */}
-              <TabsContent value="emergency" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="emergency" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -1192,7 +1192,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="notifications" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.notifications')}</CardTitle>
@@ -1515,7 +1515,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Oppfølging Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-28 md:mt-16 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
+              <TabsContent value="incidents" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
@@ -1674,7 +1674,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Subscription Tab */}
-              <TabsContent value="subscription" className="space-y-4 mt-28 md:mt-16 lg:mt-4">
+              <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
