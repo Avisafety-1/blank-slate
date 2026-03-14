@@ -522,6 +522,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
       setIsTrial(data?.is_trial ?? false);
       setTrialEnd(data?.trial_end ?? null);
+      setHadPreviousSubscription(data?.had_previous_subscription ?? false);
     } catch (e) {
       console.error('check-subscription failed:', e);
       if (isMissingAuthUserError(e)) {
