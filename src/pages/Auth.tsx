@@ -246,6 +246,14 @@ const Auth = () => {
         });
         if (error) throw error;
         if (data.user) {
+          // Check MFA requirement
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+            setShowMfaChallenge(true);
+            setLoading(false);
+            return;
+          }
+
           // Check if user is approved
           const {
             data: profileData

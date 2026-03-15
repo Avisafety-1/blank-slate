@@ -225,7 +225,7 @@ export const TwoFactorSetup = () => {
                       {secret}
                     </code>
                     <Button variant="ghost" size="icon" onClick={handleCopySecret} className="shrink-0">
-                      {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
