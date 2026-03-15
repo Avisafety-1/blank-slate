@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2 } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
@@ -149,6 +149,7 @@ export const ProfileDialog = () => {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
+  const [changingPlan, setChangingPlan] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1763,7 +1764,7 @@ export const ProfileDialog = () => {
                     ) : subscriptionLoading ? (
                       <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
                     ) : subscribed ? (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             {isTrial ? (
@@ -1811,6 +1812,71 @@ export const ProfileDialog = () => {
                             Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
                           </p>
                         )}
+
+                        {/* Plan switcher for billing owners */}
+                        {isBillingOwner && !cancelAtPeriodEnd && (
+                          <>
+                            <Separator />
+                            <div>
+                              <p className="text-sm font-medium mb-2">Bytt plan</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {([
+                                  { id: 'starter', name: 'Starter', price: 99 },
+                                  { id: 'grower', name: 'Grower', price: 199 },
+                                  { id: 'professional', name: 'Professional', price: 299 },
+                                ] as const).map((plan) => {
+                                  const isCurrent = subscriptionPlan === plan.id;
+                                  const isChanging = changingPlan === plan.id;
+                                  return (
+                                    <button
+                                      key={plan.id}
+                                      disabled={isCurrent || !!changingPlan}
+                                      onClick={async () => {
+                                        if (isCurrent || changingPlan) return;
+                                        const action = (subscriptionPlan === 'starter' || (subscriptionPlan === 'grower' && plan.id === 'professional'))
+                                          ? 'oppgradere' : 'nedgradere';
+                                        if (!confirm(`Er du sikker på at du vil ${action} til ${plan.name} (${plan.price} NOK/bruker/mnd)?`)) return;
+                                        setChangingPlan(plan.id);
+                                        try {
+                                          const { data, error } = await supabase.functions.invoke('change-plan', {
+                                            body: { new_plan: plan.id },
+                                          });
+                                          if (error) throw error;
+                                          if (data?.error) throw new Error(data.error);
+                                          toast.success(`Plan endret til ${plan.name}`);
+                                          // Refresh subscription status
+                                          window.location.reload();
+                                        } catch (e: any) {
+                                          toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
+                                        } finally {
+                                          setChangingPlan(null);
+                                        }
+                                      }}
+                                      className={`relative p-3 rounded-lg border text-left transition-all ${
+                                        isCurrent
+                                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                          : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                                      } ${changingPlan && !isChanging ? 'opacity-50' : ''}`}
+                                    >
+                                      {isCurrent && (
+                                        <span className="absolute -top-2 left-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-medium">
+                                          Nåværende
+                                        </span>
+                                      )}
+                                      <p className="text-sm font-semibold">{plan.name}</p>
+                                      <p className="text-xs text-muted-foreground">{plan.price} NOK/bruker/mnd</p>
+                                      {isChanging && <Loader2 className="h-4 w-4 animate-spin mt-1" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Endring trer i kraft umiddelbart. Prorata-justering på neste faktura.
+                              </p>
+                            </div>
+                          </>
+                        )}
+
                         <Button
                           variant="outline"
                           onClick={async () => {

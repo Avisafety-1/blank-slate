@@ -1,54 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-## Analyse og plan
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-### Problem 1: Kan ikke endre plan i kundeportalen
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-Stripe Customer Portal bruker en spesifikk konfigurasjon (`bpc_1TAwCORrLM8xOFbkaDYKNI3A`). Denne konfigurasjonen må oppdateres direkte i Stripe Dashboard for å tillate planbytte (subscription switching). Dette er en innstilling i Stripe, ikke i koden.
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-**Hva som må gjøres:**
-- Gå til [Stripe Customer Portal Settings](https://dashboard.stripe.com/settings/billing/portal) og aktiver "Allow customers to switch plans" (subscription updates). Legg til alle tre planene (Starter, Grower, Professional) som valgbare.
-- Alternativt kan vi bygge en egen planbytte-funksjon i appen som kaller Stripe API direkte (`stripe.subscriptions.update`) — dette gir bedre kontroll over UX.
-
-**Anbefaling:** Begge deler — aktiver planbytte i portalen OG bygg en in-app planvelger i ProfileDialog slik at brukere kan oppgradere/nedgradere uten å forlate appen.
-
-### Problem 2: Automatisk seat-synk for nye brukere
-
-`update-seats` Edge Function finnes men kalles aldri. Når en ny bruker godkjennes i et selskap, oppdateres ikke Stripe-abonnementet med riktig antall seter.
-
-**Hva som må gjøres:**
-- Kalle `update-seats` automatisk når en bruker godkjennes (approved = true) eller fjernes fra selskapet
-- To tilnærminger:
-  1. **Database-trigger** (foretrukket): Lag en Postgres-trigger på `profiles`-tabellen som kaller Edge Function via `pg_net` når `approved` endres
-  2. **Frontend-kall**: Kalle `update-seats` fra admin-UI etter bruker-godkjenning
-
-### Implementeringsplan
-
-**1. In-app planbytte-funksjon (ny Edge Function `change-plan`)**
-- Tar imot `new_plan` parameter
-- Verifiserer at brukeren er billing owner
-- Finner eksisterende subscription og oppdaterer plan-item med ny price ID
-- Returnerer oppdatert plan-info
-
-**2. Oppdater ProfileDialog med planbytte-UI**
-- I abonnement-tabben: vis de tre planene med mulighet for å bytte
-- Markér nåværende plan, la billing owner klikke for å bytte
-- Kall `change-plan` Edge Function
-
-**3. Automatisk seat-synk**
-- Legg til `supabase.functions.invoke('update-seats', { body: { company_id } })` i admin-godkjenningslogikken (der brukere godkjennes/avvises)
-- Søk opp alle steder der `approved` oppdateres og legg til kallet der
-
-**4. Oppdater Stripe Portal-konfigurasjon**
-- Du må manuelt aktivere "Subscription updates" i Stripe Dashboard under Portal Settings, og legge til de tre planene som byttbare produkter
-
-### Tekniske detaljer
-
-**Ny Edge Function: `change-plan/index.ts`**
-- Autentiser bruker → sjekk billing owner → hent subscription → finn plan-item → `stripe.subscriptionItems.update(itemId, { price: newPriceId })` → synk `company_subscriptions`
-
-**Seat-synk trigger-punkter** (i frontend):
-- Admin godkjenner bruker
-- Admin fjerner bruker
-- Bruker sletter egen konto
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
