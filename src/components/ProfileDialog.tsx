@@ -1819,11 +1819,11 @@ export const ProfileDialog = () => {
                             <Separator />
                             <div>
                               <p className="text-sm font-medium mb-2">Bytt plan</p>
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {([
-                                  { id: 'starter', name: 'Starter', price: 99 },
-                                  { id: 'grower', name: 'Grower', price: 199 },
-                                  { id: 'professional', name: 'Professional', price: 299 },
+                                  { id: 'starter', name: 'Starter', price: 99, features: ['Droneflåtestyring', 'Oppdrag', 'Dokumenter', 'Kart'] },
+                                  { id: 'grower', name: 'Grower', price: 199, features: ['Alt i Starter', 'Hendelser', 'Kalender & varsler'] },
+                                  { id: 'professional', name: 'Professional', price: 299, features: ['Alt i Grower', 'SORA', 'Markedsføring'] },
                                 ] as const).map((plan) => {
                                   const isCurrent = subscriptionPlan === plan.id;
                                   const isChanging = changingPlan === plan.id;
@@ -1844,7 +1844,6 @@ export const ProfileDialog = () => {
                                           if (error) throw error;
                                           if (data?.error) throw new Error(data.error);
                                           toast.success(`Plan endret til ${plan.name}`);
-                                          // Refresh subscription status
                                           window.location.reload();
                                         } catch (e: any) {
                                           toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
@@ -1863,15 +1862,61 @@ export const ProfileDialog = () => {
                                           Nåværende
                                         </span>
                                       )}
-                                      <p className="text-sm font-semibold">{plan.name}</p>
-                                      <p className="text-xs text-muted-foreground">{plan.price} NOK/bruker/mnd</p>
-                                      {isChanging && <Loader2 className="h-4 w-4 animate-spin mt-1" />}
+                                      <div className="flex items-center justify-between sm:flex-col sm:items-start">
+                                        <div>
+                                          <p className="text-sm font-semibold">{plan.name}</p>
+                                          <p className="text-xs text-muted-foreground">{plan.price} NOK/bruker/mnd</p>
+                                        </div>
+                                        {isChanging && <Loader2 className="h-4 w-4 animate-spin" />}
+                                      </div>
+                                      <ul className="mt-1.5 space-y-0.5 hidden sm:block">
+                                        {plan.features.map(f => (
+                                          <li key={f} className="text-[11px] text-muted-foreground">• {f}</li>
+                                        ))}
+                                      </ul>
                                     </button>
                                   );
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
                                 Endring trer i kraft umiddelbart. Prorata-justering på neste faktura.
+                              </p>
+                            </div>
+
+                            {/* Addon management */}
+                            <Separator />
+                            <div>
+                              <p className="text-sm font-medium mb-2">Tilleggsmoduler</p>
+                              <div className="space-y-2">
+                                {([
+                                  { id: 'sora_admin', name: 'SORA Admin', desc: 'Avansert SORA risikoanalyse', price: 99 },
+                                  { id: 'dji', name: 'DJI-integrasjon', desc: 'Automatisk import av DJI-flightlogs', price: 99 },
+                                  { id: 'eccairs', name: 'ECCAIRS-integrasjon', desc: 'E2-rapportering til Luftfartstilsynet', price: 99 },
+                                ] as const).map((addon) => {
+                                  const isActive = subscriptionAddons.includes(addon.id);
+                                  return (
+                                    <div
+                                      key={addon.id}
+                                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                                        isActive ? 'border-primary/30 bg-primary/5' : 'border-border'
+                                      }`}
+                                    >
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <p className="text-sm font-medium">{addon.name}</p>
+                                          {isActive && (
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">Aktiv</Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground break-words">{addon.desc}</p>
+                                        <p className="text-xs font-medium mt-0.5">{addon.price} NOK/mnd</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Tilleggsmoduler kan legges til/fjernes via «Administrer abonnement».
                               </p>
                             </div>
                           </>
