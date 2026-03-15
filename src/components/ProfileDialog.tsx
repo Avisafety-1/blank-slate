@@ -105,7 +105,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut, checkSubscription } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -1865,7 +1865,7 @@ export const ProfileDialog = () => {
                                           if (error) throw error;
                                           if (data?.error) throw new Error(data.error);
                                           toast.success(`Plan endret til ${plan.name}`);
-                                          window.location.reload();
+                                          await checkSubscription();
                                         } catch (e: any) {
                                           toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
                                         } finally {
@@ -1945,7 +1945,7 @@ export const ProfileDialog = () => {
                                               if (error) throw error;
                                               if (data?.error) throw new Error(data.error);
                                               toast.success(checked ? `${addon.name} aktivert` : `${addon.name} deaktivert`);
-                                              window.location.reload();
+                                              await checkSubscription();
                                             } catch (e: any) {
                                               toast.error('Kunne ikke oppdatere tilleggsmodul: ' + (e.message || 'Ukjent feil'));
                                             } finally {
