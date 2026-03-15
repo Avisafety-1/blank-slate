@@ -139,14 +139,14 @@ export const PasskeySetup = () => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Fingerprint className="h-5 w-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-2xl">
+            <Fingerprint className="h-4 w-4 sm:h-5 sm:w-5" />
             {t("passkey.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t("passkey.description")}</p>
+        <CardContent className="space-y-3 sm:space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <p className="text-xs sm:text-sm text-muted-foreground">{t("passkey.description")}</p>
 
           {/* Registered passkeys list */}
           {passkeys.length > 0 && (
