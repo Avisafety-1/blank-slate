@@ -74,9 +74,6 @@ export const AISearchBar = () => {
     }
   }, [chatMessages]);
 
-  // If plan doesn't include AI search, don't render
-  if (!canAccess('ai_search')) return null;
-
   const handleModeChange = (checked: boolean) => {
     setSearchMode(checked ? "regulations" : "internal");
     setResults(null);
