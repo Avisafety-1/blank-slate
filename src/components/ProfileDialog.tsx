@@ -1811,24 +1811,23 @@ export const ProfileDialog = () => {
                             Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
                           </p>
                         )}
-                        {isBillingOwner ? (
-                          <Button
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                const { data, error } = await supabase.functions.invoke('customer-portal');
-                                if (error) throw error;
-                                if (data?.url) window.open(data.url, '_blank');
-                              } catch (e: any) {
-                                toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
-                              }
-                            }}
-                          >
-                            Administrer abonnement
-                          </Button>
-                        ) : (
+                        <Button
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.functions.invoke('customer-portal');
+                              if (error) throw error;
+                              if (data?.url) window.open(data.url, '_blank');
+                            } catch (e: any) {
+                              toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                            }
+                          }}
+                        >
+                          Administrer abonnement
+                        </Button>
+                        {!isBillingOwner && (
                           <p className="text-xs text-muted-foreground">
-                            Abonnementet administreres av betalingsansvarlig i selskapet.
+                            Kun betalingsansvarlig kan endre abonnementet.
                           </p>
                         )}
                       </div>
