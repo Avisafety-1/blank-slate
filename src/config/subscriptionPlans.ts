@@ -12,6 +12,7 @@ export interface PlanConfig {
   features: string[];
   highlighted?: boolean;
   maxDrones: number;
+  maxDronesPerSeat: boolean; // true = maxDrones * seatCount, false = maxDrones total
   gatedFeatures: GatedFeature[];
 }
 
