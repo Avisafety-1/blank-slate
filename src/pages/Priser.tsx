@@ -1,4 +1,4 @@
-import { Check, CreditCard, Loader2 } from "lucide-react";
+import { Check, CreditCard, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,14 @@ import { useNavigate } from "react-router-dom";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 const Priser = () => {
-  const { user, subscribed, subscriptionLoading, subscriptionPlan } = useAuth();
+  const { user, subscribed, subscriptionLoading, subscriptionPlan, isTrial, stripeExempt } = useAuth();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>([]);
   const navigate = useNavigate();
+
+  // Allow closing only if user has active subscription, trial, or is stripe exempt
+  const canGoBack = subscribed || isTrial || stripeExempt || !user;
 
   const toggleAddon = (id: AddonId) => {
     setSelectedAddons(prev =>
