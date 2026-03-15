@@ -12,6 +12,7 @@ export interface PlanConfig {
   features: string[];
   highlighted?: boolean;
   maxDrones: number;
+  maxDronesPerSeat: boolean; // true = maxDrones * seatCount, false = maxDrones total
   gatedFeatures: GatedFeature[];
 }
 
@@ -32,6 +33,7 @@ export const PLANS: PlanConfig[] = [
     priceId: 'price_1TB9TARrLM8xOFbkzV267Soh',
     productId: 'prod_U9SNyTk1R28VOf',
     maxDrones: 1,
+    maxDronesPerSeat: true,
     gatedFeatures: [],
     features: [
       '1 drone per bruker',
@@ -49,10 +51,11 @@ export const PLANS: PlanConfig[] = [
     priceId: 'price_1TB9TfRrLM8xOFbkV1ac0aY5',
     productId: 'prod_U9SOzBZAWkFv4m',
     maxDrones: 5,
+    maxDronesPerSeat: false,
     gatedFeatures: ['incidents', 'status', 'ai_search', 'sora'],
     features: [
       'Alt i Starter',
-      'Opptil 5 droner per bruker',
+      'Opptil 5 droner totalt',
       'Hendelsesrapportering',
       'Statuspanel',
       'AI-søk',
@@ -67,6 +70,7 @@ export const PLANS: PlanConfig[] = [
     priceId: 'price_1TB9DARrLM8xOFbkVWT7zgGW',
     productId: 'prod_U9S7NAHDDleuNG',
     maxDrones: 15,
+    maxDronesPerSeat: true,
     gatedFeatures: ['incidents', 'status', 'ai_search', 'sora', 'access_control'],
     features: [
       'Alt i Grower',
