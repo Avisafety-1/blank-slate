@@ -25,6 +25,7 @@ import { SignaturePad } from "./SignaturePad";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { PLANS } from "@/config/subscriptionPlans";
 
 interface Profile {
   full_name: string | null;
@@ -685,7 +686,7 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10">
+              <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
                   <span>{t('profile.title').replace('Min ', '').replace('My ', '')}</span>
@@ -1846,11 +1847,8 @@ export const ProfileDialog = () => {
                             <div>
                               <p className="text-sm font-medium mb-2">Bytt plan</p>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {([
-                                  { id: 'starter', name: 'Starter', price: 99, features: ['Droneflåtestyring', 'Oppdrag', 'Dokumenter', 'Kart'] },
-                                  { id: 'grower', name: 'Grower', price: 199, features: ['Alt i Starter', 'Hendelser', 'Kalender & varsler'] },
-                                  { id: 'professional', name: 'Professional', price: 299, features: ['Alt i Grower', 'SORA', 'Markedsføring'] },
-                                ] as const).map((plan) => {
+                                {PLANS.map((plan) => {
+                                  const shortFeatures = plan.features.slice(0, 4);
                                   const isCurrent = subscriptionPlan === plan.id;
                                   const isChanging = changingPlan === plan.id;
                                   return (
@@ -1896,7 +1894,7 @@ export const ProfileDialog = () => {
                                         {isChanging && <Loader2 className="h-4 w-4 animate-spin" />}
                                       </div>
                                       <ul className="mt-1.5 space-y-0.5 hidden sm:block">
-                                        {plan.features.map(f => (
+                                        {shortFeatures.map(f => (
                                           <li key={f} className="text-[11px] text-muted-foreground">• {f}</li>
                                         ))}
                                       </ul>
