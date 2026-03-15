@@ -44,7 +44,11 @@ interface SearchResults {
 
 export const AISearchBar = () => {
   const { t } = useTranslation();
+  const { canAccess } = usePlanGating();
   const [query, setQuery] = useState("");
+
+  // If plan doesn't include AI search, don't render
+  if (!canAccess('ai_search')) return null;
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [searchMode, setSearchMode] = useState<"internal" | "regulations">("internal");
