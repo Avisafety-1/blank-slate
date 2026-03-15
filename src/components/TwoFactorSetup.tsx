@@ -207,7 +207,7 @@ export const TwoFactorSetup = () => {
 
           {/* Enroll flow */}
           {enrollState === 'verifying' && qrCode && (
-            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+            <div className="space-y-3 sm:space-y-4 border rounded-lg p-3 sm:p-4 bg-muted/30">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">{t('twoFactor.scanQr')}</Label>
                 <p className="text-xs text-muted-foreground">{t('twoFactor.scanQrDesc')}</p>
