@@ -105,7 +105,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, signOut } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -1774,7 +1774,21 @@ export const ProfileDialog = () => {
                               <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
                             )}
                           </div>
-                          <span className="text-sm font-medium">AviSafe Platform – 599 NOK/mnd</span>
+                          <span className="text-sm font-medium">
+                            {subscriptionPlan
+                              ? `${subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)} – ${
+                                  subscriptionPlan === 'starter' ? '99' : subscriptionPlan === 'grower' ? '199' : '299'
+                                } NOK/bruker/mnd`
+                              : 'AviSafe Platform'}
+                            {seatCount > 1 && ` × ${seatCount} brukere`}
+                          </span>
+                          {subscriptionAddons.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              Tillegg: {subscriptionAddons.map(a => 
+                                a === 'sora_admin' ? 'SORA Admin' : a === 'dji' ? 'DJI' : 'ECCAIRS'
+                              ).join(', ')}
+                            </span>
+                          )}
                         </div>
                         {isTrial && trialEnd && trialEnd !== 'unknown' && (() => {
                           const daysLeft = Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -1797,38 +1811,52 @@ export const ProfileDialog = () => {
                             Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
                           </p>
                         )}
-                        <Button
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              const { data, error } = await supabase.functions.invoke('customer-portal');
-                              if (error) throw error;
-if (data?.url) window.open(data.url, '_blank');
-                            } catch (e: any) {
-                              toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
-                            }
-                          }}
-                        >
-                          Administrer abonnement
-                        </Button>
+                        {isBillingOwner ? (
+                          <Button
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const { data, error } = await supabase.functions.invoke('customer-portal');
+                                if (error) throw error;
+                                if (data?.url) window.open(data.url, '_blank');
+                              } catch (e: any) {
+                                toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                              }
+                            }}
+                          >
+                            Administrer abonnement
+                          </Button>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Abonnementet administreres av betalingsansvarlig i selskapet.
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">Du har ikke et aktivt abonnement.</p>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const { data, error } = await supabase.functions.invoke('create-checkout');
-                              if (error) throw error;
-if (data?.url) window.open(data.url, '_blank');
-                            } catch (e: any) {
-                              toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
-                            }
-                          }}
-                        >
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Abonner nå – 599 NOK/mnd
-                        </Button>
+                        {isBillingOwner || !subscriptionPlan ? (
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const { data, error } = await supabase.functions.invoke('create-checkout', {
+                                  body: { plan: 'grower', addons: [] },
+                                });
+                                if (error) throw error;
+                                if (data?.url) window.open(data.url, '_blank');
+                              } catch (e: any) {
+                                toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+                              }
+                            }}
+                          >
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Abonner nå
+                          </Button>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Kontakt betalingsansvarlig i selskapet for å aktivere abonnement.
+                          </p>
+                        )}
                       </div>
                     )}
                   </CardContent>

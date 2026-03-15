@@ -388,6 +388,7 @@ export type Database = {
           aktiv: boolean
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
+          billing_user_id: string | null
           created_at: string
           dji_auto_sync_enabled: boolean
           dji_flightlog_enabled: boolean
@@ -412,6 +413,7 @@ export type Database = {
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
+          billing_user_id?: string | null
           created_at?: string
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
@@ -436,6 +438,7 @@ export type Database = {
           aktiv?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
+          billing_user_id?: string | null
           created_at?: string
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
@@ -530,6 +533,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_sora_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_subscriptions: {
+        Row: {
+          addons: string[]
+          billing_user_id: string | null
+          cancel_at_period_end: boolean
+          company_id: string
+          created_at: string
+          current_period_end: string | null
+          id: string
+          is_trial: boolean
+          plan: string
+          seat_count: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          addons?: string[]
+          billing_user_id?: string | null
+          cancel_at_period_end?: boolean
+          company_id: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          is_trial?: boolean
+          plan?: string
+          seat_count?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          addons?: string[]
+          billing_user_id?: string | null
+          cancel_at_period_end?: boolean
+          company_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          is_trial?: boolean
+          plan?: string
+          seat_count?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_subscriptions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: true
             referencedRelation: "companies"

@@ -7,6 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PRICE_TO_PLAN: Record<string, string> = {
+  "price_1TB8rSRwSSSiRYeAcdc2KWfQ": "starter",
+  "price_1TB8rnRwSSSiRYeAWCmvXJoP": "grower",
+  "price_1TB8s3RwSSSiRYeAuD8W8KR2": "professional",
+  // Legacy price
+  "price_1TAvyMRrLM8xOFbkg986ibK4": "professional",
+};
+
+const ADDON_PRICE_IDS: Record<string, string> = {
+  "price_1TB8tURrLM8xOFbk2fX9o05U": "sora_admin",
+  "price_1TB8tlRwSSSiRYeAvnA3aHCq": "dji",
+  "price_1TB8tzRwSSSiRYeAFy8wFJjt": "eccairs",
+};
+
 const safeDate = (val: any): string => {
   if (!val) return 'unknown';
   if (typeof val === 'number') return new Date(val * 1000).toISOString();
@@ -45,21 +59,60 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    // Get user's company and check if they're the billing owner
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
 
-    if (customers.data.length === 0) {
+    const companyId = profile?.company_id;
+
+    // Check company billing_user_id
+    let isBillingOwner = false;
+    if (companyId) {
+      const { data: company } = await supabaseClient
+        .from('companies')
+        .select('billing_user_id')
+        .eq('id', companyId)
+        .single();
+      isBillingOwner = company?.billing_user_id === user.id;
+    }
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    
+    // Try to find Stripe customer by company subscription first, then by email
+    let customerId: string | undefined;
+    
+    if (companyId) {
+      const { data: companySub } = await supabaseClient
+        .from('company_subscriptions')
+        .select('stripe_customer_id')
+        .eq('company_id', companyId)
+        .maybeSingle();
+      
+      if (companySub?.stripe_customer_id) {
+        customerId = companySub.stripe_customer_id;
+        logStep("Found customer from company_subscriptions", { customerId });
+      }
+    }
+
+    if (!customerId) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Found customer by email", { customerId });
+      }
+    }
+
+    if (!customerId) {
       logStep("No Stripe customer found");
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({ subscribed: false, is_billing_owner: isBillingOwner }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
-
-    // Fetch all subscriptions (not filtered by status) and find active or trialing
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       limit: 10,
@@ -71,34 +124,81 @@ serve(async (req) => {
 
     const hasActiveSub = !!subscription;
     const hadPreviousSubscription = subscriptions.data.length > 0;
-    let productId = null;
+    let plan: string | null = null;
     let subscriptionEnd = null;
     let cancelAtPeriodEnd = false;
     let isTrial = false;
     let trialEnd = null;
+    let seatCount = 1;
+    const addons: string[] = [];
 
     if (subscription) {
       const periodEnd = (subscription as any).current_period_end || subscription.items?.data[0]?.current_period_end;
       subscriptionEnd = safeDate(periodEnd);
       cancelAtPeriodEnd = (subscription as any).cancel_at_period_end ?? false;
-      productId = subscription.items.data[0].price.product;
       isTrial = subscription.status === 'trialing';
       if (isTrial && (subscription as any).trial_end) {
         trialEnd = safeDate((subscription as any).trial_end);
       }
-      logStep("Subscription found", { subscriptionId: subscription.id, status: subscription.status, productId, endDate: subscriptionEnd, cancelAtPeriodEnd, isTrial, trialEnd });
+
+      // Determine plan and addons from subscription items
+      for (const item of subscription.items.data) {
+        const priceId = item.price.id;
+        if (PRICE_TO_PLAN[priceId]) {
+          plan = PRICE_TO_PLAN[priceId];
+          seatCount = item.quantity || 1;
+        } else if (ADDON_PRICE_IDS[priceId]) {
+          addons.push(ADDON_PRICE_IDS[priceId]);
+        }
+      }
+
+      // Fallback: check metadata
+      if (!plan && (subscription as any).metadata?.plan) {
+        plan = (subscription as any).metadata.plan;
+      }
+
+      logStep("Subscription found", { subscriptionId: subscription.id, plan, seatCount, addons, isTrial });
+
+      // Sync to company_subscriptions table
+      if (companyId) {
+        const subData = {
+          company_id: companyId,
+          stripe_customer_id: customerId,
+          billing_user_id: isBillingOwner ? user.id : undefined,
+          plan: plan || 'starter',
+          stripe_subscription_id: subscription.id,
+          status: subscription.status,
+          seat_count: seatCount,
+          current_period_end: subscriptionEnd !== 'unknown' ? subscriptionEnd : null,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          is_trial: isTrial,
+          trial_end: trialEnd !== 'unknown' ? trialEnd : null,
+          addons,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Remove undefined billing_user_id
+        if (!isBillingOwner) delete (subData as any).billing_user_id;
+
+        await supabaseClient
+          .from('company_subscriptions')
+          .upsert(subData, { onConflict: 'company_id' });
+      }
     } else {
       logStep("No active/trialing subscription found", { hadPreviousSubscription });
     }
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
-      product_id: productId,
+      plan,
+      seat_count: seatCount,
+      addons,
       subscription_end: subscriptionEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
       is_trial: isTrial,
       trial_end: trialEnd,
       had_previous_subscription: hadPreviousSubscription,
+      is_billing_owner: isBillingOwner,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

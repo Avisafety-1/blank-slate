@@ -7,6 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PLAN_PRICES: Record<string, string> = {
+  starter: "price_1TB8rSRwSSSiRYeAcdc2KWfQ",
+  grower: "price_1TB8rnRwSSSiRYeAWCmvXJoP",
+  professional: "price_1TB8s3RwSSSiRYeAuD8W8KR2",
+};
+
+const ADDON_PRICES: Record<string, string> = {
+  sora_admin: "price_1TB8tURrLM8xOFbk2fX9o05U",
+  dji: "price_1TB8tlRwSSSiRYeAvnA3aHCq",
+  eccairs: "price_1TB8tzRwSSSiRYeAFy8wFJjt",
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -19,7 +31,8 @@ serve(async (req) => {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
   );
 
   try {
@@ -35,6 +48,32 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { email: user.email });
 
+    // Parse request body
+    const body = await req.json().catch(() => ({}));
+    const plan = body.plan || 'starter';
+    const addons: string[] = body.addons || [];
+
+    if (!PLAN_PRICES[plan]) throw new Error(`Invalid plan: ${plan}`);
+    logStep("Plan selected", { plan, addons });
+
+    // Get user's company and count approved users
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!profile?.company_id) throw new Error("User has no company");
+
+    const { count: seatCount } = await supabaseClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', profile.company_id)
+      .eq('approved', true);
+
+    const seats = seatCount || 1;
+    logStep("Seat count", { companyId: profile.company_id, seats });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId: string | undefined;
@@ -43,9 +82,21 @@ serve(async (req) => {
       logStep("Existing Stripe customer found", { customerId });
     }
 
+    // Build line items: plan × seats + addons × 1
+    const line_items: any[] = [
+      { price: PLAN_PRICES[plan], quantity: seats },
+    ];
+
+    for (const addon of addons) {
+      if (ADDON_PRICES[addon]) {
+        line_items.push({ price: ADDON_PRICES[addon], quantity: 1 });
+      }
+    }
+    logStep("Line items", { line_items });
+
     const origin = req.headers.get("origin") || "https://avisafev2.lovable.app";
 
-    // Check if customer has had a previous subscription (to prevent trial abuse)
+    // Check for previous subscription (trial abuse prevention)
     let hadPreviousSub = false;
     if (customerId) {
       const subs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
@@ -56,18 +107,25 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price: "price_1TAvyMRrLM8xOFbkg986ibK4",
-          quantity: 1,
-        },
-      ],
+      line_items,
       mode: "subscription",
+      metadata: {
+        company_id: profile.company_id,
+        user_id: user.id,
+        plan,
+        addons: JSON.stringify(addons),
+        seat_count: String(seats),
+      },
       ...(hadPreviousSub ? {} : {
         subscription_data: {
           trial_period_days: 5,
           trial_settings: {
             end_behavior: { missing_payment_method: 'cancel' },
+          },
+          metadata: {
+            company_id: profile.company_id,
+            plan,
+            addons: JSON.stringify(addons),
           },
         },
       }),

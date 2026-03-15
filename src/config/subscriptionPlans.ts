@@ -1,0 +1,113 @@
+export type PlanId = 'starter' | 'grower' | 'professional';
+export type AddonId = 'sora_admin' | 'dji' | 'eccairs';
+
+export interface PlanConfig {
+  id: PlanId;
+  name: string;
+  price: number; // NOK per seat/month
+  priceId: string;
+  productId: string;
+  features: string[];
+  highlighted?: boolean;
+}
+
+export interface AddonConfig {
+  id: AddonId;
+  name: string;
+  description: string;
+  price: number; // NOK per month (flat)
+  priceId: string;
+  productId: string;
+}
+
+export const PLANS: PlanConfig[] = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 99,
+    priceId: 'price_1TB8rSRwSSSiRYeAcdc2KWfQ',
+    productId: 'prod_U9RkaanTF3DhRx',
+    features: [
+      'Droneflåtestyring',
+      'Oppdragsplanlegging',
+      'Dokumenthåndtering',
+      'Kartmodul med luftrom',
+    ],
+  },
+  {
+    id: 'grower',
+    name: 'Grower',
+    price: 199,
+    priceId: 'price_1TB8rnRwSSSiRYeAWCmvXJoP',
+    productId: 'prod_U9RloL0mDm4fAO',
+    features: [
+      'Alt i Starter',
+      'Hendelsesrapportering',
+      'Kalender & varsler',
+      'Ubegrenset antall droner',
+    ],
+    highlighted: true,
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    price: 299,
+    priceId: 'price_1TB8s3RwSSSiRYeAuD8W8KR2',
+    productId: 'prod_U9Rl8Mm942NU7W',
+    features: [
+      'Alt i Grower',
+      'Risikoanalyse (SORA)',
+      'Markedsføringsmodul',
+      'Prioritert support',
+    ],
+  },
+];
+
+export const ADDONS: AddonConfig[] = [
+  {
+    id: 'sora_admin',
+    name: 'SORA Admin',
+    description: 'Avansert SORA risikoanalyse for droneoperasjoner',
+    price: 99,
+    priceId: 'price_1TB8tURrLM8xOFbk2fX9o05U',
+    productId: 'prod_U9RnvT5JMaB4V5',
+  },
+  {
+    id: 'dji',
+    name: 'DJI-integrasjon',
+    description: 'Automatisk import av DJI-flightlogs',
+    price: 99,
+    priceId: 'price_1TB8tlRwSSSiRYeAvnA3aHCq',
+    productId: 'prod_U9RnxOitGXYRsO',
+  },
+  {
+    id: 'eccairs',
+    name: 'ECCAIRS-integrasjon',
+    description: 'ECCAIRS E2-rapportering til Luftfartstilsynet',
+    price: 99,
+    priceId: 'price_1TB8tzRwSSSiRYeAFy8wFJjt',
+    productId: 'prod_U9Rnz6IoHvFv3G',
+  },
+];
+
+export const getPlanByProductId = (productId: string): PlanConfig | undefined =>
+  PLANS.find(p => p.productId === productId);
+
+export const getPlanById = (planId: PlanId): PlanConfig | undefined =>
+  PLANS.find(p => p.id === planId);
+
+export const getAddonById = (addonId: AddonId): AddonConfig | undefined =>
+  ADDONS.find(a => a.id === addonId);
+
+// Price ID to plan mapping for edge functions
+export const PRICE_TO_PLAN: Record<string, PlanId> = {
+  'price_1TB8rSRwSSSiRYeAcdc2KWfQ': 'starter',
+  'price_1TB8rnRwSSSiRYeAWCmvXJoP': 'grower',
+  'price_1TB8s3RwSSSiRYeAuD8W8KR2': 'professional',
+};
+
+export const ADDON_PRICE_IDS: Record<string, AddonId> = {
+  'price_1TB8tURrLM8xOFbk2fX9o05U': 'sora_admin',
+  'price_1TB8tlRwSSSiRYeAvnA3aHCq': 'dji',
+  'price_1TB8tzRwSSSiRYeAFy8wFJjt': 'eccairs',
+};

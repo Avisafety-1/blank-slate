@@ -1,13 +1,27 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const safeDate = (val: any): string => {
-  if (!val) return 'unknown';
+const PRICE_TO_PLAN: Record<string, string> = {
+  "price_1TB8rSRwSSSiRYeAcdc2KWfQ": "starter",
+  "price_1TB8rnRwSSSiRYeAWCmvXJoP": "grower",
+  "price_1TB8s3RwSSSiRYeAuD8W8KR2": "professional",
+  "price_1TAvyMRrLM8xOFbkg986ibK4": "professional",
+};
+
+const ADDON_PRICE_IDS: Record<string, string> = {
+  "price_1TB8tURrLM8xOFbk2fX9o05U": "sora_admin",
+  "price_1TB8tlRwSSSiRYeAvnA3aHCq": "dji",
+  "price_1TB8tzRwSSSiRYeAFy8wFJjt": "eccairs",
+};
+
+const safeDate = (val: any): string | null => {
+  if (!val) return null;
   if (typeof val === 'number') return new Date(val * 1000).toISOString();
   return new Date(val).toISOString();
 };
@@ -15,6 +29,29 @@ const safeDate = (val: any): string => {
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+};
+
+const parseSubscription = (subscription: any) => {
+  let plan: string | null = null;
+  let seatCount = 1;
+  const addons: string[] = [];
+
+  for (const item of subscription.items?.data || []) {
+    const priceId = item.price?.id;
+    if (PRICE_TO_PLAN[priceId]) {
+      plan = PRICE_TO_PLAN[priceId];
+      seatCount = item.quantity || 1;
+    } else if (ADDON_PRICE_IDS[priceId]) {
+      addons.push(ADDON_PRICE_IDS[priceId]);
+    }
+  }
+
+  // Fallback to metadata
+  if (!plan && subscription.metadata?.plan) {
+    plan = subscription.metadata.plan;
+  }
+
+  return { plan, seatCount, addons };
 };
 
 serve(async (req) => {
@@ -27,6 +64,12 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     if (!webhookSecret) throw new Error("STRIPE_WEBHOOK_SIGNING_SECRET is not set");
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const body = await req.text();
@@ -54,33 +97,80 @@ serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const companyId = session.metadata?.company_id;
+        const userId = session.metadata?.user_id;
+        
         logStep("Checkout completed", {
           sessionId: session.id,
-          customerEmail: session.customer_email,
+          companyId,
+          userId,
           customerId: session.customer,
           subscriptionId: session.subscription,
         });
+
+        // Set billing_user_id on company
+        if (companyId && userId) {
+          await supabaseClient
+            .from('companies')
+            .update({ billing_user_id: userId })
+            .eq('id', companyId);
+          logStep("Set billing_user_id", { companyId, userId });
+        }
         break;
       }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
+        const { plan, seatCount, addons } = parseSubscription(subscription);
+        const companyId = (subscription as any).metadata?.company_id;
         const periodEnd = (subscription as any).current_period_end || subscription.items?.data[0]?.current_period_end;
+        const isTrial = subscription.status === 'trialing';
+
         logStep("Subscription created/updated", {
           subscriptionId: subscription.id,
           status: subscription.status,
-          customerId: subscription.customer,
-          cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
-          currentPeriodEnd: safeDate(periodEnd),
+          plan,
+          seatCount,
+          addons,
+          companyId,
         });
+
+        if (companyId) {
+          await supabaseClient
+            .from('company_subscriptions')
+            .upsert({
+              company_id: companyId,
+              stripe_customer_id: subscription.customer as string,
+              plan: plan || 'starter',
+              stripe_subscription_id: subscription.id,
+              status: subscription.status,
+              seat_count: seatCount,
+              current_period_end: safeDate(periodEnd),
+              cancel_at_period_end: (subscription as any).cancel_at_period_end ?? false,
+              is_trial: isTrial,
+              trial_end: isTrial ? safeDate((subscription as any).trial_end) : null,
+              addons,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'company_id' });
+          logStep("Synced company_subscriptions", { companyId });
+        }
         break;
       }
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+        const companyId = (subscription as any).metadata?.company_id;
+        
         logStep("Subscription cancelled", {
           subscriptionId: subscription.id,
-          customerId: subscription.customer,
+          companyId,
         });
+
+        if (companyId) {
+          await supabaseClient
+            .from('company_subscriptions')
+            .update({ status: 'canceled', updated_at: new Date().toISOString() })
+            .eq('company_id', companyId);
+        }
         break;
       }
       case "customer.subscription.paused":
@@ -89,31 +179,6 @@ serve(async (req) => {
         logStep(`Subscription ${event.type.split('.').pop()}`, {
           subscriptionId: subscription.id,
           status: subscription.status,
-          customerId: subscription.customer,
-        });
-        break;
-      }
-      case "customer.subscription.pending_update_applied":
-      case "customer.subscription.pending_update_expired": {
-        const subscription = event.data.object as Stripe.Subscription;
-        logStep(`Subscription ${event.type.split('.').pop()}`, {
-          subscriptionId: subscription.id,
-          customerId: subscription.customer,
-        });
-        break;
-      }
-      case "payment_intent.succeeded":
-      case "payment_intent.payment_failed":
-      case "payment_intent.canceled":
-      case "payment_intent.created":
-      case "payment_intent.processing": {
-        const pi = event.data.object as Stripe.PaymentIntent;
-        logStep(`PaymentIntent ${event.type.split('.').pop()}`, {
-          paymentIntentId: pi.id,
-          status: pi.status,
-          amount: pi.amount,
-          currency: pi.currency,
-          customerId: pi.customer,
         });
         break;
       }
