@@ -534,6 +534,58 @@ const Auth = () => {
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    if (!passkeyEmail) {
+      toast.error(t('auth.enterEmailAddress'));
+      return;
+    }
+    setPasskeyLoading(true);
+    try {
+      // Step 1: Get authentication options
+      const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
+        body: { action: "login-options", email: passkeyEmail },
+      });
+      if (optionsError || optionsData?.error) {
+        throw new Error(optionsData?.error || t('passkey.noPasskeysForEmail'));
+      }
+
+      // Step 2: Authenticate with browser
+      const credential = await startAuthentication({ optionsJSON: optionsData.options });
+
+      // Step 3: Verify with server
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("webauthn", {
+        body: {
+          action: "login-verify",
+          credential,
+          signedChallenge: optionsData.signedChallenge,
+        },
+      });
+      if (verifyError || verifyData?.error) {
+        throw new Error(verifyData?.error || t('passkey.loginError'));
+      }
+
+      if (verifyData.verified && verifyData.token_hash) {
+        // Step 4: Complete login with the token
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: verifyData.token_hash,
+          type: 'magiclink',
+        });
+        if (otpError) throw otpError;
+
+        toast.success(t('auth.loginSuccess'));
+        setShowPasskeyLogin(false);
+        setPasskeyEmail("");
+        redirectToApp('/');
+      }
+    } catch (err: any) {
+      console.error("Passkey login error:", err);
+      if (err.name === "NotAllowedError") return;
+      toast.error(err.message || t('passkey.loginError'));
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) {
