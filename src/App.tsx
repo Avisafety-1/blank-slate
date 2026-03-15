@@ -153,7 +153,7 @@ const App = () => {
                 </Route>
                 
                 {/* Admin has its own header */}
-                <Route path="/admin" element={<DomainGuard><PlanRestricted feature="admin"><Admin /></PlanRestricted></DomainGuard>} />
+                <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
                 <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
                 <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
                 
