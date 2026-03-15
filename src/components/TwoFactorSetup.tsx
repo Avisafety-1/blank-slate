@@ -187,8 +187,8 @@ export const TwoFactorSetup = () => {
           {/* Status */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-medium">{t('twoFactor.authenticatorApp')}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm font-medium">{t('twoFactor.authenticatorApp')}</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
                 {t('twoFactor.description')}
               </p>
             </div>
