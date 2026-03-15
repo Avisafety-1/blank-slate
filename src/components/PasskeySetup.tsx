@@ -152,12 +152,12 @@ export const PasskeySetup = () => {
           {passkeys.length > 0 && (
             <div className="space-y-2">
               {passkeys.map((pk) => (
-                <div key={pk.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{pk.device_name || t("passkey.unknownDevice")}</p>
-                      <p className="text-xs text-muted-foreground">
+                <div key={pk.id} className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-medium truncate">{pk.device_name || t("passkey.unknownDevice")}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">
                         {new Date(pk.created_at).toLocaleDateString()}
                       </p>
                     </div>
