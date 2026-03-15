@@ -146,8 +146,8 @@ const App = () => {
                   <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
                   <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
                   <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
-                  <Route path="/hendelser" element={<DomainGuard><Hendelser /></DomainGuard>} />
-                  <Route path="/status" element={<DomainGuard><Status /></DomainGuard>} />
+                  <Route path="/hendelser" element={<DomainGuard><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></DomainGuard>} />
+                  <Route path="/status" element={<DomainGuard><PlanRestricted feature="status"><Status /></PlanRestricted></DomainGuard>} />
                   <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
                   <Route path="/changelog" element={<DomainGuard><Changelog /></DomainGuard>} />
                 </Route>
