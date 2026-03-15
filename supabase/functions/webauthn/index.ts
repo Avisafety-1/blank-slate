@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       // Store in database
       const { error: insertError } = await supabaseAdmin.from("passkeys").insert({
         user_id: userId,
-        credential_id: isoBase64URL.fromBuffer(cred.id),
+        credential_id: cred.id,
         public_key: isoBase64URL.fromBuffer(cred.publicKey),
         counter: Number(cred.counter),
         device_name: deviceName || null,
