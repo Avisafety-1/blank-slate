@@ -25,7 +25,6 @@ interface Company {
 export const Header = () => {
   const navigate = useNavigate();
   const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user } = useAuth();
-  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
