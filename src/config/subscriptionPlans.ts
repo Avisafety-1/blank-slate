@@ -35,10 +35,11 @@ export const PLANS: PlanConfig[] = [
     gatedFeatures: [],
     features: [
       'Maks 1 drone',
-      'Droneflåtestyring',
-      'Oppdragsplanlegging',
-      'Dokumenthåndtering',
-      'Kartmodul med luftrom',
+      'Ressursstyring med vedlikeholdsmodul',
+      'Kompetanseoversikt med varsling',
+      'Oppdrag med vær- og luftromskontroll',
+      'Dokumenter med ubegrensede sjekklister',
+      'Kart med SafeSky, luftrom, vær, ruter, SSB ++',
     ],
   },
   {
