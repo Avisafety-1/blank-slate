@@ -899,6 +899,18 @@ const Auth = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MfaChallengeDialog
+        open={showMfaChallenge}
+        onVerified={() => {
+          setShowMfaChallenge(false);
+          toast.success(t('auth.loginSuccess'));
+          redirectToApp('/');
+        }}
+        onCancel={() => {
+          setShowMfaChallenge(false);
+        }}
+      />
     </div>
   );
 };
