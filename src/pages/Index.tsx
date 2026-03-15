@@ -1,4 +1,5 @@
 import droneBackground from "@/assets/drone-background.png";
+import { Sentry } from "@/lib/sentry";
 import { DocumentSection } from "@/components/dashboard/DocumentSection";
 import { AISearchBar } from "@/components/dashboard/AISearchBar";
 import { StatusPanel } from "@/components/dashboard/StatusPanel";
@@ -342,6 +343,23 @@ const Index = () => {
 
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
+          {/* TEMPORARY: Sentry test button – remove after verification */}
+          <Button
+            variant="destructive"
+            size="sm"
+            className="mb-4"
+            onClick={() => {
+              try {
+                throw new Error("Sentry test error from AviSafe dashboard");
+              } catch (e) {
+                Sentry.captureException(e);
+                toast.success("Test-feil sendt til Sentry!");
+              }
+            }}
+          >
+            🧪 Test Sentry
+          </Button>
+
           {/* Mobile-only flight buttons */}
           <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
