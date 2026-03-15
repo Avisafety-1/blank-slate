@@ -62,13 +62,11 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_ANON_KEY")!,
         { global: { headers: { Authorization: authHeader } } },
       );
-      const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(
-        authHeader.replace("Bearer ", ""),
-      );
-      if (claimsError || !claimsData?.claims) return json({ error: "Unauthorized" }, 401);
+      const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+      if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
-      const userId = claimsData.claims.sub as string;
-      const userEmail = (claimsData.claims.email as string) || "";
+      const userId = user.id;
+      const userEmail = user.email || "";
 
       // Get existing passkeys for this user
       const { data: existingKeys } = await supabaseAdmin
