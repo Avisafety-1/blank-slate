@@ -688,8 +688,7 @@ export const ProfileDialog = () => {
               <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10">
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
-                  <span className="sm:hidden">{t('profile.title').replace('Min ', '')}</span>
-                  <span className="hidden sm:inline">{t('profile.info')}</span>
+                  <span>{t('profile.title').replace('Min ', '').replace('My ', '')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Lock className="h-3 w-3" />
