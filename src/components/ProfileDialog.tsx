@@ -1044,6 +1044,8 @@ export const ProfileDialog = () => {
                   </CardContent>
                 </Card>
 
+                <TwoFactorSetup />
+
                 <Card className="border-destructive/30">
                   <CardHeader>
                     <CardTitle className="text-destructive">{t('profile.deleteAccount')}</CardTitle>
