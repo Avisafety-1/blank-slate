@@ -54,6 +54,9 @@ const Priser = () => {
           <p className="text-muted-foreground">
             Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.
           </p>
+          <div className="inline-flex items-center gap-2 bg-accent/50 text-accent-foreground px-4 py-2 rounded-full text-sm font-medium mt-2">
+            🛰️ SafeSky kartlag og publisering er tilgjengelig på alle abonnementer
+          </div>
         </div>
 
         {/* Plan cards */}
