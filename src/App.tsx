@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,26 +16,31 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { useForceReload } from "@/hooks/useForceReload";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import Admin from "./pages/Admin";
-import Resources from "./pages/Resources";
-import KartPage from "./pages/Kart";
-import Documents from "./pages/Documents";
-import Kalender from "./pages/Kalender";
-import Hendelser from "./pages/Hendelser";
-import Status from "./pages/Status";
-import Oppdrag from "./pages/Oppdrag";
-import Installer from "./pages/Installer";
-import UserManualDownload from "./pages/UserManualDownload";
-import Statistikk from "./pages/Statistikk";
-import NotFound from "./pages/NotFound";
-import SoraProcess from "./pages/SoraProcess";
-import Changelog from "./pages/Changelog";
-import Marketing from "./pages/Marketing";
-import Priser from "./pages/Priser";
 import { PlanRestricted } from "@/components/PlanRestricted";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
+// Synchronous imports — needed immediately
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+
+// Lazy-loaded pages — loaded on demand for smaller initial bundle
+const Index = React.lazy(() => import("./pages/Index"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
+const Admin = React.lazy(() => import("./pages/Admin"));
+const Resources = React.lazy(() => import("./pages/Resources"));
+const KartPage = React.lazy(() => import("./pages/Kart"));
+const Documents = React.lazy(() => import("./pages/Documents"));
+const Kalender = React.lazy(() => import("./pages/Kalender"));
+const Hendelser = React.lazy(() => import("./pages/Hendelser"));
+const Status = React.lazy(() => import("./pages/Status"));
+const Oppdrag = React.lazy(() => import("./pages/Oppdrag"));
+const Installer = React.lazy(() => import("./pages/Installer"));
+const UserManualDownload = React.lazy(() => import("./pages/UserManualDownload"));
+const Statistikk = React.lazy(() => import("./pages/Statistikk"));
+const SoraProcess = React.lazy(() => import("./pages/SoraProcess"));
+const Changelog = React.lazy(() => import("./pages/Changelog"));
+const Marketing = React.lazy(() => import("./pages/Marketing"));
+const Priser = React.lazy(() => import("./pages/Priser"));
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -130,36 +136,38 @@ const App = () => {
               <Toaster />
               <Sonner />
               <KeyboardDismissButton />
-              <Routes>
-                {/* Public routes - login domain */}
-                <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
-                <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
-                <Route path="/installer" element={<Installer />} />
-                <Route path="/priser" element={<Priser />} />
-                <Route path="/sora-prosess" element={<SoraProcess />} />
-                <Route path="/bruksanvisning" element={<UserManualDownload />} />
-                
-                {/* Protected routes with shared Header - app domain */}
-                <Route element={<AuthenticatedLayout />}>
-                  <Route path="/" element={<DomainGuard><Index /></DomainGuard>} />
-                  <Route path="/ressurser" element={<DomainGuard><Resources /></DomainGuard>} />
-                  <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
-                  <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
-                  <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
-                  <Route path="/hendelser" element={<DomainGuard><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></DomainGuard>} />
-                  <Route path="/status" element={<DomainGuard><PlanRestricted feature="status"><Status /></PlanRestricted></DomainGuard>} />
-                  <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
-                  <Route path="/changelog" element={<DomainGuard><Changelog /></DomainGuard>} />
-                </Route>
-                
-                {/* Admin has its own header */}
-                <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
-                <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
-                <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
-                
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  {/* Public routes - login domain */}
+                  <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
+                  <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
+                  <Route path="/installer" element={<Installer />} />
+                  <Route path="/priser" element={<Priser />} />
+                  <Route path="/sora-prosess" element={<SoraProcess />} />
+                  <Route path="/bruksanvisning" element={<UserManualDownload />} />
+                  
+                  {/* Protected routes with shared Header - app domain */}
+                  <Route element={<AuthenticatedLayout />}>
+                    <Route path="/" element={<DomainGuard><Index /></DomainGuard>} />
+                    <Route path="/ressurser" element={<DomainGuard><Resources /></DomainGuard>} />
+                    <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
+                    <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
+                    <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
+                    <Route path="/hendelser" element={<DomainGuard><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></DomainGuard>} />
+                    <Route path="/status" element={<DomainGuard><PlanRestricted feature="status"><Status /></PlanRestricted></DomainGuard>} />
+                    <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
+                    <Route path="/changelog" element={<DomainGuard><Changelog /></DomainGuard>} />
+                  </Route>
+                  
+                  {/* Admin has its own header */}
+                  <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
+                  <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
+                  <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
+                  
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </AuthProvider>
         </ErrorBoundary>
