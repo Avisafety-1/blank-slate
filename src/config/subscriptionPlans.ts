@@ -33,6 +33,7 @@ export const PLANS: PlanConfig[] = [
     priceId: 'price_1TB9TARrLM8xOFbkzV267Soh',
     productId: 'prod_U9SNyTk1R28VOf',
     maxDrones: 1,
+    maxDronesPerSeat: true,
     gatedFeatures: [],
     features: [
       '1 drone per bruker',
