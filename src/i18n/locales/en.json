@@ -652,5 +652,32 @@
     "updateError": "Could not update flight log",
     "missionCreated": "New mission created from DJI flight log!",
     "createError": "Could not create mission"
+  },
+  "twoFactor": {
+    "title": "Two-Factor Authentication (2FA)",
+    "authenticatorApp": "Authenticator App",
+    "description": "Use an authenticator app like Google Authenticator or Authy for extra security when signing in.",
+    "active": "Active",
+    "inactive": "Not active",
+    "enable": "Enable 2FA",
+    "disable": "Disable 2FA",
+    "scanQr": "Scan the QR code",
+    "scanQrDesc": "Open your authenticator app and scan the QR code below.",
+    "manualEntry": "Or enter the code manually:",
+    "enterCode": "Enter 6-digit code from the app",
+    "verify": "Verify",
+    "settingUp": "Setting up...",
+    "enabled": "Two-factor authentication is now enabled!",
+    "disabled": "Two-factor authentication has been disabled.",
+    "enrollError": "Could not start 2FA setup.",
+    "verifyError": "Wrong code. Try again.",
+    "disableError": "Could not disable 2FA.",
+    "disableTitle": "Disable two-factor authentication?",
+    "disableDesc": "Your account will no longer require a code from the authenticator app when signing in. This makes your account less secure.",
+    "confirmDisable": "Yes, disable",
+    "challengeTitle": "Two-Factor Authentication",
+    "challengeDesc": "Enter the 6-digit code from your authenticator app.",
+    "invalidCode": "Invalid code. Try again.",
+    "noFactorFound": "No authenticator factor found."
   }
 }

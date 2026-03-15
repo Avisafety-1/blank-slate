@@ -652,5 +652,32 @@
     "updateError": "Kunne ikke oppdatere flyloggen",
     "missionCreated": "Nytt oppdrag opprettet fra DJI-flylogg!",
     "createError": "Kunne ikke opprette oppdrag"
+  },
+  "twoFactor": {
+    "title": "Tofaktorautentisering (2FA)",
+    "authenticatorApp": "Autentiseringsapp",
+    "description": "Bruk en autentiseringsapp som Google Authenticator eller Authy for ekstra sikkerhet ved innlogging.",
+    "active": "Aktiv",
+    "inactive": "Ikke aktiv",
+    "enable": "Aktiver 2FA",
+    "disable": "Deaktiver 2FA",
+    "scanQr": "Skann QR-koden",
+    "scanQrDesc": "Åpne autentiseringsappen din og skann QR-koden nedenfor.",
+    "manualEntry": "Eller skriv inn koden manuelt:",
+    "enterCode": "Skriv inn 6-sifret kode fra appen",
+    "verify": "Bekreft",
+    "settingUp": "Setter opp...",
+    "enabled": "Tofaktorautentisering er nå aktivert!",
+    "disabled": "Tofaktorautentisering er deaktivert.",
+    "enrollError": "Kunne ikke starte 2FA-oppsett.",
+    "verifyError": "Feil kode. Prøv igjen.",
+    "disableError": "Kunne ikke deaktivere 2FA.",
+    "disableTitle": "Deaktiver tofaktorautentisering?",
+    "disableDesc": "Kontoen din vil ikke lenger kreve en kode fra autentiseringsappen ved innlogging. Dette gjør kontoen mindre sikker.",
+    "confirmDisable": "Ja, deaktiver",
+    "challengeTitle": "Tofaktorautentisering",
+    "challengeDesc": "Skriv inn den 6-sifrede koden fra autentiseringsappen din.",
+    "invalidCode": "Ugyldig kode. Prøv igjen.",
+    "noFactorFound": "Ingen autentiseringsfaktor funnet."
   }
 }

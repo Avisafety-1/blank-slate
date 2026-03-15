@@ -1,56 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-# Plan: Valgfri 2FA med Authenticator-app
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-## Oversikt
-Legge til valgfri tofaktorautentisering (TOTP) i sikkerhet-tabben på profilen. Bruker Supabase Auth sin innebygde MFA-støtte (TOTP). Ved innlogging sjekkes det om brukeren har 2FA aktivert, og i så fall må de taste inn kode fra authenticator-appen.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-## Teknisk tilnærming
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-Supabase Auth har innebygd TOTP MFA via `supabase.auth.mfa.*` API-ene. Ingen database-endringer trengs.
-
-### 1. Sikkerhet-tab i ProfileDialog — 2FA-oppsett
-
-Legge til en ny seksjon i security-tabben (`src/components/ProfileDialog.tsx` linje ~1023-1044) med:
-
-- **Vis status**: Sjekk `supabase.auth.mfa.listFactors()` for å vise om TOTP er aktivert
-- **Aktiver-flyt**:
-  1. Kall `supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator' })`
-  2. Vis QR-kode (returnert som `totp.qr_code` data-URI) + hemmelig nøkkel for manuell inntasting
-  3. Bruker skanner QR og taster inn verifiseringskode
-  4. Kall `supabase.auth.mfa.challengeAndVerify({ factorId, code })` for å bekrefte
-- **Deaktiver-flyt**: Kall `supabase.auth.mfa.unenroll({ factorId })` med bekreftelsesdialog
-
-Opprette en egen komponent `TwoFactorSetup.tsx` for å holde logikken ryddig.
-
-### 2. Innloggingsflyt — MFA-utfordring (Auth.tsx)
-
-Etter `signInWithPassword` sjekke om responsen indikerer MFA er påkrevd:
-- Supabase returnerer en session med `session.user` men MFA-nivået er `aal1` (ikke `aal2`)
-- Sjekk `supabase.auth.mfa.getAuthenticatorAssuranceLevel()` — hvis `nextLevel === 'aal2'` og `currentLevel === 'aal1'`, vis MFA-verifiseringsdialog
-- Bruker taster inn 6-sifret kode fra authenticator-appen
-- Kall `supabase.auth.mfa.challenge({ factorId })` deretter `supabase.auth.mfa.verify({ factorId, challengeId, code })`
-- Ved suksess: fortsett normal redirect
-
-Opprette en `MfaChallengeDialog.tsx` komponent som vises over innloggingsskjermen.
-
-### 3. Nye filer
-
-| Fil | Innhold |
-|-----|---------|
-| `src/components/TwoFactorSetup.tsx` | QR-oppsett, verifisering, unenroll — brukes i ProfileDialog sikkerhet-tab |
-| `src/components/MfaChallengeDialog.tsx` | 6-sifret OTP-input ved innlogging, bruker `InputOTP`-komponenten som allerede finnes |
-
-### 4. Endrede filer
-
-| Fil | Endring |
-|-----|---------|
-| `src/components/ProfileDialog.tsx` | Importere og rendre `TwoFactorSetup` i security-tabben |
-| `src/pages/Auth.tsx` | Etter signInWithPassword, sjekke AAL-nivå og vise `MfaChallengeDialog` |
-| `src/i18n/locales/no.json` | Nye oversettelsesnøkler for 2FA |
-| `src/i18n/locales/en.json` | Nye oversettelsesnøkler for 2FA |
-
-### 5. Supabase-konfigurasjon
-
-MFA må være aktivert i Supabase-dashboardet under Authentication → Multi-Factor Authentication. Dette er en innstilling i Supabase-prosjektet, ikke i koden.
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
+import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 
 
 const Auth = () => {
@@ -48,8 +49,8 @@ const Auth = () => {
   const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
-  
-  
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+
   // Handle email confirmation messages from URL hash
   useEffect(() => {
     const hash = window.location.hash;
@@ -245,6 +246,14 @@ const Auth = () => {
         });
         if (error) throw error;
         if (data.user) {
+          // Check MFA requirement
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+            setShowMfaChallenge(true);
+            setLoading(false);
+            return;
+          }
+
           // Check if user is approved
           const {
             data: profileData
@@ -890,6 +899,18 @@ const Auth = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MfaChallengeDialog
+        open={showMfaChallenge}
+        onVerified={() => {
+          setShowMfaChallenge(false);
+          toast.success(t('auth.loginSuccess'));
+          redirectToApp('/');
+        }}
+        onCancel={() => {
+          setShowMfaChallenge(false);
+        }}
+      />
     </div>
   );
 };
