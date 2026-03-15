@@ -1,7 +1,7 @@
 export type PlanId = 'starter' | 'grower' | 'professional';
 export type AddonId = 'sora_admin' | 'dji' | 'eccairs';
 
-export type GatedFeature = 'incidents' | 'status' | 'ai_search' | 'sora' | 'access_control' | 'admin';
+export type GatedFeature = 'incidents' | 'status' | 'ai_search' | 'sora' | 'access_control';
 
 export interface PlanConfig {
   id: PlanId;
@@ -63,7 +63,7 @@ export const PLANS: PlanConfig[] = [
     priceId: 'price_1TB9DARrLM8xOFbkVWT7zgGW',
     productId: 'prod_U9S7NAHDDleuNG',
     maxDrones: 15,
-    gatedFeatures: ['incidents', 'status', 'ai_search', 'sora', 'access_control', 'admin'],
+    gatedFeatures: ['incidents', 'status', 'ai_search', 'sora', 'access_control'],
     features: [
       'Alt i Grower',
       'Risikoanalyse (SORA)',

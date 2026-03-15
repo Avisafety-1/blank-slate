@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 interface Profile {
   id: string;
@@ -65,6 +66,8 @@ const availableRoles = [
 
 const Admin = () => {
   const { user, loading, companyId, companyName, isSuperAdmin, signOut } = useAuth();
+  const { canAccess } = usePlanGating();
+  const canManageRoles = canAccess('access_control');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -862,6 +865,7 @@ const Admin = () => {
                                         checked={profile.can_approve_missions === true}
                                         onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                         className="scale-75"
+                                        disabled={!canManageRoles}
                                       />
                                     </div>
                                     {eccairsEnabled && (
@@ -871,6 +875,7 @@ const Admin = () => {
                                           checked={profile.can_access_eccairs === true}
                                           onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
                                           className="scale-75"
+                                          disabled={!canManageRoles}
                                         />
                                       </div>
                                     )}
@@ -880,26 +885,34 @@ const Admin = () => {
                                         checked={profile.can_be_incident_responsible === true}
                                         onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
                                         className="scale-75"
+                                        disabled={!canManageRoles}
                                       />
                                     </div>
                                     <div>
                                       <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
-                                      <Select 
-                                        value={userRole?.role || ""} 
-                                        onValueChange={(value) => assignRole(profile.id, value)}
-                                      >
-                                        <SelectTrigger className="w-full h-9">
-                                          <SelectValue placeholder={t('admin.selectRole')} />
-                                        </SelectTrigger>
-                                        <SelectContent className="z-[1300]">
-                                          {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
-                                            <SelectItem key={role.value} value={role.value}>
-                                              {t(role.labelKey)}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      {canManageRoles ? (
+                                        <Select 
+                                          value={userRole?.role || ""} 
+                                          onValueChange={(value) => assignRole(profile.id, value)}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder={t('admin.selectRole')} />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
+                                              <SelectItem key={role.value} value={role.value}>
+                                                {t(role.labelKey)}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
+                                      )}
                                     </div>
+                                    {!canManageRoles && (
+                                      <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -931,6 +944,7 @@ const Admin = () => {
                                   checked={profile.can_approve_missions === true}
                                   onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                   className="scale-75"
+                                  disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
                               </div>
@@ -940,6 +954,7 @@ const Admin = () => {
                                     checked={profile.can_access_eccairs === true}
                                     onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
                                     className="scale-75"
+                                    disabled={!canManageRoles}
                                   />
                                   <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
                                 </div>
@@ -949,24 +964,34 @@ const Admin = () => {
                                   checked={profile.can_be_incident_responsible === true}
                                   onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
                                   className="scale-75"
+                                  disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
                               </div>
-                              <Select 
-                                value={userRole?.role || ""} 
-                                onValueChange={(value) => assignRole(profile.id, value)}
-                              >
-                                <SelectTrigger className="w-[140px] h-10">
-                                  <SelectValue placeholder={t('admin.selectRole')} />
-                                </SelectTrigger>
-                                <SelectContent className="z-50">
-                                  {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      {t(role.labelKey)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {canManageRoles ? (
+                                <Select 
+                                  value={userRole?.role || ""} 
+                                  onValueChange={(value) => assignRole(profile.id, value)}
+                                >
+                                  <SelectTrigger className="w-[140px] h-10">
+                                    <SelectValue placeholder={t('admin.selectRole')} />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-50">
+                                    {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
+                                      <SelectItem key={role.value} value={role.value}>
+                                        {t(role.labelKey)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-xs cursor-help">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : '—'}</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Rolle- og tilgangsstyring krever Professional</TooltipContent>
+                                </Tooltip>
+                              )}
                               
                               <Button
                                 size="sm"
