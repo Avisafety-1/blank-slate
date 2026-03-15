@@ -150,6 +150,7 @@ export const ProfileDialog = () => {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
+  const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1931,12 +1932,34 @@ export const ProfileDialog = () => {
                                         <p className="text-xs text-muted-foreground break-words">{addon.desc}</p>
                                         <p className="text-xs font-medium mt-0.5">{addon.price} NOK/mnd</p>
                                       </div>
+                                      {isBillingOwner && (
+                                        <Switch
+                                          checked={isActive}
+                                          disabled={togglingAddon === addon.id}
+                                          onCheckedChange={async (checked) => {
+                                            setTogglingAddon(addon.id);
+                                            try {
+                                              const { data, error } = await supabase.functions.invoke('manage-addon', {
+                                                body: { addon_id: addon.id, action: checked ? 'add' : 'remove' },
+                                              });
+                                              if (error) throw error;
+                                              if (data?.error) throw new Error(data.error);
+                                              toast.success(checked ? `${addon.name} aktivert` : `${addon.name} deaktivert`);
+                                              window.location.reload();
+                                            } catch (e: any) {
+                                              toast.error('Kunne ikke oppdatere tilleggsmodul: ' + (e.message || 'Ukjent feil'));
+                                            } finally {
+                                              setTogglingAddon(null);
+                                            }
+                                          }}
+                                        />
+                                      )}
                                     </div>
                                   );
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
-                                Tilleggsmoduler kan legges til/fjernes via «Administrer abonnement».
+                                {isBillingOwner ? 'Endring trer i kraft umiddelbart med prorata-justering.' : 'Kontakt betalingsansvarlig for å endre tilleggsmoduler.'}
                               </p>
                             </div>
                           </>
