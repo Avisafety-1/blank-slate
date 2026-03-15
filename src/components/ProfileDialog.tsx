@@ -1846,11 +1846,8 @@ export const ProfileDialog = () => {
                             <div>
                               <p className="text-sm font-medium mb-2">Bytt plan</p>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {([
-                                  { id: 'starter', name: 'Starter', price: 99, features: ['Droneflåtestyring', 'Oppdrag', 'Dokumenter', 'Kart'] },
-                                  { id: 'grower', name: 'Grower', price: 199, features: ['Alt i Starter', 'Hendelser', 'Kalender & varsler'] },
-                                  { id: 'professional', name: 'Professional', price: 299, features: ['Alt i Grower', 'SORA', 'Markedsføring'] },
-                                ] as const).map((plan) => {
+                                {PLANS.map((plan) => {
+                                  const shortFeatures = plan.features.slice(0, 4);
                                   const isCurrent = subscriptionPlan === plan.id;
                                   const isChanging = changingPlan === plan.id;
                                   return (
