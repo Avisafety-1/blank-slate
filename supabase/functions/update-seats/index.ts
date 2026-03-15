@@ -8,10 +8,14 @@ const corsHeaders = {
 };
 
 const PLAN_PRICE_IDS = new Set([
+  "price_1TB9TARrLM8xOFbkzV267Soh",
+  "price_1TB9TfRrLM8xOFbkV1ac0aY5",
+  "price_1TB9DARrLM8xOFbkVWT7zgGW",
+  // Legacy
+  "price_1TAvyMRrLM8xOFbkg986ibK4",
   "price_1TB8rSRwSSSiRYeAcdc2KWfQ",
   "price_1TB8rnRwSSSiRYeAWCmvXJoP",
   "price_1TB8s3RwSSSiRYeAuD8W8KR2",
-  "price_1TAvyMRrLM8xOFbkg986ibK4",
 ]);
 
 const logStep = (step: string, details?: any) => {

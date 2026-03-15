@@ -1,14 +1,14 @@
-## Ny prismodell – IMPLEMENTERT
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-### Stripe-produkter (opprettet)
+### Stripe Live-produkter
 | Plan | Product ID | Price ID |
 |------|-----------|----------|
-| Starter (99 NOK) | prod_U9RkaanTF3DhRx | price_1TB8rSRwSSSiRYeAcdc2KWfQ |
-| Grower (199 NOK) | prod_U9RloL0mDm4fAO | price_1TB8rnRwSSSiRYeAWCmvXJoP |
-| Professional (299 NOK) | prod_U9Rl8Mm942NU7W | price_1TB8s3RwSSSiRYeAuD8W8KR2 |
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
 | SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9RnxOitGXYRsO | price_1TB8tlRwSSSiRYeAvnA3aHCq |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9Rnz6IoHvFv3G | price_1TB8tzRwSSSiRYeAFy8wFJjt |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
 ### Implementerte filer
 - `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon

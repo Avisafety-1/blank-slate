@@ -8,15 +8,21 @@ const corsHeaders = {
 };
 
 const PRICE_TO_PLAN: Record<string, string> = {
+  "price_1TB9TARrLM8xOFbkzV267Soh": "starter",
+  "price_1TB9TfRrLM8xOFbkV1ac0aY5": "grower",
+  "price_1TB9DARrLM8xOFbkVWT7zgGW": "professional",
+  // Legacy prices
+  "price_1TAvyMRrLM8xOFbkg986ibK4": "professional",
   "price_1TB8rSRwSSSiRYeAcdc2KWfQ": "starter",
   "price_1TB8rnRwSSSiRYeAWCmvXJoP": "grower",
   "price_1TB8s3RwSSSiRYeAuD8W8KR2": "professional",
-  // Legacy price
-  "price_1TAvyMRrLM8xOFbkg986ibK4": "professional",
 };
 
 const ADDON_PRICE_IDS: Record<string, string> = {
   "price_1TB8tURrLM8xOFbk2fX9o05U": "sora_admin",
+  "price_1TB9IBRrLM8xOFbkijdJUsL7": "dji",
+  "price_1TB9JCRrLM8xOFbklvsgEyiV": "eccairs",
+  // Legacy addon prices
   "price_1TB8tlRwSSSiRYeAvnA3aHCq": "dji",
   "price_1TB8tzRwSSSiRYeAFy8wFJjt": "eccairs",
 };

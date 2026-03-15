@@ -101,13 +101,15 @@ export const getAddonById = (addonId: AddonId): AddonConfig | undefined =>
 
 // Price ID to plan mapping for edge functions
 export const PRICE_TO_PLAN: Record<string, PlanId> = {
-  'price_1TB8rSRwSSSiRYeAcdc2KWfQ': 'starter',
-  'price_1TB8rnRwSSSiRYeAWCmvXJoP': 'grower',
-  'price_1TB8s3RwSSSiRYeAuD8W8KR2': 'professional',
+  'price_1TB9TARrLM8xOFbkzV267Soh': 'starter',
+  'price_1TB9TfRrLM8xOFbkV1ac0aY5': 'grower',
+  'price_1TB9DARrLM8xOFbkVWT7zgGW': 'professional',
+  // Legacy
+  'price_1TAvyMRrLM8xOFbkg986ibK4': 'professional',
 };
 
 export const ADDON_PRICE_IDS: Record<string, AddonId> = {
   'price_1TB8tURrLM8xOFbk2fX9o05U': 'sora_admin',
-  'price_1TB8tlRwSSSiRYeAvnA3aHCq': 'dji',
-  'price_1TB8tzRwSSSiRYeAFy8wFJjt': 'eccairs',
+  'price_1TB9IBRrLM8xOFbkijdJUsL7': 'dji',
+  'price_1TB9JCRrLM8xOFbklvsgEyiV': 'eccairs',
 };

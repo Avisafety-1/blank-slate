@@ -8,15 +8,15 @@ const corsHeaders = {
 };
 
 const PLAN_PRICES: Record<string, string> = {
-  starter: "price_1TB8rSRwSSSiRYeAcdc2KWfQ",
-  grower: "price_1TB8rnRwSSSiRYeAWCmvXJoP",
-  professional: "price_1TB8s3RwSSSiRYeAuD8W8KR2",
+  starter: "price_1TB9TARrLM8xOFbkzV267Soh",
+  grower: "price_1TB9TfRrLM8xOFbkV1ac0aY5",
+  professional: "price_1TB9DARrLM8xOFbkVWT7zgGW",
 };
 
 const ADDON_PRICES: Record<string, string> = {
   sora_admin: "price_1TB8tURrLM8xOFbk2fX9o05U",
-  dji: "price_1TB8tlRwSSSiRYeAvnA3aHCq",
-  eccairs: "price_1TB8tzRwSSSiRYeAFy8wFJjt",
+  dji: "price_1TB9IBRrLM8xOFbkijdJUsL7",
+  eccairs: "price_1TB9JCRrLM8xOFbklvsgEyiV",
 };
 
 const logStep = (step: string, details?: any) => {
