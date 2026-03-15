@@ -135,6 +135,9 @@ export const ProfileDialog = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [competencyDialogOpen, setCompetencyDialogOpen] = useState(false);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
   const [editIncidentDialogOpen, setEditIncidentDialogOpen] = useState(false);
