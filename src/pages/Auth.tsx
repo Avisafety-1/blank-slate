@@ -512,6 +512,9 @@ const Auth = () => {
       setGoogleFullName("");
       setGoogleRegistrationCode("");
       setGoogleValidatedCompany(null);
+      setGoogleRegMode('code');
+      setGoogleNewCompanyName("");
+      setGoogleNewCompanyOrgNr("");
       setLoading(false);
     }
   };
