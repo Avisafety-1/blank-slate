@@ -44,6 +44,9 @@ const Auth = () => {
   const [googleFullName, setGoogleFullName] = useState("");
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
   const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [googleRegMode, setGoogleRegMode] = useState<'code' | 'new'>('code');
+  const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
+  const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   
   
@@ -368,54 +371,112 @@ const Auth = () => {
   };
 
   const handleGoogleRegistrationSubmit = async () => {
-    if (!googleUser || !googleValidatedCompany || !googleFullName.trim()) {
+    if (!googleUser || !googleFullName.trim()) {
       toast.error(t('auth.fillAllFields'));
+      return;
+    }
+
+    if (googleRegMode === 'code' && !googleValidatedCompany) {
+      toast.error(t('auth.enterValidCode'));
+      return;
+    }
+
+    if (googleRegMode === 'new' && !googleNewCompanyName.trim()) {
+      toast.error('Skriv inn selskapsnavn');
       return;
     }
 
     setLoading(true);
     try {
-      // Create profile for the Google user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: googleUser.id,
-          full_name: googleFullName.trim(),
-          company_id: googleValidatedCompany.id,
-          email: googleUser.email,
-          approved: false
+      if (googleRegMode === 'new') {
+        // Create new company
+        const regCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            navn: googleNewCompanyName.trim(),
+            org_nummer: googleNewCompanyOrgNr.trim() || null,
+            registration_code: regCode,
+          })
+          .select('id')
+          .single();
+
+        if (companyError || !companyData) {
+          console.error('Error creating company:', companyError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Create profile as approved admin (founder)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: googleUser.id,
+            full_name: googleFullName.trim(),
+            company_id: companyData.id,
+            email: googleUser.email,
+            approved: true
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Assign admin role
+        await supabase.from('user_roles').insert({
+          user_id: googleUser.id,
+          role: 'admin' as any
         });
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        toast.error(t('errors.generic'));
-        return;
-      }
-
-      // Role is now assigned automatically by database trigger (handle_new_profile_role)
-
-      // Send notifications to admins
-      await supabase.functions.invoke('send-notification-email', {
-        body: {
-          type: 'notify_admins_new_user',
-          companyId: googleValidatedCompany.id,
-          newUser: {
-            fullName: googleFullName.trim(),
+        toast.success('Selskap opprettet! Du er nå logget inn.');
+        
+        // Redirect to app
+        setShowGoogleRegistration(false);
+        setGoogleUser(null);
+        redirectToApp('/');
+      } else {
+        // Existing company with code
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: googleUser.id,
+            full_name: googleFullName.trim(),
+            company_id: googleValidatedCompany!.id,
             email: googleUser.email,
-            companyName: googleValidatedCompany.name
-          }
-        }
-      });
+            approved: false
+          });
 
-      toast.success(t('auth.accountCreated'));
-      
-      // Sign out and reset state
-      await supabase.auth.signOut();
-      setShowGoogleRegistration(false);
-      setGoogleUser(null);
-      setGoogleFullName("");
-      setGoogleRegistrationCode("");
-      setGoogleValidatedCompany(null);
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Send notifications to admins
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_admins_new_user',
+            companyId: googleValidatedCompany!.id,
+            newUser: {
+              fullName: googleFullName.trim(),
+              email: googleUser.email,
+              companyName: googleValidatedCompany!.name
+            }
+          }
+        });
+
+        toast.success(t('auth.accountCreated'));
+        
+        // Sign out and reset state
+        await supabase.auth.signOut();
+        setShowGoogleRegistration(false);
+        setGoogleUser(null);
+        setGoogleFullName("");
+        setGoogleRegistrationCode("");
+        setGoogleValidatedCompany(null);
+      }
     } catch (error: any) {
       console.error('Google registration error:', error);
       toast.error(error.message || t('errors.generic'));
@@ -451,6 +512,9 @@ const Auth = () => {
       setGoogleFullName("");
       setGoogleRegistrationCode("");
       setGoogleValidatedCompany(null);
+      setGoogleRegMode('code');
+      setGoogleNewCompanyName("");
+      setGoogleNewCompanyOrgNr("");
       setLoading(false);
     }
   };
@@ -721,7 +785,9 @@ const Auth = () => {
           <DialogHeader>
             <DialogTitle>{t('auth.completeRegistration')}</DialogTitle>
             <DialogDescription>
-              {t('auth.enterRegistrationCodeToComplete')}
+              {googleRegMode === 'new' 
+                ? 'Opprett et nytt selskap og kom i gang.'
+                : t('auth.enterRegistrationCodeToComplete')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -735,34 +801,73 @@ const Auth = () => {
                 onChange={e => setGoogleFullName(e.target.value)} 
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="googleRegistrationCode">{t('auth.registrationCode')}</Label>
-              <div className="relative">
-                <Input 
-                  id="googleRegistrationCode" 
-                  type="text" 
-                  placeholder="ABC123" 
-                  value={googleRegistrationCode} 
-                  onChange={e => setGoogleRegistrationCode(e.target.value.toUpperCase().slice(0, 6))} 
-                  maxLength={6}
-                  className="font-mono uppercase tracking-wider"
-                />
+
+            <Tabs value={googleRegMode} onValueChange={(v) => setGoogleRegMode(v as 'code' | 'new')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="code" className="text-xs gap-1">
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Selskapskode
+                </TabsTrigger>
+                <TabsTrigger value="new" className="text-xs gap-1">
+                  <Building2 className="h-3.5 w-3.5" />
+                  Nytt selskap
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {googleRegMode === 'code' ? (
+              <div className="space-y-2">
+                <Label htmlFor="googleRegistrationCode">{t('auth.registrationCode')}</Label>
+                <div className="relative">
+                  <Input 
+                    id="googleRegistrationCode" 
+                    type="text" 
+                    placeholder="ABC123" 
+                    value={googleRegistrationCode} 
+                    onChange={e => setGoogleRegistrationCode(e.target.value.toUpperCase().slice(0, 6))} 
+                    maxLength={6}
+                    className="font-mono uppercase tracking-wider"
+                  />
+                  {googleValidatedCompany && (
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                  )}
+                </div>
                 {googleValidatedCompany && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                  <p className="text-sm text-primary flex items-center gap-1">
+                    {t('auth.company')}: {googleValidatedCompany.name}
+                  </p>
                 )}
-              </div>
-              {googleValidatedCompany && (
-                <p className="text-sm text-green-600 flex items-center gap-1">
-                  {t('auth.company')}: {googleValidatedCompany.name}
+                {googleRegistrationCode.length === 6 && !googleValidatedCompany && (
+                  <p className="text-sm text-destructive">{t('auth.invalidCode')}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {t('auth.contactAdmin')}
                 </p>
-              )}
-              {googleRegistrationCode.length === 6 && !googleValidatedCompany && (
-                <p className="text-sm text-destructive">{t('auth.invalidCode')}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {t('auth.contactAdmin')}
-              </p>
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="googleCompanyName">Selskapsnavn *</Label>
+                <Input 
+                  id="googleCompanyName" 
+                  type="text" 
+                  placeholder="Mitt Droneselskap AS" 
+                  value={googleNewCompanyName} 
+                  onChange={e => setGoogleNewCompanyName(e.target.value)} 
+                />
+                <Label htmlFor="googleOrgNr">Organisasjonsnummer (valgfritt)</Label>
+                <Input 
+                  id="googleOrgNr" 
+                  type="text" 
+                  placeholder="123 456 789" 
+                  value={googleNewCompanyOrgNr} 
+                  onChange={e => setGoogleNewCompanyOrgNr(e.target.value)} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Du blir administrator for det nye selskapet. 5 dager gratis prøveperiode.
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button 
                 type="button" 
@@ -776,10 +881,10 @@ const Auth = () => {
               <Button 
                 type="button" 
                 onClick={handleGoogleRegistrationSubmit} 
-                disabled={loading || !googleValidatedCompany || !googleFullName.trim()}
+                disabled={loading || !googleFullName.trim() || (googleRegMode === 'code' && !googleValidatedCompany) || (googleRegMode === 'new' && !googleNewCompanyName.trim())}
                 className="flex-1"
               >
-                {loading ? t('common.processing') : t('auth.signUp')}
+                {loading ? t('common.processing') : googleRegMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
               </Button>
             </div>
           </div>
