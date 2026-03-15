@@ -94,6 +94,7 @@ const Admin = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
+  const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
