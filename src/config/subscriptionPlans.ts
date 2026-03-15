@@ -70,7 +70,7 @@ export const PLANS: PlanConfig[] = [
     gatedFeatures: ['incidents', 'status', 'ai_search', 'sora', 'access_control'],
     features: [
       'Alt i Grower',
-      'Opptil 15 droner',
+      'Opptil 15 droner per bruker',
       'Risikoanalyse (SORA)',
       'Tilgangsstyring / roller',
       'Markedsføringsmodul',
