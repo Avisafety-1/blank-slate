@@ -56,6 +56,14 @@ export function EccairsSettingsDialog({
   const [clientSecret, setClientSecret] = useState("");
   const [hasExistingSecret, setHasExistingSecret] = useState(false);
 
+  // Gate addon
+  useEffect(() => {
+    if (open && !hasAddon('eccairs')) {
+      toast.error('ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen');
+      onOpenChange(false);
+    }
+  }, [open]);
+
   // Fetch existing settings when dialog opens
   useEffect(() => {
     const fetchSettings = async () => {
