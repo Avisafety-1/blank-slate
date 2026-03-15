@@ -1,6 +1,8 @@
 export type PlanId = 'starter' | 'grower' | 'professional';
 export type AddonId = 'sora_admin' | 'dji' | 'eccairs';
 
+export type GatedFeature = 'incidents' | 'status' | 'ai_search' | 'sora' | 'access_control' | 'admin';
+
 export interface PlanConfig {
   id: PlanId;
   name: string;
@@ -9,6 +11,8 @@ export interface PlanConfig {
   productId: string;
   features: string[];
   highlighted?: boolean;
+  maxDrones: number;
+  gatedFeatures: GatedFeature[];
 }
 
 export interface AddonConfig {
