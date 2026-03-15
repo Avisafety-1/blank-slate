@@ -788,6 +788,19 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
+            {isLogin && passkeySupported && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPasskeyLogin(true)}
+                disabled={loading}
+                className="w-full mb-3"
+              >
+                <Fingerprint className="mr-2 h-4 w-4" />
+                {t('passkey.loginButton')}
+              </Button>
+            )}
+
             <div className="text-center text-sm">
               <button 
                 type="button" 
