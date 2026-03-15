@@ -10,6 +10,9 @@ import { Fingerprint, Plus, Trash2, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { startRegistration } from "@simplewebauthn/browser";
+import { isDevelopment } from "@/config/domains";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 interface Passkey {
   id: string;
@@ -29,6 +32,7 @@ export const PasskeySetup = () => {
   const [deleting, setDeleting] = useState(false);
 
   const isSupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
+  const isDevEnv = isDevelopment();
 
   useEffect(() => {
     fetchPasskeys();
@@ -148,6 +152,15 @@ export const PasskeySetup = () => {
         <CardContent className="space-y-3 sm:space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           <p className="text-xs sm:text-sm text-muted-foreground">{t("passkey.description")}</p>
 
+          {isDevEnv && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <Info className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-xs sm:text-sm">
+                {t("passkey.devWarning", "Passkeys må registreres via app.avisafe.no for å fungere korrekt. De kan ikke brukes fra forhåndsvisning eller utviklingsmiljø.")}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Registered passkeys list */}
           {passkeys.length > 0 && (
             <div className="space-y-2">
@@ -204,7 +217,7 @@ export const PasskeySetup = () => {
               </div>
             </div>
           ) : (
-            <Button onClick={() => setShowNameInput(true)} variant="outline">
+            <Button onClick={() => setShowNameInput(true)} variant="outline" disabled={isDevEnv}>
               <Plus className="h-4 w-4 mr-2" />
               {t("passkey.addPasskey")}
             </Button>

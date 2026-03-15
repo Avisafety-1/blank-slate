@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { redirectToApp } from "@/config/domains";
+import { redirectToApp, isDevelopment } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,7 @@ const Auth = () => {
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
   const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
+  const isDevEnv = isDevelopment();
 
   // Handle email confirmation messages from URL hash
   useEffect(() => {
@@ -789,7 +790,7 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
-            {isLogin && passkeySupported && passkeyRegistered && (
+            {isLogin && passkeySupported && passkeyRegistered && !isDevEnv && (
               <Button
                 type="button"
                 variant="outline"
