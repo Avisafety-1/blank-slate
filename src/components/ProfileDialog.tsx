@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -637,6 +637,26 @@ export const ProfileDialog = () => {
   };
 
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const location = useLocation();
+
+  // Listen for open-profile-subscription event and location state
+  useEffect(() => {
+    const handler = () => {
+      setProfileDialogOpen(true);
+      setActiveTab('subscription');
+    };
+    window.addEventListener('open-profile-subscription', handler);
+    return () => window.removeEventListener('open-profile-subscription', handler);
+  }, []);
+
+  useEffect(() => {
+    if ((location.state as any)?.openSubscription) {
+      setProfileDialogOpen(true);
+      setActiveTab('subscription');
+      // Clear the state so it doesn't re-trigger
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   return (
     <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>

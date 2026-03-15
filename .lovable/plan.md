@@ -1,48 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-Mål: Brukeren skal ikke “låses” på blokkeringssiden. «Oppgrader plan» skal alltid gjøre noe meningsfullt, og siden skal ha en tydelig tilbakevei.
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-Rotårsak (funnet i koden):
-- `PlanRestricted` sender kun `window.dispatchEvent('open-profile-subscription')`.
-- Ingen komponent lytter på dette eventet nå.
-- På `/admin` rendres ikke global `Header`, så `ProfileDialog` finnes ikke der når siden er blokkert.
-- Resultat: knappen gjør ingenting + ingen tilbakeknapp i blokkeringsvisningen.
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-Plan for endring:
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-1) Gjør «Oppgrader plan» robust i `PlanRestricted`
-- Legg inn `useNavigate` + `useLocation`.
-- Oppgrader-knapp skal:
-  - prøve å åpne abonnement-fanen via event (for sider hvor profil-dialog finnes),
-  - og ha fallback: naviger til trygg rute (`/`) med state/query som betyr “åpne abonnement”.
-- Dette sikrer at knappen alltid fungerer, også fra blokkert `/admin`.
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-2) Legg til faktisk event-håndtering i `ProfileDialog`
-- Registrer listener for `open-profile-subscription`.
-- Ved event: åpne dialog (`setProfileDialogOpen(true)`) og sett tab til `subscription`.
-- Støtt også åpning via route state/query (fallback fra punkt 1), og nullstill state/query etter åpning.
-
-3) Legg til tilbakehandling i `PlanRestricted`
-- Sekundærknapp: «Tilbake».
-- Logikk: `navigate(-1)` hvis mulig, ellers `navigate('/')`.
-- Beholder «Oppgrader plan» som primær CTA.
-
-4) Forbedre UX for blokkert fullside (særlig mobil)
-- Hold nåværende låsekort, men legg inn tydelig knapperekkefølge:
-  - Primær: Oppgrader plan
-  - Sekundær: Tilbake
-- Sikrer at brukeren alltid har en “exit”.
-
-5) (Liten bonusfix) Fjern dialog-advarsel i console
-- Legg til `DialogDescription` i `ProfileDialog` for å fjerne Radix advarsel om manglende description/aria-describedby.
-
-Tekniske filer som oppdateres:
-- `src/components/PlanRestricted.tsx`
-- `src/components/ProfileDialog.tsx`
-- (ev. liten støtte i `src/App.tsx` kun hvis vi velger query-basert åpning framfor state)
-
-Akseptansekriterier:
-- Starter-bruker klikker `/admin` → ser blokkering.
-- Klikk «Oppgrader plan» → blir sendt til side med fungerende profil-dialog på Abonnement-fanen.
-- Klikk «Tilbake» → kommer tilbake til forrige side (eller dashboard som fallback).
-- Samme oppgrader-knapp fungerer også fra blokkert `/status` og `/hendelser`.
-- Ingen “død” knapp lenger.
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
