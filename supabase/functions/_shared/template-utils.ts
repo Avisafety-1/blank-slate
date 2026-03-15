@@ -654,7 +654,9 @@ export async function getEmailTemplateWithFallback(
   
   const defaultTemplate = defaultTemplates[templateType];
   if (defaultTemplate) {
-    const content = replaceTemplateVariables(defaultTemplate.content, variables);
+    let content = replaceTemplateVariables(defaultTemplate.content, variables);
+    // Inject logo header into default templates
+    content = injectLogoHeader(content);
     return {
       subject: replaceTemplateVariables(defaultTemplate.subject, variables),
       content: fixEmailImages(content),
