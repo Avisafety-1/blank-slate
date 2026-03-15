@@ -49,8 +49,8 @@ const Auth = () => {
   const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
-  
-  
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+
   // Handle email confirmation messages from URL hash
   useEffect(() => {
     const hash = window.location.hash;
