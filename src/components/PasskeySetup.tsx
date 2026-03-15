@@ -10,6 +10,9 @@ import { Fingerprint, Plus, Trash2, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { startRegistration } from "@simplewebauthn/browser";
+import { isDevelopment } from "@/config/domains";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 interface Passkey {
   id: string;
