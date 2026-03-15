@@ -204,6 +204,14 @@ const isApiLimitError = (error: any): boolean => {
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
   const { t } = useTranslation();
   const { user, companyId } = useAuth();
+  const { hasAddon } = usePlanGating();
+
+  useEffect(() => {
+    if (open && !hasAddon('dji')) {
+      toast.error('DJI-integrasjon krever DJI-tilleggsmodulen');
+      onOpenChange(false);
+    }
+  }, [open]);
   const terminology = useTerminology();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
