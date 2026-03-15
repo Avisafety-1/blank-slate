@@ -20,6 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Incident = Tables<"incidents">;
@@ -34,6 +35,15 @@ interface AddIncidentDialogProps {
 
 export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
+  const { canAccess } = usePlanGating();
+
+  // Block opening if plan doesn't include incidents
+  useEffect(() => {
+    if (open && !canAccess('incidents')) {
+      onOpenChange(false);
+      toast.error('Hendelsesrapportering krever Grower-planen eller høyere.');
+    }
+  }, [open, canAccess, onOpenChange]);
   const [submitting, setSubmitting] = useState(false);
   const [missions, setMissions] = useState<Array<{ id: string; tittel: string; status: string; tidspunkt: string; lokasjon: string }>>([]);
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
