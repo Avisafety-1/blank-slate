@@ -150,6 +150,7 @@ export const ProfileDialog = () => {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
+  const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
