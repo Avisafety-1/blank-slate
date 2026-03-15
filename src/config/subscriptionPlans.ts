@@ -46,6 +46,8 @@ export const PLANS: PlanConfig[] = [
     price: 199,
     priceId: 'price_1TB9TfRrLM8xOFbkV1ac0aY5',
     productId: 'prod_U9SOzBZAWkFv4m',
+    maxDrones: 5,
+    gatedFeatures: ['incidents', 'status', 'ai_search', 'sora'],
     features: [
       'Alt i Starter',
       'Hendelsesrapportering',
