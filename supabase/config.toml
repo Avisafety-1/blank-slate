@@ -146,3 +146,6 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.delete-own-account]
+verify_jwt = false

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +105,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, signOut } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -134,6 +135,9 @@ export const ProfileDialog = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [competencyDialogOpen, setCompetencyDialogOpen] = useState(false);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
   const [editIncidentDialogOpen, setEditIncidentDialogOpen] = useState(false);
@@ -1015,6 +1019,70 @@ export const ProfileDialog = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card className="border-destructive/30">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">{t('profile.deleteAccount')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {t('profile.deleteAccountDesc')}
+                    </p>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setDeleteConfirmEmail("");
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('profile.deleteAccount')}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('profile.deleteAccountConfirmTitle')}</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-3">
+                        <span className="block">{t('profile.deleteAccountConfirmDesc')}</span>
+                        <span className="block font-medium text-foreground">{t('profile.deleteAccountTypeEmail')}</span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      placeholder={user?.email ?? ""}
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                      className="mt-2"
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleteLoading}>{t('actions.cancel')}</AlertDialogCancel>
+                      <Button
+                        variant="destructive"
+                        disabled={deleteLoading || deleteConfirmEmail.toLowerCase() !== (user?.email ?? "").toLowerCase()}
+                        onClick={async () => {
+                          setDeleteLoading(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('delete-own-account');
+                            if (error) throw error;
+                            toast.success(t('profile.deleteAccountSuccess'));
+                            setDeleteDialogOpen(false);
+                            await signOut();
+                          } catch (err: any) {
+                            console.error("Error deleting account:", err);
+                            toast.error(err.message || t('profile.deleteAccountError'));
+                          } finally {
+                            setDeleteLoading(false);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deleteLoading ? t('profile.deletingAccount') : t('profile.deleteAccountConfirm')}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </TabsContent>
 
               {/* Competencies Tab */}
