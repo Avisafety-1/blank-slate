@@ -34,7 +34,7 @@ export const PLANS: PlanConfig[] = [
     maxDrones: 1,
     gatedFeatures: [],
     features: [
-      'Maks 1 drone',
+      '1 drone per bruker',
       'Ressursstyring med vedlikeholdsmodul',
       'Kompetanseoversikt med varsling',
       'Oppdrag med vær- og luftromskontroll',
