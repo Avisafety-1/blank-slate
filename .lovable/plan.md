@@ -1,68 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-## Plan: Feature-gating basert på abonnementsplan
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-### Planmatrise
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-```text
-Funksjon                          Starter    Grower    Professional
-──────────────────────────────────────────────────────────────────
-Dashboard / Kart / Oppdrag        ✓          ✓         ✓
-Ressurser / Dokumenter / Kalender ✓          ✓         ✓
-Hendelsesrapportering             ✗          ✓         ✓
-/status (statuspanel)             ✗          ✓         ✓
-AI-regelverkssøk                  ✗          ✓         ✓
-SORA re-vurdering                 ✗          ✓         ✓
-Maks droner per bruker            1          5         15
-Tilgangsstyring (roller/funksjoner) ✗        ✗         ✓
-Admin-panel                       ✗          ✗         ✓
-──────────────────────────────────────────────────────────────────
-Tillegg (addon):  SORA Admin / DJI / ECCAIRS – uavhengig av plan
-```
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-### Implementering
-
-**1. Ny hook: `src/hooks/usePlanGating.ts`**
-- Leser `subscriptionPlan` og `subscriptionAddons` fra `useAuth()`
-- Eksporterer:
-  - `canAccess(feature: string): boolean` — sjekker om gjeldende plan gir tilgang
-  - `maxDrones: number` — 1 / 5 / 15 basert på plan
-  - `hasAddon(addon: AddonId): boolean`
-- Feature-liste som enum/constant: `'incidents'`, `'status'`, `'ai_search'`, `'sora'`, `'access_control'`, `'admin'`
-- SuperAdmin / stripeExempt bypass — alltid full tilgang
-
-**2. Ny komponent: `src/components/PlanRestricted.tsx`**
-- Wrapper-komponent som viser innholdet eller en upgrade-prompt
-- Props: `feature: string`, `children`
-- Bruker `usePlanGating` internt
-- Viser kort melding med «Oppgrader til [plan]»-knapp som navigerer til ProfileDialog
-
-**3. Oppdater `src/components/Header.tsx`**
-- Skjul «Hendelser»-link for Starter
-- Skjul «Status»-link for Starter
-- Skjul Admin-knapp for Starter og Grower (med mindre bruker er superadmin)
-
-**4. Oppdater rute-beskyttelse i `src/App.tsx`**
-- Wrap `/hendelser`, `/status` med `PlanRestricted` i AuthenticatedLayout
-- Alternativt: sjekk i selve page-komponentene
-
-**5. Oppdater individuelle features**
-- `src/components/dashboard/AISearchBar.tsx` — deaktiver/skjul for Starter
-- `src/components/dashboard/RiskAssessmentDialog.tsx` (SORA) — deaktiver for Starter
-- `src/pages/Admin.tsx` — redirect/blokkér for ikke-Professional (med unntak av superadmin)
-- Tilgangsstyring i admin (roller, funksjonsbrytere) — kun Professional
-
-**6. Drone-begrensning**
-- I `src/components/resources/AddDroneDialog.tsx` — sjekk antall eksisterende droner mot `maxDrones` før opprettelse
-- Vis melding «Du har nådd maks antall droner for din plan» med oppgraderingslenke
-- Krever en query for å telle droner i selskapet
-
-**7. Oppdater `src/config/subscriptionPlans.ts`**
-- Legg til `maxDrones` og `features`-liste per plan for maskinlesbar gating
-- Oppdater feature-beskrivelsene i UI
-
-### Teknisk notat
-- All gating skjer client-side basert på `subscriptionPlan` fra AuthContext (som hentes fra `check-subscription` Edge Function)
-- SuperAdmin og stripeExempt bypasser alltid alle gates
-- Addon-gating (SORA Admin, DJI, ECCAIRS) forblir separat — sjekkes via `subscriptionAddons`
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal

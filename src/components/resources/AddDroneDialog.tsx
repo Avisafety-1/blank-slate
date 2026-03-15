@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useChecklists } from "@/hooks/useChecklists";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 interface DroneModel {
   id: string;
@@ -48,8 +49,10 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+  const { maxDrones, currentPlan } = usePlanGating();
 
   // Drone catalog state
   const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
@@ -73,6 +76,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       
       if (data) {
         setCompanyId(data.company_id);
+        // Count existing drones for plan limit check
+        const { count } = await supabase
+          .from("drones")
+          .select("id", { count: 'exact', head: true })
+          .eq("company_id", data.company_id);
+        setDroneCount(count ?? 0);
       }
     };
     
@@ -161,6 +170,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     e.preventDefault();
     
     if (isSubmitting) return;
+
+    // Check drone limit
+    if (droneCount >= maxDrones) {
+      toast.error(`Du har nådd maks antall droner (${maxDrones}) for din ${currentPlan.name}-plan. Oppgrader for å legge til flere.`);
+      return;
+    }
+
     setIsSubmitting(true);
     
     const form = e.currentTarget;

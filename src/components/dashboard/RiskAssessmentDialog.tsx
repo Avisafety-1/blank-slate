@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText } from "lucide-react";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
@@ -116,7 +117,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const allCommentsComplete = ['weather', 'airspace', 'pilot_experience', 'mission_complexity', 'equipment']
     .every(k => categoryComments[k]?.trim());
 
+  const { canAccess } = usePlanGating();
+
   const runSoraReassessment = async () => {
+    if (!canAccess('sora')) {
+      toast.error('SORA re-vurdering krever Grower-planen eller høyere.');
+      return;
+    }
     if (!currentMissionId || !currentAssessment) return;
     setRunningSora(true);
     try {

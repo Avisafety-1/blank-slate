@@ -1,5 +1,6 @@
 import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ interface Company {
 export const Header = () => {
   const navigate = useNavigate();
   const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user } = useAuth();
+  const { canAccess } = usePlanGating();
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
@@ -130,8 +132,12 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
+                {canAccess('incidents') && (
+                  <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
+                )}
+                {canAccess('status') && (
+                  <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
                 {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                   <DropdownMenuItem onClick={() => navigate("/statistikk")}>
@@ -167,7 +173,7 @@ export const Header = () => {
               <Globe className="w-3.5 h-3.5" />
             </Button>
             
-            {isAdmin && (
+            {(isAdmin && canAccess('admin')) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -197,8 +203,12 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
+            {canAccess('incidents') && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
+            )}
+            {canAccess('status') && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
               <Activity className="w-4 h-4" />
@@ -252,7 +262,7 @@ export const Header = () => {
               <span className="text-xs font-medium">{displayLang}</span>
             </Button>
             
-            {isAdmin && (
+            {(isAdmin && canAccess('admin')) && (
               <Button
                 variant="ghost"
                 size="sm"

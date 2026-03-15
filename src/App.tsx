@@ -34,6 +34,7 @@ import SoraProcess from "./pages/SoraProcess";
 import Changelog from "./pages/Changelog";
 import Marketing from "./pages/Marketing";
 import Priser from "./pages/Priser";
+import { PlanRestricted } from "@/components/PlanRestricted";
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -145,14 +146,14 @@ const App = () => {
                   <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
                   <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
                   <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
-                  <Route path="/hendelser" element={<DomainGuard><Hendelser /></DomainGuard>} />
-                  <Route path="/status" element={<DomainGuard><Status /></DomainGuard>} />
+                  <Route path="/hendelser" element={<DomainGuard><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></DomainGuard>} />
+                  <Route path="/status" element={<DomainGuard><PlanRestricted feature="status"><Status /></PlanRestricted></DomainGuard>} />
                   <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
                   <Route path="/changelog" element={<DomainGuard><Changelog /></DomainGuard>} />
                 </Route>
                 
                 {/* Admin has its own header */}
-                <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
+                <Route path="/admin" element={<DomainGuard><PlanRestricted feature="admin"><Admin /></PlanRestricted></DomainGuard>} />
                 <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
                 <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
                 

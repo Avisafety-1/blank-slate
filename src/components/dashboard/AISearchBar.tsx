@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { toast } from "sonner";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { IncidentDetailDialog } from "./IncidentDetailDialog";
@@ -43,6 +44,7 @@ interface SearchResults {
 
 export const AISearchBar = () => {
   const { t } = useTranslation();
+  const { canAccess } = usePlanGating();
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -71,6 +73,9 @@ export const AISearchBar = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // If plan doesn't include AI search, don't render
+  if (!canAccess('ai_search')) return null;
 
   const handleModeChange = (checked: boolean) => {
     setSearchMode(checked ? "regulations" : "internal");
