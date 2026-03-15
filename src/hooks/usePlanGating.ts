@@ -36,5 +36,6 @@ export const usePlanGating = () => {
     requiredPlanFor,
     currentPlan: plan,
     bypass,
+    seatCount,
   };
 };
