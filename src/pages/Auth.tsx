@@ -790,7 +790,7 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
-            {isLogin && passkeySupported && passkeyRegistered && (
+            {isLogin && passkeySupported && passkeyRegistered && !isDevEnv && (
               <Button
                 type="button"
                 variant="outline"

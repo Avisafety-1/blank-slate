@@ -217,7 +217,7 @@ export const PasskeySetup = () => {
               </div>
             </div>
           ) : (
-            <Button onClick={() => setShowNameInput(true)} variant="outline">
+            <Button onClick={() => setShowNameInput(true)} variant="outline" disabled={isDevEnv}>
               <Plus className="h-4 w-4 mr-2" />
               {t("passkey.addPasskey")}
             </Button>
