@@ -25,8 +25,8 @@ export const PLANS: PlanConfig[] = [
     id: 'starter',
     name: 'Starter',
     price: 99,
-    priceId: 'price_1TB8rSRwSSSiRYeAcdc2KWfQ',
-    productId: 'prod_U9RkaanTF3DhRx',
+    priceId: 'price_1TB9TARrLM8xOFbkzV267Soh',
+    productId: 'prod_U9SNyTk1R28VOf',
     features: [
       'Droneflåtestyring',
       'Oppdragsplanlegging',
@@ -38,8 +38,8 @@ export const PLANS: PlanConfig[] = [
     id: 'grower',
     name: 'Grower',
     price: 199,
-    priceId: 'price_1TB8rnRwSSSiRYeAWCmvXJoP',
-    productId: 'prod_U9RloL0mDm4fAO',
+    priceId: 'price_1TB9TfRrLM8xOFbkV1ac0aY5',
+    productId: 'prod_U9SOzBZAWkFv4m',
     features: [
       'Alt i Starter',
       'Hendelsesrapportering',
@@ -52,8 +52,8 @@ export const PLANS: PlanConfig[] = [
     id: 'professional',
     name: 'Professional',
     price: 299,
-    priceId: 'price_1TB8s3RwSSSiRYeAuD8W8KR2',
-    productId: 'prod_U9Rl8Mm942NU7W',
+    priceId: 'price_1TB9DARrLM8xOFbkVWT7zgGW',
+    productId: 'prod_U9S7NAHDDleuNG',
     features: [
       'Alt i Grower',
       'Risikoanalyse (SORA)',
@@ -77,16 +77,16 @@ export const ADDONS: AddonConfig[] = [
     name: 'DJI-integrasjon',
     description: 'Automatisk import av DJI-flightlogs',
     price: 99,
-    priceId: 'price_1TB8tlRwSSSiRYeAvnA3aHCq',
-    productId: 'prod_U9RnxOitGXYRsO',
+    priceId: 'price_1TB9IBRrLM8xOFbkijdJUsL7',
+    productId: 'prod_U9SCO6vjcZPjBb',
   },
   {
     id: 'eccairs',
     name: 'ECCAIRS-integrasjon',
     description: 'ECCAIRS E2-rapportering til Luftfartstilsynet',
     price: 99,
-    priceId: 'price_1TB8tzRwSSSiRYeAFy8wFJjt',
-    productId: 'prod_U9Rnz6IoHvFv3G',
+    priceId: 'price_1TB9JCRrLM8xOFbklvsgEyiV',
+    productId: 'prod_U9SD6lFn3EcEYa',
   },
 ];
 
