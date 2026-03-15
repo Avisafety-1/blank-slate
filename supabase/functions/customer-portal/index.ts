@@ -39,6 +39,25 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { email: user.email });
 
+    // Verify user is billing owner
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.company_id) {
+      const { data: company } = await supabaseClient
+        .from('companies')
+        .select('billing_user_id')
+        .eq('id', profile.company_id)
+        .single();
+
+      if (company?.billing_user_id && company.billing_user_id !== user.id) {
+        throw new Error("Kun betalingsansvarlig kan administrere abonnementet");
+      }
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
