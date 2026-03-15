@@ -9,7 +9,7 @@ import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, Che
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
