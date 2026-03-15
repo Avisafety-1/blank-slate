@@ -5,7 +5,7 @@ const getPlanConfig = (planId: PlanId | null) =>
   PLANS.find(p => p.id === (planId ?? 'starter')) ?? PLANS[0];
 
 export const usePlanGating = () => {
-  const { subscriptionPlan, subscriptionAddons, isSuperAdmin, stripeExempt } = useAuth();
+  const { subscriptionPlan, subscriptionAddons, isSuperAdmin, stripeExempt, seatCount } = useAuth();
 
   const bypass = isSuperAdmin || stripeExempt;
   const plan = getPlanConfig(subscriptionPlan);
@@ -15,7 +15,7 @@ export const usePlanGating = () => {
     return plan.gatedFeatures.includes(feature);
   };
 
-  const maxDrones = bypass ? Infinity : plan.maxDrones;
+  const maxDrones = bypass ? Infinity : plan.maxDrones * seatCount;
 
   const hasAddon = (addon: AddonId): boolean => {
     if (bypass) return true;
@@ -36,5 +36,6 @@ export const usePlanGating = () => {
     requiredPlanFor,
     currentPlan: plan,
     bypass,
+    seatCount,
   };
 };

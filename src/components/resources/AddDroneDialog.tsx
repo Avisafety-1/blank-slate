@@ -52,7 +52,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
-  const { maxDrones, currentPlan } = usePlanGating();
+  const { maxDrones, currentPlan, seatCount } = usePlanGating();
 
   // Drone catalog state
   const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
@@ -173,7 +173,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
 
     // Check drone limit
     if (droneCount >= maxDrones) {
-      toast.error(`Du har nådd maks antall droner (${maxDrones}) for din ${currentPlan.name}-plan. Oppgrader for å legge til flere.`);
+      toast.error(`Du har nådd maks antall droner (${maxDrones}) for din ${currentPlan.name}-plan (${currentPlan.maxDrones} per bruker × ${seatCount} brukere). Oppgrader for å legge til flere.`);
       return;
     }
 
