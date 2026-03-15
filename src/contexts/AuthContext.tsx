@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
@@ -50,6 +51,10 @@ interface AuthContextType {
   trialEnd: string | null;
   stripeExempt: boolean;
   hadPreviousSubscription: boolean;
+  subscriptionPlan: PlanId | null;
+  subscriptionAddons: AddonId[];
+  isBillingOwner: boolean;
+  seatCount: number;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -77,6 +82,10 @@ const AuthContext = createContext<AuthContextType>({
   trialEnd: null,
   stripeExempt: false,
   hadPreviousSubscription: false,
+  subscriptionPlan: null,
+  subscriptionAddons: [],
+  isBillingOwner: false,
+  seatCount: 1,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -112,6 +121,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [stripeExempt, setStripeExempt] = useState(false);
   const [hadPreviousSubscription, setHadPreviousSubscription] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<PlanId | null>(null);
+  const [subscriptionAddons, setSubscriptionAddons] = useState<AddonId[]>([]);
+  const [isBillingOwner, setIsBillingOwner] = useState(false);
+  const [seatCount, setSeatCount] = useState(1);
 
   const resetAuthState = () => {
     setSession(null);
@@ -130,10 +143,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSubscribed(false);
     setSubscriptionEnd(null);
     setCancelAtPeriodEnd(false);
-      setIsTrial(false);
-      setTrialEnd(null);
-      setHadPreviousSubscription(false);
-    };
+    setIsTrial(false);
+    setTrialEnd(null);
+    setHadPreviousSubscription(false);
+    setSubscriptionPlan(null);
+    setSubscriptionAddons([]);
+    setIsBillingOwner(false);
+    setSeatCount(1);
+  };
 
   const getErrorMessage = (error: unknown): string => {
     if (!error) return '';
@@ -250,7 +267,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!raw) return false;
       const cached: CachedSession = JSON.parse(raw);
       if (!cached.id) return false;
-      // Create minimal User-like object from cache
       setUser(cached as unknown as User);
       applyCachedProfile(cached.id);
       return true;
@@ -260,7 +276,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -268,16 +283,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
-          // Reset idle timestamp on fresh login so useIdleTimeout
-          // doesn't immediately log the user out due to a stale timestamp
           try {
             localStorage.setItem('avisafe_last_activity', Date.now().toString());
           } catch {}
-          // Offline: use cached profile immediately instead of network call
           if (!navigator.onLine) {
             applyCachedProfile(session.user.id);
           } else {
-            // Defer Supabase calls with setTimeout to prevent deadlock
             setTimeout(() => {
               fetchUserInfo(session.user.id);
             }, 0);
@@ -287,17 +298,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           cacheSession(session.user);
         } else if (event === 'SIGNED_OUT') {
-          // Offline guard: Supabase fires SIGNED_OUT when token
-          // refresh fails offline — ignore it to keep user logged in
           if (!navigator.onLine) {
             console.log('AuthContext: Ignoring SIGNED_OUT while offline');
             return;
           }
-          // Online: genuine sign-out
           resetAuthState();
           setLoading(false);
         } else {
-          // Offline guard: if session is null while offline, don't overwrite user state
           if (!session && !navigator.onLine) {
             console.log('AuthContext: Ignoring null session event while offline');
             if (!user) {
@@ -308,7 +315,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setSession(session);
           setUser(session?.user ?? null);
-          // When offline with a valid session, apply cached profile immediately
           if (session?.user && !navigator.onLine) {
             applyCachedProfile(session.user.id);
           }
@@ -317,7 +323,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (session?.user) {
@@ -335,14 +340,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
-          // Offline: use cached profile; Online: fetch fresh data
           if (!navigator.onLine) {
             applyCachedProfile(session.user.id);
           } else {
             fetchUserInfo(session.user.id);
           }
         } else if (!navigator.onLine) {
-          // Offline fallback: restore user from cache
           console.log('AuthContext: Offline with no session, trying cache');
           const restored = restoreFromCache();
           setLoading(false);
@@ -363,14 +366,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const fetchUserInfo = async (userId: string) => {
-    // Offline guard: never make network calls offline, use cached profile
     if (!navigator.onLine) {
       applyCachedProfile(userId);
       return;
     }
 
     try {
-      // Parallel queries for profile+company and role
       const [profileResult, roleResult] = await Promise.all([
         supabase
           .from('profiles')
@@ -411,7 +412,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         stripeExempt: false,
       };
 
-      // If both queries failed (e.g. network error), fall back to cache
       if (profileResult.error && roleResult.error) {
         console.log('AuthContext: Both queries failed, using cached profile');
         applyCachedProfile(userId);
@@ -438,7 +438,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
       }
 
-      // Apply to state
       setCompanyId(profileData.companyId);
       setCompanyName(profileData.companyName);
       setCompanyType(profileData.companyType);
@@ -451,10 +450,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
       setStripeExempt(profileData.stripeExempt);
 
-      // Cache for offline use
       saveCachedProfile(userId, profileData);
 
-      // Auto-provision DroneLog API key if DJI is enabled but no key exists
       const company = profileResult.data?.companies as any;
       if (
         profileData.djiFlightlogEnabled &&
@@ -474,7 +471,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (error) {
       console.error('Error fetching user info:', error);
-      // If fetch failed (likely offline), try cached profile
       if (!navigator.onLine) {
         applyCachedProfile(userId);
       }
@@ -523,6 +519,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsTrial(data?.is_trial ?? false);
       setTrialEnd(data?.trial_end ?? null);
       setHadPreviousSubscription(data?.had_previous_subscription ?? false);
+      setSubscriptionPlan(data?.plan ?? null);
+      setSubscriptionAddons(data?.addons ?? []);
+      setIsBillingOwner(data?.is_billing_owner ?? false);
+      setSeatCount(data?.seat_count ?? 1);
     } catch (e) {
       console.error('check-subscription failed:', e);
       if (isMissingAuthUserError(e)) {
@@ -533,7 +533,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Check subscription on session change and periodically
   useEffect(() => {
     if (!session) {
       setSubscribed(false);
@@ -569,6 +568,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       trialEnd,
       stripeExempt,
       hadPreviousSubscription,
+      subscriptionPlan,
+      subscriptionAddons,
+      isBillingOwner,
+      seatCount,
       signOut, 
       refetchUserInfo,
       checkSubscription,
