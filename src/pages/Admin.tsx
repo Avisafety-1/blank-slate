@@ -245,6 +245,11 @@ const Admin = () => {
         }
       }
 
+      // Sync seat count to Stripe
+      supabase.functions.invoke('update-seats', {
+        body: { company_id: companyId }
+      }).catch(err => console.error('Seat sync error:', err));
+
       toast.success(t('admin.userApproved'));
       fetchData();
     } catch (error) {
