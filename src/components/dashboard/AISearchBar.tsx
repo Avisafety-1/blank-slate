@@ -62,9 +62,6 @@ export const AISearchBar = () => {
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const { user } = useAuth();
 
-  // If plan doesn't include AI search, don't render
-  if (!canAccess('ai_search')) return null;
-
   useEffect(() => {
     if (!query.trim() && searchMode === "internal") {
       setResults(null);
@@ -76,6 +73,9 @@ export const AISearchBar = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // If plan doesn't include AI search, don't render
+  if (!canAccess('ai_search')) return null;
 
   const handleModeChange = (checked: boolean) => {
     setSearchMode(checked ? "regulations" : "internal");
