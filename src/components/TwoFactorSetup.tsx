@@ -177,18 +177,18 @@ export const TwoFactorSetup = () => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-2xl">
+            <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
             {t('twoFactor.title')}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           {/* Status */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-medium">{t('twoFactor.authenticatorApp')}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm font-medium">{t('twoFactor.authenticatorApp')}</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
                 {t('twoFactor.description')}
               </p>
             </div>
@@ -207,14 +207,14 @@ export const TwoFactorSetup = () => {
 
           {/* Enroll flow */}
           {enrollState === 'verifying' && qrCode && (
-            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+            <div className="space-y-3 sm:space-y-4 border rounded-lg p-3 sm:p-4 bg-muted/30">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">{t('twoFactor.scanQr')}</Label>
                 <p className="text-xs text-muted-foreground">{t('twoFactor.scanQrDesc')}</p>
               </div>
 
               <div className="flex justify-center">
-                <img src={qrCode} alt="QR Code" className="w-48 h-48 rounded-lg border" />
+                <img src={qrCode} alt="QR Code" className="w-36 h-36 sm:w-48 sm:h-48 rounded-lg border" />
               </div>
 
               {secret && (

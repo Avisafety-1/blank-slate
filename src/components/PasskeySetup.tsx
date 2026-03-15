@@ -139,25 +139,25 @@ export const PasskeySetup = () => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Fingerprint className="h-5 w-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-2xl">
+            <Fingerprint className="h-4 w-4 sm:h-5 sm:w-5" />
             {t("passkey.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t("passkey.description")}</p>
+        <CardContent className="space-y-3 sm:space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <p className="text-xs sm:text-sm text-muted-foreground">{t("passkey.description")}</p>
 
           {/* Registered passkeys list */}
           {passkeys.length > 0 && (
             <div className="space-y-2">
               {passkeys.map((pk) => (
-                <div key={pk.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{pk.device_name || t("passkey.unknownDevice")}</p>
-                      <p className="text-xs text-muted-foreground">
+                <div key={pk.id} className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-medium truncate">{pk.device_name || t("passkey.unknownDevice")}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">
                         {new Date(pk.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -177,7 +177,7 @@ export const PasskeySetup = () => {
 
           {/* Add passkey flow */}
           {showNameInput ? (
-            <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+            <div className="space-y-2.5 sm:space-y-3 border rounded-lg p-3 sm:p-4 bg-muted/30">
               <div className="space-y-2">
                 <Label className="text-sm">{t("passkey.deviceNameLabel")}</Label>
                 <Input
