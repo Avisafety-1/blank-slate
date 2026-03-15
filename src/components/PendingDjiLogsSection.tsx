@@ -86,6 +86,8 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     setDismissingId(null);
   };
 
+  if (!djiEnabled) return null;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-3 text-muted-foreground">
