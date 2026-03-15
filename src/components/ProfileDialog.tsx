@@ -1019,6 +1019,70 @@ export const ProfileDialog = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card className="border-destructive/30">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">{t('profile.deleteAccount')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {t('profile.deleteAccountDesc')}
+                    </p>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setDeleteConfirmEmail("");
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('profile.deleteAccount')}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('profile.deleteAccountConfirmTitle')}</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-3">
+                        <span className="block">{t('profile.deleteAccountConfirmDesc')}</span>
+                        <span className="block font-medium text-foreground">{t('profile.deleteAccountTypeEmail')}</span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      placeholder={user?.email ?? ""}
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                      className="mt-2"
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleteLoading}>{t('actions.cancel')}</AlertDialogCancel>
+                      <Button
+                        variant="destructive"
+                        disabled={deleteLoading || deleteConfirmEmail.toLowerCase() !== (user?.email ?? "").toLowerCase()}
+                        onClick={async () => {
+                          setDeleteLoading(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('delete-own-account');
+                            if (error) throw error;
+                            toast.success(t('profile.deleteAccountSuccess'));
+                            setDeleteDialogOpen(false);
+                            await signOut();
+                          } catch (err: any) {
+                            console.error("Error deleting account:", err);
+                            toast.error(err.message || t('profile.deleteAccountError'));
+                          } finally {
+                            setDeleteLoading(false);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deleteLoading ? t('profile.deletingAccount') : t('profile.deleteAccountConfirm')}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </TabsContent>
 
               {/* Competencies Tab */}
