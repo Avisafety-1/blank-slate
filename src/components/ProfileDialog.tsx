@@ -1945,7 +1945,7 @@ export const ProfileDialog = () => {
                                               if (error) throw error;
                                               if (data?.error) throw new Error(data.error);
                                               toast.success(checked ? `${addon.name} aktivert` : `${addon.name} deaktivert`);
-                                              window.location.reload();
+                                              await checkSubscription();
                                             } catch (e: any) {
                                               toast.error('Kunne ikke oppdatere tilleggsmodul: ' + (e.message || 'Ukjent feil'));
                                             } finally {
