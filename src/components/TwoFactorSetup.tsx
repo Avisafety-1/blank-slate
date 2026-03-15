@@ -149,7 +149,7 @@ export const TwoFactorSetup = () => {
     if (factorId) {
       try {
         const { data } = await supabase.auth.mfa.listFactors();
-        const unverified = data?.totp.find(f => f.id === factorId && f.status === 'unverified');
+        const unverified = data?.totp.find(f => f.id === factorId && (f.status as string) === 'unverified');
         if (unverified) {
           await supabase.auth.mfa.unenroll({ factorId });
         }
