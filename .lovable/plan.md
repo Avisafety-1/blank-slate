@@ -1,24 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-## Plan: Vis funksjoner men blokker med oppgraderingsmelding
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-Istedenfor å skjule navigasjonslenker og komponenter for begrensede planer, skal alt forbli synlig. Brukere som klikker på en begrenset funksjon ser en upgrade-prompt.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-### Endringer
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-**1. `src/components/Header.tsx`**
-- Fjern alle `canAccess`-betingelser som skjuler navigasjonslenker (Hendelser, Status, Admin)
-- Alle lenker vises alltid — rutebeskyttelsen i App.tsx håndterer blokkeringen når brukeren navigerer dit
-
-**2. `src/components/dashboard/AISearchBar.tsx`**
-- Fjern `if (!canAccess('ai_search')) return null;`
-- Vis søkefeltet, men vis en upgrade-melding (toast eller inline) når Starter-brukere prøver å søke
-
-**3. `src/components/dashboard/RiskAssessmentDialog.tsx`**
-- Behold eksisterende toast-blokkering ved klikk (allerede riktig oppførsel — viser knappen men blokkerer handlingen)
-
-**4. `src/App.tsx`**
-- Ruter wrappet med `PlanRestricted` forblir som de er — dette viser allerede en upgrade-prompt med lås-ikon og oppgraderingsknapp når brukeren navigerer til en begrenset side
-
-Ingen nye filer. Kun fjerning av skjulingslogikk i Header og AISearchBar.
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
