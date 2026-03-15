@@ -15,7 +15,7 @@ export const usePlanGating = () => {
     return plan.gatedFeatures.includes(feature);
   };
 
-  const maxDrones = bypass ? Infinity : plan.maxDrones * seatCount;
+  const maxDrones = bypass ? Infinity : (plan.maxDronesPerSeat ? plan.maxDrones * seatCount : plan.maxDrones);
 
   const hasAddon = (addon: AddonId): boolean => {
     if (bypass) return true;
