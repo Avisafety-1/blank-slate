@@ -49,8 +49,10 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+  const { maxDrones, currentPlan } = usePlanGating();
 
   // Drone catalog state
   const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
