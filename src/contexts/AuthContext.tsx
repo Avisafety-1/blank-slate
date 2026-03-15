@@ -537,13 +537,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!session) {
       setSubscribed(false);
       setSubscriptionEnd(null);
-      setSubscriptionLoading(false);
+      // Only clear loading if auth itself is done loading
+      if (!loading) {
+        setSubscriptionLoading(false);
+      }
       return;
     }
+    setSubscriptionLoading(true);
     checkSubscription();
     const interval = setInterval(checkSubscription, 60_000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, loading]);
 
   return (
     <AuthContext.Provider value={{ 
