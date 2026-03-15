@@ -7,6 +7,7 @@ import { Clock, Plane, CheckCircle, XCircle, Loader2, Trash2, AlertTriangle } fr
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 interface PendingDjiLog {
   id: string;
