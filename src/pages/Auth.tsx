@@ -44,6 +44,9 @@ const Auth = () => {
   const [googleFullName, setGoogleFullName] = useState("");
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
   const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [googleRegMode, setGoogleRegMode] = useState<'code' | 'new'>('code');
+  const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
+  const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   
   
