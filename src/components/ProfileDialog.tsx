@@ -1894,7 +1894,7 @@ export const ProfileDialog = () => {
                                         {isChanging && <Loader2 className="h-4 w-4 animate-spin" />}
                                       </div>
                                       <ul className="mt-1.5 space-y-0.5 hidden sm:block">
-                                        {plan.features.map(f => (
+                                        {shortFeatures.map(f => (
                                           <li key={f} className="text-[11px] text-muted-foreground">• {f}</li>
                                         ))}
                                       </ul>
