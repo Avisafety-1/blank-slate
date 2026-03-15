@@ -16,13 +16,24 @@
 - `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
 - `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
 - `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
 - `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
 - `src/components/SubscriptionGate.tsx` – Planvelger-UI
 - `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Oppdatert abonnement-tab
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
 - DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
+
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
 ### Gjenstår (oppfølging)
 - Feature-gating basert på addons (SORA/DJI/ECCAIRS)
 - Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
