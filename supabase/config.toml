@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.change-plan]
 verify_jwt = false
+
+[functions.webauthn]
+verify_jwt = false

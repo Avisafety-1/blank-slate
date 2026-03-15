@@ -1047,6 +1047,8 @@ export const ProfileDialog = () => {
 
                 <TwoFactorSetup />
 
+                <PasskeySetup />
+
                 <Card className="border-destructive/30">
                   <CardHeader>
                     <CardTitle className="text-destructive">{t('profile.deleteAccount')}</CardTitle>

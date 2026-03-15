@@ -679,5 +679,26 @@
     "challengeDesc": "Enter the 6-digit code from your authenticator app.",
     "invalidCode": "Invalid code. Try again.",
     "noFactorFound": "No authenticator factor found."
+  },
+  "passkey": {
+    "title": "Biometric Login (Passkeys)",
+    "description": "Sign in with fingerprint, Face ID, or your device's security key. Faster and more secure than passwords.",
+    "addPasskey": "Add passkey",
+    "register": "Register",
+    "registered": "Passkey registered!",
+    "registerError": "Could not register passkey.",
+    "deleted": "Passkey deleted.",
+    "deleteError": "Could not delete passkey.",
+    "deleteTitle": "Delete passkey?",
+    "deleteDesc": "This passkey will be removed and can no longer be used to sign in.",
+    "unknownDevice": "Unknown device",
+    "deviceNameLabel": "Name this device (optional)",
+    "deviceNamePlaceholder": "e.g. My iPhone",
+    "loginButton": "Sign in with biometrics",
+    "loginTitle": "Biometric Login",
+    "loginDesc": "Enter your email address, then authenticate with fingerprint or Face ID.",
+    "authenticate": "Authenticate",
+    "loginError": "Biometric login failed.",
+    "noPasskeysForEmail": "No passkeys found for this email address."
   }
 }
