@@ -51,8 +51,7 @@ const Auth = () => {
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
-  const [showPasskeyLogin, setShowPasskeyLogin] = useState(false);
-  const [passkeyEmail, setPasskeyEmail] = useState("");
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
