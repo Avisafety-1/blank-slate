@@ -32,6 +32,7 @@ export const PasskeySetup = () => {
   const [deleting, setDeleting] = useState(false);
 
   const isSupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
+  const isDevEnv = isDevelopment();
 
   useEffect(() => {
     fetchPasskeys();
