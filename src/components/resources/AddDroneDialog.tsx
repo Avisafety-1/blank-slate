@@ -76,6 +76,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       
       if (data) {
         setCompanyId(data.company_id);
+        // Count existing drones for plan limit check
+        const { count } = await supabase
+          .from("drones")
+          .select("id", { count: 'exact', head: true })
+          .eq("company_id", data.company_id);
+        setDroneCount(count ?? 0);
       }
     };
     
