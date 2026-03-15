@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Settings2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
 
