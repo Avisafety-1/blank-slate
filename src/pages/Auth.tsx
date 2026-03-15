@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
+import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 
 
 const Auth = () => {
