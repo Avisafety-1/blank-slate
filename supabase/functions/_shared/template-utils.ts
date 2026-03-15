@@ -47,6 +47,17 @@ export function replaceTemplateVariables(
   return result;
 }
 
+const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+
+/**
+ * Returns a standard AviSafe logo header for emails
+ */
+export function getEmailLogoHeader(): string {
+  return `<div style="text-align:center;padding:20px 20px 10px 20px;">
+  <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
+</div>`;
+}
+
 /**
  * Default email templates for each notification type
  */
