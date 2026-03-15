@@ -1,44 +1,28 @@
+## Ny prismodell – IMPLEMENTERT
 
+### Stripe-produkter (opprettet)
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9RkaanTF3DhRx | price_1TB8rSRwSSSiRYeAcdc2KWfQ |
+| Grower (199 NOK) | prod_U9RloL0mDm4fAO | price_1TB8rnRwSSSiRYeAWCmvXJoP |
+| Professional (299 NOK) | prod_U9Rl8Mm942NU7W | price_1TB8s3RwSSSiRYeAuD8W8KR2 |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9RnxOitGXYRsO | price_1TB8tlRwSSSiRYeAvnA3aHCq |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9Rnz6IoHvFv3G | price_1TB8tzRwSSSiRYeAFy8wFJjt |
 
-## Legg til rekkefølge-endring for sjekklistepunkter
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Oppdatert abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-### Problem
-GripVertical-ikonet vises allerede på sjekklistepunkter i både `CreateChecklistDialog` og `DocumentCardModal`, men det er kun dekorativt — ingen drag-and-drop eller annen rekkefølge-funksjonalitet er implementert.
-
-### Løsning: Opp/ned-knapper (enklest og mest pålitelig)
-Legge til opp/ned-piler (ChevronUp/ChevronDown) på hvert sjekklistepunkt i stedet for det dekorative GripVertical-ikonet. Dette er robust på både desktop og mobil/iPad uten ekstra avhengigheter.
-
-### Endringer
-
-**1. `src/components/documents/CreateChecklistDialog.tsx`**
-- Erstatt `GripVertical`-ikonet med to knapper: `ChevronUp` og `ChevronDown`
-- Legg til `handleMoveItem(id, direction)` som bytter plass på to elementer i `items`-arrayet
-- Deaktiver opp-knapp på første element, ned-knapp på siste
-
-**2. `src/components/documents/DocumentCardModal.tsx`**
-- Samme endring i sjekkliste-redigeringsseksjonen (~linje 389-412)
-- Legg til tilsvarende `handleMoveChecklistItem(id, direction)` funksjon
-- Erstatt `GripVertical` med opp/ned-knapper
-
-### Hjelpefunksjon (i begge filer)
-```typescript
-const handleMoveItem = (id: string, direction: 'up' | 'down') => {
-  setItems(prev => {
-    const idx = prev.findIndex(item => item.id === id);
-    if (idx < 0) return prev;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-    const next = [...prev];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    return next;
-  });
-};
-```
-
-### UI per punkt
-```text
-[▲][▼] 1. [Beskriv sjekk-punktet...        ] [🗑]
-```
-
-Ingen nye avhengigheter. Ingen databaseendringer.
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
