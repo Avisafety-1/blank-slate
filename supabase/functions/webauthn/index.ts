@@ -292,16 +292,20 @@ Deno.serve(async (req) => {
       const challengeData = JSON.parse(challengeJson);
       if (Date.now() - challengeData.ts > 5 * 60 * 1000) return json({ error: "Challenge expired" }, 400);
 
-      const userId = challengeData.userId;
-
-      // Get the credential from DB
+      // For discoverable credentials, userId comes from the stored credential, not the challenge
       const credentialIdBase64 = credential.id;
       const { data: storedCred } = await supabaseAdmin
         .from("passkeys")
         .select("*")
         .eq("credential_id", credentialIdBase64)
-        .eq("user_id", userId)
         .single();
+
+      // If challenge had a userId (legacy flow), verify it matches
+      if (challengeData.userId && storedCred && storedCred.user_id !== challengeData.userId) {
+        return json({ error: "User mismatch" }, 400);
+      }
+
+      const userId = storedCred?.user_id;
 
       if (!storedCred) return json({ error: "Credential not found" }, 400);
 
