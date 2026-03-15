@@ -3194,6 +3194,39 @@ export type Database = {
         }
         Relationships: []
       }
+      passkeys: {
+        Row: {
+          counter: number | null
+          created_at: string | null
+          credential_id: string
+          device_name: string | null
+          id: string
+          public_key: string
+          transports: string[] | null
+          user_id: string
+        }
+        Insert: {
+          counter?: number | null
+          created_at?: string | null
+          credential_id: string
+          device_name?: string | null
+          id?: string
+          public_key: string
+          transports?: string[] | null
+          user_id: string
+        }
+        Update: {
+          counter?: number | null
+          created_at?: string | null
+          credential_id?: string
+          device_name?: string | null
+          id?: string
+          public_key?: string
+          transports?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_dji_logs: {
         Row: {
           aircraft_name: string | null

@@ -11,10 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Chrome, CheckCircle2, Building2, KeyRound } from "lucide-react";
+import { Chrome, CheckCircle2, Building2, KeyRound, Fingerprint, Loader2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 
 const Auth = () => {
@@ -50,6 +51,11 @@ const Auth = () => {
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+  const [showPasskeyLogin, setShowPasskeyLogin] = useState(false);
+  const [passkeyEmail, setPasskeyEmail] = useState("");
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+
+  const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
 
   // Handle email confirmation messages from URL hash
   useEffect(() => {
@@ -528,6 +534,58 @@ const Auth = () => {
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    if (!passkeyEmail) {
+      toast.error(t('auth.enterEmailAddress'));
+      return;
+    }
+    setPasskeyLoading(true);
+    try {
+      // Step 1: Get authentication options
+      const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
+        body: { action: "login-options", email: passkeyEmail },
+      });
+      if (optionsError || optionsData?.error) {
+        throw new Error(optionsData?.error || t('passkey.noPasskeysForEmail'));
+      }
+
+      // Step 2: Authenticate with browser
+      const credential = await startAuthentication({ optionsJSON: optionsData.options });
+
+      // Step 3: Verify with server
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("webauthn", {
+        body: {
+          action: "login-verify",
+          credential,
+          signedChallenge: optionsData.signedChallenge,
+        },
+      });
+      if (verifyError || verifyData?.error) {
+        throw new Error(verifyData?.error || t('passkey.loginError'));
+      }
+
+      if (verifyData.verified && verifyData.token_hash) {
+        // Step 4: Complete login with the token
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: verifyData.token_hash,
+          type: 'magiclink',
+        });
+        if (otpError) throw otpError;
+
+        toast.success(t('auth.loginSuccess'));
+        setShowPasskeyLogin(false);
+        setPasskeyEmail("");
+        redirectToApp('/');
+      }
+    } catch (err: any) {
+      console.error("Passkey login error:", err);
+      if (err.name === "NotAllowedError") return;
+      toast.error(err.message || t('passkey.loginError'));
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) {
@@ -730,6 +788,19 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
+            {isLogin && passkeySupported && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPasskeyLogin(true)}
+                disabled={loading}
+                className="w-full mb-3"
+              >
+                <Fingerprint className="mr-2 h-4 w-4" />
+                {t('passkey.loginButton')}
+              </Button>
+            )}
+
             <div className="text-center text-sm">
               <button 
                 type="button" 
@@ -894,6 +965,55 @@ const Auth = () => {
                 className="flex-1"
               >
                 {loading ? t('common.processing') : googleRegMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Passkey Login Dialog */}
+      <Dialog open={showPasskeyLogin} onOpenChange={setShowPasskeyLogin}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Fingerprint className="h-5 w-5 text-primary" />
+              {t('passkey.loginTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('passkey.loginDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="passkeyEmail">{t('auth.email')}</Label>
+              <Input
+                id="passkeyEmail"
+                type="email"
+                placeholder={t('forms.placeholder.email')}
+                value={passkeyEmail}
+                onChange={(e) => setPasskeyEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handlePasskeyLogin()}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPasskeyLogin(false);
+                  setPasskeyEmail("");
+                }}
+                className="flex-1"
+                disabled={passkeyLoading}
+              >
+                {t('actions.cancel')}
+              </Button>
+              <Button
+                onClick={handlePasskeyLogin}
+                disabled={!passkeyEmail || passkeyLoading}
+                className="flex-1"
+              >
+                {passkeyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {t('passkey.authenticate')}
               </Button>
             </div>
           </div>

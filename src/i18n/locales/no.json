@@ -679,5 +679,26 @@
     "challengeDesc": "Skriv inn den 6-sifrede koden fra autentiseringsappen din.",
     "invalidCode": "Ugyldig kode. Prøv igjen.",
     "noFactorFound": "Ingen autentiseringsfaktor funnet."
+  },
+  "passkey": {
+    "title": "Biometrisk innlogging (Passkeys)",
+    "description": "Logg inn med fingeravtrykk, Face ID eller enhetens sikkerhetsnøkkel. Raskere og sikrere enn passord.",
+    "addPasskey": "Legg til passkey",
+    "register": "Registrer",
+    "registered": "Passkey registrert!",
+    "registerError": "Kunne ikke registrere passkey.",
+    "deleted": "Passkey slettet.",
+    "deleteError": "Kunne ikke slette passkey.",
+    "deleteTitle": "Slett passkey?",
+    "deleteDesc": "Denne passkeyen vil bli fjernet og kan ikke lenger brukes til innlogging.",
+    "unknownDevice": "Ukjent enhet",
+    "deviceNameLabel": "Gi enheten et navn (valgfritt)",
+    "deviceNamePlaceholder": "f.eks. Min iPhone",
+    "loginButton": "Logg inn med biometri",
+    "loginTitle": "Biometrisk innlogging",
+    "loginDesc": "Skriv inn e-postadressen din, deretter autentiser med fingeravtrykk eller Face ID.",
+    "authenticate": "Autentiser",
+    "loginError": "Biometrisk innlogging feilet.",
+    "noPasskeysForEmail": "Ingen passkeys funnet for denne e-postadressen."
   }
 }

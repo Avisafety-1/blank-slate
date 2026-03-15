@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { PLANS } from "@/config/subscriptionPlans";
 import { TwoFactorSetup } from "./TwoFactorSetup";
+import { PasskeySetup } from "./PasskeySetup";
 
 interface Profile {
   full_name: string | null;
@@ -1045,6 +1046,8 @@ export const ProfileDialog = () => {
                 </Card>
 
                 <TwoFactorSetup />
+
+                <PasskeySetup />
 
                 <Card className="border-destructive/30">
                   <CardHeader>
