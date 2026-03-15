@@ -72,6 +72,7 @@ serve(async (req) => {
     // Build a confirmation email using user_welcome template as base,
     // but override content to include the confirmation link
     const confirmationSubject = `Bekreft e-postadressen din – ${companyName}`;
+    const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
     const confirmationHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -79,6 +80,7 @@ serve(async (req) => {
 <style>
 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.logo { text-align: center; padding: 20px 20px 10px 20px; }
 .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
 .content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
 .button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
@@ -88,6 +90,9 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </head>
 <body>
 <div class="container">
+  <div class="logo">
+    <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
+  </div>
   <div class="header">
     <h1 style="margin: 0;">Bekreft e-postadressen din</h1>
   </div>

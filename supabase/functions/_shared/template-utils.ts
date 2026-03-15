@@ -47,6 +47,17 @@ export function replaceTemplateVariables(
   return result;
 }
 
+const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+
+/**
+ * Returns a standard AviSafe logo header for emails
+ */
+export function getEmailLogoHeader(): string {
+  return `<div style="text-align:center;padding:20px 20px 10px 20px;">
+  <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
+</div>`;
+}
+
 /**
  * Default email templates for each notification type
  */
@@ -643,7 +654,9 @@ export async function getEmailTemplateWithFallback(
   
   const defaultTemplate = defaultTemplates[templateType];
   if (defaultTemplate) {
-    const content = replaceTemplateVariables(defaultTemplate.content, variables);
+    let content = replaceTemplateVariables(defaultTemplate.content, variables);
+    // Inject logo header into default templates
+    content = injectLogoHeader(content);
     return {
       subject: replaceTemplateVariables(defaultTemplate.subject, variables),
       content: fixEmailImages(content),
@@ -657,6 +670,21 @@ export async function getEmailTemplateWithFallback(
     content: '',
     isCustom: false
   };
+}
+
+/**
+ * Injects the AviSafe logo header into email HTML.
+ * Inserts right after the opening of .container div.
+ */
+export function injectLogoHeader(html: string): string {
+  const logo = getEmailLogoHeader();
+  // Insert logo right after <div class="container"> 
+  const containerPattern = /(<div\s+class="container"[^>]*>)/i;
+  if (containerPattern.test(html)) {
+    return html.replace(containerPattern, `$1\n${logo}`);
+  }
+  // Fallback: insert after <body>
+  return html.replace(/<body[^>]*>/i, `$&\n${logo}`);
 }
 
 /**

@@ -48,12 +48,14 @@ export const generateIncidentNotificationHTML = (incident: {
   alvorlighetsgrad: string;
   lokasjon?: string;
 }) => {
+  const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
   return `<!DOCTYPE html>
 <html>
 <head>
 <style>
 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.logo { text-align: center; padding: 20px 20px 10px 20px; }
 .header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
 .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
 .severity { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }
@@ -66,6 +68,9 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </head>
 <body>
 <div class="container">
+<div class="logo">
+  <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
+</div>
 <div class="header">
 <h1>Du er satt som oppfølgingsansvarlig</h1>
 </div>

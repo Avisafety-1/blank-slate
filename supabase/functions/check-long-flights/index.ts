@@ -83,10 +83,14 @@ serve(async (req) => {
           const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
+          const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
           const htmlContent = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align:center;padding:20px 20px 10px 20px;">
+    <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
+  </div>
   <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
     <h1 style="margin: 0; font-size: 20px;">⚠️ Påminnelse: Aktiv flytur</h1>
   </div>
