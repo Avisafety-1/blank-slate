@@ -26,6 +26,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { PLANS } from "@/config/subscriptionPlans";
+import { TwoFactorSetup } from "./TwoFactorSetup";
 
 interface Profile {
   full_name: string | null;
