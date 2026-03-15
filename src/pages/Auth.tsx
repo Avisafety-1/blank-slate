@@ -966,54 +966,8 @@ const Auth = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Passkey Login Dialog */}
-      <Dialog open={showPasskeyLogin} onOpenChange={setShowPasskeyLogin}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Fingerprint className="h-5 w-5 text-primary" />
-              {t('passkey.loginTitle')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('passkey.loginDesc')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="passkeyEmail">{t('auth.email')}</Label>
-              <Input
-                id="passkeyEmail"
-                type="email"
-                placeholder={t('forms.placeholder.email')}
-                value={passkeyEmail}
-                onChange={(e) => setPasskeyEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePasskeyLogin()}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPasskeyLogin(false);
-                  setPasskeyEmail("");
-                }}
-                className="flex-1"
-                disabled={passkeyLoading}
-              >
-                {t('actions.cancel')}
-              </Button>
-              <Button
-                onClick={handlePasskeyLogin}
-                disabled={!passkeyEmail || passkeyLoading}
-                className="flex-1"
-              >
-                {passkeyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {t('passkey.authenticate')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+
 
       <MfaChallengeDialog
         open={showMfaChallenge}
