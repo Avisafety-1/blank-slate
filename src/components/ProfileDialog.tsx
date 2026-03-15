@@ -1865,7 +1865,7 @@ export const ProfileDialog = () => {
                                           if (error) throw error;
                                           if (data?.error) throw new Error(data.error);
                                           toast.success(`Plan endret til ${plan.name}`);
-                                          window.location.reload();
+                                          await checkSubscription();
                                         } catch (e: any) {
                                           toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
                                         } finally {
