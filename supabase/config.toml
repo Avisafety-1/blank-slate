@@ -150,6 +150,9 @@ verify_jwt = false
 [functions.delete-own-account]
 verify_jwt = false
 
+[functions.manage-addon]
+verify_jwt = false
+
 [functions.update-seats]
 verify_jwt = false
 
