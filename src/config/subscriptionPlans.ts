@@ -1,7 +1,7 @@
 export type PlanId = 'starter' | 'grower' | 'professional';
 export type AddonId = 'sora_admin' | 'dji' | 'eccairs';
 
-export type GatedFeature = 'incidents' | 'status' | 'ai_search' | 'sora' | 'access_control' | 'admin';
+export type GatedFeature = 'incidents' | 'status' | 'ai_search' | 'sora' | 'access_control';
 
 export interface PlanConfig {
   id: PlanId;
