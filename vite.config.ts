@@ -59,6 +59,7 @@ export default defineConfig(({ mode }) => ({
     target: ['es2015', 'chrome70'],
   },
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
