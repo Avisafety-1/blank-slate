@@ -865,6 +865,7 @@ const Admin = () => {
                                         checked={profile.can_approve_missions === true}
                                         onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                         className="scale-75"
+                                        disabled={!canManageRoles}
                                       />
                                     </div>
                                     {eccairsEnabled && (
@@ -874,6 +875,7 @@ const Admin = () => {
                                           checked={profile.can_access_eccairs === true}
                                           onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
                                           className="scale-75"
+                                          disabled={!canManageRoles}
                                         />
                                       </div>
                                     )}
@@ -883,26 +885,34 @@ const Admin = () => {
                                         checked={profile.can_be_incident_responsible === true}
                                         onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
                                         className="scale-75"
+                                        disabled={!canManageRoles}
                                       />
                                     </div>
                                     <div>
                                       <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
-                                      <Select 
-                                        value={userRole?.role || ""} 
-                                        onValueChange={(value) => assignRole(profile.id, value)}
-                                      >
-                                        <SelectTrigger className="w-full h-9">
-                                          <SelectValue placeholder={t('admin.selectRole')} />
-                                        </SelectTrigger>
-                                        <SelectContent className="z-[1300]">
-                                          {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
-                                            <SelectItem key={role.value} value={role.value}>
-                                              {t(role.labelKey)}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      {canManageRoles ? (
+                                        <Select 
+                                          value={userRole?.role || ""} 
+                                          onValueChange={(value) => assignRole(profile.id, value)}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder={t('admin.selectRole')} />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
+                                              <SelectItem key={role.value} value={role.value}>
+                                                {t(role.labelKey)}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
+                                      )}
                                     </div>
+                                    {!canManageRoles && (
+                                      <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="ghost"
