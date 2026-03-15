@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText } from "lucide-react";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
