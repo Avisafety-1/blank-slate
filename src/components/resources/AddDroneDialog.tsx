@@ -52,7 +52,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
-  const { maxDrones, currentPlan } = usePlanGating();
+  const { maxDrones, currentPlan, seatCount } = usePlanGating();
 
   // Drone catalog state
   const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
