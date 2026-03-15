@@ -195,6 +195,21 @@ export const useOppdragData = () => {
   // Handlers
   const handleSubmitForApproval = async (mission: Mission) => {
     try {
+      // Check if anyone in the company can approve missions
+      const { data: approvers, error: approverError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('can_approve_missions', true)
+        .limit(1);
+
+      if (approverError) throw approverError;
+
+      if (!approvers || approvers.length === 0) {
+        toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+        return;
+      }
+
       const { error } = await supabase
         .from('missions')
         .update({
