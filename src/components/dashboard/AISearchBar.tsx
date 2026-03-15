@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { toast } from "sonner";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { IncidentDetailDialog } from "./IncidentDetailDialog";
