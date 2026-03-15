@@ -787,11 +787,11 @@ const Auth = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowPasskeyLogin(true)}
-                disabled={loading}
+                onClick={handlePasskeyLogin}
+                disabled={loading || passkeyLoading}
                 className="w-full mb-3"
               >
-                <Fingerprint className="mr-2 h-4 w-4" />
+                {passkeyLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fingerprint className="mr-2 h-4 w-4" />}
                 {t('passkey.loginButton')}
               </Button>
             )}
