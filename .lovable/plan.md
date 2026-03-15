@@ -1,39 +1,26 @@
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+## Plan: Legg til «Nytt selskap»-alternativ i Google-registreringsdialogen
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+### Problem
+Google-registreringsdialogen (linje 718-787 i Auth.tsx) støtter kun selskapskode. E-post-registrering har allerede tabs for «Selskapskode» og «Nytt selskap».
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+### Endringer i `src/pages/Auth.tsx`
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+1. **Ny state**: `googleRegMode: 'code' | 'new'`, `googleNewCompanyName`, `googleNewCompanyOrgNr`
+
+2. **Google-registreringsdialogen** får samme Tabs-komponent som e-post-registrering:
+   - «Selskapskode» (eksisterende kode-felt)
+   - «Nytt selskap» (selskapsnavn + org.nr)
+
+3. **Ny submit-handler for «Nytt selskap»-modus**: `handleGoogleRegistrationSubmit` utvides med en gren for `googleRegMode === 'new'` som:
+   - Oppretter selskap via `supabase.from('companies').insert(...)` 
+   - Oppretter profil med `company_id` og `approved: true` (grunnlegger = auto-godkjent)
+   - Tildeler admin-rolle
+   - Alternativt: setter `user_metadata` med `new_company_name` og lar database-triggeren `handle_new_user` håndtere det (samme som e-post-flyten)
+
+4. **Knapp-tekst** tilpasses modus: «Opprett selskap og konto» vs «Registrer»
+
+### Viktig
+Bruker samme mønster som e-post-registreringen (`regMode === 'new'`) for konsistens. Database-triggeren `handle_new_user` bør allerede håndtere `new_company_name` i metadata, men må verifiseres — Google-brukere kan allerede ha en auth-bruker uten profil, så vi kan trenge direkte insert i stedet for å stole på triggeren.
+
