@@ -1,39 +1,53 @@
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+# Plan: Passkey-innlogging uten e-post (Discoverable Credentials)
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+## Problemet
+I dag må brukeren skrive inn e-post før biometrisk innlogging. Nettleseren/OS-et vet allerede hvilke passkeys som er tilgjengelige — e-posten er overflødig.
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+## Løsning: Discoverable Credentials
+WebAuthn støtter «discoverable credentials» der passkeyen selv inneholder brukerens identitet. Da kan serveren generere autentiseringsopsjoner *uten* å vite hvem brukeren er — nettleseren viser alle tilgjengelige passkeys, og svaret inneholder brukerens ID.
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+## Endringer
+
+### 1. Edge Function (`supabase/functions/webauthn/index.ts`)
+
+**Registrering** — sett `userID` eksplisitt til brukerens UUID (ellers genererer biblioteket en tilfeldig ID som ikke kan kobles tilbake):
+```typescript
+const options = await generateRegistrationOptions({
+  ...existing,
+  userID: new TextEncoder().encode(userId), // ← nytt
+  authenticatorSelection: {
+    residentKey: "required",        // ← endret fra "preferred"
+    userVerification: "preferred",
+  },
+});
+```
+
+**Ny action: `login-options-discoverable`** — genererer opsjoner uten e-post/allowCredentials:
+```typescript
+if (action === "login-options-discoverable") {
+  const options = await generateAuthenticationOptions({
+    rpID,
+    userVerification: "preferred",
+    // Ingen allowCredentials → nettleseren viser alle passkeys for denne RP
+  });
+  // Sign challenge uten userId (vi vet det ikke ennå)
+  return json({ options, signedChallenge });
+}
+```
+
+**Oppdater `login-verify`** — hent userId fra credential i stedet for fra challenge:
+- Slå opp passkey i DB kun på `credential_id` (uten userId-filter)
+- Hent `user_id` fra den lagrede passkeyen
+- Fortsett med magic link som før
+
+### 2. Frontend (`src/pages/Auth.tsx`)
+
+- Fjern e-post-dialogen for passkey-innlogging
+- Knappen «Logg inn med biometri» kaller direkte `login-options-discoverable` → `startAuthentication` → `login-verify`
+- Ingen e-postfelt, ingen ekstra dialog — ett klikk → biometri → innlogget
+
+### 3. Viktig merknad
+Brukere som allerede har registrert en passkey med den gamle metoden (residentKey: "preferred") må slette den og registrere på nytt for at discoverable credentials skal fungere. Vi legger til en melding om dette.
+
