@@ -637,6 +637,26 @@ export const ProfileDialog = () => {
   };
 
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const location = useLocation();
+
+  // Listen for open-profile-subscription event and location state
+  useEffect(() => {
+    const handler = () => {
+      setProfileDialogOpen(true);
+      setActiveTab('subscription');
+    };
+    window.addEventListener('open-profile-subscription', handler);
+    return () => window.removeEventListener('open-profile-subscription', handler);
+  }, []);
+
+  useEffect(() => {
+    if ((location.state as any)?.openSubscription) {
+      setProfileDialogOpen(true);
+      setActiveTab('subscription');
+      // Clear the state so it doesn't re-trigger
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   return (
     <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
