@@ -77,7 +77,8 @@ const availableRoles = [
 
 const Admin = () => {
   const { user, loading, companyId, companyName, isSuperAdmin, signOut } = useAuth();
-  const { canAccess, hasAddon } = usePlanGating();
+  const { canAccess, hasAddon, currentPlan, seatCount, bypass } = usePlanGating();
+  const { subscriptionAddons } = useAuth();
   const canManageRoles = canAccess('access_control');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
