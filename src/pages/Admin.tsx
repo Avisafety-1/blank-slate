@@ -1064,6 +1064,78 @@ const Admin = () => {
         open={emailSettingsOpen}
         onOpenChange={setEmailSettingsOpen}
       />
+
+      {/* Seat cost confirmation dialog */}
+      {(() => {
+        const pendingProfile = pendingApproveUserId ? profiles.find(p => p.id === pendingApproveUserId) : null;
+        const newSeatCount = seatCount + 1;
+        const seatCost = currentPlan.price;
+        const addonCost = subscriptionAddons.reduce((sum, addonId) => {
+          const addon = ADDONS.find(a => a.id === addonId);
+          return sum + (addon?.price ?? 0);
+        }, 0);
+        const newMonthlyCost = seatCost * newSeatCount + addonCost;
+
+        return (
+          <AlertDialog open={!!pendingApproveUserId} onOpenChange={(open) => { if (!open) setPendingApproveUserId(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Godkjenn bruker – ekstra kostnad
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>
+                      Du godkjenner <span className="font-medium text-foreground">{pendingProfile?.full_name || pendingProfile?.email || 'bruker'}</span>.
+                    </p>
+                    <div className="rounded-lg border border-border bg-muted/50 p-3 space-y-1.5">
+                      <div className="flex justify-between">
+                        <span>Plan</span>
+                        <span className="font-medium text-foreground">{currentPlan.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Pris per bruker</span>
+                        <span className="font-medium text-foreground">{seatCost} kr/mnd</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Brukere nå → etter</span>
+                        <span className="font-medium text-foreground">{seatCount} → {newSeatCount}</span>
+                      </div>
+                      {addonCost > 0 && (
+                        <div className="flex justify-between">
+                          <span>Tilleggsmoduler</span>
+                          <span className="font-medium text-foreground">+{addonCost} kr/mnd</span>
+                        </div>
+                      )}
+                      <div className="border-t border-border pt-1.5 flex justify-between font-medium text-foreground">
+                        <span>Ny månedskostnad</span>
+                        <span>{newMonthlyCost} kr/mnd</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Stripe proraterer automatisk – du betaler kun for gjenstående dager denne måneden.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (pendingApproveUserId) {
+                      approveUser(pendingApproveUserId);
+                    }
+                    setPendingApproveUserId(null);
+                  }}
+                >
+                  Godkjenn og betal
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </div>
   );
 };
