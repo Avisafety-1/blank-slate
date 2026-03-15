@@ -1,4 +1,5 @@
 import droneBackground from "@/assets/drone-background.png";
+import { Sentry } from "@/lib/sentry";
 import { DocumentSection } from "@/components/dashboard/DocumentSection";
 import { AISearchBar } from "@/components/dashboard/AISearchBar";
 import { StatusPanel } from "@/components/dashboard/StatusPanel";
