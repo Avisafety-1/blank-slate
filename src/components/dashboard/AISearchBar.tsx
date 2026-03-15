@@ -82,6 +82,12 @@ export const AISearchBar = () => {
   };
   const handleSearch = async () => {
     if (!query.trim() || !user) return;
+    if (!canAccess('ai_search')) {
+      toast.error(t('plan.upgradeRequired', 'Oppgradering påkrevd'), {
+        description: t('plan.featureRequiresPlan', { plan: 'Grower', defaultValue: 'Denne funksjonen krever Grower-planen eller høyere.' }),
+      });
+      return;
+    }
     if (searchMode === "regulations") {
       return handleRegulationsSearch();
     }
