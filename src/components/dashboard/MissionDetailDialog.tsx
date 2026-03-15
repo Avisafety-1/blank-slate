@@ -9,7 +9,7 @@ import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, Che
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { MissionMapPreview } from "./MissionMapPreview";
@@ -432,6 +432,20 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         <AlertDialogFooter>
           <AlertDialogCancel>Avbryt</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
+            // Check if anyone can approve missions
+            const { data: approvers } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('company_id', companyId)
+              .eq('can_approve_missions', true)
+              .limit(1);
+            
+            if (!approvers || approvers.length === 0) {
+              toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+              setApprovalConfirmOpen(false);
+              return;
+            }
+            
             await supabase
               .from('missions')
               .update({ approval_status: 'pending_approval' })

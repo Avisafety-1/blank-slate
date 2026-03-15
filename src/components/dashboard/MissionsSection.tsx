@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -372,6 +373,21 @@ export const MissionsSection = () => {
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
+              
+              // Check if anyone can approve missions
+              const { data: approvers } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('company_id', companyId)
+                .eq('can_approve_missions', true)
+                .limit(1);
+              
+              if (!approvers || approvers.length === 0) {
+                toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+                setApprovalConfirmMissionId(null);
+                return;
+              }
+              
               const missionToApprove = missions.find((m: any) => m.id === approvalConfirmMissionId);
               await supabase
                 .from('missions')
