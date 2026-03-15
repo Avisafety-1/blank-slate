@@ -214,7 +214,7 @@ export const TwoFactorSetup = () => {
               </div>
 
               <div className="flex justify-center">
-                <img src={qrCode} alt="QR Code" className="w-48 h-48 rounded-lg border" />
+                <img src={qrCode} alt="QR Code" className="w-36 h-36 sm:w-48 sm:h-48 rounded-lg border" />
               </div>
 
               {secret && (

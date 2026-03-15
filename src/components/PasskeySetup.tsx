@@ -177,7 +177,7 @@ export const PasskeySetup = () => {
 
           {/* Add passkey flow */}
           {showNameInput ? (
-            <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+            <div className="space-y-2.5 sm:space-y-3 border rounded-lg p-3 sm:p-4 bg-muted/30">
               <div className="space-y-2">
                 <Label className="text-sm">{t("passkey.deviceNameLabel")}</Label>
                 <Input
