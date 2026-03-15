@@ -1,6 +1,6 @@
 import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
-import { usePlanGating } from "@/hooks/usePlanGating";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
