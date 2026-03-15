@@ -76,6 +76,7 @@ export const PasskeySetup = () => {
         toast.success(t("passkey.registered"));
         setShowNameInput(false);
         setDeviceName("");
+        try { localStorage.setItem("avisafe_passkey_registered", "1"); } catch {}
         await fetchPasskeys();
       } else {
         toast.error(t("passkey.registerError"));
