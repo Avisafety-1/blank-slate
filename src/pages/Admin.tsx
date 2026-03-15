@@ -944,6 +944,7 @@ const Admin = () => {
                                   checked={profile.can_approve_missions === true}
                                   onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                   className="scale-75"
+                                  disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
                               </div>
@@ -953,6 +954,7 @@ const Admin = () => {
                                     checked={profile.can_access_eccairs === true}
                                     onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
                                     className="scale-75"
+                                    disabled={!canManageRoles}
                                   />
                                   <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
                                 </div>
@@ -962,24 +964,34 @@ const Admin = () => {
                                   checked={profile.can_be_incident_responsible === true}
                                   onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
                                   className="scale-75"
+                                  disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
                               </div>
-                              <Select 
-                                value={userRole?.role || ""} 
-                                onValueChange={(value) => assignRole(profile.id, value)}
-                              >
-                                <SelectTrigger className="w-[140px] h-10">
-                                  <SelectValue placeholder={t('admin.selectRole')} />
-                                </SelectTrigger>
-                                <SelectContent className="z-50">
-                                  {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      {t(role.labelKey)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {canManageRoles ? (
+                                <Select 
+                                  value={userRole?.role || ""} 
+                                  onValueChange={(value) => assignRole(profile.id, value)}
+                                >
+                                  <SelectTrigger className="w-[140px] h-10">
+                                    <SelectValue placeholder={t('admin.selectRole')} />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-50">
+                                    {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
+                                      <SelectItem key={role.value} value={role.value}>
+                                        {t(role.labelKey)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-xs cursor-help">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : '—'}</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Rolle- og tilgangsstyring krever Professional</TooltipContent>
+                                </Tooltip>
+                              )}
                               
                               <Button
                                 size="sm"
