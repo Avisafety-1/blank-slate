@@ -342,6 +342,10 @@ const Admin = () => {
       if (data?.warnings?.length) {
         console.warn("Delete warnings:", data.warnings);
       }
+      // Sync seat count to Stripe
+      supabase.functions.invoke('update-seats', {
+        body: { company_id: companyId }
+      }).catch(err => console.error('Seat sync error:', err));
       fetchData();
     } catch (error: any) {
       console.error("Error deleting user:", error);
