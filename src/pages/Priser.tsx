@@ -1,4 +1,4 @@
-import { Check, CreditCard, Loader2 } from "lucide-react";
+import { Check, CreditCard, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,14 @@ import { useNavigate } from "react-router-dom";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 const Priser = () => {
-  const { user, subscribed, subscriptionLoading, subscriptionPlan } = useAuth();
+  const { user, subscribed, subscriptionLoading, subscriptionPlan, isTrial, stripeExempt } = useAuth();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>([]);
   const navigate = useNavigate();
+
+  // Allow closing only if user has active subscription, trial, or is stripe exempt
+  const canGoBack = subscribed || isTrial || stripeExempt || !user;
 
   const toggleAddon = (id: AddonId) => {
     setSelectedAddons(prev =>
@@ -50,6 +53,17 @@ const Priser = () => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full space-y-8">
         <div className="text-center space-y-2">
+          {canGoBack && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-2"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Tilbake
+            </Button>
+          )}
           <h1 className="text-3xl font-bold text-foreground">AviSafe Platform</h1>
           <p className="text-muted-foreground">
             Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.
