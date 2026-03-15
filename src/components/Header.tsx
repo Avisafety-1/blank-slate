@@ -262,7 +262,7 @@ export const Header = () => {
               <span className="text-xs font-medium">{displayLang}</span>
             </Button>
             
-            {isAdmin && (
+            {(isAdmin && canAccess('admin')) && (
               <Button
                 variant="ghost"
                 size="sm"
