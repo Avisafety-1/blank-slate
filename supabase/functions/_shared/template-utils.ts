@@ -673,6 +673,21 @@ export async function getEmailTemplateWithFallback(
 }
 
 /**
+ * Injects the AviSafe logo header into email HTML.
+ * Inserts right after the opening of .container div.
+ */
+export function injectLogoHeader(html: string): string {
+  const logo = getEmailLogoHeader();
+  // Insert logo right after <div class="container"> 
+  const containerPattern = /(<div\s+class="container"[^>]*>)/i;
+  if (containerPattern.test(html)) {
+    return html.replace(containerPattern, `$1\n${logo}`);
+  }
+  // Fallback: insert after <body>
+  return html.replace(/<body[^>]*>/i, `$&\n${logo}`);
+}
+
+/**
  * Fixes images in email HTML to ensure they display correctly in email clients.
  * Adds proper styling, width constraints, and display properties to <img> tags.
  */
