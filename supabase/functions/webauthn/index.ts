@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
       return json({ verified: true });
     }
 
-    // ──── LOGIN OPTIONS ────
+    // ──── LOGIN OPTIONS (legacy, email-based) ────
     if (action === "login-options") {
       const { email } = body;
 
@@ -223,6 +223,33 @@ Deno.serve(async (req) => {
       const challengeData = JSON.stringify({
         challenge: options.challenge,
         userId: matchedUser.id,
+        ts: Date.now(),
+      });
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!.slice(0, 32)),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(challengeData));
+      const signedChallenge =
+        btoa(challengeData) + "." + btoa(String.fromCharCode(...new Uint8Array(sig)));
+
+      return json({ options, signedChallenge });
+    }
+
+    // ──── LOGIN OPTIONS DISCOVERABLE (no email needed) ────
+    if (action === "login-options-discoverable") {
+      const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: "preferred",
+        // No allowCredentials → browser shows all available passkeys for this RP
+      });
+
+      // Sign challenge without userId (we don't know it yet)
+      const challengeData = JSON.stringify({
+        challenge: options.challenge,
         ts: Date.now(),
       });
       const key = await crypto.subtle.importKey(
