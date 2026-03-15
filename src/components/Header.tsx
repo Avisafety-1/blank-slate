@@ -173,7 +173,7 @@ export const Header = () => {
               <Globe className="w-3.5 h-3.5" />
             </Button>
             
-            {isAdmin && (
+            {(isAdmin && canAccess('admin')) && (
               <Button
                 variant="ghost"
                 size="sm"
