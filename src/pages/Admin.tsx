@@ -766,7 +766,7 @@ const Admin = () => {
                           <div className="flex items-center gap-2">
                             <Button
                               size="sm"
-                              onClick={() => approveUser(profile.id)}
+                              onClick={() => bypass ? approveUser(profile.id) : setPendingApproveUserId(profile.id)}
                               disabled={approvingUsers.has(profile.id)}
                               className="h-9 sm:h-10"
                             >
