@@ -51,9 +51,11 @@ export const PLANS: PlanConfig[] = [
     gatedFeatures: ['incidents', 'status', 'ai_search', 'sora'],
     features: [
       'Alt i Starter',
+      'Opptil 5 droner',
       'Hendelsesrapportering',
+      'Statuspanel',
+      'AI-søk',
       'Kalender & varsler',
-      'Ubegrenset antall droner',
     ],
     highlighted: true,
   },
