@@ -53,6 +53,17 @@ const Priser = () => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full space-y-8">
         <div className="text-center space-y-2">
+          {canGoBack && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-2"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Tilbake
+            </Button>
+          )}
           <h1 className="text-3xl font-bold text-foreground">AviSafe Platform</h1>
           <p className="text-muted-foreground">
             Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.
