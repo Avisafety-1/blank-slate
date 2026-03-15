@@ -42,6 +42,7 @@ export function EccairsSettingsDialog({
   onOpenChange,
 }: EccairsSettingsDialogProps) {
   const { companyId } = useAuth();
+  const { hasAddon } = usePlanGating();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);

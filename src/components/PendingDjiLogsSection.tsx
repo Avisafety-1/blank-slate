@@ -36,6 +36,9 @@ export interface PendingDjiLogsSectionRef {
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog }, ref) => {
   const { companyId } = useAuth();
+  const { hasAddon } = usePlanGating();
+
+  if (!hasAddon('dji')) return null;
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissingId, setDismissingId] = useState<string | null>(null);

@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PendingDjiLogsSection } from "@/components/PendingDjiLogsSection";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
+import { usePlanGating } from "@/hooks/usePlanGating";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
