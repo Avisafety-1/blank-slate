@@ -76,6 +76,7 @@ export const PasskeySetup = () => {
         toast.success(t("passkey.registered"));
         setShowNameInput(false);
         setDeviceName("");
+        try { localStorage.setItem("avisafe_passkey_registered", "1"); } catch {}
         await fetchPasskeys();
       } else {
         toast.error(t("passkey.registerError"));
@@ -98,8 +99,12 @@ export const PasskeySetup = () => {
     try {
       const { error } = await supabase.from("passkeys").delete().eq("id", deleteId);
       if (error) throw error;
-      setPasskeys((prev) => prev.filter((p) => p.id !== deleteId));
+      const remaining = passkeys.filter((p) => p.id !== deleteId);
+      setPasskeys(remaining);
       setDeleteId(null);
+      if (remaining.length === 0) {
+        try { localStorage.removeItem("avisafe_passkey_registered"); } catch {}
+      }
       toast.success(t("passkey.deleted"));
     } catch (err: any) {
       console.error("Delete passkey error:", err);
