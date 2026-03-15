@@ -1767,10 +1767,15 @@ export const ProfileDialog = () => {
               <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Abonnement
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Abonnement
+                      </CardTitle>
+                      <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => { setProfileDialogOpen(false); navigate('/priser'); }}>
+                        Se alle planer <ArrowUpRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {stripeExempt ? (
