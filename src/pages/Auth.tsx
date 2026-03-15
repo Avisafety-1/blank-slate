@@ -371,54 +371,112 @@ const Auth = () => {
   };
 
   const handleGoogleRegistrationSubmit = async () => {
-    if (!googleUser || !googleValidatedCompany || !googleFullName.trim()) {
+    if (!googleUser || !googleFullName.trim()) {
       toast.error(t('auth.fillAllFields'));
+      return;
+    }
+
+    if (googleRegMode === 'code' && !googleValidatedCompany) {
+      toast.error(t('auth.enterValidCode'));
+      return;
+    }
+
+    if (googleRegMode === 'new' && !googleNewCompanyName.trim()) {
+      toast.error('Skriv inn selskapsnavn');
       return;
     }
 
     setLoading(true);
     try {
-      // Create profile for the Google user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: googleUser.id,
-          full_name: googleFullName.trim(),
-          company_id: googleValidatedCompany.id,
-          email: googleUser.email,
-          approved: false
+      if (googleRegMode === 'new') {
+        // Create new company
+        const regCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            navn: googleNewCompanyName.trim(),
+            org_nummer: googleNewCompanyOrgNr.trim() || null,
+            registration_code: regCode,
+          })
+          .select('id')
+          .single();
+
+        if (companyError || !companyData) {
+          console.error('Error creating company:', companyError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Create profile as approved admin (founder)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: googleUser.id,
+            full_name: googleFullName.trim(),
+            company_id: companyData.id,
+            email: googleUser.email,
+            approved: true
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Assign admin role
+        await supabase.from('user_roles').insert({
+          user_id: googleUser.id,
+          role: 'admin' as any
         });
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        toast.error(t('errors.generic'));
-        return;
-      }
-
-      // Role is now assigned automatically by database trigger (handle_new_profile_role)
-
-      // Send notifications to admins
-      await supabase.functions.invoke('send-notification-email', {
-        body: {
-          type: 'notify_admins_new_user',
-          companyId: googleValidatedCompany.id,
-          newUser: {
-            fullName: googleFullName.trim(),
+        toast.success('Selskap opprettet! Du er nå logget inn.');
+        
+        // Redirect to app
+        setShowGoogleRegistration(false);
+        setGoogleUser(null);
+        redirectToApp('/');
+      } else {
+        // Existing company with code
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: googleUser.id,
+            full_name: googleFullName.trim(),
+            company_id: googleValidatedCompany!.id,
             email: googleUser.email,
-            companyName: googleValidatedCompany.name
-          }
-        }
-      });
+            approved: false
+          });
 
-      toast.success(t('auth.accountCreated'));
-      
-      // Sign out and reset state
-      await supabase.auth.signOut();
-      setShowGoogleRegistration(false);
-      setGoogleUser(null);
-      setGoogleFullName("");
-      setGoogleRegistrationCode("");
-      setGoogleValidatedCompany(null);
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error(t('errors.generic'));
+          return;
+        }
+
+        // Send notifications to admins
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_admins_new_user',
+            companyId: googleValidatedCompany!.id,
+            newUser: {
+              fullName: googleFullName.trim(),
+              email: googleUser.email,
+              companyName: googleValidatedCompany!.name
+            }
+          }
+        });
+
+        toast.success(t('auth.accountCreated'));
+        
+        // Sign out and reset state
+        await supabase.auth.signOut();
+        setShowGoogleRegistration(false);
+        setGoogleUser(null);
+        setGoogleFullName("");
+        setGoogleRegistrationCode("");
+        setGoogleValidatedCompany(null);
+      }
     } catch (error: any) {
       console.error('Google registration error:', error);
       toast.error(error.message || t('errors.generic'));
