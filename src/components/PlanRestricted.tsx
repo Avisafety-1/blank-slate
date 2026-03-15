@@ -1,8 +1,9 @@
 import { usePlanGating } from '@/hooks/usePlanGating';
 import { getPlanById, type GatedFeature } from '@/config/subscriptionPlans';
-import { Lock } from 'lucide-react';
+import { Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface PlanRestrictedProps {
   feature: GatedFeature;
@@ -13,6 +14,7 @@ interface PlanRestrictedProps {
 export const PlanRestricted = ({ feature, children, fallback }: PlanRestrictedProps) => {
   const { canAccess, requiredPlanFor } = usePlanGating();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   if (canAccess(feature)) {
     return <>{children}</>;
@@ -21,6 +23,20 @@ export const PlanRestricted = ({ feature, children, fallback }: PlanRestrictedPr
   if (fallback) return <>{fallback}</>;
 
   const requiredPlan = getPlanById(requiredPlanFor(feature));
+
+  const handleUpgrade = () => {
+    // Navigate to dashboard with state flag — ProfileDialog listens for this
+    navigate('/', { state: { openSubscription: true } });
+  };
+
+  const handleBack = () => {
+    // If there's history, go back; otherwise go to dashboard
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center">
@@ -36,15 +52,15 @@ export const PlanRestricted = ({ feature, children, fallback }: PlanRestrictedPr
           defaultValue: `Denne funksjonen krever ${requiredPlan?.name ?? 'Grower'}-planen eller høyere.`,
         })}
       </p>
-      <Button
-        variant="default"
-        onClick={() => {
-          // Dispatch custom event to open profile dialog on subscription tab
-          window.dispatchEvent(new CustomEvent('open-profile-subscription'));
-        }}
-      >
-        {t('plan.upgradePlan', 'Oppgrader plan')}
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Button variant="default" onClick={handleUpgrade}>
+          {t('plan.upgradePlan', 'Oppgrader plan')}
+        </Button>
+        <Button variant="outline" onClick={handleBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {t('common.back', 'Tilbake')}
+        </Button>
+      </div>
     </div>
   );
 };
