@@ -83,12 +83,13 @@ Deno.serve(async (req) => {
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
         rpID,
+        userID: new TextEncoder().encode(userId),
         userName: userEmail,
         userDisplayName: userEmail,
         attestationType: "none",
         excludeCredentials,
         authenticatorSelection: {
-          residentKey: "preferred",
+          residentKey: "required",
           userVerification: "preferred",
         },
       });
