@@ -52,7 +52,6 @@ const Auth = () => {
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
   const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
