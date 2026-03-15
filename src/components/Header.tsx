@@ -199,12 +199,8 @@ export const Header = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>
-            {canAccess('incidents') && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
-            )}
-            {canAccess('status') && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
-            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
               <Activity className="w-4 h-4" />
