@@ -1772,7 +1772,7 @@ export const ProfileDialog = () => {
                         <CreditCard className="h-5 w-5" />
                         Abonnement
                       </CardTitle>
-                      <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => { onOpenChange(false); navigate('/priser'); }}>
+                      <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => { setProfileDialogOpen(false); navigate('/priser'); }}>
                         Se alle planer <ArrowUpRight className="h-3 w-3 ml-1" />
                       </Button>
                     </div>
