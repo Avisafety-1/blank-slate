@@ -117,7 +117,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const allCommentsComplete = ['weather', 'airspace', 'pilot_experience', 'mission_complexity', 'equipment']
     .every(k => categoryComments[k]?.trim());
 
+  const { canAccess } = usePlanGating();
+
   const runSoraReassessment = async () => {
+    if (!canAccess('sora')) {
+      toast.error('SORA re-vurdering krever Grower-planen eller høyere.');
+      return;
+    }
     if (!currentMissionId || !currentAssessment) return;
     setRunningSora(true);
     try {
