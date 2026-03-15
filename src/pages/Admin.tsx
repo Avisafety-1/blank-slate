@@ -66,7 +66,7 @@ const availableRoles = [
 
 const Admin = () => {
   const { user, loading, companyId, companyName, isSuperAdmin, signOut } = useAuth();
-  const { canAccess } = usePlanGating();
+  const { canAccess, hasAddon } = usePlanGating();
   const canManageRoles = canAccess('access_control');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -523,10 +523,12 @@ const Admin = () => {
               <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
-            <TabsTrigger value="company-config" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
-              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="max-w-[80px] sm:max-w-none truncate">SORA</span>
-            </TabsTrigger>
+            {hasAddon('sora_admin') && (
+              <TabsTrigger value="company-config" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="max-w-[80px] sm:max-w-none truncate">SORA</span>
+              </TabsTrigger>
+            )}
             {isSuperAdmin && (
               <TabsTrigger value="companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -1021,13 +1023,15 @@ const Admin = () => {
             <BulkEmailSenderWithHistory />
           </TabsContent>
 
-          <TabsContent value="company-config" className="mt-4 sm:mt-8">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
-              <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
-            </div>
-            <CompanySoraConfigSection />
-          </TabsContent>
+          {hasAddon('sora_admin') && (
+            <TabsContent value="company-config" className="mt-4 sm:mt-8">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
+                <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
+              </div>
+              <CompanySoraConfigSection />
+            </TabsContent>
+          )}
 
           {isSuperAdmin && (
             <TabsContent value="companies" className="mt-4 sm:mt-8">

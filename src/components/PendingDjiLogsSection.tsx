@@ -7,6 +7,7 @@ import { Clock, Plane, CheckCircle, XCircle, Loader2, Trash2, AlertTriangle } fr
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 interface PendingDjiLog {
   id: string;
@@ -35,9 +36,11 @@ export interface PendingDjiLogsSectionRef {
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog }, ref) => {
   const { companyId } = useAuth();
+  const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const djiEnabled = hasAddon('dji');
 
   useImperativeHandle(ref, () => ({
     refresh: () => { if (companyId) fetchPendingLogs(); }
@@ -82,6 +85,8 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     }
     setDismissingId(null);
   };
+
+  if (!djiEnabled) return null;
 
   if (loading) {
     return (

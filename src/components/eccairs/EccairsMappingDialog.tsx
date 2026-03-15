@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 interface IncidentComment {
   id: string;
@@ -64,8 +66,16 @@ export function EccairsMappingDialog({
   onOpenChange,
   onSaved,
 }: EccairsMappingDialogProps) {
+  const { hasAddon } = usePlanGating();
   const { attributes, getAttribute, isLoading, saveAllAttributes, isSaving } = 
     useIncidentEccairsAttributes(incident.id, open);
+
+  useEffect(() => {
+    if (open && !hasAddon('eccairs')) {
+      toast.error('ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen');
+      onOpenChange(false);
+    }
+  }, [open]);
   
   // Generic state: Record<`${code}_${taxonomyCode}_${entityPath}`, value>
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});

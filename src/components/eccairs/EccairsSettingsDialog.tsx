@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Settings2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanGating } from "@/hooks/usePlanGating";
 
 const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
 
@@ -41,6 +42,7 @@ export function EccairsSettingsDialog({
   onOpenChange,
 }: EccairsSettingsDialogProps) {
   const { companyId } = useAuth();
+  const { hasAddon } = usePlanGating();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -53,6 +55,14 @@ export function EccairsSettingsDialog({
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [hasExistingSecret, setHasExistingSecret] = useState(false);
+
+  // Gate addon
+  useEffect(() => {
+    if (open && !hasAddon('eccairs')) {
+      toast.error('ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen');
+      onOpenChange(false);
+    }
+  }, [open]);
 
   // Fetch existing settings when dialog opens
   useEffect(() => {
