@@ -536,21 +536,17 @@ const Auth = () => {
   };
 
   const handlePasskeyLogin = async () => {
-    if (!passkeyEmail) {
-      toast.error(t('auth.enterEmailAddress'));
-      return;
-    }
     setPasskeyLoading(true);
     try {
-      // Step 1: Get authentication options
+      // Step 1: Get discoverable authentication options (no email needed)
       const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
-        body: { action: "login-options", email: passkeyEmail },
+        body: { action: "login-options-discoverable" },
       });
       if (optionsError || optionsData?.error) {
-        throw new Error(optionsData?.error || t('passkey.noPasskeysForEmail'));
+        throw new Error(optionsData?.error || t('passkey.loginError'));
       }
 
-      // Step 2: Authenticate with browser
+      // Step 2: Authenticate with browser — shows all available passkeys
       const credential = await startAuthentication({ optionsJSON: optionsData.options });
 
       // Step 3: Verify with server
@@ -574,8 +570,6 @@ const Auth = () => {
         if (otpError) throw otpError;
 
         toast.success(t('auth.loginSuccess'));
-        setShowPasskeyLogin(false);
-        setPasskeyEmail("");
         redirectToApp('/');
       }
     } catch (err: any) {
