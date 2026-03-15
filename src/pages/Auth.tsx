@@ -51,8 +51,6 @@ const Auth = () => {
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
   const [checkingGoogleUser, setCheckingGoogleUser] = useState(false);
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
-  const [showPasskeyLogin, setShowPasskeyLogin] = useState(false);
-  const [passkeyEmail, setPasskeyEmail] = useState("");
   const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
@@ -537,21 +535,17 @@ const Auth = () => {
   };
 
   const handlePasskeyLogin = async () => {
-    if (!passkeyEmail) {
-      toast.error(t('auth.enterEmailAddress'));
-      return;
-    }
     setPasskeyLoading(true);
     try {
-      // Step 1: Get authentication options
+      // Step 1: Get discoverable authentication options (no email needed)
       const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
-        body: { action: "login-options", email: passkeyEmail },
+        body: { action: "login-options-discoverable" },
       });
       if (optionsError || optionsData?.error) {
-        throw new Error(optionsData?.error || t('passkey.noPasskeysForEmail'));
+        throw new Error(optionsData?.error || t('passkey.loginError'));
       }
 
-      // Step 2: Authenticate with browser
+      // Step 2: Authenticate with browser — shows all available passkeys
       const credential = await startAuthentication({ optionsJSON: optionsData.options });
 
       // Step 3: Verify with server
@@ -575,8 +569,6 @@ const Auth = () => {
         if (otpError) throw otpError;
 
         toast.success(t('auth.loginSuccess'));
-        setShowPasskeyLogin(false);
-        setPasskeyEmail("");
         redirectToApp('/');
       }
     } catch (err: any) {
@@ -794,11 +786,11 @@ const Auth = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowPasskeyLogin(true)}
-                disabled={loading}
+                onClick={handlePasskeyLogin}
+                disabled={loading || passkeyLoading}
                 className="w-full mb-3"
               >
-                <Fingerprint className="mr-2 h-4 w-4" />
+                {passkeyLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fingerprint className="mr-2 h-4 w-4" />}
                 {t('passkey.loginButton')}
               </Button>
             )}
@@ -973,54 +965,8 @@ const Auth = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Passkey Login Dialog */}
-      <Dialog open={showPasskeyLogin} onOpenChange={setShowPasskeyLogin}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Fingerprint className="h-5 w-5 text-primary" />
-              {t('passkey.loginTitle')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('passkey.loginDesc')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="passkeyEmail">{t('auth.email')}</Label>
-              <Input
-                id="passkeyEmail"
-                type="email"
-                placeholder={t('forms.placeholder.email')}
-                value={passkeyEmail}
-                onChange={(e) => setPasskeyEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePasskeyLogin()}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPasskeyLogin(false);
-                  setPasskeyEmail("");
-                }}
-                className="flex-1"
-                disabled={passkeyLoading}
-              >
-                {t('actions.cancel')}
-              </Button>
-              <Button
-                onClick={handlePasskeyLogin}
-                disabled={!passkeyEmail || passkeyLoading}
-                className="flex-1"
-              >
-                {passkeyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {t('passkey.authenticate')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+
 
       <MfaChallengeDialog
         open={showMfaChallenge}

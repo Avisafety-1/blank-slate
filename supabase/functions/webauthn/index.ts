@@ -83,12 +83,13 @@ Deno.serve(async (req) => {
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
         rpID,
+        userID: new TextEncoder().encode(userId),
         userName: userEmail,
         userDisplayName: userEmail,
         attestationType: "none",
         excludeCredentials,
         authenticatorSelection: {
-          residentKey: "preferred",
+          residentKey: "required",
           userVerification: "preferred",
         },
       });
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
       return json({ verified: true });
     }
 
-    // ──── LOGIN OPTIONS ────
+    // ──── LOGIN OPTIONS (legacy, email-based) ────
     if (action === "login-options") {
       const { email } = body;
 
@@ -238,6 +239,33 @@ Deno.serve(async (req) => {
       return json({ options, signedChallenge });
     }
 
+    // ──── LOGIN OPTIONS DISCOVERABLE (no email needed) ────
+    if (action === "login-options-discoverable") {
+      const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: "preferred",
+        // No allowCredentials → browser shows all available passkeys for this RP
+      });
+
+      // Sign challenge without userId (we don't know it yet)
+      const challengeData = JSON.stringify({
+        challenge: options.challenge,
+        ts: Date.now(),
+      });
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!.slice(0, 32)),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(challengeData));
+      const signedChallenge =
+        btoa(challengeData) + "." + btoa(String.fromCharCode(...new Uint8Array(sig)));
+
+      return json({ options, signedChallenge });
+    }
+
     // ──── LOGIN VERIFY ────
     if (action === "login-verify") {
       const { credential, signedChallenge } = body;
@@ -264,16 +292,20 @@ Deno.serve(async (req) => {
       const challengeData = JSON.parse(challengeJson);
       if (Date.now() - challengeData.ts > 5 * 60 * 1000) return json({ error: "Challenge expired" }, 400);
 
-      const userId = challengeData.userId;
-
-      // Get the credential from DB
+      // For discoverable credentials, userId comes from the stored credential, not the challenge
       const credentialIdBase64 = credential.id;
       const { data: storedCred } = await supabaseAdmin
         .from("passkeys")
         .select("*")
         .eq("credential_id", credentialIdBase64)
-        .eq("user_id", userId)
         .single();
+
+      // If challenge had a userId (legacy flow), verify it matches
+      if (challengeData.userId && storedCred && storedCred.user_id !== challengeData.userId) {
+        return json({ error: "User mismatch" }, 400);
+      }
+
+      const userId = storedCred?.user_id;
 
       if (!storedCred) return json({ error: "Credential not found" }, 400);
 
