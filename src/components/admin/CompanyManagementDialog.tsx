@@ -416,6 +416,20 @@ export const CompanyManagementDialog = ({
               </div>
             )}
 
+            {isSuperAdmin && (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="departments_enabled" className="text-sm font-medium">Avdelingsstruktur</label>
+                  <p className="text-xs text-muted-foreground">Aktiver avdelinger/underselskaper for dette selskapet</p>
+                </div>
+                <Switch
+                  id="departments_enabled"
+                  checked={departmentsEnabled}
+                  onCheckedChange={setDepartmentsEnabled}
+                />
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
