@@ -487,6 +487,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
 
       saveCachedProfile(userId, profileData);
