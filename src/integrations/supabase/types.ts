@@ -401,6 +401,7 @@ export type Database = {
           kontakt_telefon: string | null
           navn: string
           org_nummer: string | null
+          parent_company_id: string | null
           registration_code: string
           selskapstype: string | null
           stripe_exempt: boolean
@@ -426,6 +427,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn: string
           org_nummer?: string | null
+          parent_company_id?: string | null
           registration_code: string
           selskapstype?: string | null
           stripe_exempt?: boolean
@@ -451,6 +453,7 @@ export type Database = {
           kontakt_telefon?: string | null
           navn?: string
           org_nummer?: string | null
+          parent_company_id?: string | null
           registration_code?: string
           selskapstype?: string | null
           stripe_exempt?: boolean
@@ -462,6 +465,13 @@ export type Database = {
             columns: ["before_takeoff_checklist_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_parent_company_id_fkey"
+            columns: ["parent_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -3719,6 +3729,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_companies: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -4033,6 +4075,10 @@ export type Database = {
             }
             Returns: string
           }
+      can_user_access_company: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       check_mission_airspace: {
         Args: { p_lat: number; p_lng: number; p_route?: Json }
         Returns: {
@@ -4204,6 +4250,14 @@ export type Database = {
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
         Returns: Json
+      }
+      get_user_accessible_companies: {
+        Args: { _user_id: string }
+        Returns: {
+          company_id: string
+          company_name: string
+          is_parent: boolean
+        }[]
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
