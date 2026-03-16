@@ -88,7 +88,7 @@ export const ChildCompaniesSection = () => {
         .eq("id", companyToDelete.id);
 
       if (error) throw error;
-      toast.success("Underselskap slettet");
+      toast.success("Avdeling slettet");
       setDeleteDialogOpen(false);
       setCompanyToDelete(null);
       fetchChildren();
