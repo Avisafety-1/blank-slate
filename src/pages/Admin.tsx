@@ -1061,6 +1061,48 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
+                                        <Select
+                                          value={profile.approval_company_ids?.includes('all') ? 'all' : 'specific'}
+                                          onValueChange={(value) => {
+                                            if (value === 'all') {
+                                              updateApprovalScope(profile.id, ['all']);
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Velg avdelinger" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value="all">Alle avdelinger</SelectItem>
+                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {profile.approval_company_ids && !profile.approval_company_ids.includes('all') && (
+                                          <div className="mt-1 space-y-1">
+                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={profile.approval_company_ids?.includes(c.id) || false}
+                                                  onChange={(e) => {
+                                                    const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
+                                                    const newIds = e.target.checked
+                                                      ? [...current, c.id]
+                                                      : current.filter(id => id !== c.id);
+                                                    updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                  }}
+                                                  className="rounded border-border"
+                                                />
+                                                {c.navn}
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     {eccairsEnabled && (
                                       <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
@@ -1081,6 +1123,48 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
+                                        <Select
+                                          value={profile.incident_responsible_company_ids?.includes('all') ? 'all' : 'specific'}
+                                          onValueChange={(value) => {
+                                            if (value === 'all') {
+                                              updateIncidentScope(profile.id, ['all']);
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Velg avdelinger" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value="all">Alle avdelinger</SelectItem>
+                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {profile.incident_responsible_company_ids && !profile.incident_responsible_company_ids.includes('all') && (
+                                          <div className="mt-1 space-y-1">
+                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
+                                                  onChange={(e) => {
+                                                    const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
+                                                    const newIds = e.target.checked
+                                                      ? [...current, c.id]
+                                                      : current.filter(id => id !== c.id);
+                                                    updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                  }}
+                                                  className="rounded border-border"
+                                                />
+                                                {c.navn}
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     <div>
                                       <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
                                       {canManageRoles ? (
