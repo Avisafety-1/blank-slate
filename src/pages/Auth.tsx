@@ -126,13 +126,20 @@ const Auth = () => {
         if (profile && profile.company_id) {
           // User has a profile with company_id
           if (profile.approved) {
+            // Check MFA requirement before redirecting
+            const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+              console.log('Google user requires MFA verification');
+              setShowMfaChallenge(true);
+              setCheckingGoogleUser(false);
+              return;
+            }
+
             // Approved user - redirect to app with delay for session stability
-            // Use longer delay for mobile devices which process OAuth tokens slower
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             const redirectDelay = isMobile ? 600 : 300;
             console.log(`Google user approved, preparing redirect to app (delay: ${redirectDelay}ms, mobile: ${isMobile})`);
             
-            // Clean up URL hash before redirect
             if (window.location.hash) {
               window.history.replaceState(null, '', window.location.pathname);
             }
