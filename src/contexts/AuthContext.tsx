@@ -153,6 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAdmin(false);
     setIsApproved(false);
     setDjiFlightlogEnabled(false);
+    setDepartmentsEnabled(false);
     setUserRole(null);
     setStripeExempt(false);
     setSubscribed(false);
