@@ -1,39 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-# Fix: 2FA bypass ved Google-innlogging og race condition
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-## Problemet
-To separate problemer:
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-1. **Google-innlogging hopper over 2FA helt** — `checkGoogleUserProfile` redirecter godkjente brukere direkte uten å sjekke MFA-nivå.
-2. **Vanlig innlogging «blinker» MFA-dialogen** — Login-handleren setter `showMfaChallenge = true`, men `useEffect` på linje 167-177 ser at `user` finnes og redirecter umiddelbart. Race condition.
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-## Løsning
-
-### `src/pages/Auth.tsx`
-
-**1. Legg til MFA-sjekk for Google OAuth-brukere (linje ~128-143):**
-Før redirect, sjekk `mfa.getAuthenticatorAssuranceLevel()`. Hvis `nextLevel === 'aal2'` og `currentLevel === 'aal1'`, vis `MfaChallengeDialog` i stedet for å redirecte.
-
-**2. Blokker auto-redirect når MFA er påkrevd (linje ~167-177):**
-Legg til `showMfaChallenge` som en betingelse som hindrer redirect:
-```typescript
-if (authLoading || checkingGoogleUser || showGoogleRegistration || showMfaChallenge) return;
-```
-
-Og for ikke-OAuth brukere, sjekk MFA-nivå før redirect:
-```typescript
-if (!isOAuthUser && user) {
-  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aalData?.nextLevel === 'aal2' && aalData?.currentLevel === 'aal1') {
-    setShowMfaChallenge(true);
-    return;
-  }
-  redirectToApp('/');
-}
-```
-
-### Resultat
-- Google-brukere med 2FA må verifisere kode før de kommer inn
-- Vanlige brukere ser MFA-dialogen stabilt uten at den «blinker» bort
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
