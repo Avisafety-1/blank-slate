@@ -404,7 +404,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               dji_flightlog_enabled,
               dronelog_api_key,
               stripe_exempt,
-              parent_company_id
+              parent_company_id,
+              departments_enabled
             )
           `)
           .eq('id', userId)
