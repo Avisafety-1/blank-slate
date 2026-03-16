@@ -54,7 +54,7 @@ export const ChildCompaniesSection = () => {
       setChildren(data || []);
     } catch (error) {
       console.error("Error fetching child companies:", error);
-      toast.error("Kunne ikke laste underselskaper");
+      toast.error("Kunne ikke laste avdelinger");
     } finally {
       setLoading(false);
     }
