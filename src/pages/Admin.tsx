@@ -62,6 +62,8 @@ interface Profile {
   can_approve_missions?: boolean;
   can_access_eccairs?: boolean;
   can_be_incident_responsible?: boolean;
+  approval_company_ids?: string[] | null;
+  incident_responsible_company_ids?: string[] | null;
   company_id?: string | null;
   companies?: { navn: string } | null;
 }
