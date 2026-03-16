@@ -540,7 +540,7 @@ export function OpenAIPMap({
         console.error('Failed to delete heartbeat:', err);
       }
     };
-    await sendHeartbeat();
+    sendHeartbeat();
     heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
 
     // SafeSky manager — start immediately after heartbeat (first priority)
