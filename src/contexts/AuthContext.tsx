@@ -161,6 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSubscriptionAddons([]);
     setIsBillingOwner(false);
     setSeatCount(1);
+    setAccessibleCompanies([]);
   };
 
   const getErrorMessage = (error: unknown): string => {
