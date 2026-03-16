@@ -169,6 +169,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle mission approval notification
     if (type === 'notify_mission_approval' && companyId && (mission || approvalMission)) {
+      console.log(`[APPROVAL] Started — companyId=${companyId}`);
       const missionData = mission || approvalMission;
 
       // Only administrator and superadmin can approve missions — fetch their user IDs first
