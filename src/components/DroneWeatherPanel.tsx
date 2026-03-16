@@ -637,6 +637,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                         <Droplets className="w-3 h-3" />
                         <span>{hour.precipitation?.toFixed(1)} mm</span>
                       </div>
+                      {hour.dew_point != null && (
+                        <div className="flex items-center gap-2">
+                          <CloudRain className="w-3 h-3" />
+                          <span>Duggp. {hour.dew_point.toFixed(1)}°C</span>
+                        </div>
+                      )}
                       <div className={cn(
                         "font-medium pt-1 border-t",
                         hour.recommendation === 'ok' && "text-success",
