@@ -149,13 +149,14 @@ const Admin = () => {
       if (companyId) {
         const { data: companyData } = await supabase
           .from("companies")
-          .select("registration_code, eccairs_enabled")
+          .select("registration_code, eccairs_enabled, parent_company_id")
           .eq("id", companyId)
           .single();
         
         if (companyData) {
           setRegistrationCode(companyData.registration_code);
           setEccairsEnabled(companyData.eccairs_enabled === true);
+          setIsChildCompany(!!companyData.parent_company_id);
         }
       }
 
