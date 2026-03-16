@@ -35,6 +35,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
+import { PasskeyPromptDialog } from "@/components/PasskeyPromptDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 const STORAGE_KEY = "dashboard-layout";
