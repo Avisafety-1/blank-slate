@@ -143,6 +143,7 @@ export const CompanyManagementDialog = ({
         });
       } else {
         setStripeExempt(false);
+        setDepartmentsEnabled(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
