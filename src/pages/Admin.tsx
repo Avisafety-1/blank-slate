@@ -812,9 +812,16 @@ const Admin = () => {
                           className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm sm:text-base truncate">
-                              {profile.full_name || t('common.notSpecified')}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm sm:text-base truncate">
+                                {profile.full_name || t('common.notSpecified')}
+                              </p>
+                              {!isChildCompany && profile.company_id !== companyId && profile.companies && (
+                                <Badge variant="outline" className="text-xs flex-shrink-0">
+                                  {(profile.companies as any).navn}
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="truncate">{profile.email || t('admin.noEmail')}</span>
                               <span>•</span>
