@@ -211,10 +211,11 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     };
   }, [incident?.id]);
 
-  const handleStatusChange = async (newStatus: string) => {
+   const handleStatusChange = async (newStatus: string) => {
     if (!incident) return;
     
     setUpdatingStatus(true);
+    setLocalStatus(newStatus); // Optimistic update
     try {
       const { error } = await supabase
         .from('incidents')
@@ -229,6 +230,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       toast.success("Status oppdatert");
     } catch (error) {
       console.error("Error updating status:", error);
+      setLocalStatus(incident.status); // Revert on error
       toast.error("Kunne ikke oppdatere status");
     } finally {
       setUpdatingStatus(false);
