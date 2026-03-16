@@ -124,7 +124,7 @@ export const ChildCompaniesSection = () => {
           <p className="text-muted-foreground text-sm">Laster...</p>
         ) : children.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
-            Ingen underselskaper opprettet ennå.
+            Ingen avdelinger opprettet ennå.
           </p>
         ) : isMobile ? (
           <div className="space-y-2">
