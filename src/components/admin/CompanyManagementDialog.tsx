@@ -129,6 +129,7 @@ export const CompanyManagementDialog = ({
     if (open) {
       if (company) {
         setStripeExempt(company.stripe_exempt ?? false);
+        setDepartmentsEnabled((company as any).departments_enabled ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
