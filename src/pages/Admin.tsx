@@ -418,19 +418,67 @@ const Admin = () => {
 
   const toggleApprover = async (userId: string, currentValue: boolean) => {
     try {
+      const newValue = !currentValue;
+      const updatePayload: any = { can_approve_missions: newValue };
+      // If turning off and has departments, also clear department scope
+      if (!newValue) {
+        updatePayload.approval_company_ids = null;
+      }
+      // If turning on and no departments exist, set to ['all'] for consistency
+      if (newValue && childCompanies.length === 0) {
+        updatePayload.approval_company_ids = ['all'];
+      }
+      // If turning on and departments exist, default to ['all']
+      if (newValue && childCompanies.length > 0) {
+        updatePayload.approval_company_ids = ['all'];
+      }
       const { error } = await supabase
         .from("profiles")
-        .update({ can_approve_missions: !currentValue } as any)
+        .update(updatePayload)
         .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(prev => prev.map(p => 
-        p.id === userId ? { ...p, can_approve_missions: !currentValue } : p
+        p.id === userId ? { ...p, can_approve_missions: newValue, approval_company_ids: updatePayload.approval_company_ids } : p
       ));
-      toast.success(!currentValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
+      toast.success(newValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
     } catch (error) {
       console.error("Error toggling approver:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const updateApprovalScope = async (userId: string, selectedIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ approval_company_ids: selectedIds } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, approval_company_ids: selectedIds } : p
+      ));
+      toast.success('Godkjenningsomfang oppdatert');
+    } catch (error) {
+      console.error("Error updating approval scope:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const updateIncidentScope = async (userId: string, selectedIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ incident_responsible_company_ids: selectedIds } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, incident_responsible_company_ids: selectedIds } : p
+      ));
+      toast.success('Hendelsesomfang oppdatert');
+    } catch (error) {
+      console.error("Error updating incident scope:", error);
       toast.error("Kunne ikke oppdatere innstilling");
     }
   };
@@ -456,17 +504,28 @@ const Admin = () => {
 
   const toggleIncidentResponsible = async (userId: string, currentValue: boolean) => {
     try {
+      const newValue = !currentValue;
+      const updatePayload: any = { can_be_incident_responsible: newValue };
+      if (!newValue) {
+        updatePayload.incident_responsible_company_ids = null;
+      }
+      if (newValue && childCompanies.length === 0) {
+        updatePayload.incident_responsible_company_ids = ['all'];
+      }
+      if (newValue && childCompanies.length > 0) {
+        updatePayload.incident_responsible_company_ids = ['all'];
+      }
       const { error } = await supabase
         .from("profiles")
-        .update({ can_be_incident_responsible: !currentValue } as any)
+        .update(updatePayload)
         .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(prev => prev.map(p => 
-        p.id === userId ? { ...p, can_be_incident_responsible: !currentValue } : p
+        p.id === userId ? { ...p, can_be_incident_responsible: newValue, incident_responsible_company_ids: updatePayload.incident_responsible_company_ids } : p
       ));
-      toast.success(!currentValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
+      toast.success(newValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
     } catch (error) {
       console.error("Error toggling incident responsible:", error);
       toast.error("Kunne ikke oppdatere innstilling");
