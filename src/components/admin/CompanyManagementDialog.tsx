@@ -195,6 +195,7 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         dji_flightlog_enabled: inheritedDjiEnabled,
         parent_company_id: parentId,
+        departments_enabled: departmentsEnabled,
       };
 
       if (isCreating) {
