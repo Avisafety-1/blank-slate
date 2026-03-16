@@ -377,12 +377,17 @@ export const MissionsSection = () => {
               // Check if anyone can approve missions
               const { data: approvers } = await supabase
                 .from('profiles')
-                .select('id')
-                .eq('company_id', companyId)
+                .select('id, approval_company_ids')
                 .eq('can_approve_missions', true)
-                .limit(1);
+                .limit(50);
               
-              if (!approvers || approvers.length === 0) {
+              const relevant = (approvers || []).filter((a: any) => {
+                if (!a.approval_company_ids) return true;
+                if (a.approval_company_ids.includes('all')) return true;
+                return a.approval_company_ids.includes(companyId);
+              });
+              
+              if (!relevant || relevant.length === 0) {
                 toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
                 setApprovalConfirmMissionId(null);
                 return;

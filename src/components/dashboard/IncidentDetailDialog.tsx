@@ -89,12 +89,13 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name, incident_responsible_company_ids')
           .eq('approved', true)
           .eq('can_be_incident_responsible', true)
           .order('full_name', { ascending: true });
 
         if (error) throw error;
+        // No client-side filtering needed here - show all eligible users, the scope is used for notifications
         setUsers(data || []);
       } catch (error) {
         console.error('Error fetching users:', error);

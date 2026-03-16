@@ -3426,6 +3426,7 @@ export type Database = {
       profiles: {
         Row: {
           adresse: string | null
+          approval_company_ids: string[] | null
           approved: boolean | null
           approved_at: string | null
           approved_by: string | null
@@ -3439,6 +3440,7 @@ export type Database = {
           flyvetimer: number | null
           full_name: string | null
           id: string
+          incident_responsible_company_ids: string[] | null
           nødkontakt_navn: string | null
           nødkontakt_telefon: string | null
           signature_url: string | null
@@ -3449,6 +3451,7 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          approval_company_ids?: string[] | null
           approved?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
@@ -3462,6 +3465,7 @@ export type Database = {
           flyvetimer?: number | null
           full_name?: string | null
           id: string
+          incident_responsible_company_ids?: string[] | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
           signature_url?: string | null
@@ -3472,6 +3476,7 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          approval_company_ids?: string[] | null
           approved?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
@@ -3485,6 +3490,7 @@ export type Database = {
           flyvetimer?: number | null
           full_name?: string | null
           id?: string
+          incident_responsible_company_ids?: string[] | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
           signature_url?: string | null

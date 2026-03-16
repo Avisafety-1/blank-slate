@@ -62,6 +62,8 @@ interface Profile {
   can_approve_missions?: boolean;
   can_access_eccairs?: boolean;
   can_be_incident_responsible?: boolean;
+  approval_company_ids?: string[] | null;
+  incident_responsible_company_ids?: string[] | null;
   company_id?: string | null;
   companies?: { navn: string } | null;
 }
@@ -416,19 +418,67 @@ const Admin = () => {
 
   const toggleApprover = async (userId: string, currentValue: boolean) => {
     try {
+      const newValue = !currentValue;
+      const updatePayload: any = { can_approve_missions: newValue };
+      // If turning off and has departments, also clear department scope
+      if (!newValue) {
+        updatePayload.approval_company_ids = null;
+      }
+      // If turning on and no departments exist, set to ['all'] for consistency
+      if (newValue && childCompanies.length === 0) {
+        updatePayload.approval_company_ids = ['all'];
+      }
+      // If turning on and departments exist, default to ['all']
+      if (newValue && childCompanies.length > 0) {
+        updatePayload.approval_company_ids = ['all'];
+      }
       const { error } = await supabase
         .from("profiles")
-        .update({ can_approve_missions: !currentValue } as any)
+        .update(updatePayload)
         .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(prev => prev.map(p => 
-        p.id === userId ? { ...p, can_approve_missions: !currentValue } : p
+        p.id === userId ? { ...p, can_approve_missions: newValue, approval_company_ids: updatePayload.approval_company_ids } : p
       ));
-      toast.success(!currentValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
+      toast.success(newValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
     } catch (error) {
       console.error("Error toggling approver:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const updateApprovalScope = async (userId: string, selectedIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ approval_company_ids: selectedIds } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, approval_company_ids: selectedIds } : p
+      ));
+      toast.success('Godkjenningsomfang oppdatert');
+    } catch (error) {
+      console.error("Error updating approval scope:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const updateIncidentScope = async (userId: string, selectedIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ incident_responsible_company_ids: selectedIds } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, incident_responsible_company_ids: selectedIds } : p
+      ));
+      toast.success('Hendelsesomfang oppdatert');
+    } catch (error) {
+      console.error("Error updating incident scope:", error);
       toast.error("Kunne ikke oppdatere innstilling");
     }
   };
@@ -454,17 +504,28 @@ const Admin = () => {
 
   const toggleIncidentResponsible = async (userId: string, currentValue: boolean) => {
     try {
+      const newValue = !currentValue;
+      const updatePayload: any = { can_be_incident_responsible: newValue };
+      if (!newValue) {
+        updatePayload.incident_responsible_company_ids = null;
+      }
+      if (newValue && childCompanies.length === 0) {
+        updatePayload.incident_responsible_company_ids = ['all'];
+      }
+      if (newValue && childCompanies.length > 0) {
+        updatePayload.incident_responsible_company_ids = ['all'];
+      }
       const { error } = await supabase
         .from("profiles")
-        .update({ can_be_incident_responsible: !currentValue } as any)
+        .update(updatePayload)
         .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(prev => prev.map(p => 
-        p.id === userId ? { ...p, can_be_incident_responsible: !currentValue } : p
+        p.id === userId ? { ...p, can_be_incident_responsible: newValue, incident_responsible_company_ids: updatePayload.incident_responsible_company_ids } : p
       ));
-      toast.success(!currentValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
+      toast.success(newValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
     } catch (error) {
       console.error("Error toggling incident responsible:", error);
       toast.error("Kunne ikke oppdatere innstilling");
@@ -1000,6 +1061,48 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
+                                        <Select
+                                          value={profile.approval_company_ids?.includes('all') ? 'all' : 'specific'}
+                                          onValueChange={(value) => {
+                                            if (value === 'all') {
+                                              updateApprovalScope(profile.id, ['all']);
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Velg avdelinger" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value="all">Alle avdelinger</SelectItem>
+                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {profile.approval_company_ids && !profile.approval_company_ids.includes('all') && (
+                                          <div className="mt-1 space-y-1">
+                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={profile.approval_company_ids?.includes(c.id) || false}
+                                                  onChange={(e) => {
+                                                    const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
+                                                    const newIds = e.target.checked
+                                                      ? [...current, c.id]
+                                                      : current.filter(id => id !== c.id);
+                                                    updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                  }}
+                                                  className="rounded border-border"
+                                                />
+                                                {c.navn}
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     {eccairsEnabled && (
                                       <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
@@ -1020,6 +1123,48 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
+                                        <Select
+                                          value={profile.incident_responsible_company_ids?.includes('all') ? 'all' : 'specific'}
+                                          onValueChange={(value) => {
+                                            if (value === 'all') {
+                                              updateIncidentScope(profile.id, ['all']);
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Velg avdelinger" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value="all">Alle avdelinger</SelectItem>
+                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {profile.incident_responsible_company_ids && !profile.incident_responsible_company_ids.includes('all') && (
+                                          <div className="mt-1 space-y-1">
+                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
+                                                  onChange={(e) => {
+                                                    const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
+                                                    const newIds = e.target.checked
+                                                      ? [...current, c.id]
+                                                      : current.filter(id => id !== c.id);
+                                                    updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                  }}
+                                                  className="rounded border-border"
+                                                />
+                                                {c.navn}
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     <div>
                                       <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
                                       {canManageRoles ? (
@@ -1086,6 +1231,54 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
+                                {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {profile.approval_company_ids?.includes('all') ? 'Alle' : `${(profile.approval_company_ids || []).length} avd.`}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Godkjenner for avdelinger</p>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={profile.approval_company_ids?.includes('all') || false}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              updateApprovalScope(profile.id, ['all']);
+                                            } else {
+                                              updateApprovalScope(profile.id, [companyId || '']);
+                                            }
+                                          }}
+                                          className="rounded border-border"
+                                        />
+                                        <strong>Alle avdelinger</strong>
+                                      </label>
+                                      {!profile.approval_company_ids?.includes('all') && (
+                                        <>
+                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={profile.approval_company_ids?.includes(c.id) || false}
+                                                onChange={(e) => {
+                                                  const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
+                                                  const newIds = e.target.checked
+                                                    ? [...current, c.id]
+                                                    : current.filter(id => id !== c.id);
+                                                  updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                }}
+                                                className="rounded border-border"
+                                              />
+                                              {c.navn}
+                                            </label>
+                                          ))}
+                                        </>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               {eccairsEnabled && (
                                 <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
@@ -1106,6 +1299,54 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
+                                {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {profile.incident_responsible_company_ids?.includes('all') ? 'Alle' : `${(profile.incident_responsible_company_ids || []).length} avd.`}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Ansvarlig for avdelinger</p>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={profile.incident_responsible_company_ids?.includes('all') || false}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              updateIncidentScope(profile.id, ['all']);
+                                            } else {
+                                              updateIncidentScope(profile.id, [companyId || '']);
+                                            }
+                                          }}
+                                          className="rounded border-border"
+                                        />
+                                        <strong>Alle avdelinger</strong>
+                                      </label>
+                                      {!profile.incident_responsible_company_ids?.includes('all') && (
+                                        <>
+                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
+                                                onChange={(e) => {
+                                                  const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
+                                                  const newIds = e.target.checked
+                                                    ? [...current, c.id]
+                                                    : current.filter(id => id !== c.id);
+                                                  updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                }}
+                                                className="rounded border-border"
+                                              />
+                                              {c.navn}
+                                            </label>
+                                          ))}
+                                        </>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               {!isChildCompany && childCompanies.length > 0 && (
                                 <Select 
