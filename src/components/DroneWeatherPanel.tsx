@@ -364,7 +364,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         )}
 
         {/* Current conditions */}
-        <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
+        <div className="grid grid-cols-2 gap-3 py-2 px-3 rounded-md bg-muted/50">
           <div className="flex items-center gap-1.5 text-sm">
             <Wind className="w-4 h-4 text-muted-foreground" />
             <span className="font-medium text-foreground">{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
@@ -377,6 +377,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <Droplets className="w-4 h-4 text-muted-foreground" />
             <span className="font-medium text-foreground">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
           </div>
+          {weatherData.current.dew_point != null && (
+            <div className="flex items-center gap-1.5 text-sm">
+              <CloudRain className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground">{weatherData.current.dew_point.toFixed(1)}°C duggp.</span>
+            </div>
+          )}
         </div>
 
         {/* Forecast section */}
