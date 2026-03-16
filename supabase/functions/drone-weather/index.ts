@@ -206,6 +206,7 @@ function generateHourlyForecast(timeseries: any[]) {
       temperature: current?.air_temperature || null,
       wind_speed: current?.wind_speed || null,
       wind_gust: current?.wind_speed_of_gust || null,
+      dew_point: current?.dew_point_temperature ?? null,
       precipitation: next1h?.details?.precipitation_amount || 0,
       symbol: next1h?.summary?.symbol_code || 'unknown',
       recommendation,
