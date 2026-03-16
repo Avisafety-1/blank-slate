@@ -1,67 +1,67 @@
+## Multi-Company Access – IMPLEMENTERT
 
-Mål: gjøre SafeSky til førsteprioritet på /kart, slik at lufttrafikk vises raskt og stabilt selv når cache-tabellen er tom ved oppstart.
+### Database
+- `companies.parent_company_id` – valgfri FK til morselskap
+- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
+- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
+- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
+- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
+- Eksisterende profiler seedet inn i user_companies
 
-Hva jeg fant
-- `OpenAIPMap.tsx` starter mange tunge kartkall først (`fetchNsmData`, `fetchRpasData`, `fetchAipRestrictionZones`, osv.), og SafeSky startes senere med ekstra `setTimeout(..., 500)`.
-- `mapSafeSky.ts` leser bare fra `public.safesky_beacons`. Den kan ikke selv “varme opp” data hvis tabellen er tom.
-- `safesky-beacons-fetch` fyller tabellen bare når det finnes aktiv `map_viewer_heartbeats` eller aktive DroneTag-flyvninger.
-- DB-sjekk viste at `safesky_beacons` var tom da problemet oppstod, og noen sekunder senere ble den fylt igjen. Det betyr at dagens løsning er avhengig av forsinket backend-oppvarming, ikke umiddelbar kartlasting.
+### Frontend
+- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
+- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
+- `CompanyManagementDialog`: Morselskap-velger (superadmin)
 
-Plan
-1. Prioriter SafeSky i kart-init
-- Flytt heartbeat + SafeSky-start helt opp i `OpenAIPMap.tsx`, før øvrige kartdatasett lastes.
-- Fjern den faste 500 ms forsinkelsen.
-- Start øvrige lag etterpå, slik at SafeSky får første nettverks-/render-prioritet.
+### Arkitektur
+- `profiles.company_id` = aktivt selskap (uendret)
+- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
 
-2. Legg inn aktiv “warm-up” av SafeSky-cache
-- Utvid `mapSafeSky.ts` slik at første `start()`:
-  - sikrer heartbeat først
-  - triggere `safesky-beacons-fetch` eksplisitt via edge function
-  - gjør noen korte oppstarts-retries hvis første databasekall fortsatt returnerer 0 beacons
-- Dette gjør at kartet ikke må vente på at cron alene oppdager at noen ser på kartet.
+### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
+- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
+- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
+- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
+- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
+- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
 
-3. Behold og bygge videre på robustheten som allerede er lagt inn
-- Behold dagens guards mot Leaflet-feil, reconnect-logikk og session-refresh.
-- Kombiner dette med “initial fast path” for første lasting.
+---
 
-4. Gjør SafeSky-tilstanden tydelig i UI
-- Legg inn enkel SafeSky-status i kartet:
-  - “Laster lufttrafikk…”
-  - “Ingen lufttrafikk funnet akkurat nå”
-  - eventuelt “Kunne ikke hente lufttrafikk”
-- Dette gjør at blankt lag ikke ser ut som en feil.
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-5. Valgfri backend-opprydding etterpå
-- Når on-demand warm-up er på plass, kan vi vurdere å redusere cron-frekvensen for `safesky-beacons-fetch` (den står nå ekstremt aggressivt) og bruke cron som fallback i stedet for primærmekanisme.
-- Dette krever DB-migrasjon for pg_cron-jobben, men er ikke nødvendig for første fix.
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-Filer som bør endres
-- `src/components/OpenAIPMap.tsx`
-  - rekkefølge på init
-  - heartbeat først
-  - SafeSky-start før andre fetches
-- `src/lib/mapSafeSky.ts`
-  - on-demand warm-up via edge function
-  - kort oppstarts-retry når cache er tom
-  - enkel status/state for initial lasting
-- Valgfritt: pg_cron-migrasjon
-  - justere jobb for `safesky-beacons-fetch` senere
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-Tekniske detaljer
-- Anbefalt init-sekvens:
-```text
-map created
--> sendHeartbeat()
--> safeSkyManager.start()
-   -> invoke safesky-beacons-fetch
-   -> immediate DB fetch
-   -> short retry burst if empty
--> load other map layers
-```
-- Viktig at warm-up i `mapSafeSky.ts` er deduplisert, så vi ikke spammer edge function ved hvert toggle/re-render.
-- Realtime-subscriptionen på `safesky_beacons` beholdes, slik at beacons dukker opp straks backend har fylt tabellen.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-Forventet effekt
-- SafeSky vises raskere ved åpning av kartet.
-- Tom cache ved oppstart blir ikke lenger en “død periode”.
-- Opplevelsen blir mer forutsigbar: SafeSky laster først, øvrige kartlag kommer etter.
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
