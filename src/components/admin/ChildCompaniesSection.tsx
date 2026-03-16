@@ -54,7 +54,7 @@ export const ChildCompaniesSection = () => {
       setChildren(data || []);
     } catch (error) {
       console.error("Error fetching child companies:", error);
-      toast.error("Kunne ikke laste underselskaper");
+      toast.error("Kunne ikke laste avdelinger");
     } finally {
       setLoading(false);
     }
@@ -88,13 +88,13 @@ export const ChildCompaniesSection = () => {
         .eq("id", companyToDelete.id);
 
       if (error) throw error;
-      toast.success("Underselskap slettet");
+      toast.success("Avdeling slettet");
       setDeleteDialogOpen(false);
       setCompanyToDelete(null);
       fetchChildren();
     } catch (error: any) {
       console.error("Error deleting child company:", error);
-      toast.error("Kunne ikke slette underselskap: " + error.message);
+      toast.error("Kunne ikke slette avdeling: " + error.message);
     }
   };
 
@@ -108,15 +108,15 @@ export const ChildCompaniesSection = () => {
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Underselskaper
+              Avdelinger
             </h3>
             <p className="text-sm text-muted-foreground">
-              Opprett og administrer underselskaper tilknyttet ditt selskap
+              Opprett og administrer avdelinger tilknyttet ditt selskap
             </p>
           </div>
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            Nytt underselskap
+            Ny avdeling
           </Button>
         </div>
 
@@ -124,7 +124,7 @@ export const ChildCompaniesSection = () => {
           <p className="text-muted-foreground text-sm">Laster...</p>
         ) : children.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
-            Ingen underselskaper opprettet ennå.
+            Ingen avdelinger opprettet ennå.
           </p>
         ) : isMobile ? (
           <div className="space-y-2">
@@ -202,7 +202,7 @@ export const ChildCompaniesSection = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slett underselskap</AlertDialogTitle>
+            <AlertDialogTitle>Slett avdeling</AlertDialogTitle>
             <AlertDialogDescription>
               Er du sikker på at du vil slette «{companyToDelete?.navn}»? Denne handlingen kan ikke angres.
             </AlertDialogDescription>
