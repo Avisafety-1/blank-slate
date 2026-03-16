@@ -347,6 +347,33 @@ export const CompanyManagementDialog = ({
               )}
             />
 
+            {isSuperAdmin && (
+              <FormField
+                control={form.control}
+                name="parent_company_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Morselskap (valgfritt)</FormLabel>
+                    <FormControl>
+                      <select
+                        className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      >
+                        <option value="">Ingen (selvstendig selskap)</option>
+                        {allCompanies
+                          .filter(c => c.id !== company?.id)
+                          .map(c => (
+                            <option key={c.id} value={c.id}>{c.navn}</option>
+                          ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
