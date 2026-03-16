@@ -92,6 +92,7 @@ const Admin = () => {
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
+  const [isChildCompany, setIsChildCompany] = useState(false);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
@@ -148,13 +149,14 @@ const Admin = () => {
       if (companyId) {
         const { data: companyData } = await supabase
           .from("companies")
-          .select("registration_code, eccairs_enabled")
+          .select("registration_code, eccairs_enabled, parent_company_id")
           .eq("id", companyId)
           .single();
         
         if (companyData) {
           setRegistrationCode(companyData.registration_code);
           setEccairsEnabled(companyData.eccairs_enabled === true);
+          setIsChildCompany(!!companyData.parent_company_id);
         }
       }
 
@@ -549,7 +551,7 @@ const Admin = () => {
                 <span>{t('admin.companies')}</span>
               </TabsTrigger>
             )}
-            {!isSuperAdmin && (
+            {!isSuperAdmin && !isChildCompany && (
               <TabsTrigger value="child-companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span>Underselskaper</span>
@@ -1059,7 +1061,7 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          {!isSuperAdmin && (
+          {!isSuperAdmin && !isChildCompany && (
             <TabsContent value="child-companies" className="mt-4 sm:mt-8">
               <ChildCompaniesSection />
             </TabsContent>
