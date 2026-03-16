@@ -1,27 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-# Fix: Lukkeknapp bak iOS-statuslinja i fullskjerm-dialoger
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-## Problem
-Lukkeknappen (X) i `DialogContent` er posisjonert med `top-4` (16px). På iPhone PWA i fullskjermsmodus dekker statuslinjen (ca. 47-59px) denne knappen, noe som gjør den nesten umulig å trykke på.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-## Løsning
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-### `src/components/ui/dialog.tsx` (linje 98)
-Endre close-knappens posisjonering fra fast `top-4` til å respektere iOS safe area:
-
-```
-top-4  →  top-[max(1rem,env(safe-area-inset-top,1rem))]
-```
-
-Dette sørger for at knappen alltid er minimum 16px fra toppen, men skyves ned til under statuslinjen på iOS PWA-enheter der `safe-area-inset-top` er satt.
-
-### `src/components/dashboard/ExpandedMapDialog.tsx` (linje 580)
-Legg til safe-area-padding på `DialogHeader` slik at tittelen også flyttes ned:
-
-```
-px-3 py-2  →  px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))]
-```
-
-En-fil endring som fikser problemet globalt for alle fullskjerm-dialoger, uten å påvirke vanlige dialoger (der safe-area-inset-top er 0).
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal

@@ -577,7 +577,7 @@ export const ExpandedMapDialog = ({
         className="max-w-4xl w-full sm:w-[95vw] h-screen sm:h-[90vh] flex flex-col p-0 rounded-none sm:rounded-lg"
         aria-describedby={undefined}
       >
-        <DialogHeader className="px-3 py-2">
+        <DialogHeader className="px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))]">
           <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
         </DialogHeader>
 
