@@ -47,6 +47,8 @@ interface CompanyManagementDialogProps {
   onOpenChange: (open: boolean) => void;
   company: Company | null;
   onSuccess: () => void;
+  /** When set, locks parent_company_id to this value (used by admin child-company flow) */
+  forceParentCompanyId?: string;
 }
 
 const companySchema = z.object({
