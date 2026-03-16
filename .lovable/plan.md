@@ -15,8 +15,14 @@
 
 ### Arkitektur
 - `profiles.company_id` = aktivt selskap (uendret)
-- Alle eksisterende RLS-policyer er uendret
 - Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+
+### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
+- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
+- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
+- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
+- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
+- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
 
 ---
 
