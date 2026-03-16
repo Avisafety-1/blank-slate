@@ -63,6 +63,12 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
   const [currentUserName, setCurrentUserName] = useState("");
   const [selectedResponsibleId, setSelectedResponsibleId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  // Sync local status from prop
+  useEffect(() => {
+    if (incident) setLocalStatus(incident.status);
+  }, [incident?.id, incident?.status]);
 
   useEffect(() => {
     const checkAdmin = async () => {
