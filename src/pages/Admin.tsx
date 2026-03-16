@@ -471,6 +471,29 @@ const Admin = () => {
     }
   };
 
+  const changeDepartment = async (userId: string, newCompanyId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ company_id: newCompanyId } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      const targetName = newCompanyId === companyId 
+        ? (companyName || 'Hovedselskap') 
+        : childCompanies.find(c => c.id === newCompanyId)?.navn || 'Avdeling';
+      
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, company_id: newCompanyId } : p
+      ));
+      toast.success(`Bruker flyttet til ${targetName}`);
+    } catch (error) {
+      console.error("Error changing department:", error);
+      toast.error("Kunne ikke endre avdeling");
+    }
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -493,6 +516,13 @@ const Admin = () => {
   const pendingUsers = profiles.filter((p) => !p.approved);
   const approvedUsers = profiles.filter((p) => p.approved);
 
+  // Helper to get department name for a profile
+  const getDepartmentName = (profile: Profile) => {
+    if (profile.company_id === companyId) return companyName || 'Hovedselskap';
+    const child = childCompanies.find(c => c.id === profile.company_id);
+    return child?.navn || (profile.companies as any)?.navn || '—';
+  };
+
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-50 w-full">
@@ -510,7 +540,6 @@ const Admin = () => {
               </div>
             </Button>
             <nav className="flex items-center justify-end gap-0.5 sm:gap-2 lg:gap-4 flex-1 min-w-0 flex-wrap overflow-visible">
-              {/* Mobile Navigation - Hamburger Menu (placed next to Back) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="md:hidden">
                   <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
@@ -623,28 +652,6 @@ const Admin = () => {
                 </Card>
               )}
 
-  const changeDepartment = async (userId: string, newCompanyId: string) => {
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ company_id: newCompanyId } as any)
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      const targetName = newCompanyId === companyId 
-        ? (companyName || 'Hovedselskap') 
-        : childCompanies.find(c => c.id === newCompanyId)?.navn || 'Avdeling';
-      
-      setProfiles(prev => prev.map(p => 
-        p.id === userId ? { ...p, company_id: newCompanyId } : p
-      ));
-      toast.success(`Bruker flyttet til ${targetName}`);
-    } catch (error) {
-      console.error("Error changing department:", error);
-      toast.error("Kunne ikke endre avdeling");
-    }
-  };
 
               {isSuperAdmin && (
                 <Card>
