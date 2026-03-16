@@ -90,6 +90,7 @@ export const CompanyManagementDialog = ({
   onOpenChange,
   company,
   onSuccess,
+  forceParentCompanyId,
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeExempt, setStripeExempt] = useState(false);
