@@ -324,6 +324,7 @@ serve(async (req) => {
         wind_gust: current?.wind_speed_of_gust || null,
         wind_direction: current?.wind_from_direction || null,
         humidity: current?.relative_humidity || null,
+        dew_point: current?.dew_point_temperature ?? null,
         precipitation: next1h?.details?.precipitation_amount || 0,
         symbol: next1h?.summary?.symbol_code || 'unknown',
       },
