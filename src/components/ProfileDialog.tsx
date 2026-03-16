@@ -269,11 +269,19 @@ export const ProfileDialog = () => {
           .eq("approval_status", "pending_approval")
           .order("submitted_for_approval_at", { ascending: false });
         
-        if (approvalIds && Array.isArray(approvalIds) && !approvalIds.includes('all')) {
+        if (approvalIds && Array.isArray(approvalIds) && approvalIds.includes('all')) {
+          // 'all' — fetch own company + all child companies
+          const { data: childCos } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('parent_company_id', profileData.company_id);
+          const allIds = [profileData.company_id, ...(childCos || []).map((c: any) => c.id)];
+          pendingQuery = pendingQuery.in("company_id", allIds);
+        } else if (approvalIds && Array.isArray(approvalIds)) {
           // Scoped to specific departments
           pendingQuery = pendingQuery.in("company_id", approvalIds);
         } else {
-          // Legacy (null) or 'all' - show own company
+          // Legacy (null) - show own company
           pendingQuery = pendingQuery.eq("company_id", profileData.company_id);
         }
 
