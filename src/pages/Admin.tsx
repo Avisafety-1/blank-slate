@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyManagementSection } from "@/components/admin/CompanyManagementSection";
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
+import { ChildCompaniesSection } from "@/components/admin/ChildCompaniesSection";
 import { CompanySoraConfigSection } from "@/components/admin/CompanySoraConfigSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
