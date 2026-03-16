@@ -128,7 +128,7 @@ serve(async (req) => {
       await supabaseClient
         .from('company_subscriptions')
         .update({ addons: updatedAddons, updated_at: new Date().toISOString() })
-        .eq('company_id', profile.company_id);
+        .eq('company_id', effectiveCompanyId);
 
       logStep("Addon added", { addon_id, updatedAddons });
 
