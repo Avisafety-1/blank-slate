@@ -17,7 +17,9 @@ export function createSafeSkyManager(params: {
   const heliAnimIntervals = new Map<string, number>();
   let destroyed = false;
   let consecutiveFailures = 0;
+  let consecutiveEmptyResults = 0;
   const MAX_FAILURES_BEFORE_RECONNECT = 3;
+  const MAX_EMPTY_BEFORE_REFRESH = 5;
   
   function clearAllHeliIntervals() {
     for (const [, intervalId] of heliAnimIntervals) {
