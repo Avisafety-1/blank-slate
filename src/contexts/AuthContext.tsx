@@ -94,9 +94,11 @@ const AuthContext = createContext<AuthContextType>({
   subscriptionAddons: [],
   isBillingOwner: false,
   seatCount: 1,
+  accessibleCompanies: [],
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
+  switchCompany: async () => {},
 });
 
 export const useAuth = () => {
