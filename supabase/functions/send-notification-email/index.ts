@@ -112,7 +112,7 @@ serve(async (req: Request): Promise<Response> => {
         companyIds.push(childCompany.parent_company_id);
       }
 
-      const { data: adminProfiles } = await supabase.from('profiles').select('id').eq(companyIds.length === 1 ? 'company_id' : undefined!, undefined!).in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
+      const { data: adminProfiles } = await supabase.from('profiles').select('id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
       if (!adminProfiles?.length) return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const { data: preferences } = await supabase.from('notification_preferences').select('user_id').in('user_id', adminProfiles.map(p => p.id)).eq('email_new_user_pending', true);
