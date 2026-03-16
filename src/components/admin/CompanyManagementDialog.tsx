@@ -160,6 +160,26 @@ export const CompanyManagementDialog = ({
     setIsSubmitting(true);
     
     try {
+      let inheritedStripeExempt = stripeExempt;
+      let inheritedDjiEnabled = false;
+      const parentId = forceParentCompanyId || data.parent_company_id || null;
+
+      // Inherit settings from parent company when creating a child
+      if (isCreating && parentId) {
+        const { data: parentCompany } = await supabase
+          .from("companies")
+          .select("stripe_exempt, dji_flightlog_enabled, selskapstype")
+          .eq("id", parentId)
+          .single();
+        if (parentCompany) {
+          inheritedStripeExempt = parentCompany.stripe_exempt;
+          inheritedDjiEnabled = parentCompany.dji_flightlog_enabled;
+          if (!data.selskapstype) {
+            data.selskapstype = (parentCompany.selskapstype as 'droneoperator' | 'flyselskap') || 'droneoperator';
+          }
+        }
+      }
+
       const companyData = {
         navn: data.navn,
         selskapstype: data.selskapstype,
@@ -169,8 +189,9 @@ export const CompanyManagementDialog = ({
         adresse_lon: data.adresse_lon || null,
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
-        stripe_exempt: stripeExempt,
-        parent_company_id: forceParentCompanyId || data.parent_company_id || null,
+        stripe_exempt: inheritedStripeExempt,
+        dji_flightlog_enabled: inheritedDjiEnabled,
+        parent_company_id: parentId,
       };
 
       if (isCreating) {
