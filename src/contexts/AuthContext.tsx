@@ -646,6 +646,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyLon,
       isSuperAdmin, 
       djiFlightlogEnabled,
+      departmentsEnabled,
       isAdmin,
       isApproved,
       userRole, 
