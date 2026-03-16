@@ -1134,6 +1134,8 @@ const Admin = () => {
                                           onValueChange={(value) => {
                                             if (value === 'all') {
                                               updateIncidentScope(profile.id, ['all']);
+                                            } else {
+                                              updateIncidentScope(profile.id, [companyId || '']);
                                             }
                                           }}
                                         >
