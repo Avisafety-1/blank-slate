@@ -1059,6 +1059,12 @@ const Admin = () => {
             </TabsContent>
           )}
 
+          {!isSuperAdmin && (
+            <TabsContent value="child-companies" className="mt-4 sm:mt-8">
+              <ChildCompaniesSection />
+            </TabsContent>
+          )}
+
           {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
             <TabsContent value="calculator" className="mt-4 sm:mt-8">
               <RevenueCalculator />
