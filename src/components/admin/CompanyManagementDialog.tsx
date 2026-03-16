@@ -91,6 +91,8 @@ export const CompanyManagementDialog = ({
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeExempt, setStripeExempt] = useState(false);
+  const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
+  const { isSuperAdmin } = useAuth();
   const isCreating = !company;
 
   const form = useForm<CompanyFormData>({
