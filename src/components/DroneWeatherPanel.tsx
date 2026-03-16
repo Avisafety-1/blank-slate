@@ -545,6 +545,16 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
               </div>
               <div className="font-medium">{weatherData.current.humidity?.toFixed(0) || '-'}%</div>
             </div>
+
+            {weatherData.current.dew_point != null && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Droplets className="w-4 h-4" />
+                  <span>Duggpunkt</span>
+                </div>
+                <div className="font-medium">{weatherData.current.dew_point.toFixed(1)}°C</div>
+              </div>
+            )}
           </div>
 
           {weatherData.warnings.length > 0 && (
