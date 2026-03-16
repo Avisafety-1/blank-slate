@@ -4256,6 +4256,13 @@ export type Database = {
           e2_scope: string
         }[]
       }
+      get_incident_responsible_users: {
+        Args: { target_company_id: string }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       get_parent_company_id: { Args: { _company_id: string }; Returns: string }
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
