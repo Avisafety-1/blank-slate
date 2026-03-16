@@ -108,15 +108,15 @@ export const ChildCompaniesSection = () => {
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Underselskaper
+              Avdelinger
             </h3>
             <p className="text-sm text-muted-foreground">
-              Opprett og administrer underselskaper tilknyttet ditt selskap
+              Opprett og administrer avdelinger tilknyttet ditt selskap
             </p>
           </div>
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            Nytt underselskap
+            Ny avdeling
           </Button>
         </div>
 
