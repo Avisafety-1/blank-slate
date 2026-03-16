@@ -182,39 +182,10 @@ export const PasskeySetup = () => {
           )}
 
           {/* Add passkey flow */}
-          {showNameInput ? (
-            <div className="space-y-2.5 sm:space-y-3 border rounded-lg p-3 sm:p-4 bg-muted/30">
-              <div className="space-y-2">
-                <Label className="text-sm">{t("passkey.deviceNameLabel")}</Label>
-                <Input
-                  placeholder={t("passkey.deviceNamePlaceholder")}
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowNameInput(false);
-                    setDeviceName("");
-                  }}
-                  className="flex-1"
-                >
-                  {t("actions.cancel")}
-                </Button>
-                <Button onClick={handleRegister} disabled={registering} className="flex-1">
-                  {registering && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  {t("passkey.register")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button onClick={() => setShowNameInput(true)} variant="outline" disabled={isDevEnv}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("passkey.addPasskey")}
-            </Button>
-          )}
+          <Button onClick={handleRegister} variant="outline" disabled={isDevEnv || registering}>
+            {registering ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            {t("passkey.addPasskey")}
+          </Button>
         </CardContent>
       </Card>
 
