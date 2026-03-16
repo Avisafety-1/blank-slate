@@ -429,6 +429,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isSuperAdmin: false,
         djiFlightlogEnabled: false,
         stripeExempt: false,
+        departmentsEnabled: false,
       };
 
       if (profileResult.error && roleResult.error) {
