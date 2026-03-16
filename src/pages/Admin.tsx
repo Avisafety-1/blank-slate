@@ -92,6 +92,7 @@ const Admin = () => {
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
+  const [isChildCompany, setIsChildCompany] = useState(false);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
