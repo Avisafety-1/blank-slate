@@ -398,7 +398,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               adresse_lon,
               dji_flightlog_enabled,
               dronelog_api_key,
-              stripe_exempt
+              stripe_exempt,
+              parent_company_id
             )
           `)
           .eq('id', userId)
