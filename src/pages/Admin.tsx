@@ -623,6 +623,28 @@ const Admin = () => {
                 </Card>
               )}
 
+  const changeDepartment = async (userId: string, newCompanyId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ company_id: newCompanyId } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      const targetName = newCompanyId === companyId 
+        ? (companyName || 'Hovedselskap') 
+        : childCompanies.find(c => c.id === newCompanyId)?.navn || 'Avdeling';
+      
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, company_id: newCompanyId } : p
+      ));
+      toast.success(`Bruker flyttet til ${targetName}`);
+    } catch (error) {
+      console.error("Error changing department:", error);
+      toast.error("Kunne ikke endre avdeling");
+    }
+  };
 
               {isSuperAdmin && (
                 <Card>
