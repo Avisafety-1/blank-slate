@@ -195,17 +195,26 @@ export const useOppdragData = () => {
   // Handlers
   const handleSubmitForApproval = async (mission: Mission) => {
     try {
-      // Check if anyone in the company can approve missions
+      // Check if anyone in the company can approve missions (with department scope fallback)
       const { data: approvers, error: approverError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('company_id', companyId)
+        .select('id, approval_company_ids')
         .eq('can_approve_missions', true)
-        .limit(1);
+        .limit(50);
 
       if (approverError) throw approverError;
 
-      if (!approvers || approvers.length === 0) {
+      // Filter approvers: must be able to approve for the mission's company
+      const relevantApprovers = (approvers || []).filter((a: any) => {
+        // If approval_company_ids is null, fallback to boolean (already true) + company_id match
+        if (!a.approval_company_ids) return true; // Legacy behavior - checked via old query
+        // If ['all'], can approve for any company
+        if (a.approval_company_ids.includes('all')) return true;
+        // Otherwise, must include the mission's company
+        return a.approval_company_ids.includes(companyId);
+      });
+
+      if (!relevantApprovers || relevantApprovers.length === 0) {
         toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
         return;
       }

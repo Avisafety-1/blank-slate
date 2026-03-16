@@ -261,12 +261,23 @@ export const ProfileDialog = () => {
 
       // Fetch pending approval missions if user can approve
       if (userCanApprove && profileData?.company_id) {
-        const { data: pendingMissions } = await supabase
+        // Determine which companies this user can approve for
+        const approvalIds = (profileApproval as any)?.approval_company_ids;
+        let pendingQuery = supabase
           .from("missions")
           .select("*")
-          .eq("company_id", profileData.company_id)
           .eq("approval_status", "pending_approval")
           .order("submitted_for_approval_at", { ascending: false });
+        
+        if (approvalIds && Array.isArray(approvalIds) && !approvalIds.includes('all')) {
+          // Scoped to specific departments
+          pendingQuery = pendingQuery.in("company_id", approvalIds);
+        } else {
+          // Legacy (null) or 'all' - show own company
+          pendingQuery = pendingQuery.eq("company_id", profileData.company_id);
+        }
+
+        const { data: pendingMissions } = await pendingQuery;
 
         // Fetch AI risk assessments for pending missions
         const missionIds = (pendingMissions || []).map((m: any) => m.id);

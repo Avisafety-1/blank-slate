@@ -1231,6 +1231,54 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
+                                {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {profile.approval_company_ids?.includes('all') ? 'Alle' : `${(profile.approval_company_ids || []).length} avd.`}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Godkjenner for avdelinger</p>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={profile.approval_company_ids?.includes('all') || false}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              updateApprovalScope(profile.id, ['all']);
+                                            } else {
+                                              updateApprovalScope(profile.id, [companyId || '']);
+                                            }
+                                          }}
+                                          className="rounded border-border"
+                                        />
+                                        <strong>Alle avdelinger</strong>
+                                      </label>
+                                      {!profile.approval_company_ids?.includes('all') && (
+                                        <>
+                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={profile.approval_company_ids?.includes(c.id) || false}
+                                                onChange={(e) => {
+                                                  const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
+                                                  const newIds = e.target.checked
+                                                    ? [...current, c.id]
+                                                    : current.filter(id => id !== c.id);
+                                                  updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                }}
+                                                className="rounded border-border"
+                                              />
+                                              {c.navn}
+                                            </label>
+                                          ))}
+                                        </>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               {eccairsEnabled && (
                                 <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
@@ -1251,6 +1299,54 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
+                                {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {profile.incident_responsible_company_ids?.includes('all') ? 'Alle' : `${(profile.incident_responsible_company_ids || []).length} avd.`}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Ansvarlig for avdelinger</p>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={profile.incident_responsible_company_ids?.includes('all') || false}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              updateIncidentScope(profile.id, ['all']);
+                                            } else {
+                                              updateIncidentScope(profile.id, [companyId || '']);
+                                            }
+                                          }}
+                                          className="rounded border-border"
+                                        />
+                                        <strong>Alle avdelinger</strong>
+                                      </label>
+                                      {!profile.incident_responsible_company_ids?.includes('all') && (
+                                        <>
+                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
+                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
+                                                onChange={(e) => {
+                                                  const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
+                                                  const newIds = e.target.checked
+                                                    ? [...current, c.id]
+                                                    : current.filter(id => id !== c.id);
+                                                  updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                                }}
+                                                className="rounded border-border"
+                                              />
+                                              {c.navn}
+                                            </label>
+                                          ))}
+                                        </>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               {!isChildCompany && childCompanies.length > 0 && (
                                 <Select 

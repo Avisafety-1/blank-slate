@@ -446,7 +446,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               return a.approval_company_ids.includes(companyId);
             });
             
-            if (!approvers || approvers.length === 0) {
+            if (!relevant || relevant.length === 0) {
               toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
               setApprovalConfirmOpen(false);
               return;
