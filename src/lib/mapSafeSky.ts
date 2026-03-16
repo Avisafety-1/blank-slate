@@ -160,6 +160,19 @@ export function createSafeSkyManager(params: {
 
   async function fetchSafeSkyBeacons() {
     if (destroyed) return;
+    
+    // Auth guard: check session before querying
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        console.warn('SafeSky: no active session, skipping beacon fetch');
+        return;
+      }
+    } catch (err) {
+      console.warn('SafeSky: session check failed', err);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('safesky_beacons')
@@ -168,6 +181,7 @@ export function createSafeSkyManager(params: {
       if (error) {
         console.error('SafeSky database error:', error);
         consecutiveFailures++;
+        consecutiveEmptyResults = 0;
         if (consecutiveFailures >= MAX_FAILURES_BEFORE_RECONNECT) {
           console.warn('SafeSky: too many failures, reconnecting...');
           reconnect();
@@ -176,7 +190,25 @@ export function createSafeSkyManager(params: {
       }
       
       consecutiveFailures = 0;
-      renderSafeSkyBeacons(data || []);
+      const beacons = data || [];
+      
+      if (beacons.length === 0) {
+        consecutiveEmptyResults++;
+        console.warn(`SafeSky: 0 beacons returned (${consecutiveEmptyResults} consecutive empty results)`);
+        if (consecutiveEmptyResults >= MAX_EMPTY_BEFORE_REFRESH) {
+          console.warn('SafeSky: too many empty results, refreshing auth token...');
+          consecutiveEmptyResults = 0;
+          try {
+            await supabase.auth.refreshSession();
+          } catch (refreshErr) {
+            console.error('SafeSky: token refresh failed', refreshErr);
+          }
+        }
+      } else {
+        consecutiveEmptyResults = 0;
+      }
+      
+      renderSafeSkyBeacons(beacons);
     } catch (err) {
       console.error('Feil ved henting av SafeSky data:', err);
       consecutiveFailures++;
