@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Fingerprint, Plus, Trash2, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
@@ -26,8 +23,6 @@ export const PasskeySetup = () => {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
-  const [deviceName, setDeviceName] = useState("");
-  const [showNameInput, setShowNameInput] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -71,15 +66,13 @@ export const PasskeySetup = () => {
           action: "register-verify",
           credential,
           signedChallenge: optionsData.signedChallenge,
-          deviceName: deviceName.trim() || getDefaultDeviceName(),
+          deviceName: getDefaultDeviceName(),
         },
       });
       if (verifyError) throw verifyError;
 
       if (verifyData.verified) {
         toast.success(t("passkey.registered"));
-        setShowNameInput(false);
-        setDeviceName("");
         try { localStorage.setItem("avisafe_passkey_registered", "1"); } catch {}
         await fetchPasskeys();
       } else {
@@ -189,39 +182,10 @@ export const PasskeySetup = () => {
           )}
 
           {/* Add passkey flow */}
-          {showNameInput ? (
-            <div className="space-y-2.5 sm:space-y-3 border rounded-lg p-3 sm:p-4 bg-muted/30">
-              <div className="space-y-2">
-                <Label className="text-sm">{t("passkey.deviceNameLabel")}</Label>
-                <Input
-                  placeholder={t("passkey.deviceNamePlaceholder")}
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowNameInput(false);
-                    setDeviceName("");
-                  }}
-                  className="flex-1"
-                >
-                  {t("actions.cancel")}
-                </Button>
-                <Button onClick={handleRegister} disabled={registering} className="flex-1">
-                  {registering && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  {t("passkey.register")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button onClick={() => setShowNameInput(true)} variant="outline" disabled={isDevEnv}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("passkey.addPasskey")}
-            </Button>
-          )}
+          <Button onClick={handleRegister} variant="outline" disabled={isDevEnv || registering}>
+            {registering ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            {t("passkey.addPasskey")}
+          </Button>
         </CardContent>
       </Card>
 
