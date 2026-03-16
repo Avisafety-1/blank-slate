@@ -406,7 +406,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="space-y-2">
                 <Label htmlFor="status-select">Endre status (Admin)</Label>
                 <Select 
-                  value={incident.status} 
+                  value={localStatus || incident.status} 
                   onValueChange={handleStatusChange}
                   disabled={updatingStatus}
                 >
