@@ -285,7 +285,7 @@ serve(async (req) => {
 
     // Kall MET API
     const userAgent = 'Avisafe/1.0 (kontakt@avisafe.no)';
-    const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${truncatedLat}&lon=${truncatedLon}`;
+    const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${truncatedLat}&lon=${truncatedLon}`;
     
     console.log('Fetching weather from MET:', metUrl);
     
