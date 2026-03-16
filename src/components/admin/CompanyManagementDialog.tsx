@@ -39,6 +39,7 @@ interface Company {
   aktiv: boolean;
   selskapstype?: string | null;
   stripe_exempt?: boolean;
+  parent_company_id?: string | null;
 }
 
 interface CompanyManagementDialogProps {
