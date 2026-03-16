@@ -4264,6 +4264,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_visible_company_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       gettransactionid: { Args: never; Returns: unknown }
       has_role: {
         Args: {
