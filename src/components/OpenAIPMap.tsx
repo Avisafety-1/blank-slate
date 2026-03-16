@@ -521,21 +521,7 @@ export function OpenAIPMap({
 
     map.on('click', handleMapClick);
 
-    // Fetch all data
-    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAipRestrictionZones({ ...geoJsonParams, layer: aipLayer, aipGeoJsonLayersRef });
-    fetchRmzTmzAtzZones({ ...geoJsonParams, layer: rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode });
-    fetchAirportsData({ layer: airportsLayer, mode });
-    fetchDroneTelemetry({ droneLayer, modeRef });
-    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
-    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
-    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
-
-    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
-
-    // Heartbeat
+    // Heartbeat — FIRST priority so backend knows someone is viewing
     let heartbeatInterval: number | undefined;
     const sendHeartbeat = async () => {
       try {
@@ -554,13 +540,27 @@ export function OpenAIPMap({
         console.error('Failed to delete heartbeat:', err);
       }
     };
-    sendHeartbeat();
+    await sendHeartbeat();
     heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
 
-    // SafeSky manager
+    // SafeSky manager — start immediately after heartbeat (first priority)
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
-    setTimeout(() => safeSkyManager.start(), 500);
+    safeSkyManager.start();
+
+    // Fetch all other data (lower priority than SafeSky)
+    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAipRestrictionZones({ ...geoJsonParams, layer: aipLayer, aipGeoJsonLayersRef });
+    fetchRmzTmzAtzZones({ ...geoJsonParams, layer: rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchObstacles({ layer: obstaclesLayer, mode });
+    fetchAirportsData({ layer: airportsLayer, mode });
+    fetchDroneTelemetry({ droneLayer, modeRef });
+    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+
+    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
 
     // Real-time subscriptions
     const mapChannel = supabase

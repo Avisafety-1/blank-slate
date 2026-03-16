@@ -222,6 +222,7 @@ export function createSafeSkyManager(params: {
   let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
   let safeskyDebounceTimer: number | null = null;
   let safeskyPollInterval: number | null = null;
+  let warmupTriggered = false;
 
   const debouncedFetchSafeSky = () => {
     if (destroyed) return;
@@ -232,6 +233,35 @@ export function createSafeSkyManager(params: {
       fetchSafeSkyBeacons();
     }, 500);
   };
+
+  /** Trigger edge function to populate cache on-demand (deduplicated) */
+  async function warmUpCache() {
+    if (warmupTriggered || destroyed) return;
+    warmupTriggered = true;
+    try {
+      console.log('SafeSky: triggering cache warm-up via edge function');
+      const { error } = await supabase.functions.invoke('safesky-beacons-fetch', { body: {} });
+      if (error) {
+        console.warn('SafeSky: warm-up invoke failed', error);
+      } else {
+        console.log('SafeSky: warm-up complete');
+      }
+    } catch (err) {
+      console.warn('SafeSky: warm-up error', err);
+    }
+  }
+
+  /** Short retry burst on startup if cache is empty */
+  async function startupRetryBurst() {
+    const retryDelays = [1000, 2000, 3000];
+    for (const delay of retryDelays) {
+      if (destroyed || safeskyMarkersCache.size > 0) return;
+      await new Promise(r => setTimeout(r, delay));
+      if (destroyed) return;
+      console.log(`SafeSky: startup retry after ${delay}ms`);
+      await fetchSafeSkyBeacons();
+    }
+  }
 
   function reconnect() {
     if (destroyed) return;
@@ -262,7 +292,17 @@ export function createSafeSkyManager(params: {
     if (destroyed) return;
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
-      fetchSafeSkyBeacons();
+      
+      // 1. Trigger cache warm-up (fire-and-forget, deduplicated)
+      warmUpCache();
+      
+      // 2. Immediate DB fetch
+      fetchSafeSkyBeacons().then(() => {
+        // 3. If still empty after first fetch, do short retry burst
+        if (safeskyMarkersCache.size === 0 && !destroyed) {
+          startupRetryBurst();
+        }
+      });
       
       safeskyPollInterval = window.setInterval(() => {
         fetchSafeSkyBeacons();
