@@ -62,6 +62,14 @@ interface Profile {
   can_approve_missions?: boolean;
   can_access_eccairs?: boolean;
   can_be_incident_responsible?: boolean;
+  company_id?: string | null;
+  companies?: { navn: string } | null;
+}
+
+interface ChildCompanyOption {
+  id: string;
+  navn: string;
+  registration_code: string;
 }
 
 interface UserRole {
