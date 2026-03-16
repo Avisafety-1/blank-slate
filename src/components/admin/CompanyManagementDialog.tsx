@@ -78,6 +78,7 @@ const companySchema = z.object({
     .max(20, "Telefonnummer må være under 20 tegn")
     .optional()
     .or(z.literal("")),
+  parent_company_id: z.string().nullable().optional(),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
