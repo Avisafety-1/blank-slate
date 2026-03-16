@@ -122,7 +122,7 @@ serve(async (req) => {
       line_items,
       mode: "subscription",
       metadata: {
-        company_id: profile.company_id,
+        company_id: effectiveCompanyId,
         user_id: user.id,
         plan,
         addons: JSON.stringify(addons),
