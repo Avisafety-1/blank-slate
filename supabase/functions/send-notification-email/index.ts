@@ -178,12 +178,14 @@ serve(async (req: Request): Promise<Response> => {
 
       // Get all profiles with can_approve_missions = true who are admins
       const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
+      console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       // Include parent company so parent-level approvers also get notified
       const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const relevantCompanyIds = [companyId];
       if (approvalCompany?.parent_company_id) relevantCompanyIds.push(approvalCompany.parent_company_id);
+      console.log(`[APPROVAL] relevantCompanyIds=${JSON.stringify(relevantCompanyIds)}, parent=${approvalCompany?.parent_company_id ?? 'none'}`);
 
       // Filter by department scope
       const approvers = approverProfiles.filter((a: any) => {
@@ -194,9 +196,11 @@ serve(async (req: Request): Promise<Response> => {
         // Otherwise, must include the mission's company
         return a.approval_company_ids.includes(companyId);
       });
+      console.log(`[APPROVAL] Filtered approvers count=${approvers.length}, ids=${JSON.stringify(approvers.map((a:any) => a.id))}`);
       if (!approvers.length) return new Response(JSON.stringify({ success: true, message: 'No approvers for this department' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', approvers.map(u => u.id)).eq('email_mission_approval', true);
+      console.log(`[APPROVAL] notificationPrefs count=${notificationPrefs?.length ?? 0}`);
       if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers with notifications' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
