@@ -27,6 +27,7 @@ interface CachedProfile {
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
   stripeExempt: boolean;
+  departmentsEnabled: boolean;
 }
 
 export interface AccessibleCompany {
