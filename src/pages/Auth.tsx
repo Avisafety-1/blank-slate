@@ -172,16 +172,26 @@ const Auth = () => {
 
   // Regular redirect for non-OAuth users
   useEffect(() => {
-    if (authLoading || checkingGoogleUser || showGoogleRegistration) return;
+    if (authLoading || checkingGoogleUser || showGoogleRegistration || showMfaChallenge) return;
 
     const isOAuthUser = user?.app_metadata?.provider === 'google' || 
                         user?.app_metadata?.providers?.includes('google');
 
     if (!isOAuthUser && user) {
-      console.log('Redirecting to app domain');
-      redirectToApp('/');
+      // Check MFA requirement before redirecting
+      const checkMfaAndRedirect = async () => {
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          console.log('User requires MFA verification before redirect');
+          setShowMfaChallenge(true);
+          return;
+        }
+        console.log('Redirecting to app domain');
+        redirectToApp('/');
+      };
+      checkMfaAndRedirect();
     }
-  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration]);
+  }, [user, authLoading, checkingGoogleUser, showGoogleRegistration, showMfaChallenge]);
 
   // Validate registration code when it changes
   useEffect(() => {
