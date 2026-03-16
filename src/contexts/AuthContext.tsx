@@ -492,6 +492,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await clearLocalAuthData(user?.id);
   };
 
+  const fetchAccessibleCompanies = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_accessible_companies', { _user_id: userId });
+      if (error) {
+        console.error('Error fetching accessible companies:', error);
+        return;
+      }
+      setAccessibleCompanies(
+        (data || []).map((c: any) => ({
+          id: c.company_id,
+          name: c.company_name,
+          isParent: c.is_parent,
+        }))
+      );
+    } catch (e) {
+      console.error('Failed to fetch accessible companies:', e);
+    }
+  };
+
+  const switchCompany = async (newCompanyId: string) => {
+    if (!user) return;
+    try {
+      // Verify access
+      const { data: canAccess } = await supabase.rpc('can_user_access_company', {
+        _user_id: user.id,
+        _company_id: newCompanyId,
+      });
+      if (!canAccess) {
+        console.error('User does not have access to this company');
+        return;
+      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({ company_id: newCompanyId })
+        .eq('id', user.id);
+      if (error) throw error;
+      await fetchUserInfo(user.id);
+    } catch (e) {
+      console.error('Error switching company:', e);
+    }
+  };
+
   const refetchUserInfo = async () => {
     if (user) {
       await fetchUserInfo(user.id);
