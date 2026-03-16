@@ -629,9 +629,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscriptionAddons,
       isBillingOwner,
       seatCount,
+      accessibleCompanies,
       signOut, 
       refetchUserInfo,
       checkSubscription,
+      switchCompany,
     }}>
       {children}
     </AuthContext.Provider>
