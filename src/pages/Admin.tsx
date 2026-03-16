@@ -170,15 +170,35 @@ const Admin = () => {
         }
       }
 
-      // Fetch profiles - filter by company
+      // Fetch child companies for parent company admins
+      let childIds: string[] = [];
+      if (companyId && !isChildCompany) {
+        const { data: childData } = await supabase
+          .from("companies")
+          .select("id, navn, registration_code")
+          .eq("parent_company_id", companyId)
+          .order("navn");
+        
+        if (childData && childData.length > 0) {
+          setChildCompanies(childData);
+          childIds = childData.map(c => c.id);
+        } else {
+          setChildCompanies([]);
+        }
+      }
+
+      // Fetch profiles - include child companies for parent admin
       let profilesQuery = supabase
         .from("profiles")
         .select("*, companies(navn)")
         .order("created_at", { ascending: false });
       
-      // Filter by company if companyId is set
       if (companyId) {
-        profilesQuery = profilesQuery.eq('company_id', companyId);
+        if (childIds.length > 0) {
+          profilesQuery = profilesQuery.in('company_id', [companyId, ...childIds]);
+        } else {
+          profilesQuery = profilesQuery.eq('company_id', companyId);
+        }
       }
 
       const { data: profilesData, error: profilesError } = await profilesQuery;
