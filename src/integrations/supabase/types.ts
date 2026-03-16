@@ -390,6 +390,7 @@ export type Database = {
           before_takeoff_checklist_ids: string[] | null
           billing_user_id: string | null
           created_at: string
+          departments_enabled: boolean
           dji_auto_sync_enabled: boolean
           dji_flightlog_enabled: boolean
           dji_sync_from_date: string | null
@@ -416,6 +417,7 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          departments_enabled?: boolean
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null
@@ -442,6 +444,7 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          departments_enabled?: boolean
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null

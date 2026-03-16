@@ -94,6 +94,7 @@ export const CompanyManagementDialog = ({
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeExempt, setStripeExempt] = useState(false);
+  const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
   const { isSuperAdmin } = useAuth();
   const isCreating = !company;
@@ -128,6 +129,7 @@ export const CompanyManagementDialog = ({
     if (open) {
       if (company) {
         setStripeExempt(company.stripe_exempt ?? false);
+        setDepartmentsEnabled((company as any).departments_enabled ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
@@ -141,6 +143,7 @@ export const CompanyManagementDialog = ({
         });
       } else {
         setStripeExempt(false);
+        setDepartmentsEnabled(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
@@ -192,6 +195,7 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         dji_flightlog_enabled: inheritedDjiEnabled,
         parent_company_id: parentId,
+        departments_enabled: departmentsEnabled,
       };
 
       if (isCreating) {
@@ -408,6 +412,20 @@ export const CompanyManagementDialog = ({
                   id="stripe_exempt"
                   checked={stripeExempt}
                   onCheckedChange={setStripeExempt}
+                />
+              </div>
+            )}
+
+            {isSuperAdmin && (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="departments_enabled" className="text-sm font-medium">Avdelingsstruktur</label>
+                  <p className="text-xs text-muted-foreground">Aktiver avdelinger/underselskaper for dette selskapet</p>
+                </div>
+                <Switch
+                  id="departments_enabled"
+                  checked={departmentsEnabled}
+                  onCheckedChange={setDepartmentsEnabled}
                 />
               </div>
             )}

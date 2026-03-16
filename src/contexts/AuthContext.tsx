@@ -27,6 +27,7 @@ interface CachedProfile {
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
   stripeExempt: boolean;
+  departmentsEnabled: boolean;
 }
 
 export interface AccessibleCompany {
@@ -46,6 +47,7 @@ interface AuthContextType {
   companyLon: number | null;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
   userRole: string | null;
@@ -79,6 +81,7 @@ const AuthContext = createContext<AuthContextType>({
   companyLon: null,
   isSuperAdmin: false,
   djiFlightlogEnabled: false,
+  departmentsEnabled: false,
   isAdmin: false,
   isApproved: false,
   userRole: null,
@@ -123,6 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [djiFlightlogEnabled, setDjiFlightlogEnabled] = useState(false);
+  const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
@@ -149,6 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAdmin(false);
     setIsApproved(false);
     setDjiFlightlogEnabled(false);
+    setDepartmentsEnabled(false);
     setUserRole(null);
     setStripeExempt(false);
     setSubscribed(false);
@@ -243,6 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(cached.isAdmin);
       setIsSuperAdmin(cached.isSuperAdmin);
       setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
+      setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
       console.log('AuthContext: Applied cached profile for offline use');
       return true;
@@ -399,7 +405,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               dji_flightlog_enabled,
               dronelog_api_key,
               stripe_exempt,
-              parent_company_id
+              parent_company_id,
+              departments_enabled
             )
           `)
           .eq('id', userId)
@@ -423,6 +430,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isSuperAdmin: false,
         djiFlightlogEnabled: false,
         stripeExempt: false,
+        departmentsEnabled: false,
       };
 
       if (profileResult.error && roleResult.error) {
@@ -443,6 +451,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyLon = company?.adresse_lon || null;
         profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
+        profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
         // If child company, inherit parent's settings
         if (company?.parent_company_id) {
@@ -479,6 +488,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
 
       saveCachedProfile(userId, profileData);
@@ -637,6 +647,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyLon,
       isSuperAdmin, 
       djiFlightlogEnabled,
+      departmentsEnabled,
       isAdmin,
       isApproved,
       userRole, 
