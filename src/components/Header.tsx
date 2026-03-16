@@ -24,10 +24,12 @@ interface Company {
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user } = useAuth();
+  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user, accessibleCompanies, switchCompany } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
+  // Superadmins: fetch ALL companies for full switcher
+  // Non-superadmins with multi-company access: use accessibleCompanies from AuthContext
   useEffect(() => {
     if (isSuperAdmin) {
       fetchCompanies();
@@ -48,18 +50,33 @@ export const Header = () => {
     }
   };
 
+  // Determine which company list to show in the switcher
+  const switcherCompanies = isSuperAdmin
+    ? companies.map(c => ({ id: c.id, navn: c.navn }))
+    : accessibleCompanies.length > 1
+      ? accessibleCompanies.map(c => ({ id: c.id, navn: c.name }))
+      : [];
+
   const handleCompanySwitch = async (newCompanyId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ company_id: newCompanyId })
-        .eq('id', user?.id);
-      
-      if (error) throw error;
-      
-      await refetchUserInfo();
-      const company = companies.find(c => c.id === newCompanyId);
-      toast.success(t('header.switchedTo', { company: company?.navn }));
+      if (isSuperAdmin) {
+        // Superadmins use direct profile update (existing behavior)
+        const { error } = await supabase
+          .from('profiles')
+          .update({ company_id: newCompanyId })
+          .eq('id', user?.id);
+        
+        if (error) throw error;
+        
+        await refetchUserInfo();
+        const company = companies.find(c => c.id === newCompanyId);
+        toast.success(t('header.switchedTo', { company: company?.navn }));
+      } else {
+        // Non-superadmins use validated switchCompany
+        await switchCompany(newCompanyId);
+        const company = accessibleCompanies.find(c => c.id === newCompanyId);
+        toast.success(t('header.switchedTo', { company: company?.name }));
+      }
     } catch (error) {
       console.error("Error switching company:", error);
       toast.error(t('header.couldNotSwitch'));
@@ -98,7 +115,7 @@ export const Header = () => {
           
           {/* Mobile company selector and menu */}
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
-            {isSuperAdmin && companies.length > 0 && (
+            {switcherCompanies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
@@ -106,7 +123,7 @@ export const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {companies.map((company) => (
+                  {switcherCompanies.map((company) => (
                     <DropdownMenuItem 
                       key={company.id} 
                       onClick={() => handleCompanySwitch(company.id)}
@@ -220,7 +237,7 @@ export const Header = () => {
           </nav>
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
-            {isSuperAdmin && companies.length > 0 && (
+            {switcherCompanies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1">
@@ -228,7 +245,7 @@ export const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {companies.map((company) => (
+                  {switcherCompanies.map((company) => (
                     <DropdownMenuItem 
                       key={company.id} 
                       onClick={() => handleCompanySwitch(company.id)}

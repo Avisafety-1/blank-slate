@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ interface Company {
   aktiv: boolean;
   selskapstype?: string | null;
   stripe_exempt?: boolean;
+  parent_company_id?: string | null;
 }
 
 interface CompanyManagementDialogProps {
@@ -76,6 +78,7 @@ const companySchema = z.object({
     .max(20, "Telefonnummer må være under 20 tegn")
     .optional()
     .or(z.literal("")),
+  parent_company_id: z.string().nullable().optional(),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -88,6 +91,8 @@ export const CompanyManagementDialog = ({
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeExempt, setStripeExempt] = useState(false);
+  const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
+  const { isSuperAdmin } = useAuth();
   const isCreating = !company;
 
   const form = useForm<CompanyFormData>({
@@ -101,8 +106,20 @@ export const CompanyManagementDialog = ({
       adresse_lon: null,
       kontakt_epost: "",
       kontakt_telefon: "",
+      parent_company_id: null,
     },
   });
+
+  // Fetch all companies for parent selector (superadmin only)
+  useEffect(() => {
+    if (open && isSuperAdmin) {
+      supabase
+        .from("companies")
+        .select("id, navn")
+        .order("navn")
+        .then(({ data }) => setAllCompanies(data || []));
+    }
+  }, [open, isSuperAdmin]);
 
   useEffect(() => {
     if (open) {
@@ -117,6 +134,7 @@ export const CompanyManagementDialog = ({
           adresse_lon: company.adresse_lon || null,
           kontakt_epost: company.kontakt_epost || "",
           kontakt_telefon: company.kontakt_telefon || "",
+          parent_company_id: company.parent_company_id || null,
         });
       } else {
         setStripeExempt(false);
@@ -129,6 +147,7 @@ export const CompanyManagementDialog = ({
           adresse_lon: null,
           kontakt_epost: "",
           kontakt_telefon: "",
+          parent_company_id: null,
         });
       }
     }
@@ -148,6 +167,7 @@ export const CompanyManagementDialog = ({
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
         stripe_exempt: stripeExempt,
+        parent_company_id: data.parent_company_id || null,
       };
 
       if (isCreating) {
@@ -326,6 +346,33 @@ export const CompanyManagementDialog = ({
                 </FormItem>
               )}
             />
+
+            {isSuperAdmin && (
+              <FormField
+                control={form.control}
+                name="parent_company_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Morselskap (valgfritt)</FormLabel>
+                    <FormControl>
+                      <select
+                        className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      >
+                        <option value="">Ingen (selvstendig selskap)</option>
+                        {allCompanies
+                          .filter(c => c.id !== company?.id)
+                          .map(c => (
+                            <option key={c.id} value={c.id}>{c.navn}</option>
+                          ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

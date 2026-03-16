@@ -29,6 +29,12 @@ interface CachedProfile {
   stripeExempt: boolean;
 }
 
+export interface AccessibleCompany {
+  id: string;
+  name: string;
+  isParent: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -55,9 +61,11 @@ interface AuthContextType {
   subscriptionAddons: AddonId[];
   isBillingOwner: boolean;
   seatCount: number;
+  accessibleCompanies: AccessibleCompany[];
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
+  switchCompany: (companyId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -86,9 +94,11 @@ const AuthContext = createContext<AuthContextType>({
   subscriptionAddons: [],
   isBillingOwner: false,
   seatCount: 1,
+  accessibleCompanies: [],
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
+  switchCompany: async () => {},
 });
 
 export const useAuth = () => {
@@ -125,6 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [subscriptionAddons, setSubscriptionAddons] = useState<AddonId[]>([]);
   const [isBillingOwner, setIsBillingOwner] = useState(false);
   const [seatCount, setSeatCount] = useState(1);
+  const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
 
   const resetAuthState = () => {
     setSession(null);
@@ -150,6 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSubscriptionAddons([]);
     setIsBillingOwner(false);
     setSeatCount(1);
+    setAccessibleCompanies([]);
   };
 
   const getErrorMessage = (error: unknown): string => {
@@ -469,6 +481,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
         }
       }
+
+      // Fetch accessible companies for multi-company switcher
+      fetchAccessibleCompanies(userId);
     } catch (error) {
       console.error('Error fetching user info:', error);
       if (!navigator.onLine) {
@@ -479,6 +494,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await clearLocalAuthData(user?.id);
+  };
+
+  const fetchAccessibleCompanies = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_accessible_companies', { _user_id: userId });
+      if (error) {
+        console.error('Error fetching accessible companies:', error);
+        return;
+      }
+      setAccessibleCompanies(
+        (data || []).map((c: any) => ({
+          id: c.company_id,
+          name: c.company_name,
+          isParent: c.is_parent,
+        }))
+      );
+    } catch (e) {
+      console.error('Failed to fetch accessible companies:', e);
+    }
+  };
+
+  const switchCompany = async (newCompanyId: string) => {
+    if (!user) return;
+    try {
+      // Verify access
+      const { data: canAccess } = await supabase.rpc('can_user_access_company', {
+        _user_id: user.id,
+        _company_id: newCompanyId,
+      });
+      if (!canAccess) {
+        console.error('User does not have access to this company');
+        return;
+      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({ company_id: newCompanyId })
+        .eq('id', user.id);
+      if (error) throw error;
+      await fetchUserInfo(user.id);
+    } catch (e) {
+      console.error('Error switching company:', e);
+    }
   };
 
   const refetchUserInfo = async () => {
@@ -576,9 +633,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscriptionAddons,
       isBillingOwner,
       seatCount,
+      accessibleCompanies,
       signOut, 
       refetchUserInfo,
       checkSubscription,
+      switchCompany,
     }}>
       {children}
     </AuthContext.Provider>

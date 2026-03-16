@@ -1,3 +1,25 @@
+## Multi-Company Access – IMPLEMENTERT
+
+### Database
+- `companies.parent_company_id` – valgfri FK til morselskap
+- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
+- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
+- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
+- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
+- Eksisterende profiler seedet inn i user_companies
+
+### Frontend
+- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
+- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
+- `CompanyManagementDialog`: Morselskap-velger (superadmin)
+
+### Arkitektur
+- `profiles.company_id` = aktivt selskap (uendret)
+- Alle eksisterende RLS-policyer er uendret
+- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+
+---
+
 ## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
 ### Stripe Live-produkter
