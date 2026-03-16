@@ -16,12 +16,20 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
 
     const fetchPendingCount = async () => {
       try {
+        // Check if this is a parent company (has child companies)
+        const { data: children } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("parent_company_id", companyId);
+
+        const companyIds = [companyId, ...(children || []).map(c => c.id)];
+
         // @ts-ignore - Approved column might not be in types yet
         const { data } = await supabase
           .from("profiles")
           .select("id")
           .eq("approved", false)
-          .eq("company_id", companyId);
+          .in("company_id", companyIds);
         
         if (data) {
           setPendingCount(data.length);
@@ -33,7 +41,6 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
 
     fetchPendingCount();
 
-    // Set up realtime subscription for profile changes
     const channel = supabase
       .channel("pending-approvals")
       .on(

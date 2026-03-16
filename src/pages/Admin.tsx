@@ -62,6 +62,14 @@ interface Profile {
   can_approve_missions?: boolean;
   can_access_eccairs?: boolean;
   can_be_incident_responsible?: boolean;
+  company_id?: string | null;
+  companies?: { navn: string } | null;
+}
+
+interface ChildCompanyOption {
+  id: string;
+  navn: string;
+  registration_code: string;
 }
 
 interface UserRole {
@@ -98,6 +106,8 @@ const Admin = () => {
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
   const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
+  const [childCompanies, setChildCompanies] = useState<ChildCompanyOption[]>([]);
+  const [inviteDepartment, setInviteDepartment] = useState<string>("parent");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -160,15 +170,35 @@ const Admin = () => {
         }
       }
 
-      // Fetch profiles - filter by company
+      // Fetch child companies for parent company admins
+      let childIds: string[] = [];
+      if (companyId && !isChildCompany) {
+        const { data: childData } = await supabase
+          .from("companies")
+          .select("id, navn, registration_code")
+          .eq("parent_company_id", companyId)
+          .order("navn");
+        
+        if (childData && childData.length > 0) {
+          setChildCompanies(childData);
+          childIds = childData.map(c => c.id);
+        } else {
+          setChildCompanies([]);
+        }
+      }
+
+      // Fetch profiles - include child companies for parent admin
       let profilesQuery = supabase
         .from("profiles")
         .select("*, companies(navn)")
         .order("created_at", { ascending: false });
       
-      // Filter by company if companyId is set
       if (companyId) {
-        profilesQuery = profilesQuery.eq('company_id', companyId);
+        if (childIds.length > 0) {
+          profilesQuery = profilesQuery.in('company_id', [companyId, ...childIds]);
+        } else {
+          profilesQuery = profilesQuery.eq('company_id', companyId);
+        }
       }
 
       const { data: profilesData, error: profilesError } = await profilesQuery;
@@ -441,6 +471,29 @@ const Admin = () => {
     }
   };
 
+  const changeDepartment = async (userId: string, newCompanyId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ company_id: newCompanyId } as any)
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      const targetName = newCompanyId === companyId 
+        ? (companyName || 'Hovedselskap') 
+        : childCompanies.find(c => c.id === newCompanyId)?.navn || 'Avdeling';
+      
+      setProfiles(prev => prev.map(p => 
+        p.id === userId ? { ...p, company_id: newCompanyId } : p
+      ));
+      toast.success(`Bruker flyttet til ${targetName}`);
+    } catch (error) {
+      console.error("Error changing department:", error);
+      toast.error("Kunne ikke endre avdeling");
+    }
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -463,6 +516,13 @@ const Admin = () => {
   const pendingUsers = profiles.filter((p) => !p.approved);
   const approvedUsers = profiles.filter((p) => p.approved);
 
+  // Helper to get department name for a profile
+  const getDepartmentName = (profile: Profile) => {
+    if (profile.company_id === companyId) return companyName || 'Hovedselskap';
+    const child = childCompanies.find(c => c.id === profile.company_id);
+    return child?.navn || (profile.companies as any)?.navn || '—';
+  };
+
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <header className="bg-card/20 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-50 w-full">
@@ -480,7 +540,6 @@ const Admin = () => {
               </div>
             </Button>
             <nav className="flex items-center justify-end gap-0.5 sm:gap-2 lg:gap-4 flex-1 min-w-0 flex-wrap overflow-visible">
-              {/* Mobile Navigation - Hamburger Menu (placed next to Back) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="md:hidden">
                   <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
@@ -703,29 +762,49 @@ const Admin = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <Input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="ny.bruker@eksempel.no"
-                      inputMode="email"
-                      className="sm:max-w-sm"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-1">
+                      <Input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="ny.bruker@eksempel.no"
+                        inputMode="email"
+                        className="sm:max-w-sm"
+                      />
+                      {!isChildCompany && childCompanies.length > 0 && (
+                        <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
+                          <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Velg avdeling" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="parent">{companyName || 'Hovedselskap'}</SelectItem>
+                            {childCompanies.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                     <Button
                       disabled={sendingInvite || !inviteEmail.trim()}
                       onClick={async () => {
                         const email = inviteEmail.trim();
                         if (!email) return;
 
+                        // Determine which registration code and company name to use
+                        const selectedChild = childCompanies.find(c => c.id === inviteDepartment);
+                        const inviteRegCode = selectedChild ? selectedChild.registration_code : registrationCode;
+                        const inviteCompanyName = selectedChild ? selectedChild.navn : (companyName || 'AviSafe');
+
                         try {
                           setSendingInvite(true);
                           const { data, error } = await supabase.functions.invoke("invite-user", {
-                            body: { email, companyName: companyName || 'AviSafe', registrationCode },
+                            body: { email, companyName: inviteCompanyName, registrationCode: inviteRegCode },
                           });
                           if (error) throw error;
 
-                          toast.success(`Invitasjon sendt til ${email}`);
+                          toast.success(`Invitasjon sendt til ${email}${selectedChild ? ` (${selectedChild.navn})` : ''}`);
                           setInviteEmail("");
                         } catch (err) {
                           console.error("Error sending invite:", err);
@@ -762,9 +841,16 @@ const Admin = () => {
                           className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm sm:text-base truncate">
-                              {profile.full_name || t('common.notSpecified')}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm sm:text-base truncate">
+                                {profile.full_name || t('common.notSpecified')}
+                              </p>
+                              {!isChildCompany && profile.company_id !== companyId && profile.companies && (
+                                <Badge variant="outline" className="text-xs flex-shrink-0">
+                                  {(profile.companies as any).navn}
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="truncate">{profile.email || t('admin.noEmail')}</span>
                               <span>•</span>
@@ -881,8 +967,30 @@ const Admin = () => {
                                   <div>
                                     <p className="font-medium text-sm">{profile.full_name || t('common.notSpecified')}</p>
                                     <p className="text-xs text-muted-foreground">{profile.email || t('admin.noEmail')}</p>
+                                    {!isChildCompany && childCompanies.length > 0 && (
+                                      <Badge variant="outline" className="text-xs mt-1">{getDepartmentName(profile)}</Badge>
+                                    )}
                                   </div>
                                   <div className="space-y-2">
+                                    {!isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Avdeling</span>
+                                        <Select 
+                                          value={profile.company_id || companyId || ""} 
+                                          onValueChange={(value) => changeDepartment(profile.id, value)}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Avdeling" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                            {childCompanies.map((c) => (
+                                              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
                                       <Switch
@@ -951,9 +1059,16 @@ const Admin = () => {
                               </Popover>
                             ) : (
                               <>
-                                <p className="font-medium text-sm sm:text-base truncate">
-                                  {profile.full_name || t('common.notSpecified')}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm sm:text-base truncate">
+                                    {profile.full_name || t('common.notSpecified')}
+                                  </p>
+                                  {!isChildCompany && childCompanies.length > 0 && (
+                                    <Badge variant="outline" className="text-xs flex-shrink-0">
+                                      {getDepartmentName(profile)}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {profile.email || t('admin.noEmail')}
                                 </p>
@@ -992,6 +1107,22 @@ const Admin = () => {
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
                               </div>
+                              {!isChildCompany && childCompanies.length > 0 && (
+                                <Select 
+                                  value={profile.company_id || companyId || ""} 
+                                  onValueChange={(value) => changeDepartment(profile.id, value)}
+                                >
+                                  <SelectTrigger className="w-[160px] h-10">
+                                    <SelectValue placeholder="Avdeling" />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-50">
+                                    <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                    {childCompanies.map((c) => (
+                                      <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               {canManageRoles ? (
                                 <Select 
                                   value={userRole?.role || ""} 
