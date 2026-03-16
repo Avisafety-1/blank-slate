@@ -29,6 +29,12 @@ interface CachedProfile {
   stripeExempt: boolean;
 }
 
+export interface AccessibleCompany {
+  id: string;
+  name: string;
+  isParent: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -55,9 +61,11 @@ interface AuthContextType {
   subscriptionAddons: AddonId[];
   isBillingOwner: boolean;
   seatCount: number;
+  accessibleCompanies: AccessibleCompany[];
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
+  switchCompany: (companyId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
