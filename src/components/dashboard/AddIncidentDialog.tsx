@@ -151,13 +151,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   };
 
   const fetchUsers = async () => {
+    if (!companyId) return;
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, incident_responsible_company_ids')
-        .eq('approved', true)
-        .eq('can_be_incident_responsible', true)
-        .order('full_name', { ascending: true });
+      const { data, error } = await supabase.rpc('get_incident_responsible_users', {
+        target_company_id: companyId
+      });
 
       if (error) throw error;
       setUsers(data || []);

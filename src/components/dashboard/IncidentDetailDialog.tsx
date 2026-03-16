@@ -86,16 +86,13 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     };
     
     const fetchUsers = async () => {
+      if (!incident?.company_id && !companyId) return;
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, incident_responsible_company_ids')
-          .eq('approved', true)
-          .eq('can_be_incident_responsible', true)
-          .order('full_name', { ascending: true });
+        const { data, error } = await supabase.rpc('get_incident_responsible_users', {
+          target_company_id: incident?.company_id || companyId!
+        });
 
         if (error) throw error;
-        // No client-side filtering needed here - show all eligible users, the scope is used for notifications
         setUsers(data || []);
       } catch (error) {
         console.error('Error fetching users:', error);
