@@ -967,8 +967,30 @@ const Admin = () => {
                                   <div>
                                     <p className="font-medium text-sm">{profile.full_name || t('common.notSpecified')}</p>
                                     <p className="text-xs text-muted-foreground">{profile.email || t('admin.noEmail')}</p>
+                                    {!isChildCompany && childCompanies.length > 0 && (
+                                      <Badge variant="outline" className="text-xs mt-1">{getDepartmentName(profile)}</Badge>
+                                    )}
                                   </div>
                                   <div className="space-y-2">
+                                    {!isChildCompany && childCompanies.length > 0 && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground block mb-1">Avdeling</span>
+                                        <Select 
+                                          value={profile.company_id || companyId || ""} 
+                                          onValueChange={(value) => changeDepartment(profile.id, value)}
+                                        >
+                                          <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Avdeling" />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[1300]">
+                                            <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                            {childCompanies.map((c) => (
+                                              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
                                       <Switch
