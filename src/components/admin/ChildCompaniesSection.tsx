@@ -202,7 +202,7 @@ export const ChildCompaniesSection = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slett underselskap</AlertDialogTitle>
+            <AlertDialogTitle>Slett avdeling</AlertDialogTitle>
             <AlertDialogDescription>
               Er du sikker på at du vil slette «{companyToDelete?.navn}»? Denne handlingen kan ikke angres.
             </AlertDialogDescription>
