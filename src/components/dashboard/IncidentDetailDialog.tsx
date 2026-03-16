@@ -446,8 +446,8 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Badge className={`${statusColors[incident.status as keyof typeof statusColors] || 'bg-gray-500/20'} border`}>
-              {incident.status}
+            <Badge className={`${statusColors[(localStatus || incident.status) as keyof typeof statusColors] || 'bg-gray-500/20'} border`}>
+              {localStatus || incident.status}
             </Badge>
             <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} border`}>
               Alvorlighetsgrad: {incident.alvorlighetsgrad}
