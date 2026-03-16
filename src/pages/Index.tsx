@@ -670,6 +670,9 @@ const Index = () => {
         onOpenChange={setStartFlightConfirmOpen}
         onStartFlight={confirmStartFlight}
       />
+
+      {/* Passkey prompt after first login */}
+      <PasskeyPromptDialog />
     </div>
     </DashboardRealtimeContext.Provider>
   );
