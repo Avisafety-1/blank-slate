@@ -105,7 +105,14 @@ serve(async (req: Request): Promise<Response> => {
       const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
       if (!adminRoles?.length) return new Response(JSON.stringify({ message: 'No admins' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('company_id', companyId).in('id', adminRoles.map(r => r.user_id));
+      // Include parent company admins so they get notified about child company registrations
+      const { data: childCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
+      const companyIds = [companyId];
+      if (childCompany?.parent_company_id) {
+        companyIds.push(childCompany.parent_company_id);
+      }
+
+      const { data: adminProfiles } = await supabase.from('profiles').select('id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
       if (!adminProfiles?.length) return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const { data: preferences } = await supabase.from('notification_preferences').select('user_id').in('user_id', adminProfiles.map(p => p.id)).eq('email_new_user_pending', true);
