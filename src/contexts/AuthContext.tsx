@@ -480,6 +480,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
         }
       }
+
+      // Fetch accessible companies for multi-company switcher
+      fetchAccessibleCompanies(userId);
     } catch (error) {
       console.error('Error fetching user info:', error);
       if (!navigator.onLine) {
