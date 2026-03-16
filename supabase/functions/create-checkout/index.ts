@@ -135,7 +135,7 @@ serve(async (req) => {
             end_behavior: { missing_payment_method: 'cancel' },
           },
           metadata: {
-            company_id: profile.company_id,
+            company_id: effectiveCompanyId,
             plan,
             addons: JSON.stringify(addons),
           },

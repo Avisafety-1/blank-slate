@@ -130,7 +130,7 @@ serve(async (req) => {
     await supabaseClient
       .from('company_subscriptions')
       .update({ plan: newPlan, updated_at: new Date().toISOString() })
-      .eq('company_id', profile.company_id);
+      .eq('company_id', effectiveCompanyId);
 
     logStep("Plan changed successfully", { from: currentPlan, to: newPlan });
 

@@ -443,6 +443,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyLon = company?.adresse_lon || null;
         profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
+
+        // If child company, inherit parent's settings
+        if (company?.parent_company_id) {
+          try {
+            const { data: parentCompany } = await supabase
+              .from('companies')
+              .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
+              .eq('id', company.parent_company_id)
+              .single();
+            if (parentCompany) {
+              profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
+              profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
+              console.log('AuthContext: Inherited settings from parent company', company.parent_company_id);
+            }
+          } catch (e) {
+            console.warn('AuthContext: Failed to fetch parent company settings', e);
+          }
+        }
       }
 
       if (roleResult.data) {
