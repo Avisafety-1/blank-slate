@@ -23,8 +23,6 @@ export const PasskeySetup = () => {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
-  const [deviceName, setDeviceName] = useState("");
-  const [showNameInput, setShowNameInput] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
