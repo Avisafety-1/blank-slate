@@ -80,11 +80,11 @@ serve(async (req) => {
     const { count: seatCount } = await supabaseClient
       .from('profiles')
       .select('id', { count: 'exact', head: true })
-      .eq('company_id', profile.company_id)
+      .eq('company_id', effectiveCompanyId)
       .eq('approved', true);
 
     const seats = seatCount || 1;
-    logStep("Seat count", { companyId: profile.company_id, seats });
+    logStep("Seat count", { companyId: effectiveCompanyId, seats });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
