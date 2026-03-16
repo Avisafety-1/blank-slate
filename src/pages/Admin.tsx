@@ -1085,6 +1085,22 @@ const Admin = () => {
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
                               </div>
+                              {!isChildCompany && childCompanies.length > 0 && (
+                                <Select 
+                                  value={profile.company_id || companyId || ""} 
+                                  onValueChange={(value) => changeDepartment(profile.id, value)}
+                                >
+                                  <SelectTrigger className="w-[160px] h-10">
+                                    <SelectValue placeholder="Avdeling" />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-50">
+                                    <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                    {childCompanies.map((c) => (
+                                      <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               {canManageRoles ? (
                                 <Select 
                                   value={userRole?.role || ""} 
