@@ -63,6 +63,12 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
   const [currentUserName, setCurrentUserName] = useState("");
   const [selectedResponsibleId, setSelectedResponsibleId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  // Sync local status from prop
+  useEffect(() => {
+    if (incident) setLocalStatus(incident.status);
+  }, [incident?.id, incident?.status]);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -205,10 +211,11 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     };
   }, [incident?.id]);
 
-  const handleStatusChange = async (newStatus: string) => {
+   const handleStatusChange = async (newStatus: string) => {
     if (!incident) return;
     
     setUpdatingStatus(true);
+    setLocalStatus(newStatus); // Optimistic update
     try {
       const { error } = await supabase
         .from('incidents')
@@ -223,6 +230,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       toast.success("Status oppdatert");
     } catch (error) {
       console.error("Error updating status:", error);
+      setLocalStatus(incident.status); // Revert on error
       toast.error("Kunne ikke oppdatere status");
     } finally {
       setUpdatingStatus(false);
@@ -398,7 +406,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="space-y-2">
                 <Label htmlFor="status-select">Endre status (Admin)</Label>
                 <Select 
-                  value={incident.status} 
+                  value={localStatus || incident.status} 
                   onValueChange={handleStatusChange}
                   disabled={updatingStatus}
                 >
@@ -438,8 +446,8 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Badge className={`${statusColors[incident.status as keyof typeof statusColors] || 'bg-gray-500/20'} border`}>
-              {incident.status}
+            <Badge className={`${statusColors[(localStatus || incident.status) as keyof typeof statusColors] || 'bg-gray-500/20'} border`}>
+              {localStatus || incident.status}
             </Badge>
             <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} border`}>
               Alvorlighetsgrad: {incident.alvorlighetsgrad}
