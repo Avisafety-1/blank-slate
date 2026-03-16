@@ -94,7 +94,7 @@ export const ChildCompaniesSection = () => {
       fetchChildren();
     } catch (error: any) {
       console.error("Error deleting child company:", error);
-      toast.error("Kunne ikke slette underselskap: " + error.message);
+      toast.error("Kunne ikke slette avdeling: " + error.message);
     }
   };
 
