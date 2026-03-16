@@ -450,6 +450,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyLon = company?.adresse_lon || null;
         profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
+        profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
         // If child company, inherit parent's settings
         if (company?.parent_company_id) {
