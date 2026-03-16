@@ -65,14 +65,26 @@ serve(async (req) => {
     
     if (!profile?.company_id) throw new Error("User has no company");
 
+    // Resolve to parent company if child
+    let effectiveCompanyId = profile.company_id;
+    const { data: comp } = await supabaseClient
+      .from('companies')
+      .select('parent_company_id')
+      .eq('id', profile.company_id)
+      .single();
+    if (comp?.parent_company_id) {
+      effectiveCompanyId = comp.parent_company_id;
+      logStep("Resolved to parent company", { child: profile.company_id, parent: effectiveCompanyId });
+    }
+
     const { count: seatCount } = await supabaseClient
       .from('profiles')
       .select('id', { count: 'exact', head: true })
-      .eq('company_id', profile.company_id)
+      .eq('company_id', effectiveCompanyId)
       .eq('approved', true);
 
     const seats = seatCount || 1;
-    logStep("Seat count", { companyId: profile.company_id, seats });
+    logStep("Seat count", { companyId: effectiveCompanyId, seats });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -110,7 +122,7 @@ serve(async (req) => {
       line_items,
       mode: "subscription",
       metadata: {
-        company_id: profile.company_id,
+        company_id: effectiveCompanyId,
         user_id: user.id,
         plan,
         addons: JSON.stringify(addons),
@@ -123,7 +135,7 @@ serve(async (req) => {
             end_behavior: { missing_payment_method: 'cancel' },
           },
           metadata: {
-            company_id: profile.company_id,
+            company_id: effectiveCompanyId,
             plan,
             addons: JSON.stringify(addons),
           },

@@ -72,7 +72,21 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    const companyId = profile?.company_id;
+    const rawCompanyId = profile?.company_id;
+
+    // Resolve to parent company if child
+    let companyId = rawCompanyId;
+    if (rawCompanyId) {
+      const { data: comp } = await supabaseClient
+        .from('companies')
+        .select('parent_company_id, billing_user_id')
+        .eq('id', rawCompanyId)
+        .single();
+      if (comp?.parent_company_id) {
+        companyId = comp.parent_company_id;
+        logStep("Resolved to parent company", { child: rawCompanyId, parent: companyId });
+      }
+    }
 
     // Check company billing_user_id
     let isBillingOwner = false;
