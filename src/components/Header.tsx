@@ -127,7 +127,7 @@ export const Header = () => {
                     <DropdownMenuItem 
                       key={company.id} 
                       onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent" : ""}
+                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
                     >
                       {company.navn}
                     </DropdownMenuItem>
@@ -249,7 +249,7 @@ export const Header = () => {
                     <DropdownMenuItem 
                       key={company.id} 
                       onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent" : ""}
+                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
                     >
                       {company.navn}
                     </DropdownMenuItem>
