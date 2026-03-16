@@ -47,6 +47,7 @@ interface AuthContextType {
   companyLon: number | null;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
   userRole: string | null;
