@@ -170,8 +170,20 @@ serve(async (req: Request): Promise<Response> => {
       const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
       if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: approvers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true).in('id', adminRolesForApproval.map(r => r.user_id));
-      if (!approvers?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      // Get all profiles with can_approve_missions = true who are admins
+      const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
+      if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // Filter by department scope
+      const approvers = approverProfiles.filter((a: any) => {
+        // If approval_company_ids is null, fallback to old logic: must match company_id
+        if (!a.approval_company_ids) return a.company_id === companyId;
+        // If ['all'], can approve for any company
+        if (a.approval_company_ids.includes('all')) return true;
+        // Otherwise, must include the mission's company
+        return a.approval_company_ids.includes(companyId);
+      });
+      if (!approvers.length) return new Response(JSON.stringify({ success: true, message: 'No approvers for this department' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', approvers.map(u => u.id)).eq('email_mission_approval', true);
       if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers with notifications' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });

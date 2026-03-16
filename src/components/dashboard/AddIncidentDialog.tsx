@@ -154,7 +154,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, incident_responsible_company_ids')
         .eq('approved', true)
         .eq('can_be_incident_responsible', true)
         .order('full_name', { ascending: true });
