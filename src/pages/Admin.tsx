@@ -733,29 +733,49 @@ const Admin = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <Input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="ny.bruker@eksempel.no"
-                      inputMode="email"
-                      className="sm:max-w-sm"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-1">
+                      <Input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="ny.bruker@eksempel.no"
+                        inputMode="email"
+                        className="sm:max-w-sm"
+                      />
+                      {!isChildCompany && childCompanies.length > 0 && (
+                        <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
+                          <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Velg avdeling" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="parent">{companyName || 'Hovedselskap'}</SelectItem>
+                            {childCompanies.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                     <Button
                       disabled={sendingInvite || !inviteEmail.trim()}
                       onClick={async () => {
                         const email = inviteEmail.trim();
                         if (!email) return;
 
+                        // Determine which registration code and company name to use
+                        const selectedChild = childCompanies.find(c => c.id === inviteDepartment);
+                        const inviteRegCode = selectedChild ? selectedChild.registration_code : registrationCode;
+                        const inviteCompanyName = selectedChild ? selectedChild.navn : (companyName || 'AviSafe');
+
                         try {
                           setSendingInvite(true);
                           const { data, error } = await supabase.functions.invoke("invite-user", {
-                            body: { email, companyName: companyName || 'AviSafe', registrationCode },
+                            body: { email, companyName: inviteCompanyName, registrationCode: inviteRegCode },
                           });
                           if (error) throw error;
 
-                          toast.success(`Invitasjon sendt til ${email}`);
+                          toast.success(`Invitasjon sendt til ${email}${selectedChild ? ` (${selectedChild.navn})` : ''}`);
                           setInviteEmail("");
                         } catch (err) {
                           console.error("Error sending invite:", err);
