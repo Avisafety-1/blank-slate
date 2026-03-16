@@ -106,8 +106,20 @@ export const CompanyManagementDialog = ({
       adresse_lon: null,
       kontakt_epost: "",
       kontakt_telefon: "",
+      parent_company_id: null,
     },
   });
+
+  // Fetch all companies for parent selector (superadmin only)
+  useEffect(() => {
+    if (open && isSuperAdmin) {
+      supabase
+        .from("companies")
+        .select("id, navn")
+        .order("navn")
+        .then(({ data }) => setAllCompanies(data || []));
+    }
+  }, [open, isSuperAdmin]);
 
   useEffect(() => {
     if (open) {
