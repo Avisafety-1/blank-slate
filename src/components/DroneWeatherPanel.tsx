@@ -45,6 +45,7 @@ interface HourlyForecast {
   temperature: number | null;
   wind_speed: number | null;
   wind_gust: number | null;
+  dew_point: number | null;
   precipitation: number;
   symbol: string;
   recommendation: 'ok' | 'caution' | 'warning';
