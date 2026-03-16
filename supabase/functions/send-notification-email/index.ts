@@ -39,7 +39,12 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
-      const { data: eligibleUsers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
+      // Include parent company so parent admins also get incident notifications
+      const { data: incidentCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
+      const incidentCompanyIds = [companyId];
+      if (incidentCompany?.parent_company_id) incidentCompanyIds.push(incidentCompany.parent_company_id);
+
+      const { data: eligibleUsers } = await supabase.from('profiles').select('id').in('company_id', incidentCompanyIds).eq('approved', true);
       if (!eligibleUsers?.length) return new Response(JSON.stringify({ success: true, message: 'No users' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleUsers.map(u => u.id)).eq('email_new_incident', true);
