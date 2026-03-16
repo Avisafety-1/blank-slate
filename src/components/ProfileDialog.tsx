@@ -251,7 +251,7 @@ export const ProfileDialog = () => {
       // Check if user can approve missions
       const { data: profileApproval } = await supabase
         .from("profiles")
-        .select("can_approve_missions, can_be_incident_responsible")
+        .select("can_approve_missions, can_be_incident_responsible, approval_company_ids, incident_responsible_company_ids")
         .eq("id", user.id)
         .single();
 
