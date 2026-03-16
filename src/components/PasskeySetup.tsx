@@ -66,7 +66,7 @@ export const PasskeySetup = () => {
           action: "register-verify",
           credential,
           signedChallenge: optionsData.signedChallenge,
-          deviceName: deviceName.trim() || getDefaultDeviceName(),
+          deviceName: getDefaultDeviceName(),
         },
       });
       if (verifyError) throw verifyError;
