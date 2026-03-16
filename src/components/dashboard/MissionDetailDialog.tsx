@@ -435,13 +435,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             // Check if anyone can approve missions
             const { data: approvers } = await supabase
               .from('profiles')
-              .select('id, approval_company_ids')
+              .select('id, approval_company_ids, company_id')
               .eq('can_approve_missions', true)
               .limit(50);
+
+            // Include parent company so parent-level approvers are found
+            const { data: parentLookup } = await supabase.from('companies').select('parent_company_id').eq('id', companyId!).single();
+            const relevantIds = [companyId!];
+            if (parentLookup?.parent_company_id) relevantIds.push(parentLookup.parent_company_id);
             
             // Filter: approver must cover this company
             const relevant = (approvers || []).filter((a: any) => {
-              if (!a.approval_company_ids) return true;
+              if (!a.approval_company_ids) return relevantIds.includes(a.company_id);
               if (a.approval_company_ids.includes('all')) return true;
               return a.approval_company_ids.includes(companyId);
             });

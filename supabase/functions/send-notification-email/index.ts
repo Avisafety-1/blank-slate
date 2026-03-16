@@ -179,10 +179,15 @@ serve(async (req: Request): Promise<Response> => {
       const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
+      // Include parent company so parent-level approvers also get notified
+      const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
+      const relevantCompanyIds = [companyId];
+      if (approvalCompany?.parent_company_id) relevantCompanyIds.push(approvalCompany.parent_company_id);
+
       // Filter by department scope
       const approvers = approverProfiles.filter((a: any) => {
-        // If approval_company_ids is null, fallback to old logic: must match company_id
-        if (!a.approval_company_ids) return a.company_id === companyId;
+        // If approval_company_ids is null, fallback: must belong to relevant companies
+        if (!a.approval_company_ids) return relevantCompanyIds.includes(a.company_id);
         // If ['all'], can approve for any company
         if (a.approval_company_ids.includes('all')) return true;
         // Otherwise, must include the mission's company
