@@ -134,6 +134,7 @@ export const CompanyManagementDialog = ({
           adresse_lon: company.adresse_lon || null,
           kontakt_epost: company.kontakt_epost || "",
           kontakt_telefon: company.kontakt_telefon || "",
+          parent_company_id: company.parent_company_id || null,
         });
       } else {
         setStripeExempt(false);
@@ -146,6 +147,7 @@ export const CompanyManagementDialog = ({
           adresse_lon: null,
           kontakt_epost: "",
           kontakt_telefon: "",
+          parent_company_id: null,
         });
       }
     }
