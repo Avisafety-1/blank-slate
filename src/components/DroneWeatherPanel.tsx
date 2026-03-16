@@ -26,6 +26,7 @@ interface SavedWeatherData {
     wind_gust: number | null;
     wind_direction: number | null;
     humidity: number | null;
+    dew_point?: number | null;
     precipitation: number;
     symbol: string;
   };
