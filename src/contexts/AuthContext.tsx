@@ -135,6 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [subscriptionAddons, setSubscriptionAddons] = useState<AddonId[]>([]);
   const [isBillingOwner, setIsBillingOwner] = useState(false);
   const [seatCount, setSeatCount] = useState(1);
+  const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
 
   const resetAuthState = () => {
     setSession(null);
