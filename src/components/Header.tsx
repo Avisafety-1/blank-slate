@@ -115,7 +115,7 @@ export const Header = () => {
           
           {/* Mobile company selector and menu */}
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
-            {isSuperAdmin && companies.length > 0 && (
+            {switcherCompanies.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
@@ -123,7 +123,7 @@ export const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {companies.map((company) => (
+                  {switcherCompanies.map((company) => (
                     <DropdownMenuItem 
                       key={company.id} 
                       onClick={() => handleCompanySwitch(company.id)}
