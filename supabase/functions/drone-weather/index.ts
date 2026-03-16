@@ -32,6 +32,7 @@ function evaluateWeatherConditions(current: any, next1h: any) {
   const precipitation = next1h?.details?.precipitation_amount || 0;
   const temperature = current.air_temperature || 0;
   const symbolCode = next1h?.summary?.symbol_code || '';
+  const dewPoint = current.dew_point_temperature;
 
   // Vind advarsler
   if (windSpeed > 10) {
@@ -125,6 +126,36 @@ function evaluateWeatherConditions(current: any, next1h: any) {
     });
   }
 
+  // Duggpunkt / kondens
+  if (dewPoint != null && temperature != null) {
+    const dewPointDiff = temperature - dewPoint;
+    if (dewPointDiff < 1) {
+      warnings.push({
+        level: 'warning',
+        type: 'dew_point',
+        message: `Svært høy risiko for kondens — duggpunktdifferanse ${dewPointDiff.toFixed(1)}°C`,
+        value: dewPointDiff,
+        unit: '°C'
+      });
+    } else if (dewPointDiff < 3) {
+      warnings.push({
+        level: 'caution',
+        type: 'dew_point',
+        message: `Fare for kondens — duggpunktdifferanse ${dewPointDiff.toFixed(1)}°C`,
+        value: dewPointDiff,
+        unit: '°C'
+      });
+    } else if (dewPointDiff < 5) {
+      warnings.push({
+        level: 'note',
+        type: 'dew_point',
+        message: `Nær duggpunktet (${dewPointDiff.toFixed(1)}°C differanse) — vær oppmerksom på fuktighet`,
+        value: dewPointDiff,
+        unit: '°C'
+      });
+    }
+  }
+
   // Tåke/uvær
   if (symbolCode.includes('fog')) {
     warnings.push({
@@ -175,6 +206,7 @@ function generateHourlyForecast(timeseries: any[]) {
       temperature: current?.air_temperature || null,
       wind_speed: current?.wind_speed || null,
       wind_gust: current?.wind_speed_of_gust || null,
+      dew_point: current?.dew_point_temperature ?? null,
       precipitation: next1h?.details?.precipitation_amount || 0,
       symbol: next1h?.summary?.symbol_code || 'unknown',
       recommendation,
@@ -254,7 +286,7 @@ serve(async (req) => {
 
     // Kall MET API
     const userAgent = 'Avisafe/1.0 (kontakt@avisafe.no)';
-    const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${truncatedLat}&lon=${truncatedLon}`;
+    const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${truncatedLat}&lon=${truncatedLon}`;
     
     console.log('Fetching weather from MET:', metUrl);
     
@@ -292,6 +324,7 @@ serve(async (req) => {
         wind_gust: current?.wind_speed_of_gust || null,
         wind_direction: current?.wind_from_direction || null,
         humidity: current?.relative_humidity || null,
+        dew_point: current?.dew_point_temperature ?? null,
         precipitation: next1h?.details?.precipitation_amount || 0,
         symbol: next1h?.summary?.symbol_code || 'unknown',
       },

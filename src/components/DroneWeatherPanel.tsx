@@ -45,6 +45,7 @@ interface HourlyForecast {
   temperature: number | null;
   wind_speed: number | null;
   wind_gust: number | null;
+  dew_point: number | null;
   precipitation: number;
   symbol: string;
   recommendation: 'ok' | 'caution' | 'warning';
@@ -65,6 +66,7 @@ interface WeatherData {
     wind_gust: number | null;
     wind_direction: number | null;
     humidity: number | null;
+    dew_point: number | null;
     precipitation: number;
     symbol: string;
   };
@@ -157,6 +159,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     const precipitation = hour.precipitation || 0;
     const temperature = hour.temperature || 0;
     const symbol = hour.symbol || '';
+    const dewPoint = hour.dew_point;
 
     // Warning-nivå årsaker
     if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
@@ -164,6 +167,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
     if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
     if (symbol.includes('fog')) reasons.push('Tåke');
+    if (dewPoint != null && (temperature - dewPoint) < 1) reasons.push(`Kondens (duggpunkt ${dewPoint.toFixed(1)}°C)`);
 
     // Caution-nivå årsaker (hvis ingen warning)
     if (reasons.length === 0) {
@@ -171,6 +175,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
       if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
       if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
+      if (dewPoint != null && (temperature - dewPoint) < 3) reasons.push(`Nær duggpunkt (${dewPoint.toFixed(1)}°C)`);
     }
 
     return reasons;
@@ -359,7 +364,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         )}
 
         {/* Current conditions */}
-        <div className="grid grid-cols-3 gap-3 py-2 px-3 rounded-md bg-muted/50">
+        <div className="grid grid-cols-2 gap-3 py-2 px-3 rounded-md bg-muted/50">
           <div className="flex items-center gap-1.5 text-sm">
             <Wind className="w-4 h-4 text-muted-foreground" />
             <span className="font-medium text-foreground">{weatherData.current.wind_speed?.toFixed(1) || '-'} m/s</span>
@@ -372,6 +377,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <Droplets className="w-4 h-4 text-muted-foreground" />
             <span className="font-medium text-foreground">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
           </div>
+          {weatherData.current.dew_point != null && (
+            <div className="flex items-center gap-1.5 text-sm">
+              <CloudRain className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground">{weatherData.current.dew_point.toFixed(1)}°C duggp.</span>
+            </div>
+          )}
         </div>
 
         {/* Forecast section */}
@@ -434,6 +445,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       <Droplets className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{hour.precipitation?.toFixed(1)} mm</span>
                     </div>
+                    {hour.dew_point != null && (
+                      <div className="flex items-center gap-2">
+                        <CloudRain className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>Duggp. {hour.dew_point.toFixed(1)}°C</span>
+                      </div>
+                    )}
                     
                     {/* Årsak til anbefaling */}
                     {hour.recommendation !== 'ok' && (
@@ -534,6 +551,16 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
               </div>
               <div className="font-medium">{weatherData.current.humidity?.toFixed(0) || '-'}%</div>
             </div>
+
+            {weatherData.current.dew_point != null && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Droplets className="w-4 h-4" />
+                  <span>Duggpunkt</span>
+                </div>
+                <div className="font-medium">{weatherData.current.dew_point.toFixed(1)}°C</div>
+              </div>
+            )}
           </div>
 
           {weatherData.warnings.length > 0 && (
@@ -610,6 +637,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                         <Droplets className="w-3 h-3" />
                         <span>{hour.precipitation?.toFixed(1)} mm</span>
                       </div>
+                      {hour.dew_point != null && (
+                        <div className="flex items-center gap-2">
+                          <CloudRain className="w-3 h-3" />
+                          <span>Duggp. {hour.dew_point.toFixed(1)}°C</span>
+                        </div>
+                      )}
                       <div className={cn(
                         "font-medium pt-1 border-t",
                         hour.recommendation === 'ok' && "text-success",

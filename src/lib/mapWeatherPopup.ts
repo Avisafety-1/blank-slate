@@ -58,7 +58,7 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
           ${recommendationText[recommendation] || 'Ukjent'}
         </div>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
         <div>
           <div style="color: #6b7280; font-size: 11px;">Vind</div>
           <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
@@ -71,6 +71,12 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
           <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
           <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
         </div>
+        ${data.current.dew_point != null ? `
+        <div>
+          <div style="color: #6b7280; font-size: 11px;">Duggpunkt</div>
+          <div style="font-weight: 600;">${data.current.dew_point.toFixed(1)}°C</div>
+        </div>
+        ` : ''}
       </div>
     `;
     

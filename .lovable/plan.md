@@ -1,42 +1,39 @@
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-# Duggpunktstemperatur i værdata og AI-risikovurdering
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-## Bakgrunn
-MET Norway API har `dew_point_temperature` tilgjengelig, men kun i **`complete.json`**-endepunktet. Dagens edge function bruker `compact.json`. Vi må bytte til `complete` for å få tilgang til duggpunktet.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-## Hvorfor duggpunkt er viktig for droner
-- Når lufttemperaturen nærmer seg duggpunktet (differanse < 2-3°C), er det risiko for kondens på linser, sensorer og elektronikk
-- Kondens kan føre til kortslutning og tap av visuell kontakt
-- Ising på propeller ved temperatur nær 0°C kombinert med lav duggpunktdifferanse
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-## Endringer
-
-### 1. Edge Function: `supabase/functions/drone-weather/index.ts`
-- Bytt API-kall fra `compact` til `complete`: `locationforecast/2.0/complete`
-- Les ut `dew_point_temperature` fra `instant.details`
-- Legg til duggpunkt-advarsel i `evaluateWeatherConditions`:
-  - **Warning**: differanse < 1°C — høy risiko for kondens
-  - **Caution**: differanse < 3°C — fare for kondens
-  - **Note**: differanse < 5°C — vær oppmerksom
-- Inkluder `dew_point` i response-objektets `current`-felt og i `hourly_forecast`
-
-### 2. Frontend: `src/components/DroneWeatherPanel.tsx`
-- Legg til `dew_point` i WeatherData-interfacet
-- Vis duggpunkt i værkortet (grid utvides fra 3 til 4 kolonner, eller 2x2 rad)
-- Vis duggpunkt i timeprognose-popover
-
-### 3. Frontend: `src/lib/mapWeatherPopup.ts`
-- Vis duggpunkt i kart-popupen sammen med temp/vind/nedbør
-
-### 4. AI-risikovurdering: `supabase/functions/ai-risk-assessment/index.ts`
-- Værdata sendes allerede videre til AI-prompten — duggpunktet kommer automatisk med i `weatherData.current`
-- AI-modellen vil bruke den nye datapunkten i sin vurdering uten prompt-endring
-
-### Advarselsterskler for duggpunktdifferanse (temp - duggpunkt)
-| Differanse | Nivå | Melding |
-|-----------|------|---------|
-| < 1°C | Warning | Svært høy risiko for kondens/dugg — ikke fly |
-| < 3°C | Caution | Fare for kondens — vurder å utsette flygning |
-| < 5°C | Note | Nær duggpunktet — vær oppmerksom på fuktighet |
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
