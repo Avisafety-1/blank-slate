@@ -1069,6 +1069,9 @@ const Admin = () => {
                                           onValueChange={(value) => {
                                             if (value === 'all') {
                                               updateApprovalScope(profile.id, ['all']);
+                                            } else {
+                                              // Switch to specific: default to main company selected
+                                              updateApprovalScope(profile.id, [companyId || '']);
                                             }
                                           }}
                                         >
