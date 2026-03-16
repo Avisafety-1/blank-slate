@@ -159,6 +159,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     const precipitation = hour.precipitation || 0;
     const temperature = hour.temperature || 0;
     const symbol = hour.symbol || '';
+    const dewPoint = hour.dew_point;
 
     // Warning-nivå årsaker
     if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
@@ -166,6 +167,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
     if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
     if (symbol.includes('fog')) reasons.push('Tåke');
+    if (dewPoint != null && (temperature - dewPoint) < 1) reasons.push(`Kondens (duggpunkt ${dewPoint.toFixed(1)}°C)`);
 
     // Caution-nivå årsaker (hvis ingen warning)
     if (reasons.length === 0) {
@@ -173,6 +175,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
       if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
       if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
+      if (dewPoint != null && (temperature - dewPoint) < 3) reasons.push(`Nær duggpunkt (${dewPoint.toFixed(1)}°C)`);
     }
 
     return reasons;
