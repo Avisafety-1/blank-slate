@@ -69,11 +69,23 @@ serve(async (req) => {
 
     if (!profile?.company_id) throw new Error("User has no company");
 
+    // Resolve to parent company if child
+    let effectiveCompanyId = profile.company_id;
+    const { data: comp } = await supabaseClient
+      .from('companies')
+      .select('parent_company_id')
+      .eq('id', profile.company_id)
+      .single();
+    if (comp?.parent_company_id) {
+      effectiveCompanyId = comp.parent_company_id;
+      logStep("Resolved to parent company", { child: profile.company_id, parent: effectiveCompanyId });
+    }
+
     // Verify billing owner
     const { data: company } = await supabaseClient
       .from('companies')
       .select('billing_user_id')
-      .eq('id', profile.company_id)
+      .eq('id', effectiveCompanyId)
       .single();
 
     if (company?.billing_user_id !== user.id) {
@@ -84,7 +96,7 @@ serve(async (req) => {
     const { data: sub } = await supabaseClient
       .from('company_subscriptions')
       .select('stripe_subscription_id')
-      .eq('company_id', profile.company_id)
+      .eq('company_id', effectiveCompanyId)
       .maybeSingle();
 
     if (!sub?.stripe_subscription_id) {
