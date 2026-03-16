@@ -47,6 +47,8 @@ interface CompanyManagementDialogProps {
   onOpenChange: (open: boolean) => void;
   company: Company | null;
   onSuccess: () => void;
+  /** When set, locks parent_company_id to this value (used by admin child-company flow) */
+  forceParentCompanyId?: string;
 }
 
 const companySchema = z.object({
@@ -88,6 +90,7 @@ export const CompanyManagementDialog = ({
   onOpenChange,
   company,
   onSuccess,
+  forceParentCompanyId,
 }: CompanyManagementDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeExempt, setStripeExempt] = useState(false);
@@ -167,7 +170,7 @@ export const CompanyManagementDialog = ({
         kontakt_epost: data.kontakt_epost || null,
         kontakt_telefon: data.kontakt_telefon || null,
         stripe_exempt: stripeExempt,
-        parent_company_id: data.parent_company_id || null,
+        parent_company_id: forceParentCompanyId || data.parent_company_id || null,
       };
 
       if (isCreating) {
@@ -347,7 +350,7 @@ export const CompanyManagementDialog = ({
               )}
             />
 
-            {isSuperAdmin && (
+            {isSuperAdmin && !forceParentCompanyId && (
               <FormField
                 control={form.control}
                 name="parent_company_id"
@@ -374,17 +377,19 @@ export const CompanyManagementDialog = ({
               />
             )}
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
-                <p className="text-xs text-muted-foreground">Selskapet faktureres separat og trenger ikke Stripe-abonnement</p>
+            {isSuperAdmin && (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
+                  <p className="text-xs text-muted-foreground">Selskapet faktureres separat og trenger ikke Stripe-abonnement</p>
+                </div>
+                <Switch
+                  id="stripe_exempt"
+                  checked={stripeExempt}
+                  onCheckedChange={setStripeExempt}
+                />
               </div>
-              <Switch
-                id="stripe_exempt"
-                checked={stripeExempt}
-                onCheckedChange={setStripeExempt}
-              />
-            </div>
+            )}
 
             <DialogFooter>
               <Button
