@@ -92,6 +92,7 @@ const DocumentsList = ({
   onDocumentClick,
   getDocumentStatus,
 }: DocumentsListProps) => {
+  const { companyId, departmentsEnabled } = useAuth();
 
   const handleOpenFile = async (filUrl: string) => {
     try {
