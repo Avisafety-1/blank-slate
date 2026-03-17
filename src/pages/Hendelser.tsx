@@ -372,10 +372,11 @@ const Hendelser = () => {
 
     // 3. Fetch fresh data
     try {
-      const { data, error } = await supabase.from('incidents').select('*').order('opprettet_dato', {
+      const { data: rawData, error } = await supabase.from('incidents').select('*, companies:company_id(id, navn)').order('opprettet_dato', {
         ascending: false
       });
       if (error) throw error;
+      const data = (rawData || []).map((i: any) => ({ ...i, company_name: i.companies?.navn || null }));
       setIncidents(data || []);
       if (companyId) setCachedData(`offline_incidents_${companyId}`, data || []);
 
