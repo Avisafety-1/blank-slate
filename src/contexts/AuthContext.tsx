@@ -120,10 +120,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   // Guard to deduplicate concurrent fetchUserInfo calls
-  const fetchUserInfoPromiseRef = { current: null as Promise<void> | null };
+  const fetchUserInfoPromiseRef = useRef<Promise<void> | null>(null);
   // Cache for getUser() to prevent call storms (50+ /user calls after Google login)
-  const getUserCacheRef = { current: null as { data: any; timestamp: number } | null };
+  const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
