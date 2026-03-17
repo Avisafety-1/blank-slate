@@ -118,6 +118,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   // Guard to deduplicate concurrent fetchUserInfo calls
   const fetchUserInfoPromiseRef = { current: null as Promise<void> | null };
+  // Cache for getUser() to prevent call storms (50+ /user calls after Google login)
+  const getUserCacheRef = { current: null as { data: any; timestamp: number } | null };
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
@@ -395,8 +397,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Lazily validate that the auth user still exists (handles deleted users)
+    // Use cached result if available and fresh (10s TTL) to prevent /user call storms
     try {
-      const { error: userError } = await supabase.auth.getUser();
+      const now = Date.now();
+      const cached = getUserCacheRef.current;
+      let userError: any = null;
+      if (cached && now - cached.timestamp < 10_000) {
+        userError = cached.data.error;
+      } else {
+        const result = await supabase.auth.getUser();
+        getUserCacheRef.current = { data: result, timestamp: now };
+        userError = result.error;
+      }
       if (userError && isMissingAuthUserError(userError)) {
         console.warn('AuthContext: Stale session for deleted user, clearing');
         await clearLocalAuthData(userId);

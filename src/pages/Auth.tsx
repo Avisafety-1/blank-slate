@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +56,7 @@ const Auth = () => {
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
   const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
   const isDevEnv = isDevelopment();
+  const googleProfileCheckedRef = useRef(false);
 
   // Handle email confirmation messages from URL hash
   useEffect(() => {
@@ -106,6 +107,10 @@ const Auth = () => {
         // Regular email user - let normal flow handle it
         return;
       }
+
+      // Guard: only run once per user session to prevent duplicate calls
+      if (googleProfileCheckedRef.current) return;
+      googleProfileCheckedRef.current = true;
 
       setCheckingGoogleUser(true);
       
