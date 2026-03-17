@@ -136,7 +136,7 @@ const getEccairsStatusClass = (status?: string): string => {
 
 const Hendelser = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, companyId } = useAuth();
+  const { user, loading: authLoading, companyId, departmentsEnabled } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
