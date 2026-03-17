@@ -482,13 +482,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Kick off parent company + accessible companies in parallel
       const parentPromise: Promise<any> = parentCompanyId
-        ? supabase
-            .from('companies')
-            .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
-            .eq('id', parentCompanyId)
-            .single()
-            .then(({ data }) => data)
-            .then(d => d, () => null)
+        ? (async () => {
+            try {
+              const { data } = await supabase
+                .from('companies')
+                .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
+                .eq('id', parentCompanyId)
+                .single();
+              return data;
+            } catch { return null; }
+          })()
         : Promise.resolve(null);
 
       const accessiblePromise = fetchAccessibleCompanies(userId);
