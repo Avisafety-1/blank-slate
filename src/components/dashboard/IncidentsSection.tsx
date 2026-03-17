@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-import { AlertTriangle, Clock, MessageSquare } from "lucide-react";
+import { AlertTriangle, Clock, MessageSquare, Building2 } from "lucide-react";
 
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
