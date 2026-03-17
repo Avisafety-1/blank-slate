@@ -201,8 +201,9 @@ export const ProfileDialog = () => {
     fetchBadgeCounts();
   }, [user]);
 
+  // Only fetch heavy user data when dialog is actually opened
   useEffect(() => {
-    if (user) {
+    if (user && profileDialogOpen) {
       fetchUserData();
       // Fetch app version from DB
       supabase
@@ -217,7 +218,7 @@ export const ProfileDialog = () => {
           }
         });
     }
-  }, [user]);
+  }, [user, profileDialogOpen]);
 
   useEffect(() => {
     if (notificationPrefs?.inspection_reminder_days === undefined || notificationPrefs?.inspection_reminder_days === null) return;
