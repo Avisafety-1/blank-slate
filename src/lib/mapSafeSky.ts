@@ -305,10 +305,6 @@ export function createSafeSkyManager(params: {
         startupRetryBurst();
       }
       
-      safeskyPollInterval = window.setInterval(() => {
-        fetchSafeSkyBeacons();
-      }, 5000);
-      
       safeskyChannel = supabase
         .channel('safesky-beacons-changes')
         .on(

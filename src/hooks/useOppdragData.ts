@@ -48,12 +48,16 @@ export const useOppdragData = () => {
     }
   }, [companyId]);
 
-  // Real-time subscription
+  // Real-time subscription (debounced to reduce disk IO)
   useEffect(() => {
+    let debounceTimer: number | null = null;
     const handler = () => {
       if (!navigator.onLine) return;
-      fetchMissionsForTab('active');
-      fetchMissionsForTab('completed');
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        fetchMissionsForTab('active');
+        fetchMissionsForTab('completed');
+      }, 2000);
     };
 
     const channel = supabase

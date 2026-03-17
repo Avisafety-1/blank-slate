@@ -560,7 +560,7 @@ export function OpenAIPMap({
       fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
     });
 
-    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
+    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
     const mapChannel = supabase

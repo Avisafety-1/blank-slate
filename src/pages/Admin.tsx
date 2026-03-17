@@ -195,19 +195,21 @@ const Admin = () => {
 
       setUserRoles(rolesData || []);
 
-      // Set up real-time subscriptions
+      // Set up real-time subscriptions (debounced to reduce disk IO)
+      let adminDebounce: number | null = null;
+      const debouncedFetchData = () => {
+        if (adminDebounce) clearTimeout(adminDebounce);
+        adminDebounce = window.setTimeout(() => fetchData(), 2000);
+      };
+
       const profilesChannel = supabase
         .channel('admin-profiles-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-          fetchData();
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, debouncedFetchData)
         .subscribe();
 
       const rolesChannel = supabase
         .channel('admin-roles-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-          fetchData();
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, debouncedFetchData)
         .subscribe();
 
       return () => {
