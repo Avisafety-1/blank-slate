@@ -59,24 +59,14 @@ export const Header = () => {
 
   const handleCompanySwitch = async (newCompanyId: string) => {
     try {
-      if (isSuperAdmin) {
-        // Superadmins use direct profile update (existing behavior)
-        const { error } = await supabase
-          .from('profiles')
-          .update({ company_id: newCompanyId })
-          .eq('id', user?.id);
-        
-        if (error) throw error;
-        
-        await refetchUserInfo();
-        const company = companies.find(c => c.id === newCompanyId);
-        toast.success(t('header.switchedTo', { company: company?.navn }));
-      } else {
-        // Non-superadmins use validated switchCompany
-        await switchCompany(newCompanyId);
-        const company = accessibleCompanies.find(c => c.id === newCompanyId);
-        toast.success(t('header.switchedTo', { company: company?.name }));
-      }
+      // All paths (superadmin + regular) use atomic switchCompany
+      // which validates access, updates profile, refreshes token + all auth state
+      await switchCompany(newCompanyId);
+      const companyMatch = isSuperAdmin
+        ? companies.find(c => c.id === newCompanyId)
+        : accessibleCompanies.find(c => c.id === newCompanyId);
+      const displayName = companyMatch ? ('navn' in companyMatch ? companyMatch.navn : companyMatch.name) : newCompanyId;
+      toast.success(t('header.switchedTo', { company: displayName }));
     } catch (error) {
       console.error("Error switching company:", error);
       toast.error(t('header.couldNotSwitch'));
