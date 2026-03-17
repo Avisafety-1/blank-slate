@@ -60,9 +60,22 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      // Gracefully handle missing/invalid JWT (e.g. anon key sent before session restore)
+      logStep("No valid user session", { message: userError.message });
+      return new Response(JSON.stringify({ subscribed: false }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      logStep("No user email available");
+      return new Response(JSON.stringify({ subscribed: false }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Get user's company and check if they're the billing owner
