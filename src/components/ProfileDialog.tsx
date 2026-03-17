@@ -123,6 +123,7 @@ export const ProfileDialog = () => {
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
