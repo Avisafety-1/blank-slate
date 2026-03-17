@@ -60,6 +60,8 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
   useEffect(() => {
     if (!mapRef.current || !latitude || !longitude) return;
 
+    let isMounted = true;
+
     // Initialize map
     const map = L.map(mapRef.current, {
       zoomControl: true,
@@ -177,6 +179,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
       // Fetch terrain elevations for AGL display in popups
       const allTrackPositions = flightTracks.flatMap(t => t.positions || []);
       fetchTerrainElevations(allTrackPositions).then((elevations) => {
+        if (!isMounted) return;
         allTrackPositions.forEach((pos, i) => {
           if (elevations[i] != null) {
             terrainElevationsRef.current.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations[i]!);
@@ -261,12 +264,13 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
     const zonesLayer = L.layerGroup().addTo(map);
 
     async function fetchZones() {
+      if (!isMounted) return;
       try {
         // NSM zones (red)
         const nsmResponse = await fetch(
           "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (nsmResponse.ok) {
+        if (nsmResponse.ok && isMounted) {
           const nsmData = await nsmResponse.json();
           L.geoJSON(nsmData, {
             style: {
@@ -286,7 +290,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const rpasResponse = await fetch(
           "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (rpasResponse.ok) {
+        if (rpasResponse.ok && isMounted) {
           const rpasData = await rpasResponse.json();
           L.geoJSON(rpasData, {
             style: {
@@ -306,7 +310,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const ctrResponse = await fetch(
           "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (ctrResponse.ok) {
+        if (ctrResponse.ok && isMounted) {
           const ctrData = await ctrResponse.json();
           L.geoJSON(ctrData, {
             style: {
@@ -327,9 +331,9 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
             .from('aip_restriction_zones')
             .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry');
 
-          if (aipZones) {
+          if (aipZones && isMounted) {
             for (const zone of aipZones) {
-              if (!zone.geometry) continue;
+              if (!zone.geometry || !isMounted) continue;
               let color = '#f59e0b';
               let label = 'Fareområde';
               let dashArray: string | undefined = undefined;
@@ -371,6 +375,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
 
     // Cleanup
     return () => {
+      isMounted = false;
       map.remove();
     };
   }, [latitude, longitude, route, flightTracks]);
