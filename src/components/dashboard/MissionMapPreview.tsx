@@ -331,9 +331,9 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
             .from('aip_restriction_zones')
             .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry');
 
-          if (aipZones) {
+          if (aipZones && isMounted) {
             for (const zone of aipZones) {
-              if (!zone.geometry) continue;
+              if (!zone.geometry || !isMounted) continue;
               let color = '#f59e0b';
               let label = 'Fareområde';
               let dashArray: string | undefined = undefined;
