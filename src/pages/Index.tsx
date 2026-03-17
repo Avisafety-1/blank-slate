@@ -52,7 +52,7 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, djiFlightlogEnabled, checkSubscription } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, checkSubscription } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
