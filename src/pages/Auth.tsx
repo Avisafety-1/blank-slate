@@ -56,6 +56,7 @@ const Auth = () => {
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
   const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
   const isDevEnv = isDevelopment();
+  const googleProfileCheckedRef = useRef(false);
 
   // Handle email confirmation messages from URL hash
   useEffect(() => {
