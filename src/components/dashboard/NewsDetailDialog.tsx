@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Pin, User, Calendar, Pencil, Trash2 } from "lucide-react";
-import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
