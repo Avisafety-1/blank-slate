@@ -201,7 +201,7 @@ export const useOppdragData = () => {
 
       if (approverError) throw approverError;
 
-      if (!relevantApprovers || relevantApprovers.length === 0) {
+      if (!approvers || approvers.length === 0) {
         toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
         return;
       }
