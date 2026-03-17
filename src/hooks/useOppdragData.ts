@@ -196,31 +196,12 @@ export const useOppdragData = () => {
   // Handlers
   const handleSubmitForApproval = async (mission: Mission) => {
     try {
-      // Check if anyone in the company can approve missions (with department scope fallback)
       const { data: approvers, error: approverError } = await supabase
-        .from('profiles')
-        .select('id, approval_company_ids, company_id')
-        .eq('can_approve_missions', true)
-        .limit(50);
+        .rpc('get_mission_approvers', { target_company_id: companyId! });
 
       if (approverError) throw approverError;
 
-      // Include parent company so parent-level approvers are also found
-      const { data: currentCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId!).single();
-      const relevantCompanyIds = [companyId!];
-      if (currentCompany?.parent_company_id) relevantCompanyIds.push(currentCompany.parent_company_id);
-
-      // Filter approvers: must be able to approve for the mission's company
-      const relevantApprovers = (approvers || []).filter((a: any) => {
-        // If approval_company_ids is null, fallback: must belong to relevant companies
-        if (!a.approval_company_ids) return relevantCompanyIds.includes(a.company_id);
-        // If ['all'], can approve for any company
-        if (a.approval_company_ids.includes('all')) return true;
-        // Otherwise, must include the mission's company
-        return a.approval_company_ids.includes(companyId);
-      });
-
-      if (!relevantApprovers || relevantApprovers.length === 0) {
+      if (!approvers || approvers.length === 0) {
         toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
         return;
       }
