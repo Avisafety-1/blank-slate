@@ -75,7 +75,7 @@ export default function Kalender() {
   const [equipment, setEquipment] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
 
   // Dialog states for different entry types
   const [addMissionDialogOpen, setAddMissionDialogOpen] = useState(false);
