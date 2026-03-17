@@ -44,9 +44,6 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
-  useEffect(() => {
-    checkAdminStatus();
-  }, []);
 
   useEffect(() => {
     if (document?.gyldig_til) {
