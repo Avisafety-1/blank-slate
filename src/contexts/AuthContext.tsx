@@ -481,14 +481,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const parentCompanyId = company?.parent_company_id;
 
       // Kick off parent company + accessible companies in parallel
-      const parentPromise = parentCompanyId
+      const parentPromise: Promise<any> = parentCompanyId
         ? supabase
             .from('companies')
             .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
             .eq('id', parentCompanyId)
             .single()
             .then(({ data }) => data)
-            .catch(() => null)
+            .then(d => d, () => null)
         : Promise.resolve(null);
 
       const accessiblePromise = fetchAccessibleCompanies(userId);
