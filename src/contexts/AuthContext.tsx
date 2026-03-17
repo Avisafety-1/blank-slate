@@ -219,9 +219,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       localStorage.removeItem(SESSION_CACHE_KEY);
-      if (cachedUserId) {
-        localStorage.removeItem(PROFILE_CACHE_KEY(cachedUserId));
-      }
+      // Keep PROFILE_CACHE_KEY — it's per-userId so it's harmless and gives
+      // instant profile data when the same user logs back in.
+      getUserCacheRef.current = null;
 
       for (let i = localStorage.length - 1; i >= 0; i -= 1) {
         const key = localStorage.key(i);
