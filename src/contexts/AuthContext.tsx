@@ -373,6 +373,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           resetAuthState();
           setLoading(false);
         } else {
+          // Transient null session during token refresh — keep existing state
+          if (!session && user && navigator.onLine) {
+            console.log('AuthContext: Ignoring transient null session during token refresh (user still set)');
+            return;
+          }
           if (!session && !navigator.onLine) {
             console.log('AuthContext: Ignoring null session event while offline');
             if (!user) {
