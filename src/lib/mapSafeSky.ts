@@ -163,13 +163,13 @@ export function createSafeSkyManager(params: {
     
     // Auth guard: check session before querying
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        console.warn('SafeSky: no active session, skipping beacon fetch');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        console.warn('SafeSky: no valid user session, skipping beacon fetch');
         return;
       }
     } catch (err) {
-      console.warn('SafeSky: session check failed', err);
+      console.warn('SafeSky: user check failed', err);
       return;
     }
     
@@ -253,7 +253,7 @@ export function createSafeSkyManager(params: {
 
   /** Short retry burst on startup if cache is empty */
   async function startupRetryBurst() {
-    const retryDelays = [1000, 2000, 3000];
+    const retryDelays = [2000, 4000, 6000];
     for (const delay of retryDelays) {
       if (destroyed || safeskyMarkersCache.size > 0) return;
       await new Promise(r => setTimeout(r, delay));
@@ -288,21 +288,22 @@ export function createSafeSkyManager(params: {
     }, 2000);
   }
 
-  function start() {
+  async function start() {
     if (destroyed) return;
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
       
-      // 1. Trigger cache warm-up (fire-and-forget, deduplicated)
-      warmUpCache();
+      // 1. Await cache warm-up so DB is populated before first read
+      await warmUpCache();
+      if (destroyed) return;
       
       // 2. Immediate DB fetch
-      fetchSafeSkyBeacons().then(() => {
-        // 3. If still empty after first fetch, do short retry burst
-        if (safeskyMarkersCache.size === 0 && !destroyed) {
-          startupRetryBurst();
-        }
-      });
+      await fetchSafeSkyBeacons();
+      
+      // 3. If still empty after first fetch, do short retry burst
+      if (safeskyMarkersCache.size === 0 && !destroyed) {
+        startupRetryBurst();
+      }
       
       safeskyPollInterval = window.setInterval(() => {
         fetchSafeSkyBeacons();
