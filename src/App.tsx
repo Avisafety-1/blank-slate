@@ -18,6 +18,7 @@ import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { useForceReload } from "@/hooks/useForceReload";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 
 // Synchronous imports — needed immediately
 import Auth from "./pages/Auth";
