@@ -32,7 +32,7 @@ const statusColors: Record<string, string> = {
 
 export const MissionsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
