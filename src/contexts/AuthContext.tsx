@@ -103,6 +103,7 @@ const AuthContext = createContext<AuthContextType>({
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
   switchCompany: async () => {},
+  ensureValidToken: async () => {},
 });
 
 export const useAuth = () => {
