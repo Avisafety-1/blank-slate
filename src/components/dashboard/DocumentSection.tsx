@@ -1,7 +1,7 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Search, AlertCircle } from "lucide-react";
+import { FileText, Plus, Search, AlertCircle, Building2 } from "lucide-react";
 import { Document } from "@/types";
 import { useState, useEffect } from "react";
 import { DocumentDetailDialog } from "./DocumentDetailDialog";
