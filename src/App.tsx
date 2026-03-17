@@ -150,15 +150,14 @@ const App = () => {
               <Toaster />
               <Sonner />
               <KeyboardDismissButton />
-              <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   {/* Public routes - login domain */}
                   <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
-                  <Route path="/reset-password" element={<DomainGuard requireAuth={false}><ResetPassword /></DomainGuard>} />
-                  <Route path="/installer" element={<Installer />} />
-                  <Route path="/priser" element={<Priser />} />
-                  <Route path="/sora-prosess" element={<SoraProcess />} />
-                  <Route path="/bruksanvisning" element={<UserManualDownload />} />
+                  <Route path="/reset-password" element={<DomainGuard requireAuth={false}><Suspense fallback={<LoadingSpinner />}><ResetPassword /></Suspense></DomainGuard>} />
+                  <Route path="/installer" element={<Suspense fallback={<LoadingSpinner />}><Installer /></Suspense>} />
+                  <Route path="/priser" element={<Suspense fallback={<LoadingSpinner />}><Priser /></Suspense>} />
+                  <Route path="/sora-prosess" element={<Suspense fallback={<LoadingSpinner />}><SoraProcess /></Suspense>} />
+                  <Route path="/bruksanvisning" element={<Suspense fallback={<LoadingSpinner />}><UserManualDownload /></Suspense>} />
                   
                   {/* Protected routes with shared Header - app domain */}
                   <Route element={<AuthenticatedLayout />}>
@@ -174,14 +173,13 @@ const App = () => {
                   </Route>
                   
                   {/* Admin has its own header */}
-                  <Route path="/admin" element={<DomainGuard><Admin /></DomainGuard>} />
-                  <Route path="/statistikk" element={<DomainGuard><Statistikk /></DomainGuard>} />
-                  <Route path="/marketing" element={<DomainGuard><Marketing /></DomainGuard>} />
+                  <Route path="/admin" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Admin /></Suspense></DomainGuard>} />
+                  <Route path="/statistikk" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Statistikk /></Suspense></DomainGuard>} />
+                  <Route path="/marketing" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Marketing /></Suspense></DomainGuard>} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Suspense>
             </BrowserRouter>
           </AuthProvider>
         </ErrorBoundary>
