@@ -89,7 +89,8 @@ export const MissionsSection = () => {
 
       if (error) throw error;
 
-      setMissions(data || []);
+      const enriched = (data || []).map((m: any) => ({ ...m, company_name: m.companies?.navn || null }));
+      setMissions(enriched);
       if (companyId) setCachedData(`offline_dashboard_missions_${companyId}`, data || []);
       if (data && data.length > 0) {
         const missionIds = data.map((m: any) => m.id);
