@@ -25,7 +25,7 @@ export const DocumentUploadDialog = ({
   onSuccess,
   defaultExpiryDate,
 }: DocumentUploadDialogProps) => {
-  const { companyId, isAdmin: isSuperadmin } = useAuth();
+  const { companyId, isSuperAdmin: isSuperadmin } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
