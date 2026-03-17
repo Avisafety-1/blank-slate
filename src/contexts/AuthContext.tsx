@@ -219,9 +219,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       localStorage.removeItem(SESSION_CACHE_KEY);
-      if (cachedUserId) {
-        localStorage.removeItem(PROFILE_CACHE_KEY(cachedUserId));
-      }
+      // Keep PROFILE_CACHE_KEY — it's per-userId so it's harmless and gives
+      // instant profile data when the same user logs back in.
+      getUserCacheRef.current = null;
 
       for (let i = localStorage.length - 1; i >= 0; i -= 1) {
         const key = localStorage.key(i);
@@ -403,27 +403,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Lazily validate that the auth user still exists (handles deleted users)
-    // Use cached result if available and fresh (10s TTL) to prevent /user call storms
-    try {
-      const now = Date.now();
-      const cached = getUserCacheRef.current;
-      let userError: any = null;
-      if (cached && now - cached.timestamp < 10_000) {
-        userError = cached.data.error;
-      } else {
-        const result = await supabase.auth.getUser();
-        getUserCacheRef.current = { data: result, timestamp: now };
-        userError = result.error;
+    // Fire-and-forget: validate that the auth user still exists (handles deleted users).
+    // This is NOT on the critical path — profile/role queries use the JWT via RLS.
+    const backgroundUserCheck = async () => {
+      try {
+        const now = Date.now();
+        const cached = getUserCacheRef.current;
+        let userError: any = null;
+        if (cached && now - cached.timestamp < 10_000) {
+          userError = cached.data.error;
+        } else {
+          const result = await supabase.auth.getUser();
+          getUserCacheRef.current = { data: result, timestamp: now };
+          userError = result.error;
+        }
+        if (userError && isMissingAuthUserError(userError)) {
+          console.warn('AuthContext: Stale session for deleted user, clearing');
+          await clearLocalAuthData(userId);
+        }
+      } catch {
+        // Network error — ignore
       }
-      if (userError && isMissingAuthUserError(userError)) {
-        console.warn('AuthContext: Stale session for deleted user, clearing');
-        await clearLocalAuthData(userId);
-        return;
-      }
-    } catch {
-      // Network error — continue with cached data
-    }
+    };
+    backgroundUserCheck();
 
     try {
       const [profileResult, roleResult] = await Promise.all([
@@ -475,12 +477,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      const company = profileResult.data?.companies as any;
+      const parentCompanyId = company?.parent_company_id;
+
+      // Kick off parent company + accessible companies in parallel
+      const parentPromise: Promise<any> = parentCompanyId
+        ? (async () => {
+            try {
+              const { data } = await supabase
+                .from('companies')
+                .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
+                .eq('id', parentCompanyId)
+                .single();
+              return data;
+            } catch { return null; }
+          })()
+        : Promise.resolve(null);
+
+      const accessiblePromise = fetchAccessibleCompanies(userId);
+
       if (profileResult.data) {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
-        
-        const company = profile.companies as any;
+
         profileData.companyName = company?.navn || null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
@@ -489,21 +509,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.stripeExempt = company?.stripe_exempt ?? false;
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
-        // If child company, inherit parent's settings
-        if (company?.parent_company_id) {
-          try {
-            const { data: parentCompany } = await supabase
-              .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
-              .eq('id', company.parent_company_id)
-              .single();
-            if (parentCompany) {
-              profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
-              profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
-              console.log('AuthContext: Inherited settings from parent company', company.parent_company_id);
-            }
-          } catch (e) {
-            console.warn('AuthContext: Failed to fetch parent company settings', e);
+        // Inherit parent settings (already fetching in parallel above)
+        if (parentCompanyId) {
+          const parentCompany = await parentPromise;
+          if (parentCompany) {
+            profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
+            profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
+            console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
           }
         }
       }
@@ -536,7 +548,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       saveCachedProfile(userId, profileData);
 
-      const company = profileResult.data?.companies as any;
       if (
         profileData.djiFlightlogEnabled &&
         !company?.dronelog_api_key &&
@@ -554,8 +565,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Fetch accessible companies for multi-company switcher
-      fetchAccessibleCompanies(userId);
+      // Accessible companies already kicked off in parallel above
+      await accessiblePromise;
     } catch (error) {
       console.error('Error fetching user info:', error);
       if (!navigator.onLine) {
