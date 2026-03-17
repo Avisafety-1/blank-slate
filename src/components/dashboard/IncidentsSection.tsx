@@ -42,7 +42,7 @@ type Incident = Tables<"incidents">;
 
 export const IncidentsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId, user } = useAuth();
+  const { companyId, user, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
