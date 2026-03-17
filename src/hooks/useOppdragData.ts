@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,8 @@ import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { toast } from "sonner";
 
 type Mission = any;
+
+const PAGE_SIZE = 10;
 
 export const useOppdragData = () => {
   const { user, loading, companyId } = useAuth();
@@ -17,7 +19,12 @@ export const useOppdragData = () => {
   const [completedMissions, setCompletedMissions] = useState<Mission[]>([]);
   const [isLoadingActive, setIsLoadingActive] = useState(true);
   const [isLoadingCompleted, setIsLoadingCompleted] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
+
+  // Pagination
+  const [hasMoreActive, setHasMoreActive] = useState(true);
+  const [hasMoreCompleted, setHasMoreCompleted] = useState(true);
 
   // KML import state
   const [kmlImportMissionId, setKmlImportMissionId] = useState<string | null>(null);
@@ -29,6 +36,7 @@ export const useOppdragData = () => {
   // Computed
   const missions = filterTab === 'active' ? activeMissions : completedMissions;
   const isLoading = filterTab === 'active' ? isLoadingActive : isLoadingCompleted;
+  const hasMoreData = filterTab === 'active' ? hasMoreActive : hasMoreCompleted;
 
   // Redirect if not logged in
   useEffect(() => {
@@ -41,22 +49,25 @@ export const useOppdragData = () => {
   useEffect(() => {
     if (companyId) {
       const loadAll = async () => {
-        await fetchMissionsForTab('active');
-        fetchMissionsForTab('completed');
+        await fetchMissionsForTab('active', 0, PAGE_SIZE, false);
+        fetchMissionsForTab('completed', 0, PAGE_SIZE, false);
       };
       loadAll();
     }
   }, [companyId]);
 
-  // Real-time subscription (debounced to reduce disk IO)
+  // Real-time subscription
   useEffect(() => {
     let debounceTimer: number | null = null;
     const handler = () => {
       if (!navigator.onLine) return;
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
-        fetchMissionsForTab('active');
-        fetchMissionsForTab('completed');
+        // Refresh currently loaded range
+        const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
+        const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
+        fetchMissionsForTab('active', 0, activeCount, false);
+        fetchMissionsForTab('completed', 0, completedCount, false);
       }, 2000);
     };
 
@@ -72,13 +83,15 @@ export const useOppdragData = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [companyId]);
+  }, [companyId, activeMissions.length, completedMissions.length]);
 
-  const fetchMissionsForTab = async (tab: 'active' | 'completed') => {
+  const fetchMissionsForTab = async (tab: 'active' | 'completed', offset: number, limit: number, append: boolean) => {
     const setData = tab === 'active' ? setActiveMissions : setCompletedMissions;
-    const setLoadingFn = tab === 'active' ? setIsLoadingActive : setIsLoadingCompleted;
+    const setLoadingFn = append ? setIsLoadingMore : (tab === 'active' ? setIsLoadingActive : setIsLoadingCompleted);
+    const setHasMore = tab === 'active' ? setHasMoreActive : setHasMoreCompleted;
 
-    if (companyId) {
+    // Show cache on initial load only
+    if (!append && offset === 0 && companyId) {
       const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${tab}`);
       if (cached) {
         setData(cached);
@@ -96,7 +109,8 @@ export const useOppdragData = () => {
       let query = supabase
         .from("missions")
         .select(`*, customers (id, navn, kontaktperson, telefon, epost), companies:company_id(id, navn)`)
-        .order("tidspunkt", { ascending: tab === "active" });
+        .order("tidspunkt", { ascending: tab === "active" })
+        .range(offset, offset + limit - 1);
 
       if (tab === "active") {
         query = query.in("status", ["Planlagt", "Pågående"]);
@@ -108,11 +122,17 @@ export const useOppdragData = () => {
       if (error) throw error;
 
       const missionsList = data || [];
+      setHasMore(missionsList.length >= limit);
+
       const missionIds = missionsList.map(m => m.id);
 
       if (missionIds.length === 0) {
-        setData([]);
-        if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+        if (append) {
+          // No more to append
+        } else {
+          setData([]);
+          if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+        }
         setLoadingFn(false);
         return;
       }
@@ -185,8 +205,12 @@ export const useOppdragData = () => {
         };
       });
 
-      setData(missionsWithDetails);
-      if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+      if (append) {
+        setData(prev => [...prev, ...missionsWithDetails]);
+      } else {
+        setData(missionsWithDetails);
+        if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+      }
     } catch (error) {
       console.error("Error fetching missions:", error);
       toast.error("Kunne ikke laste oppdrag");
@@ -196,9 +220,17 @@ export const useOppdragData = () => {
   };
 
   const fetchMissions = () => {
-    fetchMissionsForTab('active');
-    fetchMissionsForTab('completed');
+    const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
+    const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
+    fetchMissionsForTab('active', 0, activeCount, false);
+    fetchMissionsForTab('completed', 0, completedCount, false);
   };
+
+  const loadMore = useCallback(() => {
+    const tab = filterTab;
+    const currentCount = tab === 'active' ? activeMissions.length : completedMissions.length;
+    fetchMissionsForTab(tab, currentCount, PAGE_SIZE, true);
+  }, [filterTab, activeMissions.length, completedMissions.length]);
 
   // Handlers
   const handleSubmitForApproval = async (mission: Mission) => {
@@ -353,11 +385,14 @@ export const useOppdragData = () => {
     completedMissions,
     missions,
     isLoading,
+    isLoadingMore,
+    hasMoreData,
     filterTab,
     setFilterTab,
 
     // Actions
     fetchMissions,
+    loadMore,
     handleSubmitForApproval,
     handleDeleteMission,
     handleToggleMissionChecklist,
