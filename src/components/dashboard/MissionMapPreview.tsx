@@ -60,6 +60,8 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
   useEffect(() => {
     if (!mapRef.current || !latitude || !longitude) return;
 
+    let isMounted = true;
+
     // Initialize map
     const map = L.map(mapRef.current, {
       zoomControl: true,
