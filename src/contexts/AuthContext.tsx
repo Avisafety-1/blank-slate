@@ -50,6 +50,7 @@ interface AuthContextType {
   departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
+  profileLoaded: boolean;
   userRole: string | null;
   subscribed: boolean;
   subscriptionEnd: string | null;
