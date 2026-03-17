@@ -521,13 +521,13 @@ export function OpenAIPMap({
 
     // Heartbeat is now handled globally by useAppHeartbeat hook
 
-    // SafeSky manager — start immediately after heartbeat (first priority)
+    // SafeSky manager
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
-    safeSkyManager.start();
 
-    // Ensure valid auth token before fetching RLS-protected data, then fetch all layers
+    // Single auth check to refresh token, then start ALL layers in parallel (including SafeSky)
     supabase.auth.getUser().then(() => {
+      safeSkyManager.start(); // non-blocking warm-up inside
       fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
       fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
       fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });

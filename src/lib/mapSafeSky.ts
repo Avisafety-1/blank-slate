@@ -160,18 +160,7 @@ export function createSafeSkyManager(params: {
 
   async function fetchSafeSkyBeacons() {
     if (destroyed) return;
-    
-    // Auth guard: check session before querying
-    try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        console.warn('SafeSky: no valid user session, skipping beacon fetch');
-        return;
-      }
-    } catch (err) {
-      console.warn('SafeSky: user check failed', err);
-      return;
-    }
+    // Auth is ensured by the caller (OpenAIPMap single getUser check)
     
     try {
       const { data, error } = await supabase
