@@ -540,7 +540,7 @@ export function OpenAIPMap({
       }
     };
     sendHeartbeat();
-    heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
+    heartbeatInterval = window.setInterval(sendHeartbeat, 30000);
 
     // SafeSky manager — start immediately after heartbeat (first priority)
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
@@ -560,7 +560,7 @@ export function OpenAIPMap({
       fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
     });
 
-    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
+    const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
     const mapChannel = supabase

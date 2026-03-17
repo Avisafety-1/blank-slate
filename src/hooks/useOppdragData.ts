@@ -48,12 +48,16 @@ export const useOppdragData = () => {
     }
   }, [companyId]);
 
-  // Real-time subscription
+  // Real-time subscription (debounced to reduce disk IO)
   useEffect(() => {
+    let debounceTimer: number | null = null;
     const handler = () => {
       if (!navigator.onLine) return;
-      fetchMissionsForTab('active');
-      fetchMissionsForTab('completed');
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        fetchMissionsForTab('active');
+        fetchMissionsForTab('completed');
+      }, 2000);
     };
 
     const channel = supabase
@@ -64,7 +68,10 @@ export const useOppdragData = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flight_logs' }, handler)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
   }, [companyId]);
 
   const fetchMissionsForTab = async (tab: 'active' | 'completed') => {
