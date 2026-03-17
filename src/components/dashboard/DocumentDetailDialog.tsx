@@ -36,7 +36,7 @@ interface DocumentDetailDialogProps {
 }
 
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: DocumentDetailDialogProps) => {
-  const { user, ensureValidToken } = useAuth();
+  const { user, ensureValidToken, isAdmin } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
