@@ -163,13 +163,13 @@ export function createSafeSkyManager(params: {
     
     // Auth guard: check session before querying
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        console.warn('SafeSky: no active session, skipping beacon fetch');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        console.warn('SafeSky: no valid user session, skipping beacon fetch');
         return;
       }
     } catch (err) {
-      console.warn('SafeSky: session check failed', err);
+      console.warn('SafeSky: user check failed', err);
       return;
     }
     
