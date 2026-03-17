@@ -48,9 +48,8 @@ const getDocumentStatus = (doc: Document): DocumentStatusFilter => {
 };
 
 const Documents = () => {
-  const { user, loading, companyId } = useAuth();
+  const { user, loading, companyId, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { isAdmin } = useAdminCheck();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<DocumentCategory[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<DocumentStatusFilter[]>([]);
