@@ -377,7 +377,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       });
       
       if (docError) throw docError;
-      
+
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Loggbok eksportert til dokumenter");
     } catch (error) {
       console.error("Error exporting PDF:", error);

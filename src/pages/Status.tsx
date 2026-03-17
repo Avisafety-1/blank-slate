@@ -678,6 +678,8 @@ const Status = () => {
         opprettet_av: profile?.full_name || user?.email || "Ukjent",
       });
 
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+
       // Download
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
