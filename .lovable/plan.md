@@ -1,67 +1,59 @@
-## Multi-Company Access – IMPLEMENTERT
 
-### Database
-- `companies.parent_company_id` – valgfri FK til morselskap
-- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
-- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
-- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
-- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
-- Eksisterende profiler seedet inn i user_companies
 
-### Frontend
-- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
-- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
-- `CompanyManagementDialog`: Morselskap-velger (superadmin)
+## Avdelingsmarkering i moderselskapet
 
-### Arkitektur
-- `profiles.company_id` = aktivt selskap (uendret)
-- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+### Problem
+Når et moderselskap ser data fra alle avdelinger (oppdrag, hendelser, dokumenter), er det ingen visuell indikator som viser hvilken avdeling dataen tilhører.
 
-### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
-- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
-- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
-- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
-- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
-- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
+### Løsning
+Legg til en avdelings-badge på tvers av de viktigste datavisningene. Badgen vises kun for brukere i et morselskap med `departmentsEnabled = true`.
 
----
+### Teknisk tilnærming
 
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
+**1. Hent avdelingsnavn sammen med data**
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
+Alle steder som henter data med `company_id`, utvides med en join mot `companies`-tabellen for å hente `navn`:
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+- **`src/hooks/useOppdragData.ts`** (linje 89-91): Endre select til å inkludere `companies:company_id(id, navn)` i mission-queryen. Mapp `company_name` inn i hvert mission-objekt.
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+- **`src/components/dashboard/MissionsSection.tsx`** (linje 82-84): Samme — legg til `companies:company_id(id, navn)` i select.
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+- **`src/components/dashboard/IncidentsSection.tsx`**: Legg til `companies:company_id(id, navn)` i incidents-queryen.
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+- **`src/pages/Hendelser.tsx`**: Samme for hendelsessiden.
+
+- **`src/pages/Documents.tsx`** / **`src/components/dashboard/DocumentSection.tsx`**: Legg til `companies:company_id(id, navn)` i dokumenthentingen.
+
+**2. Vis avdelings-badge i UI**
+
+- **`src/components/dashboard/MissionsSection.tsx`**: Vis en liten `Badge` med avdelingsnavnet under oppdragstittelen, kun når `departmentsEnabled && mission.company_id !== companyId`.
+
+- **`src/components/oppdrag/MissionCard.tsx`**: Tilsvarende badge i oppdragskort-visningen.
+
+- **`src/components/dashboard/IncidentsSection.tsx`**: Avdelings-badge på hendelseskort.
+
+- **`src/components/documents/DocumentsList.tsx`**: Avdelings-kolonne/badge i dokumenttabellen (kun synlig for morselskap).
+
+**3. Bruk `departmentsEnabled` og `companyId` fra AuthContext**
+
+Sjekk `departmentsEnabled` fra `useAuth()`. Vis badge kun når:
+- `departmentsEnabled === true`
+- Elementets `company_id !== companyId` (dvs. det kommer fra en avdeling, ikke morselskapet selv)
+
+Badgen viser avdelingsnavnet med en subtil styling (`variant="outline"` med en liten ikon).
+
+### Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `src/hooks/useOppdragData.ts` | Join `companies(id, navn)` i mission-query, mapp til `company_name` |
+| `src/components/dashboard/MissionsSection.tsx` | Join companies, vis avdelings-badge |
+| `src/components/oppdrag/MissionCard.tsx` | Vis avdelings-badge |
+| `src/components/dashboard/IncidentsSection.tsx` | Join companies, vis avdelings-badge |
+| `src/pages/Hendelser.tsx` | Join companies i query |
+| `src/components/dashboard/DocumentSection.tsx` | Legg til company_name i mapping |
+| `src/components/documents/DocumentsList.tsx` | Vis avdelings-badge/kolonne |
+
+### Visuell stil
+Badge med `Building2`-ikon, `variant="outline"`, liten tekst — subtil men tydelig markering av avdelingstilhørighet.
+
