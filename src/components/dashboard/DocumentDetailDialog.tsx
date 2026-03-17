@@ -53,7 +53,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   }, [document]);
 
   const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    await ensureValidToken();
     if (!user) return;
 
     const { data, error } = await supabase.rpc('has_role', {

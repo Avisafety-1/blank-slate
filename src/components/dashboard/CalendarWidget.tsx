@@ -106,7 +106,7 @@ export const CalendarWidget = () => {
 
   const checkAdminStatus = async () => {
     if (!navigator.onLine) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    await ensureValidToken();
     if (!user) return;
 
     const { data, error } = await supabase.rpc('has_role', {

@@ -130,7 +130,7 @@ export default function Kalender() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!navigator.onLine) return;
-      const { data: { user } } = await supabase.auth.getUser();
+      await ensureValidToken();
       if (user) {
         const { data } = await supabase.rpc('has_role', {
           _user_id: user.id,

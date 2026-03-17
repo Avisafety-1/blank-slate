@@ -703,6 +703,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       refetchUserInfo,
       checkSubscription,
       switchCompany,
+      ensureValidToken,
     }}>
       {children}
     </AuthContext.Provider>

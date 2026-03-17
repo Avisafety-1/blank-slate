@@ -72,7 +72,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      await ensureValidToken();
       if (user) {
         const { data } = await supabase.rpc('has_role', {
           _user_id: user.id,
