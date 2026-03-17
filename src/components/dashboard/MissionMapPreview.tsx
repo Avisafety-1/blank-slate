@@ -179,6 +179,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
       // Fetch terrain elevations for AGL display in popups
       const allTrackPositions = flightTracks.flatMap(t => t.positions || []);
       fetchTerrainElevations(allTrackPositions).then((elevations) => {
+        if (!isMounted) return;
         allTrackPositions.forEach((pos, i) => {
           if (elevations[i] != null) {
             terrainElevationsRef.current.set(`${pos.lat.toFixed(6)},${pos.lng.toFixed(6)}`, elevations[i]!);
