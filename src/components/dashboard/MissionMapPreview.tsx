@@ -264,6 +264,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
     const zonesLayer = L.layerGroup().addTo(map);
 
     async function fetchZones() {
+      if (!isMounted) return;
       try {
         // NSM zones (red)
         const nsmResponse = await fetch(
