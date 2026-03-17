@@ -282,17 +282,18 @@ export function createSafeSkyManager(params: {
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
       
-      // 1. Await cache warm-up so DB is populated before first read
-      await warmUpCache();
-      if (destroyed) return;
+      // Fire-and-forget warm-up (fills DB cache in background)
+      warmUpCache();
       
-      // 2. Immediate DB fetch
+      // Immediate DB fetch (may be empty first time, retry burst handles it)
       await fetchSafeSkyBeacons();
       
-      // 3. If still empty after first fetch, do short retry burst
+      // If still empty after first fetch, do short retry burst
       if (safeskyMarkersCache.size === 0 && !destroyed) {
         startupRetryBurst();
       }
+      
+      if (destroyed) return;
       
       safeskyChannel = supabase
         .channel('safesky-beacons-changes')
