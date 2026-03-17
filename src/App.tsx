@@ -74,6 +74,7 @@ const AuthenticatedLayout = () => {
   const { user, loading, isApproved } = useAuth();
   const location = useLocation();
   useForceReload();
+  useAppHeartbeat();
   
   // Don't render Header until we know user is authenticated and approved
   // Exception: offline with cached session — allow rendering

@@ -33,7 +33,6 @@ import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
-const SESSION_ID = crypto.randomUUID();
 
 interface OpenAIPMapProps {
   onMissionClick?: (mission: any) => void;
