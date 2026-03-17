@@ -114,7 +114,7 @@ export const ProfileDialog = () => {
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(authUserRole);
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
