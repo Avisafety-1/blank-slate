@@ -573,7 +573,44 @@ export function OpenAIPMap({
       })
       .subscribe();
 
+    // Visibility change handler — refresh map when returning from background
+    let lastHiddenAt = 0;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+        return;
+      }
+      // Only refresh if tab was hidden for > 5 seconds
+      if (document.visibilityState === 'visible' && lastHiddenAt > 0 && Date.now() - lastHiddenAt > 5000) {
+        console.log('Map: tab returned after background, refreshing layers');
+        
+        // 1. Force Leaflet to recalculate container and re-render tiles
+        map.invalidateSize();
+        
+        // 2. Re-send heartbeat
+        sendHeartbeat();
+        
+        // 3. Restart SafeSky (stop clears stale intervals, start re-triggers warm-up)
+        safeSkyManager.stop();
+        safeSkyManager.start();
+        
+        // 4. Re-fetch all data layers
+        fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+        fetchDroneTelemetry({ droneLayer, modeRef });
+        fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+        fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+        
+        // 5. Check realtime channel state and resubscribe if needed
+        if ((mapChannel as any).state !== 'joined') {
+          console.log('Map: realtime channel disconnected, resubscribing');
+          mapChannel.subscribe();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
       clearInterval(heartbeatInterval);
       deleteHeartbeat();
