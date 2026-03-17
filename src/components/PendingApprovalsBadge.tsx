@@ -16,23 +16,33 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
 
     const fetchPendingCount = async () => {
       try {
-        // Check if this is a parent company (has child companies)
-        const { data: children } = await supabase
-          .from("companies")
-          .select("id")
-          .eq("parent_company_id", companyId);
+        // Run both queries in parallel for faster badge rendering
+        const [childrenResult, ownCompanyResult] = await Promise.all([
+          supabase
+            .from("companies")
+            .select("id")
+            .eq("parent_company_id", companyId),
+          // @ts-ignore - Approved column might not be in types yet
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("approved", false)
+            .eq("company_id", companyId),
+        ]);
 
-        const companyIds = [companyId, ...(children || []).map(c => c.id)];
-
-        // @ts-ignore - Approved column might not be in types yet
-        const { data } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("approved", false)
-          .in("company_id", companyIds);
+        const childIds = (childrenResult.data || []).map(c => c.id);
         
-        if (data) {
-          setPendingCount(data.length);
+        if (childIds.length > 0) {
+          // @ts-ignore
+          const { data: childProfiles } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("approved", false)
+            .in("company_id", childIds);
+          
+          setPendingCount((ownCompanyResult.data?.length || 0) + (childProfiles?.length || 0));
+        } else {
+          setPendingCount(ownCompanyResult.data?.length || 0);
         }
       } catch (error) {
         console.error("Error fetching pending count:", error);
