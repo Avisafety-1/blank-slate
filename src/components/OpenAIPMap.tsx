@@ -21,8 +21,7 @@ import { calculateDistance, calculateTotalDistance, calculatePolygonAreaKm2 } fr
 import {
   fetchNsmData,
   fetchRpasData,
-  fetchAipRestrictionZones,
-  fetchRmzTmzAtzZones,
+  fetchAllAipZones,
   fetchObstacles,
   fetchAirportsData,
   fetchAndDisplayMissions,
@@ -548,17 +547,18 @@ export function OpenAIPMap({
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
     safeSkyManager.start();
 
-    // Fetch all other data (lower priority than SafeSky)
-    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAipRestrictionZones({ ...geoJsonParams, layer: aipLayer, aipGeoJsonLayersRef });
-    fetchRmzTmzAtzZones({ ...geoJsonParams, layer: rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode });
-    fetchAirportsData({ layer: airportsLayer, mode });
-    fetchDroneTelemetry({ droneLayer, modeRef });
-    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
-    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
-    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    // Ensure valid auth token before fetching RLS-protected data, then fetch all layers
+    supabase.auth.getUser().then(() => {
+      fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+      fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+      fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+      fetchObstacles({ layer: obstaclesLayer, mode });
+      fetchAirportsData({ layer: airportsLayer, mode });
+      fetchDroneTelemetry({ droneLayer, modeRef });
+      fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+      fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+      fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    });
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
 

@@ -107,35 +107,58 @@ export async function fetchRpasData(params: GeoJsonFetchParams) {
   }
 }
 
-export async function fetchAipRestrictionZones(params: GeoJsonFetchParams) {
-  const { layer, mode, aipGeoJsonLayersRef, setGeoJsonInteractivity, modeRef } = params;
+export async function fetchAllAipZones(params: GeoJsonFetchParams & {
+  aipLayer: L.LayerGroup;
+  rmzTmzAtzLayer: L.LayerGroup;
+}) {
+  const { aipLayer, rmzTmzAtzLayer, mode, aipGeoJsonLayersRef, setGeoJsonInteractivity, modeRef } = params;
   try {
     const { data, error } = await supabase
       .from('aip_restriction_zones')
       .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-      .in('zone_type', ['P', 'R', 'D']);
+      .in('zone_type', ['P', 'R', 'D', 'RMZ', 'TMZ', 'ATZ', 'CTR', 'TIZ']);
 
     if (error || !data) {
       console.error('Feil ved henting av AIP-soner:', error);
       return;
     }
 
-    layer.clearLayers();
+    aipLayer.clearLayers();
+    rmzTmzAtzLayer.clearLayers();
     if (aipGeoJsonLayersRef) {
       aipGeoJsonLayersRef.current = [];
     }
 
+    const prdTypes = new Set(['P', 'R', 'D']);
+
     for (const zone of data) {
       if (!zone.geometry) continue;
 
-      let color = '#f59e0b';
-      let label = 'Fareområde';
+      const isPRD = prdTypes.has(zone.zone_type);
+      let color: string;
+      let label: string;
+      let dashArray: string | undefined;
+      let fillOpacity: number;
+      let pane: string;
+      let targetLayer: L.LayerGroup;
+
       if (zone.zone_type === 'P') {
-        color = '#dc2626';
-        label = 'Forbudsområde';
+        color = '#dc2626'; label = 'Forbudsområde'; fillOpacity = 0.2; pane = 'aipPane'; targetLayer = aipLayer;
       } else if (zone.zone_type === 'R') {
-        color = '#8b5cf6';
-        label = 'Restriksjonsområde';
+        color = '#8b5cf6'; label = 'Restriksjonsområde'; fillOpacity = 0.2; pane = 'aipPane'; targetLayer = aipLayer;
+      } else if (zone.zone_type === 'D') {
+        color = '#f59e0b'; label = 'Fareområde'; dashArray = '5, 5'; fillOpacity = 0.2; pane = 'aipPane'; targetLayer = aipLayer;
+      } else if (zone.zone_type === 'TMZ') {
+        color = '#06b6d4'; label = 'TMZ (Transponder Mandatory Zone)'; dashArray = '8, 6'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+      } else if (zone.zone_type === 'ATZ') {
+        color = '#38bdf8'; label = 'ATZ (Aerodrome Traffic Zone)'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+      } else if (zone.zone_type === 'CTR') {
+        color = '#ec4899'; label = 'CTR (Control Zone)'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+      } else if (zone.zone_type === 'TIZ') {
+        color = '#a78bfa'; label = 'TIZ (Traffic Information Zone)'; dashArray = '8, 6'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+      } else {
+        // RMZ default
+        color = '#22c55e'; label = 'RMZ (Radio Mandatory Zone)'; dashArray = '8, 6'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       }
 
       try {
@@ -158,9 +181,9 @@ export async function fetchAipRestrictionZones(params: GeoJsonFetchParams) {
             color,
             weight: 2,
             fillColor: color,
-            fillOpacity: 0.2,
-            dashArray: zone.zone_type === 'D' ? '5, 5' : undefined,
-            pane: 'aipPane',
+            fillOpacity,
+            dashArray,
+            pane,
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             const p = feature.properties || {};
@@ -173,7 +196,7 @@ export async function fetchAipRestrictionZones(params: GeoJsonFetchParams) {
             layer.bindPopup(popup);
           } : undefined,
         });
-        geoJsonLayer.addTo(layer);
+        geoJsonLayer.addTo(targetLayer);
         if (aipGeoJsonLayersRef) {
           aipGeoJsonLayersRef.current.push(geoJsonLayer);
         }
@@ -185,97 +208,7 @@ export async function fetchAipRestrictionZones(params: GeoJsonFetchParams) {
       }
     }
   } catch (err) {
-    console.error('Kunne ikke hente AIP restriksjonsområder:', err);
-  }
-}
-
-export async function fetchRmzTmzAtzZones(params: GeoJsonFetchParams) {
-  const { layer, mode, aipGeoJsonLayersRef, setGeoJsonInteractivity, modeRef } = params;
-  try {
-    const { data, error } = await supabase
-      .from('aip_restriction_zones')
-      .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-      .in('zone_type', ['RMZ', 'TMZ', 'ATZ', 'CTR', 'TIZ']);
-
-    if (error || !data) {
-      console.error('Feil ved henting av RMZ/TMZ/ATZ-soner:', error);
-      return;
-    }
-
-    layer.clearLayers();
-
-    for (const zone of data) {
-      if (!zone.geometry) continue;
-
-      let color = '#22c55e';
-      let label = 'RMZ (Radio Mandatory Zone)';
-      let dashArray: string | undefined = '8, 6';
-      if (zone.zone_type === 'TMZ') {
-        color = '#06b6d4';
-        label = 'TMZ (Transponder Mandatory Zone)';
-        dashArray = '8, 6';
-      } else if (zone.zone_type === 'ATZ') {
-        color = '#38bdf8';
-        label = 'ATZ (Aerodrome Traffic Zone)';
-        dashArray = undefined;
-      } else if (zone.zone_type === 'CTR') {
-        color = '#ec4899';
-        label = 'CTR (Control Zone)';
-        dashArray = undefined;
-      } else if (zone.zone_type === 'TIZ') {
-        color = '#a78bfa';
-        label = 'TIZ (Traffic Information Zone)';
-        dashArray = '8, 6';
-      }
-
-      try {
-        const geojsonFeature = {
-          type: 'Feature' as const,
-          geometry: zone.geometry,
-          properties: {
-            zone_id: zone.zone_id,
-            zone_type: zone.zone_type,
-            name: zone.name,
-            upper_limit: zone.upper_limit,
-            lower_limit: zone.lower_limit,
-            remarks: zone.remarks,
-          }
-        };
-
-        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
-          interactive: mode !== 'routePlanning',
-          style: {
-            color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: 0.12,
-            dashArray,
-            pane: 'rmzPane',
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-            const p = feature.properties || {};
-            const displayName = p.name || p.zone_id || 'Ukjent';
-            let popup = `<strong>${label}</strong><br/>`;
-            popup += `<strong>${displayName}</strong><br/>`;
-            if (p.upper_limit) popup += `Øvre grense: ${p.upper_limit}<br/>`;
-            if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
-            if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
-            layer.bindPopup(popup);
-          } : undefined,
-        });
-        geoJsonLayer.addTo(layer);
-        if (aipGeoJsonLayersRef) {
-          aipGeoJsonLayersRef.current.push(geoJsonLayer);
-        }
-        if (modeRef.current === 'routePlanning') {
-          setGeoJsonInteractivity(geoJsonLayer, false);
-        }
-      } catch (err) {
-        console.error(`Feil ved parsing av ${zone.zone_type}-sone ${zone.zone_id}:`, err);
-      }
-    }
-  } catch (err) {
-    console.error('Kunne ikke hente RMZ/TMZ/ATZ-soner:', err);
+    console.error('Kunne ikke hente AIP-soner:', err);
   }
 }
 
