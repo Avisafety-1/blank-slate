@@ -642,7 +642,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  useEffect(() => {
+  const ensureValidToken = async (): Promise<void> => {
+    if (!navigator.onLine) return;
+    const now = Date.now();
+    const cached = getUserCacheRef.current;
+    if (cached && now - cached.timestamp < 10_000) return;
+    const result = await supabase.auth.getUser();
+    getUserCacheRef.current = { data: result, timestamp: now };
+    if (result.error && isMissingAuthUserError(result.error)) {
+      await clearLocalAuthData(user?.id);
+    }
+  };
+
     if (!session) {
       setSubscribed(false);
       setSubscriptionEnd(null);
