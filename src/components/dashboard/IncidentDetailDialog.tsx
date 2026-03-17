@@ -73,12 +73,6 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     const checkAdmin = async () => {
       await ensureValidToken();
       if (user) {
-        const { data } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(data || false);
-        
         // Hent brukerens navn
         const { data: profile } = await supabase
           .from('profiles')

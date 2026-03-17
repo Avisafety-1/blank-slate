@@ -464,7 +464,7 @@ const Auth = () => {
         // Assign admin role
         await supabase.from('user_roles').insert({
           user_id: googleUser.id,
-          role: 'admin' as any
+          role: 'administrator' as any
         });
 
         toast.success('Selskap opprettet! Du er nå logget inn.');

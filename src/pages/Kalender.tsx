@@ -127,20 +127,6 @@ export default function Kalender() {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!navigator.onLine) return;
-      await ensureValidToken();
-      if (user) {
-        const { data } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(data || false);
-      }
-    };
-    checkAdminStatus();
-  }, []);
 
   useEffect(() => {
     fetchCustomEvents();

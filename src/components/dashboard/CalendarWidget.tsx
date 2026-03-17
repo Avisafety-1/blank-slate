@@ -103,23 +103,6 @@ export const CalendarWidget = () => {
     fetchAllEvents();
   }, [companyId]);
 
-  const checkAdminStatus = async () => {
-    if (!navigator.onLine) return;
-    await ensureValidToken();
-    if (!user) return;
-
-    const { data, error } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (error) {
-      console.error('Error checking admin status:', error);
-      return;
-    }
-    
-    setIsAdmin(data || false);
-  };
 
   const fetchAllEvents = async () => {
     try {
