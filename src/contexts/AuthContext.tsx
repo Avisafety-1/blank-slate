@@ -303,20 +303,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
+          // Apply cached profile immediately for instant UI
+          applyCachedProfile(session.user.id);
           try {
             localStorage.setItem('avisafe_last_activity', Date.now().toString());
           } catch {}
-          if (!navigator.onLine) {
-            applyCachedProfile(session.user.id);
-          } else {
-            setTimeout(() => {
-              fetchUserInfo(session.user.id);
-            }, 0);
+          if (navigator.onLine) {
+            deduplicatedFetchUserInfo(session.user.id);
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
+          // Re-fetch profile on token refresh (common when returning to app)
+          if (navigator.onLine) {
+            deduplicatedFetchUserInfo(session.user.id);
+          }
         } else if (event === 'SIGNED_OUT') {
           if (!navigator.onLine) {
             console.log('AuthContext: Ignoring SIGNED_OUT while offline');
@@ -346,24 +348,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (session?.user) {
-          if (navigator.onLine) {
-            const { error: userError } = await supabase.auth.getUser();
-            if (userError && isMissingAuthUserError(userError)) {
-              console.warn('AuthContext: Found stale session for deleted user, clearing local auth');
-              await clearLocalAuthData(session.user.id);
-              setLoading(false);
-              return;
-            }
-          }
-
           setSession(session);
           setUser(session.user);
-          setLoading(false);
           cacheSession(session.user);
-          if (!navigator.onLine) {
-            applyCachedProfile(session.user.id);
-          } else {
-            fetchUserInfo(session.user.id);
+          // Apply cached profile immediately so UI renders with data
+          applyCachedProfile(session.user.id);
+          setLoading(false);
+
+          if (navigator.onLine) {
+            // Validate user existence lazily inside fetchUserInfo
+            deduplicatedFetchUserInfo(session.user.id);
           }
         } else if (!navigator.onLine) {
           console.log('AuthContext: Offline with no session, trying cache');
