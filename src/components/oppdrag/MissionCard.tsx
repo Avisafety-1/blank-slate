@@ -89,6 +89,7 @@ export const MissionCard = ({
   fetchMissions,
   onRiskBadgeClick,
 }: MissionCardProps) => {
+  const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
