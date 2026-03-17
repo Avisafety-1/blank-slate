@@ -375,6 +375,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
 
     // Cleanup
     return () => {
+      isMounted = false;
       map.remove();
     };
   }, [latitude, longitude, route, flightTracks]);
