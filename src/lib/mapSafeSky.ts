@@ -253,7 +253,7 @@ export function createSafeSkyManager(params: {
 
   /** Short retry burst on startup if cache is empty */
   async function startupRetryBurst() {
-    const retryDelays = [1000, 2000, 3000];
+    const retryDelays = [2000, 4000, 6000];
     for (const delay of retryDelays) {
       if (destroyed || safeskyMarkersCache.size > 0) return;
       await new Promise(r => setTimeout(r, delay));
