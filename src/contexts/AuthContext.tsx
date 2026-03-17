@@ -86,6 +86,7 @@ const AuthContext = createContext<AuthContextType>({
   departmentsEnabled: false,
   isAdmin: false,
   isApproved: false,
+  profileLoaded: false,
   userRole: null,
   subscribed: false,
   subscriptionEnd: null,
