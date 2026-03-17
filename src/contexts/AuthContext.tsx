@@ -68,6 +68,7 @@ interface AuthContextType {
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
+  ensureValidToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
