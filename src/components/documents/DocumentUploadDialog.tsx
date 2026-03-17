@@ -25,11 +25,11 @@ export const DocumentUploadDialog = ({
   onSuccess,
   defaultExpiryDate,
 }: DocumentUploadDialogProps) => {
-  const { companyId } = useAuth();
+  const { companyId, isSuperAdmin: isSuperadmin } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
-  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  
   const [globalVisibility, setGlobalVisibility] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -40,22 +40,6 @@ export const DocumentUploadDialog = ({
     websiteUrl: "",
   });
 
-  useEffect(() => {
-    const checkSuperadmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'superadmin')
-        .maybeSingle();
-      
-      setIsSuperadmin(!!data);
-    };
-    checkSuperadmin();
-  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -36,17 +36,14 @@ interface DocumentDetailDialogProps {
 }
 
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: DocumentDetailDialogProps) => {
-  const { user, ensureValidToken } = useAuth();
+  const { user, ensureValidToken, isAdmin } = useAuth();
   const [downloading, setDownloading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [editedDate, setEditedDate] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
-  useEffect(() => {
-    checkAdminStatus();
-  }, []);
 
   useEffect(() => {
     if (document?.gyldig_til) {
@@ -54,22 +51,6 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
     }
   }, [document]);
 
-  const checkAdminStatus = async () => {
-    await ensureValidToken();
-    if (!user) return;
-
-    const { data, error } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (error) {
-      console.error('Error checking admin status:', error);
-      return;
-    }
-
-    setIsAdmin(data || false);
-  };
 
   // Helper to determine if file can be opened in browser
   const canOpenInBrowser = (fileName?: string | null): boolean => {

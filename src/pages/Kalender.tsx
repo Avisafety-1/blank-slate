@@ -62,7 +62,7 @@ const getColorForType = (type: string): string => {
 
 export default function Kalender() {
   const navigate = useNavigate();
-  const { user, companyId, ensureValidToken } = useAuth();
+  const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -75,7 +75,7 @@ export default function Kalender() {
   const [equipment, setEquipment] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
 
   // Dialog states for different entry types
   const [addMissionDialogOpen, setAddMissionDialogOpen] = useState(false);
@@ -127,20 +127,6 @@ export default function Kalender() {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!navigator.onLine) return;
-      await ensureValidToken();
-      if (user) {
-        const { data } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(data || false);
-      }
-    };
-    checkAdminStatus();
-  }, []);
 
   useEffect(() => {
     fetchCustomEvents();

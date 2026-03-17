@@ -55,7 +55,7 @@ type CalendarEventDB = Tables<"calendar_events">;
 
 export const CalendarWidget = () => {
   const { t, i18n } = useTranslation();
-  const { companyId, user, ensureValidToken } = useAuth();
+  const { companyId, user, ensureValidToken, isAdmin } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -85,7 +85,7 @@ export const CalendarWidget = () => {
   const [createMissionOpen, setCreateMissionOpen] = useState(false);
   const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
   const [createNewsOpen, setCreateNewsOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
 
   // Helper function - must be defined before use
   const getColorForType = (type: string): string => {
@@ -101,26 +101,8 @@ export const CalendarWidget = () => {
   // Fetch all events from database
   useEffect(() => {
     fetchAllEvents();
-    checkAdminStatus();
   }, [companyId]);
 
-  const checkAdminStatus = async () => {
-    if (!navigator.onLine) return;
-    await ensureValidToken();
-    if (!user) return;
-
-    const { data, error } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (error) {
-      console.error('Error checking admin status:', error);
-      return;
-    }
-    
-    setIsAdmin(data || false);
-  };
 
   const fetchAllEvents = async () => {
     try {
