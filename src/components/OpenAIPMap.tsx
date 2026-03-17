@@ -33,7 +33,6 @@ import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
-const SESSION_ID = crypto.randomUUID();
 
 interface OpenAIPMapProps {
   onMissionClick?: (mission: any) => void;
@@ -520,27 +519,7 @@ export function OpenAIPMap({
 
     map.on('click', handleMapClick);
 
-    // Heartbeat — FIRST priority so backend knows someone is viewing
-    let heartbeatInterval: number | undefined;
-    const sendHeartbeat = async () => {
-      try {
-        const { error } = await supabase
-          .from('map_viewer_heartbeats')
-          .upsert({ session_id: SESSION_ID, user_id: user?.id || null, last_seen: new Date().toISOString() }, { onConflict: 'session_id' });
-        if (error) console.error('Heartbeat error:', error);
-      } catch (err) {
-        console.error('Heartbeat failed:', err);
-      }
-    };
-    const deleteHeartbeat = async () => {
-      try {
-        await supabase.from('map_viewer_heartbeats').delete().eq('session_id', SESSION_ID);
-      } catch (err) {
-        console.error('Failed to delete heartbeat:', err);
-      }
-    };
-    sendHeartbeat();
-    heartbeatInterval = window.setInterval(sendHeartbeat, 30000);
+    // Heartbeat is now handled globally by useAppHeartbeat hook
 
     // SafeSky manager — start immediately after heartbeat (first priority)
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
@@ -587,10 +566,7 @@ export function OpenAIPMap({
         // 1. Force Leaflet to recalculate container and re-render tiles
         map.invalidateSize();
         
-        // 2. Re-send heartbeat
-        sendHeartbeat();
-        
-        // 3. Restart SafeSky (stop clears stale intervals, start re-triggers warm-up)
+        // 2. Restart SafeSky (stop clears stale intervals, start re-triggers warm-up)
         safeSkyManager.stop();
         safeSkyManager.start();
         
@@ -612,8 +588,6 @@ export function OpenAIPMap({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
-      clearInterval(heartbeatInterval);
-      deleteHeartbeat();
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
