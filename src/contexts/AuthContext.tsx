@@ -116,6 +116,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Guard to deduplicate concurrent fetchUserInfo calls
+  const fetchUserInfoPromiseRef = { current: null as Promise<void> | null };
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
@@ -301,20 +303,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setLoading(false);
           cacheSession(session.user);
+          // Apply cached profile immediately for instant UI
+          applyCachedProfile(session.user.id);
           try {
             localStorage.setItem('avisafe_last_activity', Date.now().toString());
           } catch {}
-          if (!navigator.onLine) {
-            applyCachedProfile(session.user.id);
-          } else {
-            setTimeout(() => {
-              fetchUserInfo(session.user.id);
-            }, 0);
+          if (navigator.onLine) {
+            deduplicatedFetchUserInfo(session.user.id);
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
+          // Re-fetch profile on token refresh (common when returning to app)
+          if (navigator.onLine) {
+            deduplicatedFetchUserInfo(session.user.id);
+          }
         } else if (event === 'SIGNED_OUT') {
           if (!navigator.onLine) {
             console.log('AuthContext: Ignoring SIGNED_OUT while offline');
@@ -344,24 +348,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (session?.user) {
-          if (navigator.onLine) {
-            const { error: userError } = await supabase.auth.getUser();
-            if (userError && isMissingAuthUserError(userError)) {
-              console.warn('AuthContext: Found stale session for deleted user, clearing local auth');
-              await clearLocalAuthData(session.user.id);
-              setLoading(false);
-              return;
-            }
-          }
-
           setSession(session);
           setUser(session.user);
-          setLoading(false);
           cacheSession(session.user);
-          if (!navigator.onLine) {
-            applyCachedProfile(session.user.id);
-          } else {
-            fetchUserInfo(session.user.id);
+          // Apply cached profile immediately so UI renders with data
+          applyCachedProfile(session.user.id);
+          setLoading(false);
+
+          if (navigator.onLine) {
+            // Validate user existence lazily inside fetchUserInfo
+            deduplicatedFetchUserInfo(session.user.id);
           }
         } else if (!navigator.onLine) {
           console.log('AuthContext: Offline with no session, trying cache');
@@ -383,10 +379,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const deduplicatedFetchUserInfo = (userId: string) => {
+    if (fetchUserInfoPromiseRef.current) return fetchUserInfoPromiseRef.current;
+    const promise = fetchUserInfo(userId).finally(() => {
+      fetchUserInfoPromiseRef.current = null;
+    });
+    fetchUserInfoPromiseRef.current = promise;
+    return promise;
+  };
+
   const fetchUserInfo = async (userId: string) => {
     if (!navigator.onLine) {
       applyCachedProfile(userId);
       return;
+    }
+
+    // Lazily validate that the auth user still exists (handles deleted users)
+    try {
+      const { error: userError } = await supabase.auth.getUser();
+      if (userError && isMissingAuthUserError(userError)) {
+        console.warn('AuthContext: Stale session for deleted user, clearing');
+        await clearLocalAuthData(userId);
+        return;
+      }
+    } catch {
+      // Network error — continue with cached data
     }
 
     try {
@@ -580,15 +597,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      if (navigator.onLine) {
-        const { error: userError } = await supabase.auth.getUser();
-        if (userError && isMissingAuthUserError(userError)) {
-          console.warn('AuthContext: Invalid auth user during subscription check, clearing stale session');
-          await clearLocalAuthData(session.user.id);
-          setSubscriptionLoading(false);
-          return;
-        }
-      }
+      // Deleted-user check is now handled in fetchUserInfo, no need to duplicate here
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
