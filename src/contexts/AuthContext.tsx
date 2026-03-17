@@ -597,15 +597,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      if (navigator.onLine) {
-        const { error: userError } = await supabase.auth.getUser();
-        if (userError && isMissingAuthUserError(userError)) {
-          console.warn('AuthContext: Invalid auth user during subscription check, clearing stale session');
-          await clearLocalAuthData(session.user.id);
-          setSubscriptionLoading(false);
-          return;
-        }
-      }
+      // Deleted-user check is now handled in fetchUserInfo, no need to duplicate here
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
