@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
