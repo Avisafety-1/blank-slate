@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
