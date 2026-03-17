@@ -540,7 +540,7 @@ export function OpenAIPMap({
       }
     };
     sendHeartbeat();
-    heartbeatInterval = window.setInterval(sendHeartbeat, 5000);
+    heartbeatInterval = window.setInterval(sendHeartbeat, 30000);
 
     // SafeSky manager — start immediately after heartbeat (first priority)
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
