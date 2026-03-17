@@ -21,8 +21,7 @@ import { calculateDistance, calculateTotalDistance, calculatePolygonAreaKm2 } fr
 import {
   fetchNsmData,
   fetchRpasData,
-  fetchAipRestrictionZones,
-  fetchRmzTmzAtzZones,
+  fetchAllAipZones,
   fetchObstacles,
   fetchAirportsData,
   fetchAndDisplayMissions,
