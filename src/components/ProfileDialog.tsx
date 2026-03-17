@@ -707,7 +707,6 @@ export const ProfileDialog = () => {
     return expiryDate < today;
   };
 
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const location = useLocation();
 
   // Listen for open-profile-subscription event and location state
