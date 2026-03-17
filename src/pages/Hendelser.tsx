@@ -12,7 +12,7 @@ import { EccairsAttachmentUpload } from "@/components/eccairs/EccairsAttachmentU
 import { EccairsSettingsDialog } from "@/components/eccairs/EccairsSettingsDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2 } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -136,7 +136,7 @@ const getEccairsStatusClass = (status?: string): string => {
 
 const Hendelser = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, companyId } = useAuth();
+  const { user, loading: authLoading, companyId, departmentsEnabled } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
@@ -372,10 +372,11 @@ const Hendelser = () => {
 
     // 3. Fetch fresh data
     try {
-      const { data, error } = await supabase.from('incidents').select('*').order('opprettet_dato', {
+      const { data: rawData, error } = await supabase.from('incidents').select('*, companies:company_id(id, navn)').order('opprettet_dato', {
         ascending: false
       });
       if (error) throw error;
+      const data = (rawData || []).map((i: any) => ({ ...i, company_name: i.companies?.navn || null }));
       setIncidents(data || []);
       if (companyId) setCachedData(`offline_incidents_${companyId}`, data || []);
 
@@ -935,6 +936,12 @@ const Hendelser = () => {
                         <h3 className="font-semibold text-lg sm:text-xl">{incident.tittel}</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        {departmentsEnabled && incident.company_id !== companyId && (incident as any).company_name && (
+                          <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
+                            <Building2 className="h-3 w-3" />
+                            {(incident as any).company_name}
+                          </Badge>
+                        )}
                         <Badge className={statusColors[incident.status] || ""}>
                           {incident.status}
                         </Badge>

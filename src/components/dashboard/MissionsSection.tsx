@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -32,7 +32,7 @@ const statusColors: Record<string, string> = {
 
 export const MissionsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,7 +81,7 @@ export const MissionsSection = () => {
     try {
       const { data, error } = await (supabase as any)
         .from("missions")
-        .select("*")
+        .select("*, companies:company_id(id, navn)")
         .neq("status", "Fullført")
         .neq("status", "Avlyst")
         .gte("tidspunkt", oneDayAgo.toISOString())
@@ -89,7 +89,8 @@ export const MissionsSection = () => {
 
       if (error) throw error;
 
-      setMissions(data || []);
+      const enriched = (data || []).map((m: any) => ({ ...m, company_name: m.companies?.navn || null }));
+      setMissions(enriched);
       if (companyId) setCachedData(`offline_dashboard_missions_${companyId}`, data || []);
       if (data && data.length > 0) {
         const missionIds = data.map((m: any) => m.id);
@@ -249,7 +250,15 @@ export const MissionsSection = () => {
                 className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
               >
                 <div className="mb-1 sm:mb-1.5">
-                  <h3 className="font-semibold text-xs sm:text-sm truncate mb-1">{mission.tittel}</h3>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <h3 className="font-semibold text-xs sm:text-sm truncate">{mission.tittel}</h3>
+                    {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
+                        <Building2 className="h-2.5 w-2.5" />
+                        {mission.company_name}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1 items-center">
                     <MissionStatusDropdown
                       missionId={mission.id}

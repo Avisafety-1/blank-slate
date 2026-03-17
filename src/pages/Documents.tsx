@@ -67,12 +67,14 @@ const Documents = () => {
     }
   }, [user, loading, navigate]);
 
+  const { departmentsEnabled } = useAuth();
+
   const { data: documents, isLoading, refetch } = useQuery({
     queryKey: ["documents", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("documents").select("*").order("opprettet_dato", { ascending: false });
+      const { data, error } = await supabase.from("documents").select("*, companies:company_id(id, navn)").order("opprettet_dato", { ascending: false });
       if (error) throw error;
-      return data as Document[];
+      return (data || []).map((d: any) => ({ ...d, company_name: d.companies?.navn || null })) as (Document & { company_name?: string })[];
     }
   });
 

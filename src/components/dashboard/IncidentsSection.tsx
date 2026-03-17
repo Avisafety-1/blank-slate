@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-import { AlertTriangle, Clock, MessageSquare } from "lucide-react";
+import { AlertTriangle, Clock, MessageSquare, Building2 } from "lucide-react";
 
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
@@ -42,7 +42,7 @@ type Incident = Tables<"incidents">;
 
 export const IncidentsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId, user } = useAuth();
+  const { companyId, user, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -224,11 +224,12 @@ export const IncidentsSection = () => {
 
     // 3. Fetch fresh data
     try {
-      const { data, error } = await supabase
+      const { data: rawData, error } = await supabase
         .from('incidents')
-        .select('*')
+        .select('*, companies:company_id(id, navn)')
         .neq('status', 'Ferdigbehandlet')
         .order('opprettet_dato', { ascending: false });
+      const data = (rawData || []).map((i: any) => ({ ...i, company_name: i.companies?.navn || null }));
 
       if (error) throw error;
 
@@ -306,7 +307,13 @@ export const IncidentsSection = () => {
                         {incident.incident_number && (
                           <span className="text-[10px] sm:text-xs font-mono text-muted-foreground">{incident.incident_number}</span>
                         )}
-                        <h3 className="font-medium text-xs sm:text-sm">{incident.tittel}</h3>
+                        <h3 className="font-medium text-xs sm:text-sm">{(incident as any).tittel}</h3>
+                        {departmentsEnabled && (incident as any).company_id !== companyId && (incident as any).company_name && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
+                            <Building2 className="h-2.5 w-2.5" />
+                            {(incident as any).company_name}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                         <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>

@@ -19,8 +19,9 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload
+  Send, CheckCircle2, Upload, Building2
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
@@ -88,6 +89,7 @@ export const MissionCard = ({
   fetchMissions,
   onRiskBadgeClick,
 }: MissionCardProps) => {
+  const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
@@ -111,7 +113,15 @@ export const MissionCard = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 sm:gap-4">
         <div className="space-y-2 flex-1 w-full">
-          <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
+            {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
+              <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
+                <Building2 className="h-3 w-3" />
+                {mission.company_name}
+              </Badge>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             <MissionStatusDropdown
               missionId={mission.id}

@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File } from "lucide-react";
+import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File, Building2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ const DocumentsList = ({
   onDocumentClick,
   getDocumentStatus,
 }: DocumentsListProps) => {
+  const { companyId, departmentsEnabled } = useAuth();
 
   const handleOpenFile = async (filUrl: string) => {
     try {
@@ -175,7 +177,17 @@ const DocumentsList = ({
                 )}
                 onClick={() => onDocumentClick(doc)}
               >
-                <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none truncate">{doc.tittel}</TableCell>
+                <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate">{doc.tittel}</span>
+                    {departmentsEnabled && (doc as any).company_id !== companyId && (doc as any).company_name && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
+                        <Building2 className="h-2.5 w-2.5" />
+                        {(doc as any).company_name}
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="bg-slate-200/50 text-slate-950 px-2 md:px-4">
                   <Badge variant="secondary" className="text-xs whitespace-nowrap">
                     {CATEGORY_LABELS[doc.kategori] || doc.kategori}
