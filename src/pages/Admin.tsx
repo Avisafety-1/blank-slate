@@ -87,7 +87,7 @@ const availableRoles = [
 ];
 
 const Admin = () => {
-  const { user, loading, companyId, companyName, isSuperAdmin, signOut, departmentsEnabled, ensureValidToken } = useAuth();
+  const { user, loading, companyId, companyName, isSuperAdmin, isAdmin, signOut, departmentsEnabled, ensureValidToken } = useAuth();
   const { canAccess, hasAddon, currentPlan, seatCount, bypass } = usePlanGating();
   const { subscriptionAddons } = useAuth();
   const canManageRoles = canAccess('access_control');
