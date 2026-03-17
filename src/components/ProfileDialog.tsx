@@ -155,6 +155,52 @@ export const ProfileDialog = () => {
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
 
+  // Fast badge-count effect: runs immediately on mount, independent of heavy fetchUserData
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchBadgeCounts = async () => {
+      try {
+        // Run incident count and approval check in parallel
+        const [incidentsResult, approvalResult] = await Promise.all([
+          supabase
+            .from("incidents")
+            .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url")
+            .eq("oppfolgingsansvarlig_id", user.id)
+            .neq("status", "Lukket")
+            .order("hendelsestidspunkt", { ascending: false }),
+          supabase
+            .from("profiles")
+            .select("can_approve_missions, company_id")
+            .eq("id", user.id)
+            .single(),
+        ]);
+
+        if (incidentsResult.data) {
+          setFollowUpIncidents(incidentsResult.data);
+        }
+
+        if (approvalResult.data?.can_approve_missions && approvalResult.data.company_id) {
+          setCanApproveMissions(true);
+          const { data: pendingMissions } = await supabase
+            .from("missions")
+            .select("*")
+            .eq("approval_status", "pending_approval")
+            .eq("company_id", approvalResult.data.company_id)
+            .order("submitted_for_approval_at", { ascending: false });
+
+          if (pendingMissions) {
+            setPendingApprovalMissions(pendingMissions);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching badge counts:", err);
+      }
+    };
+
+    fetchBadgeCounts();
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchUserData();
