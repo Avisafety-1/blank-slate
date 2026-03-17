@@ -68,7 +68,10 @@ export const useOppdragData = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flight_logs' }, handler)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
   }, [companyId]);
 
   const fetchMissionsForTab = async (tab: 'active' | 'completed') => {
