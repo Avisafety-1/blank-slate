@@ -131,7 +131,7 @@ export const DocumentSection = () => {
     try {
       const { data, error } = await supabase
         .from("documents")
-        .select("*")
+        .select("*, companies:company_id(id, navn)")
         .order("opprettet_dato", { ascending: false });
 
       if (error) throw error;
