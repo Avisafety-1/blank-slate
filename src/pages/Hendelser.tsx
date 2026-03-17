@@ -936,6 +936,12 @@ const Hendelser = () => {
                         <h3 className="font-semibold text-lg sm:text-xl">{incident.tittel}</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        {departmentsEnabled && incident.company_id !== companyId && (incident as any).company_name && (
+                          <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
+                            <Building2 className="h-3 w-3" />
+                            {(incident as any).company_name}
+                          </Badge>
+                        )}
                         <Badge className={statusColors[incident.status] || ""}>
                           {incident.status}
                         </Badge>

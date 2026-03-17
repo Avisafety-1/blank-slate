@@ -165,6 +165,7 @@ export const useOppdragData = () => {
 
         return {
           ...mission,
+          company_name: mission.companies?.navn || null,
           personnel: personnelMap.get(mission.id) || [],
           drones: dronesMap.get(mission.id) || [],
           equipment: equipmentMap.get(mission.id) || [],

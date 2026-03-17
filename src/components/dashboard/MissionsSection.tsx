@@ -250,7 +250,15 @@ export const MissionsSection = () => {
                 className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
               >
                 <div className="mb-1 sm:mb-1.5">
-                  <h3 className="font-semibold text-xs sm:text-sm truncate mb-1">{mission.tittel}</h3>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <h3 className="font-semibold text-xs sm:text-sm truncate">{mission.tittel}</h3>
+                    {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
+                        <Building2 className="h-2.5 w-2.5" />
+                        {mission.company_name}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1 items-center">
                     <MissionStatusDropdown
                       missionId={mission.id}

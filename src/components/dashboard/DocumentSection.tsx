@@ -223,6 +223,12 @@ export const DocumentSection = () => {
                     <StatusDot status={status} />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-xs sm:text-sm truncate">{doc.tittel}</h3>
+                      {departmentsEnabled && (doc as any).company_id !== companyId && (doc as any).companies?.navn && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-primary">
+                          <Building2 className="h-2.5 w-2.5" />
+                          {(doc as any).companies.navn}
+                        </span>
+                      )}
                       <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                         <span className="px-1.5 sm:px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] sm:text-xs">
                           {doc.kategori}
