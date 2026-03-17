@@ -9,7 +9,7 @@ import { useState } from "react";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 export const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
-  const { user, isApproved, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, hadPreviousSubscription, signOut } = useAuth();
+  const { user, isApproved, profileLoaded, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, hadPreviousSubscription, signOut } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
