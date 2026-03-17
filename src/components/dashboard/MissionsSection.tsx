@@ -81,7 +81,7 @@ export const MissionsSection = () => {
     try {
       const { data, error } = await (supabase as any)
         .from("missions")
-        .select("*")
+        .select("*, companies:company_id(id, navn)")
         .neq("status", "Fullført")
         .neq("status", "Avlyst")
         .gte("tidspunkt", oneDayAgo.toISOString())
