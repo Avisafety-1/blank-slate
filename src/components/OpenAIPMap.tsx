@@ -588,8 +588,6 @@ export function OpenAIPMap({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
-      clearInterval(heartbeatInterval);
-      deleteHeartbeat();
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
