@@ -60,6 +60,7 @@ interface Assessment {
 
 export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input', onSoraSaved }: RiskAssessmentDialogProps) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);

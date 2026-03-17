@@ -55,6 +55,7 @@ interface PersonnelLogEntry {
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const queryClient = useQueryClient();
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
