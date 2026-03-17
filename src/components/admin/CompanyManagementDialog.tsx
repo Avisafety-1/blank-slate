@@ -251,6 +251,7 @@ export const CompanyManagementDialog = ({
               )}
             />
 
+            {!forceParentCompanyId && (
             <FormField
               control={form.control}
               name="selskapstype"
@@ -303,6 +304,7 @@ export const CompanyManagementDialog = ({
                 </FormItem>
               )}
             />
+            )}
 
             <FormField
               control={form.control}
