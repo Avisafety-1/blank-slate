@@ -101,7 +101,6 @@ export const CalendarWidget = () => {
   // Fetch all events from database
   useEffect(() => {
     fetchAllEvents();
-    checkAdminStatus();
   }, [companyId]);
 
   const checkAdminStatus = async () => {
