@@ -55,7 +55,7 @@ type CalendarEventDB = Tables<"calendar_events">;
 
 export const CalendarWidget = () => {
   const { t, i18n } = useTranslation();
-  const { companyId, user, ensureValidToken } = useAuth();
+  const { companyId, user, ensureValidToken, isAdmin } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [date, setDate] = useState<Date | undefined>(new Date());
