@@ -88,7 +88,7 @@ export const useOppdragData = () => {
     try {
       let query = supabase
         .from("missions")
-        .select(`*, customers (id, navn, kontaktperson, telefon, epost)`)
+        .select(`*, customers (id, navn, kontaktperson, telefon, epost), companies:company_id(id, navn)`)
         .order("tidspunkt", { ascending: tab === "active" });
 
       if (tab === "active") {
