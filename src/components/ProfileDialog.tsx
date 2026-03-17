@@ -129,7 +129,7 @@ export const ProfileDialog = () => {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
   const [inspectionReminderDaysDraft, setInspectionReminderDaysDraft] = useState<string>("14");
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
