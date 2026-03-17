@@ -477,12 +477,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      const company = profileResult.data?.companies as any;
+      const parentCompanyId = company?.parent_company_id;
+
+      // Kick off parent company + accessible companies in parallel
+      const parentPromise = parentCompanyId
+        ? supabase
+            .from('companies')
+            .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
+            .eq('id', parentCompanyId)
+            .single()
+            .then(({ data }) => data)
+            .catch(() => null)
+        : Promise.resolve(null);
+
+      const accessiblePromise = fetchAccessibleCompanies(userId);
+
       if (profileResult.data) {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
-        
-        const company = profile.companies as any;
+
         profileData.companyName = company?.navn || null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
@@ -491,21 +506,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.stripeExempt = company?.stripe_exempt ?? false;
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
-        // If child company, inherit parent's settings
-        if (company?.parent_company_id) {
-          try {
-            const { data: parentCompany } = await supabase
-              .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
-              .eq('id', company.parent_company_id)
-              .single();
-            if (parentCompany) {
-              profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
-              profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
-              console.log('AuthContext: Inherited settings from parent company', company.parent_company_id);
-            }
-          } catch (e) {
-            console.warn('AuthContext: Failed to fetch parent company settings', e);
+        // Inherit parent settings (already fetching in parallel above)
+        if (parentCompanyId) {
+          const parentCompany = await parentPromise;
+          if (parentCompany) {
+            profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
+            profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
+            console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
           }
         }
       }
