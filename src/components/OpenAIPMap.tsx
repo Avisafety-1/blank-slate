@@ -525,19 +525,18 @@ export function OpenAIPMap({
     const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
 
-    // Single auth check to refresh token, then start ALL layers in parallel (including SafeSky)
-    supabase.auth.getUser().then(() => {
-      safeSkyManager.start(); // non-blocking warm-up inside
-      fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-      fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-      fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-      fetchObstacles({ layer: obstaclesLayer, mode });
-      fetchAirportsData({ layer: airportsLayer, mode });
-      fetchDroneTelemetry({ droneLayer, modeRef });
-      fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
-      fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
-      fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
-    });
+    // Start ALL layers immediately — AuthContext handles session validity,
+    // Supabase SDK auto-attaches the JWT from localStorage for RLS queries.
+    safeSkyManager.start();
+    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchObstacles({ layer: obstaclesLayer, mode });
+    fetchAirportsData({ layer: airportsLayer, mode });
+    fetchDroneTelemetry({ droneLayer, modeRef });
+    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
