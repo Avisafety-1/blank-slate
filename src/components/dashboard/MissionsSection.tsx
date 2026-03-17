@@ -384,24 +384,17 @@ export const MissionsSection = () => {
               if (!approvalConfirmMissionId) return;
               
               // Check if anyone can approve missions
-              const { data: approvers } = await supabase
-                .from('profiles')
-                .select('id, approval_company_ids, company_id')
-                .eq('can_approve_missions', true)
-                .limit(50);
+              const { data: approvers, error: approverError } = await supabase
+                .rpc('get_mission_approvers', { target_company_id: companyId! });
 
-              // Include parent company so parent-level approvers are found
-              const { data: parentLookup } = await supabase.from('companies').select('parent_company_id').eq('id', companyId!).single();
-              const relevantIds = [companyId!];
-              if (parentLookup?.parent_company_id) relevantIds.push(parentLookup.parent_company_id);
+              if (approverError) {
+                console.error('Error checking approvers:', approverError);
+                toast.error('Kunne ikke sjekke godkjennere');
+                setApprovalConfirmMissionId(null);
+                return;
+              }
               
-              const relevant = (approvers || []).filter((a: any) => {
-                if (!a.approval_company_ids) return relevantIds.includes(a.company_id);
-                if (a.approval_company_ids.includes('all')) return true;
-                return a.approval_company_ids.includes(companyId);
-              });
-              
-              if (!relevant || relevant.length === 0) {
+              if (!approvers || approvers.length === 0) {
                 toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
                 setApprovalConfirmMissionId(null);
                 return;
