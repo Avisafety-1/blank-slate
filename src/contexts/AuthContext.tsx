@@ -373,6 +373,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           resetAuthState();
           setLoading(false);
         } else {
+          // Transient null session during token refresh — keep existing state
+          if (!session && user && navigator.onLine) {
+            console.log('AuthContext: Ignoring transient null session during token refresh (user still set)');
+            return;
+          }
           if (!session && !navigator.onLine) {
             console.log('AuthContext: Ignoring null session event while offline');
             if (!user) {
@@ -718,10 +723,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!session) {
-      setSubscribed(false);
-      setSubscriptionEnd(null);
-      // Only clear loading if auth itself is done loading
-      if (!loading) {
+      // Only clear subscription if truly signed out (no user in state)
+      // During token refresh, session goes null but user is still set
+      if (!user && !loading) {
+        setSubscribed(false);
+        setSubscriptionEnd(null);
         setSubscriptionLoading(false);
       }
       return;

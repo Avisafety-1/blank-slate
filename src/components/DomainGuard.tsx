@@ -50,7 +50,15 @@ export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) 
     }
 
     // If user is NOT logged in and on app domain → redirect to login domain
+    // But skip if we have a cached session — likely mid-token-refresh
     if (!user && isAppDomain() && requireAuth) {
+      try {
+        const hasCachedSession = localStorage.getItem('avisafe_session_cache');
+        if (hasCachedSession) {
+          console.log('DomainGuard: Cached session exists, skipping redirect during potential token refresh');
+          return;
+        }
+      } catch {}
       console.log('DomainGuard: User not logged in on app domain, redirecting to login domain');
       redirectToLogin('/auth');
       return;
@@ -73,6 +81,11 @@ export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) 
   }
 
   if (!user && isAppDomain() && requireAuth) {
+    try {
+      if (localStorage.getItem('avisafe_session_cache')) {
+        return <>{children}</>; // Keep rendering during token refresh
+      }
+    } catch {}
     return null; // Will redirect
   }
 
