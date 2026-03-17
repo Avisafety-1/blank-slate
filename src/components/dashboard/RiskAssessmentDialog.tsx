@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -59,6 +60,7 @@ interface Assessment {
 
 export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, initialTab = 'input', onSoraSaved }: RiskAssessmentDialogProps) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -515,6 +517,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         createdAt: assessmentCreatedAt,
       });
       if (success) {
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
         toast.success('Risikovurdering eksportert til PDF og lagret i Dokumenter');
       } else {
         toast.error('Kunne ikke eksportere til PDF');

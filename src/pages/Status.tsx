@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -74,6 +75,7 @@ const COLORS = {
 
 const Status = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, companyId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<"month" | "quarter" | "year" | "custom">("year");
@@ -677,6 +679,8 @@ const Status = () => {
         user_id: user?.id,
         opprettet_av: profile?.full_name || user?.email || "Ukjent",
       });
+
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
 
       // Download
       const url = URL.createObjectURL(blob);

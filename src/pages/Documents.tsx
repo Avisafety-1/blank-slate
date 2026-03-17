@@ -73,7 +73,8 @@ const Documents = () => {
       const { data, error } = await supabase.from("documents").select("*, companies:company_id(id, navn)").order("opprettet_dato", { ascending: false });
       if (error) throw error;
       return (data || []).map((d: any) => ({ ...d, company_name: d.companies?.navn || null })) as (Document & { company_name?: string })[];
-    }
+    },
+    refetchOnMount: 'always',
   });
 
   useEffect(() => {
