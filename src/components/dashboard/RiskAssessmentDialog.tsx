@@ -516,6 +516,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         createdAt: assessmentCreatedAt,
       });
       if (success) {
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
         toast.success('Risikovurdering eksportert til PDF og lagret i Dokumenter');
       } else {
         toast.error('Kunne ikke eksportere til PDF');
