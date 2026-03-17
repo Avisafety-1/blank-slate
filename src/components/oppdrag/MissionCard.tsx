@@ -19,8 +19,9 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload
+  Send, CheckCircle2, Upload, Building2
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
