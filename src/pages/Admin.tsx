@@ -131,31 +131,6 @@ const Admin = () => {
     }
   }, [isAdmin, isSuperAdmin, companyId]);
 
-  const checkAdminStatus = async () => {
-    try {
-      await ensureValidToken();
-      // Check both 'administrator' and legacy 'admin' roles
-      const [adminResult, legacyResult] = await Promise.all([
-        supabase.rpc('has_role', { _user_id: user?.id, _role: 'administrator' }),
-        supabase.rpc('has_role', { _user_id: user?.id, _role: 'admin' }),
-      ]);
-
-      if (adminResult.error && legacyResult.error) throw adminResult.error;
-
-      if (adminResult.data || legacyResult.data) {
-        setIsAdmin(true);
-        fetchData();
-      } else {
-        toast.error(t('admin.noAccessPage'));
-        navigate("/");
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      toast.error(t('admin.errorCheckingAccess'));
-      navigate("/");
-    }
-  };
-
   const fetchData = async () => {
     setLoadingData(true);
     try {
