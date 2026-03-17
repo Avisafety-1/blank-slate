@@ -547,15 +547,13 @@ export function OpenAIPMap({
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
     safeSkyManager.start();
 
-    // Ensure valid auth token before fetching RLS-protected data
-    await supabase.auth.getUser();
-
-    // Fetch all other data (lower priority than SafeSky)
-    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAllAipZones({ ...geoJsonParams, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode });
-    fetchAirportsData({ layer: airportsLayer, mode });
+    // Ensure valid auth token before fetching RLS-protected data, then fetch all layers
+    supabase.auth.getUser().then(() => {
+      fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+      fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+      fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+      fetchObstacles({ layer: obstaclesLayer, mode });
+      fetchAirportsData({ layer: airportsLayer, mode });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
