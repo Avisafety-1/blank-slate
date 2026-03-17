@@ -118,17 +118,18 @@ const Admin = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      checkAdminStatus();
+    if (!loading && user && !isAdmin && !isSuperAdmin) {
+      toast.error(t('admin.noAccessPage'));
+      navigate("/");
     }
-  }, [user]);
+  }, [user, loading, isAdmin, isSuperAdmin]);
 
-  // Refetch data when companyId changes (e.g., superadmin switches company)
+  // Fetch data when admin access is confirmed or companyId changes
   useEffect(() => {
-    if (isAdmin && companyId !== undefined) {
+    if ((isAdmin || isSuperAdmin) && companyId !== undefined) {
       fetchData();
     }
-  }, [companyId]);
+  }, [isAdmin, isSuperAdmin, companyId]);
 
   const checkAdminStatus = async () => {
     try {
