@@ -85,7 +85,7 @@ export const CalendarWidget = () => {
   const [createMissionOpen, setCreateMissionOpen] = useState(false);
   const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
   const [createNewsOpen, setCreateNewsOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
 
   // Helper function - must be defined before use
   const getColorForType = (type: string): string => {
