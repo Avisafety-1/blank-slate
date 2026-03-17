@@ -14,7 +14,7 @@ const SAFESKY_QUERY = `viewport=${NORWAY_VIEWPORT}&return_grounded_traffic=true`
 const SAFESKY_BEACONS_URL = `https://${SAFESKY_HOST}${SAFESKY_PATH}?${SAFESKY_QUERY}`;
 
 // How long a heartbeat is considered "active" (45 seconds — matches 30s client interval + margin)
-const HEARTBEAT_TIMEOUT_MS = 45000;
+const HEARTBEAT_TIMEOUT_MS = 120000;
 
 // How old beacons should be before deletion (30 seconds)
 const BEACON_MAX_AGE_MS = 30000;
