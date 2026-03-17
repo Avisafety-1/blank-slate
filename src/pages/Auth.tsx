@@ -108,6 +108,10 @@ const Auth = () => {
         return;
       }
 
+      // Guard: only run once per user session to prevent duplicate calls
+      if (googleProfileCheckedRef.current) return;
+      googleProfileCheckedRef.current = true;
+
       setCheckingGoogleUser(true);
       
       try {
