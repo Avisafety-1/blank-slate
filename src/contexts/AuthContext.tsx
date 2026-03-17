@@ -511,6 +511,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.userRole = roleResult.data.role;
         profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
         profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
+      } else if (roleResult.error) {
+        // Role query failed but profile succeeded — keep previous admin/role state instead of resetting to false
+        console.warn('AuthContext: Role query failed, keeping previous role state');
+        profileData.userRole = userRole;
+        profileData.isSuperAdmin = isSuperAdmin;
+        profileData.isAdmin = isAdmin;
       }
 
       setCompanyId(profileData.companyId);
@@ -525,6 +531,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
+      setProfileLoaded(true);
 
       saveCachedProfile(userId, profileData);
 
