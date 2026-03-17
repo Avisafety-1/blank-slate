@@ -545,7 +545,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       saveCachedProfile(userId, profileData);
 
-      const company = profileResult.data?.companies as any;
       if (
         profileData.djiFlightlogEnabled &&
         !company?.dronelog_api_key &&
