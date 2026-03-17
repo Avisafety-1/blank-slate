@@ -1,96 +1,67 @@
+## Multi-Company Access – IMPLEMENTERT
 
+### Database
+- `companies.parent_company_id` – valgfri FK til morselskap
+- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
+- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
+- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
+- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
+- Eksisterende profiler seedet inn i user_companies
 
-## Kartlag-prioritet og flaskehalser
+### Frontend
+- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
+- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
+- `CompanyManagementDialog`: Morselskap-velger (superadmin)
 
-### Nåværende lasterekkefølge (linje 524-540 i OpenAIPMap.tsx)
+### Arkitektur
+- `profiles.company_id` = aktivt selskap (uendret)
+- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
 
-```text
-1. safeSkyManager.start()         ← BLOKKERER (await warmUpCache + await fetchBeacons)
-   └── await warmUpCache()        ← Edge function invoke, kan ta 2-5s
-   └── await fetchSafeSkyBeacons()← DB-spørring + auth-guard (getUser)
-   └── startupRetryBurst()        ← Ekstra 2+4+6s retries hvis tom
-   
-2. supabase.auth.getUser().then(… ← Venter på #1 implisitt via event loop
-   ├── fetchNsmData()             ← Ekstern ArcGIS-tjeneste (rask, alltid der)
-   ├── fetchRpasData()            ← Ekstern ArcGIS-tjeneste (rask)
-   ├── fetchAllAipZones()         ← Supabase DB (aip_restriction_zones)
-   ├── fetchObstacles()           ← Supabase DB
-   ├── fetchAirportsData()        ← Supabase DB
-   ├── fetchDroneTelemetry()      ← Supabase DB
-   ├── fetchAndDisplayMissions()  ← Supabase DB
-   ├── fetchActiveAdvisories()    ← Supabase DB
-   └── fetchPilotPositions()      ← Supabase DB
-```
+### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
+- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
+- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
+- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
+- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
+- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
 
-### Problemet
+---
 
-**SafeSky blokkerer alt annet.** `safeSkyManager.start()` kalles på linje 527 og er `async` — den `await`-er `warmUpCache()` (edge function-kall) og deretter `fetchSafeSkyBeacons()`. Selv om `start()` ikke formelt `await`-es i useEffect, er den synkron nok til å starte før `.then()`-kjeden.
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-Men det virkelige problemet er at **begge veiene kjører `supabase.auth.getUser()`**:
-- SafeSky sin `fetchSafeSkyBeacons()` kaller `getUser()` som auth-guard (linje 166)
-- Hovedflyten kaller `getUser()` på linje 530
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-Det betyr to parallelle `getUser()`-kall som begge kan trigge token-refresh. Etter lang inaktivitet tar dette ekstra tid.
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-NSM laster fort fordi den henter fra ArcGIS (ekstern URL) uten auth — ingen Supabase-avhengighet.
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-### Løsning
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-**Felles auth-sjekk først, deretter parallell lasting av alt:**
-
-1. **Én `getUser()`-kall** på toppen som sikrer gyldig token
-2. **Deretter `Promise.all`** med SafeSky warm-up + alle data-fetchere i parallell
-3. SafeSky warm-up og første fetch kjøres som én av mange parallelle oppgaver, ikke som blokkerende forløper
-
-### Endringer
-
-**`src/components/OpenAIPMap.tsx`** (linje 524-540):
-```typescript
-// 1. Single auth check
-const { error: authErr } = await supabase.auth.getUser();
-if (authErr) console.warn('Map: auth check failed', authErr);
-
-// 2. Start everything in parallel
-safeSkyManager.start();  // no longer blocking
-fetchNsmData(…);
-fetchRpasData(…);
-fetchAllAipZones(…);
-fetchObstacles(…);
-fetchAirportsData(…);
-fetchDroneTelemetry(…);
-fetchAndDisplayMissions(…);
-fetchActiveAdvisories(…);
-fetchPilotPositions(…);
-```
-
-**`src/lib/mapSafeSky.ts`** — `start()` og `fetchSafeSkyBeacons()`:
-- Fjern den redundante `supabase.auth.getUser()` auth-guarden fra `fetchSafeSkyBeacons()` (auth er allerede sikret av kallet i OpenAIPMap)
-- Gjør `warmUpCache()` ikke-blokkerende: kall den uten `await` slik at første DB-fetch kan starte umiddelbart. Warm-up fyller cachen i bakgrunnen, og realtime-subscription plukker opp endringene
-
-```typescript
-async function start() {
-  if (destroyed || safeskyChannel) return;
-  
-  // Fire-and-forget warm-up (fills cache in background)
-  warmUpCache();
-  
-  // Immediate DB fetch (may be empty first time, retry burst handles it)
-  await fetchSafeSkyBeacons();
-  
-  if (safeskyMarkersCache.size === 0 && !destroyed) {
-    startupRetryBurst();
-  }
-  
-  safeskyChannel = supabase.channel(…).on(…).subscribe();
-}
-```
-
-### Forventet effekt
-- Luftrom (AIP-soner) og SafeSky laster **samtidig** i stedet for sekvensielt
-- Fjerner ~2-5 sekunders forsinkelse fra warm-up-blokkering
-- NSM forblir like rask som nå (uavhengig av Supabase-auth)
-- Kun ett `getUser()`-kall i stedet for to/tre parallelle
-
-### Risiko
-Lav. Ingen nye features, bare omstrukturering av rekkefølge og fjerning av redundant auth-sjekk.
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal

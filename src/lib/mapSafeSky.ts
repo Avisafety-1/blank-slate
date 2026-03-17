@@ -160,18 +160,7 @@ export function createSafeSkyManager(params: {
 
   async function fetchSafeSkyBeacons() {
     if (destroyed) return;
-    
-    // Auth guard: check session before querying
-    try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        console.warn('SafeSky: no valid user session, skipping beacon fetch');
-        return;
-      }
-    } catch (err) {
-      console.warn('SafeSky: user check failed', err);
-      return;
-    }
+    // Auth is ensured by the caller (OpenAIPMap single getUser check)
     
     try {
       const { data, error } = await supabase
@@ -293,17 +282,18 @@ export function createSafeSkyManager(params: {
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
       
-      // 1. Await cache warm-up so DB is populated before first read
-      await warmUpCache();
-      if (destroyed) return;
+      // Fire-and-forget warm-up (fills DB cache in background)
+      warmUpCache();
       
-      // 2. Immediate DB fetch
+      // Immediate DB fetch (may be empty first time, retry burst handles it)
       await fetchSafeSkyBeacons();
       
-      // 3. If still empty after first fetch, do short retry burst
+      // If still empty after first fetch, do short retry burst
       if (safeskyMarkersCache.size === 0 && !destroyed) {
         startupRetryBurst();
       }
+      
+      if (destroyed) return;
       
       safeskyChannel = supabase
         .channel('safesky-beacons-changes')
