@@ -1,36 +1,67 @@
+## Multi-Company Access – IMPLEMENTERT
 
+### Database
+- `companies.parent_company_id` – valgfri FK til morselskap
+- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
+- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
+- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
+- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
+- Eksisterende profiler seedet inn i user_companies
 
-## Risikovurdering av den planlagte auth-refaktoreringen
+### Frontend
+- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
+- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
+- `CompanyManagementDialog`: Morselskap-velger (superadmin)
 
-### Er endringen trygg? Ja — med noen forbehold.
+### Arkitektur
+- `profiles.company_id` = aktivt selskap (uendret)
+- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
 
-Planen berører **kun klientsiden** (React/TypeScript). Ingen database-migrasjoner, ingen RLS-endringer, ingen endringer i Edge Functions. Avdelingsstrukturen, `get_user_visible_company_ids()`, og alle RLS-policyer forblir urørt.
+### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
+- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
+- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
+- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
+- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
+- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
 
-### Hva endres og risiko per punkt
+---
 
-| Endring | Risiko | Begrunnelse |
-|---|---|---|
-| **Bytte pseudo-refs til `useRef`** i AuthContext (linje 122-124) | Svært lav | Ren bugfix — dagens kode lager nye objekter per render, noe som bryter deduplisering/cache. `useRef` er standard React-pattern. |
-| **Ikke overskrive admin-state ved delvis feil** | Lav | Dagens kode setter `isAdmin=false` hvis rollequery feiler mens profilquery lykkes. Fiksens logikk: behold forrige gyldige verdi ved feil. Verre case: admin-status "henger" litt lenger — men det er bedre enn at den forsvinner. |
-| **Erstatte `useAdminCheck()` med `useAuth().isAdmin`** | Lav | `useAdminCheck` gjør en separat `has_role` RPC som allerede gjøres i AuthContext. Fem filer bruker den (Documents, DroneDetailDialog, EquipmentDetailDialog, NewsDetailDialog + hooken selv). Endringen fjerner bare et duplikat-kall — ingen ny logikk. |
-| **Lazy-loading i ProfileDialog** | Lav | Flytte queries fra mount til dialog-open. Ingen funksjonell endring, bare timing. |
-| **Innføre "profileLoaded"-flagg** | Lav-Middels | Nytt state-felt i AuthContext som skiller "ikke lastet enda" fra "ikke godkjent". Krever at alle steder som bruker `isApproved` håndterer den nye mellomtilstanden korrekt. |
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-### Påvirkning på eksisterende brukere
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-- **Vanlige brukere**: Ingen merkbar endring. Innlogging blir raskere, færre API-kall.
-- **Administratorer**: Admin-ikonet vil ikke lenger forsvinne ved treg/feilende nettverksrespons.
-- **Superadminer**: Ingen endring — superadmin-sjekken er allerede i AuthContext.
-- **Avdelingsstruktur**: Helt uberørt. Alle avdelingsfunksjoner (company switcher, `get_user_visible_company_ids`, godkjenningsflyt, hierarkisk RLS) ligger i databasen og andre komponenter som ikke endres.
-- **Subscription/billing**: Uberørt.
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-### Det eneste risikopunktet
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-Innføring av `profileLoaded`-flagget krever at vi verifiserer **alle** steder som sjekker `isApproved` eller `loading` for å vise/skjule innhold. Hvis ett sted glemmes, kan en bruker se en "venter på godkjenning"-melding i et glimt. Dette er enkelt å teste og reversere.
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-### Anbefaling
-
-Endringen er trygg å gjennomføre. Den er rent klient-side, fjerner kjente bugs (pseudo-refs, duplikate kall, falske negative admin-verdier), og berører ikke avdelingsarkitekturen. Hovedrisikoen (profileLoaded-flagget) kan testes ved å logge inn som admin, vente, og refreshe — nøyaktig det scenarioet som feiler i dag.
-
-Skal jeg implementere?
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal

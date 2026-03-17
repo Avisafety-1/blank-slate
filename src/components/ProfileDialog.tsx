@@ -108,13 +108,13 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut, checkSubscription } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(authUserRole);
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
@@ -123,12 +123,13 @@ export const ProfileDialog = () => {
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
   const [inspectionReminderDaysDraft, setInspectionReminderDaysDraft] = useState<string>("14");
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
@@ -201,8 +202,9 @@ export const ProfileDialog = () => {
     fetchBadgeCounts();
   }, [user]);
 
+  // Only fetch heavy user data when dialog is actually opened
   useEffect(() => {
-    if (user) {
+    if (user && profileDialogOpen) {
       fetchUserData();
       // Fetch app version from DB
       supabase
@@ -217,7 +219,7 @@ export const ProfileDialog = () => {
           }
         });
     }
-  }, [user]);
+  }, [user, profileDialogOpen]);
 
   useEffect(() => {
     if (notificationPrefs?.inspection_reminder_days === undefined || notificationPrefs?.inspection_reminder_days === null) return;
@@ -259,7 +261,7 @@ export const ProfileDialog = () => {
         }
       }
 
-      // Fetch user's role
+      // Fetch user's role (for display in profile, admin status comes from AuthContext)
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -268,7 +270,6 @@ export const ProfileDialog = () => {
 
       if (roleData) {
         setUserRole(roleData.role);
-        setIsAdmin(roleData.role === 'administrator' || roleData.role === 'superadmin');
       }
 
       // Fetch competencies
@@ -705,7 +706,6 @@ export const ProfileDialog = () => {
     return expiryDate < today;
   };
 
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const location = useLocation();
 
   // Listen for open-profile-subscription event and location state

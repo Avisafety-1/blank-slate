@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
@@ -50,6 +50,7 @@ interface AuthContextType {
   departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
+  profileLoaded: boolean;
   userRole: string | null;
   subscribed: boolean;
   subscriptionEnd: string | null;
@@ -85,6 +86,7 @@ const AuthContext = createContext<AuthContextType>({
   departmentsEnabled: false,
   isAdmin: false,
   isApproved: false,
+  profileLoaded: false,
   userRole: null,
   subscribed: false,
   subscriptionEnd: null,
@@ -118,10 +120,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   // Guard to deduplicate concurrent fetchUserInfo calls
-  const fetchUserInfoPromiseRef = { current: null as Promise<void> | null };
+  const fetchUserInfoPromiseRef = useRef<Promise<void> | null>(null);
   // Cache for getUser() to prevent call storms (50+ /user calls after Google login)
-  const getUserCacheRef = { current: null as { data: any; timestamp: number } | null };
+  const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
@@ -158,6 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsSuperAdmin(false);
     setIsAdmin(false);
     setIsApproved(false);
+    setProfileLoaded(false);
     setDjiFlightlogEnabled(false);
     setDepartmentsEnabled(false);
     setUserRole(null);
@@ -256,6 +260,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
       setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
+      setProfileLoaded(true);
       console.log('AuthContext: Applied cached profile for offline use');
       return true;
     } catch {
@@ -507,6 +512,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.userRole = roleResult.data.role;
         profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
         profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
+      } else if (roleResult.error) {
+        // Role query failed but profile succeeded — keep previous admin/role state instead of resetting to false
+        console.warn('AuthContext: Role query failed, keeping previous role state');
+        profileData.userRole = userRole;
+        profileData.isSuperAdmin = isSuperAdmin;
+        profileData.isAdmin = isAdmin;
       }
 
       setCompanyId(profileData.companyId);
@@ -521,6 +532,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
+      setProfileLoaded(true);
 
       saveCachedProfile(userId, profileData);
 
@@ -685,6 +697,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       departmentsEnabled,
       isAdmin,
       isApproved,
+      profileLoaded,
       userRole, 
       subscribed,
       subscriptionEnd,

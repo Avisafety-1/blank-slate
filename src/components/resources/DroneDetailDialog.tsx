@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { useAdminCheck } from "@/hooks/useAdminCheck";
+
 import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink } from "lucide-react";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
@@ -70,8 +70,7 @@ interface DroneDetailDialogProps {
 }
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
-  const { isAdmin } = useAdminCheck();
-  const { user, companyId } = useAuth();
+  const { user, companyId, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
