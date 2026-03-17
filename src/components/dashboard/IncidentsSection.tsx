@@ -224,11 +224,12 @@ export const IncidentsSection = () => {
 
     // 3. Fetch fresh data
     try {
-      const { data, error } = await supabase
+      const { data: rawData, error } = await supabase
         .from('incidents')
-        .select('*')
+        .select('*, companies:company_id(id, navn)')
         .neq('status', 'Ferdigbehandlet')
         .order('opprettet_dato', { ascending: false });
+      const data = (rawData || []).map((i: any) => ({ ...i, company_name: i.companies?.navn || null }));
 
       if (error) throw error;
 
