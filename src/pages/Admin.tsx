@@ -96,7 +96,7 @@ const Admin = () => {
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
