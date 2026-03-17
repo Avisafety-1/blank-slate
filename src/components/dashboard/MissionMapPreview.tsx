@@ -290,7 +290,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const rpasResponse = await fetch(
           "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (rpasResponse.ok) {
+        if (rpasResponse.ok && isMounted) {
           const rpasData = await rpasResponse.json();
           L.geoJSON(rpasData, {
             style: {
