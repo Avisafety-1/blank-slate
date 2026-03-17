@@ -563,8 +563,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Fetch accessible companies for multi-company switcher
-      fetchAccessibleCompanies(userId);
+      // Accessible companies already kicked off in parallel above
+      await accessiblePromise;
     } catch (error) {
       console.error('Error fetching user info:', error);
       if (!navigator.onLine) {
