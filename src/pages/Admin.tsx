@@ -87,7 +87,7 @@ const availableRoles = [
 ];
 
 const Admin = () => {
-  const { user, loading, companyId, companyName, isSuperAdmin, signOut, departmentsEnabled, ensureValidToken } = useAuth();
+  const { user, loading, companyId, companyName, isSuperAdmin, isAdmin, signOut, departmentsEnabled, ensureValidToken } = useAuth();
   const { canAccess, hasAddon, currentPlan, seatCount, bypass } = usePlanGating();
   const { subscriptionAddons } = useAuth();
   const canManageRoles = canAccess('access_control');
@@ -96,7 +96,7 @@ const Admin = () => {
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [approvingUsers, setApprovingUsers] = useState<Set<string>>(new Set());
@@ -118,42 +118,18 @@ const Admin = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    }
-  }, [user]);
-
-  // Refetch data when companyId changes (e.g., superadmin switches company)
-  useEffect(() => {
-    if (isAdmin && companyId !== undefined) {
-      fetchData();
-    }
-  }, [companyId]);
-
-  const checkAdminStatus = async () => {
-    try {
-      await ensureValidToken();
-      // Check both 'administrator' and legacy 'admin' roles
-      const [adminResult, legacyResult] = await Promise.all([
-        supabase.rpc('has_role', { _user_id: user?.id, _role: 'administrator' }),
-        supabase.rpc('has_role', { _user_id: user?.id, _role: 'admin' }),
-      ]);
-
-      if (adminResult.error && legacyResult.error) throw adminResult.error;
-
-      if (adminResult.data || legacyResult.data) {
-        setIsAdmin(true);
-        fetchData();
-      } else {
-        toast.error(t('admin.noAccessPage'));
-        navigate("/");
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      toast.error(t('admin.errorCheckingAccess'));
+    if (!loading && user && !isAdmin && !isSuperAdmin) {
+      toast.error(t('admin.noAccessPage'));
       navigate("/");
     }
-  };
+  }, [user, loading, isAdmin, isSuperAdmin]);
+
+  // Fetch data when admin access is confirmed or companyId changes
+  useEffect(() => {
+    if ((isAdmin || isSuperAdmin) && companyId !== undefined) {
+      fetchData();
+    }
+  }, [isAdmin, isSuperAdmin, companyId]);
 
   const fetchData = async () => {
     setLoadingData(true);
