@@ -270,7 +270,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const nsmResponse = await fetch(
           "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (nsmResponse.ok) {
+        if (nsmResponse.ok && isMounted) {
           const nsmData = await nsmResponse.json();
           L.geoJSON(nsmData, {
             style: {
