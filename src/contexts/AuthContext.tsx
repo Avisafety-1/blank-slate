@@ -403,27 +403,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Lazily validate that the auth user still exists (handles deleted users)
-    // Use cached result if available and fresh (10s TTL) to prevent /user call storms
-    try {
-      const now = Date.now();
-      const cached = getUserCacheRef.current;
-      let userError: any = null;
-      if (cached && now - cached.timestamp < 10_000) {
-        userError = cached.data.error;
-      } else {
-        const result = await supabase.auth.getUser();
-        getUserCacheRef.current = { data: result, timestamp: now };
-        userError = result.error;
+    // Fire-and-forget: validate that the auth user still exists (handles deleted users).
+    // This is NOT on the critical path — profile/role queries use the JWT via RLS.
+    const backgroundUserCheck = async () => {
+      try {
+        const now = Date.now();
+        const cached = getUserCacheRef.current;
+        let userError: any = null;
+        if (cached && now - cached.timestamp < 10_000) {
+          userError = cached.data.error;
+        } else {
+          const result = await supabase.auth.getUser();
+          getUserCacheRef.current = { data: result, timestamp: now };
+          userError = result.error;
+        }
+        if (userError && isMissingAuthUserError(userError)) {
+          console.warn('AuthContext: Stale session for deleted user, clearing');
+          await clearLocalAuthData(userId);
+        }
+      } catch {
+        // Network error — ignore
       }
-      if (userError && isMissingAuthUserError(userError)) {
-        console.warn('AuthContext: Stale session for deleted user, clearing');
-        await clearLocalAuthData(userId);
-        return;
-      }
-    } catch {
-      // Network error — continue with cached data
-    }
+    };
+    backgroundUserCheck();
 
     try {
       const [profileResult, roleResult] = await Promise.all([
