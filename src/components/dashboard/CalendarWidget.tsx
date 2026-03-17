@@ -55,7 +55,7 @@ type CalendarEventDB = Tables<"calendar_events">;
 
 export const CalendarWidget = () => {
   const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, user, ensureValidToken } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -106,7 +106,7 @@ export const CalendarWidget = () => {
 
   const checkAdminStatus = async () => {
     if (!navigator.onLine) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    await ensureValidToken();
     if (!user) return;
 
     const { data, error } = await supabase.rpc('has_role', {

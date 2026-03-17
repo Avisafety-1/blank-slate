@@ -50,7 +50,7 @@ const statusColors = {
 };
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
-  const { user, companyId } = useAuth();
+  const { user, companyId, ensureValidToken } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
@@ -72,7 +72,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      await ensureValidToken();
       if (user) {
         const { data } = await supabase.rpc('has_role', {
           _user_id: user.id,

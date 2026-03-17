@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ChecklistItem {
   id: string;
@@ -35,6 +36,7 @@ interface DocumentDetailDialogProps {
 }
 
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: DocumentDetailDialogProps) => {
+  const { user, ensureValidToken } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -53,7 +55,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   }, [document]);
 
   const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    await ensureValidToken();
     if (!user) return;
 
     const { data, error } = await supabase.rpc('has_role', {

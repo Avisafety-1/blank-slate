@@ -68,6 +68,7 @@ interface AuthContextType {
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
+  ensureValidToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -102,6 +103,7 @@ const AuthContext = createContext<AuthContextType>({
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
   switchCompany: async () => {},
+  ensureValidToken: async () => {},
 });
 
 export const useAuth = () => {
@@ -640,6 +642,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const ensureValidToken = async (): Promise<void> => {
+    if (!navigator.onLine) return;
+    const now = Date.now();
+    const cached = getUserCacheRef.current;
+    if (cached && now - cached.timestamp < 10_000) return;
+    const result = await supabase.auth.getUser();
+    getUserCacheRef.current = { data: result, timestamp: now };
+    if (result.error && isMissingAuthUserError(result.error)) {
+      await clearLocalAuthData(user?.id);
+    }
+  };
+
   useEffect(() => {
     if (!session) {
       setSubscribed(false);
@@ -689,6 +703,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       refetchUserInfo,
       checkSubscription,
       switchCompany,
+      ensureValidToken,
     }}>
       {children}
     </AuthContext.Provider>

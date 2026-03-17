@@ -62,7 +62,7 @@ const getColorForType = (type: string): string => {
 
 export default function Kalender() {
   const navigate = useNavigate();
-  const { user, companyId } = useAuth();
+  const { user, companyId, ensureValidToken } = useAuth();
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -130,7 +130,7 @@ export default function Kalender() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!navigator.onLine) return;
-      const { data: { user } } = await supabase.auth.getUser();
+      await ensureValidToken();
       if (user) {
         const { data } = await supabase.rpc('has_role', {
           _user_id: user.id,
