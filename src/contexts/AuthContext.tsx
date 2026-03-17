@@ -305,6 +305,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    const lastHiddenAtRef_local = { current: 0 };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        lastHiddenAtRef_local.current = Date.now();
+        return;
+      }
+      // Only act if away for >5 seconds (PWA background / tab switch)
+      if (Date.now() - lastHiddenAtRef_local.current < 5_000) return;
+      console.log('AuthContext: Returning from background, forcing session check');
+      supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+        if (freshSession?.user) {
+          setSession(freshSession);
+          setUser(freshSession.user);
+          cacheSession(freshSession.user);
+          deduplicatedFetchUserInfo(freshSession.user.id);
+        }
+      }).catch(() => {
+        // Network error — ignore, SDK will retry
+      });
+    };
+
+    const handleOnline = () => {
+      console.log('AuthContext: Back online, forcing session check');
+      supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+        if (freshSession?.user) {
+          setSession(freshSession);
+          setUser(freshSession.user);
+          cacheSession(freshSession.user);
+          deduplicatedFetchUserInfo(freshSession.user.id);
+        }
+      }).catch(() => {});
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -385,7 +422,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   const deduplicatedFetchUserInfo = (userId: string) => {
@@ -667,13 +708,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const ensureValidToken = async (): Promise<void> => {
     if (!navigator.onLine) return;
-    const now = Date.now();
-    const cached = getUserCacheRef.current;
-    if (cached && now - cached.timestamp < 10_000) return;
-    const result = await supabase.auth.getUser();
-    getUserCacheRef.current = { data: result, timestamp: now };
-    if (result.error && isMissingAuthUserError(result.error)) {
-      await clearLocalAuthData(user?.id);
+    // Use getSession() (local + auto-refresh) instead of getUser() (network call)
+    const { data: { session: freshSession } } = await supabase.auth.getSession();
+    if (freshSession) {
+      setSession(freshSession);
+      setUser(freshSession.user);
     }
   };
 
