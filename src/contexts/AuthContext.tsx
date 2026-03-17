@@ -654,6 +654,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  useEffect(() => {
     if (!session) {
       setSubscribed(false);
       setSubscriptionEnd(null);
