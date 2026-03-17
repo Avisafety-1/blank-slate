@@ -566,10 +566,7 @@ export function OpenAIPMap({
         // 1. Force Leaflet to recalculate container and re-render tiles
         map.invalidateSize();
         
-        // 2. Re-send heartbeat
-        sendHeartbeat();
-        
-        // 3. Restart SafeSky (stop clears stale intervals, start re-triggers warm-up)
+        // 2. Restart SafeSky (stop clears stale intervals, start re-triggers warm-up)
         safeSkyManager.stop();
         safeSkyManager.start();
         
