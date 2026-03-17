@@ -81,6 +81,11 @@ export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) 
   }
 
   if (!user && isAppDomain() && requireAuth) {
+    try {
+      if (localStorage.getItem('avisafe_session_cache')) {
+        return <>{children}</>; // Keep rendering during token refresh
+      }
+    } catch {}
     return null; // Will redirect
   }
 

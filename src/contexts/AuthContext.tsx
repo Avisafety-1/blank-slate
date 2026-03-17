@@ -723,10 +723,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!session) {
-      setSubscribed(false);
-      setSubscriptionEnd(null);
-      // Only clear loading if auth itself is done loading
-      if (!loading) {
+      // Only clear subscription if truly signed out (no user in state)
+      // During token refresh, session goes null but user is still set
+      if (!user && !loading) {
+        setSubscribed(false);
+        setSubscriptionEnd(null);
         setSubscriptionLoading(false);
       }
       return;

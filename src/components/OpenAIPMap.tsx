@@ -569,7 +569,12 @@ export function OpenAIPMap({
         safeSkyManager.stop();
         safeSkyManager.start();
         
-        // 4. Re-fetch all data layers
+        // 4. Re-fetch ALL data layers (including RLS-protected ones)
+        fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+        fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+        fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+        fetchObstacles({ layer: obstaclesLayer, mode });
+        fetchAirportsData({ layer: airportsLayer, mode });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
