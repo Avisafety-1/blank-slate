@@ -14,80 +14,58 @@ interface DomainGuardProps {
  * - App domain (app.avisafe.no): For authenticated users
  * - Development: No domain restrictions
  * 
- * IMPORTANT: Does NOT redirect from /auth route - Auth.tsx handles its own OAuth redirect logic
+ * IMPORTANT: Does NOT redirect during auth refresh or before auth is initialized.
+ * A transient null session during token refresh is NOT treated as a real sign-out.
  */
 export const DomainGuard = ({ children, requireAuth = true }: DomainGuardProps) => {
-  const { user, loading } = useAuth();
+  const { user, session, loading, authRefreshing, authInitialized } = useAuth();
   const location = useLocation();
   
-  // Check if we're on auth or reset-password page - let them handle their own redirects
   const isAuthPage = location.pathname === '/auth' || location.pathname === '/reset-password';
 
   useEffect(() => {
-    // Skip domain checks in development
-    if (!isProductionDomain() || loading) {
-      return;
-    }
+    if (!isProductionDomain() || loading) return;
+    if (!navigator.onLine) return;
+    if (isAuthPage) return;
 
-    // Skip redirects when offline - user can't reach other domains anyway
-    if (!navigator.onLine) {
-      console.log('DomainGuard: Offline, skipping redirects');
-      return;
-    }
+    // Don't redirect until auth system is fully initialized
+    if (!authInitialized) return;
+    // Don't redirect while a refresh is in progress — session may be transiently null
+    if (authRefreshing) return;
 
-    // IMPORTANT: Don't auto-redirect from /auth page
-    // Auth.tsx needs to handle OAuth callbacks and profile verification first
-    if (isAuthPage) {
-      console.log('DomainGuard: On /auth page, skipping auto-redirect to let Auth.tsx handle OAuth flow');
-      return;
-    }
-
-    // If user is logged in and on login domain → redirect to app domain
+    // User logged in on login domain → redirect to app domain
     if (user && isLoginDomain()) {
       console.log('DomainGuard: User logged in on login domain, redirecting to app domain');
       redirectToApp('/');
       return;
     }
 
-    // If user is NOT logged in and on app domain → redirect to login domain
-    // But skip if we have a cached session — likely mid-token-refresh
-    if (!user && isAppDomain() && requireAuth) {
-      try {
-        const hasCachedSession = localStorage.getItem('avisafe_session_cache');
-        if (hasCachedSession) {
-          console.log('DomainGuard: Cached session exists, skipping redirect during potential token refresh');
-          return;
-        }
-      } catch {}
-      console.log('DomainGuard: User not logged in on app domain, redirecting to login domain');
+    // User NOT logged in and on app domain → redirect to login
+    // Only redirect when we are CERTAIN user is signed out (auth initialized, not refreshing, no session, no user)
+    if (!user && !session && isAppDomain() && requireAuth) {
+      console.log('DomainGuard: User confirmed signed out on app domain, redirecting to login');
       redirectToLogin('/auth');
       return;
     }
-  }, [user, loading, requireAuth, isAuthPage]);
+  }, [user, session, loading, requireAuth, isAuthPage, authRefreshing, authInitialized]);
 
-  // Show nothing during redirect
-  if (!isProductionDomain() || loading) {
-    return <>{children}</>;
-  }
+  // Development — no domain restrictions
+  if (!isProductionDomain()) return <>{children}</>;
 
-  // Don't block rendering on /auth page - Auth.tsx handles it
-  if (isAuthPage) {
-    return <>{children}</>;
-  }
+  // Auth page — let Auth.tsx handle its own redirects
+  if (isAuthPage) return <>{children}</>;
 
-  // In production, check domain rules
-  if (user && isLoginDomain()) {
-    return null; // Will redirect
-  }
+  // Not yet initialized — keep rendering children (cached state) to avoid flash
+  if (!authInitialized) return <>{children}</>;
 
-  if (!user && isAppDomain() && requireAuth) {
-    try {
-      if (localStorage.getItem('avisafe_session_cache')) {
-        return <>{children}</>; // Keep rendering during token refresh
-      }
-    } catch {}
-    return null; // Will redirect
-  }
+  // Refreshing — keep rendering children, don't blank the screen
+  if (loading || authRefreshing) return <>{children}</>;
+
+  // User on login domain while logged in — will redirect
+  if (user && isLoginDomain()) return null;
+
+  // User confirmed signed out on app domain — will redirect
+  if (!user && !session && isAppDomain() && requireAuth) return null;
 
   return <>{children}</>;
 };

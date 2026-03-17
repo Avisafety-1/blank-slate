@@ -65,6 +65,8 @@ interface AuthContextType {
   isBillingOwner: boolean;
   seatCount: number;
   accessibleCompanies: AccessibleCompany[];
+  authRefreshing: boolean;
+  authInitialized: boolean;
   signOut: () => Promise<void>;
   refetchUserInfo: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -101,6 +103,8 @@ const AuthContext = createContext<AuthContextType>({
   isBillingOwner: false,
   seatCount: 1,
   accessibleCompanies: [],
+  authRefreshing: false,
+  authInitialized: false,
   signOut: async () => {},
   refetchUserInfo: async () => {},
   checkSubscription: async () => {},
@@ -121,10 +125,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  // Guard to deduplicate concurrent fetchUserInfo calls
-  const fetchUserInfoPromiseRef = useRef<Promise<void> | null>(null);
-  // Cache for getUser() to prevent call storms (50+ /user calls after Google login)
+  const [authRefreshing, setAuthRefreshing] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Version-based concurrency control: only the latest refresh writes state
+  const refreshVersionRef = useRef(0);
+  // Cache for getUser() to prevent call storms
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
+
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
@@ -219,8 +227,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       localStorage.removeItem(SESSION_CACHE_KEY);
-      // Keep PROFILE_CACHE_KEY — it's per-userId so it's harmless and gives
-      // instant profile data when the same user logs back in.
       getUserCacheRef.current = null;
 
       for (let i = localStorage.length - 1; i >= 0; i -= 1) {
@@ -304,6 +310,239 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  /**
+   * Central auth state refresh. Fetches profile, role, accessible companies,
+   * and subscription status in parallel. Uses version-based concurrency control
+   * so only the LATEST refresh request can write state — prevents stale async
+   * writes from overwriting fresh data.
+   *
+   * IMPORTANT: Does NOT nullify profile/company/subscription while refreshing.
+   * Existing state stays intact until new data arrives.
+   */
+  const refreshAuthState = async (userId: string, reason: string = 'unknown') => {
+    const myVersion = ++refreshVersionRef.current;
+    setAuthRefreshing(true);
+    console.log(`AuthContext: refreshAuthState v${myVersion} (${reason})`);
+
+    // Fire-and-forget background user validation (deleted user check)
+    const backgroundUserCheck = async () => {
+      try {
+        const now = Date.now();
+        const cached = getUserCacheRef.current;
+        let userError: any = null;
+        if (cached && now - cached.timestamp < 10_000) {
+          userError = cached.data.error;
+        } else {
+          const result = await supabase.auth.getUser();
+          getUserCacheRef.current = { data: result, timestamp: now };
+          userError = result.error;
+        }
+        if (userError && isMissingAuthUserError(userError)) {
+          console.warn('AuthContext: Stale session for deleted user, clearing');
+          await clearLocalAuthData(userId);
+        }
+      } catch {
+        // Network error — ignore
+      }
+    };
+    backgroundUserCheck();
+
+    try {
+      // Fetch profile+company, role, accessible companies, and subscription in parallel
+      const [profileResult, roleResult, accessibleResult, subscriptionResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(`
+            company_id,
+            approved,
+            companies (
+              id,
+              navn,
+              selskapstype,
+              adresse_lat,
+              adresse_lon,
+              dji_flightlog_enabled,
+              dronelog_api_key,
+              stripe_exempt,
+              parent_company_id,
+              departments_enabled
+            )
+          `)
+          .eq('id', userId)
+          .single(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase.rpc('get_user_accessible_companies', { _user_id: userId }),
+        supabase.functions.invoke('check-subscription').catch(e => {
+          console.error('check-subscription error during refresh:', e);
+          if (isMissingAuthUserError(e)) {
+            clearLocalAuthData(userId);
+          }
+          return { data: null, error: e };
+        }),
+      ]);
+
+      // Stale write guard — if a newer refresh has started, discard this result
+      if (myVersion !== refreshVersionRef.current) {
+        console.log(`AuthContext: refreshAuthState v${myVersion} superseded by v${refreshVersionRef.current}, discarding`);
+        return;
+      }
+
+      // --- Build profile data ---
+      let profileData: CachedProfile = {
+        companyId: null,
+        companyName: null,
+        companyType: 'droneoperator',
+        companyLat: null,
+        companyLon: null,
+        isApproved: false,
+        userRole: null,
+        isAdmin: false,
+        isSuperAdmin: false,
+        djiFlightlogEnabled: false,
+        stripeExempt: false,
+        departmentsEnabled: false,
+      };
+
+      if (profileResult.error && roleResult.error) {
+        console.log('AuthContext: Both profile+role queries failed, using cached profile');
+        applyCachedProfile(userId);
+        // Still apply subscription if available
+        applySubscriptionData(subscriptionResult?.data);
+        return;
+      }
+
+      const company = profileResult.data?.companies as any;
+      const parentCompanyId = company?.parent_company_id;
+
+      if (profileResult.data) {
+        const profile = profileResult.data;
+        profileData.companyId = profile.company_id;
+        profileData.isApproved = profile.approved ?? false;
+        profileData.companyName = company?.navn || null;
+        profileData.companyType = company?.selskapstype || 'droneoperator';
+        profileData.companyLat = company?.adresse_lat || null;
+        profileData.companyLon = company?.adresse_lon || null;
+        profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
+        profileData.stripeExempt = company?.stripe_exempt ?? false;
+        profileData.departmentsEnabled = company?.departments_enabled ?? false;
+
+        // Inherit parent company settings if needed
+        if (parentCompanyId) {
+          try {
+            const { data: parentCompany } = await supabase
+              .from('companies')
+              .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
+              .eq('id', parentCompanyId)
+              .single();
+            // Re-check version after await
+            if (myVersion !== refreshVersionRef.current) return;
+            if (parentCompany) {
+              profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
+              profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
+              console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      if (roleResult.data) {
+        profileData.userRole = roleResult.data.role;
+        profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
+        profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
+      } else if (roleResult.error) {
+        // Role query failed but profile succeeded — keep previous admin/role state instead of resetting to false
+        console.warn('AuthContext: Role query failed, keeping previous role state');
+        profileData.userRole = userRole;
+        profileData.isSuperAdmin = isSuperAdmin;
+        profileData.isAdmin = isAdmin;
+      }
+
+      // Final stale-write check before applying state
+      if (myVersion !== refreshVersionRef.current) return;
+
+      // --- Apply all state atomically ---
+      setCompanyId(profileData.companyId);
+      setCompanyName(profileData.companyName);
+      setCompanyType(profileData.companyType);
+      setCompanyLat(profileData.companyLat);
+      setCompanyLon(profileData.companyLon);
+      setIsApproved(profileData.isApproved);
+      setUserRole(profileData.userRole);
+      setIsAdmin(profileData.isAdmin);
+      setIsSuperAdmin(profileData.isSuperAdmin);
+      setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setDepartmentsEnabled(profileData.departmentsEnabled);
+      setStripeExempt(profileData.stripeExempt);
+      setProfileLoaded(true);
+
+      // Apply accessible companies
+      if (!accessibleResult.error && accessibleResult.data) {
+        setAccessibleCompanies(
+          (accessibleResult.data || []).map((c: any) => ({
+            id: c.company_id,
+            name: c.company_name,
+            isParent: c.is_parent,
+          }))
+        );
+      }
+
+      // Apply subscription data
+      applySubscriptionData(subscriptionResult?.data);
+
+      saveCachedProfile(userId, profileData);
+
+      // Auto-provision DroneLog API key if needed
+      if (
+        profileData.djiFlightlogEnabled &&
+        !company?.dronelog_api_key &&
+        profileData.companyId &&
+        profileData.isAdmin
+      ) {
+        console.log('AuthContext: Auto-provisioning DroneLog API key for company', profileData.companyId);
+        try {
+          await supabase.functions.invoke('manage-dronelog-key', {
+            body: { companyId: profileData.companyId, enable: true, selfProvision: true },
+          });
+        } catch (provisionError) {
+          console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
+        }
+      }
+    } catch (error) {
+      if (myVersion !== refreshVersionRef.current) return;
+      console.error('refreshAuthState failed:', reason, error);
+      if (!navigator.onLine) {
+        applyCachedProfile(userId);
+      }
+    } finally {
+      if (myVersion === refreshVersionRef.current) {
+        setAuthRefreshing(false);
+        setAuthInitialized(true);
+        setSubscriptionLoading(false);
+      }
+    }
+  };
+
+  /** Apply subscription data from check-subscription response */
+  const applySubscriptionData = (data: any) => {
+    if (!data) return;
+    setSubscribed(data.subscribed ?? false);
+    setSubscriptionEnd(data.subscription_end ?? null);
+    setCancelAtPeriodEnd(data.cancel_at_period_end ?? false);
+    setIsTrial(data.is_trial ?? false);
+    setTrialEnd(data.trial_end ?? null);
+    setHadPreviousSubscription(data.had_previous_subscription ?? false);
+    setSubscriptionPlan(data.plan ?? null);
+    setSubscriptionAddons(data.addons ?? []);
+    setIsBillingOwner(data.is_billing_owner ?? false);
+    setSeatCount(data.seat_count ?? 1);
+    setSubscriptionLoading(false);
+  };
+
+  // --- Auth state change listener & initial session ---
   useEffect(() => {
     const lastHiddenAtRef_local = { current: 0 };
 
@@ -320,11 +559,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(freshSession);
           setUser(freshSession.user);
           cacheSession(freshSession.user);
-          deduplicatedFetchUserInfo(freshSession.user.id);
+          refreshAuthState(freshSession.user.id, 'visibility');
         }
-      }).catch(() => {
-        // Network error — ignore, SDK will retry
-      });
+      }).catch(() => {});
     };
 
     const handleOnline = () => {
@@ -334,7 +571,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(freshSession);
           setUser(freshSession.user);
           cacheSession(freshSession.user);
-          deduplicatedFetchUserInfo(freshSession.user.id);
+          refreshAuthState(freshSession.user.id, 'online');
         }
       }).catch(() => {});
     };
@@ -344,7 +581,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+        if (event === 'SIGNED_IN' && session?.user) {
           setSession(session);
           setUser(session.user);
           setLoading(false);
@@ -355,15 +592,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             localStorage.setItem('avisafe_last_activity', Date.now().toString());
           } catch {}
           if (navigator.onLine) {
-            deduplicatedFetchUserInfo(session.user.id);
+            refreshAuthState(session.user.id, 'signed-in');
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
-          // Re-fetch profile on token refresh (common when returning to app)
+          // Re-fetch all auth state on token refresh — critical for session continuity
           if (navigator.onLine) {
-            deduplicatedFetchUserInfo(session.user.id);
+            refreshAuthState(session.user.id, 'token-refreshed');
           }
         } else if (event === 'SIGNED_OUT') {
           if (!navigator.onLine) {
@@ -372,8 +609,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           resetAuthState();
           setLoading(false);
+          setAuthInitialized(true);
         } else {
-          // Transient null session during token refresh — keep existing state
+          // Transient null session during token refresh — DO NOT reset state.
+          // This is the key fix: a null session mid-refresh is NOT a real sign-out.
           if (!session && user && navigator.onLine) {
             console.log('AuthContext: Ignoring transient null session during token refresh (user still set)');
             return;
@@ -407,24 +646,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
 
           if (navigator.onLine) {
-            // Validate user existence lazily inside fetchUserInfo
-            deduplicatedFetchUserInfo(session.user.id);
+            refreshAuthState(session.user.id, 'initial-session');
+          } else {
+            // Offline — mark as initialized with cached data
+            setAuthInitialized(true);
+            setSubscriptionLoading(false);
           }
         } else if (!navigator.onLine) {
           console.log('AuthContext: Offline with no session, trying cache');
           const restored = restoreFromCache();
           setLoading(false);
+          setAuthInitialized(true);
+          setSubscriptionLoading(false);
           if (restored) {
             console.log('AuthContext: Restored user from offline cache');
           }
         } else {
           resetAuthState();
           setLoading(false);
+          setAuthInitialized(true);
+          setSubscriptionLoading(false);
         }
       })
       .catch(() => {
         resetAuthState();
         setLoading(false);
+        setAuthInitialized(true);
+        setSubscriptionLoading(false);
       });
 
     return () => {
@@ -434,245 +682,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const deduplicatedFetchUserInfo = (userId: string) => {
-    if (fetchUserInfoPromiseRef.current) return fetchUserInfoPromiseRef.current;
-    const promise = fetchUserInfo(userId).finally(() => {
-      fetchUserInfoPromiseRef.current = null;
-    });
-    fetchUserInfoPromiseRef.current = promise;
-    return promise;
-  };
-
-  const fetchUserInfo = async (userId: string) => {
-    if (!navigator.onLine) {
-      applyCachedProfile(userId);
-      return;
-    }
-
-    // Fire-and-forget: validate that the auth user still exists (handles deleted users).
-    // This is NOT on the critical path — profile/role queries use the JWT via RLS.
-    const backgroundUserCheck = async () => {
-      try {
-        const now = Date.now();
-        const cached = getUserCacheRef.current;
-        let userError: any = null;
-        if (cached && now - cached.timestamp < 10_000) {
-          userError = cached.data.error;
-        } else {
-          const result = await supabase.auth.getUser();
-          getUserCacheRef.current = { data: result, timestamp: now };
-          userError = result.error;
-        }
-        if (userError && isMissingAuthUserError(userError)) {
-          console.warn('AuthContext: Stale session for deleted user, clearing');
-          await clearLocalAuthData(userId);
-        }
-      } catch {
-        // Network error — ignore
+  // Periodic subscription re-check (every 60s while session exists)
+  useEffect(() => {
+    if (!session) return;
+    const interval = setInterval(() => {
+      if (session?.user && navigator.onLine) {
+        refreshAuthState(session.user.id, 'periodic-subscription');
       }
-    };
-    backgroundUserCheck();
-
-    try {
-      const [profileResult, roleResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select(`
-            company_id,
-            approved,
-            companies (
-              id,
-              navn,
-              selskapstype,
-              adresse_lat,
-              adresse_lon,
-              dji_flightlog_enabled,
-              dronelog_api_key,
-              stripe_exempt,
-              parent_company_id,
-              departments_enabled
-            )
-          `)
-          .eq('id', userId)
-          .single(),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .maybeSingle()
-      ]);
-      
-      let profileData: CachedProfile = {
-        companyId: null,
-        companyName: null,
-        companyType: 'droneoperator',
-        companyLat: null,
-        companyLon: null,
-        isApproved: false,
-        userRole: null,
-        isAdmin: false,
-        isSuperAdmin: false,
-        djiFlightlogEnabled: false,
-        stripeExempt: false,
-        departmentsEnabled: false,
-      };
-
-      if (profileResult.error && roleResult.error) {
-        console.log('AuthContext: Both queries failed, using cached profile');
-        applyCachedProfile(userId);
-        return;
-      }
-
-      const company = profileResult.data?.companies as any;
-      const parentCompanyId = company?.parent_company_id;
-
-      // Kick off parent company + accessible companies in parallel
-      const parentPromise: Promise<any> = parentCompanyId
-        ? (async () => {
-            try {
-              const { data } = await supabase
-                .from('companies')
-                .select('stripe_exempt, dji_flightlog_enabled, dronelog_api_key')
-                .eq('id', parentCompanyId)
-                .single();
-              return data;
-            } catch { return null; }
-          })()
-        : Promise.resolve(null);
-
-      const accessiblePromise = fetchAccessibleCompanies(userId);
-
-      if (profileResult.data) {
-        const profile = profileResult.data;
-        profileData.companyId = profile.company_id;
-        profileData.isApproved = profile.approved ?? false;
-
-        profileData.companyName = company?.navn || null;
-        profileData.companyType = company?.selskapstype || 'droneoperator';
-        profileData.companyLat = company?.adresse_lat || null;
-        profileData.companyLon = company?.adresse_lon || null;
-        profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
-        profileData.stripeExempt = company?.stripe_exempt ?? false;
-        profileData.departmentsEnabled = company?.departments_enabled ?? false;
-
-        // Inherit parent settings (already fetching in parallel above)
-        if (parentCompanyId) {
-          const parentCompany = await parentPromise;
-          if (parentCompany) {
-            profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
-            profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
-            console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
-          }
-        }
-      }
-
-      if (roleResult.data) {
-        profileData.userRole = roleResult.data.role;
-        profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
-        profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
-      } else if (roleResult.error) {
-        // Role query failed but profile succeeded — keep previous admin/role state instead of resetting to false
-        console.warn('AuthContext: Role query failed, keeping previous role state');
-        profileData.userRole = userRole;
-        profileData.isSuperAdmin = isSuperAdmin;
-        profileData.isAdmin = isAdmin;
-      }
-
-      setCompanyId(profileData.companyId);
-      setCompanyName(profileData.companyName);
-      setCompanyType(profileData.companyType);
-      setCompanyLat(profileData.companyLat);
-      setCompanyLon(profileData.companyLon);
-      setIsApproved(profileData.isApproved);
-      setUserRole(profileData.userRole);
-      setIsAdmin(profileData.isAdmin);
-      setIsSuperAdmin(profileData.isSuperAdmin);
-      setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
-      setDepartmentsEnabled(profileData.departmentsEnabled);
-      setStripeExempt(profileData.stripeExempt);
-      setProfileLoaded(true);
-
-      saveCachedProfile(userId, profileData);
-
-      if (
-        profileData.djiFlightlogEnabled &&
-        !company?.dronelog_api_key &&
-        profileData.companyId &&
-        profileData.isAdmin
-      ) {
-        console.log('AuthContext: Auto-provisioning DroneLog API key for company', profileData.companyId);
-        try {
-          await supabase.functions.invoke('manage-dronelog-key', {
-            body: { companyId: profileData.companyId, enable: true, selfProvision: true },
-          });
-          console.log('AuthContext: DroneLog API key provisioned successfully');
-        } catch (provisionError) {
-          console.error('AuthContext: Failed to auto-provision DroneLog key:', provisionError);
-        }
-      }
-
-      // Accessible companies already kicked off in parallel above
-      await accessiblePromise;
-    } catch (error) {
-      console.error('Error fetching user info:', error);
-      if (!navigator.onLine) {
-        applyCachedProfile(userId);
-      }
-    }
-  };
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [session]);
 
   const signOut = async () => {
     await clearLocalAuthData(user?.id);
   };
 
-  const fetchAccessibleCompanies = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('get_user_accessible_companies', { _user_id: userId });
-      if (error) {
-        console.error('Error fetching accessible companies:', error);
-        return;
-      }
-      setAccessibleCompanies(
-        (data || []).map((c: any) => ({
-          id: c.company_id,
-          name: c.company_name,
-          isParent: c.is_parent,
-        }))
-      );
-    } catch (e) {
-      console.error('Failed to fetch accessible companies:', e);
-    }
-  };
-
+  /**
+   * Atomic company switch. Validates access, updates profile, refreshes token,
+   * then refreshes ALL auth state (profile, role, subscription, companies).
+   * Works for both regular users and superadmins.
+   */
   const switchCompany = async (newCompanyId: string) => {
     if (!user) return;
-    try {
-      // Verify access
-      const { data: canAccess } = await supabase.rpc('can_user_access_company', {
+
+    // Superadmins bypass the can_user_access_company check
+    if (!isSuperAdmin) {
+      const { data: canAccess, error: accessError } = await supabase.rpc('can_user_access_company', {
         _user_id: user.id,
         _company_id: newCompanyId,
       });
-      if (!canAccess) {
-        console.error('User does not have access to this company');
-        return;
-      }
-      const { error } = await supabase
-        .from('profiles')
-        .update({ company_id: newCompanyId })
-        .eq('id', user.id);
-      if (error) throw error;
-      await fetchUserInfo(user.id);
-    } catch (e) {
-      console.error('Error switching company:', e);
+      if (accessError) throw accessError;
+      if (!canAccess) throw new Error('No access to this company');
     }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ company_id: newCompanyId })
+      .eq('id', user.id);
+    if (updateError) throw updateError;
+
+    await ensureValidToken();
+    await refreshAuthState(user.id, 'switch-company');
   };
 
   const refetchUserInfo = async () => {
     if (user) {
-      await fetchUserInfo(user.id);
+      await refreshAuthState(user.id, 'manual-refetch');
     }
   };
 
+  /**
+   * Manual subscription check — for use after checkout success etc.
+   * Uses version guard so it won't overwrite a concurrent refreshAuthState.
+   */
   const checkSubscription = async () => {
     if (!session) {
       setSubscriptionLoading(false);
@@ -680,8 +742,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      // Deleted-user check is now handled in fetchUserInfo, no need to duplicate here
-
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
         console.error('check-subscription error:', error);
@@ -691,16 +751,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSubscriptionLoading(false);
         return;
       }
-      setSubscribed(data?.subscribed ?? false);
-      setSubscriptionEnd(data?.subscription_end ?? null);
-      setCancelAtPeriodEnd(data?.cancel_at_period_end ?? false);
-      setIsTrial(data?.is_trial ?? false);
-      setTrialEnd(data?.trial_end ?? null);
-      setHadPreviousSubscription(data?.had_previous_subscription ?? false);
-      setSubscriptionPlan(data?.plan ?? null);
-      setSubscriptionAddons(data?.addons ?? []);
-      setIsBillingOwner(data?.is_billing_owner ?? false);
-      setSeatCount(data?.seat_count ?? 1);
+      applySubscriptionData(data);
     } catch (e) {
       console.error('check-subscription failed:', e);
       if (isMissingAuthUserError(e)) {
@@ -713,30 +764,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const ensureValidToken = async (): Promise<void> => {
     if (!navigator.onLine) return;
-    // Use getSession() (local + auto-refresh) instead of getUser() (network call)
     const { data: { session: freshSession } } = await supabase.auth.getSession();
     if (freshSession) {
       setSession(freshSession);
       setUser(freshSession.user);
     }
   };
-
-  useEffect(() => {
-    if (!session) {
-      // Only clear subscription if truly signed out (no user in state)
-      // During token refresh, session goes null but user is still set
-      if (!user && !loading) {
-        setSubscribed(false);
-        setSubscriptionEnd(null);
-        setSubscriptionLoading(false);
-      }
-      return;
-    }
-    setSubscriptionLoading(true);
-    checkSubscription();
-    const interval = setInterval(checkSubscription, 60_000);
-    return () => clearInterval(interval);
-  }, [session, loading]);
 
   return (
     <AuthContext.Provider value={{ 
@@ -768,6 +801,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isBillingOwner,
       seatCount,
       accessibleCompanies,
+      authRefreshing,
+      authInitialized,
       signOut, 
       refetchUserInfo,
       checkSubscription,

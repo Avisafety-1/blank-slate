@@ -15,8 +15,9 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>([]);
 
-  // Don't gate if: still loading, no user, profile not loaded yet, not approved, superadmin, has subscription, or stripe exempt
-  if (subscriptionLoading || !user || !profileLoaded || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
+  // Don't gate if: still loading, no user, profile not loaded yet, not approved, superadmin,
+  // has subscription, stripe exempt, OR auth is currently refreshing (avoid flash of paywall)
+  if (subscriptionLoading || !user || !profileLoaded || !isApproved || isSuperAdmin || subscribed || stripeExempt || authRefreshing) {
     return <>{children}</>;
   }
 

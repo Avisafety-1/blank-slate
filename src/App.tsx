@@ -71,20 +71,18 @@ try {
 
 // Layout wrapper that renders Header once for all authenticated routes
 const AuthenticatedLayout = () => {
-  const { user, loading, isApproved, profileLoaded } = useAuth();
+  const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
   useAppHeartbeat();
   
-  // Don't render Header until we know user is authenticated and approved
-  // Exception: offline with cached session — allow rendering
-  // Also allow rendering while profile is still loading (profileLoaded=false) to avoid blank screen
+  // Keep showing header during auth refresh — don't flash to blank screen.
+  // A transient null user during token refresh should NOT hide the UI.
   const isOfflineWithSession = !navigator.onLine && user && !isApproved;
-  if (loading || !user) {
+  if (loading || (!user && !authRefreshing)) {
     return <Outlet />;
   }
   if (!profileLoaded) {
-    // Profile still hydrating — render outlet without header to avoid flash
     return <Outlet />;
   }
   if (!isApproved && !isOfflineWithSession) {
