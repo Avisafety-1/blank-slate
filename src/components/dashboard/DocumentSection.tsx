@@ -36,7 +36,7 @@ const StatusDot = ({ status }: { status: string }) => {
 
 export const DocumentSection = () => {
   const { t } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
