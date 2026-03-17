@@ -288,21 +288,22 @@ export function createSafeSkyManager(params: {
     }, 2000);
   }
 
-  function start() {
+  async function start() {
     if (destroyed) return;
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
       
-      // 1. Trigger cache warm-up (fire-and-forget, deduplicated)
-      warmUpCache();
+      // 1. Await cache warm-up so DB is populated before first read
+      await warmUpCache();
+      if (destroyed) return;
       
       // 2. Immediate DB fetch
-      fetchSafeSkyBeacons().then(() => {
-        // 3. If still empty after first fetch, do short retry burst
-        if (safeskyMarkersCache.size === 0 && !destroyed) {
-          startupRetryBurst();
-        }
-      });
+      await fetchSafeSkyBeacons();
+      
+      // 3. If still empty after first fetch, do short retry burst
+      if (safeskyMarkersCache.size === 0 && !destroyed) {
+        startupRetryBurst();
+      }
       
       safeskyPollInterval = window.setInterval(() => {
         fetchSafeSkyBeacons();
