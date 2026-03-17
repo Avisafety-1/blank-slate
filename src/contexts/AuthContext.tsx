@@ -379,10 +379,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const deduplicatedFetchUserInfo = (userId: string) => {
+    if (fetchUserInfoPromiseRef.current) return fetchUserInfoPromiseRef.current;
+    const promise = fetchUserInfo(userId).finally(() => {
+      fetchUserInfoPromiseRef.current = null;
+    });
+    fetchUserInfoPromiseRef.current = promise;
+    return promise;
+  };
+
   const fetchUserInfo = async (userId: string) => {
     if (!navigator.onLine) {
       applyCachedProfile(userId);
       return;
+    }
+
+    // Lazily validate that the auth user still exists (handles deleted users)
+    try {
+      const { error: userError } = await supabase.auth.getUser();
+      if (userError && isMissingAuthUserError(userError)) {
+        console.warn('AuthContext: Stale session for deleted user, clearing');
+        await clearLocalAuthData(userId);
+        return;
+      }
+    } catch {
+      // Network error — continue with cached data
     }
 
     try {
