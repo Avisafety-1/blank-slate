@@ -62,7 +62,7 @@ const getColorForType = (type: string): string => {
 
 export default function Kalender() {
   const navigate = useNavigate();
-  const { user, companyId, ensureValidToken } = useAuth();
+  const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
