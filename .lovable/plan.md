@@ -1,67 +1,130 @@
-## Multi-Company Access – IMPLEMENTERT
 
-### Database
-- `companies.parent_company_id` – valgfri FK til morselskap
-- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
-- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
-- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
-- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
-- Eksisterende profiler seedet inn i user_companies
 
-### Frontend
-- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
-- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
-- `CompanyManagementDialog`: Morselskap-velger (superadmin)
+## Strukturell fix: Auth-state stabilitet og kartlag-recovery
 
-### Arkitektur
-- `profiles.company_id` = aktivt selskap (uendret)
-- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+### Diagnosen (ChatGPT har rett)
 
-### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
-- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
-- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
-- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
-- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
-- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
+Kjerneproblemet er at **appen behandler midlertidig null-session som utlogging**, og at **kartlag ikke re-fetches når auth kommer tilbake**.
 
----
+Spesifikt fant jeg disse tre feilene i koden:
 
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
+**1. `else`-branchen i `onAuthStateChange` (linje 375-390) nuller ut session**
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
+```typescript
+} else {
+  // ...
+  setSession(session);        // session = null under refresh!
+  setUser(session?.user ?? null); // user = null!
+}
+```
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+Når Supabase SDK sender en midlertidig event under token-refresh, settes `session` og `user` til `null`. Dette trigger en kaskade:
+- `DomainGuard`: `!user && isAppDomain()` → redirect til login
+- `AuthenticatedLayout`: `!user` → ingen Header, ingen admin
+- `SubscriptionGate`: `!user` → blokkerer innhold
+- `checkSubscription` effect: `!session` → `subscribed = false`
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+**2. `checkSubscription` effect (linje 719-733) reagerer på session-endring**
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+```typescript
+useEffect(() => {
+  if (!session) {
+    setSubscribed(false);  // Nullstiller abonnement ved midlertidig null-session!
+    ...
+  }
+}, [session, loading]);
+```
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+Hver gang session blinker null (under refresh), mistes subscription-status. Når session kommer tilbake, tar `checkSubscription` (edge function) 0.5-2s å svare.
+
+**3. Kart-lag re-fetches ikke ved auth-recovery**
+
+OpenAIPMap sin `visibilitychange`-handler (linje 562-583) henter missions, telemetri og advisories på nytt, men **ikke OpenAIP-luftrom, hindringer, NSM-data eller RPAS-data**. Disse RLS-beskyttede lagene forblir tomme etter at token-refresh feiler midlertidig.
+
+### Løsning (4 endringer)
+
+**Endring 1: Ikke null ut session/user under refresh**
+
+I `onAuthStateChange` sin `else`-branch: Hvis vi allerede har en user og session, og vi er online, ignorer null-session events. De er alltid midlertidige under token-refresh.
+
+```typescript
+} else {
+  if (!session && user && navigator.onLine) {
+    // Transient null during token refresh — keep existing state
+    console.log('AuthContext: Ignoring transient null session during refresh');
+    return;
+  }
+  // ... rest of existing logic
+}
+```
+
+**Endring 2: Ikke nullstill subscription ved midlertidig null-session**
+
+I `checkSubscription`-effecten: Behold eksisterende `subscribed`-verdi når session er null men vi har user (indikerer pågående refresh). Bare nullstill ved faktisk utlogging (`!user`).
+
+```typescript
+useEffect(() => {
+  if (!session) {
+    // Only clear subscription if truly signed out (no user)
+    if (!user && !loading) {
+      setSubscribed(false);
+      setSubscriptionLoading(false);
+    }
+    return;
+  }
+  // ... rest unchanged
+}, [session, user, loading]);
+```
+
+**Endring 3: Re-fetch ALLE kartlag ved visibility-recovery**
+
+I OpenAIPMap sin `visibilitychange`-handler: Legg til re-fetch av luftrom, hindringer, NSM og RPAS — alle lagene som krever gyldig JWT.
+
+```typescript
+// Existing re-fetches:
+fetchAndDisplayMissions(...)
+fetchDroneTelemetry(...)
+fetchActiveAdvisories(...)
+fetchPilotPositions(...)
+
+// ADD these — currently missing:
+fetchAllAipZones(...)
+fetchObstacles(...)
+fetchNsmData(...)
+fetchRpasData(...)
+```
+
+**Endring 4: DomainGuard — ikke redirect ved midlertidig null user**
+
+Legg til en kort grace-period eller sjekk `profileLoaded` for å unngå redirect til login under token-refresh:
+
+```typescript
+// Don't redirect during potential token refresh
+if (!user && isAppDomain() && requireAuth) {
+  // Check if we have a cached session — might be mid-refresh
+  const hasCachedSession = localStorage.getItem('avisafe_session_cache');
+  if (hasCachedSession) {
+    console.log('DomainGuard: Cached session exists, skipping redirect during refresh');
+    return;
+  }
+  redirectToLogin('/auth');
+}
+```
+
+### Filer som endres
+
+- `src/contexts/AuthContext.tsx` — Endring 1 og 2
+- `src/components/OpenAIPMap.tsx` — Endring 3
+- `src/components/DomainGuard.tsx` — Endring 4
+
+### Forventet effekt
+
+- Admin-knapp, Header og kartlag forblir synlige under token-refresh
+- OpenAIP/SafeSky-lag gjenopprettes automatisk etter bakgrunnsperiode
+- Ingen redirect til login under midlertidig token-refresh
+- Subscription-status blinker ikke til `false` under refresh
+
+### Risiko
+
+Lav. Endringene beskytter bare mot midlertidige null-sessions — faktisk utlogging (SIGNED_OUT event) håndteres fortsatt normalt. DomainGuard fallback sjekker cached session som allerede eksisterer.
+
