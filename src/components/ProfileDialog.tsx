@@ -261,7 +261,7 @@ export const ProfileDialog = () => {
         }
       }
 
-      // Fetch user's role
+      // Fetch user's role (for display in profile, admin status comes from AuthContext)
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -270,7 +270,6 @@ export const ProfileDialog = () => {
 
       if (roleData) {
         setUserRole(roleData.role);
-        setIsAdmin(roleData.role === 'administrator' || roleData.role === 'superadmin');
       }
 
       // Fetch competencies
