@@ -285,7 +285,19 @@ const Index = () => {
 
   const isOfflineWithCachedSession = !navigator.onLine && user;
 
-  if (!user || (!isApproved && !isOfflineWithCachedSession)) {
+  // Don't show "pending approval" until profile has actually loaded
+  if (!user || (!profileLoaded && !isOfflineWithCachedSession)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <img src="/avisafe-logo-text.png" alt="AviSafe" className="h-16 w-auto mx-auto mb-4 animate-pulse" />
+          <p className="text-lg">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isApproved && !isOfflineWithCachedSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
