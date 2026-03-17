@@ -29,7 +29,7 @@ export const DocumentUploadDialog = ({
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
-  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  
   const [globalVisibility, setGlobalVisibility] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
