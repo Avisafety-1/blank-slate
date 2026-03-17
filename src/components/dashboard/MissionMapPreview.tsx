@@ -310,7 +310,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         const ctrResponse = await fetch(
           "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
         );
-        if (ctrResponse.ok) {
+        if (ctrResponse.ok && isMounted) {
           const ctrData = await ctrResponse.json();
           L.geoJSON(ctrData, {
             style: {
