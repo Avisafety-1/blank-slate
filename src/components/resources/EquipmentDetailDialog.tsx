@@ -59,8 +59,7 @@ interface EquipmentDetailDialogProps {
 }
 
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEquipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
-  const { isAdmin } = useAdminCheck();
-  const { user, companyId } = useAuth();
+  const { user, companyId, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const { checklists } = useChecklists();
   const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);

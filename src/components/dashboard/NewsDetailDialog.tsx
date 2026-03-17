@@ -30,7 +30,7 @@ interface NewsDetailDialogProps {
 }
 
 export const NewsDetailDialog = ({ open, onOpenChange, news, onEdit }: NewsDetailDialogProps) => {
-  const { isAdmin } = useAdminCheck();
+  const { isAdmin } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
