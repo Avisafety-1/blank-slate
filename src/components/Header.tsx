@@ -62,10 +62,11 @@ export const Header = () => {
       // All paths (superadmin + regular) use atomic switchCompany
       // which validates access, updates profile, refreshes token + all auth state
       await switchCompany(newCompanyId);
-      const company = isSuperAdmin
+      const companyMatch = isSuperAdmin
         ? companies.find(c => c.id === newCompanyId)
         : accessibleCompanies.find(c => c.id === newCompanyId);
-      toast.success(t('header.switchedTo', { company: company?.navn || company?.name }));
+      const displayName = companyMatch ? ('navn' in companyMatch ? companyMatch.navn : companyMatch.name) : newCompanyId;
+      toast.success(t('header.switchedTo', { company: displayName }));
     } catch (error) {
       console.error("Error switching company:", error);
       toast.error(t('header.couldNotSwitch'));
