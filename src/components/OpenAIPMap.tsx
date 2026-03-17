@@ -554,10 +554,11 @@ export function OpenAIPMap({
       fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
       fetchObstacles({ layer: obstaclesLayer, mode });
       fetchAirportsData({ layer: airportsLayer, mode });
-    fetchDroneTelemetry({ droneLayer, modeRef });
-    fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
-    fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
-    fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+      fetchDroneTelemetry({ droneLayer, modeRef });
+      fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+      fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
+      fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    });
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 5000);
 
