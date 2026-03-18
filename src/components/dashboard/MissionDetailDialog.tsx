@@ -86,6 +86,11 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     mission?.airspaceWarnings ?? null
   );
 
+  // Reset cached warnings when mission changes
+  useEffect(() => {
+    setCachedAirspaceWarnings(mission?.airspaceWarnings ?? null);
+  }, [mission?.id]);
+
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
     if (!open || !mission?.id) {
