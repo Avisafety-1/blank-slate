@@ -29,6 +29,7 @@ interface CachedProfile {
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
+  cachedAt?: number;
 }
 
 export interface AccessibleCompany {
@@ -280,9 +281,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const saveCachedProfile = (userId: string, profile: CachedProfile) => {
     try {
-      localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify(profile));
+      const withTimestamp = { ...profile, cachedAt: Date.now() };
+      localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify(withTimestamp));
     } catch {
       // localStorage full - ignore
+    }
+  };
+
+  const CACHE_FRESH_MS = 5 * 60_000; // 5 minutes
+
+  const isCacheFresh = (userId: string): boolean => {
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY(userId));
+      if (!raw) return false;
+      const cached: CachedProfile = JSON.parse(raw);
+      if (!cached.cachedAt) return false;
+      return Date.now() - cached.cachedAt < CACHE_FRESH_MS;
+    } catch {
+      return false;
     }
   };
 
@@ -675,7 +691,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
 
           if (navigator.onLine) {
-            refreshAuthState(session.user.id, 'initial-session');
+            if (isCacheFresh(session.user.id)) {
+              // Cache is fresh (<5 min) — skip expensive DB queries, just check subscription
+              console.log('AuthContext: Cache fresh, skipping full refresh on page reload');
+              const ver = ++refreshVersionRef.current;
+              fireSubscriptionCheck(session.user.id, ver);
+              setAuthRefreshing(false);
+              setAuthInitialized(true);
+            } else {
+              refreshAuthState(session.user.id, 'initial-session');
+            }
           } else {
             // Offline — mark as initialized with cached data
             setAuthInitialized(true);
