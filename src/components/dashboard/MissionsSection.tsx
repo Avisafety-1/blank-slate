@@ -30,7 +30,7 @@ const statusColors: Record<string, string> = {
 };
 
 
-export const MissionsSection = () => {
+export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
