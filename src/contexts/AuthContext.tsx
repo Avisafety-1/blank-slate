@@ -29,6 +29,7 @@ interface CachedProfile {
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
+  cachedAt?: number;
 }
 
 export interface AccessibleCompany {
