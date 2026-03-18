@@ -620,9 +620,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
-          // Re-fetch all auth state on token refresh — critical for session continuity
+          // Light refresh: token rotation does NOT require re-fetching profile/role/companies.
+          // Only run background subscription check to keep billing status current.
+          console.log('AuthContext: TOKEN_REFRESHED — light refresh (session+user only)');
           if (navigator.onLine) {
-            refreshAuthState(session.user.id, 'token-refreshed');
+            const ver = ++refreshVersionRef.current;
+            fireSubscriptionCheck(session.user.id, ver);
           }
         } else if (event === 'SIGNED_OUT') {
           if (!navigator.onLine) {
