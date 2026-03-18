@@ -281,9 +281,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const saveCachedProfile = (userId: string, profile: CachedProfile) => {
     try {
-      localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify(profile));
+      const withTimestamp = { ...profile, cachedAt: Date.now() };
+      localStorage.setItem(PROFILE_CACHE_KEY(userId), JSON.stringify(withTimestamp));
     } catch {
       // localStorage full - ignore
+    }
+  };
+
+  const CACHE_FRESH_MS = 5 * 60_000; // 5 minutes
+
+  const isCacheFresh = (userId: string): boolean => {
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY(userId));
+      if (!raw) return false;
+      const cached: CachedProfile = JSON.parse(raw);
+      if (!cached.cachedAt) return false;
+      return Date.now() - cached.cachedAt < CACHE_FRESH_MS;
+    } catch {
+      return false;
     }
   };
 
