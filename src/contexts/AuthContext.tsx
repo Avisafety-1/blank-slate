@@ -700,6 +700,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
 
           if (navigator.onLine) {
+            // Ensure JWT is actually valid before marking auth as ready
+            if (isTokenStale(session)) {
+              console.log('AuthContext: Token stale at startup, forcing refresh before init');
+              try {
+                const { data: refreshed } = await supabase.auth.refreshSession();
+                if (refreshed.session) {
+                  session = refreshed.session;
+                  setSession(session);
+                  setUser(session.user);
+                  cacheSession(session.user);
+                }
+              } catch (refreshErr) {
+                console.warn('AuthContext: Startup token refresh failed', refreshErr);
+              }
+            }
+
             if (isCacheFresh(session.user.id)) {
               // Cache is fresh (<5 min) — skip expensive DB queries, just check subscription
               console.log('AuthContext: Cache fresh, skipping full refresh on page reload');
