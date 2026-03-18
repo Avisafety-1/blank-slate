@@ -39,6 +39,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Use cached warnings if available — skip RPC entirely
   useEffect(() => {
@@ -61,14 +62,23 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
 
     const checkAirspace = async () => {
       setLoading(true);
+      setError(null);
+      const controller = new AbortController();
+      const timeoutId2 = setTimeout(() => controller.abort(), 8000);
       try {
         const { data, error } = await supabase.rpc("check_mission_airspace", {
           p_lat: latitude,
           p_lng: longitude,
           p_route: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
-        });
+        }, { signal: controller.signal } as any);
+
+        clearTimeout(timeoutId2);
 
         if (error) {
+          if (error.message?.includes('AbortError') || controller.signal.aborted) {
+            setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+            return;
+          }
           console.error("Error checking airspace:", error);
           return;
         }
@@ -129,8 +139,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
 
         setWarnings(sortedWarnings);
         onAirspaceResult?.(sortedWarnings);
-      } catch (error) {
-        console.error("Error checking airspace:", error);
+      } catch (err: any) {
+        clearTimeout(timeoutId2);
+        if (err?.name === 'AbortError' || controller.signal.aborted) {
+          setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+        } else {
+          console.error("Error checking airspace:", err);
+          setError("Kunne ikke sjekke luftrom. Prøv igjen.");
+        }
       } finally {
         setLoading(false);
       }
@@ -151,6 +167,16 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         <span className="ml-2 text-sm text-muted-foreground">Sjekker luftrom...</span>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="default" className="border-amber-500 bg-amber-500/20 text-foreground [&>svg]:text-foreground mt-3">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-semibold text-foreground">Luftromssjekk feilet</AlertTitle>
+        <AlertDescription className="text-sm mt-1 text-foreground">{error}</AlertDescription>
+      </Alert>
     );
   }
 
