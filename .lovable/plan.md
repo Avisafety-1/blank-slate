@@ -1,67 +1,56 @@
-## Multi-Company Access – IMPLEMENTERT
 
-### Database
-- `companies.parent_company_id` – valgfri FK til morselskap
-- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
-- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
-- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
-- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
-- Eksisterende profiler seedet inn i user_companies
 
-### Frontend
-- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
-- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
-- `CompanyManagementDialog`: Morselskap-velger (superadmin)
+## Plan: Instant auth state via cached accessibleCompanies + non-blocking subscription check
 
-### Arkitektur
-- `profiles.company_id` = aktivt selskap (uendret)
-- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+### Root Cause
 
-### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
-- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
-- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
-- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
-- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
-- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
+`refreshAuthState` runs a `Promise.all` with 4 parallel calls:
+1. Profile query (~fast)
+2. Role query (~fast)
+3. `get_user_accessible_companies` RPC (~medium)
+4. `check-subscription` edge function (~slow, 2-5s)
 
----
+All 4 must complete before ANY state is written. This means the company switcher, admin badge, and subscription gate all wait for the slowest call (check-subscription).
 
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
+Additionally, `accessibleCompanies` is never cached in localStorage, so the company switcher is always empty until the RPC completes — even though profile/role/companyId ARE cached.
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
+### Solution
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+#### 1. `src/contexts/AuthContext.tsx` — Cache accessibleCompanies + split refresh
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+**Cache accessibleCompanies in profile cache:**
+- Add `accessibleCompanies` to the `CachedProfile` interface
+- Save it in `saveCachedProfile`, restore it in `applyCachedProfile`
+- This gives instant company switcher on page load
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+**Split Promise.all into two phases:**
+- **Phase 1** (fast, blocks UI): profile + role + accessible companies
+- **Phase 2** (slow, non-blocking): check-subscription edge function
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+Apply Phase 1 state immediately. Fire Phase 2 in background and apply when ready. This way companyId, isAdmin, accessibleCompanies are available within ~200ms instead of waiting 2-5s for subscription check.
+
+```text
+BEFORE:
+  Promise.all([profile, role, companies, subscription])
+  → wait for ALL → apply state (2-5s)
+
+AFTER:
+  Promise.all([profile, role, companies])        ← Phase 1
+  → apply state immediately (~200ms)
+  
+  check-subscription (fire-and-forget)            ← Phase 2
+  → apply subscription when ready
+```
+
+**Subscription loading state:** Keep `subscriptionLoading = true` until Phase 2 completes, but `authRefreshing` is set to false after Phase 1. SubscriptionGate already passes children through when `subscriptionLoading` or `authRefreshing` is true, so content is never blocked.
+
+#### 2. Header company fetching for superadmins
+
+The Header's `fetchCompanies()` for superadmins runs independently. No change needed — it already fires on mount. The cached `isSuperAdmin` from localStorage ensures it starts immediately.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/contexts/AuthContext.tsx` | Cache accessibleCompanies, split refresh into fast+slow phases |
+
