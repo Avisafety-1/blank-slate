@@ -352,8 +352,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     backgroundUserCheck();
 
     try {
-      // Fetch profile+company, role, accessible companies, and subscription in parallel
-      const [profileResult, roleResult, accessibleResult, subscriptionResult] = await Promise.all([
+      // === PHASE 1: Fast queries (profile, role, accessible companies) ===
+      const [profileResult, roleResult, accessibleResult] = await Promise.all([
         supabase
           .from('profiles')
           .select(`
@@ -380,13 +380,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', userId)
           .maybeSingle(),
         supabase.rpc('get_user_accessible_companies', { _user_id: userId }),
-        supabase.functions.invoke('check-subscription').catch(e => {
-          console.error('check-subscription error during refresh:', e);
-          if (isMissingAuthUserError(e)) {
-            clearLocalAuthData(userId);
-          }
-          return { data: null, error: e };
-        }),
       ]);
 
       // Stale write guard — if a newer refresh has started, discard this result
@@ -414,8 +407,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (profileResult.error && roleResult.error) {
         console.log('AuthContext: Both profile+role queries failed, using cached profile');
         applyCachedProfile(userId);
-        // Still apply subscription if available
-        applySubscriptionData(subscriptionResult?.data);
+        // Still fire subscription check in background
+        fireSubscriptionCheck(userId, myVersion);
         return;
       }
 
@@ -458,7 +451,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.isSuperAdmin = roleResult.data.role === 'superadmin';
         profileData.isAdmin = ['administrator', 'admin'].includes(roleResult.data.role) || roleResult.data.role === 'superadmin';
       } else if (roleResult.error) {
-        // Role query failed but profile succeeded — keep previous admin/role state instead of resetting to false
         console.warn('AuthContext: Role query failed, keeping previous role state');
         profileData.userRole = userRole;
         profileData.isSuperAdmin = isSuperAdmin;
@@ -468,7 +460,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Final stale-write check before applying state
       if (myVersion !== refreshVersionRef.current) return;
 
-      // --- Apply all state atomically ---
+      // --- Apply Phase 1 state immediately ---
       setCompanyId(profileData.companyId);
       setCompanyName(profileData.companyName);
       setCompanyType(profileData.companyType);
@@ -484,20 +476,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfileLoaded(true);
 
       // Apply accessible companies
+      let companiesList: AccessibleCompany[] = [];
       if (!accessibleResult.error && accessibleResult.data) {
-        setAccessibleCompanies(
-          (accessibleResult.data || []).map((c: any) => ({
-            id: c.company_id,
-            name: c.company_name,
-            isParent: c.is_parent,
-          }))
-        );
+        companiesList = (accessibleResult.data || []).map((c: any) => ({
+          id: c.company_id,
+          name: c.company_name,
+          isParent: c.is_parent,
+        }));
+        setAccessibleCompanies(companiesList);
       }
 
-      // Apply subscription data
-      applySubscriptionData(subscriptionResult?.data);
-
+      // Save cache including accessible companies
+      profileData.accessibleCompanies = companiesList.length > 0 ? companiesList : undefined;
       saveCachedProfile(userId, profileData);
+
+      // Phase 1 done — mark auth as ready (UI can render company switcher, admin badges, etc.)
+      setAuthRefreshing(false);
+      setAuthInitialized(true);
+
+      // === PHASE 2: Slow subscription check (non-blocking) ===
+      fireSubscriptionCheck(userId, myVersion);
 
       // Auto-provision DroneLog API key if needed
       if (
@@ -521,13 +519,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!navigator.onLine) {
         applyCachedProfile(userId);
       }
-    } finally {
-      if (myVersion === refreshVersionRef.current) {
-        setAuthRefreshing(false);
-        setAuthInitialized(true);
-        setSubscriptionLoading(false);
-      }
+      setAuthRefreshing(false);
+      setAuthInitialized(true);
+      setSubscriptionLoading(false);
     }
+  };
+
+  /** Phase 2: Fire subscription check in background, apply when ready */
+  const fireSubscriptionCheck = (userId: string, myVersion: number) => {
+    supabase.functions.invoke('check-subscription').then((result) => {
+      if (myVersion !== refreshVersionRef.current) return;
+      if (result.error) {
+        console.error('check-subscription error:', result.error);
+        if (isMissingAuthUserError(result.error)) {
+          clearLocalAuthData(userId);
+        }
+        setSubscriptionLoading(false);
+        return;
+      }
+      applySubscriptionData(result.data);
+    }).catch((e) => {
+      if (myVersion !== refreshVersionRef.current) return;
+      console.error('check-subscription error:', e);
+      if (isMissingAuthUserError(e)) {
+        clearLocalAuthData(userId);
+      }
+      setSubscriptionLoading(false);
+    });
   };
 
   /** Apply subscription data from check-subscription response */
