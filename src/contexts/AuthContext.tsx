@@ -267,6 +267,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
       setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
+      if (cached.accessibleCompanies?.length) {
+        setAccessibleCompanies(cached.accessibleCompanies);
+      }
       setProfileLoaded(true);
       console.log('AuthContext: Applied cached profile for offline use');
       return true;
