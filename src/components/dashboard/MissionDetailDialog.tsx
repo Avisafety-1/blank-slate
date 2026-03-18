@@ -289,8 +289,16 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
                     routePoints={routeCoords}
+                    cachedWarnings={cachedAirspaceWarnings ?? undefined}
                     onAirspaceResult={(warnings) => {
                       setHas5kmZone(warnings.some(w => w.zone_type === '5KM'));
+                      // Cache the result on the mission object for subsequent opens
+                      if (!cachedAirspaceWarnings && warnings.length > 0) {
+                        setCachedAirspaceWarnings(warnings);
+                        if (mission) {
+                          mission.airspaceWarnings = warnings;
+                        }
+                      }
                     }}
                   />
                   <DroneWeatherPanel 
