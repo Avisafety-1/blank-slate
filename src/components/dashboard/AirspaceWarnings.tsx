@@ -62,14 +62,23 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
 
     const checkAirspace = async () => {
       setLoading(true);
+      setError(null);
+      const controller = new AbortController();
+      const timeoutId2 = setTimeout(() => controller.abort(), 8000);
       try {
         const { data, error } = await supabase.rpc("check_mission_airspace", {
           p_lat: latitude,
           p_lng: longitude,
           p_route: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
-        });
+        }, { signal: controller.signal } as any);
+
+        clearTimeout(timeoutId2);
 
         if (error) {
+          if (error.message?.includes('AbortError') || controller.signal.aborted) {
+            setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+            return;
+          }
           console.error("Error checking airspace:", error);
           return;
         }
