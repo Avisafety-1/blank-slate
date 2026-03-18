@@ -1,67 +1,58 @@
-## Multi-Company Access – IMPLEMENTERT
 
-### Database
-- `companies.parent_company_id` – valgfri FK til morselskap
-- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
-- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
-- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
-- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
-- Eksisterende profiler seedet inn i user_companies
 
-### Frontend
-- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
-- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
-- `CompanyManagementDialog`: Morselskap-velger (superadmin)
+## Plan: Robust token-refresh uten full state-refresh
 
-### Arkitektur
-- `profiles.company_id` = aktivt selskap (uendret)
-- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
+### Problemanalyse
 
-### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
-- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
-- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
-- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
-- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
-- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
+Hver gang Supabase automatisk refresher JWT-tokenet (ca. hvert 55. minutt med 1-times levetid), kjører `onAuthStateChange` → `TOKEN_REFRESHED` → `refreshAuthState()`. Dette trigger:
+1. Profil-query
+2. Rolle-query  
+3. `get_user_accessible_companies` RPC
+4. `check-subscription` edge function
+5. `getUser()` bakgrunnssjekk
 
----
+Auth-loggene viser hyppige 500-feil og timeouts på `/user`-endepunktet (opptil 9 sekunder). Når disse feiler under token-refresh, mister brukeren tilgang til data midlertidig — selv om selve tokenet ble refreshet OK.
 
-## Ny prismodell – IMPLEMENTERT (Live Stripe)
+**Kjerneproblem:** Token-refresh trenger IKKE å re-hente profil, rolle og selskaper. Disse endres ekstremt sjelden (kun ved selskapsbytte eller admin-endringer). Å kjøre full refresh ved hvert token-refresh er overflødig og sårbart for database-timeouts.
 
-### Stripe Live-produkter
-| Plan | Product ID | Price ID |
-|------|-----------|----------|
-| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
-| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
-| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
-| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
-| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
-| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
+### Løsning
 
-### Implementerte filer
-- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
-- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
-- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
-- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
-- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
-- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
-- `supabase/functions/change-plan/index.ts` – In-app planbytte
-- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
-- `src/components/SubscriptionGate.tsx` – Planvelger-UI
-- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
-- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
-- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
+#### `src/contexts/AuthContext.tsx` — Differensiert refresh-strategi
 
-### Seat-synk
-- `update-seats` kalles automatisk fra `Admin.tsx` ved:
-  - Godkjenning av bruker (`approveUser`)
-  - Sletting av bruker (`deleteUser`)
+**1. Lett refresh ved TOKEN_REFRESHED:**
+- Oppdater kun `session` og `user` objektene (allerede gjøres)
+- IKKE kjør `refreshAuthState` — profil/rolle/selskaper endres ikke ved token-refresh
+- Kjør kun `fireSubscriptionCheck` i bakgrunnen (for å holde betalingsstatus oppdatert)
 
-### Planbytte
-- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
-- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
+**2. Full refresh kun ved reelle endringer:**
+- `SIGNED_IN`: Full refresh (ny innlogging)
+- `visibility` (tilbake fra bakgrunn >5s): Full refresh
+- `online` (tilbake fra offline): Full refresh
+- `switchCompany`: Full refresh
+- `refetchUserInfo`: Full refresh
 
-### Gjenstår (oppfølging)
-- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
-- Admin-panel: vise selskapsplan i oversikten
-- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
+**3. Periodisk bakgrunnsoppfriskning:**
+- Legg til en intervall (f.eks. hvert 15. minutt) som gjør en "soft refresh" av profil/rolle/selskaper — men kun hvis appen er synlig og online
+- Dette fanger opp eventuelle rolle-endringer gjort av admin uten å belaste databasen ved hvert token-refresh
+
+```text
+BEFORE (ved TOKEN_REFRESHED):
+  setSession → setUser → refreshAuthState()
+  = 5+ database-kall som kan feile → bruker mister tilgang
+
+AFTER (ved TOKEN_REFRESHED):
+  setSession → setUser → fireSubscriptionCheck() (bakgrunn)
+  = 0 blokkerende kall, abonnement oppdateres stille
+```
+
+**4. Fjern redundant `getUser()`-kall:**
+- `backgroundUserCheck` kjører `supabase.auth.getUser()` som er et ekstra nettverkskall til `/user`
+- Auth-loggene viser at dette endepunktet har hyppige timeouts
+- Flytt denne sjekken til kun å kjøre ved `SIGNED_IN` og `visibility`-refresh, ikke ved token-refresh
+
+### Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `src/contexts/AuthContext.tsx` | TOKEN_REFRESHED → lett refresh, periodisk soft-refresh, fjern getUser ved token-refresh |
+
