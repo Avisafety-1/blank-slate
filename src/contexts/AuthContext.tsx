@@ -846,10 +846,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const ensureValidToken = async (): Promise<void> => {
     if (!navigator.onLine) return;
-    const { data: { session: freshSession } } = await supabase.auth.getSession();
-    if (freshSession) {
-      setSession(freshSession);
-      setUser(freshSession.user);
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession && isTokenStale(currentSession)) {
+      console.log('ensureValidToken: token stale, refreshing via shared ensureFreshSession');
+      await ensureFreshSession();
+      // Re-fetch updated session after refresh
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      if (freshSession) {
+        setSession(freshSession);
+        setUser(freshSession.user);
+      }
+    } else if (currentSession) {
+      setSession(currentSession);
+      setUser(currentSession.user);
     }
   };
 
