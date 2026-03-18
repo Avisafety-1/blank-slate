@@ -34,7 +34,7 @@ const StatusDot = ({ status }: { status: string }) => {
   return <div className={`w-2 h-2 rounded-full ${colors[status as keyof typeof colors]}`} />;
 };
 
-export const DocumentSection = () => {
+export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
@@ -129,10 +129,13 @@ export const DocumentSection = () => {
 
     // 3. Fetch fresh data from network
     try {
-      const { data, error } = await supabase
+      if (abortSignal?.aborted) { setLoading(false); return; }
+      const query = supabase
         .from("documents")
         .select("*, companies:company_id(id, navn)")
         .order("opprettet_dato", { ascending: false });
+      if (abortSignal) (query as any).abortSignal(abortSignal);
+      const { data, error } = await query;
 
       if (error) throw error;
 

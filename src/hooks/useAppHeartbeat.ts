@@ -13,11 +13,17 @@ const HEARTBEAT_INTERVAL_MS = 30_000;
 export function useAppHeartbeat() {
   const { user } = useAuth();
   const intervalRef = useRef<number | null>(null);
+  const skipCyclesRef = useRef(0);
 
   useEffect(() => {
     if (!user) return;
 
     const sendHeartbeat = async () => {
+      // Backoff: skip cycles after errors
+      if (skipCyclesRef.current > 0) {
+        skipCyclesRef.current--;
+        return;
+      }
       try {
         const { error } = await supabase
           .from("map_viewer_heartbeats")
@@ -29,9 +35,13 @@ export function useAppHeartbeat() {
             },
             { onConflict: "session_id" }
           );
-        if (error) console.error("Heartbeat error:", error);
+        if (error) {
+          console.error("Heartbeat error:", error);
+          skipCyclesRef.current = 2; // Skip next 2 cycles (~60s)
+        }
       } catch (err) {
         console.error("Heartbeat failed:", err);
+        skipCyclesRef.current = 2;
       }
     };
 

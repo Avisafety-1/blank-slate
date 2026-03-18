@@ -30,7 +30,7 @@ const statusColors: Record<string, string> = {
 };
 
 
-export const MissionsSection = () => {
+export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
@@ -79,13 +79,16 @@ export const MissionsSection = () => {
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
     try {
-      const { data, error } = await (supabase as any)
+      if (abortSignal?.aborted) return;
+      const query = (supabase as any)
         .from("missions")
         .select("*, companies:company_id(id, navn)")
         .neq("status", "Fullført")
         .neq("status", "Avlyst")
         .gte("tidspunkt", oneDayAgo.toISOString())
         .order("tidspunkt", { ascending: true });
+      if (abortSignal) query.abortSignal(abortSignal);
+      const { data, error } = await query;
 
       if (error) throw error;
 

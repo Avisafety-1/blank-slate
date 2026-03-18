@@ -40,7 +40,7 @@ const statusColors = {
 
 type Incident = Tables<"incidents">;
 
-export const IncidentsSection = () => {
+export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
   const { companyId, user, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
@@ -224,11 +224,14 @@ export const IncidentsSection = () => {
 
     // 3. Fetch fresh data
     try {
-      const { data: rawData, error } = await supabase
+      if (abortSignal?.aborted) { setLoading(false); return; }
+      const query = supabase
         .from('incidents')
         .select('*, companies:company_id(id, navn)')
         .neq('status', 'Ferdigbehandlet')
         .order('opprettet_dato', { ascending: false });
+      if (abortSignal) (query as any).abortSignal(abortSignal);
+      const { data: rawData, error } = await query;
       const data = (rawData || []).map((i: any) => ({ ...i, company_name: i.companies?.navn || null }));
 
       if (error) throw error;

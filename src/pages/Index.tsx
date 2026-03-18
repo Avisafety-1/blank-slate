@@ -14,7 +14,7 @@ import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, Chev
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -70,6 +70,18 @@ const Index = () => {
   }, [searchParams]);
   const dashboardRealtime = useDashboardRealtime();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: pushSubscribe } = usePushNotifications();
+
+  // Defer dashboard data fetching to avoid saturating connection pool
+  const [readyToFetch, setReadyToFetch] = useState(false);
+  const abortControllerRef = useRef(new AbortController());
+
+  useEffect(() => {
+    const timer = setTimeout(() => setReadyToFetch(true), 300);
+    return () => {
+      clearTimeout(timer);
+      abortControllerRef.current.abort();
+    };
+  }, []);
 
   // Auto-enable push notifications for PWA users (one-time prompt)
   useEffect(() => {
@@ -316,20 +328,26 @@ const Index = () => {
     );
   }
 
+  const abortSignal = abortControllerRef.current.signal;
+
   const renderSection = (component: string) => {
+    // Defer heavy data-fetching sections until readyToFetch is true
+    const isDeferred = ["documents", "missions", "incidents", "status", "kpi"].includes(component);
+    if (isDeferred && !readyToFetch) return null;
+
     switch (component) {
       case "documents":
-        return <DocumentSection />;
+        return <DocumentSection abortSignal={abortSignal} />;
       case "news":
         return <NewsSection />;
       case "status":
         return <StatusPanel />;
       case "missions":
-        return <MissionsSection />;
+        return <MissionsSection abortSignal={abortSignal} />;
       case "calendar":
         return <CalendarWidget />;
       case "incidents":
-        return <IncidentsSection />;
+        return <IncidentsSection abortSignal={abortSignal} />;
       case "kpi":
         return <KPIChart />;
       default:
