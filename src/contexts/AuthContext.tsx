@@ -290,6 +290,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const CACHE_FRESH_MS = 5 * 60_000; // 5 minutes
 
+  /**
+   * Check if a session's access token is stale (expired or expiring within bufferSec).
+   * Used to force a refresh before marking auth as initialized.
+   */
+  const isTokenStale = (session: Session, bufferSec = 60): boolean => {
+    if (!session.expires_at) return true;
+    return session.expires_at * 1000 - Date.now() < bufferSec * 1000;
+  };
+
   const isCacheFresh = (userId: string): boolean => {
     try {
       const raw = localStorage.getItem(PROFILE_CACHE_KEY(userId));
