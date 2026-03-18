@@ -75,6 +75,21 @@ const AuthenticatedLayout = () => {
   const location = useLocation();
   useForceReload();
   useAppHeartbeat();
+
+  // Prefetch common lazy-loaded pages after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import("./pages/Admin");
+      import("./pages/Resources");
+      import("./pages/Documents");
+      import("./pages/Kart");
+      import("./pages/Oppdrag");
+      import("./pages/Kalender");
+      import("./pages/Hendelser");
+      import("./pages/Statistikk");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
   
   // Keep showing header during auth refresh — don't flash to blank screen.
   // A transient null user during token refresh should NOT hide the UI.
