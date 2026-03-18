@@ -139,8 +139,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
 
         setWarnings(sortedWarnings);
         onAirspaceResult?.(sortedWarnings);
-      } catch (error) {
-        console.error("Error checking airspace:", error);
+      } catch (err: any) {
+        clearTimeout(timeoutId2);
+        if (err?.name === 'AbortError' || controller.signal.aborted) {
+          setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+        } else {
+          console.error("Error checking airspace:", err);
+          setError("Kunne ikke sjekke luftrom. Prøv igjen.");
+        }
       } finally {
         setLoading(false);
       }
