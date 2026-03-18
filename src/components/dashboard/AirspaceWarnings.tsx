@@ -31,10 +31,11 @@ interface AirspaceWarningsProps {
   latitude: number | null;
   longitude: number | null;
   routePoints?: RoutePoint[];
+  cachedWarnings?: AirspaceWarning[];
   onAirspaceResult?: (warnings: AirspaceWarning[]) => void;
 }
 
-export const AirspaceWarnings = ({ latitude, longitude, routePoints, onAirspaceResult }: AirspaceWarningsProps) => {
+export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarnings, onAirspaceResult }: AirspaceWarningsProps) => {
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
