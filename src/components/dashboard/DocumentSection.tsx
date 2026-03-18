@@ -34,7 +34,7 @@ const StatusDot = ({ status }: { status: string }) => {
   return <div className={`w-2 h-2 rounded-full ${colors[status as keyof typeof colors]}`} />;
 };
 
-export const DocumentSection = () => {
+export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
