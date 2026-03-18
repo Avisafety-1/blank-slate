@@ -239,6 +239,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
       setIncidents(data || []);
       if (companyId) setCachedData(`offline_dashboard_incidents_${companyId}`, data || []);
     } catch (error: any) {
+      if (error?.name === 'AbortError' || abortSignal?.aborted) return;
       console.error('Error fetching incidents:', error);
       toast.error(t('dashboard.incidents.couldNotLoad'));
     } finally {

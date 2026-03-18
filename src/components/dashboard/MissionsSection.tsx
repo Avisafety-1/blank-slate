@@ -101,7 +101,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         fetchMissionDocumentCounts(missionIds);
         fetchMissionAIRisks(missionIds);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || abortSignal?.aborted) return;
       console.error("Error fetching missions:", error);
     }
   };
