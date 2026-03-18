@@ -329,27 +329,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log(`AuthContext: refreshAuthState v${myVersion} (${reason})`);
 
     // Fire-and-forget background user validation (deleted user check)
-    const backgroundUserCheck = async () => {
-      try {
-        const now = Date.now();
-        const cached = getUserCacheRef.current;
-        let userError: any = null;
-        if (cached && now - cached.timestamp < 10_000) {
-          userError = cached.data.error;
-        } else {
-          const result = await supabase.auth.getUser();
-          getUserCacheRef.current = { data: result, timestamp: now };
-          userError = result.error;
+    // Only run on sign-in and visibility-return to avoid hammering /user endpoint
+    const shouldCheckUser = ['signed-in', 'visibility', 'online', 'initial-session'].includes(reason);
+    if (shouldCheckUser) {
+      const backgroundUserCheck = async () => {
+        try {
+          const now = Date.now();
+          const cached = getUserCacheRef.current;
+          let userError: any = null;
+          if (cached && now - cached.timestamp < 10_000) {
+            userError = cached.data.error;
+          } else {
+            const result = await supabase.auth.getUser();
+            getUserCacheRef.current = { data: result, timestamp: now };
+            userError = result.error;
+          }
+          if (userError && isMissingAuthUserError(userError)) {
+            console.warn('AuthContext: Stale session for deleted user, clearing');
+            await clearLocalAuthData(userId);
+          }
+        } catch {
+          // Network error — ignore
         }
-        if (userError && isMissingAuthUserError(userError)) {
-          console.warn('AuthContext: Stale session for deleted user, clearing');
-          await clearLocalAuthData(userId);
-        }
-      } catch {
-        // Network error — ignore
-      }
-    };
-    backgroundUserCheck();
+      };
+      backgroundUserCheck();
+    }
 
     try {
       // === PHASE 1: Fast queries (profile, role, accessible companies) ===
