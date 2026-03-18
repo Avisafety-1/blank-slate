@@ -40,7 +40,20 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Use cached warnings if available — skip RPC entirely
   useEffect(() => {
+    if (cachedWarnings && cachedWarnings.length > 0) {
+      setWarnings(cachedWarnings);
+      onAirspaceResult?.(cachedWarnings);
+      setLoading(false);
+      return;
+    }
+  }, [cachedWarnings]);
+
+  useEffect(() => {
+    // Skip RPC if cached warnings are provided
+    if (cachedWarnings) return;
+
     if (!latitude || !longitude) {
       setWarnings([]);
       return;
