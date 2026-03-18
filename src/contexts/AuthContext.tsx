@@ -707,14 +707,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Periodic subscription re-check (every 60s while session exists)
+  // Periodic soft-refresh: re-fetch profile/role/companies every 15 minutes
+  // to catch admin-side changes without overloading the database on every token refresh.
   useEffect(() => {
     if (!session) return;
+    const SOFT_REFRESH_INTERVAL = 15 * 60_000; // 15 minutes
     const interval = setInterval(() => {
-      if (session?.user && navigator.onLine) {
-        refreshAuthState(session.user.id, 'periodic-subscription');
+      if (session?.user && navigator.onLine && document.visibilityState === 'visible') {
+        console.log('AuthContext: Periodic soft-refresh (15min)');
+        refreshAuthState(session.user.id, 'periodic-soft');
       }
-    }, 60_000);
+    }, SOFT_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [session]);
 
