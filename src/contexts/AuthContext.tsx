@@ -329,27 +329,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log(`AuthContext: refreshAuthState v${myVersion} (${reason})`);
 
     // Fire-and-forget background user validation (deleted user check)
-    const backgroundUserCheck = async () => {
-      try {
-        const now = Date.now();
-        const cached = getUserCacheRef.current;
-        let userError: any = null;
-        if (cached && now - cached.timestamp < 10_000) {
-          userError = cached.data.error;
-        } else {
-          const result = await supabase.auth.getUser();
-          getUserCacheRef.current = { data: result, timestamp: now };
-          userError = result.error;
+    // Only run on sign-in and visibility-return to avoid hammering /user endpoint
+    const shouldCheckUser = ['signed-in', 'visibility', 'online', 'initial-session'].includes(reason);
+    if (shouldCheckUser) {
+      const backgroundUserCheck = async () => {
+        try {
+          const now = Date.now();
+          const cached = getUserCacheRef.current;
+          let userError: any = null;
+          if (cached && now - cached.timestamp < 10_000) {
+            userError = cached.data.error;
+          } else {
+            const result = await supabase.auth.getUser();
+            getUserCacheRef.current = { data: result, timestamp: now };
+            userError = result.error;
+          }
+          if (userError && isMissingAuthUserError(userError)) {
+            console.warn('AuthContext: Stale session for deleted user, clearing');
+            await clearLocalAuthData(userId);
+          }
+        } catch {
+          // Network error — ignore
         }
-        if (userError && isMissingAuthUserError(userError)) {
-          console.warn('AuthContext: Stale session for deleted user, clearing');
-          await clearLocalAuthData(userId);
-        }
-      } catch {
-        // Network error — ignore
-      }
-    };
-    backgroundUserCheck();
+      };
+      backgroundUserCheck();
+    }
 
     try {
       // === PHASE 1: Fast queries (profile, role, accessible companies) ===
@@ -620,9 +624,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
-          // Re-fetch all auth state on token refresh — critical for session continuity
+          // Light refresh: token rotation does NOT require re-fetching profile/role/companies.
+          // Only run background subscription check to keep billing status current.
+          console.log('AuthContext: TOKEN_REFRESHED — light refresh (session+user only)');
           if (navigator.onLine) {
-            refreshAuthState(session.user.id, 'token-refreshed');
+            const ver = ++refreshVersionRef.current;
+            fireSubscriptionCheck(session.user.id, ver);
           }
         } else if (event === 'SIGNED_OUT') {
           if (!navigator.onLine) {
@@ -704,14 +711,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Periodic subscription re-check (every 60s while session exists)
+  // Periodic soft-refresh: re-fetch profile/role/companies every 15 minutes
+  // to catch admin-side changes without overloading the database on every token refresh.
   useEffect(() => {
     if (!session) return;
+    const SOFT_REFRESH_INTERVAL = 15 * 60_000; // 15 minutes
     const interval = setInterval(() => {
-      if (session?.user && navigator.onLine) {
-        refreshAuthState(session.user.id, 'periodic-subscription');
+      if (session?.user && navigator.onLine && document.visibilityState === 'visible') {
+        console.log('AuthContext: Periodic soft-refresh (15min)');
+        refreshAuthState(session.user.id, 'periodic-soft');
       }
-    }, 60_000);
+    }, SOFT_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [session]);
 
