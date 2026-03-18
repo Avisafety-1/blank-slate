@@ -28,6 +28,7 @@ interface CachedProfile {
   djiFlightlogEnabled: boolean;
   stripeExempt: boolean;
   departmentsEnabled: boolean;
+  accessibleCompanies?: AccessibleCompany[];
 }
 
 export interface AccessibleCompany {
