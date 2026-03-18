@@ -170,6 +170,16 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     );
   }
 
+  if (error) {
+    return (
+      <Alert variant="default" className="border-amber-500 bg-amber-500/20 text-foreground [&>svg]:text-foreground mt-3">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-semibold text-foreground">Luftromssjekk feilet</AlertTitle>
+        <AlertDescription className="text-sm mt-1 text-foreground">{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
   if (warnings.length === 0) {
     return null;
   }
