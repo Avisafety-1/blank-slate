@@ -5,6 +5,45 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// --- Deduplicated session refresh ---
+let activeRefreshPromise: Promise<void> | null = null;
+
+/**
+ * Ensures a fresh session exists. Deduplicates concurrent refresh calls
+ * so that multiple 401 responses only trigger ONE refreshSession() call.
+ */
+export async function ensureFreshSession(): Promise<void> {
+  if (activeRefreshPromise) return activeRefreshPromise;
+  activeRefreshPromise = supabase.auth.refreshSession()
+    .then(({ error }) => {
+      if (error) {
+        console.warn('ensureFreshSession: refresh failed', error.message);
+        throw error;
+      }
+      console.log('ensureFreshSession: token refreshed successfully');
+    })
+    .finally(() => {
+      activeRefreshPromise = null;
+    });
+  return activeRefreshPromise;
+}
+
+// --- 401 auto-retry fetch wrapper ---
+const fetchWithRetry: typeof fetch = async (input, init) => {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    try {
+      await ensureFreshSession();
+      // Retry once with fresh token
+      return fetch(input, init);
+    } catch {
+      // Refresh failed — return original 401
+      return res;
+    }
+  }
+  return res;
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -13,5 +52,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: {
+    fetch: fetchWithRetry,
+  },
 });

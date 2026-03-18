@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
@@ -289,6 +289,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const CACHE_FRESH_MS = 5 * 60_000; // 5 minutes
+
+  /**
+   * Check if a session's access token is stale (expired or expiring within bufferSec).
+   * Used to force a refresh before marking auth as initialized.
+   */
+  const isTokenStale = (session: Session, bufferSec = 60): boolean => {
+    if (!session.expires_at) return true;
+    return session.expires_at * 1000 - Date.now() < bufferSec * 1000;
+  };
 
   const isCacheFresh = (userId: string): boolean => {
     try {
@@ -691,6 +700,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
 
           if (navigator.onLine) {
+            // Ensure JWT is actually valid before marking auth as ready
+            if (isTokenStale(session)) {
+              console.log('AuthContext: Token stale at startup, forcing refresh before init');
+              try {
+                const { data: refreshed } = await supabase.auth.refreshSession();
+                if (refreshed.session) {
+                  session = refreshed.session;
+                  setSession(session);
+                  setUser(session.user);
+                  cacheSession(session.user);
+                }
+              } catch (refreshErr) {
+                console.warn('AuthContext: Startup token refresh failed', refreshErr);
+              }
+            }
+
             if (isCacheFresh(session.user.id)) {
               // Cache is fresh (<5 min) — skip expensive DB queries, just check subscription
               console.log('AuthContext: Cache fresh, skipping full refresh on page reload');
@@ -821,10 +846,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const ensureValidToken = async (): Promise<void> => {
     if (!navigator.onLine) return;
-    const { data: { session: freshSession } } = await supabase.auth.getSession();
-    if (freshSession) {
-      setSession(freshSession);
-      setUser(freshSession.user);
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession && isTokenStale(currentSession)) {
+      console.log('ensureValidToken: token stale, refreshing via shared ensureFreshSession');
+      await ensureFreshSession();
+      // Re-fetch updated session after refresh
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      if (freshSession) {
+        setSession(freshSession);
+        setUser(freshSession.user);
+      }
+    } else if (currentSession) {
+      setSession(currentSession);
+      setUser(currentSession.user);
     }
   };
 
