@@ -40,7 +40,7 @@ const statusColors = {
 
 type Incident = Tables<"incidents">;
 
-export const IncidentsSection = () => {
+export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
   const { companyId, user, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
