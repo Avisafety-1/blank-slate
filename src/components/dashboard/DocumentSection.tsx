@@ -161,6 +161,7 @@ export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
       setDocuments(mappedDocuments);
       if (companyId) setCachedData(`offline_dashboard_docs_${companyId}`, mappedDocuments);
     } catch (error: any) {
+      if (error?.name === 'AbortError' || abortSignal?.aborted) return;
       console.error("Error fetching documents:", error);
       toast.error(t('dashboard.documents.couldNotLoad'));
     } finally {
