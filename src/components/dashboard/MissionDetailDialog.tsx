@@ -82,6 +82,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(false);
+  const [cachedAirspaceWarnings, setCachedAirspaceWarnings] = useState<any[] | null>(
+    mission?.airspaceWarnings ?? null
+  );
 
   // Re-fetch mission data and SORA status when dialog opens
   useEffect(() => {
