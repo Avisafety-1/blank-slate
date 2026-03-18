@@ -14,7 +14,7 @@ import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, Chev
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
