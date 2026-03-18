@@ -691,7 +691,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
 
           if (navigator.onLine) {
-            refreshAuthState(session.user.id, 'initial-session');
+            if (isCacheFresh(session.user.id)) {
+              // Cache is fresh (<5 min) — skip expensive DB queries, just check subscription
+              console.log('AuthContext: Cache fresh, skipping full refresh on page reload');
+              const ver = ++refreshVersionRef.current;
+              fireSubscriptionCheck(session.user.id, ver);
+              setAuthRefreshing(false);
+              setAuthInitialized(true);
+            } else {
+              refreshAuthState(session.user.id, 'initial-session');
+            }
           } else {
             // Offline — mark as initialized with cached data
             setAuthInitialized(true);
