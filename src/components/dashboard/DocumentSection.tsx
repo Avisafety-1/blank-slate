@@ -129,10 +129,13 @@ export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
 
     // 3. Fetch fresh data from network
     try {
-      const { data, error } = await supabase
+      if (abortSignal?.aborted) { setLoading(false); return; }
+      const query = supabase
         .from("documents")
         .select("*, companies:company_id(id, navn)")
         .order("opprettet_dato", { ascending: false });
+      if (abortSignal) (query as any).abortSignal(abortSignal);
+      const { data, error } = await query;
 
       if (error) throw error;
 

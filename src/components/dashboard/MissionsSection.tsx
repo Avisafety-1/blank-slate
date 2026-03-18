@@ -79,13 +79,16 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
     try {
-      const { data, error } = await (supabase as any)
+      if (abortSignal?.aborted) return;
+      const query = (supabase as any)
         .from("missions")
         .select("*, companies:company_id(id, navn)")
         .neq("status", "Fullført")
         .neq("status", "Avlyst")
         .gte("tidspunkt", oneDayAgo.toISOString())
         .order("tidspunkt", { ascending: true });
+      if (abortSignal) query.abortSignal(abortSignal);
+      const { data, error } = await query;
 
       if (error) throw error;
 

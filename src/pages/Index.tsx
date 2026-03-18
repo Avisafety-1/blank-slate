@@ -328,20 +328,26 @@ const Index = () => {
     );
   }
 
+  const abortSignal = abortControllerRef.current.signal;
+
   const renderSection = (component: string) => {
+    // Defer heavy data-fetching sections until readyToFetch is true
+    const isDeferred = ["documents", "missions", "incidents", "status", "kpi"].includes(component);
+    if (isDeferred && !readyToFetch) return null;
+
     switch (component) {
       case "documents":
-        return <DocumentSection />;
+        return <DocumentSection abortSignal={abortSignal} />;
       case "news":
         return <NewsSection />;
       case "status":
         return <StatusPanel />;
       case "missions":
-        return <MissionsSection />;
+        return <MissionsSection abortSignal={abortSignal} />;
       case "calendar":
         return <CalendarWidget />;
       case "incidents":
-        return <IncidentsSection />;
+        return <IncidentsSection abortSignal={abortSignal} />;
       case "kpi":
         return <KPIChart />;
       default:
