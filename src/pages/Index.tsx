@@ -71,6 +71,18 @@ const Index = () => {
   const dashboardRealtime = useDashboardRealtime();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: pushSubscribe } = usePushNotifications();
 
+  // Defer dashboard data fetching to avoid saturating connection pool
+  const [readyToFetch, setReadyToFetch] = useState(false);
+  const abortControllerRef = useRef(new AbortController());
+
+  useEffect(() => {
+    const timer = setTimeout(() => setReadyToFetch(true), 300);
+    return () => {
+      clearTimeout(timer);
+      abortControllerRef.current.abort();
+    };
+  }, []);
+
   // Auto-enable push notifications for PWA users (one-time prompt)
   useEffect(() => {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches 
