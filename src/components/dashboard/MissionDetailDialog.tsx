@@ -86,6 +86,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [cachedAirspaceWarnings, setCachedAirspaceWarnings] = useState<any[] | null>(
     mission?.airspaceWarnings ?? null
   );
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
