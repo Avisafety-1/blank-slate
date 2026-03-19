@@ -401,8 +401,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </DialogTitle>
           </DialogHeader>
 
-          {/* Summary */}
-          <div className="space-y-2">
+          <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-2 pr-4">
             <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />
