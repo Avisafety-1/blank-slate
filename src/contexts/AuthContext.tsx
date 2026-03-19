@@ -421,16 +421,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // --- Build profile data ---
+      // Preserve current state as fallback so transient failures don't reset approval
       let profileData: CachedProfile = {
-        companyId: null,
-        companyName: null,
+        companyId: companyId,
+        companyName: companyName,
         companyType: 'droneoperator',
         companyLat: null,
         companyLon: null,
-        isApproved: false,
-        userRole: null,
-        isAdmin: false,
-        isSuperAdmin: false,
+        isApproved: isApproved,
+        userRole: userRole,
+        isAdmin: isAdmin,
+        isSuperAdmin: isSuperAdmin,
         djiFlightlogEnabled: false,
         stripeExempt: false,
         departmentsEnabled: false,

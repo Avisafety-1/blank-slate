@@ -309,7 +309,7 @@ const Index = () => {
     );
   }
 
-  if (!isApproved && !isOfflineWithCachedSession) {
+  if (!isApproved && !isOfflineWithCachedSession && !authRefreshing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
@@ -322,7 +322,12 @@ const Index = () => {
           <p className="text-muted-foreground mb-6">
             {t('auth.pendingDescription')}
           </p>
-          <Button onClick={() => navigate("/auth")}>{t('auth.backToLogin')}</Button>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => refreshAuthState(user.id, 'manual-retry')}>
+              {t('common.tryAgain', 'Prøv igjen')}
+            </Button>
+            <Button onClick={() => navigate("/auth")}>{t('auth.backToLogin')}</Button>
+          </div>
         </div>
       </div>
     );
