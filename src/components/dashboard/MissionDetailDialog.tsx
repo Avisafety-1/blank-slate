@@ -100,18 +100,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     if (!open || !mission?.id) {
       setLiveMission(null);
       setSoraStatus(null);
+      setMissionFlightLogs(null);
       return;
     }
     const fetchLatest = async () => {
-      const [missionRes, soraRes] = await Promise.all([
+      const [missionRes, soraRes, logsRes] = await Promise.all([
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
+        supabase.from("flight_logs").select("id, flight_date, flight_track, flight_duration_minutes, departure_location, landing_location")
+          .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
       ]);
       if (missionRes.data) {
         setLiveMission(missionRes.data);
         setNinoxApproved(!!(missionRes.data as any).ninox_approved);
       }
       setSoraStatus(soraRes.data?.sora_status ?? null);
+      setMissionFlightLogs(logsRes.data || []);
     };
     fetchLatest();
   }, [open, mission?.id]);
