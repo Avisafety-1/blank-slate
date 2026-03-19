@@ -336,6 +336,42 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           <MissionResourceSections mission={currentMission} open={open} />
 
+          {/* Flight log analysis */}
+          {missionFlightLogs && missionFlightLogs.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Flylogger ({missionFlightLogs.length})</p>
+              <div className="space-y-1.5">
+                {missionFlightLogs.map((log: any) => (
+                  <div key={log.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
+                    <div className="text-sm">
+                      <span className="font-medium">
+                        {new Date(log.flight_date).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' })}
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        {log.flight_duration_minutes} min
+                        {log.departure_location && ` · ${log.departure_location}`}
+                      </span>
+                    </div>
+                    {log.flight_track?.positions?.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setAnalysisTrack(log.flight_track);
+                          setAnalysisOpen(true);
+                        }}
+                      >
+                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                        Analyser
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {currentMission.latitude && currentMission.longitude && (
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
