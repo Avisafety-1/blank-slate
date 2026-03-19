@@ -1374,7 +1374,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!result || !matchedLog || !companyId || !user) return;
     setIsSubmitting(true);
     try {
-      const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+      const rawTrack = result.positions.map(p => ({ ...p }));
       const maxPts = 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPts) {
