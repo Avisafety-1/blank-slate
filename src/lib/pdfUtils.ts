@@ -186,10 +186,21 @@ export const formatDurationForPdf = (minutes: number): string => {
 export const addPdfHeader = (
   doc: jsPDF,
   title: string,
-  subtitle?: string
+  subtitle?: string,
+  companyName?: string
 ): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  let yPos = 20;
+  let yPos = 16;
+
+  // Company name at top
+  if (companyName) {
+    doc.setFontSize(10);
+    setFontStyle(doc, "normal");
+    doc.setTextColor(100);
+    doc.text(sanitizeForPdf(companyName), pageWidth / 2, yPos, { align: "center" });
+    doc.setTextColor(0);
+    yPos += 8;
+  }
   
   doc.setFontSize(18);
   setFontStyle(doc, "bold");
