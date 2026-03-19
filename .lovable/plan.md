@@ -1,36 +1,52 @@
 
 
-## Fix: "Begrenset telemetri" for newly imported flights
+## Plan: Fix map rendering + Add visual DJI stick widget
 
-### Problem
-The edge functions correctly parse and return extended telemetry (speed, RC inputs, gimbal, battery, wind, etc.) in the `positions` array. However, the **client-side code** in `UploadDroneLogDialog.tsx` strips all that data before saving to the database.
+### Problem 1: Map not rendering
+The Leaflet map initializes inside a `Dialog` component. When the dialog opens, the map container div has no dimensions yet (CSS transition). Leaflet calculates tile positions based on a 0×0 container, resulting in grey/blank tiles. The fix is to call `map.invalidateSize()` after a short delay to let the dialog finish its open animation.
 
-Three places (lines ~1377, ~1421, ~1491) do:
-```typescript
-const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+### Problem 2: RC stick visualization
+Currently RC stick data (rcAileron, rcElevator, rcThrottle, rcRudder) is only shown as line charts. The user wants a visual representation of the two DJI controller sticks that animate in real-time as the scrubber moves.
+
+### Changes
+
+**`src/components/dashboard/FlightAnalysisDialog.tsx`**:
+- After map initialization, add a `setTimeout(() => map.invalidateSize(), 300)` to recalculate tiles once the dialog animation completes
+- Add a second `invalidateSize()` on a `ResizeObserver` attached to the map container for robustness
+
+**`src/components/dashboard/FlightAnalysisTimeline.tsx`** (RC tab):
+- Replace or augment the RC line chart tab with a **DualStickWidget** component
+- The widget renders two square boxes side-by-side representing the left and right DJI controller sticks:
+  - **Left stick**: Rudder (X-axis) + Throttle (Y-axis)
+  - **Right stick**: Aileron (X-axis) + Elevator (Y-axis)
+- Each box has a crosshair and a colored dot showing the current stick position
+- Values are normalized from their range (typically -660 to 660 or -1 to 1) to pixel coordinates within the box
+- The dot position updates reactively based on `currentIndex`
+- Labels under each stick: "Venstre (Rudder/Throttle)" and "Høyre (Aileron/Elevator)"
+- Keep the existing RC line chart below the sticks so users can see the historical trace too
+
+**New component: `src/components/dashboard/StickWidget.tsx`**:
+- A small reusable SVG component (~80×80px) that draws:
+  - A square border with center crosshair lines
+  - A filled circle at the normalized (x, y) position
+  - Axis labels (optional)
+- Props: `x: number`, `y: number`, `label: string`, `xLabel?: string`, `yLabel?: string`
+
+### Visual design
+
+```text
+┌─────────────────────────────────────────┐
+│  ┌──────────┐         ┌──────────┐      │
+│  │     │     │         │     │     │      │
+│  │─────●─────│         │─────┼──●──│      │
+│  │     │     │         │     │     │      │
+│  └──────────┘         └──────────┘      │
+│   Venstre stikke       Høyre stikke      │
+│  (Rudder / Throttle)  (Aileron / Elev.)  │
+│                                          │
+│  [existing RC line chart below]          │
+└─────────────────────────────────────────┘
 ```
 
-This discards every extended field (speed, vSpeed, battery, rcAileron, gimbalPitch, etc.), so `flight_track.positions` in the DB only has basic coordinates. The `FlightAnalysisDialog` then correctly detects "no advanced data" and shows the badge.
-
-### Solution
-Change all three `rawTrack` mappings to preserve all properties from each position point, instead of picking only 4 fields.
-
-Replace:
-```typescript
-const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
-```
-With:
-```typescript
-const rawTrack = result.positions.map(p => ({ ...p }));
-```
-
-This preserves all telemetry fields while still allowing the downsampling logic that follows.
-
-### Files changed
-- `src/components/UploadDroneLogDialog.tsx` — 3 lines changed (lines ~1377, ~1421, ~1491)
-
-### Notes
-- No database changes needed — `flight_track` is JSONB
-- Existing flights imported before this fix will still show "Begrenset telemetri" (correct behavior)
-- Only newly imported flights will have full telemetry
+The dot (●) moves in real-time as the user scrubs through the timeline.
 
