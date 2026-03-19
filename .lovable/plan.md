@@ -1,45 +1,122 @@
 
 
-## Problem
+## Advanced Flight Analysis — Missing API Fields
 
-The "Batteritrend" tab is blank for all batteries because the Supabase query returns a **400 error**:
+### Current vs Available
 
+Du har helt rett. Her er en komplett oversikt over hva vi henter i dag vs hva som er tilgjengelig og relevant for avansert flyanalyse:
+
+```text
+HENTES I DAG                          MANGLER (relevant for analyse)
+─────────────────────────────────     ─────────────────────────────────
+OSD: lat, lng, alt, height,           OSD.vSpeed [m/s]        ← vertikal hastighet
+  flyTime, hSpeed, gpsNum,            OSD.pitch [°]           ← drone pitch
+  flycState, goHomeStatus             OSD.roll [°]            ← drone roll
+                                      OSD.directionYaw [°]    ← heading/retning
+BATTERY: chargeLevel, temp,            OSD.xSpeed [m/s]        ← komponent-hastighet
+  totalVoltage, current, loopNum,      OSD.ySpeed [m/s]        ← komponent-hastighet
+  fullCapacity, currentCapacity,       OSD.isMotorUp           ← motor-status
+  life, status, cellVoltage1-6,        OSD.flycCommand         ← aktiv kommando
+  cellDeviation-felter                 OSD.groundOrSky         ← bakke/luft
+                                      OSD.gpsLevel            ← GPS-kvalitet
+RC: (ingenting!)                       OSD.isGPSUsed           ← GPS aktiv
+                                      OSD.isVisionUsed        ← vision aktiv
+GIMBAL: (ingenting!)
+                                      RC.aileron              ← styrespak høyre/venstre
+CALC: (ingenting!)                     RC.elevator             ← styrespak opp/ned
+                                      RC.rudder               ← rotasjon
+HOME: goHomeStatus                     RC.throttle             ← gass
+
+                                      GIMBAL.pitch [°]        ← kameravinkel
+                                      GIMBAL.roll [°]
+                                      GIMBAL.yaw [°]
+
+                                      CALC.distance2D [m]     ← avstand fra home
+                                      CALC.distance3D [m]
+                                      CALC.currentElevation [m] ← terreng
+
+                                      HOME.latitude           ← hjemmeposisjon
+                                      HOME.longitude
+                                      HOME.maxAllowedHeight [m]
+
+                                      WEATHER.temperature [°C]
+                                      WEATHER.windDirection [°]
+                                      WEATHER.windSpeed [m/s]
 ```
-column flight_logs.battery_full_capacity_mah does not exist
+
+### Oppsummering av mangler
+
+Hele 4 kategorier hentes ikke i det hele tatt: **RC, GIMBAL, CALC, WEATHER**. Pluss flere viktige OSD-felter (vSpeed, pitch, roll, yaw, groundOrSky).
+
+### Oppdatert plan
+
+#### 1. Utvide FIELDS-listen i alle 3 edge functions
+
+Legge til ~22 nye felter i FIELDS-konstanten i:
+- `supabase/functions/process-dronelog/index.ts`
+- `supabase/functions/dji-process-single/index.ts`
+- `supabase/functions/dji-auto-sync/index.ts`
+
+Nye felter å legge til:
+```
+OSD.vSpeed [m/s], OSD.pitch [°], OSD.roll [°], OSD.directionYaw [°],
+OSD.groundOrSky, OSD.gpsLevel, OSD.isMotorUp, OSD.flycCommand,
+RC.aileron, RC.elevator, RC.rudder, RC.throttle,
+GIMBAL.pitch [°], GIMBAL.roll [°], GIMBAL.yaw [°],
+CALC.distance2D [m], CALC.distance3D [m], CALC.currentElevation [m],
+HOME.latitude, HOME.longitude, HOME.maxAllowedHeight [m],
+WEATHER.temperature [°C], WEATHER.windDirection [°], WEATHER.windSpeed [m/s]
 ```
 
-The column `battery_full_capacity_mah` exists on the `equipment` table, not on `flight_logs`. The recent code change incorrectly added it to the `flight_logs` SELECT query, breaking the entire tab.
+Dette koster ingenting ekstra — det er samme API-kall, bare flere kolonner i CSV-responsen.
 
-## Root Cause
+#### 2. Utvide `flight_track` posisjonsobjektet
 
-The migration `20260313...` added `battery_full_capacity_mah` to the **`equipment`** table. The migration `20260224...` added `battery_temp_min_c`, `battery_temp_max_c`, `battery_voltage_min_v` to `flight_logs` -- but NOT `battery_full_capacity_mah`.
+Hvert nedsamplet punkt utvides fra:
+```json
+{ "lat": 59.9, "lng": 10.7, "alt": 120, "height": 50, "timestamp": "PT60S" }
+```
+til:
+```json
+{
+  "lat": 59.9, "lng": 10.7, "alt": 120, "height": 50, "timestamp": "PT60S",
+  "speed": 5.2, "vSpeed": -0.3, "battery": 85,
+  "voltage": 15.2, "current": 12.5, "temp": 38,
+  "gpsNum": 18, "gpsLevel": 5,
+  "pitch": -2.1, "roll": 0.5, "yaw": 182,
+  "rcAileron": 1024, "rcElevator": 1100, "rcRudder": 1024, "rcThrottle": 1200,
+  "gimbalPitch": -45, "gimbalRoll": 0, "gimbalYaw": 180,
+  "dist2D": 150, "dist3D": 158, "elevation": 70,
+  "flycState": "GPS_Atti", "groundOrSky": "Sky",
+  "windSpeed": 3.2, "windDir": 220
+}
+```
 
-## Fix
+Størrelse øker fra ~50 til ~250 bytes per punkt. Med 500 samples: ~125KB per flylogg — fortsatt uproblematisk.
 
-### Option A: Remove the non-existent column from the query (quick fix)
+#### 3. Ny UI: FlightAnalysisDialog + FlightAnalysisTimeline
 
-In `src/components/resources/EquipmentLogbookDialog.tsx`:
-- Remove `battery_full_capacity_mah` from the `fetchBatteryTrend` SELECT query
-- Remove `capacityMah` from the `BatteryTrendEntry` interface and all UI references to it
-- The capacity data can instead be shown from the equipment record itself (already displayed in `EquipmentDetailDialog`)
+- **Kart** med drone-markør synkronisert til scrubber
+- **Tidslinje-scrubber** som styrer alle visninger
+- **Synkroniserte grafer** (i tabs): Høyde, Hastighet (h+v), Batteri/Spenning, RC-input, Gimbal, GPS/Satellitter, Avstand fra home, Vind
+- **Hendelsesmarkører** på tidslinjen (advarsler, RTH, lav GPS, lavt batteri)
+- **Infopanel** som viser alle verdier for valgt tidspunkt
 
-### Option B: Add the column to `flight_logs` via migration
+#### 4. Integrasjon
 
-- Create a migration: `ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_full_capacity_mah integer;`
-- Update the edge functions (`process-dronelog`, `dji-auto-sync`, `dji-process-single`) to write `battery_full_capacity_mah` to `flight_logs` when inserting/updating
-- This gives per-flight capacity tracking (capacity degradation over time)
+"Analyser flytur"-knapp i DroneLogbookDialog og MissionDetailDialog.
 
-## Recommendation
+### Filer som endres/opprettes
 
-**Option B** is better long-term -- it enables tracking capacity degradation per flight, which is the intended use case. The fix involves:
+| Fil | Endring |
+|---|---|
+| `supabase/functions/process-dronelog/index.ts` | Utvide FIELDS + posisjonsobjekt |
+| `supabase/functions/dji-process-single/index.ts` | Samme |
+| `supabase/functions/dji-auto-sync/index.ts` | Samme |
+| `src/components/dashboard/FlightAnalysisDialog.tsx` | **Ny** |
+| `src/components/dashboard/FlightAnalysisTimeline.tsx` | **Ny** |
+| `src/components/resources/DroneLogbookDialog.tsx` | Legg til "Analyser"-knapp |
+| `src/components/dashboard/MissionDetailDialog.tsx` | Legg til "Analyser"-knapp |
 
-1. **Database migration**: Add `battery_full_capacity_mah` column to `flight_logs`
-2. **Edge function updates**: Write the capacity value when inserting flight logs (3 functions: `process-dronelog`, `dji-auto-sync`, `dji-process-single`)
-3. **No UI changes needed** -- the current `EquipmentLogbookDialog.tsx` code is already correct once the column exists
-
-### Files to modify
-- New migration SQL file
-- `supabase/functions/process-dronelog/index.ts` -- add capacity to INSERT
-- `supabase/functions/dji-auto-sync/index.ts` -- add capacity to INSERT
-- `supabase/functions/dji-process-single/index.ts` -- already parses `fullCapacity` but doesn't store it per-flight
+Ingen databaseendringer — `flight_track` er JSONB og aksepterer de nye feltene automatisk. Eksisterende logger beholder sin data (bakoverkompatibelt).
 
