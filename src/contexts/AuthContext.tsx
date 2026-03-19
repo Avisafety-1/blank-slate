@@ -635,6 +635,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // If this event was triggered by a cross-tab setSession, skip to avoid loops
+        if (ignoreNextAuthEventRef.current) {
+          ignoreNextAuthEventRef.current = false;
+          console.log('AuthContext: Ignoring auth event triggered by cross-tab sync');
+          return;
+        }
+
         if (event === 'SIGNED_IN' && session?.user) {
           setSession(session);
           setUser(session.user);
@@ -645,6 +652,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             localStorage.setItem('avisafe_last_activity', Date.now().toString());
           } catch {}
+          // Broadcast to other tabs
+          broadcastSession(session);
           if (navigator.onLine) {
             refreshAuthState(session.user.id, 'signed-in');
           }
@@ -652,6 +661,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session.user);
           cacheSession(session.user);
+          // Broadcast refreshed token to other tabs so they don't try to refresh
+          broadcastSession(session);
           // Light refresh: token rotation does NOT require re-fetching profile/role/companies.
           // Only run background subscription check to keep billing status current.
           console.log('AuthContext: TOKEN_REFRESHED — light refresh (session+user only)');
@@ -664,6 +675,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('AuthContext: Ignoring SIGNED_OUT while offline');
             return;
           }
+          // Broadcast sign-out to other tabs
+          broadcastSignOut();
           resetAuthState();
           setLoading(false);
           setAuthInitialized(true);
