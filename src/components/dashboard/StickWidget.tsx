@@ -14,9 +14,9 @@ const normalize = (val: number, min: number, max: number) =>
   Math.max(0, Math.min(1, (val - min) / (max - min)));
 
 export const StickWidget = ({ x, y, label, xLabel, yLabel }: StickWidgetProps) => {
-  // DJI RC values typically range -660 to 660; normalize to 0–1
-  const nx = normalize(x, -660, 660);
-  const ny = normalize(y, -660, 660);
+  // DJI RC values: 364–1684, center 1024
+  const nx = normalize(x, 364, 1684);
+  const ny = normalize(y, 364, 1684);
 
   const cx = PAD + nx * RANGE;
   const cy = PAD + (1 - ny) * RANGE; // invert Y so up = positive
