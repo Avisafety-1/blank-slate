@@ -1441,6 +1441,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (mission && pilotId) await supabase.from('mission_personnel').insert({ mission_id: mission.id, profile_id: pilotId });
       if (mission && selectedEquipment.length > 0) await supabase.from('mission_equipment').insert(selectedEquipment.map(eqId => ({ mission_id: mission.id, equipment_id: eqId })));
 
+      const extFields = buildExtendedFields(result);
+      // If a duplicate log already exists (user chose to create new anyway), clear SHA-256 to avoid unique constraint violation
+      if (matchedLog) {
+        (extFields as any).dronelog_sha256 = null;
+      }
       const { data: logData, error: logError } = await supabase.from('flight_logs').insert({
         company_id: companyId, user_id: user.id, drone_id: selectedDroneId || null, mission_id: mission?.id || null,
         flight_date: effectiveDate.toISOString(), flight_duration_minutes: result.durationMinutes,
@@ -1448,7 +1453,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
-        ...buildExtendedFields(result),
+        ...extFields,
       } as any).select('id').single();
       if (logError) throw logError;
 
