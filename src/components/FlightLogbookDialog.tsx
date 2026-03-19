@@ -720,7 +720,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 )}
             </TabsContent>
           </Tabs>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
