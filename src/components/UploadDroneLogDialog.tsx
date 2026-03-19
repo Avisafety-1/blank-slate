@@ -2637,6 +2637,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             ) : null}
 
+            {/* High-resolution import toggle */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+              <Checkbox
+                id="highResImport"
+                checked={highResImport}
+                onCheckedChange={(checked) => setHighResImport(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="highResImport" className="text-sm font-medium cursor-pointer">
+                  Importer høy-oppløselig posisjonsdata
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Gir ~1-sekunds oppløsning for flyanalyse (bruker mer lagringsplass). Standard er ~6-sekunders oppløsning.
+                </p>
+              </div>
+            </div>
+
             <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); }}>{t('actions.back')}</Button>
               {matchedLog ? (
