@@ -565,6 +565,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <FlightAnalysisDialog
+      open={analysisOpen}
+      onOpenChange={setAnalysisOpen}
+      flightTrack={analysisTrack}
+      flightDate={undefined}
+      droneName={currentMission?.tittel}
+    />
     </>
   );
 };
