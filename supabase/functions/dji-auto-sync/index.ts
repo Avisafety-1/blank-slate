@@ -164,7 +164,36 @@ function parseCsvMinimal(csvText: string) {
     if ((i - 1) % sampleRate === 0 && !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
       const ts = dateTimeIdx >= 0 && cols[dateTimeIdx] ? cols[dateTimeIdx] :
         (!isNaN(flyTimeMs) ? `PT${Math.round(flyTimeMs / 1000)}S` : `PT${Math.round((i - 1) / 10)}S`);
-      positions.push({ lat, lng: lon, alt: isNaN(alt) ? 0 : alt, height: isNaN(height) ? 0 : height, timestamp: ts });
+      const point: Record<string, any> = { lat, lng: lon, alt: isNaN(alt) ? 0 : alt, height: isNaN(height) ? 0 : height, timestamp: ts };
+      const pf = (idx: number) => { const v = idx >= 0 ? parseFloat(cols[idx]) : NaN; return isNaN(v) ? undefined : Math.round(v * 100) / 100; };
+      const pi = (idx: number) => { const v = idx >= 0 ? parseInt(cols[idx]) : NaN; return isNaN(v) ? undefined : v; };
+      const ps = (idx: number) => idx >= 0 && cols[idx] ? cols[idx] : undefined;
+      if (pf(speedIdx) !== undefined) point.speed = pf(speedIdx);
+      if (pf(vSpeedIdx) !== undefined) point.vSpeed = pf(vSpeedIdx);
+      if (pf(batteryIdx) !== undefined) point.battery = pf(batteryIdx);
+      if (pf(battVoltIdx) !== undefined) point.voltage = pf(battVoltIdx);
+      if (pf(battCurrentIdx) !== undefined) point.current = pf(battCurrentIdx);
+      if (pf(battTempIdx) !== undefined) point.temp = pf(battTempIdx);
+      if (pi(gpsNumIdx) !== undefined) point.gpsNum = pi(gpsNumIdx);
+      if (pi(gpsLevelIdx) !== undefined) point.gpsLevel = pi(gpsLevelIdx);
+      if (pf(pitchIdx) !== undefined) point.pitch = pf(pitchIdx);
+      if (pf(rollIdx) !== undefined) point.roll = pf(rollIdx);
+      if (pf(yawIdx) !== undefined) point.yaw = pf(yawIdx);
+      if (pi(rcAileronIdx) !== undefined) point.rcAileron = pi(rcAileronIdx);
+      if (pi(rcElevatorIdx) !== undefined) point.rcElevator = pi(rcElevatorIdx);
+      if (pi(rcRudderIdx) !== undefined) point.rcRudder = pi(rcRudderIdx);
+      if (pi(rcThrottleIdx) !== undefined) point.rcThrottle = pi(rcThrottleIdx);
+      if (pf(gimbalPitchIdx) !== undefined) point.gimbalPitch = pf(gimbalPitchIdx);
+      if (pf(gimbalRollIdx) !== undefined) point.gimbalRoll = pf(gimbalRollIdx);
+      if (pf(gimbalYawIdx) !== undefined) point.gimbalYaw = pf(gimbalYawIdx);
+      if (pf(dist2DIdx) !== undefined) point.dist2D = pf(dist2DIdx);
+      if (pf(dist3DIdx) !== undefined) point.dist3D = pf(dist3DIdx);
+      if (pf(elevationIdx) !== undefined) point.elevation = pf(elevationIdx);
+      if (ps(flycStateIdx)) point.flycState = ps(flycStateIdx);
+      if (ps(groundOrSkyIdx)) point.groundOrSky = ps(groundOrSkyIdx);
+      if (pf(weatherWindSpeedIdx) !== undefined) point.windSpeed = pf(weatherWindSpeedIdx);
+      if (pf(weatherWindDirIdx) !== undefined) point.windDir = pf(weatherWindDirIdx);
+      positions.push(point);
     }
   }
 
