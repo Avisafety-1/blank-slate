@@ -439,7 +439,6 @@ export function OpenAIPMap({
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-          map.setView(coords, 9);
           if (userMarkerRef.current) {
             userMarkerRef.current.setLatLng(coords);
           } else {
@@ -448,10 +447,14 @@ export function OpenAIPMap({
             }).addTo(map);
             userMarkerRef.current.bindPopup("Din posisjon");
           }
+          // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
+          if (!focusFlightId) {
+            map.setView(coords, 9);
+          }
         },
         () => {
           console.log("Geolokasjon nektet");
-          if (companyLat && companyLon) {
+          if (!focusFlightId && companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
           }
         },
