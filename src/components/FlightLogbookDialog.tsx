@@ -138,7 +138,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   };
 
   const handleAddManualHours = async () => {
-    const additionalMinutes = (parseInt(manualHours) || 0) * 60 + (parseInt(manualMinutes) || 0);
+    const hours = parseInt(manualHours) || 0;
+    const mins = parseInt(manualMinutes) || 0;
+    const additionalMinutes = hours * 60 + mins;
     const additionalHours = additionalMinutes / 60;
     const newTotal = profileFlyvetimer + additionalHours;
     
@@ -151,11 +153,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       toast.error("Kunne ikke legge til flytimer");
       console.error(error);
     } else {
+      // Create a logbook entry so it's visible in the log
+      const durationLabel = hours > 0 && mins > 0
+        ? `${hours} t ${mins} min`
+        : hours > 0
+          ? `${hours} t`
+          : `${mins} min`;
+
+      await (supabase as any)
+        .from("personnel_log_entries")
+        .insert({
+          profile_id: personId,
+          company_id: companyId,
+          user_id: user?.id,
+          entry_date: new Date().toISOString().split('T')[0],
+          entry_type: "flytid",
+          title: `Manuelt lagt til ${durationLabel} flytid`,
+          description: null,
+        });
+
       toast.success("Flytimer lagt til");
       setProfileFlyvetimer(newTotal);
       setManualHours("");
       setManualMinutes("");
       setShowAddHours(false);
+      fetchPersonnelLogs();
     }
     setConfirmDialogOpen(false);
   };
