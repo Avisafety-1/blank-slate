@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
+import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
 import { BarChart3, AlertTriangle } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -182,10 +183,22 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
         </DialogHeader>
 
         {/* Map */}
-        <div
-          ref={mapContainerRef}
-          className="h-[200px] sm:h-[280px] rounded-lg overflow-hidden border border-border relative z-0"
-        />
+        <div className="relative">
+          <div
+            ref={mapContainerRef}
+            className="h-[200px] sm:h-[280px] rounded-lg overflow-hidden border border-border relative z-0"
+          />
+          {/* Attitude indicator overlay */}
+          {positions[currentIndex]?.pitch !== undefined && (
+            <div className="absolute top-2 right-2 z-10">
+              <DroneAttitudeIndicator
+                pitch={positions[currentIndex]?.pitch ?? 0}
+                roll={positions[currentIndex]?.roll ?? 0}
+                yaw={positions[currentIndex]?.yaw}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Timeline + Charts */}
         <div className="flex-1 min-h-0 overflow-y-auto">
