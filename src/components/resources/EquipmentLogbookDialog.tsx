@@ -52,6 +52,10 @@ interface BatteryTrendEntry {
   date: Date;
   cycles: number | null;
   health: number | null;
+  tempMin: number | null;
+  tempMax: number | null;
+  voltageMin: number | null;
+  capacityMah: number | null;
 }
 
 interface LogEntry {
