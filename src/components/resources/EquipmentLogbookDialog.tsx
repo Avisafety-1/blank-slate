@@ -29,7 +29,9 @@ import {
   Battery,
   Heart,
   TrendingDown,
-  Calendar
+  Calendar,
+  Thermometer,
+  Zap
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
