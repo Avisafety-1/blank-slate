@@ -237,6 +237,122 @@ export const useOppdragData = () => {
     fetchMissionsForTab(tab, currentCount, PAGE_SIZE, true);
   }, [filterTab, activeMissions.length, completedMissions.length]);
 
+  // Server-side search
+  const searchMissions = useCallback(async (query: string, tab: 'active' | 'completed') => {
+    if (!query.trim()) {
+      setSearchActive(false);
+      setSearchResults([]);
+      return;
+    }
+    setSearchActive(true);
+    setIsSearching(true);
+    try {
+      const q = `%${query}%`;
+      let dbQuery = supabase
+        .from("missions")
+        .select(`*, customers (id, navn, kontaktperson, telefon, epost), companies:company_id(id, navn)`)
+        .or(`tittel.ilike.${q},lokasjon.ilike.${q},beskrivelse.ilike.${q}`)
+        .order("tidspunkt", { ascending: tab === "active" })
+        .limit(50);
+
+      if (tab === "active") {
+        dbQuery = dbQuery.in("status", ["Planlagt", "Pågående"]);
+      } else {
+        dbQuery = dbQuery.eq("status", "Fullført");
+      }
+
+      const { data, error } = await dbQuery;
+      if (error) throw error;
+
+      const missionsList = data || [];
+      if (missionsList.length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      const missionIds = missionsList.map(m => m.id);
+
+      const [
+        personnelRes, dronesRes, equipmentRes, soraRes,
+        incidentsRes, risksRes, docsRes, logsRes
+      ] = await Promise.all([
+        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name)").in("mission_id", missionIds),
+        supabase.from("mission_drones").select("mission_id, drone_id, drones(id, modell, serienummer)").in("mission_id", missionIds),
+        supabase.from("mission_equipment").select("mission_id, equipment_id, equipment(id, navn, type)").in("mission_id", missionIds),
+        supabase.from("mission_sora").select("*").in("mission_id", missionIds),
+        supabase.from("incidents").select("*").in("mission_id", missionIds),
+        supabase.from("mission_risk_assessments").select("*").in("mission_id", missionIds).order("created_at", { ascending: false }),
+        supabase.from("mission_documents").select("mission_id, document_id, documents(id, tittel, beskrivelse, kategori, nettside_url, fil_url, gyldig_til, varsel_dager_for_utløp, versjon, oppdatert_dato)").in("mission_id", missionIds),
+        supabase.from("flight_logs").select("id, mission_id, flight_date, flight_duration_minutes, departure_location, landing_location, safesky_mode, completed_checklists, flight_track, user_id, drone_id, drones(id, modell)").in("mission_id", missionIds).order("flight_date", { ascending: false }),
+      ]);
+
+      const allFlightLogIds = (logsRes.data || []).map((l: any) => l.id);
+      const flightLogPersonnelRes = allFlightLogIds.length > 0
+        ? await supabase.from("flight_log_personnel").select("flight_log_id, profile_id, profiles(id, full_name)").in("flight_log_id", allFlightLogIds)
+        : { data: [] };
+
+      const uniqueUserIds = [...new Set(missionsList.map(m => m.user_id).filter(Boolean))] as string[];
+      const profilesRes = uniqueUserIds.length > 0
+        ? await supabase.from("profiles").select("id, full_name").in("id", uniqueUserIds)
+        : { data: [] };
+
+      const groupBy = <T extends Record<string, any>>(arr: T[], key: string): Map<string, T[]> => {
+        const map = new Map<string, T[]>();
+        for (const item of arr) {
+          const k = item[key];
+          if (!map.has(k)) map.set(k, []);
+          map.get(k)!.push(item);
+        }
+        return map;
+      };
+
+      const personnelMap = groupBy(personnelRes.data || [], "mission_id");
+      const dronesMap = groupBy(dronesRes.data || [], "mission_id");
+      const equipmentMap = groupBy(equipmentRes.data || [], "mission_id");
+      const soraMap = groupBy(soraRes.data || [], "mission_id");
+      const incidentsMap = groupBy(incidentsRes.data || [], "mission_id");
+      const risksMap = groupBy(risksRes.data || [], "mission_id");
+      const docsMap = groupBy(docsRes.data || [], "mission_id");
+      const logsMap = groupBy(logsRes.data || [], "mission_id");
+      const flpMap = groupBy((flightLogPersonnelRes.data || []) as any[], "flight_log_id");
+      const profileMap = new Map((profilesRes.data || []).map((p: any) => [p.id, p.full_name]));
+
+      const missionsWithDetails = missionsList.map((mission) => {
+        const missionLogs = (logsMap.get(mission.id) || []).map((log: any) => {
+          const pilotEntry = (flpMap.get(log.id) || [])[0];
+          return { ...log, pilot: pilotEntry?.profiles || null };
+        });
+        const riskEntries = risksMap.get(mission.id) || [];
+        return {
+          ...mission,
+          company_name: mission.companies?.navn || null,
+          personnel: personnelMap.get(mission.id) || [],
+          drones: dronesMap.get(mission.id) || [],
+          equipment: equipmentMap.get(mission.id) || [],
+          documents: docsMap.get(mission.id) || [],
+          sora: (soraMap.get(mission.id) || [])[0] || null,
+          incidents: incidentsMap.get(mission.id) || [],
+          flightLogs: missionLogs,
+          created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
+          aiRisk: riskEntries[0] || null,
+        };
+      });
+
+      setSearchResults(missionsWithDetails);
+    } catch (error) {
+      console.error("Error searching missions:", error);
+      toast.error("Søk feilet");
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchActive(false);
+    setSearchResults([]);
+  }, []);
+
   // Handlers
   const handleSubmitForApproval = async (mission: Mission) => {
     try {
