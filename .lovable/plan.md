@@ -1,23 +1,18 @@
 
 
-## Fix: FlightAnalysisDialog crash
+## Fix: "Kunne ikke opprette oppdrag" from duplicate DJI file
 
 ### Problem
-The `FlightAnalysisDialog` uses `react-leaflet` components (`MapContainer`, `TileLayer`, `Polyline`, `Marker`, etc.) but the rest of the project uses **vanilla Leaflet** (`L.map()`, `L.tileLayer()`, etc.). The react-leaflet v5 components are crashing with a React context error: `render2 is not a function`.
+When a DJI log file already exists in the database and the user chooses "Opprett nytt oppdrag" (create new mission), the insert into `flight_logs` fails because `dronelog_sha256` has a unique constraint (`idx_flight_logs_sha256_company`) per company. The system correctly detects the duplicate early but still allows the user to click "create new," which then crashes.
 
 ### Root cause
-react-leaflet v5 has compatibility issues with the project's React setup. No other component in the project uses react-leaflet — they all use vanilla Leaflet directly (see `OpenAIPMap.tsx`, `LocationPickerDialog.tsx`).
+`handleCreateNew` (line 1415) inserts a new `flight_logs` row with the same `dronelog_sha256` value via `buildExtendedFields(result)`. The DB unique index rejects it.
 
 ### Solution
-Rewrite the map section in `FlightAnalysisDialog.tsx` to use **vanilla Leaflet** (matching existing project patterns), removing the react-leaflet dependency entirely.
+In `handleCreateNew`, when the flight log is a known duplicate (i.e., `matchedLog` exists with the same SHA-256), set `dronelog_sha256` to `null` on the new row to avoid the constraint violation. This way the new mission + log is created as a separate entry, and the original log retains its SHA-256 for future dedup.
 
 ### Changes
 
-**`src/components/dashboard/FlightAnalysisDialog.tsx`**:
-- Replace `MapContainer`, `TileLayer`, `Polyline`, `CircleMarker`, `Marker`, `useMap` imports with vanilla Leaflet
-- Use a `ref` for the map container div and initialize with `L.map()` (same pattern as `LocationPickerDialog.tsx`)
-- Manage polylines, markers, and the drone position marker via `useEffect` hooks that react to `currentIndex` changes
-- Remove the `MapUpdater` component (replaced by direct `map.panTo()` calls)
-
-No other files need changes.
+**`src/components/UploadDroneLogDialog.tsx`** (~line 1444-1452):
+- After building the insert payload with `buildExtendedFields(result)`, override `dronelog_sha256` to `null` if `matchedLog` already exists (meaning the user explicitly chose to create a duplicate).
 
