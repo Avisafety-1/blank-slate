@@ -56,7 +56,19 @@ const Oppdrag = () => {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(10);
-  }, [searchQuery, customerFilter, pilotFilter, droneFilter, data.filterTab]);
+  }, [customerFilter, pilotFilter, droneFilter, data.filterTab]);
+
+  // Debounced server-side search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      data.clearSearch();
+      return;
+    }
+    const timer = setTimeout(() => {
+      data.searchMissions(searchQuery, data.filterTab);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, data.filterTab]);
 
 
   // Route planner navigation state

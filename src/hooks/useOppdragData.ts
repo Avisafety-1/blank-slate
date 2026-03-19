@@ -514,6 +514,11 @@ export const useOppdragData = () => {
     // Actions
     fetchMissions,
     loadMore,
+    searchMissions,
+    clearSearch,
+    searchActive,
+    isSearching,
+    searchResults,
     handleSubmitForApproval,
     handleDeleteMission,
     handleToggleMissionChecklist,
