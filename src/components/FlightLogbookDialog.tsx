@@ -594,8 +594,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="flyturer" className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(90vh-26rem)]">
+            <TabsContent value="flyturer" className="mt-2">
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-muted-foreground">Laster...</div>
