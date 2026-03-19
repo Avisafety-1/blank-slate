@@ -29,7 +29,9 @@ import {
   Battery,
   Heart,
   TrendingDown,
-  Calendar
+  Calendar,
+  Thermometer,
+  Zap
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -50,6 +52,10 @@ interface BatteryTrendEntry {
   date: Date;
   cycles: number | null;
   health: number | null;
+  tempMin: number | null;
+  tempMax: number | null;
+  voltageMin: number | null;
+  capacityMah: number | null;
 }
 
 interface LogEntry {
@@ -118,7 +124,7 @@ export const EquipmentLogbookDialog = ({
     try {
       const { data } = await (supabase
         .from('flight_logs')
-        .select('flight_date, battery_cycles, battery_health_pct')
+        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah')
         .eq('company_id', companyId) as any)
         .eq('battery_sn', equipmentSerienummer)
         .not('battery_cycles', 'is', null)
@@ -131,6 +137,10 @@ export const EquipmentLogbookDialog = ({
             date: new Date(r.flight_date),
             cycles: r.battery_cycles,
             health: r.battery_health_pct,
+            tempMin: r.battery_temp_min_c,
+            tempMax: r.battery_temp_max_c,
+            voltageMin: r.battery_voltage_min_v,
+            capacityMah: r.battery_full_capacity_mah,
           }))
         );
       }
@@ -679,45 +689,136 @@ export const EquipmentLogbookDialog = ({
                         <p className="text-xs">Importer flylogger med dette batteriet for å se trender</p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="border rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Sykluser over tid</p>
-                          <p className="text-lg font-bold">{batteryTrend[batteryTrend.length - 1]?.cycles ?? '—'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Fra {batteryTrend[0]?.cycles ?? '?'} → {batteryTrend[batteryTrend.length - 1]?.cycles ?? '?'}
-                          </p>
-                        </div>
-                        <div className="border rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse over tid</p>
-                          <p className={`text-lg font-bold ${(batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 60 ? 'text-destructive' : (batteryTrend[batteryTrend.length - 1]?.health ?? 100) < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {batteryTrend[batteryTrend.length - 1]?.health ?? '—'}%
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Fra {batteryTrend[0]?.health ?? '?'}% → {batteryTrend[batteryTrend.length - 1]?.health ?? '?'}%
-                          </p>
-                        </div>
-                      </div>
+                  ) : (() => {
+                    const latest = batteryTrend[batteryTrend.length - 1];
+                    const first = batteryTrend[0];
+                    const latestHealth = latest?.health ?? 100;
+                    const latestTempMax = latest?.tempMax;
+                    const latestVoltageMin = latest?.voltageMin;
+                    const latestCapacity = latest?.capacityMah;
+                    const firstCapacity = first?.capacityMah;
 
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
-                        {batteryTrend.slice().reverse().map((entry, idx) => (
-                          <div key={idx} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
-                            <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
-                            <div className="flex gap-4">
-                              {entry.cycles != null && <span>🔄 {entry.cycles} sykl.</span>}
-                              {entry.health != null && (
-                                <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
-                                  ❤️ {entry.health}%
-                                </span>
-                              )}
-                            </div>
+                    const healthColor = latestHealth < 60 ? 'text-destructive' : latestHealth < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const tempColor = latestTempMax == null ? '' : latestTempMax > 50 ? 'text-destructive' : latestTempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const voltageColor = latestVoltageMin == null ? '' : latestVoltageMin < 3.0 ? 'text-destructive' : latestVoltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Summary cards - 4 cols on desktop, 2 on mobile */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                          <div className="border rounded-lg p-3 bg-card">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Sykluser</p>
+                            <p className="text-lg font-bold">{latest?.cycles ?? '—'}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {first?.cycles ?? '?'} → {latest?.cycles ?? '?'}
+                            </p>
                           </div>
-                        ))}
+                          <div className="border rounded-lg p-3 bg-card">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse</p>
+                            <p className={`text-lg font-bold ${healthColor}`}>
+                              {latest?.health ?? '—'}%
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {first?.health ?? '?'}% → {latest?.health ?? '?'}%
+                            </p>
+                          </div>
+                          <div className="border rounded-lg p-3 bg-card">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> Maks temp</p>
+                            <p className={`text-lg font-bold ${tempColor}`}>
+                              {latestTempMax != null ? `${latestTempMax}°C` : '—'}
+                            </p>
+                            {latest?.tempMin != null && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Min: {latest.tempMin}°C
+                              </p>
+                            )}
+                          </div>
+                          <div className="border rounded-lg p-3 bg-card">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Min spenning</p>
+                            <p className={`text-lg font-bold ${voltageColor}`}>
+                              {latestVoltageMin != null ? `${latestVoltageMin.toFixed(2)}V` : '—'}
+                            </p>
+                            {latestCapacity != null && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {latestCapacity} mAh
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Capacity degradation trend */}
+                        {firstCapacity != null && latestCapacity != null && firstCapacity !== latestCapacity && (
+                          <div className="border rounded-lg p-3 bg-card">
+                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                              <Battery className="w-3 h-3" /> Kapasitetsutvikling
+                            </p>
+                            <p className="text-sm">
+                              {firstCapacity} mAh → {latestCapacity} mAh
+                              <span className={`ml-2 text-xs ${latestCapacity < firstCapacity ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                ({latestCapacity < firstCapacity ? '' : '+'}{Math.round(((latestCapacity - firstCapacity) / firstCapacity) * 100)}%)
+                              </span>
+                            </p>
+                          </div>
+                        )}
+
+                        {/* History table */}
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
+                          {/* Header row - hidden on mobile */}
+                          <div className="hidden sm:grid sm:grid-cols-6 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                            <span>Dato</span>
+                            <span>Sykluser</span>
+                            <span>Helse</span>
+                            <span>Temp</span>
+                            <span>Spenning</span>
+                            <span>Kapasitet</span>
+                          </div>
+                          {batteryTrend.slice().reverse().map((entry, idx) => (
+                            <div key={idx} className="border rounded-md px-3 py-2 text-sm">
+                              {/* Desktop layout */}
+                              <div className="hidden sm:grid sm:grid-cols-6 gap-2 items-center">
+                                <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
+                                <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
+                                <span className={entry.health != null ? (entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                  {entry.health != null ? `${entry.health}%` : '—'}
+                                </span>
+                                <span className={entry.tempMax != null ? (entry.tempMax > 50 ? 'text-destructive' : entry.tempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                  {entry.tempMin != null || entry.tempMax != null
+                                    ? `${entry.tempMin ?? '?'}–${entry.tempMax ?? '?'}°C`
+                                    : '—'}
+                                </span>
+                                <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                  {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
+                                </span>
+                                <span>{entry.capacityMah != null ? `${entry.capacityMah} mAh` : '—'}</span>
+                              </div>
+                              {/* Mobile layout */}
+                              <div className="sm:hidden">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground text-xs">{format(entry.date, 'dd.MM.yyyy')}</span>
+                                  <div className="flex gap-3 text-xs">
+                                    {entry.cycles != null && <span>🔄 {entry.cycles}</span>}
+                                    {entry.health != null && (
+                                      <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
+                                        ❤️ {entry.health}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null) && (
+                                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                    {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
+                                    {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
+                                    {entry.capacityMah != null && <span>🔋 {entry.capacityMah} mAh</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </ScrollArea>
               </TabsContent>
             )}
