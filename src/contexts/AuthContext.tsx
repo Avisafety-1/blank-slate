@@ -135,6 +135,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshVersionRef = useRef(0);
   // Cache for getUser() to prevent call storms
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
+  // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
+  const ignoreNextAuthEventRef = useRef(false);
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
