@@ -401,8 +401,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </DialogTitle>
           </DialogHeader>
 
-          {/* Summary */}
-          <div className="space-y-2">
+          <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-2 pr-4">
             <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />
@@ -586,7 +586,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             )}
           </div>
 
-          <Tabs defaultValue="flyturer" className="flex-1 flex flex-col min-h-0">
+          <Tabs defaultValue="flyturer" className="mt-2">
             <TabsList className="w-full">
               <TabsTrigger value="flyturer" className="flex-1">Flyturer</TabsTrigger>
               <TabsTrigger value="innlegg" className="flex-1">
@@ -594,8 +594,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="flyturer" className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(90vh-26rem)]">
+            <TabsContent value="flyturer" className="mt-2">
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-muted-foreground">Laster...</div>
@@ -658,11 +657,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                     ))}
                   </div>
                 )}
-              </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="innlegg" className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(90vh-26rem)]">
+            <TabsContent value="innlegg" className="mt-2">
                 {personnelLogs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Edit className="w-12 h-12 text-muted-foreground/50 mb-3" />
@@ -721,9 +718,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                     ))}
                   </div>
                 )}
-              </ScrollArea>
             </TabsContent>
           </Tabs>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
