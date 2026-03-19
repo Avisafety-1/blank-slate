@@ -19,6 +19,7 @@ import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
+import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 
 type Mission = any;
 
