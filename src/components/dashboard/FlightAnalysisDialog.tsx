@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import L from "leaflet";
@@ -17,6 +17,8 @@ interface FlightAnalysisDialogProps {
 
 export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName }: FlightAnalysisDialogProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
+  const [tileError, setTileError] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const droneMarkerRef = useRef<L.Marker | null>(null);
@@ -24,6 +26,8 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
   const fullLineRef = useRef<L.Polyline | null>(null);
   const startMarkerRef = useRef<L.CircleMarker | null>(null);
   const endMarkerRef = useRef<L.CircleMarker | null>(null);
+  const initAttemptRef = useRef(0);
+  const timersRef = useRef<number[]>([]);
 
   const positions = useMemo(() => flightTrack?.positions || [], [flightTrack]);
   const events = useMemo(() => flightTrack?.events || [], [flightTrack]);
@@ -45,87 +49,136 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     [positions]
   );
 
-  // Initialize map — wait until container has real dimensions
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(t => clearTimeout(t));
+    timersRef.current = [];
+  }, []);
+
+  const destroyMap = useCallback(() => {
+    clearTimers();
+    if (mapRef.current) {
+      try { mapRef.current.remove(); } catch (_) {}
+      mapRef.current = null;
+    }
+    droneMarkerRef.current = null;
+    trailLineRef.current = null;
+    fullLineRef.current = null;
+    startMarkerRef.current = null;
+    endMarkerRef.current = null;
+    setMapReady(false);
+    setTileError(false);
+  }, [clearTimers]);
+
+  // Initialize map with retry logic
   useEffect(() => {
-    if (!open || !mapContainerRef.current || mapRef.current) return;
+    if (!open) return;
 
-    const container = mapContainerRef.current;
+    initAttemptRef.current = 0;
+    const maxAttempts = 15;
 
-    const initMap = () => {
+    const tryInitMap = () => {
+      const container = mapContainerRef.current;
       if (!container || mapRef.current) return;
-      // Ensure container has dimensions before initializing
-      if (container.clientWidth === 0 || container.clientHeight === 0) return;
-
-      const map = L.map(container, {
-        center: mapCenter,
-        zoom: 15,
-        zoomControl: false,
-        attributionControl: false,
-      });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-
-      // Full track (faded)
-      if (polylinePositions.length > 1) {
-        fullLineRef.current = L.polyline(polylinePositions, { color: "hsl(210, 80%, 50%)", weight: 2, opacity: 0.3 }).addTo(map);
-        map.fitBounds(fullLineRef.current.getBounds(), { padding: [30, 30] });
+      if (container.clientWidth === 0 || container.clientHeight === 0) {
+        initAttemptRef.current++;
+        if (initAttemptRef.current < maxAttempts) {
+          const t = window.setTimeout(tryInitMap, 100);
+          timersRef.current.push(t);
+        }
+        return;
       }
 
-      // Start marker
-      if (positions.length > 0) {
-        startMarkerRef.current = L.circleMarker([positions[0].lat, positions[0].lng], {
-          radius: 5, color: "hsl(142, 76%, 36%)", fillColor: "hsl(142, 76%, 36%)", fillOpacity: 1,
-        }).addTo(map);
+      try {
+        const map = L.map(container, {
+          center: mapCenter,
+          zoom: 15,
+          zoomControl: false,
+          attributionControl: false,
+        });
+
+        let tilesLoaded = false;
+        const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 });
+
+        tileLayer.on("tileload", () => {
+          if (!tilesLoaded) {
+            tilesLoaded = true;
+            setTileError(false);
+          }
+        });
+
+        tileLayer.on("tileerror", () => {
+          // Only show error if no tiles loaded after a delay
+          const t = window.setTimeout(() => {
+            if (!tilesLoaded) setTileError(true);
+          }, 5000);
+          timersRef.current.push(t);
+        });
+
+        tileLayer.addTo(map);
+
+        // Full track (faded)
+        if (polylinePositions.length > 1) {
+          fullLineRef.current = L.polyline(polylinePositions, { color: "hsl(210, 80%, 50%)", weight: 2, opacity: 0.3 }).addTo(map);
+          map.fitBounds(fullLineRef.current.getBounds(), { padding: [30, 30] });
+        }
+
+        // Start marker
+        if (positions.length > 0) {
+          startMarkerRef.current = L.circleMarker([positions[0].lat, positions[0].lng], {
+            radius: 5, color: "hsl(142, 76%, 36%)", fillColor: "hsl(142, 76%, 36%)", fillOpacity: 1,
+          }).addTo(map);
+        }
+
+        // End marker
+        if (positions.length > 1) {
+          const last = positions[positions.length - 1];
+          endMarkerRef.current = L.circleMarker([last.lat, last.lng], {
+            radius: 5, color: "hsl(0, 84%, 60%)", fillColor: "hsl(0, 84%, 60%)", fillOpacity: 1,
+          }).addTo(map);
+        }
+
+        mapRef.current = map;
+
+        // Staggered invalidateSize for dialog animation
+        [100, 300, 500, 800, 1200].forEach(delay => {
+          const t = window.setTimeout(() => {
+            if (mapRef.current) {
+              mapRef.current.invalidateSize();
+              if (fullLineRef.current) {
+                mapRef.current.fitBounds(fullLineRef.current.getBounds(), { padding: [30, 30] });
+              }
+            }
+          }, delay);
+          timersRef.current.push(t);
+        });
+
+        // Mark ready after stabilization
+        const readyTimer = window.setTimeout(() => setMapReady(true), 400);
+        timersRef.current.push(readyTimer);
+
+      } catch (e) {
+        console.error("FlightAnalysisDialog: map init failed", e);
+        initAttemptRef.current++;
+        if (initAttemptRef.current < maxAttempts) {
+          const t = window.setTimeout(tryInitMap, 200);
+          timersRef.current.push(t);
+        }
       }
-
-      // End marker
-      if (positions.length > 1) {
-        const last = positions[positions.length - 1];
-        endMarkerRef.current = L.circleMarker([last.lat, last.lng], {
-          radius: 5, color: "hsl(0, 84%, 60%)", fillColor: "hsl(0, 84%, 60%)", fillOpacity: 1,
-        }).addTo(map);
-      }
-
-      mapRef.current = map;
-
-      // Extra invalidateSize calls for safety
-      setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 100);
-      setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 400);
     };
 
-    // Use ResizeObserver to detect when container gets real dimensions
-    const ro = new ResizeObserver(() => {
-      if (!mapRef.current && container.clientWidth > 0 && container.clientHeight > 0) {
-        initMap();
-      }
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
-    });
-    ro.observe(container);
-
-    // Also try after a short delay (fallback)
-    const fallback = setTimeout(initMap, 350);
+    // Start first attempt after a short delay to let dialog animation begin
+    const t = window.setTimeout(tryInitMap, 150);
+    timersRef.current.push(t);
 
     return () => {
-      clearTimeout(fallback);
-      ro.disconnect();
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-      droneMarkerRef.current = null;
-      trailLineRef.current = null;
-      fullLineRef.current = null;
-      startMarkerRef.current = null;
-      endMarkerRef.current = null;
+      destroyMap();
     };
-  }, [open, mapCenter, polylinePositions, positions]);
+  }, [open, mapCenter, polylinePositions, positions, clearTimers, destroyMap]);
 
-  // Update drone marker + trail on index change
+  // Update drone marker + trail on index change (only when map is ready)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !positions.length) return;
+    if (!map || !mapReady || !positions.length) return;
 
     const current = positions[currentIndex];
     if (!current) return;
@@ -155,20 +208,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     }
 
     map.panTo(pos, { animate: true, duration: 0.3 });
-  }, [currentIndex, positions, polylinePositions]);
-
-  // Cleanup on close
-  useEffect(() => {
-    if (!open && mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-      droneMarkerRef.current = null;
-      trailLineRef.current = null;
-      fullLineRef.current = null;
-      startMarkerRef.current = null;
-      endMarkerRef.current = null;
-    }
-  }, [open]);
+  }, [currentIndex, positions, polylinePositions, mapReady]);
 
   if (!flightTrack || !positions.length) return null;
 
@@ -181,6 +221,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             Flyanalyse
             {droneName && <span className="text-muted-foreground font-normal">— {droneName}</span>}
           </DialogTitle>
+          <DialogDescription className="sr-only">Detaljert flyanalyse med kart og telemetri</DialogDescription>
           <div className="flex items-center gap-2 flex-wrap">
             {flightDate && (
               <Badge variant="outline" className="text-xs">
@@ -208,8 +249,14 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             ref={mapContainerRef}
             className="h-[200px] sm:h-[280px] rounded-lg overflow-hidden border border-border relative z-0"
           />
+          {/* Tile error fallback */}
+          {tileError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded-lg z-[5]">
+              <p className="text-sm text-muted-foreground">Kartet kunne ikke lastes – prøv å åpne analysen på nytt</p>
+            </div>
+          )}
           {/* Attitude indicator overlay */}
-          {positions[currentIndex]?.pitch !== undefined && (
+          {mapReady && positions[currentIndex]?.pitch !== undefined && (
             <div className="absolute top-2 right-2 z-10">
               <DroneAttitudeIndicator
                 pitch={positions[currentIndex]?.pitch ?? 0}
