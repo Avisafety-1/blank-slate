@@ -1,27 +1,23 @@
-## Advanced Flight Log Analysis — Implemented
 
-### What was done
 
-1. **Expanded API fields in all 3 edge functions** (`process-dronelog`, `dji-process-single`, `dji-auto-sync`):
-   - Added ~24 new fields: RC inputs (aileron, elevator, rudder, throttle), GIMBAL (pitch, roll, yaw), OSD (vSpeed, pitch, roll, yaw, groundOrSky, gpsLevel), CALC (distance2D, distance3D, currentElevation), HOME (lat, lng, maxAllowedHeight), WEATHER (temperature, windDirection, windSpeed)
-   - Extended position objects in `flight_track` JSONB to include all telemetry per sampled point
+## Fix: FlightAnalysisDialog crash
 
-2. **New component: `FlightAnalysisDialog.tsx`** — Full-screen analysis dialog with:
-   - Interactive map with drone position marker synced to timeline scrubber
-   - Color-coded flight path with trail visualization
-   - Start/end position markers
+### Problem
+The `FlightAnalysisDialog` uses `react-leaflet` components (`MapContainer`, `TileLayer`, `Polyline`, `Marker`, etc.) but the rest of the project uses **vanilla Leaflet** (`L.map()`, `L.tileLayer()`, etc.). The react-leaflet v5 components are crashing with a React context error: `render2 is not a function`.
 
-3. **New component: `FlightAnalysisTimeline.tsx`** — Synchronized analysis with:
-   - Draggable timeline scrubber with event markers (RTH, low battery, warnings)
-   - Info panel showing all values at current scrubber position
-   - Tabbed charts: Altitude, Speed (H+V), Battery/Voltage, GPS satellites, RC inputs, Gimbal, Distance from home, Wind
-   - Automatic tab visibility based on available data (graceful for old logs)
+### Root cause
+react-leaflet v5 has compatibility issues with the project's React setup. No other component in the project uses react-leaflet — they all use vanilla Leaflet directly (see `OpenAIPMap.tsx`, `LocationPickerDialog.tsx`).
 
-4. **Integration**:
-   - `DroneLogbookDialog.tsx`: BarChart3 icon button on each flight log entry with track data
-   - `MissionDetailDialog.tsx`: Flight logs section with "Analyser" button per log
+### Solution
+Rewrite the map section in `FlightAnalysisDialog.tsx` to use **vanilla Leaflet** (matching existing project patterns), removing the react-leaflet dependency entirely.
 
-### Backward compatibility
-- Existing logs without extended telemetry show a warning badge "Begrenset telemetri"
-- New imports will automatically include all telemetry fields
-- No database migration needed — `flight_track` is JSONB
+### Changes
+
+**`src/components/dashboard/FlightAnalysisDialog.tsx`**:
+- Replace `MapContainer`, `TileLayer`, `Polyline`, `CircleMarker`, `Marker`, `useMap` imports with vanilla Leaflet
+- Use a `ref` for the map container div and initialize with `L.map()` (same pattern as `LocationPickerDialog.tsx`)
+- Manage polylines, markers, and the drone position marker via `useEffect` hooks that react to `currentIndex` changes
+- Remove the `MapUpdater` component (replaced by direct `map.panTo()` calls)
+
+No other files need changes.
+
