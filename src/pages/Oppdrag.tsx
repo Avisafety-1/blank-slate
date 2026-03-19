@@ -56,7 +56,19 @@ const Oppdrag = () => {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(10);
-  }, [searchQuery, customerFilter, pilotFilter, droneFilter, data.filterTab]);
+  }, [customerFilter, pilotFilter, droneFilter, data.filterTab]);
+
+  // Debounced server-side search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      data.clearSearch();
+      return;
+    }
+    const timer = setTimeout(() => {
+      data.searchMissions(searchQuery, data.filterTab);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, data.filterTab]);
 
 
   // Route planner navigation state
@@ -100,16 +112,13 @@ const Oppdrag = () => {
     }
   }, [data.location.state]);
 
-  // Computed filter options
-  const uniqueCustomers = [...new Set(data.missions.map(m => m.customers?.navn).filter(Boolean))].sort();
-  const uniquePilots = [...new Set(data.missions.flatMap(m => (m.personnel || []).map((p: any) => p.profiles?.full_name).filter(Boolean)))].sort();
-  const uniqueDrones = [...new Set(data.missions.flatMap(m => (m.drones || []).map((d: any) => d.drones?.modell).filter(Boolean)))].sort();
+  // Computed filter options from current data source
+  const displayMissions = data.missions;
+  const uniqueCustomers = [...new Set(displayMissions.map(m => m.customers?.navn).filter(Boolean))].sort();
+  const uniquePilots = [...new Set(displayMissions.flatMap(m => (m.personnel || []).map((p: any) => p.profiles?.full_name).filter(Boolean)))].sort();
+  const uniqueDrones = [...new Set(displayMissions.flatMap(m => (m.drones || []).map((d: any) => d.drones?.modell).filter(Boolean)))].sort();
 
-  const filteredMissions = data.missions.filter((mission) => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!(mission.tittel?.toLowerCase().includes(q) || mission.lokasjon?.toLowerCase().includes(q) || mission.beskrivelse?.toLowerCase().includes(q))) return false;
-    }
+  const filteredMissions = displayMissions.filter((mission) => {
     if (customerFilter !== "alle" && mission.customers?.navn !== customerFilter) return false;
     if (pilotFilter !== "alle") {
       const hasPilot = (mission.personnel || []).some((p: any) => p.profiles?.full_name === pilotFilter);
