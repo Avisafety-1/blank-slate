@@ -1,52 +1,25 @@
 
 
-## Plan: Fix map rendering + Add visual DJI stick widget
+## Plan: Add "High-resolution import" toggle
 
-### Problem 1: Map not rendering
-The Leaflet map initializes inside a `Dialog` component. When the dialog opens, the map container div has no dimensions yet (CSS transition). Leaflet calculates tile positions based on a 0×0 container, resulting in grey/blank tiles. The fix is to call `map.invalidateSize()` after a short delay to let the dialog finish its open animation.
-
-### Problem 2: RC stick visualization
-Currently RC stick data (rcAileron, rcElevator, rcThrottle, rcRudder) is only shown as line charts. The user wants a visual representation of the two DJI controller sticks that animate in real-time as the scrubber moves.
+### Summary
+Add a checkbox option in the import dialog that lets the user choose between standard resolution (~200 points) and high resolution (~2000 points) for telemetry data. The edge function also needs its limit raised so enough data is available.
 
 ### Changes
 
-**`src/components/dashboard/FlightAnalysisDialog.tsx`**:
-- After map initialization, add a `setTimeout(() => map.invalidateSize(), 300)` to recalculate tiles once the dialog animation completes
-- Add a second `invalidateSize()` on a `ResizeObserver` attached to the map container for robustness
+**1. `src/components/UploadDroneLogDialog.tsx`**
+- Add a new state: `const [highResImport, setHighResImport] = useState(false)`
+- Add a checkbox in the import UI (near the import button / before confirmation): "Importer høy-oppløselig posisjonsdata" with a small info text explaining it gives ~1-second resolution for flight analysis but uses more storage
+- In the three save locations (lines ~1378, ~1422, ~1492), change `maxPts`/`maxPoints` from hardcoded `200` to `highResImport ? 2000 : 200`
 
-**`src/components/dashboard/FlightAnalysisTimeline.tsx`** (RC tab):
-- Replace or augment the RC line chart tab with a **DualStickWidget** component
-- The widget renders two square boxes side-by-side representing the left and right DJI controller sticks:
-  - **Left stick**: Rudder (X-axis) + Throttle (Y-axis)
-  - **Right stick**: Aileron (X-axis) + Elevator (Y-axis)
-- Each box has a crosshair and a colored dot showing the current stick position
-- Values are normalized from their range (typically -660 to 660 or -1 to 1) to pixel coordinates within the box
-- The dot position updates reactively based on `currentIndex`
-- Labels under each stick: "Venstre (Rudder/Throttle)" and "Høyre (Aileron/Elevator)"
-- Keep the existing RC line chart below the sticks so users can see the historical trace too
+**2. `supabase/functions/process-dronelog/index.ts`**
+- Line 281: Increase server-side sample target from 500 to 2500 (`Math.floor((lines.length - 1) / 2500)`) so the edge function returns enough points for high-res mode
 
-**New component: `src/components/dashboard/StickWidget.tsx`**:
-- A small reusable SVG component (~80×80px) that draws:
-  - A square border with center crosshair lines
-  - A filled circle at the normalized (x, y) position
-  - Axis labels (optional)
-- Props: `x: number`, `y: number`, `label: string`, `xLabel?: string`, `yLabel?: string`
+### UI placement
+The checkbox appears in the import confirmation step, alongside the existing options (drone selection, battery, etc.), styled consistently with other toggles in the dialog.
 
-### Visual design
-
-```text
-┌─────────────────────────────────────────┐
-│  ┌──────────┐         ┌──────────┐      │
-│  │     │     │         │     │     │      │
-│  │─────●─────│         │─────┼──●──│      │
-│  │     │     │         │     │     │      │
-│  └──────────┘         └──────────┘      │
-│   Venstre stikke       Høyre stikke      │
-│  (Rudder / Throttle)  (Aileron / Elev.)  │
-│                                          │
-│  [existing RC line chart below]          │
-└─────────────────────────────────────────┘
-```
-
-The dot (●) moves in real-time as the user scrubs through the timeline.
+### Trade-offs
+- High-res: ~600KB per flight vs ~60KB standard — acceptable for JSONB
+- Edge function always returns up to 2500 points now; the client decides how many to keep
+- Existing flights remain unchanged; only new imports are affected by the toggle
 
