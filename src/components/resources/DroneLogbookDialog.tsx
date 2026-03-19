@@ -26,8 +26,10 @@ import {
   FileText,
   ImagePlus,
   X,
-  ZoomIn
+  ZoomIn,
+  BarChart3,
 } from "lucide-react";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
@@ -52,6 +54,8 @@ interface LogEntry {
   badgeColor: string;
   badgeText: string;
   imageUrl?: string;
+  flightTrack?: any;
+  flightDate?: string;
 }
 
 export const DroneLogbookDialog = ({ 
@@ -73,6 +77,9 @@ export const DroneLogbookDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisDate, setAnalysisDate] = useState<string | undefined>();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -105,7 +112,7 @@ export const DroneLogbookDialog = ({
       // Fetch flight logs
       const { data: flightLogs } = await supabase
         .from("flight_logs")
-        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id`)
+        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track`)
         .eq("drone_id", droneId)
         .order("flight_date", { ascending: false });
 
@@ -125,6 +132,8 @@ export const DroneLogbookDialog = ({
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             badgeText: 'Flytur',
+            flightTrack: log.flight_track,
+            flightDate: log.flight_date,
           });
         });
       }
@@ -578,7 +587,7 @@ export const DroneLogbookDialog = ({
                                   {log.title}
                                 </p>
                               </div>
-                              {log.type === 'manual' && (
+                                {log.type === 'manual' && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -586,6 +595,21 @@ export const DroneLogbookDialog = ({
                                   onClick={() => handleDeleteEntry(log.id)}
                                 >
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </Button>
+                              )}
+                              {log.type === 'flight' && log.flightTrack?.positions?.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Analyser flytur"
+                                  onClick={() => {
+                                    setAnalysisTrack(log.flightTrack);
+                                    setAnalysisDate(log.flightDate);
+                                    setAnalysisOpen(true);
+                                  }}
+                                >
+                                  <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
                             </div>
@@ -645,6 +669,14 @@ export const DroneLogbookDialog = ({
           </DialogContent>
         </Dialog>
       )}
+
+      <FlightAnalysisDialog
+        open={analysisOpen}
+        onOpenChange={setAnalysisOpen}
+        flightTrack={analysisTrack}
+        flightDate={analysisDate}
+        droneName={droneModell}
+      />
     </>
   );
 };

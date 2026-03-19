@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
+import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 
 type Mission = any;
 
@@ -85,6 +86,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [cachedAirspaceWarnings, setCachedAirspaceWarnings] = useState<any[] | null>(
     mission?.airspaceWarnings ?? null
   );
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
@@ -96,18 +100,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     if (!open || !mission?.id) {
       setLiveMission(null);
       setSoraStatus(null);
+      setMissionFlightLogs(null);
       return;
     }
     const fetchLatest = async () => {
-      const [missionRes, soraRes] = await Promise.all([
+      const [missionRes, soraRes, logsRes] = await Promise.all([
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
+        supabase.from("flight_logs").select("id, flight_date, flight_track, flight_duration_minutes, departure_location, landing_location")
+          .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
       ]);
       if (missionRes.data) {
         setLiveMission(missionRes.data);
         setNinoxApproved(!!(missionRes.data as any).ninox_approved);
       }
       setSoraStatus(soraRes.data?.sora_status ?? null);
+      setMissionFlightLogs(logsRes.data || []);
     };
     fetchLatest();
   }, [open, mission?.id]);
@@ -328,6 +336,42 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           <MissionResourceSections mission={currentMission} open={open} />
 
+          {/* Flight log analysis */}
+          {missionFlightLogs && missionFlightLogs.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Flylogger ({missionFlightLogs.length})</p>
+              <div className="space-y-1.5">
+                {missionFlightLogs.map((log: any) => (
+                  <div key={log.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
+                    <div className="text-sm">
+                      <span className="font-medium">
+                        {new Date(log.flight_date).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' })}
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        {log.flight_duration_minutes} min
+                        {log.departure_location && ` · ${log.departure_location}`}
+                      </span>
+                    </div>
+                    {log.flight_track?.positions?.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setAnalysisTrack(log.flight_track);
+                          setAnalysisOpen(true);
+                        }}
+                      >
+                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                        Analyser
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {currentMission.latitude && currentMission.longitude && (
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
@@ -521,6 +565,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <FlightAnalysisDialog
+      open={analysisOpen}
+      onOpenChange={setAnalysisOpen}
+      flightTrack={analysisTrack}
+      flightDate={undefined}
+      droneName={currentMission?.tittel}
+    />
     </>
   );
 };

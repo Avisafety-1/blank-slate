@@ -13,18 +13,24 @@ const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
   "OSD.goHomeStatus",
+  "OSD.vSpeed [m/s]","OSD.pitch [°]","OSD.roll [°]","OSD.directionYaw [°]",
+  "OSD.xSpeed [m/s]","OSD.ySpeed [m/s]","OSD.groundOrSky","OSD.gpsLevel",
+  "OSD.isMotorUp","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
   "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
   "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
   "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
-  // API-native cell deviation fields (supports up to 14 cells)
   "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
   "BATTERY.goHomeStatus",
+  "RC.aileron","RC.elevator","RC.rudder","RC.throttle",
+  "GIMBAL.pitch [°]","GIMBAL.roll [°]","GIMBAL.yaw [°]",
+  "CALC.distance2D [m]","CALC.distance3D [m]","CALC.currentElevation [m]",
+  "HOME.latitude","HOME.longitude","HOME.maxAllowedHeight [m]","HOME.goHomeStatus",
+  "WEATHER.temperature [°C]","WEATHER.windDirection [°]","WEATHER.windSpeed [m/s]",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
-  "HOME.goHomeStatus",
   "APP.warn",
 ].join(",");
 
@@ -96,7 +102,7 @@ function parseCsvMinimal(csvText: string) {
   }
   if (!startTime) startTime = normalizeDateToISO(get("CUSTOM.dateTime"));
 
-  const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
+  const positions: Array<Record<string, any>> = [];
   const latIdx = findHeaderIndex(headers, "OSD.latitude");
   const lonIdx = findHeaderIndex(headers, "OSD.longitude");
   const altIdx = findHeaderIndex(headers, "OSD.altitude [m]");
@@ -105,6 +111,30 @@ function parseCsvMinimal(csvText: string) {
   const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
   const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
   const dateTimeIdx = findHeaderIndex(headers, "CUSTOM.dateTime");
+  // Advanced analysis indices
+  const vSpeedIdx = findHeaderIndex(headers, "OSD.vSpeed [m/s]");
+  const pitchIdx = findHeaderIndex(headers, "OSD.pitch [°]");
+  const rollIdx = findHeaderIndex(headers, "OSD.roll [°]");
+  const yawIdx = findHeaderIndex(headers, "OSD.directionYaw [°]");
+  const groundOrSkyIdx = findHeaderIndex(headers, "OSD.groundOrSky");
+  const gpsLevelIdx = findHeaderIndex(headers, "OSD.gpsLevel");
+  const gpsNumIdx = findHeaderIndex(headers, "OSD.gpsNum");
+  const flycStateIdx = findHeaderIndex(headers, "OSD.flycState");
+  const battVoltIdx = findHeaderIndex(headers, "BATTERY.totalVoltage [V]");
+  const battCurrentIdx = findHeaderIndex(headers, "BATTERY.current [A]");
+  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [°C]");
+  const rcAileronIdx = findHeaderIndex(headers, "RC.aileron");
+  const rcElevatorIdx = findHeaderIndex(headers, "RC.elevator");
+  const rcRudderIdx = findHeaderIndex(headers, "RC.rudder");
+  const rcThrottleIdx = findHeaderIndex(headers, "RC.throttle");
+  const gimbalPitchIdx = findHeaderIndex(headers, "GIMBAL.pitch [°]");
+  const gimbalRollIdx = findHeaderIndex(headers, "GIMBAL.roll [°]");
+  const gimbalYawIdx = findHeaderIndex(headers, "GIMBAL.yaw [°]");
+  const dist2DIdx = findHeaderIndex(headers, "CALC.distance2D [m]");
+  const dist3DIdx = findHeaderIndex(headers, "CALC.distance3D [m]");
+  const elevationIdx = findHeaderIndex(headers, "CALC.currentElevation [m]");
+  const weatherWindSpeedIdx = findHeaderIndex(headers, "WEATHER.windSpeed [m/s]");
+  const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection [°]");
 
   let maxSpeed = 0;
   let minBattery = batteryIdx >= 0 ? 100 : -1;
@@ -128,7 +158,36 @@ function parseCsvMinimal(csvText: string) {
     if ((i - 1) % sampleRate === 0 && !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
       const ts = dateTimeIdx >= 0 && cols[dateTimeIdx] ? cols[dateTimeIdx] :
         (!isNaN(flyTimeMs) ? `PT${Math.round(flyTimeMs / 1000)}S` : `PT${Math.round((i - 1) / 10)}S`);
-      positions.push({ lat, lng: lon, alt: isNaN(alt) ? 0 : alt, height: isNaN(height) ? 0 : height, timestamp: ts });
+      const point: Record<string, any> = { lat, lng: lon, alt: isNaN(alt) ? 0 : alt, height: isNaN(height) ? 0 : height, timestamp: ts };
+      const pf = (idx: number) => { const v = idx >= 0 ? parseFloat(cols[idx]) : NaN; return isNaN(v) ? undefined : Math.round(v * 100) / 100; };
+      const pi = (idx: number) => { const v = idx >= 0 ? parseInt(cols[idx]) : NaN; return isNaN(v) ? undefined : v; };
+      const ps = (idx: number) => idx >= 0 && cols[idx] ? cols[idx] : undefined;
+      if (pf(speedIdx) !== undefined) point.speed = pf(speedIdx);
+      if (pf(vSpeedIdx) !== undefined) point.vSpeed = pf(vSpeedIdx);
+      if (pf(batteryIdx) !== undefined) point.battery = pf(batteryIdx);
+      if (pf(battVoltIdx) !== undefined) point.voltage = pf(battVoltIdx);
+      if (pf(battCurrentIdx) !== undefined) point.current = pf(battCurrentIdx);
+      if (pf(battTempIdx) !== undefined) point.temp = pf(battTempIdx);
+      if (pi(gpsNumIdx) !== undefined) point.gpsNum = pi(gpsNumIdx);
+      if (pi(gpsLevelIdx) !== undefined) point.gpsLevel = pi(gpsLevelIdx);
+      if (pf(pitchIdx) !== undefined) point.pitch = pf(pitchIdx);
+      if (pf(rollIdx) !== undefined) point.roll = pf(rollIdx);
+      if (pf(yawIdx) !== undefined) point.yaw = pf(yawIdx);
+      if (pi(rcAileronIdx) !== undefined) point.rcAileron = pi(rcAileronIdx);
+      if (pi(rcElevatorIdx) !== undefined) point.rcElevator = pi(rcElevatorIdx);
+      if (pi(rcRudderIdx) !== undefined) point.rcRudder = pi(rcRudderIdx);
+      if (pi(rcThrottleIdx) !== undefined) point.rcThrottle = pi(rcThrottleIdx);
+      if (pf(gimbalPitchIdx) !== undefined) point.gimbalPitch = pf(gimbalPitchIdx);
+      if (pf(gimbalRollIdx) !== undefined) point.gimbalRoll = pf(gimbalRollIdx);
+      if (pf(gimbalYawIdx) !== undefined) point.gimbalYaw = pf(gimbalYawIdx);
+      if (pf(dist2DIdx) !== undefined) point.dist2D = pf(dist2DIdx);
+      if (pf(dist3DIdx) !== undefined) point.dist3D = pf(dist3DIdx);
+      if (pf(elevationIdx) !== undefined) point.elevation = pf(elevationIdx);
+      if (ps(flycStateIdx)) point.flycState = ps(flycStateIdx);
+      if (ps(groundOrSkyIdx)) point.groundOrSky = ps(groundOrSkyIdx);
+      if (pf(weatherWindSpeedIdx) !== undefined) point.windSpeed = pf(weatherWindSpeedIdx);
+      if (pf(weatherWindDirIdx) !== undefined) point.windDir = pf(weatherWindDirIdx);
+      positions.push(point);
     }
   }
 
