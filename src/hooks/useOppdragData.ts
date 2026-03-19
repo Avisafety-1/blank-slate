@@ -22,6 +22,11 @@ export const useOppdragData = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [filterTab, setFilterTab] = useState<"active" | "completed">("active");
 
+  // Server-side search state
+  const [searchResults, setSearchResults] = useState<Mission[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+
   // Pagination
   const [hasMoreActive, setHasMoreActive] = useState(true);
   const [hasMoreCompleted, setHasMoreCompleted] = useState(true);
