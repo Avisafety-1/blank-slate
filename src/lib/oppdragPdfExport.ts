@@ -41,6 +41,17 @@ export const exportToPDF = async (
       .single();
     const pdfOpprettetAv = pdfUserProfile?.full_name || 'Ukjent';
 
+    // Fetch company name
+    let companyName: string | undefined;
+    if (companyId) {
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', companyId)
+        .single();
+      companyName = companyData?.navn || undefined;
+    }
+
     const pdf = await createPdfDocument();
     const pageWidth = pdf.internal.pageSize.getWidth();
     
@@ -65,21 +76,31 @@ export const exportToPDF = async (
     }
     
     // Header
+    let headerY = 16;
+    if (companyName) {
+      pdf.setFontSize(10);
+      setFontStyle(pdf, "normal");
+      pdf.setTextColor(100);
+      pdf.text(sanitizeForPdf(companyName), pageWidth / 2, headerY, { align: "center" });
+      pdf.setTextColor(0);
+      headerY += 8;
+    }
+
     pdf.setFontSize(18);
     setFontStyle(pdf, "bold");
-    pdf.text("Oppdragsrapport", pageWidth / 2, 20, { align: "center" });
+    pdf.text("Oppdragsrapport", pageWidth / 2, headerY, { align: "center" });
     
     // Mission title
     pdf.setFontSize(14);
     setFontStyle(pdf, "normal");
-    pdf.text(sanitizeForPdf(mission.tittel), pageWidth / 2, 32, { align: "center" });
+    pdf.text(sanitizeForPdf(mission.tittel), pageWidth / 2, headerY + 12, { align: "center" });
     
     pdf.setFontSize(10);
     pdf.setTextColor(100);
-    pdf.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, 40, { align: "center" });
+    pdf.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, headerY + 20, { align: "center" });
     pdf.setTextColor(0);
     
-    let yPos = 50;
+    let yPos = headerY + 28;
     
     // Add map snapshot
     if (sections.map) {
