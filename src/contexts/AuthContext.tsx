@@ -770,10 +770,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSubscriptionLoading(false);
       });
 
+    // --- Cross-tab auth sync via BroadcastChannel ---
+    const cleanupTabSync = onTabMessage(async (msg: TabSyncMessage) => {
+      if (msg.type === 'SESSION_UPDATE') {
+        console.log('AuthContext: Received session from another tab via BroadcastChannel');
+        // Mark that the next onAuthStateChange event is from our setSession call
+        ignoreNextAuthEventRef.current = true;
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: msg.access_token,
+            refresh_token: msg.refresh_token,
+          });
+          if (error) {
+            console.warn('AuthContext: Failed to apply cross-tab session:', error.message);
+            ignoreNextAuthEventRef.current = false;
+          } else if (data.session) {
+            setSession(data.session);
+            setUser(data.session.user);
+            cacheSession(data.session.user);
+            console.log('AuthContext: Applied cross-tab session successfully');
+          }
+        } catch (err) {
+          console.warn('AuthContext: Cross-tab setSession error:', err);
+          ignoreNextAuthEventRef.current = false;
+        }
+      } else if (msg.type === 'SIGNED_OUT') {
+        console.log('AuthContext: Received sign-out from another tab');
+        resetAuthState();
+        setLoading(false);
+        setAuthInitialized(true);
+      }
+    });
+
     return () => {
       subscription.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
+      cleanupTabSync();
     };
   }, []);
 
