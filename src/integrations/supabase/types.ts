@@ -1953,6 +1953,7 @@ export type Database = {
         Row: {
           aircraft_serial: string | null
           battery_cycles: number | null
+          battery_full_capacity_mah: number | null
           battery_health_pct: number | null
           battery_sn: string | null
           battery_temp_max_c: number | null
@@ -1992,6 +1993,7 @@ export type Database = {
         Insert: {
           aircraft_serial?: string | null
           battery_cycles?: number | null
+          battery_full_capacity_mah?: number | null
           battery_health_pct?: number | null
           battery_sn?: string | null
           battery_temp_max_c?: number | null
@@ -2031,6 +2033,7 @@ export type Database = {
         Update: {
           aircraft_serial?: string | null
           battery_cycles?: number | null
+          battery_full_capacity_mah?: number | null
           battery_health_pct?: number | null
           battery_sn?: string | null
           battery_temp_max_c?: number | null
