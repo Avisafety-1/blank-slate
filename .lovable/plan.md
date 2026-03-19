@@ -1,18 +1,36 @@
 
 
-## Fix: "Kunne ikke opprette oppdrag" from duplicate DJI file
+## Fix: "Begrenset telemetri" for newly imported flights
 
 ### Problem
-When a DJI log file already exists in the database and the user chooses "Opprett nytt oppdrag" (create new mission), the insert into `flight_logs` fails because `dronelog_sha256` has a unique constraint (`idx_flight_logs_sha256_company`) per company. The system correctly detects the duplicate early but still allows the user to click "create new," which then crashes.
+The edge functions correctly parse and return extended telemetry (speed, RC inputs, gimbal, battery, wind, etc.) in the `positions` array. However, the **client-side code** in `UploadDroneLogDialog.tsx` strips all that data before saving to the database.
 
-### Root cause
-`handleCreateNew` (line 1415) inserts a new `flight_logs` row with the same `dronelog_sha256` value via `buildExtendedFields(result)`. The DB unique index rejects it.
+Three places (lines ~1377, ~1421, ~1491) do:
+```typescript
+const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+```
+
+This discards every extended field (speed, vSpeed, battery, rcAileron, gimbalPitch, etc.), so `flight_track.positions` in the DB only has basic coordinates. The `FlightAnalysisDialog` then correctly detects "no advanced data" and shows the badge.
 
 ### Solution
-In `handleCreateNew`, when the flight log is a known duplicate (i.e., `matchedLog` exists with the same SHA-256), set `dronelog_sha256` to `null` on the new row to avoid the constraint violation. This way the new mission + log is created as a separate entry, and the original log retains its SHA-256 for future dedup.
+Change all three `rawTrack` mappings to preserve all properties from each position point, instead of picking only 4 fields.
 
-### Changes
+Replace:
+```typescript
+const rawTrack = result.positions.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt, timestamp: p.timestamp }));
+```
+With:
+```typescript
+const rawTrack = result.positions.map(p => ({ ...p }));
+```
 
-**`src/components/UploadDroneLogDialog.tsx`** (~line 1444-1452):
-- After building the insert payload with `buildExtendedFields(result)`, override `dronelog_sha256` to `null` if `matchedLog` already exists (meaning the user explicitly chose to create a duplicate).
+This preserves all telemetry fields while still allowing the downsampling logic that follows.
+
+### Files changed
+- `src/components/UploadDroneLogDialog.tsx` — 3 lines changed (lines ~1377, ~1421, ~1491)
+
+### Notes
+- No database changes needed — `flight_track` is JSONB
+- Existing flights imported before this fix will still show "Begrenset telemetri" (correct behavior)
+- Only newly imported flights will have full telemetry
 
