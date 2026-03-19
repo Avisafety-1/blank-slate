@@ -587,7 +587,7 @@ export const DroneLogbookDialog = ({
                                   {log.title}
                                 </p>
                               </div>
-                              {log.type === 'manual' && (
+                                {log.type === 'manual' && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -595,6 +595,21 @@ export const DroneLogbookDialog = ({
                                   onClick={() => handleDeleteEntry(log.id)}
                                 >
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </Button>
+                              )}
+                              {log.type === 'flight' && log.flightTrack?.positions?.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Analyser flytur"
+                                  onClick={() => {
+                                    setAnalysisTrack(log.flightTrack);
+                                    setAnalysisDate(log.flightDate);
+                                    setAnalysisOpen(true);
+                                  }}
+                                >
+                                  <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
                             </div>
