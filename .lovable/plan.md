@@ -1,47 +1,45 @@
 
 
-## Plan: Ikke sentrer kartet på GPS når focusFlightId er satt
+## Plan: Server-side søk i oppdrag med indeksering og hierarkisk tilgang
 
 ### Problemet
-Når bruker klikker "Vis posisjon" på et aktivt oppdrag fra dashbordet, navigeres det til `/kart` med `focusFlightId` i state. Kartet kjører da to ting parallelt:
-1. **Geolocation** (linje 438): Sentrerer kartet på brukerens GPS-posisjon
-2. **focusFlight** (linje 617): Sentrerer kartet på flightens posisjon etter 1.5s delay
-
-GPS-sentreringen skjer først, og flight-fokuset kommer etter — men det er en visuell konflikt og kartet hopper.
+Søk filtrerer kun de ~10 forhåndslastede oppdragene. Oppdrag utenfor paginert visning kan ikke finnes. I tillegg må morselskaper kunne søke på tvers av alle underavdelinger.
 
 ### Løsningen
-Hopp over GPS-sentrering (`map.setView`) hvis `focusFlightId` er satt. GPS-markøren kan fortsatt vises, men kartet skal ikke paneres dit.
 
-### Fil som endres
+#### 1. Database: Opprett søkeindeks (migrasjon)
+Opprett en GIN trigram-indeks på `missions`-tabellen for rask `ILIKE`-søk:
 
-**`src/components/OpenAIPMap.tsx`** — linje 437-458
-
-Endre geolocation-blokken til å sjekke `focusFlightId`:
-
-```typescript
-if (!initialCenter && navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-      // Vis markør uansett
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setLatLng(coords);
-      } else {
-        userMarkerRef.current = L.circleMarker(coords, { ... }).addTo(map);
-      }
-      // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
-      if (!focusFlightId) {
-        map.setView(coords, 9);
-      }
-    },
-    () => {
-      if (!focusFlightId && companyLat && companyLon) {
-        map.setView([companyLat, companyLon], 10);
-      }
-    },
-  );
-}
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_missions_tittel_trgm ON missions USING gin (tittel gin_trgm_ops);
+CREATE INDEX idx_missions_lokasjon_trgm ON missions USING gin (lokasjon gin_trgm_ops);
+CREATE INDEX idx_missions_beskrivelse_trgm ON missions USING gin (beskrivelse gin_trgm_ops);
 ```
 
-Én endring, én fil. Kartet vil nå kun sentreres på GPS når det ikke er et aktivt oppdrag som skal fokuseres.
+#### 2. `src/hooks/useOppdragData.ts` — ny `searchMissions`-funksjon
+- Legg til state: `searchResults`, `isSearching`, `searchActive`
+- Ny funksjon `searchMissions(query, tab)`:
+  - Spør Supabase med `.or(tittel.ilike.%q%,lokasjon.ilike.%q%,beskrivelse.ilike.%q%)` 
+  - Filtrerer på status basert på aktiv tab
+  - **Ingen `company_id`-filter i koden** — RLS med `get_user_visible_company_ids` håndterer allerede at morselskaper ser alle underavdelinger
+  - Begrens til 50 resultater, samme enrichment-logikk (personnel, drones, etc.)
+- Ny funksjon `clearSearch()` som nullstiller søkeresultater
+- Eksporter `searchResults`, `isSearching`, `searchActive`, `searchMissions`, `clearSearch`
+
+#### 3. `src/pages/Oppdrag.tsx` — debounced server-side søk
+- `useEffect` med 300ms debounce på `searchQuery`:
+  - Hvis tom → `clearSearch()`, vis paginert data
+  - Hvis ikke-tom → kall `searchMissions(query, filterTab)`
+- Bytt datakilde: `const displayMissions = data.searchActive ? data.searchResults : data.missions`
+- Oppdater `uniqueCustomers`/`uniquePilots`/`uniqueDrones` til å bruke `displayMissions`
+- Fjern klient-side søkefiltrering fra `filteredMissions` (behold kunde/pilot/drone-filtre)
+
+### Hierarki-støtte
+RLS-policyene på `missions`-tabellen bruker allerede `get_user_visible_company_ids(auth.uid())`, som returnerer alle selskaps-ID-er i hierarkiet. Dermed vil søket automatisk returnere oppdrag fra alle underavdelinger for morselskapsbrukere — ingen ekstra kode nødvendig.
+
+### Filer som endres
+1. **Ny migrasjon** — trigram-indekser
+2. **`src/hooks/useOppdragData.ts`** — `searchMissions`, `clearSearch`, nye states
+3. **`src/pages/Oppdrag.tsx`** — debounced søk, bytt datakilde
 
