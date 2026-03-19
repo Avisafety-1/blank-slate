@@ -1,45 +1,54 @@
 
 
-## Plan: Server-side søk i oppdrag med indeksering og hierarkisk tilgang
+## Problem
 
-### Problemet
-Søk filtrerer kun de ~10 forhåndslastede oppdragene. Oppdrag utenfor paginert visning kan ikke finnes. I tillegg må morselskaper kunne søke på tvers av alle underavdelinger.
+Battery analytics data is correctly fetched from the DroneLog API and stored in the `flight_logs` table. However, the **Equipment Logbook UI** ("Batteritrend" tab in `EquipmentLogbookDialog.tsx`) only displays **2 metrics** (cycles and health %) out of the **7+ available** in the database.
 
-### Løsningen
+### Data already stored but not shown
 
-#### 1. Database: Opprett søkeindeks (migrasjon)
-Opprett en GIN trigram-indeks på `missions`-tabellen for rask `ILIKE`-søk:
+| DB Column | Description | Shown in UI? |
+|---|---|---|
+| `battery_cycles` | Charge cycles | Yes |
+| `battery_health_pct` | Health score % | Yes |
+| `battery_temp_min_c` | Min temperature | No |
+| `battery_temp_max_c` | Max temperature | No |
+| `battery_voltage_min_v` | Min voltage | No |
+| `battery_full_capacity_mah` | Full capacity mAh | No |
+| `dronelog_warnings` (cell_deviation) | Cell voltage deviation | No |
 
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX idx_missions_tittel_trgm ON missions USING gin (tittel gin_trgm_ops);
-CREATE INDEX idx_missions_lokasjon_trgm ON missions USING gin (lokasjon gin_trgm_ops);
-CREATE INDEX idx_missions_beskrivelse_trgm ON missions USING gin (beskrivelse gin_trgm_ops);
-```
+### API field coverage vs docs
 
-#### 2. `src/hooks/useOppdragData.ts` — ny `searchMissions`-funksjon
-- Legg til state: `searchResults`, `isSearching`, `searchActive`
-- Ny funksjon `searchMissions(query, tab)`:
-  - Spør Supabase med `.or(tittel.ilike.%q%,lokasjon.ilike.%q%,beskrivelse.ilike.%q%)` 
-  - Filtrerer på status basert på aktiv tab
-  - **Ingen `company_id`-filter i koden** — RLS med `get_user_visible_company_ids` håndterer allerede at morselskaper ser alle underavdelinger
-  - Begrens til 50 resultater, samme enrichment-logikk (personnel, drones, etc.)
-- Ny funksjon `clearSearch()` som nullstiller søkeresultater
-- Eksporter `searchResults`, `isSearching`, `searchActive`, `searchMissions`, `clearSearch`
+All relevant `BATTERY.*` fields from `docs/dronelog-api-fields.md` are already requested. No missing fields.
 
-#### 3. `src/pages/Oppdrag.tsx` — debounced server-side søk
-- `useEffect` med 300ms debounce på `searchQuery`:
-  - Hvis tom → `clearSearch()`, vis paginert data
-  - Hvis ikke-tom → kall `searchMissions(query, filterTab)`
-- Bytt datakilde: `const displayMissions = data.searchActive ? data.searchResults : data.missions`
-- Oppdater `uniqueCustomers`/`uniquePilots`/`uniqueDrones` til å bruke `displayMissions`
-- Fjern klient-side søkefiltrering fra `filteredMissions` (behold kunde/pilot/drone-filtre)
+---
 
-### Hierarki-støtte
-RLS-policyene på `missions`-tabellen bruker allerede `get_user_visible_company_ids(auth.uid())`, som returnerer alle selskaps-ID-er i hierarkiet. Dermed vil søket automatisk returnere oppdrag fra alle underavdelinger for morselskapsbrukere — ingen ekstra kode nødvendig.
+## Plan
 
-### Filer som endres
-1. **Ny migrasjon** — trigram-indekser
-2. **`src/hooks/useOppdragData.ts`** — `searchMissions`, `clearSearch`, nye states
-3. **`src/pages/Oppdrag.tsx`** — debounced søk, bytt datakilde
+### 1. Expand the `fetchBatteryTrend` query
+
+Add the missing columns to the SELECT: `battery_temp_min_c`, `battery_temp_max_c`, `battery_voltage_min_v`, `battery_full_capacity_mah`.
+
+### 2. Redesign the Batteritrend tab
+
+Replace the current 2-card layout with a richer dashboard:
+
+- **Summary cards** (top row, 4 cards):
+  - Sykluser (current value + trend)
+  - Helse % (color-coded)
+  - Siste maks temperatur (color-coded: green < 40, yellow 40-50, red > 50)
+  - Min spenning (color-coded)
+
+- **Capacity card**: Show `battery_full_capacity_mah` trend (capacity degradation over time)
+
+- **History table**: Expand each row to show date, cycles, health, temp range, min voltage, and capacity per flight
+
+### 3. File changes
+
+Only one file needs modification: `src/components/resources/EquipmentLogbookDialog.tsx`
+
+- Update `BatteryTrendEntry` interface to include new fields
+- Update `fetchBatteryTrend` query to select additional columns
+- Update the "battery" `TabsContent` to render the expanded cards and table
+
+No database changes needed — all data already exists.
 
