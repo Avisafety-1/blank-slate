@@ -1490,7 +1490,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = 200;
+      const maxPoints = highResImport ? 2000 : 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPoints) {
         const step = Math.ceil(rawTrack.length / maxPoints);
