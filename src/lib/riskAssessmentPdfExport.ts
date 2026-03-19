@@ -71,12 +71,20 @@ export const exportRiskAssessmentPDF = async ({
   createdAt,
 }: RiskExportOptions): Promise<boolean> => {
   try {
+    // Fetch company name
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('navn')
+      .eq('id', companyId)
+      .single();
+    const companyName = companyData?.navn || undefined;
+
     const doc = await createPdfDocument();
     const pageWidth = doc.internal.pageSize.getWidth();
     const fontName = arePdfFontsLoaded() ? "Roboto" : "helvetica";
 
     // Header
-    let yPos = addPdfHeader(doc, "RISIKOVURDERING", sanitizeForPdf(missionTitle));
+    let yPos = addPdfHeader(doc, "RISIKOVURDERING", sanitizeForPdf(missionTitle), companyName);
 
     if (createdAt) {
       doc.setFontSize(9);

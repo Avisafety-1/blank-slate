@@ -53,11 +53,19 @@ export const exportIncidentPDF = async ({
   userId,
 }: ExportOptions): Promise<boolean> => {
   try {
+    // Fetch company name
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('navn')
+      .eq('id', companyId)
+      .single();
+    const companyName = companyData?.navn || undefined;
+
     const doc = await createPdfDocument();
     const pageWidth = doc.internal.pageSize.getWidth();
     
     // Header
-    let yPos = addPdfHeader(doc, "HENDELSESRAPPORT", incident.tittel);
+    let yPos = addPdfHeader(doc, "HENDELSESRAPPORT", incident.tittel, companyName);
 
     // Detaljer
     yPos = addSectionHeader(doc, "DETALJER", yPos);
