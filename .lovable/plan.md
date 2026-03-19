@@ -1,79 +1,67 @@
+## Multi-Company Access – IMPLEMENTERT
 
+### Database
+- `companies.parent_company_id` – valgfri FK til morselskap
+- `user_companies` – junction-tabell (user_id, company_id, role) med RLS
+- Indexes: `idx_user_companies_user`, `idx_user_companies_company`
+- `get_user_accessible_companies(_user_id)` – returnerer tilgjengelige selskaper
+- `can_user_access_company(_user_id, _company_id)` – validerer tilgang
+- Eksisterende profiler seedet inn i user_companies
 
-## Plan: Fiks multi-tab auth med BroadcastChannel
+### Frontend
+- `AuthContext`: `accessibleCompanies`, `switchCompany()` 
+- `Header`: Selskapsbytter vises for alle brukere med tilgang til >1 selskap
+- `CompanyManagementDialog`: Morselskap-velger (superadmin)
 
-### Problemet
-Supabase bruker **rotating refresh tokens** — når én fane refresher tokenet, blir det gamle refresh-tokenet ugyldig. Hvis en annen fane prøver å refreshe med det nå-ugyldige tokenet, feiler det og brukeren blir logget ut. Auth-loggene bekrefter dette: `token_revoked` skjer samtidig med `login` fra en annen fane.
+### Arkitektur
+- `profiles.company_id` = aktivt selskap (uendret)
+- Selskapsbytte = oppdaterer profiles.company_id → refetch → RLS filtrerer automatisk
 
-### Løsningen
-Bruk `BroadcastChannel` til å koordinere token-refresh mellom faner. Én fane gjør selve refreshen, og broadcaster den nye sesjonen til alle andre faner.
+### Konsolidert visning (moderselskap ser underselskap) – IMPLEMENTERT
+- `get_user_visible_company_ids(_user_id)` – returnerer brukerens company + alle child companies (kun for admin-roller)
+- Alle SELECT RLS-policyer oppdatert: `company_id = ANY(get_user_visible_company_ids(auth.uid()))`
+- 40+ tabeller dekket inkl. join-tabeller (mission_drones, drone_equipment, flight_log_personnel osv.)
+- INSERT/UPDATE/DELETE-policyer uendret – skriving skjer alltid til aktivt selskap
+- Vanlige brukere (rolle=bruker) påvirkes ikke – ser kun eget selskap
 
-### Filer som endres
+---
 
-#### 1. Ny fil: `src/lib/authTabSync.ts`
-Sentralisert tab-synkronisering med BroadcastChannel:
+## Ny prismodell – IMPLEMENTERT (Live Stripe)
 
-- **Session broadcast**: Når en fane får `TOKEN_REFRESHED` eller `SIGNED_IN`, broadcaster den sesjonen til andre faner via `BroadcastChannel('avisafe-auth')`.
-- **Session receive**: Andre faner lytter og kaller `supabase.auth.setSession()` med det nye tokenet i stedet for å refreshe selv.
-- **Sign-out broadcast**: Når en fane logger ut, broadcaster den `SIGNED_OUT` til alle faner.
-- **Refresh lock**: Før en fane kaller `refreshSession()`, sjekker den om en annen fane allerede har refreshet nylig (via `localStorage` timestamp). Hvis ja, henter den bare sesjonen fra storage i stedet.
+### Stripe Live-produkter
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter (99 NOK) | prod_U9SNyTk1R28VOf | price_1TB9TARrLM8xOFbkzV267Soh |
+| Grower (199 NOK) | prod_U9SOzBZAWkFv4m | price_1TB9TfRrLM8xOFbkV1ac0aY5 |
+| Professional (299 NOK) | prod_U9S7NAHDDleuNG | price_1TB9DARrLM8xOFbkVWT7zgGW |
+| SORA Admin (99 NOK) | prod_U9RnvT5JMaB4V5 | price_1TB8tURrLM8xOFbk2fX9o05U |
+| DJI-integrasjon (99 NOK) | prod_U9SCO6vjcZPjBb | price_1TB9IBRrLM8xOFbkijdJUsL7 |
+| ECCAIRS-integrasjon (99 NOK) | prod_U9SD6lFn3EcEYa | price_1TB9JCRrLM8xOFbklvsgEyiV |
 
-```text
-Tab A                          Tab B
-  │                              │
-  ├─ token expires               │
-  ├─ refreshSession()            │
-  ├─ gets new token              │
-  ├─ broadcast({session})  ───►  ├─ receives broadcast
-  │                              ├─ setSession(newSession)
-  │                              ├─ skips own refresh
-```
+### Implementerte filer
+- `src/config/subscriptionPlans.ts` – Plan/pris-konfigurasjon
+- `supabase/functions/create-checkout/index.ts` – Flerplan checkout med addons
+- `supabase/functions/check-subscription/index.ts` – Selskapsbasert sjekk
+- `supabase/functions/stripe-webhook/index.ts` – Synk til company_subscriptions
+- `supabase/functions/customer-portal/index.ts` – Billing owner-sjekk
+- `supabase/functions/update-seats/index.ts` – Automatisk seat-synk (kalles ved godkjenning/sletting)
+- `supabase/functions/change-plan/index.ts` – In-app planbytte
+- `src/contexts/AuthContext.tsx` – Nye felter: subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount
+- `src/components/SubscriptionGate.tsx` – Planvelger-UI
+- `src/pages/Priser.tsx` – Tre planer + tilleggsmoduler
+- `src/components/ProfileDialog.tsx` – Planbytte-UI + abonnement-tab
+- DB-migrasjon: `company_subscriptions`-tabell, `billing_user_id` på companies
 
-#### 2. Oppdater: `src/integrations/supabase/client.ts`
-- Importer `authTabSync` og bruk den i `ensureFreshSession()`:
-  - Sjekk om en annen fane nylig har refreshet (localStorage-basert lock med timestamp)
-  - Hvis ja: hent sesjon fra `supabase.auth.getSession()` (som leser fra localStorage, allerede oppdatert av den andre fanen)
-  - Hvis nei: gjør refresh og broadcast resultatet
+### Seat-synk
+- `update-seats` kalles automatisk fra `Admin.tsx` ved:
+  - Godkjenning av bruker (`approveUser`)
+  - Sletting av bruker (`deleteUser`)
 
-#### 3. Oppdater: `src/contexts/AuthContext.tsx`
-- I `onAuthStateChange`:
-  - Ved `TOKEN_REFRESHED` og `SIGNED_IN`: broadcast sesjonen til andre faner
-  - Ved `SIGNED_OUT`: broadcast sign-out
-- Legg til BroadcastChannel-listener som mottar sesjoner fra andre faner og kaller `setSession()`/`setUser()` uten å trigge ny refresh
-- Ignorer `TOKEN_REFRESHED`-events som kom fra en broadcast (for å unngå uendelig loop)
+### Planbytte
+- Billing owner kan bytte plan direkte i ProfileDialog uten å forlate appen
+- `change-plan` Edge Function oppdaterer Stripe subscription item + company_subscriptions
 
-### Teknisk detalj
-
-```typescript
-// authTabSync.ts — kjernekonsept
-const channel = new BroadcastChannel('avisafe-auth');
-const REFRESH_LOCK_KEY = 'avisafe_refresh_lock';
-const LOCK_TTL = 5000; // 5 sekunder
-
-export function broadcastSession(session: Session) {
-  channel.postMessage({ type: 'SESSION_UPDATE', session });
-  localStorage.setItem(REFRESH_LOCK_KEY, Date.now().toString());
-}
-
-export function broadcastSignOut() {
-  channel.postMessage({ type: 'SIGNED_OUT' });
-}
-
-export function isRefreshLockedByOtherTab(): boolean {
-  const lock = localStorage.getItem(REFRESH_LOCK_KEY);
-  if (!lock) return false;
-  return Date.now() - parseInt(lock) < LOCK_TTL;
-}
-
-export function onTabMessage(callback: (msg) => void) {
-  channel.onmessage = (e) => callback(e.data);
-}
-```
-
-**Fallback**: Hvis nettleseren ikke støtter `BroadcastChannel` (eldre Safari), faller det tilbake til dagens oppførsel uten synkronisering.
-
-### Hva dette fikser
-- To faner åpne samtidig vil ikke lenger kaste hverandre ut
-- Refresh-token revocation unngås fordi kun én fane refresher om gangen
-- Sign-out i én fane logger ut alle faner
-
+### Gjenstår (oppfølging)
+- Feature-gating basert på addons (SORA/DJI/ECCAIRS)
+- Admin-panel: vise selskapsplan i oversikten
+- Stripe Portal: Aktiver "Subscription updates" i Dashboard for planbytte via portal
