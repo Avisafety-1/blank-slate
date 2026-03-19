@@ -1,25 +1,58 @@
 
+Mål: gjøre Flyanalyse-kartet stabilt og fjerne “helt hvitt kart” i dialogen.
 
-## Plan: Add "High-resolution import" toggle
+Hva jeg sjekket
+- `FlightAnalysisDialog.tsx`: kartet initieres i en portal-dialog med `ResizeObserver` + kort timeout.
+- `ExpandedMapDialog.tsx`: har en mer robust init-strategi med retry, forsinket oppstart og flere `invalidateSize()`-kall.
+- Konsollogger: ingen Leaflet-feil, bare Dialog accessibility-advarsel.
+- Preview-snapshot: ingen OSM tile requests ble fanget opp da problemet skjedde.
+- Database: den aktuelle flyturen 18.12.2025 for `UASVOSS M350` har gyldig `flight_track` med 168 posisjoner og normale koordinater rundt Voss. Dataene er altså ikke problemet.
 
-### Summary
-Add a checkbox option in the import dialog that lets the user choose between standard resolution (~200 points) and high resolution (~2000 points) for telemetry data. The edge function also needs its limit raised so enough data is available.
+Konklusjon
+- Dette ser ut som et UI/livssyklus-problem i `FlightAnalysisDialog`, ikke et telemetry-problem.
+- Den nåværende “vent til container har størrelse”-fixen er fortsatt for svak for dialog/animasjon/portal-scenariet. Kartet blir noen ganger aldri ordentlig initialisert eller invalidert etter at dialogen er ferdig rendret.
 
-### Changes
+Plan
+1. Bytt `FlightAnalysisDialog` til samme robuste init-mønster som brukes i `ExpandedMapDialog`
+- Erstatt dagens `ResizeObserver`-styrte init med en `tryInitMap()`-flyt:
+  - vent til container faktisk har bredde/høyde
+  - retry noen ganger med korte intervaller
+  - fjern eventuell eksisterende Leaflet-instans trygt før ny init
+  - initier kartet i `try/catch`
+- Dette reduserer risikoen for at kartet startes mens dialogen fortsatt er i overgang/animasjon.
 
-**1. `src/components/UploadDroneLogDialog.tsx`**
-- Add a new state: `const [highResImport, setHighResImport] = useState(false)`
-- Add a checkbox in the import UI (near the import button / before confirmation): "Importer høy-oppløselig posisjonsdata" with a small info text explaining it gives ~1-second resolution for flight analysis but uses more storage
-- In the three save locations (lines ~1378, ~1422, ~1492), change `maxPts`/`maxPoints` from hardcoded `200` to `highResImport ? 2000 : 200`
+2. Legg inn eksplisitt “stabiliseringsfase” etter init
+- Kjør flere forsinkede `invalidateSize()`-kall, f.eks. etter 300 / 500 / 800 ms, slik `ExpandedMapDialog` gjør.
+- Lytt på dialogens ferdige overgang (`transitionend`) eller kjør ekstra `requestAnimationFrame`-basert invalidation etter mount.
+- Dette er sannsynligvis den viktigste forskjellen mellom den ustabile og den stabile kartimplementasjonen.
 
-**2. `supabase/functions/process-dronelog/index.ts`**
-- Line 281: Increase server-side sample target from 500 to 2500 (`Math.floor((lines.length - 1) / 2500)`) so the edge function returns enough points for high-res mode
+3. Skill mellom “map exists” og “map ready”
+- Legg inn lokal state som `mapReady` / `tileStatus`.
+- Ikke kjør marker-/trail-oppdateringer før kartet faktisk er klart.
+- Da unngår vi at `panTo`, polyline og markører jobber mot et kart som fortsatt er halvveis initialisert.
 
-### UI placement
-The checkbox appears in the import confirmation step, alongside the existing options (drone selection, battery, etc.), styled consistently with other toggles in the dialog.
+4. Legg til tile-diagnostikk og brukerfallback
+- Registrer `tileload` / `tileerror` på `L.tileLayer`.
+- Hvis tiles ikke lastes innen kort tid, vis en liten feilmelding i kartflaten i stedet for bare hvitt område, f.eks. “Kartet kunne ikke lastes – prøv å åpne analysen på nytt”.
+- Dette gjør problemet synlig og mye lettere å feilsøke videre hvis noe eksternt feiler.
 
-### Trade-offs
-- High-res: ~600KB per flight vs ~60KB standard — acceptable for JSONB
-- Edge function always returns up to 2500 points now; the client decides how many to keep
-- Existing flights remain unchanged; only new imports are affected by the toggle
+5. Rydd opp i dialogen samtidig
+- Legg til `DialogDescription` i `FlightAnalysisDialog` for å fjerne Radix-advarselen i konsollen.
+- Ikke kritisk for kartet, men det gjør debugging renere.
 
+Filer som bør endres
+- `src/components/dashboard/FlightAnalysisDialog.tsx` (hovedfix)
+- Eventuelt liten justering i `src/components/ui/dialog.tsx` bare hvis vi trenger en ref/transition-hook fra dialoginnholdet, men sannsynligvis ikke nødvendig.
+
+Forventet resultat
+- Kartet åpner stabilt også i Flyanalyse-dialogen.
+- Ikke hvit kartflate ved første åpning.
+- Bedre robusthet ved gjentatt åpne/lukke, scrubbing i tidslinjen og etter at appen har vært i bakgrunnen.
+
+Verifisering etter implementasjon
+- Åpne Flyanalyse for `UASVOSS M350` 18.12.2025 flere ganger på rad.
+- Test både direkte åpning og etter scrolling i loggboka.
+- Dra scrubberen raskt frem og tilbake.
+- Lukk og åpne analysen igjen.
+- Test etter at fanen/appen har vært i bakgrunnen.
+- Bekreft at OSM tiles faktisk lastes, og at fallback-melding vises hvis de ikke gjør det.
