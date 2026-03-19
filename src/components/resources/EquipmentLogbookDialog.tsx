@@ -124,7 +124,7 @@ export const EquipmentLogbookDialog = ({
     try {
       const { data } = await (supabase
         .from('flight_logs')
-        .select('flight_date, battery_cycles, battery_health_pct')
+        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah')
         .eq('company_id', companyId) as any)
         .eq('battery_sn', equipmentSerienummer)
         .not('battery_cycles', 'is', null)
@@ -137,6 +137,10 @@ export const EquipmentLogbookDialog = ({
             date: new Date(r.flight_date),
             cycles: r.battery_cycles,
             health: r.battery_health_pct,
+            tempMin: r.battery_temp_min_c,
+            tempMax: r.battery_temp_max_c,
+            voltageMin: r.battery_voltage_min_v,
+            capacityMah: r.battery_full_capacity_mah,
           }))
         );
       }
