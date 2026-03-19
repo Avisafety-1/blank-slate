@@ -81,16 +81,18 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
     mapRef.current = map;
 
-    // Fix: invalidateSize after dialog animation completes
-    setTimeout(() => map.invalidateSize(), 300);
-    setTimeout(() => map.invalidateSize(), 600);
+    // Fix: invalidateSize after dialog animation completes (guard against unmount)
+    const t1 = setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 300);
+    const t2 = setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 600);
 
     // ResizeObserver for robustness
     const container = mapContainerRef.current;
-    const ro = new ResizeObserver(() => map.invalidateSize());
+    const ro = new ResizeObserver(() => { if (mapRef.current) map.invalidateSize(); });
     ro.observe(container);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
       ro.disconnect();
       map.remove();
       mapRef.current = null;
