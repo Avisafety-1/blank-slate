@@ -39,9 +39,9 @@ export const useOppdragData = () => {
   const kmlInputRef = useRef<HTMLInputElement>(null);
 
   // Computed
-  const missions = filterTab === 'active' ? activeMissions : completedMissions;
-  const isLoading = filterTab === 'active' ? isLoadingActive : isLoadingCompleted;
-  const hasMoreData = filterTab === 'active' ? hasMoreActive : hasMoreCompleted;
+  const missions = searchActive ? searchResults : (filterTab === 'active' ? activeMissions : completedMissions);
+  const isLoading = searchActive ? isSearching : (filterTab === 'active' ? isLoadingActive : isLoadingCompleted);
+  const hasMoreData = searchActive ? false : (filterTab === 'active' ? hasMoreActive : hasMoreCompleted);
 
   // Redirect if not logged in
   useEffect(() => {
