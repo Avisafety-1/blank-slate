@@ -586,7 +586,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             )}
           </div>
 
-          <Tabs defaultValue="flyturer" className="flex-1 flex flex-col min-h-0">
+          <Tabs defaultValue="flyturer" className="mt-2">
             <TabsList className="w-full">
               <TabsTrigger value="flyturer" className="flex-1">Flyturer</TabsTrigger>
               <TabsTrigger value="innlegg" className="flex-1">
