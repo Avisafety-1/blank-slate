@@ -54,6 +54,8 @@ interface LogEntry {
   badgeColor: string;
   badgeText: string;
   imageUrl?: string;
+  flightTrack?: any;
+  flightDate?: string;
 }
 
 export const DroneLogbookDialog = ({ 
