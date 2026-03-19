@@ -223,6 +223,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
   const [bulkProgress, setBulkProgress] = useState(0);
+  const [highResImport, setHighResImport] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
@@ -1375,7 +1376,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPts = 200;
+      const maxPts = highResImport ? 2000 : 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPts) {
         const step = Math.ceil(rawTrack.length / maxPts);
@@ -1419,7 +1420,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // SHA-256 dedup is now handled early in findMatchingFlightLog
 
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = 200;
+      const maxPoints = highResImport ? 2000 : 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPoints) {
         const step = Math.ceil(rawTrack.length / maxPoints);
@@ -1489,7 +1490,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = 200;
+      const maxPoints = highResImport ? 2000 : 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPoints) {
         const step = Math.ceil(rawTrack.length / maxPoints);
@@ -2635,6 +2636,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende oppdrag matcher tidspunktet. Du kan opprette et nytt oppdrag.')}</p>
               </div>
             ) : null}
+
+            {/* High-resolution import toggle */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+              <Checkbox
+                id="highResImport"
+                checked={highResImport}
+                onCheckedChange={(checked) => setHighResImport(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="highResImport" className="text-sm font-medium cursor-pointer">
+                  Importer høy-oppløselig posisjonsdata
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Gir ~1-sekunds oppløsning for flyanalyse (bruker mer lagringsplass). Standard er ~6-sekunders oppløsning.
+                </p>
+              </div>
+            </div>
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => { setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); }}>{t('actions.back')}</Button>

@@ -278,7 +278,7 @@ function parseCsvToResult(csvText: string) {
   let prevAppWarn = "";
   let prevGoHomeStatus = "";
 
-  const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
+  const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 2500));
 
   // Track last timestamp for end_time_utc
   let lastTimestamp = "";
