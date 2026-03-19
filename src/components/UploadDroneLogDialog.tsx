@@ -1420,7 +1420,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // SHA-256 dedup is now handled early in findMatchingFlightLog
 
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = 200;
+      const maxPoints = highResImport ? 2000 : 200;
       let flightTrack = rawTrack;
       if (rawTrack.length > maxPoints) {
         const step = Math.ceil(rawTrack.length / maxPoints);
