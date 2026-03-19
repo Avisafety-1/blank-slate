@@ -5,22 +5,46 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+import { isRefreshLockedByOtherTab, setRefreshLock, broadcastSession } from '@/lib/authTabSync';
+
 // --- Deduplicated session refresh ---
 let activeRefreshPromise: Promise<void> | null = null;
 
 /**
  * Ensures a fresh session exists. Deduplicates concurrent refresh calls
  * so that multiple 401 responses only trigger ONE refreshSession() call.
+ *
+ * Cross-tab aware: if another tab recently refreshed (localStorage lock),
+ * this tab skips the refresh and just re-reads the session from storage
+ * (Supabase persists tokens in localStorage automatically).
  */
 export async function ensureFreshSession(): Promise<void> {
   if (activeRefreshPromise) return activeRefreshPromise;
+
+  // If another tab just refreshed, skip — tokens are already fresh in localStorage
+  if (isRefreshLockedByOtherTab()) {
+    console.log('ensureFreshSession: another tab refreshed recently, reading session from storage');
+    // Force Supabase to re-read tokens from localStorage
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      return; // tokens are fresh
+    }
+    // If getSession returned null despite the lock, fall through to refresh
+    console.warn('ensureFreshSession: lock set but no session in storage, proceeding with refresh');
+  }
+
+  setRefreshLock();
   activeRefreshPromise = supabase.auth.refreshSession()
-    .then(({ error }) => {
+    .then(({ data, error }) => {
       if (error) {
         console.warn('ensureFreshSession: refresh failed', error.message);
         throw error;
       }
       console.log('ensureFreshSession: token refreshed successfully');
+      // Broadcast the new session to other tabs
+      if (data.session) {
+        broadcastSession(data.session);
+      }
     })
     .finally(() => {
       activeRefreshPromise = null;
