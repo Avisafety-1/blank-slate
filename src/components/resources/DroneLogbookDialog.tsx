@@ -110,7 +110,7 @@ export const DroneLogbookDialog = ({
       // Fetch flight logs
       const { data: flightLogs } = await supabase
         .from("flight_logs")
-        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id`)
+        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track`)
         .eq("drone_id", droneId)
         .order("flight_date", { ascending: false });
 
