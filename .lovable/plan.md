@@ -1,45 +1,27 @@
+## Advanced Flight Log Analysis — Implemented
 
+### What was done
 
-## Problem
+1. **Expanded API fields in all 3 edge functions** (`process-dronelog`, `dji-process-single`, `dji-auto-sync`):
+   - Added ~24 new fields: RC inputs (aileron, elevator, rudder, throttle), GIMBAL (pitch, roll, yaw), OSD (vSpeed, pitch, roll, yaw, groundOrSky, gpsLevel), CALC (distance2D, distance3D, currentElevation), HOME (lat, lng, maxAllowedHeight), WEATHER (temperature, windDirection, windSpeed)
+   - Extended position objects in `flight_track` JSONB to include all telemetry per sampled point
 
-The "Batteritrend" tab is blank for all batteries because the Supabase query returns a **400 error**:
+2. **New component: `FlightAnalysisDialog.tsx`** — Full-screen analysis dialog with:
+   - Interactive map with drone position marker synced to timeline scrubber
+   - Color-coded flight path with trail visualization
+   - Start/end position markers
 
-```
-column flight_logs.battery_full_capacity_mah does not exist
-```
+3. **New component: `FlightAnalysisTimeline.tsx`** — Synchronized analysis with:
+   - Draggable timeline scrubber with event markers (RTH, low battery, warnings)
+   - Info panel showing all values at current scrubber position
+   - Tabbed charts: Altitude, Speed (H+V), Battery/Voltage, GPS satellites, RC inputs, Gimbal, Distance from home, Wind
+   - Automatic tab visibility based on available data (graceful for old logs)
 
-The column `battery_full_capacity_mah` exists on the `equipment` table, not on `flight_logs`. The recent code change incorrectly added it to the `flight_logs` SELECT query, breaking the entire tab.
+4. **Integration**:
+   - `DroneLogbookDialog.tsx`: BarChart3 icon button on each flight log entry with track data
+   - `MissionDetailDialog.tsx`: Flight logs section with "Analyser" button per log
 
-## Root Cause
-
-The migration `20260313...` added `battery_full_capacity_mah` to the **`equipment`** table. The migration `20260224...` added `battery_temp_min_c`, `battery_temp_max_c`, `battery_voltage_min_v` to `flight_logs` -- but NOT `battery_full_capacity_mah`.
-
-## Fix
-
-### Option A: Remove the non-existent column from the query (quick fix)
-
-In `src/components/resources/EquipmentLogbookDialog.tsx`:
-- Remove `battery_full_capacity_mah` from the `fetchBatteryTrend` SELECT query
-- Remove `capacityMah` from the `BatteryTrendEntry` interface and all UI references to it
-- The capacity data can instead be shown from the equipment record itself (already displayed in `EquipmentDetailDialog`)
-
-### Option B: Add the column to `flight_logs` via migration
-
-- Create a migration: `ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_full_capacity_mah integer;`
-- Update the edge functions (`process-dronelog`, `dji-auto-sync`, `dji-process-single`) to write `battery_full_capacity_mah` to `flight_logs` when inserting/updating
-- This gives per-flight capacity tracking (capacity degradation over time)
-
-## Recommendation
-
-**Option B** is better long-term -- it enables tracking capacity degradation per flight, which is the intended use case. The fix involves:
-
-1. **Database migration**: Add `battery_full_capacity_mah` column to `flight_logs`
-2. **Edge function updates**: Write the capacity value when inserting flight logs (3 functions: `process-dronelog`, `dji-auto-sync`, `dji-process-single`)
-3. **No UI changes needed** -- the current `EquipmentLogbookDialog.tsx` code is already correct once the column exists
-
-### Files to modify
-- New migration SQL file
-- `supabase/functions/process-dronelog/index.ts` -- add capacity to INSERT
-- `supabase/functions/dji-auto-sync/index.ts` -- add capacity to INSERT
-- `supabase/functions/dji-process-single/index.ts` -- already parses `fullCapacity` but doesn't store it per-flight
-
+### Backward compatibility
+- Existing logs without extended telemetry show a warning badge "Begrenset telemetri"
+- New imports will automatically include all telemetry fields
+- No database migration needed — `flight_track` is JSONB
