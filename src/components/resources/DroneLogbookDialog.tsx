@@ -669,6 +669,14 @@ export const DroneLogbookDialog = ({
           </DialogContent>
         </Dialog>
       )}
+
+      <FlightAnalysisDialog
+        open={analysisOpen}
+        onOpenChange={setAnalysisOpen}
+        flightTrack={analysisTrack}
+        flightDate={analysisDate}
+        droneName={droneModell}
+      />
     </>
   );
 };
