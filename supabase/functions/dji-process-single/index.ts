@@ -102,7 +102,7 @@ function parseCsvMinimal(csvText: string) {
   }
   if (!startTime) startTime = normalizeDateToISO(get("CUSTOM.dateTime"));
 
-  const positions: Array<{ lat: number; lng: number; alt: number; height: number; timestamp: string }> = [];
+  const positions: Array<Record<string, any>> = [];
   const latIdx = findHeaderIndex(headers, "OSD.latitude");
   const lonIdx = findHeaderIndex(headers, "OSD.longitude");
   const altIdx = findHeaderIndex(headers, "OSD.altitude [m]");
