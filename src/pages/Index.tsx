@@ -323,7 +323,7 @@ const Index = () => {
             {t('auth.pendingDescription')}
           </p>
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => refreshAuthState(user.id, 'manual-retry')}>
+            <Button variant="outline" onClick={() => refetchUserInfo()}>
               {t('common.tryAgain', 'Prøv igjen')}
             </Button>
             <Button onClick={() => navigate("/auth")}>{t('auth.backToLogin')}</Button>
