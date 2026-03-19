@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
+import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
 import { BarChart3, AlertTriangle } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
