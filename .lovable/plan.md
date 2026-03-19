@@ -2,53 +2,44 @@
 
 ## Problem
 
-Battery analytics data is correctly fetched from the DroneLog API and stored in the `flight_logs` table. However, the **Equipment Logbook UI** ("Batteritrend" tab in `EquipmentLogbookDialog.tsx`) only displays **2 metrics** (cycles and health %) out of the **7+ available** in the database.
+The "Batteritrend" tab is blank for all batteries because the Supabase query returns a **400 error**:
 
-### Data already stored but not shown
+```
+column flight_logs.battery_full_capacity_mah does not exist
+```
 
-| DB Column | Description | Shown in UI? |
-|---|---|---|
-| `battery_cycles` | Charge cycles | Yes |
-| `battery_health_pct` | Health score % | Yes |
-| `battery_temp_min_c` | Min temperature | No |
-| `battery_temp_max_c` | Max temperature | No |
-| `battery_voltage_min_v` | Min voltage | No |
-| `battery_full_capacity_mah` | Full capacity mAh | No |
-| `dronelog_warnings` (cell_deviation) | Cell voltage deviation | No |
+The column `battery_full_capacity_mah` exists on the `equipment` table, not on `flight_logs`. The recent code change incorrectly added it to the `flight_logs` SELECT query, breaking the entire tab.
 
-### API field coverage vs docs
+## Root Cause
 
-All relevant `BATTERY.*` fields from `docs/dronelog-api-fields.md` are already requested. No missing fields.
+The migration `20260313...` added `battery_full_capacity_mah` to the **`equipment`** table. The migration `20260224...` added `battery_temp_min_c`, `battery_temp_max_c`, `battery_voltage_min_v` to `flight_logs` -- but NOT `battery_full_capacity_mah`.
 
----
+## Fix
 
-## Plan
+### Option A: Remove the non-existent column from the query (quick fix)
 
-### 1. Expand the `fetchBatteryTrend` query
+In `src/components/resources/EquipmentLogbookDialog.tsx`:
+- Remove `battery_full_capacity_mah` from the `fetchBatteryTrend` SELECT query
+- Remove `capacityMah` from the `BatteryTrendEntry` interface and all UI references to it
+- The capacity data can instead be shown from the equipment record itself (already displayed in `EquipmentDetailDialog`)
 
-Add the missing columns to the SELECT: `battery_temp_min_c`, `battery_temp_max_c`, `battery_voltage_min_v`, `battery_full_capacity_mah`.
+### Option B: Add the column to `flight_logs` via migration
 
-### 2. Redesign the Batteritrend tab
+- Create a migration: `ALTER TABLE flight_logs ADD COLUMN IF NOT EXISTS battery_full_capacity_mah integer;`
+- Update the edge functions (`process-dronelog`, `dji-auto-sync`, `dji-process-single`) to write `battery_full_capacity_mah` to `flight_logs` when inserting/updating
+- This gives per-flight capacity tracking (capacity degradation over time)
 
-Replace the current 2-card layout with a richer dashboard:
+## Recommendation
 
-- **Summary cards** (top row, 4 cards):
-  - Sykluser (current value + trend)
-  - Helse % (color-coded)
-  - Siste maks temperatur (color-coded: green < 40, yellow 40-50, red > 50)
-  - Min spenning (color-coded)
+**Option B** is better long-term -- it enables tracking capacity degradation per flight, which is the intended use case. The fix involves:
 
-- **Capacity card**: Show `battery_full_capacity_mah` trend (capacity degradation over time)
+1. **Database migration**: Add `battery_full_capacity_mah` column to `flight_logs`
+2. **Edge function updates**: Write the capacity value when inserting flight logs (3 functions: `process-dronelog`, `dji-auto-sync`, `dji-process-single`)
+3. **No UI changes needed** -- the current `EquipmentLogbookDialog.tsx` code is already correct once the column exists
 
-- **History table**: Expand each row to show date, cycles, health, temp range, min voltage, and capacity per flight
-
-### 3. File changes
-
-Only one file needs modification: `src/components/resources/EquipmentLogbookDialog.tsx`
-
-- Update `BatteryTrendEntry` interface to include new fields
-- Update `fetchBatteryTrend` query to select additional columns
-- Update the "battery" `TabsContent` to render the expanded cards and table
-
-No database changes needed — all data already exists.
+### Files to modify
+- New migration SQL file
+- `supabase/functions/process-dronelog/index.ts` -- add capacity to INSERT
+- `supabase/functions/dji-auto-sync/index.ts` -- add capacity to INSERT
+- `supabase/functions/dji-process-single/index.ts` -- already parses `fullCapacity` but doesn't store it per-flight
 
