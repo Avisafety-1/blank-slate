@@ -657,11 +657,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                     ))}
                   </div>
                 )}
-              </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="innlegg" className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(90vh-26rem)]">
+            <TabsContent value="innlegg" className="mt-2">
                 {personnelLogs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Edit className="w-12 h-12 text-muted-foreground/50 mb-3" />
