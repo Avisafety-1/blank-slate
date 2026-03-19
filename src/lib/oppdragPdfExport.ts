@@ -100,7 +100,7 @@ export const exportToPDF = async (
     pdf.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, headerY + 20, { align: "center" });
     pdf.setTextColor(0);
     
-    let yPos = 50;
+    let yPos = headerY + 28;
     
     // Add map snapshot
     if (sections.map) {
