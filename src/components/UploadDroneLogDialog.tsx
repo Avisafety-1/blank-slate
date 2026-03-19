@@ -223,6 +223,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
   const [bulkProgress, setBulkProgress] = useState(0);
+  const [highResImport, setHighResImport] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
