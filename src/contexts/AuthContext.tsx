@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
+import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
