@@ -9,6 +9,7 @@ import {
 import { 
   Mountain, Gauge, Battery, Radio, Gamepad2, Wind, Satellite, Navigation
 } from "lucide-react";
+import { StickWidget } from "./StickWidget";
 
 interface TelemetryPoint {
   lat: number; lng: number; alt: number; height: number; timestamp: string;
@@ -192,7 +193,26 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
           </MiniChart>
         </TabsContent>
 
-        <TabsContent value="rc" className="mt-2">
+        <TabsContent value="rc" className="mt-2 space-y-3">
+          {/* Visual DJI stick widgets */}
+          {current && (
+            <div className="flex items-center justify-center gap-6">
+              <StickWidget
+                x={current.rcRudder ?? 0}
+                y={current.rcThrottle ?? 0}
+                label="Venstre stikke"
+                xLabel="Rudder"
+                yLabel="Throttle"
+              />
+              <StickWidget
+                x={current.rcAileron ?? 0}
+                y={current.rcElevator ?? 0}
+                label="Høyre stikke"
+                xLabel="Aileron"
+                yLabel="Elevator"
+              />
+            </div>
+          )}
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
             <Line type="monotone" dataKey="rcElevator" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name="Elevator" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="rcAileron" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="Aileron" dot={false} isAnimationActive={false} />

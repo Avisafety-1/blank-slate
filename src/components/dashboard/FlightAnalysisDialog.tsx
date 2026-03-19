@@ -80,7 +80,17 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
     mapRef.current = map;
 
+    // Fix: invalidateSize after dialog animation completes
+    setTimeout(() => map.invalidateSize(), 300);
+    setTimeout(() => map.invalidateSize(), 600);
+
+    // ResizeObserver for robustness
+    const container = mapContainerRef.current;
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(container);
+
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       droneMarkerRef.current = null;
