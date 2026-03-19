@@ -132,6 +132,8 @@ export const DroneLogbookDialog = ({
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             badgeText: 'Flytur',
+            flightTrack: log.flight_track,
+            flightDate: log.flight_date,
           });
         });
       }
