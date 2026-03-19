@@ -14,6 +14,10 @@ const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
   "OSD.goHomeStatus",
+  // Advanced analysis fields
+  "OSD.vSpeed [m/s]","OSD.pitch [°]","OSD.roll [°]","OSD.directionYaw [°]",
+  "OSD.xSpeed [m/s]","OSD.ySpeed [m/s]","OSD.groundOrSky","OSD.gpsLevel",
+  "OSD.isMotorUp","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
   "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
   "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
@@ -21,11 +25,20 @@ const FIELDS = [
   // API-native cell deviation fields (supports up to 14 cells)
   "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
   "BATTERY.goHomeStatus",
+  // RC inputs
+  "RC.aileron","RC.elevator","RC.rudder","RC.throttle",
+  // Gimbal
+  "GIMBAL.pitch [°]","GIMBAL.roll [°]","GIMBAL.yaw [°]",
+  // Calculated fields
+  "CALC.distance2D [m]","CALC.distance3D [m]","CALC.currentElevation [m]",
+  // Home position
+  "HOME.latitude","HOME.longitude","HOME.maxAllowedHeight [m]","HOME.goHomeStatus",
+  // Weather
+  "WEATHER.temperature [°C]","WEATHER.windDirection [°]","WEATHER.windSpeed [m/s]",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
-  "HOME.goHomeStatus",
   "APP.warn",
 ].join(",");
 
