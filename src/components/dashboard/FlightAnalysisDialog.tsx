@@ -45,57 +45,75 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     [positions]
   );
 
-  // Initialize map
+  // Initialize map — wait until container has real dimensions
   useEffect(() => {
     if (!open || !mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: mapCenter,
-      zoom: 15,
-      zoomControl: false,
-      attributionControl: false,
-    });
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-
-    // Full track (faded)
-    if (polylinePositions.length > 1) {
-      fullLineRef.current = L.polyline(polylinePositions, { color: "hsl(210, 80%, 50%)", weight: 2, opacity: 0.3 }).addTo(map);
-      map.fitBounds(fullLineRef.current.getBounds(), { padding: [30, 30] });
-    }
-
-    // Start marker
-    if (positions.length > 0) {
-      startMarkerRef.current = L.circleMarker([positions[0].lat, positions[0].lng], {
-        radius: 5, color: "hsl(142, 76%, 36%)", fillColor: "hsl(142, 76%, 36%)", fillOpacity: 1,
-      }).addTo(map);
-    }
-
-    // End marker
-    if (positions.length > 1) {
-      const last = positions[positions.length - 1];
-      endMarkerRef.current = L.circleMarker([last.lat, last.lng], {
-        radius: 5, color: "hsl(0, 84%, 60%)", fillColor: "hsl(0, 84%, 60%)", fillOpacity: 1,
-      }).addTo(map);
-    }
-
-    mapRef.current = map;
-
-    // Fix: invalidateSize after dialog animation completes (guard against unmount)
-    const t1 = setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 300);
-    const t2 = setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 600);
-
-    // ResizeObserver for robustness
     const container = mapContainerRef.current;
-    const ro = new ResizeObserver(() => { if (mapRef.current) map.invalidateSize(); });
+
+    const initMap = () => {
+      if (!container || mapRef.current) return;
+      // Ensure container has dimensions before initializing
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
+
+      const map = L.map(container, {
+        center: mapCenter,
+        zoom: 15,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+
+      // Full track (faded)
+      if (polylinePositions.length > 1) {
+        fullLineRef.current = L.polyline(polylinePositions, { color: "hsl(210, 80%, 50%)", weight: 2, opacity: 0.3 }).addTo(map);
+        map.fitBounds(fullLineRef.current.getBounds(), { padding: [30, 30] });
+      }
+
+      // Start marker
+      if (positions.length > 0) {
+        startMarkerRef.current = L.circleMarker([positions[0].lat, positions[0].lng], {
+          radius: 5, color: "hsl(142, 76%, 36%)", fillColor: "hsl(142, 76%, 36%)", fillOpacity: 1,
+        }).addTo(map);
+      }
+
+      // End marker
+      if (positions.length > 1) {
+        const last = positions[positions.length - 1];
+        endMarkerRef.current = L.circleMarker([last.lat, last.lng], {
+          radius: 5, color: "hsl(0, 84%, 60%)", fillColor: "hsl(0, 84%, 60%)", fillOpacity: 1,
+        }).addTo(map);
+      }
+
+      mapRef.current = map;
+
+      // Extra invalidateSize calls for safety
+      setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 100);
+      setTimeout(() => { if (mapRef.current) map.invalidateSize(); }, 400);
+    };
+
+    // Use ResizeObserver to detect when container gets real dimensions
+    const ro = new ResizeObserver(() => {
+      if (!mapRef.current && container.clientWidth > 0 && container.clientHeight > 0) {
+        initMap();
+      }
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
     ro.observe(container);
 
+    // Also try after a short delay (fallback)
+    const fallback = setTimeout(initMap, 350);
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      clearTimeout(fallback);
       ro.disconnect();
-      map.remove();
-      mapRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
       droneMarkerRef.current = null;
       trailLineRef.current = null;
       fullLineRef.current = null;
