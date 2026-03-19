@@ -26,8 +26,10 @@ import {
   FileText,
   ImagePlus,
   X,
-  ZoomIn
+  ZoomIn,
+  BarChart3,
 } from "lucide-react";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
