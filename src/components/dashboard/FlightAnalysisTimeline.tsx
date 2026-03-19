@@ -9,6 +9,7 @@ import {
 import { 
   Mountain, Gauge, Battery, Radio, Gamepad2, Wind, Satellite, Navigation
 } from "lucide-react";
+import { StickWidget } from "./StickWidget";
 
 interface TelemetryPoint {
   lat: number; lng: number; alt: number; height: number; timestamp: string;
