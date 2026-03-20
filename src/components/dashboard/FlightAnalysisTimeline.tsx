@@ -69,6 +69,7 @@ const hasData = (positions: TelemetryPoint[], key: keyof TelemetryPoint) =>
 
 export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true }: FlightAnalysisTimelineProps) => {
   const [activeChart, setActiveChart] = useState("altitude");
+  const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
   const isDualBattery = useMemo(() => hasData(positions, 'battery1'), [positions]);
 
@@ -84,17 +85,17 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       { id: "altitude", label: "Høyde", icon: Mountain, always: true },
       { id: "speed", label: "Hastighet", icon: Gauge, key: "speed" as keyof TelemetryPoint },
       { id: "battery", label: "Batteri", icon: Battery, key: "battery" as keyof TelemetryPoint },
-      { id: "batteryInfo", label: "Batt.info", icon: Thermometer, key: "temp" as keyof TelemetryPoint },
       { id: "gps", label: "GPS", icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
       { id: "rc", label: "RC", icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
       { id: "gimbal", label: "Gimbal", icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
       { id: "distance", label: "Avstand", icon: Radio, key: "dist2D" as keyof TelemetryPoint },
       { id: "wind", label: "Vind", icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
     ];
-    // Also show batteryInfo if we have voltage or current data
     const result = tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
-    // Add batteryInfo if we have voltage/current/temp even if temp is missing
-    if (!result.find(t => t.id === 'batteryInfo') && (hasData(positions, 'voltage') || hasData(positions, 'current'))) {
+    // Add batteryInfo if ANY battery detail field exists
+    const hasBattInfo = ['temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
+      .some(k => hasData(positions, k as keyof TelemetryPoint));
+    if (hasBattInfo) {
       const battIdx = result.findIndex(t => t.id === 'battery');
       result.splice(battIdx + 1, 0, { id: "batteryInfo", label: "Batt.info", icon: Thermometer, custom: true });
     }
@@ -317,10 +318,10 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               ) : (
                 eventIndices.map((e, i) => {
                   const time = formatTime(e.index, positions);
-                  const isActive = currentIndex === e.index;
-                  const color = e.type === 'RTH' || e.type === 'app_warning_critical'
-                    ? 'text-destructive'
-                    : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
+                      const isActive = selectedEventIdx === i;
+                      const color = e.type === 'RTH' || e.type === 'app_warning_critical'
+                        ? 'text-destructive'
+                        : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
                     ? 'text-amber-600 dark:text-amber-400'
                     : 'text-orange-600 dark:text-orange-400';
                   return (
@@ -328,7 +329,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                       key={i}
                       type="button"
                       className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-start gap-2 transition-colors hover:bg-accent/15 ${isActive ? 'bg-accent/20 ring-1 ring-primary/30' : ''}`}
-                      onClick={() => onIndexChange(e.index)}
+                      onClick={() => { onIndexChange(e.index); setSelectedEventIdx(i); }}
                     >
                       <span className="font-mono text-muted-foreground shrink-0 mt-0.5 tabular-nums">{time}</span>
                       <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${color}`} />
