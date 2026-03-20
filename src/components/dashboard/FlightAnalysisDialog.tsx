@@ -191,8 +191,8 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     } else {
       const icon = L.icon({
         iconUrl: droneAnimatedIcon,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
         className: 'drone-analysis-marker',
       });
       droneMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(map);
