@@ -116,6 +116,9 @@ export const NewsSection = () => {
             className="p-3 sm:p-4 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer flex-shrink-0 w-[280px] sm:w-[320px]"
           >
             <div className="flex items-start gap-1.5 sm:gap-2">
+              {news.visible_to_children && news.company_id !== companyId && (
+                <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+              )}
               {news.pin_on_top && (
                 <Pin className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0 mt-0.5" />
               )}

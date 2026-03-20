@@ -30,6 +30,22 @@ export const DocumentUploadDialog = ({
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
   
   const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+
+  // Check if current company is a parent company
+  useEffect(() => {
+    if (!companyId) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
