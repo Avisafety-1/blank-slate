@@ -230,6 +230,16 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
 
         {/* Battery info tab — temp, current, voltage graphs */}
         <TabsContent value="batteryInfo" className="mt-2 space-y-2">
+          {/* Battery summary from flight log */}
+          {batterySummary && (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] sm:text-xs">
+              {batterySummary.cycles != null && <InfoCell label="Sykluser" value={`${batterySummary.cycles}`} />}
+              {batterySummary.healthPct != null && <InfoCell label="Helse" value={`${batterySummary.healthPct}%`} />}
+              {batterySummary.fullCapacityMah != null && <InfoCell label="Kapasitet" value={`${batterySummary.fullCapacityMah} mAh`} />}
+              {batterySummary.voltageMinV != null && <InfoCell label="Min spenning" value={`${batterySummary.voltageMinV.toFixed(2)} V`} />}
+              {batterySummary.tempMaxC != null && <InfoCell label="Maks temp" value={`${batterySummary.tempMaxC}°C`} />}
+            </div>
+          )}
           {/* Temperature chart */}
           {(hasData(positions, 'temp') || hasData(positions, 'temp1') || hasData(positions, 'temp2')) && (
             <div>
