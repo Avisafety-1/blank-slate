@@ -361,6 +361,23 @@ function parseCsvToResult(csvText: string) {
       if (battTemp < minBattTemp) minBattTemp = battTemp;
     }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
+
+    // Dual-battery tracking
+    if (isDualBattery) {
+      const b1v = batt1VoltIdx >= 0 ? parseFloat(cols[batt1VoltIdx]) : NaN;
+      const b2v = batt2VoltIdx >= 0 ? parseFloat(cols[batt2VoltIdx]) : NaN;
+      const b1t = batt1TempIdx >= 0 ? parseFloat(cols[batt1TempIdx]) : NaN;
+      const b2t = batt2TempIdx >= 0 ? parseFloat(cols[batt2TempIdx]) : NaN;
+      if (!isNaN(b1v) && b1v > 0 && b1v < minBatt1Volt) minBatt1Volt = b1v;
+      if (!isNaN(b2v) && b2v > 0 && b2v < minBatt2Volt) minBatt2Volt = b2v;
+      if (!isNaN(b1t) && b1t > maxBatt1Temp) maxBatt1Temp = b1t;
+      if (!isNaN(b2t) && b2t > maxBatt2Temp) maxBatt2Temp = b2t;
+      const b1cd = batt1CellDevIdx >= 0 ? parseFloat(cols[batt1CellDevIdx]) : NaN;
+      const b2cd = batt2CellDevIdx >= 0 ? parseFloat(cols[batt2CellDevIdx]) : NaN;
+      if (!isNaN(b1cd) && b1cd > maxBatt1CellDev) maxBatt1CellDev = b1cd;
+      if (!isNaN(b2cd) && b2cd > maxBatt2CellDev) maxBatt2CellDev = b2cd;
+    }
+
     // Cell deviation: prefer API-native field, fallback to manual from cellVoltage1-6
     const apiCellDev = cellDevIdx >= 0 ? parseFloat(cols[cellDevIdx]) : NaN;
     if (!isNaN(apiCellDev) && apiCellDev > maxBattCellDev) {
