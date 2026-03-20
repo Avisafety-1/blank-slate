@@ -23,10 +23,7 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
 
   const filteredEquipment = useMemo(() => {
     if (!statusFilter) return equipment;
-    return equipment.filter(e => {
-      const s = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
-      return s === statusFilter;
-    });
+    return equipment.filter(e => e.status === statusFilter);
   }, [equipment, statusFilter]);
 
   const handleEquipmentClick = (item: any) => {
