@@ -69,8 +69,9 @@ const ChartTooltip = ({ active, payload }: any) => {
 const hasData = (positions: TelemetryPoint[], key: keyof TelemetryPoint) =>
   positions.some(p => p[key] !== undefined && p[key] !== null);
 
-export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true }: FlightAnalysisTimelineProps) => {
+export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true, batterySummary }: FlightAnalysisTimelineProps) => {
   const [activeChart, setActiveChart] = useState("altitude");
+  const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
   const isDualBattery = useMemo(() => hasData(positions, 'battery1'), [positions]);
