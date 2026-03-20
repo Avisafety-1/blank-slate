@@ -223,6 +223,14 @@ function parseCsvToResult(csvText: string) {
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
   const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
   const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
+  // BATTERY.maxTemperature/minTemperature summary fields (constant per flight)
+  const battSummaryMaxTemp = battMaxTempIdx >= 0 ? parseFloat(firstRow[battMaxTempIdx]) : NaN;
+  const battSummaryMinTemp = battMinTempIdx >= 0 ? parseFloat(firstRow[battMinTempIdx]) : NaN;
+  // Dual-battery metadata from first row
+  const battery1Cycles = batt1CyclesIdx >= 0 ? parseInt(firstRow[batt1CyclesIdx]) : NaN;
+  const battery2Cycles = batt2CyclesIdx >= 0 ? parseInt(firstRow[batt2CyclesIdx]) : NaN;
+  const battery1FullCap = batt1FullCapIdx >= 0 ? parseFloat(firstRow[batt1FullCapIdx]) : NaN;
+  const battery2FullCap = batt2FullCapIdx >= 0 ? parseFloat(firstRow[batt2FullCapIdx]) : NaN;
   const sha256Hash = detSha256Idx >= 0 ? firstRow[detSha256Idx] : "";
   const guid = detGuidIdx >= 0 ? firstRow[detGuidIdx] : "";
 
