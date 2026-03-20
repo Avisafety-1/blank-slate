@@ -792,7 +792,7 @@ export const EquipmentLogbookDialog = ({
                           {batteryTrend.slice().reverse().map((entry, idx) => (
                             <div key={idx} className="border rounded-md px-3 py-2 text-sm">
                               {/* Desktop layout */}
-                              <div className="hidden sm:grid sm:grid-cols-6 gap-2 items-center">
+                              <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
                                 <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
                                 <span className={entry.health != null ? (entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
@@ -805,6 +805,9 @@ export const EquipmentLogbookDialog = ({
                                 </span>
                                 <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
+                                </span>
+                                <span className={entry.cellDeviation != null ? (entry.cellDeviation > 0.1 ? 'text-destructive' : entry.cellDeviation > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                  {entry.cellDeviation != null ? `${entry.cellDeviation.toFixed(3)}V` : '—'}
                                 </span>
                                 <span>{entry.capacityMah != null ? `${entry.capacityMah} mAh` : '—'}</span>
                               </div>
