@@ -592,7 +592,10 @@ export const EquipmentLogbookDialog = ({
                     <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
                   </div>
                 </div>
-              )}
+            )}
+
+            {activeTab !== 'battery' && (
+            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-0 overflow-y-auto">
               <div className="overflow-y-auto flex-1 min-h-0 pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
