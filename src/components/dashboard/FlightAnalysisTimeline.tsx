@@ -329,7 +329,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                       key={i}
                       type="button"
                       className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-start gap-2 transition-colors hover:bg-accent/15 ${isActive ? 'bg-accent/20 ring-1 ring-primary/30' : ''}`}
-                      onClick={() => onIndexChange(e.index)}
+                      onClick={() => { onIndexChange(e.index); setSelectedEventIdx(i); }}
                     >
                       <span className="font-mono text-muted-foreground shrink-0 mt-0.5 tabular-nums">{time}</span>
                       <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${color}`} />
