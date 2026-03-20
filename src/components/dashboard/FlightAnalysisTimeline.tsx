@@ -186,8 +186,19 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
 
         <TabsContent value="battery" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
-            <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri %" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning V" dot={false} isAnimationActive={false} yAxisId="right" />
+            {isDualBattery ? (
+              <>
+                <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri 1 %" dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="battery2" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Batteri 2 %" dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="voltage1" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning 1 V" dot={false} isAnimationActive={false} yAxisId="right" />
+                <Line type="monotone" dataKey="voltage2" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name="Spenning 2 V" dot={false} isAnimationActive={false} yAxisId="right" />
+              </>
+            ) : (
+              <>
+                <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri %" dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning V" dot={false} isAnimationActive={false} yAxisId="right" />
+              </>
+            )}
           </MiniChart>
         </TabsContent>
 
