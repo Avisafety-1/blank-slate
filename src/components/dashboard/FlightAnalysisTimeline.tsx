@@ -8,8 +8,9 @@ import {
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { 
-  Mountain, Gauge, Battery, Radio, Gamepad2, Wind, Satellite, Navigation
+  Mountain, Gauge, Battery, Radio, Gamepad2, Wind, Satellite, Navigation, AlertTriangle, Thermometer
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { StickWidget } from "./StickWidget";
 
 interface TelemetryPoint {
