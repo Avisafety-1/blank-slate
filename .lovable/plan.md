@@ -1,54 +1,71 @@
 
 
-## Problem Analysis
+## Plan: Synlighet for avdelinger — Nyheter og Dokumenter
 
-When the PWA resumes from background, the following race condition occurs:
+### Hva skal bygges
+Moderselskap (selskaper med underavdelinger) skal kunne velge å dele nyheter og dokumenter nedover i hierarkiet til alle sine avdelinger/underselskaper.
 
-1. The visibility change handler fires `refreshAuthState`
-2. During this refresh, if the profile query is slow or fails partially, the code builds a fresh `profileData` object with `isApproved: false` as the default
-3. This overwrites the previously valid cached state where `isApproved: true`
-4. The UI immediately shows "Avventer godkjenning" and the user is stuck
-5. Only a hard reload or logout/login resolves it because that re-runs the full auth flow
+### Database-endringer
 
-The root cause: `refreshAuthState` resets `isApproved` to `false` in its default `profileData` object (line 430), and if the profile query returns but `approved` is somehow null, or if there's a partial failure, the user gets locked out. Additionally, the `AuthenticatedLayout` in `App.tsx` (line 103) and `Index.tsx` (line 312) both gate on `isApproved` without considering whether a refresh is in progress.
-
-## Plan
-
-### 1. Preserve previous `isApproved` during refresh (AuthContext.tsx)
-
-Change the default `profileData` initialization to use the current state values instead of `false` defaults. If the fresh data comes back successfully, it overwrites. If queries fail, the previous valid state is preserved.
-
-```
-// Before
-let profileData: CachedProfile = {
-  ...
-  isApproved: false,
-  ...
-};
-
-// After
-let profileData: CachedProfile = {
-  ...
-  isApproved: isApproved, // preserve current state as fallback
-  ...
-};
+**1. Ny kolonne på `news`-tabellen:**
+```sql
+ALTER TABLE public.news ADD COLUMN visible_to_children boolean DEFAULT false;
 ```
 
-Apply the same pattern for `userRole`, `isAdmin`, `isSuperAdmin` so they don't reset to defaults during transient failures.
+**2. Ny kolonne på `documents`-tabellen:**
+```sql
+ALTER TABLE public.documents ADD COLUMN visible_to_children boolean DEFAULT false;
+```
 
-### 2. Guard "Avventer godkjenning" screen during auth refresh (Index.tsx + App.tsx)
+**3. Oppdater RLS-policyer:**
 
-Add `authRefreshing` to the approval check so the pending-approval screen is never shown while a refresh is in progress:
+For `news` SELECT: Utvid eksisterende policy slik at avdelinger også ser nyheter fra morselskapet der `visible_to_children = true`:
+```sql
+-- Brukere ser nyheter fra eget selskap ELLER fra morselskapet hvis visible_to_children
+CREATE POLICY "Users can view news from own company" ON news FOR SELECT USING (
+  company_id = ANY(get_user_visible_company_ids(auth.uid()))
+  OR (
+    visible_to_children = true 
+    AND company_id = get_parent_company_id(
+      (SELECT company_id FROM profiles WHERE id = auth.uid())
+    )
+  )
+);
+```
 
-- **Index.tsx line 312**: Change `if (!isApproved && !isOfflineWithCachedSession)` to also check `!authRefreshing`
-- **App.tsx line 103**: Already has some guards but add `authRefreshing` check alongside `isApproved`
+For `documents` SELECT: Tilsvarende utvidelse, i tillegg til eksisterende `global_visibility`-logikk.
 
-### 3. Add pull-to-refresh / retry on the pending approval screen (Index.tsx)
+### UI-endringer
 
-Add a "Prøv igjen" (Retry) button on the pending approval screen that calls `refreshAuthState` instead of only offering "Tilbake til innlogging". This gives PWA users a way to recover without leaving the app.
+**4. AddNewsDialog.tsx:**
+- Sjekk om brukerens selskap er et moderselskap (har underavdelinger) ved å spørre `companies` med `parent_company_id = companyId`
+- Hvis ja: Vis en checkbox/switch "Synlig for alle avdelinger"
+- Lagre som `visible_to_children: true` på insert/update
 
-### Files to modify
-- `src/contexts/AuthContext.tsx` — preserve state defaults during refresh
-- `src/pages/Index.tsx` — guard approval screen during refresh, add retry button
-- `src/App.tsx` — guard AuthenticatedLayout approval check during refresh
+**5. DocumentUploadDialog.tsx:**
+- Samme logikk: Sjekk om selskapet har underavdelinger
+- Vis "Synlig for alle avdelinger"-switch (i tillegg til eksisterende superadmin "Synlig for alle selskaper"-switch)
+- Lagre som `visible_to_children: true`
+
+**6. NewsSection.tsx / DocumentSection.tsx:**
+- Avdelinger som henter nyheter/dokumenter vil automatisk se morselskap-delte elementer via oppdatert RLS
+- Vis et lite badge (f.eks. Building2-ikon) på elementer som kommer fra morselskapet, slik det allerede gjøres for avdelingsdata andre steder
+
+### Teknisk detalj: Sjekke om selskap er moderselskap
+Gjenbruke et enkelt query i dialogen:
+```typescript
+const { data: children } = await supabase
+  .from('companies')
+  .select('id')
+  .eq('parent_company_id', companyId)
+  .limit(1);
+const isParentCompany = (children?.length ?? 0) > 0;
+```
+
+### Filer som endres
+- **Migration** (ny): Legg til kolonner + oppdater RLS
+- `src/components/dashboard/AddNewsDialog.tsx` — checkbox for visible_to_children
+- `src/components/documents/DocumentUploadDialog.tsx` — switch for visible_to_children
+- `src/components/dashboard/NewsSection.tsx` — badge for delte nyheter fra morselskap
+- `src/components/dashboard/DocumentSection.tsx` — badge for delte dokumenter fra morselskap
 
