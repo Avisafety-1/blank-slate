@@ -15,6 +15,7 @@ export interface BatterySummary {
   fullCapacityMah: number | null;
   voltageMinV: number | null;
   tempMaxC: number | null;
+  cellDeviationV: number | null;
 }
 
 interface FlightAnalysisDialogProps {
