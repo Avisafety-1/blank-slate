@@ -698,6 +698,8 @@ export const EquipmentLogbookDialog = ({
                     const latestTempMax = latest?.tempMax;
                     const latestVoltageMin = latest?.voltageMin;
                     const latestCapacity = latest?.capacityMah;
+                    const latestCellDev = latest?.cellDeviation;
+                    const cellDevColor = latestCellDev == null ? '' : latestCellDev > 0.1 ? 'text-destructive' : latestCellDev > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
                     const firstCapacity = first?.capacityMah;
 
                     const healthColor = latestHealth < 60 ? 'text-destructive' : latestHealth < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
