@@ -189,13 +189,13 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     if (droneMarkerRef.current) {
       droneMarkerRef.current.setLatLng(pos);
     } else {
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:20px;height:20px;background:hsl(210,80%,50%);border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
+      const icon = L.icon({
+        iconUrl: droneAnimatedIcon,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        className: 'drone-analysis-marker',
       });
-      droneMarkerRef.current = L.marker(pos, { icon }).addTo(map);
+      droneMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(map);
     }
 
     // Trail
