@@ -748,6 +748,17 @@ export const EquipmentLogbookDialog = ({
                               </p>
                             )}
                           </div>
+                          {latestCellDev != null && (
+                            <div className="border rounded-lg p-3 bg-card">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Celleavvik</p>
+                              <p className={`text-lg font-bold ${cellDevColor}`}>
+                                {latestCellDev.toFixed(3)}V
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {latestCellDev > 0.1 ? 'Høyt' : latestCellDev > 0.05 ? 'Moderat' : 'OK'}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Capacity degradation trend */}
