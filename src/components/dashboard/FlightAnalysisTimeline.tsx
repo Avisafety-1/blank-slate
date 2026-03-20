@@ -180,7 +180,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
         </TabsList>
 
         <TabsContent value="altitude" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Area type="monotone" dataKey="elevation" stroke="#8B7355" fill="#8B7355" fillOpacity={0.3} strokeWidth={1} name="Terreng" dot={false} isAnimationActive={false} />
             <Area type="monotone" dataKey="alt" stroke="hsl(210 80% 50%)" fill="hsl(210 80% 50%)" fillOpacity={0.1} strokeWidth={2} name="MSL" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="height" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="AGL" dot={false} isAnimationActive={false} />
@@ -188,14 +188,14 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
         </TabsContent>
 
         <TabsContent value="speed" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="monotone" dataKey="speed" stroke="hsl(210 80% 50%)" strokeWidth={2} name="H.hastighet" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="vSpeed" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="V.hastighet" dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="battery" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             {isDualBattery ? (
               <>
                 <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri 1 %" dot={false} isAnimationActive={false} />
@@ -213,7 +213,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
         </TabsContent>
 
         <TabsContent value="gps" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="stepAfter" dataKey="gpsNum" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Satellitter" dot={false} isAnimationActive={false} />
             <ReferenceLine y={6} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: "Min 6", fill: "hsl(var(--destructive))", fontSize: 10 }} />
           </MiniChart>
@@ -239,7 +239,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               />
             </div>
           )}
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="monotone" dataKey="rcElevator" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name="Elevator" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="rcAileron" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="Aileron" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="rcThrottle" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Throttle" dot={false} isAnimationActive={false} />
@@ -248,21 +248,21 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
         </TabsContent>
 
         <TabsContent value="gimbal" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="monotone" dataKey="gimbalPitch" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Tilt" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="gimbalYaw" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Pan" dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="distance" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="monotone" dataKey="dist2D" stroke="hsl(210 80% 50%)" strokeWidth={2} name="2D avstand" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="dist3D" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name="3D avstand" dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="wind" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={eventIndices}>
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="monotone" dataKey="windSpeed" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Vindstyrke m/s" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="windDir" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Retning °" dot={false} isAnimationActive={false} yAxisId="right" />
           </MiniChart>
