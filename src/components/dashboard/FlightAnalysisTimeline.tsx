@@ -32,6 +32,7 @@ interface FlightAnalysisTimelineProps {
   currentIndex: number;
   onIndexChange: (index: number) => void;
   events?: Array<{ type: string; message: string; t_offset_ms: number | null }>;
+  showWarnings?: boolean;
 }
 
 const formatTime = (idx: number, positions: TelemetryPoint[]) => {
