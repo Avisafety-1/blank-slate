@@ -111,8 +111,8 @@ export const DocumentUploadDialog = ({
         company_id: companyId,
         user_id: user.id,
         global_visibility: isSuperadmin ? globalVisibility : false,
+        visible_to_children: isParentCompany ? visibleToChildren : false,
       });
-
       if (insertError) throw insertError;
 
       toast.success("Dokument lastet opp");
