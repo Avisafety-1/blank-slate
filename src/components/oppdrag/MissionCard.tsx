@@ -774,6 +774,12 @@ export const MissionCard = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <FlightAnalysisDialog
+      open={analysisOpen}
+      onOpenChange={setAnalysisOpen}
+      flightTrack={analysisTrack}
+      droneName={mission.tittel}
+    />
     </>
   );
 };
