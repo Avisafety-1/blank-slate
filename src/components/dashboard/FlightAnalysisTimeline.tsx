@@ -21,6 +21,9 @@ interface TelemetryPoint {
   dist2D?: number; dist3D?: number; elevation?: number;
   flycState?: string; groundOrSky?: string;
   windSpeed?: number; windDir?: number;
+  // Dual-battery fields
+  battery1?: number; voltage1?: number; current1?: number; temp1?: number;
+  battery2?: number; voltage2?: number; current2?: number; temp2?: number;
 }
 
 interface FlightAnalysisTimelineProps {
