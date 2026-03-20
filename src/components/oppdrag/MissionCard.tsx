@@ -31,6 +31,7 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import {
   statusColors,
   incidentSeverityColors,
