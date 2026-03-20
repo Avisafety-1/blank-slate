@@ -80,18 +80,30 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
   const current = positions[currentIndex];
 
   const availableTabs = useMemo(() => {
-    const tabs = [
+    const tabs: Array<{ id: string; label: string; icon: any; always?: boolean; key?: keyof TelemetryPoint; custom?: boolean }> = [
       { id: "altitude", label: "Høyde", icon: Mountain, always: true },
       { id: "speed", label: "Hastighet", icon: Gauge, key: "speed" as keyof TelemetryPoint },
       { id: "battery", label: "Batteri", icon: Battery, key: "battery" as keyof TelemetryPoint },
+      { id: "batteryInfo", label: "Batt.info", icon: Thermometer, key: "temp" as keyof TelemetryPoint },
       { id: "gps", label: "GPS", icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
       { id: "rc", label: "RC", icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
       { id: "gimbal", label: "Gimbal", icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
       { id: "distance", label: "Avstand", icon: Radio, key: "dist2D" as keyof TelemetryPoint },
       { id: "wind", label: "Vind", icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
     ];
-    return tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
-  }, [positions]);
+    // Also show batteryInfo if we have voltage or current data
+    const result = tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
+    // Add batteryInfo if we have voltage/current/temp even if temp is missing
+    if (!result.find(t => t.id === 'batteryInfo') && (hasData(positions, 'voltage') || hasData(positions, 'current'))) {
+      const battIdx = result.findIndex(t => t.id === 'battery');
+      result.splice(battIdx + 1, 0, { id: "batteryInfo", label: "Batt.info", icon: Thermometer, custom: true });
+    }
+    // Add warnings tab if events exist
+    if (events && events.length > 0) {
+      result.push({ id: "warnings", label: "Varsler", icon: AlertTriangle, custom: true });
+    }
+    return result;
+  }, [positions, events]);
 
   const eventIndices = useMemo(() => {
     if (!events?.length || !positions.length) return [];
