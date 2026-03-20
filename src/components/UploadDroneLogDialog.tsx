@@ -1783,13 +1783,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     );
   };
 
-  const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number }>) => {
+  const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number; severity?: string }>) => {
     if (warnings.length === 0 || (!selectedDroneId && selectedEquipment.length === 0)) return null;
+
+    const actionableWarnings = warnings.filter(w => (w as any).severity !== 'info');
+    const infoWarnings = warnings.filter(w => (w as any).severity === 'info');
 
     return (
       <div className="space-y-2">
-        {warnings.map((w, i) => {
-          const action = warningActions[i] || { saveToLog: false, newStatus: 'Grønn', targetLogbooks: [] };
+        {actionableWarnings.map((w, i) => {
+          // Find original index for warningActions mapping
+          const origIdx = warnings.indexOf(w);
+          const action = warningActions[origIdx] || { saveToLog: false, newStatus: 'Grønn', targetLogbooks: [] };
           // Build available logbook targets
           const availableTargets: Array<{ key: string; label: string; icon: React.ReactNode }> = [];
           if (selectedDroneId) {
