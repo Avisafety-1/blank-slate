@@ -391,18 +391,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
           {/* Map overlay controls — top left */}
           {mapReady && (
-            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5">
-              {events.length > 0 && (
-                <Button
-                  size="icon"
-                  variant={showWarnings ? "default" : "secondary"}
-                  className="h-8 w-8 rounded-lg shadow-md"
-                  onClick={() => setShowWarnings(v => !v)}
-                  title="Vis advarsler på kart"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                </Button>
-              )}
+            <div className="absolute top-2 left-2 z-10 flex gap-1.5">
               {hasSpeedData && (
                 <Button
                   size="icon"
@@ -412,6 +401,17 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   title="Fargelegg rute etter hastighet"
                 >
                   <Gauge className="w-4 h-4" />
+                </Button>
+              )}
+              {events.length > 0 && (
+                <Button
+                  size="icon"
+                  variant={showWarnings ? "default" : "secondary"}
+                  className="h-8 w-8 rounded-lg shadow-md"
+                  onClick={() => setShowWarnings(v => !v)}
+                  title="Vis advarsler på kart"
+                >
+                  <AlertTriangle className="w-4 h-4" />
                 </Button>
               )}
             </div>
