@@ -117,11 +117,30 @@ export const DroneLogbookDialog = ({
         .order("flight_date", { ascending: false });
 
       if (flightLogs) {
+        const flightLogIds = flightLogs.map(f => f.id);
         const userIds = [...new Set(flightLogs.map(f => f.user_id))];
-        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+
+        const [{ data: profiles }, { data: flightEvents }] = await Promise.all([
+          supabase.from("profiles").select("id, full_name").in("id", userIds),
+          flightLogIds.length > 0
+            ? supabase
+                .from('flight_events' as any)
+                .select('flight_log_id, t_offset_ms, type, message')
+                .in('flight_log_id', flightLogIds)
+                .order('t_offset_ms', { ascending: true })
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+
         const userMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
+        const eventsByLogId = new Map<string, any[]>();
+        (flightEvents || []).forEach((event: any) => {
+          const existing = eventsByLogId.get(event.flight_log_id) || [];
+          existing.push(event);
+          eventsByLogId.set(event.flight_log_id, existing);
+        });
 
         flightLogs.forEach(log => {
+          const existingTrack = (log.flight_track as any) || {};
           logs.push({
             id: `flight-${log.id}`,
             type: 'flight',
@@ -132,7 +151,10 @@ export const DroneLogbookDialog = ({
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             badgeText: 'Flytur',
-            flightTrack: log.flight_track,
+            flightTrack: {
+              ...existingTrack,
+              events: existingTrack.events || eventsByLogId.get(log.id) || [],
+            },
             flightDate: log.flight_date,
           });
         });
