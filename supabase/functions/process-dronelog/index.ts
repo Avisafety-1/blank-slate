@@ -568,8 +568,11 @@ function parseCsvToResult(csvText: string) {
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
-    batteryTemperature: maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null,
-    batteryTempMin: minBattTemp < 999 ? Math.round(minBattTemp * 10) / 10 : null,
+    // Battery temp: prefer BATTERY.maxTemperature summary field, fallback to row-scanned max
+    batteryTemperature: !isNaN(battSummaryMaxTemp) ? Math.round(battSummaryMaxTemp * 10) / 10
+      : (maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null),
+    batteryTempMin: !isNaN(battSummaryMinTemp) ? Math.round(battSummaryMinTemp * 10) / 10
+      : (minBattTemp < 999 ? Math.round(minBattTemp * 10) / 10 : null),
     batteryMinVoltage: minBattVolt < 999 ? Math.round(minBattVolt * 100) / 100 : null,
     batteryCycles: !isNaN(batteryCycles) ? batteryCycles : null,
     minGpsSatellites: minGpsSats < 99 ? minGpsSats : null,
@@ -584,7 +587,19 @@ function parseCsvToResult(csvText: string) {
     maxDistance: !isNaN(maxDistance) ? Math.round(maxDistance) : null,
     maxVSpeed: !isNaN(detailsMaxVSpeed) ? Math.round(detailsMaxVSpeed * 10) / 10 : null,
     totalTimeSeconds: !isNaN(detailsTotalTime) ? Math.round(detailsTotalTime) : null,
-    // New dedup & event fields
+    // Dual-battery fields
+    isDualBattery,
+    battery1Cycles: !isNaN(battery1Cycles) ? battery1Cycles : null,
+    battery2Cycles: !isNaN(battery2Cycles) ? battery2Cycles : null,
+    battery1MinVoltage: minBatt1Volt < 999 ? Math.round(minBatt1Volt * 100) / 100 : null,
+    battery2MinVoltage: minBatt2Volt < 999 ? Math.round(minBatt2Volt * 100) / 100 : null,
+    battery1TempMax: maxBatt1Temp > -999 ? Math.round(maxBatt1Temp * 10) / 10 : null,
+    battery2TempMax: maxBatt2Temp > -999 ? Math.round(maxBatt2Temp * 10) / 10 : null,
+    battery1FullCapacity: !isNaN(battery1FullCap) ? Math.round(battery1FullCap) : null,
+    battery2FullCapacity: !isNaN(battery2FullCap) ? Math.round(battery2FullCap) : null,
+    battery1CellDeviationMax: maxBatt1CellDev > 0 ? Math.round(maxBatt1CellDev * 1000) / 1000 : null,
+    battery2CellDeviationMax: maxBatt2CellDev > 0 ? Math.round(maxBatt2CellDev * 1000) / 1000 : null,
+    // Dedup & event fields
     sha256Hash: sha256Hash || null,
     guid: guid || null,
     rthTriggered,
