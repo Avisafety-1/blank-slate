@@ -676,7 +676,7 @@ export const EquipmentLogbookDialog = ({
                     ))}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </TabsContent>
             )}
 
