@@ -159,7 +159,6 @@ export const DroneLogbookDialog = ({
                 healthPct: (log as any).battery_health_pct ?? null,
                 fullCapacityMah: (log as any).battery_full_capacity_mah ?? null,
                 voltageMinV: (log as any).battery_voltage_min_v ?? null,
-                cellDeviationMaxV: (log as any).battery_cell_deviation_max_v ?? null,
                 tempMaxC: (log as any).battery_temp_max_c ?? null,
               },
             },

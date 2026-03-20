@@ -9,12 +9,11 @@ import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
 
-interface BatterySummary {
+export interface BatterySummary {
   cycles: number | null;
   healthPct: number | null;
   fullCapacityMah: number | null;
   voltageMinV: number | null;
-  cellDeviationMaxV: number | null;
   tempMaxC: number | null;
 }
 
