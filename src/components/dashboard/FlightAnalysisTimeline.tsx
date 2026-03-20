@@ -318,10 +318,10 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               ) : (
                 eventIndices.map((e, i) => {
                   const time = formatTime(e.index, positions);
-                  const isActive = currentIndex === e.index;
-                  const color = e.type === 'RTH' || e.type === 'app_warning_critical'
-                    ? 'text-destructive'
-                    : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
+                      const isActive = selectedEventIdx === i;
+                      const color = e.type === 'RTH' || e.type === 'app_warning_critical'
+                        ? 'text-destructive'
+                        : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
                     ? 'text-amber-600 dark:text-amber-400'
                     : 'text-orange-600 dark:text-orange-400';
                   return (
