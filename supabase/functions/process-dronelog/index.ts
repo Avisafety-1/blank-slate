@@ -461,11 +461,21 @@ function parseCsvToResult(csvText: string) {
       if (pf(gimbalYawIdx) !== undefined) point.gimbalYaw = pf(gimbalYawIdx);
       if (pf(dist2DIdx) !== undefined) point.dist2D = pf(dist2DIdx);
       if (pf(dist3DIdx) !== undefined) point.dist3D = pf(dist3DIdx);
-      if (pf(elevationIdx) !== undefined) point.elevation = pf(elevationIdx);
       if (ps(flycStateIdx)) point.flycState = ps(flycStateIdx);
       if (ps(groundOrSkyIdx)) point.groundOrSky = ps(groundOrSkyIdx);
       if (pf(weatherWindSpeedIdx) !== undefined) point.windSpeed = pf(weatherWindSpeedIdx);
       if (pf(weatherWindDirIdx) !== undefined) point.windDir = pf(weatherWindDirIdx);
+      // Dual-battery telemetry per point
+      if (isDualBattery) {
+        if (pf(batt1ChargeIdx) !== undefined) point.battery1 = pf(batt1ChargeIdx);
+        if (pf(batt1VoltIdx) !== undefined) point.voltage1 = pf(batt1VoltIdx);
+        if (pf(batt1CurrentIdx) !== undefined) point.current1 = pf(batt1CurrentIdx);
+        if (pf(batt1TempIdx) !== undefined) point.temp1 = pf(batt1TempIdx);
+        if (pf(batt2ChargeIdx) !== undefined) point.battery2 = pf(batt2ChargeIdx);
+        if (pf(batt2VoltIdx) !== undefined) point.voltage2 = pf(batt2VoltIdx);
+        if (pf(batt2CurrentIdx) !== undefined) point.current2 = pf(batt2CurrentIdx);
+        if (pf(batt2TempIdx) !== undefined) point.temp2 = pf(batt2TempIdx);
+      }
       positions.push(point);
     }
   }
