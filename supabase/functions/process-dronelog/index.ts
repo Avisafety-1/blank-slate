@@ -269,26 +269,24 @@ function parseCsvToResult(csvText: string) {
 
   // Advanced analysis indices
   const vSpeedIdx = findHeaderIndex(headers, "OSD.vSpeed [m/s]");
-  const pitchIdx = findHeaderIndex(headers, "OSD.pitch [°]");
-  const rollIdx = findHeaderIndex(headers, "OSD.roll [°]");
-  const yawIdx = findHeaderIndex(headers, "OSD.directionYaw [°]");
+  const pitchIdx = findHeaderIndex(headers, "OSD.pitch");
+  const rollIdx = findHeaderIndex(headers, "OSD.roll");
+  const yawIdx = findHeaderIndex(headers, "OSD.yaw");
   const groundOrSkyIdx = findHeaderIndex(headers, "OSD.groundOrSky");
   const gpsLevelIdx = findHeaderIndex(headers, "OSD.gpsLevel");
   const rcAileronIdx = findHeaderIndex(headers, "RC.aileron");
   const rcElevatorIdx = findHeaderIndex(headers, "RC.elevator");
   const rcRudderIdx = findHeaderIndex(headers, "RC.rudder");
   const rcThrottleIdx = findHeaderIndex(headers, "RC.throttle");
-  const gimbalPitchIdx = findHeaderIndex(headers, "GIMBAL.pitch [°]");
-  const gimbalRollIdx = findHeaderIndex(headers, "GIMBAL.roll [°]");
-  const gimbalYawIdx = findHeaderIndex(headers, "GIMBAL.yaw [°]");
-  const dist2DIdx = findHeaderIndex(headers, "CALC.distance2D [m]");
-  const dist3DIdx = findHeaderIndex(headers, "CALC.distance3D [m]");
-  const elevationIdx = findHeaderIndex(headers, "CALC.currentElevation [m]");
+  const gimbalPitchIdx = findHeaderIndex(headers, "GIMBAL.pitch");
+  const gimbalRollIdx = findHeaderIndex(headers, "GIMBAL.roll");
+  const gimbalYawIdx = findHeaderIndex(headers, "GIMBAL.yaw");
+  const dist2DIdx = findHeaderIndex(headers, "CALC.distanceFromHome [m]");
+  const dist3DIdx = findHeaderIndex(headers, "CALC.distanceFromHomeMax [m]");
   const homeLatIdx = findHeaderIndex(headers, "HOME.latitude");
   const homeLonIdx = findHeaderIndex(headers, "HOME.longitude");
-  const homeMaxHeightIdx = findHeaderIndex(headers, "HOME.maxAllowedHeight [m]");
-  const weatherTempIdx = findHeaderIndex(headers, "WEATHER.temperature [°C]");
-  const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection [°]");
+  const homeHeightIdx = findHeaderIndex(headers, "HOME.height [m]");
+  const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection");
   const weatherWindSpeedIdx = findHeaderIndex(headers, "WEATHER.windSpeed [m/s]");
 
   const positions: Array<Record<string, any>> = [];
