@@ -15,31 +15,43 @@ const FIELDS = [
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
   "OSD.goHomeStatus",
   // Advanced analysis fields
-  "OSD.vSpeed [m/s]","OSD.pitch [°]","OSD.roll [°]","OSD.directionYaw [°]",
+  "OSD.vSpeed [m/s]","OSD.pitch","OSD.roll","OSD.yaw",
   "OSD.xSpeed [m/s]","OSD.ySpeed [m/s]","OSD.groundOrSky","OSD.gpsLevel",
-  "OSD.isMotorUp","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
-  "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
-  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
+  "OSD.isMotorOn","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
+  "OSD.isCompassError","OSD.voltageWarning",
+  // Battery (single-battery drones)
+  "BATTERY.chargeLevel","BATTERY.temperature [C]","BATTERY.voltage [V]","BATTERY.current [A]","BATTERY.timesCharged",
+  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.relativeCapacity","BATTERY.status",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
   "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
-  // API-native cell deviation fields (supports up to 14 cells)
   "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
+  "BATTERY.maxTemperature [C]","BATTERY.minTemperature [C]",
   "BATTERY.goHomeStatus",
+  // BATTERY1 (dual-battery drones like M350/M300)
+  "BATTERY1.chargeLevel","BATTERY1.voltage [V]","BATTERY1.timesCharged",
+  "BATTERY1.temperature [C]","BATTERY1.fullCapacity [mAh]",
+  "BATTERY1.cellVoltageDeviation [V]","BATTERY1.maxCellVoltageDeviation [V]",
+  "BATTERY1.current [A]","BATTERY1.currentCapacity [mAh]",
+  // BATTERY2
+  "BATTERY2.chargeLevel","BATTERY2.voltage [V]","BATTERY2.timesCharged",
+  "BATTERY2.temperature [C]","BATTERY2.fullCapacity [mAh]",
+  "BATTERY2.cellVoltageDeviation [V]","BATTERY2.maxCellVoltageDeviation [V]",
+  "BATTERY2.current [A]","BATTERY2.currentCapacity [mAh]",
   // RC inputs
   "RC.aileron","RC.elevator","RC.rudder","RC.throttle",
   // Gimbal
-  "GIMBAL.pitch [°]","GIMBAL.roll [°]","GIMBAL.yaw [°]",
+  "GIMBAL.pitch","GIMBAL.roll","GIMBAL.yaw",
   // Calculated fields
-  "CALC.distance2D [m]","CALC.distance3D [m]","CALC.currentElevation [m]",
+  "CALC.distanceFromHome [m]","CALC.distanceFromHomeMax [m]",
   // Home position
-  "HOME.latitude","HOME.longitude","HOME.maxAllowedHeight [m]","HOME.goHomeStatus",
+  "HOME.latitude","HOME.longitude","HOME.height [m]","HOME.goHomeStatus",
   // Weather
-  "WEATHER.temperature [°C]","WEATHER.windDirection [°]","WEATHER.windSpeed [m/s]",
+  "WEATHER.windDirection","WEATHER.windSpeed [m/s]",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
-  "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
+  "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
-  "APP.warn",
+  "APP.warning",
 ].join(",");
 
 /**
