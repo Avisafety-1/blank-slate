@@ -501,10 +501,8 @@ export const EquipmentLogbookDialog = ({
               </div>
             </div>
 
-            {activeTab !== 'battery' && (
-            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-0 overflow-y-auto">
-              {showAddEntry && (
-                <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3">
+            {showAddEntry && (
+              <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs sm:text-sm">Type</Label>
@@ -594,7 +592,10 @@ export const EquipmentLogbookDialog = ({
                     <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
                   </div>
                 </div>
-              )}
+            )}
+
+            {activeTab !== 'battery' && (
+            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-0 overflow-y-auto">
               <div className="overflow-y-auto flex-1 min-h-0 pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
