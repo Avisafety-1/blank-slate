@@ -327,12 +327,13 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
       trailLineRef.current = null;
     }
 
-    // Offset drone to left 1/3 when gyro overlay is visible
+    // Offset drone based on viewport: more left on phone, slightly left on tablet/desktop
     const hasGyro = current.pitch !== undefined;
     if (hasGyro) {
       const mapSize = map.getSize();
       const targetPoint = map.latLngToContainerPoint(pos);
-      const offsetX = mapSize.x / 6;
+      const isLargeViewport = mapSize.x >= 640;
+      const offsetX = isLargeViewport ? mapSize.x / 12 : mapSize.x / 6;
       const offsetPoint = L.point(targetPoint.x + offsetX, targetPoint.y);
       const offsetLatLng = map.containerPointToLatLng(offsetPoint);
       map.panTo(offsetLatLng, { animate: true, duration: 0.3 });
