@@ -191,8 +191,8 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     } else {
       const icon = L.icon({
         iconUrl: droneAnimatedIcon,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
         className: 'drone-analysis-marker',
       });
       droneMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(map);
@@ -208,7 +208,18 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
       }
     }
 
-    map.panTo(pos, { animate: true, duration: 0.3 });
+    // Offset drone to left 1/3 when gyro overlay is visible
+    const hasGyro = current.pitch !== undefined;
+    if (hasGyro) {
+      const mapSize = map.getSize();
+      const targetPoint = map.latLngToContainerPoint(pos);
+      const offsetX = mapSize.x / 6; // shift so drone sits at ~1/3 from left
+      const offsetPoint = L.point(targetPoint.x + offsetX, targetPoint.y);
+      const offsetLatLng = map.containerPointToLatLng(offsetPoint);
+      map.panTo(offsetLatLng, { animate: true, duration: 0.3 });
+    } else {
+      map.panTo(pos, { animate: true, duration: 0.3 });
+    }
   }, [currentIndex, positions, polylinePositions, mapReady]);
 
   if (!flightTrack || !positions.length) return null;
