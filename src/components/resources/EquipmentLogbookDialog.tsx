@@ -780,12 +780,13 @@ export const EquipmentLogbookDialog = ({
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
                           {/* Header row - hidden on mobile */}
-                          <div className="hidden sm:grid sm:grid-cols-6 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                          <div className="hidden sm:grid sm:grid-cols-7 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
                             <span>Dato</span>
                             <span>Sykluser</span>
                             <span>Helse</span>
                             <span>Temp</span>
                             <span>Spenning</span>
+                            <span>Celleavvik</span>
                             <span>Kapasitet</span>
                           </div>
                           {batteryTrend.slice().reverse().map((entry, idx) => (
