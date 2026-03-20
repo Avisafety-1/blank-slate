@@ -1,42 +1,46 @@
 
 
-## Problem
+## Funn
 
-The current approval notification logic (lines 184-198 in `send-notification-email`) is too broad:
+### `notify_followup_assigned` (linje 148-168) — OK
+Denne sender direkte til den spesifikke personen som er satt som oppfølgingsansvarlig (`recipientId`). Ingen bred selskapsfiltrering — dette er korrekt.
 
-1. It adds the parent company ID to `relevantCompanyIds`
-2. Approvers with `approval_company_ids = null` are included if their `company_id` is in `relevantCompanyIds` — this means **all** parent company approvers get notified for child company missions, even without "all" scope
-3. Approvers with `approval_company_ids = ['all']` from **any** company get notified
+### `notify_new_incident` (linje 41-74) — SAMME PROBLEM
+Denne har identisk feil som den gamle oppdragsgodkjennings-logikken:
+- Linje 44-45: Legger til parent company ID i `incidentCompanyIds`
+- Linje 47: Henter ALLE godkjente brukere fra begge selskaper
+- Resultat: Alle brukere i morselskapet med `email_new_incident` på får varsel om hendelser i underavdelinger, uten noen form for scoping
 
-### Correct behavior (per your request)
+### Plan: Stram inn `notify_new_incident`
 
-- Only approvers **in the same company** as the mission should be notified (when `approval_company_ids` is null or includes the mission's `company_id`)
-- Parent company approvers should **only** be notified if they have `approval_company_ids = ['all']`
-- Email notification preference (`email_mission_approval`) must still be respected
+**Fil:** `supabase/functions/send-notification-email/index.ts` (linje 41-51)
 
-## Plan
+Endre logikken slik at:
+1. Brukere i **samme selskap** som hendelsen alltid varsles (med `email_new_incident` på)
+2. Brukere i **morselskapet** varsles KUN hvis de har `can_be_incident_responsible = true` i profilen sin (tilsvarende "all"-scoping for hendelser)
+3. Brukere i andre selskaper varsles IKKE
 
-### 1. Fix filter logic in `send-notification-email/index.ts` (lines 184-198)
-
-Remove the `relevantCompanyIds` array that includes the parent. Replace the filter with:
-
+Erstatt den brede `incidentCompanyIds`-logikken med:
 ```
-approvers = approverProfiles.filter(a => {
-  if (a.approval_company_ids?.includes('all')) {
-    // Parent or same-company approvers with "all" scope
-    // Only allow if they're in the same company OR in the parent company
-    const parentId = approvalCompany?.parent_company_id;
-    return a.company_id === companyId || (parentId && a.company_id === parentId);
-  }
-  if (a.approval_company_ids) {
-    // Explicit list — must include the mission's company
-    return a.approval_company_ids.includes(companyId);
-  }
-  // No scope set (null) — only same company
-  return a.company_id === companyId;
-});
+// Hent brukere fra samme selskap
+const { data: sameCompanyUsers } = await supabase
+  .from('profiles').select('id')
+  .eq('company_id', companyId).eq('approved', true);
+
+// Hent parent-company brukere med incident-ansvar scope
+let parentResponsibles: any[] = [];
+if (incidentCompany?.parent_company_id) {
+  const { data } = await supabase
+    .from('profiles').select('id')
+    .eq('company_id', incidentCompany.parent_company_id)
+    .eq('approved', true)
+    .eq('can_be_incident_responsible', true);
+  parentResponsibles = data || [];
+}
+
+const eligibleUsers = [...(sameCompanyUsers || []), ...parentResponsibles];
 ```
 
-### File to modify
-- `supabase/functions/send-notification-email/index.ts` — tighten approver filter logic
+### Fil som endres
+- `supabase/functions/send-notification-email/index.ts` — stram inn `notify_new_incident` filtrering
 
