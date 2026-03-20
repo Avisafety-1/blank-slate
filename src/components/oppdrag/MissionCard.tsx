@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload, Building2
+  Send, CheckCircle2, Upload, Building2, BarChart3
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import {
   statusColors,
   incidentSeverityColors,
@@ -93,6 +94,8 @@ export const MissionCard = ({
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -695,6 +698,20 @@ export const MissionCard = ({
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {log.flight_track?.positions?.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                      onClick={() => {
+                        setAnalysisTrack(log.flight_track);
+                        setAnalysisOpen(true);
+                      }}
+                    >
+                      <BarChart3 className="h-3 w-3" />
+                      Analyser
+                    </Button>
+                  )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
@@ -757,6 +774,12 @@ export const MissionCard = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <FlightAnalysisDialog
+      open={analysisOpen}
+      onOpenChange={setAnalysisOpen}
+      flightTrack={analysisTrack}
+      droneName={mission.tittel}
+    />
     </>
   );
 };
