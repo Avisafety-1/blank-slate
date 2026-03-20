@@ -186,9 +186,9 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
 
       {/* Charts */}
       <Tabs value={activeChart} onValueChange={setActiveChart}>
-        <TabsList className="flex w-full overflow-x-auto no-scrollbar h-8">
+        <TabsList className="flex flex-wrap w-full h-auto gap-0.5 sm:gap-0 sm:flex-nowrap sm:h-8">
           {availableTabs.map(t => (
-            <TabsTrigger key={t.id} value={t.id} className="flex-1 min-w-[60px] text-[10px] sm:text-xs gap-1 px-1.5">
+            <TabsTrigger key={t.id} value={t.id} className="flex-1 min-w-[60px] text-[10px] sm:text-xs gap-1 px-1.5 h-7 sm:h-8">
               <t.icon className="w-3 h-3 hidden sm:block" />
               {t.label}
             </TabsTrigger>
