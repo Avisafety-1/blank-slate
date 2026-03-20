@@ -428,9 +428,9 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             </div>
           )}
 
-          {/* Attitude indicator overlay */}
+          {/* Attitude indicator overlay — fills map height on sm+ */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
-            <div className="absolute top-2 right-2 z-10">
+            <div className="absolute top-2 right-2 bottom-2 z-10 w-[108px] sm:w-auto">
               <DroneAttitudeIndicator
                 pitch={positions[currentIndex]?.pitch ?? 0}
                 roll={positions[currentIndex]?.roll ?? 0}
