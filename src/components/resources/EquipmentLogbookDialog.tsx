@@ -470,130 +470,131 @@ export const EquipmentLogbookDialog = ({
             </p>
           </DialogHeader>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowAddEntry(!showAddEntry)}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Legg til innlegg
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleExportPDF}
-              className="w-full sm:w-auto"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Eksporter PDF
-            </Button>
-          </div>
-
-          {showAddEntry && (
-            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs sm:text-sm">Type</Label>
-                  <Select 
-                    value={newEntry.entry_type} 
-                    onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="merknad">Merknad</SelectItem>
-                      <SelectItem value="hendelse">Hendelse</SelectItem>
-                      <SelectItem value="reparasjon">Reparasjon</SelectItem>
-                      <SelectItem value="vedlikehold">Vedlikehold</SelectItem>
-                      <SelectItem value="annet">Annet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs sm:text-sm">Dato</Label>
-                  <Input
-                    type="date"
-                    className="h-9"
-                    value={newEntry.entry_date}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, entry_date: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Tittel *</Label>
-                <Input
-                  value={newEntry.title}
-                  onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Kort beskrivelse"
-                />
-              </div>
-              <div>
-                <Label>Beskrivelse</Label>
-                <Textarea
-                  value={newEntry.description}
-                  onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Utfyllende detaljer (valgfritt)"
-                  rows={2}
-                />
-              </div>
-              {/* Image upload */}
-              <div>
-                <Label className="text-xs sm:text-sm">Bilde (valgfritt)</Label>
-                {imagePreviewUrl ? (
-                  <div className="relative inline-block mt-1">
-                    <img
-                      src={imagePreviewUrl}
-                      alt="Forhåndsvisning"
-                      className="h-24 w-auto rounded-md border object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={clearImage}
-                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
-                  >
-                    <ImagePlus className="w-4 h-4" />
-                    Last opp bilde
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageSelect}
-                />
-              </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+              <TabsList className="flex w-full sm:w-auto overflow-x-auto no-scrollbar">
+                <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
+                <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
+                <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
+                <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
+                {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
+              </TabsList>
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                  {isSaving ? "Lagrer..." : "Lagre"}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowAddEntry(!showAddEntry)}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Legg til
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExportPDF}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
               </div>
             </div>
-          )}
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="flex w-full overflow-x-auto no-scrollbar">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
-              <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
-              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
-            </TabsList>
 
             {activeTab !== 'battery' && (
+            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-0 overflow-y-auto">
+              {showAddEntry && (
+                <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs sm:text-sm">Type</Label>
+                      <Select 
+                        value={newEntry.entry_type} 
+                        onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="merknad">Merknad</SelectItem>
+                          <SelectItem value="hendelse">Hendelse</SelectItem>
+                          <SelectItem value="reparasjon">Reparasjon</SelectItem>
+                          <SelectItem value="vedlikehold">Vedlikehold</SelectItem>
+                          <SelectItem value="annet">Annet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm">Dato</Label>
+                      <Input
+                        type="date"
+                        className="h-9"
+                        value={newEntry.entry_date}
+                        onChange={(e) => setNewEntry(prev => ({ ...prev, entry_date: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Tittel *</Label>
+                    <Input
+                      value={newEntry.title}
+                      onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Kort beskrivelse"
+                    />
+                  </div>
+                  <div>
+                    <Label>Beskrivelse</Label>
+                    <Textarea
+                      value={newEntry.description}
+                      onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Utfyllende detaljer (valgfritt)"
+                      rows={2}
+                    />
+                  </div>
+                  {/* Image upload */}
+                  <div>
+                    <Label className="text-xs sm:text-sm">Bilde (valgfritt)</Label>
+                    {imagePreviewUrl ? (
+                      <div className="relative inline-block mt-1">
+                        <img
+                          src={imagePreviewUrl}
+                          alt="Forhåndsvisning"
+                          className="h-24 w-auto rounded-md border object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={clearImage}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
+                      >
+                        <ImagePlus className="w-4 h-4" />
+                        Last opp bilde
+                      </button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
+                      {isSaving ? "Lagrer..." : "Lagre"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                  </div>
+                </div>
+              )}
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
               <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
                 {isLoading ? (
