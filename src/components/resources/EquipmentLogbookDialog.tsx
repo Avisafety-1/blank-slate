@@ -595,8 +595,7 @@ export const EquipmentLogbookDialog = ({
                   </div>
                 </div>
               )}
-            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
+              <div className="overflow-y-auto flex-1 min-h-0 pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     Laster loggbok...
