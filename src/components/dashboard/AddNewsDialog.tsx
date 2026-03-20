@@ -4,9 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Building2 } from "lucide-react";
 
 interface AddNewsDialogProps {
   open: boolean;
@@ -15,10 +18,27 @@ interface AddNewsDialogProps {
 }
 
 export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) => {
+  const { companyId } = useAuth();
   const [tittel, setTittel] = useState("");
   const [innhold, setInnhold] = useState("");
   const [pinOnTop, setPinOnTop] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Check if current company is a parent company
+  useEffect(() => {
+    if (!companyId) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId]);
 
   // Initialize form with news data when editing
   useEffect(() => {
@@ -26,10 +46,12 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
       setTittel(news.tittel || "");
       setInnhold(news.innhold || "");
       setPinOnTop(news.pin_on_top || false);
+      setVisibleToChildren(news.visible_to_children || false);
     } else if (!open) {
       setTittel("");
       setInnhold("");
       setPinOnTop(false);
+      setVisibleToChildren(false);
     }
   }, [news, open]);
 
@@ -63,6 +85,7 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
             tittel: tittel.trim(),
             innhold: innhold.trim(),
             pin_on_top: pinOnTop,
+            visible_to_children: isParentCompany ? visibleToChildren : false,
             oppdatert_dato: new Date().toISOString()
           })
           .eq('id', news.id);
@@ -77,6 +100,7 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
             tittel: tittel.trim(),
             innhold: innhold.trim(),
             pin_on_top: pinOnTop,
+            visible_to_children: isParentCompany ? visibleToChildren : false,
             user_id: user.id,
             company_id: profile?.company_id,
             forfatter: profile?.full_name || 'Ukjent'
@@ -88,6 +112,7 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
       setTittel("");
       setInnhold("");
       setPinOnTop(false);
+      setVisibleToChildren(false);
       onOpenChange(false);
     } catch (error) {
       console.error("Error adding news:", error);
@@ -139,6 +164,26 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
               Fest øverst (prioritert)
             </Label>
           </div>
+
+          {isParentCompany && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <div className="space-y-0.5">
+                  <Label htmlFor="visible-children">Synlig for alle avdelinger</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Deles automatisk med alle underavdelinger
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="visible-children"
+                checked={visibleToChildren}
+                onCheckedChange={setVisibleToChildren}
+                disabled={submitting}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button

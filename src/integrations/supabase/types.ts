@@ -720,6 +720,7 @@ export type Database = {
           user_id: string | null
           varsel_dager_for_utløp: number | null
           versjon: string | null
+          visible_to_children: boolean | null
         }
         Insert: {
           beskrivelse?: string | null
@@ -739,6 +740,7 @@ export type Database = {
           user_id?: string | null
           varsel_dager_for_utløp?: number | null
           versjon?: string | null
+          visible_to_children?: boolean | null
         }
         Update: {
           beskrivelse?: string | null
@@ -758,6 +760,7 @@ export type Database = {
           user_id?: string | null
           varsel_dager_for_utløp?: number | null
           versjon?: string | null
+          visible_to_children?: boolean | null
         }
         Relationships: [
           {
@@ -3038,6 +3041,7 @@ export type Database = {
           synlighet: string
           tittel: string
           user_id: string | null
+          visible_to_children: boolean | null
         }
         Insert: {
           company_id: string
@@ -3051,6 +3055,7 @@ export type Database = {
           synlighet?: string
           tittel: string
           user_id?: string | null
+          visible_to_children?: boolean | null
         }
         Update: {
           company_id?: string
@@ -3064,6 +3069,7 @@ export type Database = {
           synlighet?: string
           tittel?: string
           user_id?: string | null
+          visible_to_children?: boolean | null
         }
         Relationships: [
           {

@@ -8,10 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Upload } from "lucide-react";
+import { Upload, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-
 interface DocumentUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +30,22 @@ export const DocumentUploadDialog = ({
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
   
   const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+
+  // Check if current company is a parent company
+  useEffect(() => {
+    if (!companyId) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -112,8 +127,8 @@ export const DocumentUploadDialog = ({
         company_id: companyId,
         user_id: user.id,
         global_visibility: isSuperadmin ? globalVisibility : false,
+        visible_to_children: isParentCompany ? visibleToChildren : false,
       });
-
       if (insertError) throw insertError;
 
       toast.success("Dokument lastet opp");
@@ -123,6 +138,7 @@ export const DocumentUploadDialog = ({
       // Reset form
       setSelectedFile(null);
       setGlobalVisibility(false);
+      setVisibleToChildren(false);
       setFormData({
         title: "",
         description: "",
@@ -284,6 +300,25 @@ export const DocumentUploadDialog = ({
             />
           </div>
 
+          {isParentCompany && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <div className="space-y-0.5">
+                  <Label htmlFor="visible-children-doc">Synlig for alle avdelinger</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Deles automatisk med alle underavdelinger
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="visible-children-doc"
+                checked={visibleToChildren}
+                onCheckedChange={setVisibleToChildren}
+              />
+            </div>
+          )}
+
           {isSuperadmin && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
               <div className="space-y-0.5">
@@ -299,7 +334,6 @@ export const DocumentUploadDialog = ({
               />
             </div>
           )}
-
           <div className="flex justify-end gap-2 pt-4">
             <Button
               variant="outline"
