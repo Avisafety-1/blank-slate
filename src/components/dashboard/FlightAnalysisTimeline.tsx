@@ -238,6 +238,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               {batterySummary.fullCapacityMah != null && <InfoCell label="Kapasitet" value={`${batterySummary.fullCapacityMah} mAh`} />}
               {batterySummary.voltageMinV != null && <InfoCell label="Min spenning" value={`${batterySummary.voltageMinV.toFixed(2)} V`} />}
               {batterySummary.tempMaxC != null && <InfoCell label="Maks temp" value={`${batterySummary.tempMaxC}°C`} />}
+              {batterySummary.cellDeviationV != null && <InfoCell label="Celleavvik" value={`${batterySummary.cellDeviationV.toFixed(3)} V`} />}
             </div>
           )}
           {/* Temperature chart */}
