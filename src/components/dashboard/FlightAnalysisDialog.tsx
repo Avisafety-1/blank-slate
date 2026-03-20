@@ -36,7 +36,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
   const [mapReady, setMapReady] = useState(false);
   const [tileError, setTileError] = useState(false);
   const [showWarnings, setShowWarnings] = useState(false);
-  const [showSpeedTrail, setShowSpeedTrail] = useState(false);
+  const [showSpeedTrail, setShowSpeedTrail] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const droneMarkerRef = useRef<L.Marker | null>(null);
@@ -391,18 +391,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
           {/* Map overlay controls — top left */}
           {mapReady && (
-            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5">
-              {events.length > 0 && (
-                <Button
-                  size="icon"
-                  variant={showWarnings ? "default" : "secondary"}
-                  className="h-8 w-8 rounded-lg shadow-md"
-                  onClick={() => setShowWarnings(v => !v)}
-                  title="Vis advarsler på kart"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                </Button>
-              )}
+            <div className="absolute top-2 left-2 z-10 flex gap-1.5">
               {hasSpeedData && (
                 <Button
                   size="icon"
@@ -412,6 +401,17 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   title="Fargelegg rute etter hastighet"
                 >
                   <Gauge className="w-4 h-4" />
+                </Button>
+              )}
+              {events.length > 0 && (
+                <Button
+                  size="icon"
+                  variant={showWarnings ? "default" : "secondary"}
+                  className="h-8 w-8 rounded-lg shadow-md"
+                  onClick={() => setShowWarnings(v => !v)}
+                  title="Vis advarsler på kart"
+                >
+                  <AlertTriangle className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -428,9 +428,9 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             </div>
           )}
 
-          {/* Attitude indicator overlay */}
+          {/* Attitude indicator overlay — fills map height on sm+ */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
-            <div className="absolute top-2 right-2 z-10">
+            <div className="absolute top-2 right-2 bottom-2 z-10 w-[108px] sm:w-auto">
               <DroneAttitudeIndicator
                 pitch={positions[currentIndex]?.pitch ?? 0}
                 roll={positions[currentIndex]?.roll ?? 0}

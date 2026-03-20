@@ -10,9 +10,9 @@ export const DroneAttitudeIndicator = ({ pitch, roll, yaw }: DroneAttitudeIndica
   const pitchOffset = (clampedPitch / 45) * 20; // max 20px shift
 
   return (
-    <div className="w-[108px] h-[108px] rounded-lg bg-background/80 backdrop-blur-sm border border-border shadow-lg flex flex-col items-center justify-center overflow-hidden">
+    <div className="w-[108px] h-[108px] sm:h-full sm:w-auto sm:aspect-square sm:max-w-[280px] rounded-lg bg-background/80 backdrop-blur-sm border border-border shadow-lg flex flex-col items-center justify-center overflow-hidden p-1">
       {/* Attitude ball */}
-      <div className="w-[84px] h-[84px] rounded-full border border-border overflow-hidden relative bg-sky-400 dark:bg-sky-600">
+      <div className="w-[84px] h-[84px] sm:w-[85%] sm:h-[85%] sm:max-w-full sm:max-h-full rounded-full border border-border overflow-hidden relative bg-sky-400 dark:bg-sky-600 aspect-square">
         {/* Ground half - shifts with pitch */}
         <div
           className="absolute left-0 right-0 bg-amber-700/70 dark:bg-amber-800/70"
