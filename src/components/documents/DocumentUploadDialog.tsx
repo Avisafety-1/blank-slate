@@ -283,6 +283,25 @@ export const DocumentUploadDialog = ({
             />
           </div>
 
+          {isParentCompany && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <div className="space-y-0.5">
+                  <Label htmlFor="visible-children-doc">Synlig for alle avdelinger</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Deles automatisk med alle underavdelinger
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="visible-children-doc"
+                checked={visibleToChildren}
+                onCheckedChange={setVisibleToChildren}
+              />
+            </div>
+          )}
+
           {isSuperadmin && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
               <div className="space-y-0.5">
@@ -298,7 +317,6 @@ export const DocumentUploadDialog = ({
               />
             </div>
           )}
-
           <div className="flex justify-end gap-2 pt-4">
             <Button
               variant="outline"
