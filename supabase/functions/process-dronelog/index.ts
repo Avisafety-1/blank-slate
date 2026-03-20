@@ -119,25 +119,27 @@ function parseCsvToResult(csvText: string) {
   const heightIdx = findHeaderIndex(headers, "OSD.height [m]");
   const timeIdx = findHeaderIndex(headers, "OSD.flyTime [ms]");
   const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
-  const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
+  const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel");
 
   // Extended indices
   const gpsNumIdx = findHeaderIndex(headers, "OSD.gpsNum");
   const flycStateIdx = findHeaderIndex(headers, "OSD.flycState");
-  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [°C]");
-  const battVoltIdx = findHeaderIndex(headers, "BATTERY.totalVoltage [V]");
+  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [C]");
+  const battVoltIdx = findHeaderIndex(headers, "BATTERY.voltage [V]");
   const battCurrentIdx = findHeaderIndex(headers, "BATTERY.current [A]");
-  const battLoopIdx = findHeaderIndex(headers, "BATTERY.loopNum");
+  const battLoopIdx = findHeaderIndex(headers, "BATTERY.timesCharged");
   const dateTimeIdx = findHeaderIndex(headers, "CUSTOM.dateTime");
   const customDateUtcIdx = findHeaderIndex(headers, "CUSTOM.date [UTC]");
   const customTimeUtcIdx = findHeaderIndex(headers, "CUSTOM.updateTime [UTC]");
-  const appWarnIdx = findHeaderIndex(headers, "APP.warn");
+  const appWarnIdx = findHeaderIndex(headers, "APP.warning");
 
   // Battery extended
   const battFullCapIdx = findHeaderIndex(headers, "BATTERY.fullCapacity [mAh]");
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
-  const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
+  const battLifeIdx = findHeaderIndex(headers, "BATTERY.relativeCapacity");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
+  const battMaxTempIdx = findHeaderIndex(headers, "BATTERY.maxTemperature [C]");
+  const battMinTempIdx = findHeaderIndex(headers, "BATTERY.minTemperature [C]");
   // Individual cell voltage indices for manual deviation fallback
   const cellVoltIdx1 = findHeaderIndex(headers, "BATTERY.cellVoltage1 [V]");
   const cellVoltIdx2 = findHeaderIndex(headers, "BATTERY.cellVoltage2 [V]");
@@ -146,10 +148,29 @@ function parseCsvToResult(csvText: string) {
   const cellVoltIdx5 = findHeaderIndex(headers, "BATTERY.cellVoltage5 [V]");
   const cellVoltIdx6 = findHeaderIndex(headers, "BATTERY.cellVoltage6 [V]");
   const cellVoltIndices = [cellVoltIdx1, cellVoltIdx2, cellVoltIdx3, cellVoltIdx4, cellVoltIdx5, cellVoltIdx6];
-  // API-native cell deviation fields (supports all cell counts incl. enterprise 7-14 cells)
+  // API-native cell deviation fields
   const cellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
   const cellDevHighIdx = findHeaderIndex(headers, "BATTERY.isCellVoltageDeviationHigh");
   const cellDevMaxIdx = findHeaderIndex(headers, "BATTERY.maxCellVoltageDeviation [V]");
+
+  // BATTERY1/BATTERY2 indices (dual-battery drones)
+  const batt1ChargeIdx = findHeaderIndex(headers, "BATTERY1.chargeLevel");
+  const batt1VoltIdx = findHeaderIndex(headers, "BATTERY1.voltage [V]");
+  const batt1CyclesIdx = findHeaderIndex(headers, "BATTERY1.timesCharged");
+  const batt1TempIdx = findHeaderIndex(headers, "BATTERY1.temperature [C]");
+  const batt1FullCapIdx = findHeaderIndex(headers, "BATTERY1.fullCapacity [mAh]");
+  const batt1CellDevIdx = findHeaderIndex(headers, "BATTERY1.cellVoltageDeviation [V]");
+  const batt1MaxCellDevIdx = findHeaderIndex(headers, "BATTERY1.maxCellVoltageDeviation [V]");
+  const batt1CurrentIdx = findHeaderIndex(headers, "BATTERY1.current [A]");
+  const batt2ChargeIdx = findHeaderIndex(headers, "BATTERY2.chargeLevel");
+  const batt2VoltIdx = findHeaderIndex(headers, "BATTERY2.voltage [V]");
+  const batt2CyclesIdx = findHeaderIndex(headers, "BATTERY2.timesCharged");
+  const batt2TempIdx = findHeaderIndex(headers, "BATTERY2.temperature [C]");
+  const batt2FullCapIdx = findHeaderIndex(headers, "BATTERY2.fullCapacity [mAh]");
+  const batt2CellDevIdx = findHeaderIndex(headers, "BATTERY2.cellVoltageDeviation [V]");
+  const batt2MaxCellDevIdx = findHeaderIndex(headers, "BATTERY2.maxCellVoltageDeviation [V]");
+  const batt2CurrentIdx = findHeaderIndex(headers, "BATTERY2.current [A]");
+  const isDualBattery = batt1ChargeIdx >= 0 && batt2ChargeIdx >= 0;
 
   // RTH indices
   const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
@@ -167,16 +188,17 @@ function parseCsvToResult(csvText: string) {
   const detTotalTimeIdx = findHeaderIndex(headers, "DETAILS.totalTime [s]");
   const detTotalDistIdx = findHeaderIndex(headers, "DETAILS.totalDistance [m]");
   const detMaxDistIdx = findHeaderIndex(headers, "DETAILS.maxDistance [m]");
-  const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxAltitude [m]");
-  const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHSpeed [m/s]");
-  const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVSpeed [m/s]");
+  const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxHeight [m]");
+  const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHorizontalSpeed [m/s]");
+  const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVerticalSpeed [m/s]");
   const detSha256Idx = findHeaderIndex(headers, "DETAILS.sha256Hash");
   const detGuidIdx = findHeaderIndex(headers, "DETAILS.guid");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
     "flycState:", flycStateIdx, "battTemp:", battTempIdx, "dateTime:", dateTimeIdx,
-    "sha256:", detSha256Idx, "guid:", detGuidIdx, "osdGoHome:", osdGoHomeIdx);
+    "sha256:", detSha256Idx, "guid:", detGuidIdx, "osdGoHome:", osdGoHomeIdx,
+    "isDualBattery:", isDualBattery, "batt1Charge:", batt1ChargeIdx, "batt2Charge:", batt2ChargeIdx);
 
   // Extract DETAILS metadata from first data row
   const firstRow = lines[1].split(",").map((c) => c.trim());
