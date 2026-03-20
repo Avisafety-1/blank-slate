@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
@@ -1783,13 +1784,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     );
   };
 
-  const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number }>) => {
+  const renderWarningActions = (warnings: Array<{ type: string; message: string; value?: number; severity?: string }>) => {
     if (warnings.length === 0 || (!selectedDroneId && selectedEquipment.length === 0)) return null;
+
+    const actionableWarnings = warnings.filter(w => (w as any).severity !== 'info');
+    const infoWarnings = warnings.filter(w => (w as any).severity === 'info');
 
     return (
       <div className="space-y-2">
-        {warnings.map((w, i) => {
-          const action = warningActions[i] || { saveToLog: false, newStatus: 'Grønn', targetLogbooks: [] };
+        {actionableWarnings.map((w, i) => {
+          // Find original index for warningActions mapping
+          const origIdx = warnings.indexOf(w);
+          const action = warningActions[origIdx] || { saveToLog: false, newStatus: 'Grønn', targetLogbooks: [] };
           // Build available logbook targets
           const availableTargets: Array<{ key: string; label: string; icon: React.ReactNode }> = [];
           if (selectedDroneId) {
@@ -1801,11 +1807,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             if (eq) availableTargets.push({ key: `equipment:${eqId}`, label: `${eq.type}: ${eq.navn}`, icon: <Wrench className="w-3 h-3" /> });
           });
 
+          const severity = (w as any).severity;
+          const isCritical = severity === 'critical';
+          const isInfo = severity === 'info';
+          const bgClass = isCritical
+            ? 'bg-destructive/10 border-destructive/30'
+            : isInfo
+            ? 'bg-muted/50 border-border'
+            : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+          const iconColor = isCritical
+            ? 'text-destructive'
+            : isInfo
+            ? 'text-muted-foreground'
+            : 'text-yellow-600 dark:text-yellow-400';
+          const textColor = isCritical
+            ? 'text-destructive'
+            : isInfo
+            ? 'text-muted-foreground'
+            : 'text-yellow-800 dark:text-yellow-300';
+
           return (
-            <div key={i} className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 space-y-2">
+            <div key={i} className={`p-3 rounded-lg border space-y-2 ${bgClass}`}>
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
+                <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${iconColor}`} />
+                <p className={`text-sm font-medium break-words whitespace-normal ${textColor}`}>{w.message}</p>
               </div>
               
               {availableTargets.length > 0 && (
@@ -1824,7 +1849,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                             const newSaveToLog = newTargets.length > 0;
                             setWarningActions(prev => ({
                               ...prev,
-                              [i]: { ...action, targetLogbooks: newTargets, saveToLog: newSaveToLog }
+                              [origIdx]: { ...action, targetLogbooks: newTargets, saveToLog: newSaveToLog }
                             }));
                           }}
                         />
@@ -1840,7 +1865,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <Select
                   value={action.newStatus}
                   onValueChange={(val) => {
-                    setWarningActions(prev => ({ ...prev, [i]: { ...action, newStatus: val } }));
+                    setWarningActions(prev => ({ ...prev, [origIdx]: { ...action, newStatus: val } }));
                   }}
                 >
                   <SelectTrigger className="h-6 w-24 text-xs">
@@ -1856,6 +1881,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
           );
         })}
+
+        {/* Info warnings - collapsible */}
+        {infoWarnings.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1.5">
+              <Info className="w-3.5 h-3.5 shrink-0" />
+              <span>{infoWarnings.length} informasjonsmelding{infoWarnings.length > 1 ? 'er' : ''}</span>
+              <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {infoWarnings.map((w, idx) => (
+                <div key={idx} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-muted/40 text-xs">
+                  <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <span className="text-muted-foreground break-words whitespace-normal">{w.message}</span>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </div>
     );
   };
@@ -2385,40 +2429,104 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {renderWarningActions(result.warnings)}
 
                 {/* Flight Events */}
-                {result.events && result.events.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
-                    {[...new Map(result.events.map((e: any) => [`${e.type}:${e.message}`, e])).values()].map((ev: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
-                        {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                        {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                        {ev.type === 'APP_WARNING' && <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0" />}
-                        {!['RTH', 'LOW_BATTERY', 'APP_WARNING'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
-                        <span className="font-medium">{ev.type}</span>
-                        {ev.message && <span className="text-muted-foreground truncate">{ev.message}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {result.events && result.events.length > 0 && (() => {
+                  // Group events: count duplicates
+                  const eventMap = new Map<string, { ev: any; count: number }>();
+                  result.events.forEach((e: any) => {
+                    const key = `${e.type}:${e.message}`;
+                    const existing = eventMap.get(key);
+                    if (existing) existing.count++;
+                    else eventMap.set(key, { ev: e, count: 1 });
+                  });
+                  const grouped = [...eventMap.values()];
+                  // Separate APP_WARNING from others
+                  const nonAppWarnings = grouped.filter(g => g.ev.type !== 'APP_WARNING');
+                  const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING');
+
+                  return (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
+                      {nonAppWarnings.map(({ ev, count }, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
+                          {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                          {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                          {!['RTH', 'LOW_BATTERY'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                          <span className="font-medium">{ev.type}</span>
+                          {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
+                          {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                        </div>
+                      ))}
+                      {appWarningEvents.length > 0 && (
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+                            <Info className="w-3 h-3 shrink-0" />
+                            <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
+                            <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-1 mt-1">
+                            {appWarningEvents.map(({ ev, count }, i) => (
+                              <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-muted/30 text-xs">
+                                <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                                <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
+                                {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             )}
 
             {/* Flight events when no warnings */}
-            {result.warnings.length === 0 && result.events && result.events.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
-                {[...new Map(result.events.map((e: any) => [`${e.type}:${e.message}`, e])).values()].map((ev: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
-                    {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                    {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                    {ev.type === 'APP_WARNING' && <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0" />}
-                    {!['RTH', 'LOW_BATTERY', 'APP_WARNING'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
-                    <span className="font-medium">{ev.type}</span>
-                    {ev.message && <span className="text-muted-foreground truncate">{ev.message}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
+            {result.warnings.length === 0 && result.events && result.events.length > 0 && (() => {
+              const eventMap = new Map<string, { ev: any; count: number }>();
+              result.events.forEach((e: any) => {
+                const key = `${e.type}:${e.message}`;
+                const existing = eventMap.get(key);
+                if (existing) existing.count++;
+                else eventMap.set(key, { ev: e, count: 1 });
+              });
+              const grouped = [...eventMap.values()];
+              const nonAppWarnings = grouped.filter(g => g.ev.type !== 'APP_WARNING');
+              const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING');
+
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
+                  {nonAppWarnings.map(({ ev, count }, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
+                      {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                      {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                      {!['RTH', 'LOW_BATTERY'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                      <span className="font-medium">{ev.type}</span>
+                      {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
+                      {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                    </div>
+                  ))}
+                  {appWarningEvents.length > 0 && (
+                    <Collapsible>
+                      <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+                        <Info className="w-3 h-3 shrink-0" />
+                        <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
+                        <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-1 mt-1">
+                        {appWarningEvents.map(({ ev, count }, i) => (
+                          <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-muted/30 text-xs">
+                            <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                            <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
+                            {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                          </div>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Battery create prompt */}
             {unmatchedBatterySN && (
