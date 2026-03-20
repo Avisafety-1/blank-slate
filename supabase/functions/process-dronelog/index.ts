@@ -15,31 +15,43 @@ const FIELDS = [
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
   "OSD.goHomeStatus",
   // Advanced analysis fields
-  "OSD.vSpeed [m/s]","OSD.pitch [°]","OSD.roll [°]","OSD.directionYaw [°]",
+  "OSD.vSpeed [m/s]","OSD.pitch","OSD.roll","OSD.yaw",
   "OSD.xSpeed [m/s]","OSD.ySpeed [m/s]","OSD.groundOrSky","OSD.gpsLevel",
-  "OSD.isMotorUp","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
-  "BATTERY.chargeLevel [%]","BATTERY.temperature [°C]","BATTERY.totalVoltage [V]","BATTERY.current [A]","BATTERY.loopNum",
-  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.life [%]","BATTERY.status",
+  "OSD.isMotorOn","OSD.flycCommand","OSD.isGPSUsed","OSD.isVisionUsed",
+  "OSD.isCompassError","OSD.voltageWarning",
+  // Battery (single-battery drones)
+  "BATTERY.chargeLevel","BATTERY.temperature [C]","BATTERY.voltage [V]","BATTERY.current [A]","BATTERY.timesCharged",
+  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.relativeCapacity","BATTERY.status",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
   "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
-  // API-native cell deviation fields (supports up to 14 cells)
   "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
+  "BATTERY.maxTemperature [C]","BATTERY.minTemperature [C]",
   "BATTERY.goHomeStatus",
+  // BATTERY1 (dual-battery drones like M350/M300)
+  "BATTERY1.chargeLevel","BATTERY1.voltage [V]","BATTERY1.timesCharged",
+  "BATTERY1.temperature [C]","BATTERY1.fullCapacity [mAh]",
+  "BATTERY1.cellVoltageDeviation [V]","BATTERY1.maxCellVoltageDeviation [V]",
+  "BATTERY1.current [A]","BATTERY1.currentCapacity [mAh]",
+  // BATTERY2
+  "BATTERY2.chargeLevel","BATTERY2.voltage [V]","BATTERY2.timesCharged",
+  "BATTERY2.temperature [C]","BATTERY2.fullCapacity [mAh]",
+  "BATTERY2.cellVoltageDeviation [V]","BATTERY2.maxCellVoltageDeviation [V]",
+  "BATTERY2.current [A]","BATTERY2.currentCapacity [mAh]",
   // RC inputs
   "RC.aileron","RC.elevator","RC.rudder","RC.throttle",
   // Gimbal
-  "GIMBAL.pitch [°]","GIMBAL.roll [°]","GIMBAL.yaw [°]",
+  "GIMBAL.pitch","GIMBAL.roll","GIMBAL.yaw",
   // Calculated fields
-  "CALC.distance2D [m]","CALC.distance3D [m]","CALC.currentElevation [m]",
+  "CALC.distanceFromHome [m]","CALC.distanceFromHomeMax [m]",
   // Home position
-  "HOME.latitude","HOME.longitude","HOME.maxAllowedHeight [m]","HOME.goHomeStatus",
+  "HOME.latitude","HOME.longitude","HOME.height [m]","HOME.goHomeStatus",
   // Weather
-  "WEATHER.temperature [°C]","WEATHER.windDirection [°]","WEATHER.windSpeed [m/s]",
+  "WEATHER.windDirection","WEATHER.windSpeed [m/s]",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
-  "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
+  "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
-  "APP.warn",
+  "APP.warning",
 ].join(",");
 
 /**
@@ -107,25 +119,27 @@ function parseCsvToResult(csvText: string) {
   const heightIdx = findHeaderIndex(headers, "OSD.height [m]");
   const timeIdx = findHeaderIndex(headers, "OSD.flyTime [ms]");
   const speedIdx = findHeaderIndex(headers, "OSD.hSpeed [m/s]");
-  const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel [%]");
+  const batteryIdx = findHeaderIndex(headers, "BATTERY.chargeLevel");
 
   // Extended indices
   const gpsNumIdx = findHeaderIndex(headers, "OSD.gpsNum");
   const flycStateIdx = findHeaderIndex(headers, "OSD.flycState");
-  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [°C]");
-  const battVoltIdx = findHeaderIndex(headers, "BATTERY.totalVoltage [V]");
+  const battTempIdx = findHeaderIndex(headers, "BATTERY.temperature [C]");
+  const battVoltIdx = findHeaderIndex(headers, "BATTERY.voltage [V]");
   const battCurrentIdx = findHeaderIndex(headers, "BATTERY.current [A]");
-  const battLoopIdx = findHeaderIndex(headers, "BATTERY.loopNum");
+  const battLoopIdx = findHeaderIndex(headers, "BATTERY.timesCharged");
   const dateTimeIdx = findHeaderIndex(headers, "CUSTOM.dateTime");
   const customDateUtcIdx = findHeaderIndex(headers, "CUSTOM.date [UTC]");
   const customTimeUtcIdx = findHeaderIndex(headers, "CUSTOM.updateTime [UTC]");
-  const appWarnIdx = findHeaderIndex(headers, "APP.warn");
+  const appWarnIdx = findHeaderIndex(headers, "APP.warning");
 
   // Battery extended
   const battFullCapIdx = findHeaderIndex(headers, "BATTERY.fullCapacity [mAh]");
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
-  const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
+  const battLifeIdx = findHeaderIndex(headers, "BATTERY.relativeCapacity");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
+  const battMaxTempIdx = findHeaderIndex(headers, "BATTERY.maxTemperature [C]");
+  const battMinTempIdx = findHeaderIndex(headers, "BATTERY.minTemperature [C]");
   // Individual cell voltage indices for manual deviation fallback
   const cellVoltIdx1 = findHeaderIndex(headers, "BATTERY.cellVoltage1 [V]");
   const cellVoltIdx2 = findHeaderIndex(headers, "BATTERY.cellVoltage2 [V]");
@@ -134,10 +148,29 @@ function parseCsvToResult(csvText: string) {
   const cellVoltIdx5 = findHeaderIndex(headers, "BATTERY.cellVoltage5 [V]");
   const cellVoltIdx6 = findHeaderIndex(headers, "BATTERY.cellVoltage6 [V]");
   const cellVoltIndices = [cellVoltIdx1, cellVoltIdx2, cellVoltIdx3, cellVoltIdx4, cellVoltIdx5, cellVoltIdx6];
-  // API-native cell deviation fields (supports all cell counts incl. enterprise 7-14 cells)
+  // API-native cell deviation fields
   const cellDevIdx = findHeaderIndex(headers, "BATTERY.cellVoltageDeviation [V]");
   const cellDevHighIdx = findHeaderIndex(headers, "BATTERY.isCellVoltageDeviationHigh");
   const cellDevMaxIdx = findHeaderIndex(headers, "BATTERY.maxCellVoltageDeviation [V]");
+
+  // BATTERY1/BATTERY2 indices (dual-battery drones)
+  const batt1ChargeIdx = findHeaderIndex(headers, "BATTERY1.chargeLevel");
+  const batt1VoltIdx = findHeaderIndex(headers, "BATTERY1.voltage [V]");
+  const batt1CyclesIdx = findHeaderIndex(headers, "BATTERY1.timesCharged");
+  const batt1TempIdx = findHeaderIndex(headers, "BATTERY1.temperature [C]");
+  const batt1FullCapIdx = findHeaderIndex(headers, "BATTERY1.fullCapacity [mAh]");
+  const batt1CellDevIdx = findHeaderIndex(headers, "BATTERY1.cellVoltageDeviation [V]");
+  const batt1MaxCellDevIdx = findHeaderIndex(headers, "BATTERY1.maxCellVoltageDeviation [V]");
+  const batt1CurrentIdx = findHeaderIndex(headers, "BATTERY1.current [A]");
+  const batt2ChargeIdx = findHeaderIndex(headers, "BATTERY2.chargeLevel");
+  const batt2VoltIdx = findHeaderIndex(headers, "BATTERY2.voltage [V]");
+  const batt2CyclesIdx = findHeaderIndex(headers, "BATTERY2.timesCharged");
+  const batt2TempIdx = findHeaderIndex(headers, "BATTERY2.temperature [C]");
+  const batt2FullCapIdx = findHeaderIndex(headers, "BATTERY2.fullCapacity [mAh]");
+  const batt2CellDevIdx = findHeaderIndex(headers, "BATTERY2.cellVoltageDeviation [V]");
+  const batt2MaxCellDevIdx = findHeaderIndex(headers, "BATTERY2.maxCellVoltageDeviation [V]");
+  const batt2CurrentIdx = findHeaderIndex(headers, "BATTERY2.current [A]");
+  const isDualBattery = batt1ChargeIdx >= 0 && batt2ChargeIdx >= 0;
 
   // RTH indices
   const osdGoHomeIdx = findHeaderIndex(headers, "OSD.goHomeStatus");
@@ -155,16 +188,17 @@ function parseCsvToResult(csvText: string) {
   const detTotalTimeIdx = findHeaderIndex(headers, "DETAILS.totalTime [s]");
   const detTotalDistIdx = findHeaderIndex(headers, "DETAILS.totalDistance [m]");
   const detMaxDistIdx = findHeaderIndex(headers, "DETAILS.maxDistance [m]");
-  const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxAltitude [m]");
-  const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHSpeed [m/s]");
-  const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVSpeed [m/s]");
+  const detMaxAltIdx = findHeaderIndex(headers, "DETAILS.maxHeight [m]");
+  const detMaxHSpeedIdx = findHeaderIndex(headers, "DETAILS.maxHorizontalSpeed [m/s]");
+  const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVerticalSpeed [m/s]");
   const detSha256Idx = findHeaderIndex(headers, "DETAILS.sha256Hash");
   const detGuidIdx = findHeaderIndex(headers, "DETAILS.guid");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
     "flycState:", flycStateIdx, "battTemp:", battTempIdx, "dateTime:", dateTimeIdx,
-    "sha256:", detSha256Idx, "guid:", detGuidIdx, "osdGoHome:", osdGoHomeIdx);
+    "sha256:", detSha256Idx, "guid:", detGuidIdx, "osdGoHome:", osdGoHomeIdx,
+    "isDualBattery:", isDualBattery, "batt1Charge:", batt1ChargeIdx, "batt2Charge:", batt2ChargeIdx);
 
   // Extract DETAILS metadata from first data row
   const firstRow = lines[1].split(",").map((c) => c.trim());
@@ -189,6 +223,14 @@ function parseCsvToResult(csvText: string) {
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
   const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
   const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
+  // BATTERY.maxTemperature/minTemperature summary fields (constant per flight)
+  const battSummaryMaxTemp = battMaxTempIdx >= 0 ? parseFloat(firstRow[battMaxTempIdx]) : NaN;
+  const battSummaryMinTemp = battMinTempIdx >= 0 ? parseFloat(firstRow[battMinTempIdx]) : NaN;
+  // Dual-battery metadata from first row
+  const battery1Cycles = batt1CyclesIdx >= 0 ? parseInt(firstRow[batt1CyclesIdx]) : NaN;
+  const battery2Cycles = batt2CyclesIdx >= 0 ? parseInt(firstRow[batt2CyclesIdx]) : NaN;
+  const battery1FullCap = batt1FullCapIdx >= 0 ? parseFloat(firstRow[batt1FullCapIdx]) : NaN;
+  const battery2FullCap = batt2FullCapIdx >= 0 ? parseFloat(firstRow[batt2FullCapIdx]) : NaN;
   const sha256Hash = detSha256Idx >= 0 ? firstRow[detSha256Idx] : "";
   const guid = detGuidIdx >= 0 ? firstRow[detGuidIdx] : "";
 
@@ -235,26 +277,24 @@ function parseCsvToResult(csvText: string) {
 
   // Advanced analysis indices
   const vSpeedIdx = findHeaderIndex(headers, "OSD.vSpeed [m/s]");
-  const pitchIdx = findHeaderIndex(headers, "OSD.pitch [°]");
-  const rollIdx = findHeaderIndex(headers, "OSD.roll [°]");
-  const yawIdx = findHeaderIndex(headers, "OSD.directionYaw [°]");
+  const pitchIdx = findHeaderIndex(headers, "OSD.pitch");
+  const rollIdx = findHeaderIndex(headers, "OSD.roll");
+  const yawIdx = findHeaderIndex(headers, "OSD.yaw");
   const groundOrSkyIdx = findHeaderIndex(headers, "OSD.groundOrSky");
   const gpsLevelIdx = findHeaderIndex(headers, "OSD.gpsLevel");
   const rcAileronIdx = findHeaderIndex(headers, "RC.aileron");
   const rcElevatorIdx = findHeaderIndex(headers, "RC.elevator");
   const rcRudderIdx = findHeaderIndex(headers, "RC.rudder");
   const rcThrottleIdx = findHeaderIndex(headers, "RC.throttle");
-  const gimbalPitchIdx = findHeaderIndex(headers, "GIMBAL.pitch [°]");
-  const gimbalRollIdx = findHeaderIndex(headers, "GIMBAL.roll [°]");
-  const gimbalYawIdx = findHeaderIndex(headers, "GIMBAL.yaw [°]");
-  const dist2DIdx = findHeaderIndex(headers, "CALC.distance2D [m]");
-  const dist3DIdx = findHeaderIndex(headers, "CALC.distance3D [m]");
-  const elevationIdx = findHeaderIndex(headers, "CALC.currentElevation [m]");
+  const gimbalPitchIdx = findHeaderIndex(headers, "GIMBAL.pitch");
+  const gimbalRollIdx = findHeaderIndex(headers, "GIMBAL.roll");
+  const gimbalYawIdx = findHeaderIndex(headers, "GIMBAL.yaw");
+  const dist2DIdx = findHeaderIndex(headers, "CALC.distanceFromHome [m]");
+  const dist3DIdx = findHeaderIndex(headers, "CALC.distanceFromHomeMax [m]");
   const homeLatIdx = findHeaderIndex(headers, "HOME.latitude");
   const homeLonIdx = findHeaderIndex(headers, "HOME.longitude");
-  const homeMaxHeightIdx = findHeaderIndex(headers, "HOME.maxAllowedHeight [m]");
-  const weatherTempIdx = findHeaderIndex(headers, "WEATHER.temperature [°C]");
-  const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection [°]");
+  const homeHeightIdx = findHeaderIndex(headers, "HOME.height [m]");
+  const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection");
   const weatherWindSpeedIdx = findHeaderIndex(headers, "WEATHER.windSpeed [m/s]");
 
   const positions: Array<Record<string, any>> = [];
@@ -273,6 +313,13 @@ function parseCsvToResult(csvText: string) {
   const appWarnings = new Set<string>();
   const events: FlightEvent[] = [];
   let rthTriggered = false;
+
+  // Dual-battery tracking
+  let minBatt1Volt = 999, minBatt2Volt = 999;
+  let maxBatt1Temp = -999, maxBatt2Temp = -999;
+  let maxBatt1CellDev = 0, maxBatt2CellDev = 0;
+  const batt1Cycles = batt1CyclesIdx >= 0 ? NaN : NaN;
+  const batt2Cycles = batt2CyclesIdx >= 0 ? NaN : NaN;
 
   // State tracking for event detection
   let prevAppWarn = "";
@@ -322,6 +369,23 @@ function parseCsvToResult(csvText: string) {
       if (battTemp < minBattTemp) minBattTemp = battTemp;
     }
     if (!isNaN(battVolt) && battVolt > 0 && battVolt < minBattVolt) minBattVolt = battVolt;
+
+    // Dual-battery tracking
+    if (isDualBattery) {
+      const b1v = batt1VoltIdx >= 0 ? parseFloat(cols[batt1VoltIdx]) : NaN;
+      const b2v = batt2VoltIdx >= 0 ? parseFloat(cols[batt2VoltIdx]) : NaN;
+      const b1t = batt1TempIdx >= 0 ? parseFloat(cols[batt1TempIdx]) : NaN;
+      const b2t = batt2TempIdx >= 0 ? parseFloat(cols[batt2TempIdx]) : NaN;
+      if (!isNaN(b1v) && b1v > 0 && b1v < minBatt1Volt) minBatt1Volt = b1v;
+      if (!isNaN(b2v) && b2v > 0 && b2v < minBatt2Volt) minBatt2Volt = b2v;
+      if (!isNaN(b1t) && b1t > maxBatt1Temp) maxBatt1Temp = b1t;
+      if (!isNaN(b2t) && b2t > maxBatt2Temp) maxBatt2Temp = b2t;
+      const b1cd = batt1CellDevIdx >= 0 ? parseFloat(cols[batt1CellDevIdx]) : NaN;
+      const b2cd = batt2CellDevIdx >= 0 ? parseFloat(cols[batt2CellDevIdx]) : NaN;
+      if (!isNaN(b1cd) && b1cd > maxBatt1CellDev) maxBatt1CellDev = b1cd;
+      if (!isNaN(b2cd) && b2cd > maxBatt2CellDev) maxBatt2CellDev = b2cd;
+    }
+
     // Cell deviation: prefer API-native field, fallback to manual from cellVoltage1-6
     const apiCellDev = cellDevIdx >= 0 ? parseFloat(cols[cellDevIdx]) : NaN;
     if (!isNaN(apiCellDev) && apiCellDev > maxBattCellDev) {
@@ -405,11 +469,21 @@ function parseCsvToResult(csvText: string) {
       if (pf(gimbalYawIdx) !== undefined) point.gimbalYaw = pf(gimbalYawIdx);
       if (pf(dist2DIdx) !== undefined) point.dist2D = pf(dist2DIdx);
       if (pf(dist3DIdx) !== undefined) point.dist3D = pf(dist3DIdx);
-      if (pf(elevationIdx) !== undefined) point.elevation = pf(elevationIdx);
       if (ps(flycStateIdx)) point.flycState = ps(flycStateIdx);
       if (ps(groundOrSkyIdx)) point.groundOrSky = ps(groundOrSkyIdx);
       if (pf(weatherWindSpeedIdx) !== undefined) point.windSpeed = pf(weatherWindSpeedIdx);
       if (pf(weatherWindDirIdx) !== undefined) point.windDir = pf(weatherWindDirIdx);
+      // Dual-battery telemetry per point
+      if (isDualBattery) {
+        if (pf(batt1ChargeIdx) !== undefined) point.battery1 = pf(batt1ChargeIdx);
+        if (pf(batt1VoltIdx) !== undefined) point.voltage1 = pf(batt1VoltIdx);
+        if (pf(batt1CurrentIdx) !== undefined) point.current1 = pf(batt1CurrentIdx);
+        if (pf(batt1TempIdx) !== undefined) point.temp1 = pf(batt1TempIdx);
+        if (pf(batt2ChargeIdx) !== undefined) point.battery2 = pf(batt2ChargeIdx);
+        if (pf(batt2VoltIdx) !== undefined) point.voltage2 = pf(batt2VoltIdx);
+        if (pf(batt2CurrentIdx) !== undefined) point.current2 = pf(batt2CurrentIdx);
+        if (pf(batt2TempIdx) !== undefined) point.temp2 = pf(batt2TempIdx);
+      }
       positions.push(point);
     }
   }
@@ -494,8 +568,11 @@ function parseCsvToResult(csvText: string) {
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
-    batteryTemperature: maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null,
-    batteryTempMin: minBattTemp < 999 ? Math.round(minBattTemp * 10) / 10 : null,
+    // Battery temp: prefer BATTERY.maxTemperature summary field, fallback to row-scanned max
+    batteryTemperature: !isNaN(battSummaryMaxTemp) ? Math.round(battSummaryMaxTemp * 10) / 10
+      : (maxBattTemp > -999 ? Math.round(maxBattTemp * 10) / 10 : null),
+    batteryTempMin: !isNaN(battSummaryMinTemp) ? Math.round(battSummaryMinTemp * 10) / 10
+      : (minBattTemp < 999 ? Math.round(minBattTemp * 10) / 10 : null),
     batteryMinVoltage: minBattVolt < 999 ? Math.round(minBattVolt * 100) / 100 : null,
     batteryCycles: !isNaN(batteryCycles) ? batteryCycles : null,
     minGpsSatellites: minGpsSats < 99 ? minGpsSats : null,
@@ -510,7 +587,19 @@ function parseCsvToResult(csvText: string) {
     maxDistance: !isNaN(maxDistance) ? Math.round(maxDistance) : null,
     maxVSpeed: !isNaN(detailsMaxVSpeed) ? Math.round(detailsMaxVSpeed * 10) / 10 : null,
     totalTimeSeconds: !isNaN(detailsTotalTime) ? Math.round(detailsTotalTime) : null,
-    // New dedup & event fields
+    // Dual-battery fields
+    isDualBattery,
+    battery1Cycles: !isNaN(battery1Cycles) ? battery1Cycles : null,
+    battery2Cycles: !isNaN(battery2Cycles) ? battery2Cycles : null,
+    battery1MinVoltage: minBatt1Volt < 999 ? Math.round(minBatt1Volt * 100) / 100 : null,
+    battery2MinVoltage: minBatt2Volt < 999 ? Math.round(minBatt2Volt * 100) / 100 : null,
+    battery1TempMax: maxBatt1Temp > -999 ? Math.round(maxBatt1Temp * 10) / 10 : null,
+    battery2TempMax: maxBatt2Temp > -999 ? Math.round(maxBatt2Temp * 10) / 10 : null,
+    battery1FullCapacity: !isNaN(battery1FullCap) ? Math.round(battery1FullCap) : null,
+    battery2FullCapacity: !isNaN(battery2FullCap) ? Math.round(battery2FullCap) : null,
+    battery1CellDeviationMax: maxBatt1CellDev > 0 ? Math.round(maxBatt1CellDev * 1000) / 1000 : null,
+    battery2CellDeviationMax: maxBatt2CellDev > 0 ? Math.round(maxBatt2CellDev * 1000) / 1000 : null,
+    // Dedup & event fields
     sha256Hash: sha256Hash || null,
     guid: guid || null,
     rthTriggered,

@@ -88,6 +88,18 @@ interface DroneLogResult {
   guid: string | null;
   rthTriggered: boolean;
   events: DroneLogEvent[];
+  // Dual-battery fields
+  isDualBattery?: boolean;
+  battery1Cycles?: number | null;
+  battery2Cycles?: number | null;
+  battery1MinVoltage?: number | null;
+  battery2MinVoltage?: number | null;
+  battery1TempMax?: number | null;
+  battery2TempMax?: number | null;
+  battery1FullCapacity?: number | null;
+  battery2FullCapacity?: number | null;
+  battery1CellDeviationMax?: number | null;
+  battery2CellDeviationMax?: number | null;
 }
 
 interface MatchedFlightLog {
@@ -1102,30 +1114,46 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const buildExtendedFields = (r: DroneLogResult) => ({
-    source: 'dronelogapi' as any,
-    dronelog_sha256: r.sha256Hash || null,
-    start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
-    end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
-    total_distance_m: r.totalDistance || null,
-    max_height_m: r.maxAltitude || null,
-    max_horiz_speed_ms: r.detailsMaxSpeed || null,
-    max_vert_speed_ms: r.maxVSpeed || null,
-    drone_model: r.droneType || null,
-    aircraft_serial: r.aircraftSerial || r.aircraftSN || null,
-    battery_cycles: r.batteryCycles || null,
-    battery_temp_min_c: r.batteryTempMin || null,
-    battery_temp_max_c: r.batteryTemperature || null,
-    battery_voltage_min_v: r.batteryMinVoltage || null,
-    gps_sat_min: r.minGpsSatellites || null,
-    gps_sat_max: r.maxGpsSatellites || null,
-    rth_triggered: r.rthTriggered || false,
-    battery_sn: r.batterySN || null,
-    battery_health_pct: r.batteryHealth || null,
-    max_distance_m: r.maxDistance || null,
-    battery_full_capacity_mah: r.batteryFullCapacity || null,
-    dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
-  });
+  const buildExtendedFields = (r: DroneLogResult) => {
+    // For dual-battery drones, use worst-case values for summary fields
+    const worstVoltage = r.isDualBattery
+      ? Math.min(r.batteryMinVoltage ?? 999, r.battery1MinVoltage ?? 999, r.battery2MinVoltage ?? 999)
+      : r.batteryMinVoltage;
+    const worstTemp = r.isDualBattery
+      ? Math.max(r.batteryTemperature ?? -999, r.battery1TempMax ?? -999, r.battery2TempMax ?? -999)
+      : r.batteryTemperature;
+    const worstCycles = r.isDualBattery
+      ? Math.max(r.battery1Cycles ?? 0, r.battery2Cycles ?? 0)
+      : r.batteryCycles;
+    const worstCapacity = r.isDualBattery
+      ? Math.min(r.battery1FullCapacity ?? 99999, r.battery2FullCapacity ?? 99999)
+      : r.batteryFullCapacity;
+
+    return {
+      source: 'dronelogapi' as any,
+      dronelog_sha256: r.sha256Hash || null,
+      start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
+      end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
+      total_distance_m: r.totalDistance || null,
+      max_height_m: r.maxAltitude || null,
+      max_horiz_speed_ms: r.detailsMaxSpeed || null,
+      max_vert_speed_ms: r.maxVSpeed || null,
+      drone_model: r.droneType || null,
+      aircraft_serial: r.aircraftSerial || r.aircraftSN || null,
+      battery_cycles: (worstCycles && worstCycles > 0) ? worstCycles : (r.batteryCycles || null),
+      battery_temp_min_c: r.batteryTempMin || null,
+      battery_temp_max_c: (worstTemp && worstTemp > -999) ? worstTemp : null,
+      battery_voltage_min_v: (worstVoltage && worstVoltage < 999) ? worstVoltage : null,
+      gps_sat_min: r.minGpsSatellites || null,
+      gps_sat_max: r.maxGpsSatellites || null,
+      rth_triggered: r.rthTriggered || false,
+      battery_sn: r.batterySN || null,
+      battery_health_pct: r.batteryHealth || null,
+      max_distance_m: r.maxDistance || null,
+      battery_full_capacity_mah: (worstCapacity && worstCapacity < 99999) ? worstCapacity : (r.batteryFullCapacity || null),
+      dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
+    };
+  };
 
   // ── Update battery equipment card with latest telemetry ──
   const updateBatteryEquipment = async (r: DroneLogResult) => {
