@@ -181,20 +181,23 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      // Include parent company so parent-level approvers also get notified
+      // Fetch parent company id for department hierarchy check
       const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
-      const relevantCompanyIds = [companyId];
-      if (approvalCompany?.parent_company_id) relevantCompanyIds.push(approvalCompany.parent_company_id);
-      console.log(`[APPROVAL] relevantCompanyIds=${JSON.stringify(relevantCompanyIds)}, parent=${approvalCompany?.parent_company_id ?? 'none'}`);
+      const parentId = approvalCompany?.parent_company_id;
+      console.log(`[APPROVAL] companyId=${companyId}, parent=${parentId ?? 'none'}`);
 
-      // Filter by department scope
+      // Filter approvers strictly:
+      // - null scope → only same company as mission
+      // - ['all'] → same company OR parent company only
+      // - explicit list → must include mission's company_id
       const approvers = approverProfiles.filter((a: any) => {
-        // If approval_company_ids is null, fallback: must belong to relevant companies
-        if (!a.approval_company_ids) return relevantCompanyIds.includes(a.company_id);
-        // If ['all'], can approve for any company
-        if (a.approval_company_ids.includes('all')) return true;
-        // Otherwise, must include the mission's company
-        return a.approval_company_ids.includes(companyId);
+        if (a.approval_company_ids?.includes('all')) {
+          return a.company_id === companyId || (parentId && a.company_id === parentId);
+        }
+        if (a.approval_company_ids) {
+          return a.approval_company_ids.includes(companyId);
+        }
+        return a.company_id === companyId;
       });
       console.log(`[APPROVAL] Filtered approvers count=${approvers.length}, ids=${JSON.stringify(approvers.map((a:any) => a.id))}`);
       if (!approvers.length) return new Response(JSON.stringify({ success: true, message: 'No approvers for this department' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
