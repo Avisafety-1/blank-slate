@@ -824,10 +824,15 @@ export const EquipmentLogbookDialog = ({
                                     )}
                                   </div>
                                 </div>
-                                {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null) && (
+                                {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null || entry.cellDeviation != null) && (
                                   <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                                     {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
                                     {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
+                                    {entry.cellDeviation != null && (
+                                      <span className={entry.cellDeviation > 0.1 ? 'text-destructive' : ''}>
+                                        📊 {entry.cellDeviation.toFixed(3)}V
+                                      </span>
+                                    )}
                                     {entry.capacityMah != null && <span>🔋 {entry.capacityMah} mAh</span>}
                                   </div>
                                 )}
