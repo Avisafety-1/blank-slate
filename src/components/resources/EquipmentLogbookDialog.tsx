@@ -56,6 +56,7 @@ interface BatteryTrendEntry {
   tempMax: number | null;
   voltageMin: number | null;
   capacityMah: number | null;
+  cellDeviation: number | null;
 }
 
 interface LogEntry {
