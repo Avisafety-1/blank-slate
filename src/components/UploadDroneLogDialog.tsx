@@ -1152,6 +1152,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       battery_health_pct: r.batteryHealth || null,
       max_distance_m: r.maxDistance || null,
       battery_full_capacity_mah: (worstCapacity && worstCapacity < 99999) ? worstCapacity : (r.batteryFullCapacity || null),
+      battery_cell_deviation_max_v: r.isDualBattery
+        ? Math.max(r.battery1CellDeviationMax ?? 0, r.battery2CellDeviationMax ?? 0) || null
+        : (r.batteryCellDeviationMax || null),
       dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
     };
   };
