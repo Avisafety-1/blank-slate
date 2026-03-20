@@ -521,8 +521,57 @@ function parseCsvToResult(csvText: string) {
     warnings.push({ type: "flyc_state", message: `Flygkontrolltilstander: ${Array.from(flycStatesSet).join(", ")}` });
   }
   if (appWarnings.size > 0) {
-    const warnList = Array.from(appWarnings).slice(0, 5);
-    warnings.push({ type: "app_warning", message: `App-advarsler: ${warnList.join("; ")}` });
+    // Categorize and deduplicate APP warnings
+    const criticalPatterns = /emergency|crash|motor|propeller|esc\s|failsafe|collision/i;
+    const importantPatterns = /battery|rth|return.to.home|landing|gps|compass|imu|obstacle|height.limit|geofence|no.fly/i;
+    // Everything else is info (signal, downlink, antenna, image transmission, etc.)
+
+    const categorized: Record<string, { severity: string; count: number }> = {};
+    for (const msg of appWarnings) {
+      // Normalize: trim trailing punctuation variants, lowercase for grouping
+      const normalized = msg.replace(/[.;,!]+$/, '').replace(/\s+/g, ' ').trim();
+      // Determine severity
+      let severity = 'info';
+      if (criticalPatterns.test(normalized)) severity = 'critical';
+      else if (importantPatterns.test(normalized)) severity = 'warning';
+
+      if (categorized[normalized]) {
+        categorized[normalized].count++;
+      } else {
+        categorized[normalized] = { severity, count: 1 };
+      }
+    }
+
+    // Also count duplicates from events list for accurate counts
+    const eventCounts: Record<string, number> = {};
+    for (const ev of events) {
+      if (ev.type === 'APP_WARNING' && ev.message) {
+        const norm = ev.message.replace(/[.;,!]+$/, '').replace(/\s+/g, ' ').trim();
+        eventCounts[norm] = (eventCounts[norm] || 0) + 1;
+      }
+    }
+    // Use event counts if larger (they track every occurrence, not just unique)
+    for (const [msg, data] of Object.entries(categorized)) {
+      if (eventCounts[msg] && eventCounts[msg] > data.count) {
+        data.count = eventCounts[msg];
+      }
+    }
+
+    // Push categorized warnings sorted by severity
+    const severityOrder = { critical: 0, warning: 1, info: 2 };
+    const sorted = Object.entries(categorized).sort((a, b) => 
+      (severityOrder[a[1].severity as keyof typeof severityOrder] ?? 2) - (severityOrder[b[1].severity as keyof typeof severityOrder] ?? 2)
+    );
+
+    for (const [msg, data] of sorted) {
+      const countSuffix = data.count > 1 ? ` (×${data.count})` : '';
+      warnings.push({ 
+        type: `app_warning_${data.severity}`, 
+        message: `${msg}${countSuffix}`, 
+        severity: data.severity, 
+        count: data.count 
+      });
+    }
   }
   if (maxBattCellDev > 0.1) {
     warnings.push({ type: "cell_deviation", message: `Høy celleavvik: ${maxBattCellDev.toFixed(3)}V`, value: maxBattCellDev });

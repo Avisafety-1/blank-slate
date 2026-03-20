@@ -1801,11 +1801,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             if (eq) availableTargets.push({ key: `equipment:${eqId}`, label: `${eq.type}: ${eq.navn}`, icon: <Wrench className="w-3 h-3" /> });
           });
 
+          const severity = (w as any).severity;
+          const isCritical = severity === 'critical';
+          const isInfo = severity === 'info';
+          const bgClass = isCritical
+            ? 'bg-destructive/10 border-destructive/30'
+            : isInfo
+            ? 'bg-muted/50 border-border'
+            : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+          const iconColor = isCritical
+            ? 'text-destructive'
+            : isInfo
+            ? 'text-muted-foreground'
+            : 'text-yellow-600 dark:text-yellow-400';
+          const textColor = isCritical
+            ? 'text-destructive'
+            : isInfo
+            ? 'text-muted-foreground'
+            : 'text-yellow-800 dark:text-yellow-300';
+
           return (
-            <div key={i} className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 space-y-2">
+            <div key={i} className={`p-3 rounded-lg border space-y-2 ${bgClass}`}>
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{w.message}</p>
+                <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${iconColor}`} />
+                <p className={`text-sm font-medium break-words whitespace-normal ${textColor}`}>{w.message}</p>
               </div>
               
               {availableTargets.length > 0 && (
