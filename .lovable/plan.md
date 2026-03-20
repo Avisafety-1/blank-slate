@@ -1,71 +1,42 @@
 
 
-## Plan: Synlighet for avdelinger — Nyheter og Dokumenter
+## Problem
 
-### Hva skal bygges
-Moderselskap (selskaper med underavdelinger) skal kunne velge å dele nyheter og dokumenter nedover i hierarkiet til alle sine avdelinger/underselskaper.
+The current approval notification logic (lines 184-198 in `send-notification-email`) is too broad:
 
-### Database-endringer
+1. It adds the parent company ID to `relevantCompanyIds`
+2. Approvers with `approval_company_ids = null` are included if their `company_id` is in `relevantCompanyIds` — this means **all** parent company approvers get notified for child company missions, even without "all" scope
+3. Approvers with `approval_company_ids = ['all']` from **any** company get notified
 
-**1. Ny kolonne på `news`-tabellen:**
-```sql
-ALTER TABLE public.news ADD COLUMN visible_to_children boolean DEFAULT false;
+### Correct behavior (per your request)
+
+- Only approvers **in the same company** as the mission should be notified (when `approval_company_ids` is null or includes the mission's `company_id`)
+- Parent company approvers should **only** be notified if they have `approval_company_ids = ['all']`
+- Email notification preference (`email_mission_approval`) must still be respected
+
+## Plan
+
+### 1. Fix filter logic in `send-notification-email/index.ts` (lines 184-198)
+
+Remove the `relevantCompanyIds` array that includes the parent. Replace the filter with:
+
+```
+approvers = approverProfiles.filter(a => {
+  if (a.approval_company_ids?.includes('all')) {
+    // Parent or same-company approvers with "all" scope
+    // Only allow if they're in the same company OR in the parent company
+    const parentId = approvalCompany?.parent_company_id;
+    return a.company_id === companyId || (parentId && a.company_id === parentId);
+  }
+  if (a.approval_company_ids) {
+    // Explicit list — must include the mission's company
+    return a.approval_company_ids.includes(companyId);
+  }
+  // No scope set (null) — only same company
+  return a.company_id === companyId;
+});
 ```
 
-**2. Ny kolonne på `documents`-tabellen:**
-```sql
-ALTER TABLE public.documents ADD COLUMN visible_to_children boolean DEFAULT false;
-```
-
-**3. Oppdater RLS-policyer:**
-
-For `news` SELECT: Utvid eksisterende policy slik at avdelinger også ser nyheter fra morselskapet der `visible_to_children = true`:
-```sql
--- Brukere ser nyheter fra eget selskap ELLER fra morselskapet hvis visible_to_children
-CREATE POLICY "Users can view news from own company" ON news FOR SELECT USING (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  OR (
-    visible_to_children = true 
-    AND company_id = get_parent_company_id(
-      (SELECT company_id FROM profiles WHERE id = auth.uid())
-    )
-  )
-);
-```
-
-For `documents` SELECT: Tilsvarende utvidelse, i tillegg til eksisterende `global_visibility`-logikk.
-
-### UI-endringer
-
-**4. AddNewsDialog.tsx:**
-- Sjekk om brukerens selskap er et moderselskap (har underavdelinger) ved å spørre `companies` med `parent_company_id = companyId`
-- Hvis ja: Vis en checkbox/switch "Synlig for alle avdelinger"
-- Lagre som `visible_to_children: true` på insert/update
-
-**5. DocumentUploadDialog.tsx:**
-- Samme logikk: Sjekk om selskapet har underavdelinger
-- Vis "Synlig for alle avdelinger"-switch (i tillegg til eksisterende superadmin "Synlig for alle selskaper"-switch)
-- Lagre som `visible_to_children: true`
-
-**6. NewsSection.tsx / DocumentSection.tsx:**
-- Avdelinger som henter nyheter/dokumenter vil automatisk se morselskap-delte elementer via oppdatert RLS
-- Vis et lite badge (f.eks. Building2-ikon) på elementer som kommer fra morselskapet, slik det allerede gjøres for avdelingsdata andre steder
-
-### Teknisk detalj: Sjekke om selskap er moderselskap
-Gjenbruke et enkelt query i dialogen:
-```typescript
-const { data: children } = await supabase
-  .from('companies')
-  .select('id')
-  .eq('parent_company_id', companyId)
-  .limit(1);
-const isParentCompany = (children?.length ?? 0) > 0;
-```
-
-### Filer som endres
-- **Migration** (ny): Legg til kolonner + oppdater RLS
-- `src/components/dashboard/AddNewsDialog.tsx` — checkbox for visible_to_children
-- `src/components/documents/DocumentUploadDialog.tsx` — switch for visible_to_children
-- `src/components/dashboard/NewsSection.tsx` — badge for delte nyheter fra morselskap
-- `src/components/dashboard/DocumentSection.tsx` — badge for delte dokumenter fra morselskap
+### File to modify
+- `supabase/functions/send-notification-email/index.ts` — tighten approver filter logic
 
