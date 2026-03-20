@@ -376,17 +376,18 @@ const InfoCell = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const MiniChart = ({ data, currentIndex, onIndexChange, eventIndices, children }: {
+const MiniChart = ({ data, currentIndex, onIndexChange, eventIndices, children, height = 160 }: {
   data: any[]; currentIndex: number; onIndexChange: (i: number) => void;
   eventIndices: Array<{ index: number; type: string; message: string }>;
   children: React.ReactNode;
+  height?: number;
 }) => {
   const hasRightAxis = (Array.isArray(children) ? children : [children]).some(
     (child: any) => child?.props?.yAxisId === 'right'
   );
 
   return (
-    <div className="w-full h-[160px]">
+    <div className="w-full" style={{ height: `${height}px` }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
