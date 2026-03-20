@@ -9,10 +9,19 @@ import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
 
+interface BatterySummary {
+  cycles: number | null;
+  healthPct: number | null;
+  fullCapacityMah: number | null;
+  voltageMinV: number | null;
+  cellDeviationMaxV: number | null;
+  tempMaxC: number | null;
+}
+
 interface FlightAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  flightTrack: { positions: any[]; events?: any[] } | null;
+  flightTrack: { positions: any[]; events?: any[]; batterySummary?: BatterySummary } | null;
   flightDate?: string;
   droneName?: string;
 }
