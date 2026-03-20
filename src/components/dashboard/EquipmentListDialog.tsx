@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
-import { calculateMaintenanceStatus } from "@/lib/maintenanceStatus";
+
 import { Status } from "@/types";
 import { X } from "lucide-react";
 
