@@ -448,6 +448,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             currentIndex={currentIndex}
             onIndexChange={setCurrentIndex}
             events={events}
+            showWarnings={showWarnings}
           />
         </div>
       </DialogContent>
