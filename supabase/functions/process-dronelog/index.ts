@@ -306,6 +306,13 @@ function parseCsvToResult(csvText: string) {
   const events: FlightEvent[] = [];
   let rthTriggered = false;
 
+  // Dual-battery tracking
+  let minBatt1Volt = 999, minBatt2Volt = 999;
+  let maxBatt1Temp = -999, maxBatt2Temp = -999;
+  let maxBatt1CellDev = 0, maxBatt2CellDev = 0;
+  const batt1Cycles = batt1CyclesIdx >= 0 ? NaN : NaN;
+  const batt2Cycles = batt2CyclesIdx >= 0 ? NaN : NaN;
+
   // State tracking for event detection
   let prevAppWarn = "";
   let prevGoHomeStatus = "";
