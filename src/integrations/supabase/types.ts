@@ -1955,6 +1955,7 @@ export type Database = {
       flight_logs: {
         Row: {
           aircraft_serial: string | null
+          battery_cell_deviation_max_v: number | null
           battery_cycles: number | null
           battery_full_capacity_mah: number | null
           battery_health_pct: number | null
@@ -1995,6 +1996,7 @@ export type Database = {
         }
         Insert: {
           aircraft_serial?: string | null
+          battery_cell_deviation_max_v?: number | null
           battery_cycles?: number | null
           battery_full_capacity_mah?: number | null
           battery_health_pct?: number | null
@@ -2035,6 +2037,7 @@ export type Database = {
         }
         Update: {
           aircraft_serial?: string | null
+          battery_cell_deviation_max_v?: number | null
           battery_cycles?: number | null
           battery_full_capacity_mah?: number | null
           battery_health_pct?: number | null
