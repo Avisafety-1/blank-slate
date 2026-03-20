@@ -88,6 +88,18 @@ interface DroneLogResult {
   guid: string | null;
   rthTriggered: boolean;
   events: DroneLogEvent[];
+  // Dual-battery fields
+  isDualBattery?: boolean;
+  battery1Cycles?: number | null;
+  battery2Cycles?: number | null;
+  battery1MinVoltage?: number | null;
+  battery2MinVoltage?: number | null;
+  battery1TempMax?: number | null;
+  battery2TempMax?: number | null;
+  battery1FullCapacity?: number | null;
+  battery2FullCapacity?: number | null;
+  battery1CellDeviationMax?: number | null;
+  battery2CellDeviationMax?: number | null;
 }
 
 interface MatchedFlightLog {
