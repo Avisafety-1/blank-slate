@@ -1,55 +1,25 @@
 
 
-## Plan: Smartere presentasjon av APP-advarsler
+## Plan: Sentrer drone og forstørr gyro i flyanalyse
 
-### Problemet
-1. APP_WARNING-meldinger vises som en lang, sammenslått streng i warnings-boksen — vanskelig å lese og krever horisontal scrolling
-2. Mange duplikate/repeterende advarsler (f.eks. "Image transmission signal weak" dukker opp flere ganger med litt ulik tekst)
-3. Lavprioritet-advarsler (signalstyrke-info) blandes med faktisk kritiske hendelser
+### Endringer
 
-### Løsning: Kategorisere, deduplisere og prioritere
+**1. Større drone-ikon (`FlightAnalysisDialog.tsx`, linje 192-196)**
+- Endre `iconSize` fra `[32, 32]` til `[48, 48]` og `iconAnchor` til `[24, 24]` — 50% større
 
-**1. Backend — `process-dronelog/index.ts` (linje 523-526)**
+**2. Offset panTo mot venstre 1/3 når gyro er aktiv (linje 211)**
+- Når `positions[currentIndex]?.pitch !== undefined` (gyro synlig): bruk `map.panTo()` med en pixel-offset som plasserer drona på venstre 1/3 av kartbredden
+- Beregn offset: `map.getSize().x / 6` piksler mot høyre (dvs. kartet panorerer slik at drona havner 1/3 fra venstre)
+- Bruk `map.setView(map.containerPointToLatLng(targetPoint))` eller `panBy` etter panTo
+- Når gyro IKKE er aktiv: standard `panTo` uten offset (sentrert)
 
-I stedet for å slå sammen alle app-advarsler til én lang streng, kategoriser dem:
+**3. Større gyro-indikator (`DroneAttitudeIndicator.tsx`)**
+- Endre ytre container fra `w-[72px] h-[72px]` til `w-[108px] h-[108px]` — 50% større
+- Endre indre ball fra `w-[56px] h-[56px]` til `w-[84px] h-[84px]`
+- Oppdater SVG `viewBox` og linje-koordinater proporsjonalt (skaler med 1.5x)
+- Øk heading-tekst fra `text-[9px]` til `text-[11px]`
 
-- **Kritisk** (rød): "Emergency", "Crash", "Motor", "Propeller"
-- **Viktig** (gul): "Battery", "RTH", "Landing", "GPS", "Compass", "IMU"
-- **Informasjon** (grå): "Signal weak", "Downlink", "Image transmission", "Antenna"
-
-Endre warnings-output fra:
-```
-{ type: "app_warning", message: "App-advarsler: msg1; msg2; msg3; msg4; msg5" }
-```
-Til separate, dedupliserte warnings per kategori:
-```
-{ type: "app_warning_critical", message: "Motor overbelastet", severity: "critical" }
-{ type: "app_warning_important", message: "GPS signal svakt", severity: "warning" }
-{ type: "app_warning_info", message: "Bildeoverføring svakt signal (3x)", severity: "info", count: 3 }
-```
-
-Deduplisering: Normaliser meldinger (fjern "Adjust antennas and fly with caution" vs "Adjust antennas" → samme kategori) og tell forekomster.
-
-**2. Frontend — `UploadDroneLogDialog.tsx` (linje 1786-1808 + 2382-2420)**
-
-- Vis kritiske og viktige advarsler som separate warning-kort (som i dag, men hver for seg)
-- Vis info-advarsler som en sammenfoldet seksjon: "3 informasjonsmeldinger" som kan utvides
-- Bruk `break-words` / `whitespace-normal` på meldingsteksten for å unngå horisontal scroll
-- Vis antall forekomster som badge: "Bildeoverføring svakt signal ×3"
-
-**3. Hendelseslisten (events) — samme filer**
-
-Dedupliser APP_WARNING events i visningen:
-- Grupper like APP_WARNING-meldinger og vis "×N" i stedet for å liste hver enkelt
-- Behold tidsstempel for første forekomst
-
-### Filer som endres
-- `supabase/functions/process-dronelog/index.ts` — kategoriser og dedupliser app_warnings
-- `src/components/UploadDroneLogDialog.tsx` — smartere warning-UI med folding og word-wrap
-
-### Forventet resultat
-- Kritiske advarsler er tydelig synlige
-- Signalstyrke-meldinger er kompakt oppsummert ("×3") og foldet bort
-- Ingen horisontal scrolling
-- Eksisterende flylogger med gammel format vises fortsatt (bakoverkompatibelt)
+### Filer
+- `src/components/dashboard/FlightAnalysisDialog.tsx` — drone-ikon 48px, offset panTo
+- `src/components/dashboard/DroneAttitudeIndicator.tsx` — 50% større dimensjoner
 
