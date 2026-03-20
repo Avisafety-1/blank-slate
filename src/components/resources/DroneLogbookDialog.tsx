@@ -112,7 +112,7 @@ export const DroneLogbookDialog = ({
       // Fetch flight logs
       const { data: flightLogs } = await supabase
         .from("flight_logs")
-        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track`)
+        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track, battery_cycles, battery_health_pct, battery_full_capacity_mah, battery_voltage_min_v, battery_temp_max_c`)
         .eq("drone_id", droneId)
         .order("flight_date", { ascending: false });
 
@@ -154,6 +154,13 @@ export const DroneLogbookDialog = ({
             flightTrack: {
               ...existingTrack,
               events: existingTrack.events || eventsByLogId.get(log.id) || [],
+              batterySummary: {
+                cycles: (log as any).battery_cycles ?? null,
+                healthPct: (log as any).battery_health_pct ?? null,
+                fullCapacityMah: (log as any).battery_full_capacity_mah ?? null,
+                voltageMinV: (log as any).battery_voltage_min_v ?? null,
+                tempMaxC: (log as any).battery_temp_max_c ?? null,
+              },
             },
             flightDate: log.flight_date,
           });

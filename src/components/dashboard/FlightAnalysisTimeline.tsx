@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { BatterySummary } from "./FlightAnalysisDialog";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ interface FlightAnalysisTimelineProps {
   onIndexChange: (index: number) => void;
   events?: Array<{ type: string; message: string; t_offset_ms: number | null }>;
   showWarnings?: boolean;
+  batterySummary?: BatterySummary;
 }
 
 const formatTime = (idx: number, positions: TelemetryPoint[]) => {
@@ -67,7 +69,7 @@ const ChartTooltip = ({ active, payload }: any) => {
 const hasData = (positions: TelemetryPoint[], key: keyof TelemetryPoint) =>
   positions.some(p => p[key] !== undefined && p[key] !== null);
 
-export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true }: FlightAnalysisTimelineProps) => {
+export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true, batterySummary }: FlightAnalysisTimelineProps) => {
   const [activeChart, setActiveChart] = useState("altitude");
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
@@ -228,6 +230,16 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
 
         {/* Battery info tab — temp, current, voltage graphs */}
         <TabsContent value="batteryInfo" className="mt-2 space-y-2">
+          {/* Battery summary from flight log */}
+          {batterySummary && (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] sm:text-xs">
+              {batterySummary.cycles != null && <InfoCell label="Sykluser" value={`${batterySummary.cycles}`} />}
+              {batterySummary.healthPct != null && <InfoCell label="Helse" value={`${batterySummary.healthPct}%`} />}
+              {batterySummary.fullCapacityMah != null && <InfoCell label="Kapasitet" value={`${batterySummary.fullCapacityMah} mAh`} />}
+              {batterySummary.voltageMinV != null && <InfoCell label="Min spenning" value={`${batterySummary.voltageMinV.toFixed(2)} V`} />}
+              {batterySummary.tempMaxC != null && <InfoCell label="Maks temp" value={`${batterySummary.tempMaxC}°C`} />}
+            </div>
+          )}
           {/* Temperature chart */}
           {(hasData(positions, 'temp') || hasData(positions, 'temp1') || hasData(positions, 'temp2')) && (
             <div>
