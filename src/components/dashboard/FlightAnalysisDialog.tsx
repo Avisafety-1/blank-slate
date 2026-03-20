@@ -5,6 +5,7 @@ import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
 import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
 import { BarChart3, AlertTriangle } from "lucide-react";
+import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
 
 interface FlightAnalysisDialogProps {
