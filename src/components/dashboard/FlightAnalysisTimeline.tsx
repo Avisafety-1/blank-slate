@@ -125,17 +125,19 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
             onValueChange={([v]) => onIndexChange(v)}
             className="w-full"
           />
-          {/* Event markers on slider track */}
+          {/* Event markers on slider track — clickable */}
           {eventIndices.map((e, i) => (
-            <div
+            <button
               key={i}
-              className="absolute top-1/2 -translate-y-1/2 w-1.5 h-4 rounded-sm"
+              type="button"
+              className="absolute top-1/2 -translate-y-1/2 w-2 h-5 rounded-sm cursor-pointer hover:scale-125 transition-transform z-10"
               style={{
                 left: `${(e.index / (positions.length - 1)) * 100}%`,
-                backgroundColor: e.type === 'RTH' ? 'hsl(var(--destructive))' : 
-                  e.type === 'LOW_BATTERY' ? 'hsl(38 92% 50%)' : 'hsl(var(--primary))',
+                backgroundColor: e.type === 'RTH' || e.type === 'app_warning_critical' ? 'hsl(var(--destructive))' : 
+                  e.type === 'LOW_BATTERY' || e.type === 'app_warning_important' ? 'hsl(38 92% 50%)' : 'hsl(25 95% 53%)',
               }}
               title={e.message}
+              onClick={(ev) => { ev.stopPropagation(); onIndexChange(e.index); }}
             />
           ))}
         </div>

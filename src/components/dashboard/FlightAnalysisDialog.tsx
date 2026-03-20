@@ -1,10 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
 import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
-import { BarChart3, AlertTriangle } from "lucide-react";
+import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
 
@@ -16,10 +17,26 @@ interface FlightAnalysisDialogProps {
   droneName?: string;
 }
 
+const getEventColor = (type: string) => {
+  if (type === 'RTH' || type === 'app_warning_critical') return 'hsl(0, 84%, 60%)';
+  if (type === 'LOW_BATTERY' || type === 'app_warning_important') return 'hsl(38, 92%, 50%)';
+  return 'hsl(25, 95%, 53%)'; // APP_WARNING / info
+};
+
+const getSpeedColor = (speed: number, maxSpeed: number) => {
+  if (maxSpeed <= 0) return 'hsl(142, 76%, 36%)';
+  const ratio = Math.min(speed / maxSpeed, 1);
+  if (ratio < 0.33) return 'hsl(142, 76%, 36%)'; // green
+  if (ratio < 0.66) return 'hsl(45, 93%, 47%)';  // yellow
+  return 'hsl(0, 84%, 60%)';                      // red
+};
+
 export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName }: FlightAnalysisDialogProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mapReady, setMapReady] = useState(false);
   const [tileError, setTileError] = useState(false);
+  const [showWarnings, setShowWarnings] = useState(false);
+  const [showSpeedTrail, setShowSpeedTrail] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const droneMarkerRef = useRef<L.Marker | null>(null);
@@ -27,6 +44,8 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
   const fullLineRef = useRef<L.Polyline | null>(null);
   const startMarkerRef = useRef<L.CircleMarker | null>(null);
   const endMarkerRef = useRef<L.CircleMarker | null>(null);
+  const warningLayerRef = useRef<L.LayerGroup | null>(null);
+  const speedLayerRef = useRef<L.LayerGroup | null>(null);
   const initAttemptRef = useRef(0);
   const timersRef = useRef<number[]>([]);
 
@@ -50,6 +69,32 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     [positions]
   );
 
+  // Compute max speed for heatmap coloring
+  const maxSpeed = useMemo(() => {
+    let max = 0;
+    positions.forEach((p: any) => { if (p.speed > max) max = p.speed; });
+    return max;
+  }, [positions]);
+
+  // Compute event positions mapped to closest telemetry index
+  const eventPositions = useMemo(() => {
+    if (!events?.length || !positions.length) return [];
+    return events.filter((e: any) => e.t_offset_ms != null).map((e: any) => {
+      const targetSec = (e.t_offset_ms || 0) / 1000;
+      let best = 0;
+      let bestDiff = Infinity;
+      positions.forEach((p: any, i: number) => {
+        const match = p.timestamp?.match(/PT(\d+)S/);
+        if (match) {
+          const diff = Math.abs(parseInt(match[1]) - targetSec);
+          if (diff < bestDiff) { bestDiff = diff; best = i; }
+        }
+      });
+      const pos = positions[best];
+      return { ...e, index: best, lat: pos?.lat, lng: pos?.lng };
+    }).filter((e: any) => e.lat && e.lng);
+  }, [events, positions]);
+
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
@@ -66,6 +111,8 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     fullLineRef.current = null;
     startMarkerRef.current = null;
     endMarkerRef.current = null;
+    warningLayerRef.current = null;
+    speedLayerRef.current = null;
     setMapReady(false);
     setTileError(false);
   }, [clearTimers]);
@@ -108,7 +155,6 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
         });
 
         tileLayer.on("tileerror", () => {
-          // Only show error if no tiles loaded after a delay
           const t = window.setTimeout(() => {
             if (!tilesLoaded) setTileError(true);
           }, 5000);
@@ -153,7 +199,6 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           timersRef.current.push(t);
         });
 
-        // Mark ready after stabilization
         const readyTimer = window.setTimeout(() => setMapReady(true), 400);
         timersRef.current.push(readyTimer);
 
@@ -167,7 +212,6 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
       }
     };
 
-    // Start first attempt after a short delay to let dialog animation begin
     const t = window.setTimeout(tryInitMap, 150);
     timersRef.current.push(t);
 
@@ -176,7 +220,77 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     };
   }, [open, mapCenter, polylinePositions, positions, clearTimers, destroyMap]);
 
-  // Update drone marker + trail on index change (only when map is ready)
+  // Warning markers layer
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    // Clear existing
+    if (warningLayerRef.current) {
+      map.removeLayer(warningLayerRef.current);
+      warningLayerRef.current = null;
+    }
+
+    if (!showWarnings || !eventPositions.length) return;
+
+    const group = L.layerGroup();
+    eventPositions.forEach((e: any) => {
+      const color = getEventColor(e.type);
+      const marker = L.circleMarker([e.lat, e.lng], {
+        radius: 7,
+        color,
+        fillColor: color,
+        fillOpacity: 0.7,
+        weight: 2,
+      });
+      marker.bindPopup(
+        `<div style="font-size:12px;max-width:200px"><strong>${e.type}</strong><br/>${e.message}</div>`,
+        { closeButton: false, className: 'warning-popup' }
+      );
+      marker.addTo(group);
+    });
+    group.addTo(map);
+    warningLayerRef.current = group;
+  }, [showWarnings, eventPositions, mapReady]);
+
+  // Speed-colored trail layer
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    // Clear existing speed layer
+    if (speedLayerRef.current) {
+      map.removeLayer(speedLayerRef.current);
+      speedLayerRef.current = null;
+    }
+
+    // Toggle full trail visibility
+    if (fullLineRef.current) {
+      if (showSpeedTrail) {
+        fullLineRef.current.setStyle({ opacity: 0 });
+      } else {
+        fullLineRef.current.setStyle({ opacity: 0.3 });
+      }
+    }
+
+    if (!showSpeedTrail || positions.length < 2) return;
+
+    const group = L.layerGroup();
+    for (let i = 0; i < positions.length - 1; i++) {
+      const p1 = positions[i];
+      const p2 = positions[i + 1];
+      const speed = p1.speed ?? 0;
+      const color = getSpeedColor(speed, maxSpeed);
+      L.polyline(
+        [[p1.lat, p1.lng], [p2.lat, p2.lng]],
+        { color, weight: 3, opacity: 0.85 }
+      ).addTo(group);
+    }
+    group.addTo(map);
+    speedLayerRef.current = group;
+  }, [showSpeedTrail, positions, maxSpeed, mapReady]);
+
+  // Update drone marker + trail on index change
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !positions.length) return;
@@ -198,14 +312,19 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
       droneMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(map);
     }
 
-    // Trail
-    const trail = polylinePositions.slice(0, currentIndex + 1);
-    if (trail.length > 1) {
-      if (trailLineRef.current) {
-        trailLineRef.current.setLatLngs(trail);
-      } else {
-        trailLineRef.current = L.polyline(trail, { color: "hsl(210, 80%, 50%)", weight: 3, opacity: 0.8 }).addTo(map);
+    // Trail (only when not showing speed trail, to avoid duplication)
+    if (!showSpeedTrail) {
+      const trail = polylinePositions.slice(0, currentIndex + 1);
+      if (trail.length > 1) {
+        if (trailLineRef.current) {
+          trailLineRef.current.setLatLngs(trail);
+        } else {
+          trailLineRef.current = L.polyline(trail, { color: "hsl(210, 80%, 50%)", weight: 3, opacity: 0.8 }).addTo(map);
+        }
       }
+    } else if (trailLineRef.current) {
+      map.removeLayer(trailLineRef.current);
+      trailLineRef.current = null;
     }
 
     // Offset drone to left 1/3 when gyro overlay is visible
@@ -213,16 +332,18 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     if (hasGyro) {
       const mapSize = map.getSize();
       const targetPoint = map.latLngToContainerPoint(pos);
-      const offsetX = mapSize.x / 6; // shift so drone sits at ~1/3 from left
+      const offsetX = mapSize.x / 6;
       const offsetPoint = L.point(targetPoint.x + offsetX, targetPoint.y);
       const offsetLatLng = map.containerPointToLatLng(offsetPoint);
       map.panTo(offsetLatLng, { animate: true, duration: 0.3 });
     } else {
       map.panTo(pos, { animate: true, duration: 0.3 });
     }
-  }, [currentIndex, positions, polylinePositions, mapReady]);
+  }, [currentIndex, positions, polylinePositions, mapReady, showSpeedTrail]);
 
   if (!flightTrack || !positions.length) return null;
+
+  const hasSpeedData = positions.some((p: any) => p.speed !== undefined);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -267,6 +388,46 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
               <p className="text-sm text-muted-foreground">Kartet kunne ikke lastes – prøv å åpne analysen på nytt</p>
             </div>
           )}
+
+          {/* Map overlay controls — top left */}
+          {mapReady && (
+            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5">
+              {events.length > 0 && (
+                <Button
+                  size="icon"
+                  variant={showWarnings ? "default" : "secondary"}
+                  className="h-8 w-8 rounded-lg shadow-md"
+                  onClick={() => setShowWarnings(v => !v)}
+                  title="Vis advarsler på kart"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                </Button>
+              )}
+              {hasSpeedData && (
+                <Button
+                  size="icon"
+                  variant={showSpeedTrail ? "default" : "secondary"}
+                  className="h-8 w-8 rounded-lg shadow-md"
+                  onClick={() => setShowSpeedTrail(v => !v)}
+                  title="Fargelegg rute etter hastighet"
+                >
+                  <Gauge className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Speed legend */}
+          {mapReady && showSpeedTrail && (
+            <div className="absolute bottom-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1.5 text-[10px] border border-border shadow-sm">
+              <span className="text-muted-foreground">Sakte</span>
+              <div className="w-12 h-2 rounded-full" style={{
+                background: 'linear-gradient(to right, hsl(142,76%,36%), hsl(45,93%,47%), hsl(0,84%,60%))'
+              }} />
+              <span className="text-muted-foreground">Rask</span>
+            </div>
+          )}
+
           {/* Attitude indicator overlay */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
             <div className="absolute top-2 right-2 z-10">
