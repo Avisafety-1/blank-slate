@@ -1848,7 +1848,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                             const newSaveToLog = newTargets.length > 0;
                             setWarningActions(prev => ({
                               ...prev,
-                              [i]: { ...action, targetLogbooks: newTargets, saveToLog: newSaveToLog }
+                              [origIdx]: { ...action, targetLogbooks: newTargets, saveToLog: newSaveToLog }
                             }));
                           }}
                         />
@@ -1864,7 +1864,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <Select
                   value={action.newStatus}
                   onValueChange={(val) => {
-                    setWarningActions(prev => ({ ...prev, [i]: { ...action, newStatus: val } }));
+                    setWarningActions(prev => ({ ...prev, [origIdx]: { ...action, newStatus: val } }));
                   }}
                 >
                   <SelectTrigger className="h-6 w-24 text-xs">
@@ -1880,6 +1880,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </div>
           );
         })}
+
+        {/* Info warnings - collapsible */}
+        {infoWarnings.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1.5">
+              <Info className="w-3.5 h-3.5 shrink-0" />
+              <span>{infoWarnings.length} informasjonsmelding{infoWarnings.length > 1 ? 'er' : ''}</span>
+              <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {infoWarnings.map((w, idx) => (
+                <div key={idx} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-muted/40 text-xs">
+                  <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <span className="text-muted-foreground break-words whitespace-normal">{w.message}</span>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </div>
     );
   };
