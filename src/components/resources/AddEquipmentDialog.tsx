@@ -64,10 +64,16 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
 
   // Pre-populate from defaultValues when dialog opens
   useEffect(() => {
-    if (open && defaultValues) {
-      if (defaultValues.type) setSelectedType(defaultValues.type);
-      if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
-    } else if (!open) {
+    if (open) {
+      if (defaultValues?.type) {
+        setSelectedType(defaultValues.type);
+      }
+      if (defaultValues?.internal_serial) {
+        setInternalSerial(defaultValues.internal_serial);
+      }
+    } else {
+      setSelectedType("");
+      setCustomType("");
       setInternalSerial("");
     }
   }, [open, defaultValues]);
