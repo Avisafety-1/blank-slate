@@ -56,6 +56,7 @@ interface BatteryTrendEntry {
   tempMax: number | null;
   voltageMin: number | null;
   capacityMah: number | null;
+  cellDeviation: number | null;
 }
 
 interface LogEntry {
@@ -124,7 +125,7 @@ export const EquipmentLogbookDialog = ({
     try {
       const { data } = await (supabase
         .from('flight_logs')
-        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah')
+        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
         .eq('company_id', companyId) as any)
         .eq('battery_sn', equipmentSerienummer)
         .not('battery_cycles', 'is', null)
@@ -141,6 +142,7 @@ export const EquipmentLogbookDialog = ({
             tempMax: r.battery_temp_max_c,
             voltageMin: r.battery_voltage_min_v,
             capacityMah: r.battery_full_capacity_mah,
+            cellDeviation: r.battery_cell_deviation_max_v,
           }))
         );
       }
@@ -696,6 +698,8 @@ export const EquipmentLogbookDialog = ({
                     const latestTempMax = latest?.tempMax;
                     const latestVoltageMin = latest?.voltageMin;
                     const latestCapacity = latest?.capacityMah;
+                    const latestCellDev = latest?.cellDeviation;
+                    const cellDevColor = latestCellDev == null ? '' : latestCellDev > 0.1 ? 'text-destructive' : latestCellDev > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
                     const firstCapacity = first?.capacityMah;
 
                     const healthColor = latestHealth < 60 ? 'text-destructive' : latestHealth < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
@@ -744,6 +748,17 @@ export const EquipmentLogbookDialog = ({
                               </p>
                             )}
                           </div>
+                          {latestCellDev != null && (
+                            <div className="border rounded-lg p-3 bg-card">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Celleavvik</p>
+                              <p className={`text-lg font-bold ${cellDevColor}`}>
+                                {latestCellDev.toFixed(3)}V
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {latestCellDev > 0.1 ? 'Høyt' : latestCellDev > 0.05 ? 'Moderat' : 'OK'}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Capacity degradation trend */}
@@ -765,18 +780,19 @@ export const EquipmentLogbookDialog = ({
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
                           {/* Header row - hidden on mobile */}
-                          <div className="hidden sm:grid sm:grid-cols-6 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                          <div className="hidden sm:grid sm:grid-cols-7 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
                             <span>Dato</span>
                             <span>Sykluser</span>
                             <span>Helse</span>
                             <span>Temp</span>
                             <span>Spenning</span>
+                            <span>Celleavvik</span>
                             <span>Kapasitet</span>
                           </div>
                           {batteryTrend.slice().reverse().map((entry, idx) => (
                             <div key={idx} className="border rounded-md px-3 py-2 text-sm">
                               {/* Desktop layout */}
-                              <div className="hidden sm:grid sm:grid-cols-6 gap-2 items-center">
+                              <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
                                 <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
                                 <span className={entry.health != null ? (entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
@@ -789,6 +805,9 @@ export const EquipmentLogbookDialog = ({
                                 </span>
                                 <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
+                                </span>
+                                <span className={entry.cellDeviation != null ? (entry.cellDeviation > 0.1 ? 'text-destructive' : entry.cellDeviation > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                  {entry.cellDeviation != null ? `${entry.cellDeviation.toFixed(3)}V` : '—'}
                                 </span>
                                 <span>{entry.capacityMah != null ? `${entry.capacityMah} mAh` : '—'}</span>
                               </div>
@@ -805,10 +824,15 @@ export const EquipmentLogbookDialog = ({
                                     )}
                                   </div>
                                 </div>
-                                {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null) && (
+                                {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null || entry.cellDeviation != null) && (
                                   <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                                     {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
                                     {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
+                                    {entry.cellDeviation != null && (
+                                      <span className={entry.cellDeviation > 0.1 ? 'text-destructive' : ''}>
+                                        📊 {entry.cellDeviation.toFixed(3)}V
+                                      </span>
+                                    )}
                                     {entry.capacityMah != null && <span>🔋 {entry.capacityMah} mAh</span>}
                                   </div>
                                 )}
