@@ -226,29 +226,49 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
           </MiniChart>
         </TabsContent>
 
-        {/* Battery info tab — temp, current, voltage details */}
-        <TabsContent value="batteryInfo" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            {hasData(positions, 'temp') && (
-              <Line type="monotone" dataKey="temp" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp °C" dot={false} isAnimationActive={false} />
-            )}
-            {hasData(positions, 'current') && (
-              <Line type="monotone" dataKey="current" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name="Strøm A" dot={false} isAnimationActive={false} yAxisId="right" />
-            )}
-            {hasData(positions, 'voltage') && !isDualBattery && (
-              <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning V" dot={false} isAnimationActive={false} />
-            )}
-          </MiniChart>
-          {current && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-[10px] sm:text-xs mt-2">
-              {current.temp !== undefined && <InfoCell label="Temp" value={`${current.temp.toFixed(1)}°C`} />}
-              {current.current !== undefined && <InfoCell label="Strøm" value={`${current.current.toFixed(1)} A`} />}
-              {current.voltage !== undefined && <InfoCell label="Spenning" value={`${current.voltage.toFixed(2)} V`} />}
-              {current.battery !== undefined && <InfoCell label="Nivå" value={`${current.battery.toFixed(0)}%`} />}
-              {current.temp1 !== undefined && <InfoCell label="Temp B1" value={`${current.temp1.toFixed(1)}°C`} />}
-              {current.temp2 !== undefined && <InfoCell label="Temp B2" value={`${current.temp2.toFixed(1)}°C`} />}
-              {current.current1 !== undefined && <InfoCell label="Strøm B1" value={`${current.current1.toFixed(1)} A`} />}
-              {current.current2 !== undefined && <InfoCell label="Strøm B2" value={`${current.current2.toFixed(1)} A`} />}
+        {/* Battery info tab — temp, current, voltage graphs */}
+        <TabsContent value="batteryInfo" className="mt-2 space-y-2">
+          {/* Temperature chart */}
+          {(hasData(positions, 'temp') || hasData(positions, 'temp1') || hasData(positions, 'temp2')) && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Temperatur °C</p>
+              <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
+                {hasData(positions, 'temp') && !isDualBattery && (
+                  <Line type="monotone" dataKey="temp" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'temp1') && (
+                  <Line type="monotone" dataKey="temp1" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp B1" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'temp2') && (
+                  <Line type="monotone" dataKey="temp2" stroke="hsl(25 95% 53%)" strokeWidth={2} name="Temp B2" dot={false} isAnimationActive={false} />
+                )}
+              </MiniChart>
+            </div>
+          )}
+          {/* Current chart */}
+          {(hasData(positions, 'current') || hasData(positions, 'current1') || hasData(positions, 'current2')) && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Strøm A</p>
+              <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
+                {hasData(positions, 'current') && !isDualBattery && (
+                  <Line type="monotone" dataKey="current" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Strøm" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'current1') && (
+                  <Line type="monotone" dataKey="current1" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Strøm B1" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'current2') && (
+                  <Line type="monotone" dataKey="current2" stroke="hsl(280 65% 60%)" strokeWidth={2} name="Strøm B2" dot={false} isAnimationActive={false} />
+                )}
+              </MiniChart>
+            </div>
+          )}
+          {/* Voltage chart (single battery only — dual shown in battery tab) */}
+          {hasData(positions, 'voltage') && !isDualBattery && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Spenning V</p>
+              <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
+                <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning" dot={false} isAnimationActive={false} />
+              </MiniChart>
             </div>
           )}
         </TabsContent>
