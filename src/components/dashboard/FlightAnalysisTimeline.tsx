@@ -225,6 +225,33 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
           </MiniChart>
         </TabsContent>
 
+        {/* Battery info tab — temp, current, voltage details */}
+        <TabsContent value="batteryInfo" className="mt-2">
+          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
+            {hasData(positions, 'temp') && (
+              <Line type="monotone" dataKey="temp" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp °C" dot={false} isAnimationActive={false} />
+            )}
+            {hasData(positions, 'current') && (
+              <Line type="monotone" dataKey="current" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name="Strøm A" dot={false} isAnimationActive={false} yAxisId="right" />
+            )}
+            {hasData(positions, 'voltage') && !isDualBattery && (
+              <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning V" dot={false} isAnimationActive={false} />
+            )}
+          </MiniChart>
+          {current && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-[10px] sm:text-xs mt-2">
+              {current.temp !== undefined && <InfoCell label="Temp" value={`${current.temp.toFixed(1)}°C`} />}
+              {current.current !== undefined && <InfoCell label="Strøm" value={`${current.current.toFixed(1)} A`} />}
+              {current.voltage !== undefined && <InfoCell label="Spenning" value={`${current.voltage.toFixed(2)} V`} />}
+              {current.battery !== undefined && <InfoCell label="Nivå" value={`${current.battery.toFixed(0)}%`} />}
+              {current.temp1 !== undefined && <InfoCell label="Temp B1" value={`${current.temp1.toFixed(1)}°C`} />}
+              {current.temp2 !== undefined && <InfoCell label="Temp B2" value={`${current.temp2.toFixed(1)}°C`} />}
+              {current.current1 !== undefined && <InfoCell label="Strøm B1" value={`${current.current1.toFixed(1)} A`} />}
+              {current.current2 !== undefined && <InfoCell label="Strøm B2" value={`${current.current2.toFixed(1)} A`} />}
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="gps" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
             <Line type="stepAfter" dataKey="gpsNum" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Satellitter" dot={false} isAnimationActive={false} />
@@ -279,6 +306,42 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
             <Line type="monotone" dataKey="windSpeed" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Vindstyrke m/s" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="windDir" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Retning °" dot={false} isAnimationActive={false} yAxisId="right" />
           </MiniChart>
+        </TabsContent>
+
+        {/* Warnings list tab */}
+        <TabsContent value="warnings" className="mt-2">
+          <ScrollArea className="h-[160px]">
+            <div className="space-y-1">
+              {eventIndices.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Ingen hendelser registrert</p>
+              ) : (
+                eventIndices.map((e, i) => {
+                  const time = formatTime(e.index, positions);
+                  const isActive = currentIndex === e.index;
+                  const color = e.type === 'RTH' || e.type === 'app_warning_critical'
+                    ? 'text-destructive'
+                    : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-orange-600 dark:text-orange-400';
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-start gap-2 transition-colors hover:bg-accent/15 ${isActive ? 'bg-accent/20 ring-1 ring-primary/30' : ''}`}
+                      onClick={() => onIndexChange(e.index)}
+                    >
+                      <span className="font-mono text-muted-foreground shrink-0 mt-0.5 tabular-nums">{time}</span>
+                      <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${color}`} />
+                      <div className="min-w-0">
+                        <span className={`font-medium ${color}`}>{e.type}</span>
+                        <p className="text-muted-foreground break-words leading-snug">{e.message}</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
         </TabsContent>
       </Tabs>
     </div>
