@@ -2373,28 +2373,72 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {t('dronelog.noLogs', 'Ingen flylogger funnet i DJI-kontoen.')}
               </p>
             ) : (
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                {djiLogs.map(log => (
-                  <button
-                    key={log.id}
-                    onClick={() => handleSelectDjiLog(log)}
-                    disabled={processingLogId !== null || djiImportCooldown}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <Plane className="w-5 h-5 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
-                      {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{log.date}</span>
-                        {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
-                        {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
-                        {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
-                      </div>
+              <div className="space-y-2">
+                {/* Select all + bulk import button */}
+                <div className="flex items-center justify-between pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={selectedDjiLogIds.size === djiLogs.length && djiLogs.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedDjiLogIds(new Set(djiLogs.map(l => l.id)));
+                        } else {
+                          setSelectedDjiLogIds(new Set());
+                        }
+                      }}
+                      disabled={processingLogId !== null || isBulkProcessing}
+                    />
+                    <span className="text-muted-foreground">Velg alle</span>
+                  </label>
+                  {selectedDjiLogIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleBulkDjiImport}
+                      disabled={processingLogId !== null || isBulkProcessing || djiImportCooldown}
+                    >
+                      <CloudDownload className="w-4 h-4 mr-1" />
+                      Importer {selectedDjiLogIds.size} valgte
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                  {djiLogs.map(log => (
+                    <div
+                      key={log.id}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left"
+                    >
+                      <Checkbox
+                        checked={selectedDjiLogIds.has(log.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedDjiLogIds(prev => {
+                            const next = new Set(prev);
+                            if (checked) next.add(log.id); else next.delete(log.id);
+                            return next;
+                          });
+                        }}
+                        disabled={processingLogId !== null || isBulkProcessing}
+                      />
+                      <button
+                        className="flex-1 flex items-center gap-3 min-w-0 disabled:opacity-50"
+                        onClick={() => handleSelectDjiLog(log)}
+                        disabled={processingLogId !== null || djiImportCooldown || isBulkProcessing}
+                      >
+                        <Plane className="w-5 h-5 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
+                          {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{log.date}</span>
+                            {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
+                            {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
+                            {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
+                          </div>
+                        </div>
+                        {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                      </button>
                     </div>
-                    {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-                  </button>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
