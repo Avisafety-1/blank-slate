@@ -1,20 +1,27 @@
 
 
-## Plan: Fix phone auto-rotation in PWA
+## Plan: Merge duplicate battery tabs and fix crash
 
-### Root cause
-The manifest has `orientation: "any"`, which tells the OS to allow free rotation for the installed PWA. The runtime `screen.orientation.lock("portrait")` call we added doesn't work reliably — most browsers only allow it in fullscreen mode, not in standalone PWA mode. So phones keep rotating.
-
-### Why DJI is unaffected by manifest changes
-DJI RC Pro runs the app in an Android WebView (browser), not as an installed PWA. The manifest `orientation` field only applies to installed PWAs. So changing it to `"portrait"` won't affect DJI controllers at all.
+### Problem
+1. **Crash on "Batteri" tab**: The `MiniChart` component wraps children in Recharts `LineChart`, which doesn't accept React fragments (`<>...</>`) as children. Lines 215-227 use conditional fragments with `isDualBattery`, causing `Invariant failed` error.
+2. **Duplicate tabs**: "Batteri" shows battery % + voltage graphs, "Batt.info" shows temp/current/voltage graphs + summary stats. These overlap (both show voltage) and should be merged into one tab.
 
 ### Fix
-**`vite.config.ts`** — Change manifest orientation from `"any"` to `"portrait"`:
-```typescript
-orientation: "portrait",
-```
 
-This is the only reliable way to lock orientation for installed PWAs on phones. The existing runtime lock in `App.tsx` can remain as a belt-and-suspenders approach but isn't sufficient on its own.
+**File: `src/components/dashboard/FlightAnalysisTimeline.tsx`**
 
-**Note:** Users will need to uninstall and reinstall the PWA (or wait for the service worker to update the manifest cache) for this change to take effect on already-installed instances.
+1. **Remove the separate "battery" tab** from `availableTabs` (line 89). Keep only "batteryInfo" but rename it to "Batteri".
+
+2. **Merge content**: Move the battery % chart (currently in the "battery" `TabsContent`) into the "batteryInfo" `TabsContent` as the first chart, above the existing temp/current/voltage charts. Add a label "Batteri %" like the other sub-charts have.
+
+3. **Fix fragment issue**: Instead of wrapping Lines in fragments, render them as flat conditional children — each `<Line>` rendered individually with conditional logic, no fragments.
+
+4. **Update the tab filter**: The batteryInfo tab should also appear when `battery` or `battery1` data exists (not just temp/voltage/current).
+
+5. **Remove the now-unused "battery" `TabsContent`** block (lines 213-229).
+
+### Result
+- One "Batteri" tab with: summary stats (cycles, health, etc.) + battery % graph + temperature graph + current graph + voltage graph
+- No more crash from fragment children in Recharts
+- No duplicate/confusing tabs
 
