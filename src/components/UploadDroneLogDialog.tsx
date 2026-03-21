@@ -740,7 +740,134 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} logger lagt til behandlingskøen`);
   };
 
-  // Dedup check against both pending_dji_logs and flight_logs
+  // ── Bulk DJI cloud import ──
+
+  const handleBulkDjiImport = async () => {
+    const selectedIds = Array.from(selectedDjiLogIds);
+    if (selectedIds.length === 0 || !companyId || !user || !djiAccountId) return;
+    setIsBulkProcessing(true);
+    bulkAbortRef.current = false;
+
+    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id));
+    const results: BulkResult[] = selectedLogs.map(l => ({
+      fileName: l.aircraft || l.fileName || l.date || 'Ukjent',
+      status: 'pending' as const,
+    }));
+    setBulkResults([...results]);
+    setStep('bulk-result');
+
+    const localCompanyId = companyId;
+    const localDrones = [...drones];
+    const localEquipment = [...equipmentList];
+
+    for (let i = 0; i < selectedLogs.length; i++) {
+      if (bulkAbortRef.current) break;
+      setBulkProgress(i);
+      results[i].status = 'processing';
+      setBulkResults([...results]);
+
+      try {
+        // 1. Process via DroneLog API
+        const data: DroneLogResult = await callDronelogAction("dji-process-log", {
+          accountId: djiAccountId,
+          logId: selectedLogs[i].id,
+          downloadUrl: selectedLogs[i].url || undefined,
+        });
+
+        // 2. SHA-256 dedup check
+        if (data.sha256Hash) {
+          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId);
+          if (isDup) {
+            results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
+            setBulkResults([...results]);
+            // Short delay before next to respect rate limits
+            if (i < selectedLogs.length - 1) await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+        }
+
+        // 3. Auto-match drone
+        let droneId: string | null = null;
+        let droneModel: string | undefined;
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        if (sn) {
+          const match = localDrones.find(d =>
+            d.serienummer.trim().toLowerCase() === sn ||
+            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+          );
+          if (match) { droneId = match.id; droneModel = match.modell; }
+        }
+
+        // 4. Auto-match battery
+        let batteryId: string | null = null;
+        if (data.batterySN) {
+          const bsn = data.batterySN.trim().toLowerCase();
+          const bMatch = localEquipment.find(e =>
+            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
+            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+          );
+          if (bMatch) batteryId = bMatch.id;
+        }
+
+        // 5. Save to pending_dji_logs
+        const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
+        const { error: insertError } = await supabase
+          .from('pending_dji_logs')
+          .insert({
+            company_id: localCompanyId,
+            user_id: user?.id,
+            dji_log_id: data.sha256Hash || crypto.randomUUID(),
+            aircraft_name: data.aircraftName || data.droneType || null,
+            aircraft_sn: data.aircraftSN || data.aircraftSerial || null,
+            flight_date: effectiveDate.toISOString(),
+            duration_seconds: data.totalTimeSeconds ?? Math.round(data.durationMinutes * 60),
+            max_height_m: data.maxAltitude ?? null,
+            total_distance_m: data.totalDistance ?? null,
+            matched_drone_id: droneId,
+            matched_battery_id: batteryId,
+            status: 'pending',
+            parsed_result: data as any,
+          } as any);
+
+        if (insertError) throw new Error(insertError.message);
+
+        results[i] = {
+          ...results[i],
+          status: 'done',
+          droneModel: droneModel || data.aircraftName || data.droneType || undefined,
+          durationMinutes: data.durationMinutes,
+        };
+      } catch (error: any) {
+        console.error(`[BulkDJI] Error processing log ${selectedLogs[i].id}:`, error);
+        if (isApiLimitError(error)) {
+          // On rate limit, mark remaining as error and stop
+          for (let j = i; j < selectedLogs.length; j++) {
+            results[j] = { ...results[j], status: 'error', error: 'API-grense nådd, prøv igjen senere' };
+          }
+          setBulkResults([...results]);
+          toast.warning('DroneLog API-grense nådd. Resterende logger ble ikke behandlet.');
+          break;
+        }
+        results[i] = { ...results[i], status: 'error', error: error.message || 'Ukjent feil' };
+      }
+      setBulkResults([...results]);
+
+      // Wait between API calls to respect rate limits (skip after last)
+      if (i < selectedLogs.length - 1 && !bulkAbortRef.current) {
+        await new Promise(r => setTimeout(r, 15000));
+      }
+    }
+
+    setBulkProgress(selectedLogs.length);
+    setIsBulkProcessing(false);
+    setSelectedDjiLogIds(new Set());
+    pendingLogsRef.current?.refresh();
+
+    const savedCount = results.filter(r => r.status === 'done').length;
+    if (savedCount > 0) toast.success(`${savedCount} av ${selectedLogs.length} logger lagt til behandlingskøen`);
+  };
+
+
   const checkDuplicateAll = async (sha256: string, cid: string): Promise<boolean> => {
     if (!cid || !sha256) return false;
     // Check flight_logs
