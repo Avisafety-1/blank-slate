@@ -321,7 +321,7 @@ const Index = () => {
     );
   }
 
-  if (!isApproved && !isOfflineWithCachedSession && !authRefreshing) {
+  if (!isApproved && !isOfflineWithCachedSession && !authRefreshing && approvalRetried) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
