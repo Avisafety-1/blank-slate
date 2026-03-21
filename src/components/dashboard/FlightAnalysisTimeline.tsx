@@ -86,7 +86,6 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
     const tabs: Array<{ id: string; label: string; icon: any; always?: boolean; key?: keyof TelemetryPoint; custom?: boolean }> = [
       { id: "altitude", label: "Høyde", icon: Mountain, always: true },
       { id: "speed", label: "Hastighet", icon: Gauge, key: "speed" as keyof TelemetryPoint },
-      { id: "battery", label: "Batteri", icon: Battery, key: "battery" as keyof TelemetryPoint },
       { id: "gps", label: "GPS", icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
       { id: "rc", label: "RC", icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
       { id: "gimbal", label: "Gimbal", icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
@@ -94,12 +93,12 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       { id: "wind", label: "Vind", icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
     ];
     const result = tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
-    // Add batteryInfo if ANY battery detail field exists
-    const hasBattInfo = ['temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
+    // Add unified battery tab if ANY battery field exists
+    const hasBattData = ['battery', 'battery1', 'battery2', 'temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
       .some(k => hasData(positions, k as keyof TelemetryPoint));
-    if (hasBattInfo) {
-      const battIdx = result.findIndex(t => t.id === 'battery');
-      result.splice(battIdx + 1, 0, { id: "batteryInfo", label: "Batt.info", icon: Thermometer, custom: true });
+    if (hasBattData) {
+      const insertIdx = result.findIndex(t => t.id === 'speed');
+      result.splice(insertIdx >= 0 ? insertIdx + 1 : result.length, 0, { id: "batteryInfo", label: "Batteri", icon: Battery, custom: true });
     }
     // Add warnings tab if events exist
     if (events && events.length > 0) {
@@ -210,27 +209,8 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
           </MiniChart>
         </TabsContent>
 
-        <TabsContent value="battery" className="mt-2">
-          <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            {isDualBattery ? (
-              <>
-                <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri 1 %" dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="battery2" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Batteri 2 %" dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="voltage1" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning 1 V" dot={false} isAnimationActive={false} yAxisId="right" />
-                <Line type="monotone" dataKey="voltage2" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name="Spenning 2 V" dot={false} isAnimationActive={false} yAxisId="right" />
-              </>
-            ) : (
-              <>
-                <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri %" dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Spenning V" dot={false} isAnimationActive={false} yAxisId="right" />
-              </>
-            )}
-          </MiniChart>
-        </TabsContent>
-
-        {/* Battery info tab — temp, current, voltage graphs */}
+        {/* Unified battery tab */}
         <TabsContent value="batteryInfo" className="mt-2 space-y-2">
-          {/* Battery summary from flight log */}
           {batterySummary && (
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] sm:text-xs">
               {batterySummary.cycles != null && <InfoCell label="Sykluser" value={`${batterySummary.cycles}`} />}
@@ -241,7 +221,22 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               {batterySummary.cellDeviationV != null && <InfoCell label="Celleavvik" value={`${batterySummary.cellDeviationV.toFixed(3)} V`} />}
             </div>
           )}
-          {/* Temperature chart */}
+          {(hasData(positions, 'battery') || hasData(positions, 'battery1')) && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Batteri %</p>
+              <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
+                {isDualBattery && hasData(positions, 'battery1') && (
+                  <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri 1 %" dot={false} isAnimationActive={false} />
+                )}
+                {isDualBattery && hasData(positions, 'battery2') && (
+                  <Line type="monotone" dataKey="battery2" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Batteri 2 %" dot={false} isAnimationActive={false} />
+                )}
+                {!isDualBattery && hasData(positions, 'battery') && (
+                  <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri %" dot={false} isAnimationActive={false} />
+                )}
+              </MiniChart>
+            </div>
+          )}
           {(hasData(positions, 'temp') || hasData(positions, 'temp1') || hasData(positions, 'temp2')) && (
             <div>
               <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Temperatur °C</p>
@@ -258,7 +253,6 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               </MiniChart>
             </div>
           )}
-          {/* Current chart */}
           {(hasData(positions, 'current') || hasData(positions, 'current1') || hasData(positions, 'current2')) && (
             <div>
               <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Strøm A</p>
@@ -275,12 +269,19 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               </MiniChart>
             </div>
           )}
-          {/* Voltage chart (single battery only — dual shown in battery tab) */}
-          {hasData(positions, 'voltage') && !isDualBattery && (
+          {(hasData(positions, 'voltage') || hasData(positions, 'voltage1') || hasData(positions, 'voltage2')) && (
             <div>
               <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Spenning V</p>
               <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
-                <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning" dot={false} isAnimationActive={false} />
+                {hasData(positions, 'voltage') && !isDualBattery && (
+                  <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'voltage1') && (
+                  <Line type="monotone" dataKey="voltage1" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning B1" dot={false} isAnimationActive={false} />
+                )}
+                {hasData(positions, 'voltage2') && (
+                  <Line type="monotone" dataKey="voltage2" stroke="hsl(280 65% 60%)" strokeWidth={2} name="Spenning B2" dot={false} isAnimationActive={false} />
+                )}
               </MiniChart>
             </div>
           )}
