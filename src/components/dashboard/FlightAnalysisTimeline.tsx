@@ -86,7 +86,6 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
     const tabs: Array<{ id: string; label: string; icon: any; always?: boolean; key?: keyof TelemetryPoint; custom?: boolean }> = [
       { id: "altitude", label: "Høyde", icon: Mountain, always: true },
       { id: "speed", label: "Hastighet", icon: Gauge, key: "speed" as keyof TelemetryPoint },
-      { id: "battery", label: "Batteri", icon: Battery, key: "battery" as keyof TelemetryPoint },
       { id: "gps", label: "GPS", icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
       { id: "rc", label: "RC", icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
       { id: "gimbal", label: "Gimbal", icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
@@ -94,12 +93,12 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       { id: "wind", label: "Vind", icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
     ];
     const result = tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
-    // Add batteryInfo if ANY battery detail field exists
-    const hasBattInfo = ['temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
+    // Add unified battery tab if ANY battery field exists
+    const hasBattData = ['battery', 'battery1', 'battery2', 'temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
       .some(k => hasData(positions, k as keyof TelemetryPoint));
-    if (hasBattInfo) {
-      const battIdx = result.findIndex(t => t.id === 'battery');
-      result.splice(battIdx + 1, 0, { id: "batteryInfo", label: "Batt.info", icon: Thermometer, custom: true });
+    if (hasBattData) {
+      const insertIdx = result.findIndex(t => t.id === 'speed');
+      result.splice(insertIdx >= 0 ? insertIdx + 1 : result.length, 0, { id: "batteryInfo", label: "Batteri", icon: Battery, custom: true });
     }
     // Add warnings tab if events exist
     if (events && events.length > 0) {
