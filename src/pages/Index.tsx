@@ -98,6 +98,18 @@ const Index = () => {
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [uploadDroneLogOpen, setUploadDroneLogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
+  const [approvalRetried, setApprovalRetried] = useState(false);
+
+  // Auto-retry once when approval status seems wrong (transient query failure)
+  useEffect(() => {
+    if (profileLoaded && !isApproved && !authRefreshing && !approvalRetried && user) {
+      const timer = setTimeout(() => {
+        setApprovalRetried(true);
+        refetchUserInfo();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profileLoaded, isApproved, authRefreshing, approvalRetried, user, refetchUserInfo]);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   const [pendingFlightData, setPendingFlightData] = useState<{
     missionId: string | null;
