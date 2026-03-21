@@ -1,26 +1,46 @@
 
 
-## Plan: Fix equipment list filter mismatch
+## Plan: Lock orientation to portrait on phones, keep landscape on DJI RC Pro
 
 ### Problem
-`EquipmentListDialog.tsx` line 26-29 recalculates status using only `calculateMaintenanceStatus(neste_vedlikehold, varsel_dager)` (date-based). But the equipment items passed from `useStatusData` already have a fully aggregated `.status` property (including hours, missions, manual DB status). The dashboard shows 3 yellow, but the dialog filter finds 0 because it ignores non-date factors.
+`orientation: "any"` in the PWA manifest allows auto-rotation on all devices. Phones rotate even when the user has rotation lock enabled in system settings, because the PWA manifest overrides it. DJI RC Pro controllers need landscape.
 
-### Fix
-In `EquipmentListDialog.tsx`, change the filter to use the pre-computed `e.status` (same as DroneListDialog already does):
+### Approach
+Keep `orientation: "any"` in the manifest (needed for DJI RC Pro). Add a runtime orientation lock in `App.tsx` that:
 
+1. Detects if the device is a DJI controller by checking `navigator.userAgent` for "DJI" or by checking if the screen's natural width > height (DJI RC Pro is natively landscape)
+2. If NOT a DJI device, calls `screen.orientation.lock("portrait")` to lock to portrait
+3. Wrapped in try/catch since the API isn't supported everywhere and may throw
+
+### File changes
+
+**`src/App.tsx`** — Add a `useEffect` near the top:
 ```typescript
-// Before (line 26-29):
-return equipment.filter(e => {
-  const s = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
-  return s === statusFilter;
-});
-
-// After:
-return equipment.filter(e => e.status === statusFilter);
+useEffect(() => {
+  const isDji = /dji/i.test(navigator.userAgent) || 
+    (window.screen.width > window.screen.height);
+  if (!isDji && screen.orientation?.lock) {
+    screen.orientation.lock("portrait").catch(() => {});
+  }
+}, []);
 ```
 
-Remove the unused `calculateMaintenanceStatus` import if no longer needed.
+Wait — `screen.width > screen.height` would also match tablets and desktop in landscape. Better detection: check if it's a mobile phone (not tablet) using a narrow screen check combined with touch support.
 
-### File
-- `src/components/dashboard/EquipmentListDialog.tsx` — 1 line change in filter logic
+Revised logic:
+```typescript
+useEffect(() => {
+  const isDji = /dji/i.test(navigator.userAgent);
+  const isMobilePhone = 'ontouchstart' in window && 
+    Math.min(window.screen.width, window.screen.height) < 600;
+  if (isMobilePhone && !isDji && screen.orientation?.lock) {
+    screen.orientation.lock("portrait").catch(() => {});
+  }
+}, []);
+```
+
+This locks portrait only on small touch devices (phones), leaving tablets, desktops, and DJI controllers free to rotate.
+
+### Files
+- `src/App.tsx` — add orientation lock useEffect
 
