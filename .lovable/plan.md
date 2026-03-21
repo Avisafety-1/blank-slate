@@ -1,46 +1,20 @@
 
 
-## Plan: Lock orientation to portrait on phones, keep landscape on DJI RC Pro
+## Plan: Fix phone auto-rotation in PWA
 
-### Problem
-`orientation: "any"` in the PWA manifest allows auto-rotation on all devices. Phones rotate even when the user has rotation lock enabled in system settings, because the PWA manifest overrides it. DJI RC Pro controllers need landscape.
+### Root cause
+The manifest has `orientation: "any"`, which tells the OS to allow free rotation for the installed PWA. The runtime `screen.orientation.lock("portrait")` call we added doesn't work reliably — most browsers only allow it in fullscreen mode, not in standalone PWA mode. So phones keep rotating.
 
-### Approach
-Keep `orientation: "any"` in the manifest (needed for DJI RC Pro). Add a runtime orientation lock in `App.tsx` that:
+### Why DJI is unaffected by manifest changes
+DJI RC Pro runs the app in an Android WebView (browser), not as an installed PWA. The manifest `orientation` field only applies to installed PWAs. So changing it to `"portrait"` won't affect DJI controllers at all.
 
-1. Detects if the device is a DJI controller by checking `navigator.userAgent` for "DJI" or by checking if the screen's natural width > height (DJI RC Pro is natively landscape)
-2. If NOT a DJI device, calls `screen.orientation.lock("portrait")` to lock to portrait
-3. Wrapped in try/catch since the API isn't supported everywhere and may throw
-
-### File changes
-
-**`src/App.tsx`** — Add a `useEffect` near the top:
+### Fix
+**`vite.config.ts`** — Change manifest orientation from `"any"` to `"portrait"`:
 ```typescript
-useEffect(() => {
-  const isDji = /dji/i.test(navigator.userAgent) || 
-    (window.screen.width > window.screen.height);
-  if (!isDji && screen.orientation?.lock) {
-    screen.orientation.lock("portrait").catch(() => {});
-  }
-}, []);
+orientation: "portrait",
 ```
 
-Wait — `screen.width > screen.height` would also match tablets and desktop in landscape. Better detection: check if it's a mobile phone (not tablet) using a narrow screen check combined with touch support.
+This is the only reliable way to lock orientation for installed PWAs on phones. The existing runtime lock in `App.tsx` can remain as a belt-and-suspenders approach but isn't sufficient on its own.
 
-Revised logic:
-```typescript
-useEffect(() => {
-  const isDji = /dji/i.test(navigator.userAgent);
-  const isMobilePhone = 'ontouchstart' in window && 
-    Math.min(window.screen.width, window.screen.height) < 600;
-  if (isMobilePhone && !isDji && screen.orientation?.lock) {
-    screen.orientation.lock("portrait").catch(() => {});
-  }
-}, []);
-```
-
-This locks portrait only on small touch devices (phones), leaving tablets, desktops, and DJI controllers free to rotate.
-
-### Files
-- `src/App.tsx` — add orientation lock useEffect
+**Note:** Users will need to uninstall and reinstall the PWA (or wait for the service worker to update the manifest cache) for this change to take effect on already-installed instances.
 
