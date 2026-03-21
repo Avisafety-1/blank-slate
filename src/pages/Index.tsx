@@ -14,7 +14,7 @@ import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, Chev
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -98,6 +98,18 @@ const Index = () => {
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [uploadDroneLogOpen, setUploadDroneLogOpen] = useState(false);
   const [prefilledDuration, setPrefilledDuration] = useState<number | undefined>(undefined);
+  const [approvalRetried, setApprovalRetried] = useState(false);
+
+  // Auto-retry once when approval status seems wrong (transient query failure)
+  useEffect(() => {
+    if (profileLoaded && !isApproved && !authRefreshing && !approvalRetried && user) {
+      const timer = setTimeout(() => {
+        setApprovalRetried(true);
+        refetchUserInfo();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profileLoaded, isApproved, authRefreshing, approvalRetried, user, refetchUserInfo]);
   const [startFlightConfirmOpen, setStartFlightConfirmOpen] = useState(false);
   const [pendingFlightData, setPendingFlightData] = useState<{
     missionId: string | null;
@@ -309,7 +321,7 @@ const Index = () => {
     );
   }
 
-  if (!isApproved && !isOfflineWithCachedSession && !authRefreshing) {
+  if (!isApproved && !isOfflineWithCachedSession && !authRefreshing && approvalRetried) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
