@@ -116,16 +116,30 @@ const Auth = () => {
       
       try {
         // Check if user has a profile with a valid company_id
-        const { data: profile, error } = await supabase
+        let { data: profile, error } = await supabase
           .from('profiles')
           .select('id, company_id, approved')
           .eq('id', user.id)
           .maybeSingle();
         
         if (error) {
-          console.error('Error checking profile:', error);
-          setCheckingGoogleUser(false);
-          return;
+          console.error('Error checking profile, retrying once:', error);
+          // Retry once after 1s to handle transient network/RLS failures
+          await new Promise(r => setTimeout(r, 1000));
+          const { data: retryProfile, error: retryErr } = await supabase
+            .from('profiles')
+            .select('id, company_id, approved')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (retryErr || !retryProfile) {
+            console.warn('Profile check failed twice, redirecting to app domain');
+            googleProfileCheckedRef.current = false; // allow future retry
+            setCheckingGoogleUser(false);
+            redirectToApp('/');
+            return;
+          }
+          profile = retryProfile;
         }
 
         if (profile && profile.company_id) {
