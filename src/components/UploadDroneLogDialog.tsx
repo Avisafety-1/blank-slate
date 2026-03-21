@@ -256,6 +256,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
+  const [selectedDjiLogIds, setSelectedDjiLogIds] = useState<Set<string>>(new Set());
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
