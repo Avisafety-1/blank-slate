@@ -153,6 +153,15 @@ const QueryWrapper = persister
     );
 
 const App = () => {
+  useEffect(() => {
+    const isDji = /dji/i.test(navigator.userAgent);
+    const isMobilePhone = 'ontouchstart' in window && 
+      Math.min(window.screen.width, window.screen.height) < 600;
+    if (isMobilePhone && !isDji && screen.orientation?.lock) {
+      screen.orientation.lock("portrait").catch(() => {});
+    }
+  }, []);
+
   return (
     <QueryWrapper>
       <TooltipProvider>
