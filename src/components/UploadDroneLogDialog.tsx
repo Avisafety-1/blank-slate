@@ -256,6 +256,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
+  const [selectedDjiLogIds, setSelectedDjiLogIds] = useState<Set<string>>(new Set());
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
@@ -433,6 +434,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiAccountId("");
     setDjiLogs([]);
     setDjiHasMore(false);
+    setSelectedDjiLogIds(new Set());
     setPilotId("");
     setSelectedEquipment([]);
     setOldPilotIds([]);
@@ -738,7 +740,134 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} logger lagt til behandlingskøen`);
   };
 
-  // Dedup check against both pending_dji_logs and flight_logs
+  // ── Bulk DJI cloud import ──
+
+  const handleBulkDjiImport = async () => {
+    const selectedIds = Array.from(selectedDjiLogIds);
+    if (selectedIds.length === 0 || !companyId || !user || !djiAccountId) return;
+    setIsBulkProcessing(true);
+    bulkAbortRef.current = false;
+
+    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id));
+    const results: BulkResult[] = selectedLogs.map(l => ({
+      fileName: l.aircraft || l.fileName || l.date || 'Ukjent',
+      status: 'pending' as const,
+    }));
+    setBulkResults([...results]);
+    setStep('bulk-result');
+
+    const localCompanyId = companyId;
+    const localDrones = [...drones];
+    const localEquipment = [...equipmentList];
+
+    for (let i = 0; i < selectedLogs.length; i++) {
+      if (bulkAbortRef.current) break;
+      setBulkProgress(i);
+      results[i].status = 'processing';
+      setBulkResults([...results]);
+
+      try {
+        // 1. Process via DroneLog API
+        const data: DroneLogResult = await callDronelogAction("dji-process-log", {
+          accountId: djiAccountId,
+          logId: selectedLogs[i].id,
+          downloadUrl: selectedLogs[i].url || undefined,
+        });
+
+        // 2. SHA-256 dedup check
+        if (data.sha256Hash) {
+          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId);
+          if (isDup) {
+            results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
+            setBulkResults([...results]);
+            // Short delay before next to respect rate limits
+            if (i < selectedLogs.length - 1) await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+        }
+
+        // 3. Auto-match drone
+        let droneId: string | null = null;
+        let droneModel: string | undefined;
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        if (sn) {
+          const match = localDrones.find(d =>
+            d.serienummer.trim().toLowerCase() === sn ||
+            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+          );
+          if (match) { droneId = match.id; droneModel = match.modell; }
+        }
+
+        // 4. Auto-match battery
+        let batteryId: string | null = null;
+        if (data.batterySN) {
+          const bsn = data.batterySN.trim().toLowerCase();
+          const bMatch = localEquipment.find(e =>
+            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
+            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+          );
+          if (bMatch) batteryId = bMatch.id;
+        }
+
+        // 5. Save to pending_dji_logs
+        const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
+        const { error: insertError } = await supabase
+          .from('pending_dji_logs')
+          .insert({
+            company_id: localCompanyId,
+            user_id: user?.id,
+            dji_log_id: data.sha256Hash || crypto.randomUUID(),
+            aircraft_name: data.aircraftName || data.droneType || null,
+            aircraft_sn: data.aircraftSN || data.aircraftSerial || null,
+            flight_date: effectiveDate.toISOString(),
+            duration_seconds: data.totalTimeSeconds ?? Math.round(data.durationMinutes * 60),
+            max_height_m: data.maxAltitude ?? null,
+            total_distance_m: data.totalDistance ?? null,
+            matched_drone_id: droneId,
+            matched_battery_id: batteryId,
+            status: 'pending',
+            parsed_result: data as any,
+          } as any);
+
+        if (insertError) throw new Error(insertError.message);
+
+        results[i] = {
+          ...results[i],
+          status: 'done',
+          droneModel: droneModel || data.aircraftName || data.droneType || undefined,
+          durationMinutes: data.durationMinutes,
+        };
+      } catch (error: any) {
+        console.error(`[BulkDJI] Error processing log ${selectedLogs[i].id}:`, error);
+        if (isApiLimitError(error)) {
+          // On rate limit, mark remaining as error and stop
+          for (let j = i; j < selectedLogs.length; j++) {
+            results[j] = { ...results[j], status: 'error', error: 'API-grense nådd, prøv igjen senere' };
+          }
+          setBulkResults([...results]);
+          toast.warning('DroneLog API-grense nådd. Resterende logger ble ikke behandlet.');
+          break;
+        }
+        results[i] = { ...results[i], status: 'error', error: error.message || 'Ukjent feil' };
+      }
+      setBulkResults([...results]);
+
+      // Wait between API calls to respect rate limits (skip after last)
+      if (i < selectedLogs.length - 1 && !bulkAbortRef.current) {
+        await new Promise(r => setTimeout(r, 15000));
+      }
+    }
+
+    setBulkProgress(selectedLogs.length);
+    setIsBulkProcessing(false);
+    setSelectedDjiLogIds(new Set());
+    pendingLogsRef.current?.refresh();
+
+    const savedCount = results.filter(r => r.status === 'done').length;
+    if (savedCount > 0) toast.success(`${savedCount} av ${selectedLogs.length} logger lagt til behandlingskøen`);
+  };
+
+
   const checkDuplicateAll = async (sha256: string, cid: string): Promise<boolean> => {
     if (!cid || !sha256) return false;
     // Check flight_logs
@@ -2093,10 +2222,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span className="text-sm font-medium">Behandler fil {bulkProgress + 1} av {bulkFiles.length}...</span>
+                  <span className="text-sm font-medium">Behandler logg {bulkProgress + 1} av {bulkResults.length}...</span>
                 </div>
               <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkFiles.length) * 100}%` }} />
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkResults.length) * 100}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Du kan lukke dialogen, kom tilbake om litt for å se resultatene.</p>
               </div>
@@ -2244,28 +2373,72 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {t('dronelog.noLogs', 'Ingen flylogger funnet i DJI-kontoen.')}
               </p>
             ) : (
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                {djiLogs.map(log => (
-                  <button
-                    key={log.id}
-                    onClick={() => handleSelectDjiLog(log)}
-                    disabled={processingLogId !== null || djiImportCooldown}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <Plane className="w-5 h-5 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
-                      {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{log.date}</span>
-                        {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
-                        {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
-                        {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
-                      </div>
+              <div className="space-y-2">
+                {/* Select all + bulk import button */}
+                <div className="flex items-center justify-between pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={selectedDjiLogIds.size === djiLogs.length && djiLogs.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedDjiLogIds(new Set(djiLogs.map(l => l.id)));
+                        } else {
+                          setSelectedDjiLogIds(new Set());
+                        }
+                      }}
+                      disabled={processingLogId !== null || isBulkProcessing}
+                    />
+                    <span className="text-muted-foreground">Velg alle</span>
+                  </label>
+                  {selectedDjiLogIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleBulkDjiImport}
+                      disabled={processingLogId !== null || isBulkProcessing || djiImportCooldown}
+                    >
+                      <CloudDownload className="w-4 h-4 mr-1" />
+                      Importer {selectedDjiLogIds.size} valgte
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                  {djiLogs.map(log => (
+                    <div
+                      key={log.id}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left"
+                    >
+                      <Checkbox
+                        checked={selectedDjiLogIds.has(log.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedDjiLogIds(prev => {
+                            const next = new Set(prev);
+                            if (checked) next.add(log.id); else next.delete(log.id);
+                            return next;
+                          });
+                        }}
+                        disabled={processingLogId !== null || isBulkProcessing}
+                      />
+                      <button
+                        className="flex-1 flex items-center gap-3 min-w-0 disabled:opacity-50"
+                        onClick={() => handleSelectDjiLog(log)}
+                        disabled={processingLogId !== null || djiImportCooldown || isBulkProcessing}
+                      >
+                        <Plane className="w-5 h-5 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
+                          {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{log.date}</span>
+                            {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
+                            {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
+                            {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
+                          </div>
+                        </div>
+                        {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                      </button>
                     </div>
-                    {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-                  </button>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
