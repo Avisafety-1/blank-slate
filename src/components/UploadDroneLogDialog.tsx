@@ -2222,10 +2222,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span className="text-sm font-medium">Behandler fil {bulkProgress + 1} av {bulkFiles.length}...</span>
+                  <span className="text-sm font-medium">Behandler logg {bulkProgress + 1} av {bulkResults.length}...</span>
                 </div>
               <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkFiles.length) * 100}%` }} />
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(bulkProgress / bulkResults.length) * 100}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Du kan lukke dialogen, kom tilbake om litt for å se resultatene.</p>
               </div>
