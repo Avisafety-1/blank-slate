@@ -1121,27 +1121,21 @@ const Admin = () => {
                                             <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
                                           </SelectContent>
                                         </Select>
-                                        {profile.incident_responsible_company_ids && !profile.incident_responsible_company_ids.includes('all') && (
-                                          <div className="mt-1 space-y-1">
-                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
-                                                  onChange={(e) => {
-                                                    const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
-                                                    const newIds = e.target.checked
-                                                      ? [...current, c.id]
-                                                      : current.filter(id => id !== c.id);
-                                                    updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                  }}
-                                                  className="rounded border-border"
-                                                />
-                                                {c.navn}
-                                              </label>
-                                            ))}
-                                          </div>
-                                        )}
+                                        <DepartmentChecklist
+                                          departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                          selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
+                                          allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
+                                          onToggleAll={(checked) => {
+                                            if (checked) updateIncidentScope(profile.id, ['all']);
+                                            else updateIncidentScope(profile.id, [companyId || '']);
+                                          }}
+                                          onToggle={(id, checked) => {
+                                            const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
+                                            const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                            updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                          }}
+                                          allLabel="Alle avdelinger"
+                                        />
                                       </div>
                                     )}
                                     <div>
