@@ -8,6 +8,7 @@ import { MarketingIdeas } from "@/components/marketing/MarketingIdeas";
 import { MarketingDrafts } from "@/components/marketing/MarketingDrafts";
 import { MarketingVisuals } from "@/components/marketing/MarketingVisuals";
 import { MarketingSettings } from "@/components/marketing/MarketingSettings";
+import { MarketingNewsletter } from "@/components/marketing/MarketingNewsletter";
 
 const Marketing = () => {
   const { isSuperAdmin, loading, user } = useAuth();
