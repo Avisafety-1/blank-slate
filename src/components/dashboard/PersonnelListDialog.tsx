@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useMemo, useEffect } from "react";
@@ -7,8 +8,9 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 
 interface PersonnelListDialogProps {
   open: boolean;
