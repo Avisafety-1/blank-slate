@@ -1163,18 +1163,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                         <div className="space-y-2">
                           <Label>Godkjent av</Label>
-                          <Select value={soraFormData.approved_by} onValueChange={(value) => setSoraFormData({ ...soraFormData, approved_by: value })}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Velg godkjenner (valgfritt)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {soraProfiles.map((profile) => (
-                                <SelectItem key={profile.id} value={profile.id}>
-                                  {profile.full_name || "Ukjent"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <SearchablePersonSelect
+                            persons={soraProfiles}
+                            value={soraFormData.approved_by || null}
+                            onValueChange={(val) => setSoraFormData({ ...soraFormData, approved_by: val || "" })}
+                            placeholder="Velg godkjenner (valgfritt)"
+                            searchPlaceholder="Søk person..."
+                          />
                         </div>
 
                         {existingSora?.approved_at && (

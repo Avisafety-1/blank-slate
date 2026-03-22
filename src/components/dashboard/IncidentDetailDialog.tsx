@@ -417,23 +417,16 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               
               <div className="space-y-2">
                 <Label htmlFor="responsible-select">Oppfølgingsansvarlig (Admin)</Label>
-                <Select 
-                  value={selectedResponsibleId || "ingen"} 
-                  onValueChange={handleResponsibleChange}
+                <SearchablePersonSelect
+                  persons={users}
+                  value={selectedResponsibleId}
+                  onValueChange={(val) => handleResponsibleChange(val || "ingen")}
+                  placeholder="Velg ansvarlig..."
+                  searchPlaceholder="Søk person..."
+                  allowNone
+                  noneLabel="Ingen ansvarlig"
                   disabled={updatingResponsible}
-                >
-                  <SelectTrigger id="responsible-select">
-                    <SelectValue placeholder="Velg ansvarlig..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ingen">Ingen ansvarlig</SelectItem>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.full_name || 'Ukjent bruker'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
             </div>
           )}

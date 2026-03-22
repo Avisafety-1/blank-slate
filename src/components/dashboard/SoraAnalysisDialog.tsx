@@ -525,18 +525,13 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
                 <div className="space-y-2">
                   <Label>Godkjent av</Label>
-                  <Select value={formData.approved_by} onValueChange={(value) => setFormData({ ...formData, approved_by: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Velg godkjenner (valgfritt)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.full_name || "Ukjent"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchablePersonSelect
+                    persons={profiles}
+                    value={formData.approved_by || null}
+                    onValueChange={(val) => setFormData({ ...formData, approved_by: val || "" })}
+                    placeholder="Velg godkjenner (valgfritt)"
+                    searchPlaceholder="Søk person..."
+                  />
                 </div>
 
                 {existingSora?.approved_at && (

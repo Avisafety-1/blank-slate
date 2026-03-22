@@ -629,21 +629,15 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           <div className="space-y-2">
             <Label htmlFor="oppfolgingsansvarlig">Oppfølgingsansvarlig (valgfritt)</Label>
-            <Select
-              value={formData.oppfolgingsansvarlig_id}
-              onValueChange={(value) => setFormData({ ...formData, oppfolgingsansvarlig_id: value })}
-            >
-              <SelectTrigger id="oppfolgingsansvarlig">
-                <SelectValue placeholder="Velg ansvarlig..." />
-              </SelectTrigger>
-              <SelectContent className="bg-background">
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.full_name || 'Ukjent bruker'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchablePersonSelect
+              persons={users}
+              value={formData.oppfolgingsansvarlig_id || null}
+              onValueChange={(val) => setFormData({ ...formData, oppfolgingsansvarlig_id: val || "" })}
+              placeholder="Velg ansvarlig..."
+              searchPlaceholder="Søk person..."
+              allowNone
+              noneLabel="Ingen ansvarlig"
+            />
           </div>
 
           <div className="flex gap-2">
