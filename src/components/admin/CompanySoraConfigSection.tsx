@@ -34,6 +34,7 @@ import {
   Moon,
   Clock,
   Users,
+  Building2,
 } from "lucide-react";
 
 interface Document {
@@ -86,6 +87,10 @@ export const CompanySoraConfigSection = () => {
   const [saving, setSaving] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [docSearchQuery, setDocSearchQuery] = useState("");
+  const [inherited, setInherited] = useState(false);
+  const [parentName, setParentName] = useState<string | null>(null);
+  const [hasOwnConfig, setHasOwnConfig] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [hardstopOpen, setHardstopOpen] = useState(true);
   const [restrictionsOpen, setRestrictionsOpen] = useState(false);
@@ -98,8 +103,31 @@ export const CompanySoraConfigSection = () => {
     }
   }, [companyId]);
 
+  const applyConfigData = (d: any) => {
+    setConfig({
+      max_wind_speed_ms: Number(d.max_wind_speed_ms) || DEFAULT_CONFIG.max_wind_speed_ms,
+      max_wind_gust_ms: Number(d.max_wind_gust_ms) || DEFAULT_CONFIG.max_wind_gust_ms,
+      max_visibility_km: Number(d.max_visibility_km) || DEFAULT_CONFIG.max_visibility_km,
+      max_flight_altitude_m: Number(d.max_flight_altitude_m) || DEFAULT_CONFIG.max_flight_altitude_m,
+      require_backup_battery: Boolean(d.require_backup_battery),
+      require_observer: Boolean(d.require_observer),
+      min_temp_c: d.min_temp_c != null ? Number(d.min_temp_c) : DEFAULT_CONFIG.min_temp_c,
+      max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
+      allow_bvlos: Boolean(d.allow_bvlos),
+      allow_night_flight: Boolean(d.allow_night_flight),
+      max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
+      max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
+      operative_restrictions: d.operative_restrictions || "",
+      policy_notes: d.policy_notes || "",
+      linked_document_ids: (d.linked_document_ids as string[]) || [],
+    });
+  };
+
   const fetchConfig = async () => {
     setLoading(true);
+    setInherited(false);
+    setParentName(null);
+    setHasOwnConfig(false);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
@@ -111,25 +139,36 @@ export const CompanySoraConfigSection = () => {
       if (error) throw error;
 
       if (data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const d = data as any;
-        setConfig({
-          max_wind_speed_ms: Number(d.max_wind_speed_ms) || DEFAULT_CONFIG.max_wind_speed_ms,
-          max_wind_gust_ms: Number(d.max_wind_gust_ms) || DEFAULT_CONFIG.max_wind_gust_ms,
-          max_visibility_km: Number(d.max_visibility_km) || DEFAULT_CONFIG.max_visibility_km,
-          max_flight_altitude_m: Number(d.max_flight_altitude_m) || DEFAULT_CONFIG.max_flight_altitude_m,
-          require_backup_battery: Boolean(d.require_backup_battery),
-          require_observer: Boolean(d.require_observer),
-          min_temp_c: d.min_temp_c != null ? Number(d.min_temp_c) : DEFAULT_CONFIG.min_temp_c,
-          max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
-          allow_bvlos: Boolean(d.allow_bvlos),
-          allow_night_flight: Boolean(d.allow_night_flight),
-          max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
-          max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
-          operative_restrictions: d.operative_restrictions || "",
-          policy_notes: d.policy_notes || "",
-          linked_document_ids: (d.linked_document_ids as string[]) || [],
-        });
+        applyConfigData(data);
+        setHasOwnConfig(true);
+      } else {
+        // Fallback: check for parent company config
+        const { data: company } = await supabase
+          .from("companies")
+          .select("parent_company_id, navn")
+          .eq("id", companyId!)
+          .maybeSingle();
+
+        if (company?.parent_company_id) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: parentConfig } = await (supabase as any)
+            .from("company_sora_config")
+            .select("*")
+            .eq("company_id", company.parent_company_id)
+            .maybeSingle();
+
+          if (parentConfig) {
+            applyConfigData(parentConfig);
+            setInherited(true);
+            // Get parent name
+            const { data: parentCompany } = await supabase
+              .from("companies")
+              .select("navn")
+              .eq("id", company.parent_company_id)
+              .maybeSingle();
+            setParentName(parentCompany?.navn || "Morselskap");
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching SORA config:", error);
@@ -138,16 +177,64 @@ export const CompanySoraConfigSection = () => {
     }
   };
 
+  const handleResetToParent = async () => {
+    if (!companyId || !hasOwnConfig) return;
+    setResetting(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("company_sora_config")
+        .delete()
+        .eq("company_id", companyId);
+      if (error) throw error;
+      toast.success("Tilbakestilt til morselskapets innstillinger");
+      await fetchConfig();
+      await fetchDocuments();
+    } catch (error) {
+      console.error("Error resetting config:", error);
+      toast.error("Kunne ikke tilbakestille");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const fetchDocuments = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch own documents
+      const { data: ownDocs, error } = await supabase
         .from("documents")
         .select("id, tittel, kategori, beskrivelse")
-        .eq("company_id", companyId)
+        .eq("company_id", companyId!)
         .order("tittel");
 
       if (error) throw error;
-      setDocuments(data || []);
+
+      // Also fetch parent company documents visible to children
+      const { data: company } = await supabase
+        .from("companies")
+        .select("parent_company_id")
+        .eq("id", companyId!)
+        .maybeSingle();
+
+      let allDocs = ownDocs || [];
+
+      if (company?.parent_company_id) {
+        const { data: parentDocs } = await supabase
+          .from("documents")
+          .select("id, tittel, kategori, beskrivelse")
+          .eq("company_id", company.parent_company_id)
+          .eq("visible_to_children", true)
+          .order("tittel");
+
+        if (parentDocs?.length) {
+          // Merge, avoiding duplicates
+          const ownIds = new Set(allDocs.map((d) => d.id));
+          const uniqueParentDocs = parentDocs.filter((d) => !ownIds.has(d.id));
+          allDocs = [...allDocs, ...uniqueParentDocs];
+        }
+      }
+
+      setDocuments(allDocs);
     } catch (error) {
       console.error("Error fetching documents:", error);
     }
@@ -237,16 +324,54 @@ export const CompanySoraConfigSection = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header info */}
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-        <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-medium">Selskapsspesifikke SORA-innstillinger</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Disse innstillingene overstyrer systemets standardverdier og sendes automatisk til AI-risikovurderingen for alle oppdrag i selskapet. Hardstop-grenser er absolutte og vil alltid utløse NO-GO uavhengig av andre scores.
-          </p>
+      {/* Inherited banner */}
+      {inherited && parentName && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+          <Building2 className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Arvet fra {parentName}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Disse innstillingene er arvet fra morselskapet. Endringer du gjør her lagres som egne innstillinger for denne avdelingen.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Reset to parent button */}
+      {hasOwnConfig && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+          <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Egne SORA-innstillinger</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Denne avdelingen har egne innstillinger som overstyrer morselskapet.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetToParent}
+            disabled={resetting}
+            className="flex-shrink-0"
+          >
+            {resetting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Tilbakestill til morselskap
+          </Button>
+        </div>
+      )}
+
+      {/* Header info */}
+      {!inherited && !hasOwnConfig && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+          <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Selskapsspesifikke SORA-innstillinger</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Disse innstillingene overstyrer systemets standardverdier og sendes automatisk til AI-risikovurderingen for alle oppdrag i selskapet. Hardstop-grenser er absolutte og vil alltid utløse NO-GO uavhengig av andre scores.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Kort 1: Hardstop-grenser */}
       <Collapsible open={hardstopOpen} onOpenChange={setHardstopOpen}>
