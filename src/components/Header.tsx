@@ -108,10 +108,7 @@ export const Header = () => {
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
             {switcherCompanies.length > 0 && (
               <CompanySwitcher
-                companies={switcherCompanies.map(c => ({
-                  ...c,
-                  isParent: !isSuperAdmin && accessibleCompanies.find(ac => ac.id === c.id)?.isParent || false,
-                }))}
+                companies={switcherCompanies}
                 currentCompanyId={companyId}
                 onSwitch={handleCompanySwitch}
                 compact
