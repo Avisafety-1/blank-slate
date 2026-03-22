@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
