@@ -1174,44 +1174,22 @@ const Admin = () => {
                                         {profile.approval_company_ids?.includes('all') ? 'Alle' : `${(profile.approval_company_ids || []).length} avd.`}
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Godkjenner for avdelinger</p>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={profile.approval_company_ids?.includes('all') || false}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              updateApprovalScope(profile.id, ['all']);
-                                            } else {
-                                              updateApprovalScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                          className="rounded border-border"
-                                        />
-                                        <strong>Alle avdelinger</strong>
-                                      </label>
-                                      {!profile.approval_company_ids?.includes('all') && (
-                                        <>
-                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                              <input
-                                                type="checkbox"
-                                                checked={profile.approval_company_ids?.includes(c.id) || false}
-                                                onChange={(e) => {
-                                                  const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
-                                                  const newIds = e.target.checked
-                                                    ? [...current, c.id]
-                                                    : current.filter(id => id !== c.id);
-                                                  updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                }}
-                                                className="rounded border-border"
-                                              />
-                                              {c.navn}
-                                            </label>
-                                          ))}
-                                        </>
-                                      )}
+                                      <DepartmentChecklist
+                                        departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                        selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
+                                        allSelected={profile.approval_company_ids?.includes('all') || false}
+                                        onToggleAll={(checked) => {
+                                          if (checked) updateApprovalScope(profile.id, ['all']);
+                                          else updateApprovalScope(profile.id, [companyId || '']);
+                                        }}
+                                        onToggle={(id, checked) => {
+                                          const current = profile.approval_company_ids?.filter(i => i !== 'all') || [];
+                                          const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                          updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                        }}
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 )}
