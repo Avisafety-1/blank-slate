@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
-import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
+
+const Drone3DViewer = lazy(() => import("./Drone3DViewer").then(m => ({ default: m.Drone3DViewer })));
 import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
