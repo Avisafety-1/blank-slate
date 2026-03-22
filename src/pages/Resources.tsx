@@ -544,6 +544,12 @@ const Resources = () => {
                       <div>
                         <h3 className="font-semibold">{item.navn}</h3>
                         <p className="text-sm text-muted-foreground">{item.type}</p>
+                        {item.company_id !== companyId && item.companies?.navn && (
+                          <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                            <Building2 className="w-3 h-3" />
+                            {item.companies.navn}
+                          </Badge>
+                        )}
                       </div>
                       <StatusBadge status={worstStatus(calculateEquipmentMaintenanceStatus({
                         neste_vedlikehold: item.neste_vedlikehold,
