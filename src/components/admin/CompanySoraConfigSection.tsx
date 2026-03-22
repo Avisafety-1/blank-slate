@@ -347,7 +347,7 @@ export const CompanySoraConfigSection = () => {
       )}
 
       {/* Reset to parent button */}
-      {hasOwnConfig && (
+      {hasOwnConfig && isChild && (
         <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
           <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div className="flex-1">
