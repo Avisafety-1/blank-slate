@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
