@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Settings, Save, Send, Loader2, Server } from "lucide-react";
+import { Settings, Save, Send, Loader2, Mail } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -15,16 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-const AVISAFE_SMTP = {
-  smtp_host: "send.one.com",
-  smtp_port: 465,
-  smtp_user: "noreply@avisafe.no",
-  smtp_secure: true,
-  from_email: "noreply@avisafe.no",
-};
 
 interface EmailSettingsDialogProps {
   open: boolean;
@@ -34,18 +25,10 @@ interface EmailSettingsDialogProps {
 interface EmailSettings {
   id?: string;
   company_id: string;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_user: string;
-  smtp_pass: string;
-  smtp_secure: boolean;
   from_name: string;
   from_email: string;
   enabled: boolean;
 }
-
-const isAviSafeServer = (host: string, user: string) =>
-  host === AVISAFE_SMTP.smtp_host && user === AVISAFE_SMTP.smtp_user;
 
 export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogProps) => {
   const { companyId } = useAuth();
@@ -54,31 +37,20 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
-  const [hasExistingPassword, setHasExistingPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [useAviSafe, setUseAviSafe] = useState(true);
   const [settings, setSettings] = useState<EmailSettings>({
     company_id: companyId || "",
-    smtp_host: AVISAFE_SMTP.smtp_host,
-    smtp_port: AVISAFE_SMTP.smtp_port,
-    smtp_user: AVISAFE_SMTP.smtp_user,
-    smtp_pass: "",
-    smtp_secure: AVISAFE_SMTP.smtp_secure,
     from_name: "",
-    from_email: AVISAFE_SMTP.from_email,
+    from_email: "noreply@avisafe.no",
     enabled: true,
   });
 
   useEffect(() => {
-    if (open && companyId) {
-      fetchSettings();
-    }
+    if (open && companyId) fetchSettings();
   }, [open, companyId]);
 
   const fetchSettings = async () => {
     if (!companyId) return;
     setLoading(true);
-    setNewPassword("");
     try {
       const { data, error } = await supabase
         .from("email_settings_safe" as any)
@@ -89,25 +61,21 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
       if (error) throw error;
 
       if (data) {
-        const settingsData = data as unknown as EmailSettings;
-        setSettings(settingsData);
-        setHasExistingPassword(settingsData.smtp_pass === '********');
-        setUseAviSafe(isAviSafeServer(settingsData.smtp_host || "", settingsData.smtp_user || ""));
+        const d = data as any;
+        setSettings({
+          id: d.id,
+          company_id: d.company_id,
+          from_name: d.from_name || "",
+          from_email: d.from_email || "noreply@avisafe.no",
+          enabled: d.enabled ?? true,
+        });
       } else {
-        // No settings yet — default to AviSafe server, enabled
         setSettings({
           company_id: companyId,
-          smtp_host: AVISAFE_SMTP.smtp_host,
-          smtp_port: AVISAFE_SMTP.smtp_port,
-          smtp_user: AVISAFE_SMTP.smtp_user,
-          smtp_pass: "",
-          smtp_secure: AVISAFE_SMTP.smtp_secure,
           from_name: "",
-          from_email: AVISAFE_SMTP.from_email,
+          from_email: "noreply@avisafe.no",
           enabled: true,
         });
-        setHasExistingPassword(false);
-        setUseAviSafe(true);
       }
     } catch (error: any) {
       console.error("Error fetching email settings:", error);
@@ -117,64 +85,26 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
     }
   };
 
-  const handleUseAviSafeToggle = (checked: boolean) => {
-    setUseAviSafe(checked);
-    if (checked) {
-      setSettings((prev) => ({
-        ...prev,
-        smtp_host: AVISAFE_SMTP.smtp_host,
-        smtp_port: AVISAFE_SMTP.smtp_port,
-        smtp_user: AVISAFE_SMTP.smtp_user,
-        smtp_secure: AVISAFE_SMTP.smtp_secure,
-        from_email: AVISAFE_SMTP.from_email,
-        enabled: true,
-      }));
-      setNewPassword("");
-      setHasExistingPassword(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!companyId) {
       toast.error("Du må være logget inn");
       return;
     }
-
-    if (!useAviSafe) {
-      if (!settings.smtp_host || !settings.smtp_user || !settings.from_email) {
-        toast.error("Vennligst fyll ut alle påkrevde felt");
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(settings.from_email)) {
-        toast.error("Ugyldig avsender e-postadresse");
-        return;
-      }
-      if (!hasExistingPassword && !newPassword) {
-        toast.error("Vennligst oppgi et passord");
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       const { error } = await supabase.rpc('update_email_settings', {
         p_company_id: companyId,
-        p_smtp_host: settings.smtp_host,
-        p_smtp_port: settings.smtp_port,
-        p_smtp_user: settings.smtp_user,
-        // AviSafe server: no password stored – global EMAIL_PASS used as fallback
-        p_smtp_pass: useAviSafe ? null : (newPassword || '********'),
-        p_smtp_secure: settings.smtp_secure,
+        p_smtp_host: "send.one.com",
+        p_smtp_port: 465,
+        p_smtp_user: "noreply@avisafe.no",
+        p_smtp_pass: null,
+        p_smtp_secure: true,
         p_from_name: settings.from_name || '',
         p_from_email: settings.from_email,
         p_enabled: settings.enabled,
       });
-
       if (error) throw error;
-
-      toast.success(useAviSafe ? "Innstillinger lagret – bruker AviSafe mailserver" : "Innstillinger lagret");
-      setNewPassword("");
+      toast.success("Innstillinger lagret");
       fetchSettings();
     } catch (error: any) {
       console.error("Error saving settings:", error);
@@ -230,34 +160,17 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
             E-postinnstillinger
           </DialogTitle>
           <DialogDescription className={isMobile ? "text-xs" : "text-sm"}>
-            Konfigurer SMTP-innstillinger for å sende e-post fra systemet
+            Konfigurer avsender for e-post fra systemet
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 py-4">
-          {/* AviSafe server toggle – default on */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${useAviSafe ? "border-primary/40 bg-primary/5" : "border-muted bg-muted/30"}`}>
-            <div className="flex items-center gap-2">
-              <Server className={`h-4 w-4 ${useAviSafe ? "text-primary" : "text-muted-foreground"}`} />
-              <div>
-                <Label className={`font-medium ${isMobile ? "text-xs" : "text-sm"}`}>
-                  Bruk AviSafe mailserver
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  send.one.com · noreply@avisafe.no
-                </p>
-              </div>
-            </div>
-            <Switch checked={useAviSafe} onCheckedChange={handleUseAviSafeToggle} />
-          </div>
-
-          {useAviSafe && (
-            <Alert>
-              <AlertDescription className={isMobile ? "text-xs" : "text-sm"}>
-                E-post sendes via AviSafes felles mailserver. Du kan tilpasse avsendernavn nedenfor.
-              </AlertDescription>
-            </Alert>
-          )}
+          <Alert>
+            <Mail className="h-4 w-4" />
+            <AlertDescription className={isMobile ? "text-xs" : "text-sm"}>
+              E-post sendes via AviSafe (Resend). Du kan tilpasse avsendernavn nedenfor.
+            </AlertDescription>
+          </Alert>
 
           {/* Enable/Disable Toggle */}
           <div className="flex items-center justify-between space-x-2">
@@ -271,87 +184,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
             />
           </div>
 
-          {/* Custom SMTP – only shown when not using AviSafe */}
-          {!useAviSafe && (
-            <div className="border-t pt-4 space-y-4">
-              <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>SMTP-konfigurasjon</h3>
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="smtp_host" className={isMobile ? "text-xs" : "text-sm"}>SMTP Host *</Label>
-                  <Input
-                    id="smtp_host"
-                    value={settings.smtp_host}
-                    onChange={(e) => setSettings({ ...settings, smtp_host: e.target.value })}
-                    placeholder="smtp.gmail.com"
-                    className={isMobile ? "h-9 text-sm" : ""}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtp_port" className={isMobile ? "text-xs" : "text-sm"}>SMTP Port *</Label>
-                    <Input
-                      id="smtp_port"
-                      type="number"
-                      value={settings.smtp_port}
-                      onChange={(e) => setSettings({ ...settings, smtp_port: parseInt(e.target.value) || 587 })}
-                      className={isMobile ? "h-9 text-sm" : ""}
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2 pt-8">
-                    <Switch
-                      id="smtp_secure"
-                      checked={settings.smtp_secure}
-                      onCheckedChange={(checked) => setSettings({ ...settings, smtp_secure: checked })}
-                    />
-                    <Label htmlFor="smtp_secure" className={isMobile ? "text-xs" : "text-sm"}>TLS/SSL</Label>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="smtp_user" className={isMobile ? "text-xs" : "text-sm"}>Brukernavn / E-post *</Label>
-                  <Input
-                    id="smtp_user"
-                    value={settings.smtp_user}
-                    onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })}
-                    placeholder="din-epost@example.com"
-                    className={isMobile ? "h-9 text-sm" : ""}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="smtp_pass" className={isMobile ? "text-xs" : "text-sm"}>Passord *</Label>
-                  <Input
-                    id="smtp_pass"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder={hasExistingPassword ? "●●●●●●●● (la stå for å beholde)" : "Skriv inn passord"}
-                    className={isMobile ? "h-9 text-sm" : ""}
-                  />
-                  {hasExistingPassword && (
-                    <p className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}>
-                      Passord er allerede satt. La feltet stå tomt for å beholde.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="from_email_custom" className={isMobile ? "text-xs" : "text-sm"}>Avsender e-post *</Label>
-                  <Input
-                    id="from_email_custom"
-                    type="email"
-                    value={settings.from_email}
-                    onChange={(e) => setSettings({ ...settings, from_email: e.target.value })}
-                    placeholder="noreply@example.com"
-                    className={isMobile ? "h-9 text-sm" : ""}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Sender name – always visible */}
+          {/* Sender name */}
           <div className="border-t pt-4 space-y-4">
             <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>Avsender</h3>
             <div className="space-y-2">
@@ -365,6 +198,17 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
               />
               <p className="text-xs text-muted-foreground">
                 Vises som avsendernavn i mottakerens innboks
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className={isMobile ? "text-xs" : "text-sm"}>Avsender e-post</Label>
+              <Input
+                value={settings.from_email}
+                disabled
+                className={`${isMobile ? "h-9 text-sm" : ""} bg-muted`}
+              />
+              <p className="text-xs text-muted-foreground">
+                Domenet må være verifisert i Resend for å kunne brukes som avsender
               </p>
             </div>
           </div>
