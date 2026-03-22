@@ -104,7 +104,61 @@ ${inner}
 </body></html>`;
 }
 
-const defaultBlocks: EmailBlock[] = [
+function htmlToBlocks(html: string): EmailBlock[] {
+  const blocks: EmailBlock[] = [];
+  let id = 1;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  // Find the inner content cell (first td with padding:32px 40px)
+  const cells = doc.querySelectorAll("td");
+  let contentCell: Element | null = null;
+  for (const cell of cells) {
+    const style = cell.getAttribute("style") || "";
+    if (style.includes("padding:32px 40px") || style.includes("padding: 32px 40px")) {
+      contentCell = cell;
+      break;
+    }
+  }
+  if (!contentCell) return [];
+  
+  for (const child of contentCell.children) {
+    const tag = child.tagName.toLowerCase();
+    if (tag === "h1" || tag === "h2" || tag === "h3") {
+      blocks.push({ id: String(id++), type: "heading", content: child.textContent || "", props: { level: tag.replace("h", "") } });
+    } else if (tag === "p") {
+      blocks.push({ id: String(id++), type: "text", content: child.textContent || "", props: {} });
+    } else if (tag === "hr") {
+      blocks.push({ id: String(id++), type: "divider", content: "", props: {} });
+    } else if (tag === "img") {
+      blocks.push({ id: String(id++), type: "image", content: "", props: { src: child.getAttribute("src") || "", alt: child.getAttribute("alt") || "" } });
+    } else if (tag === "div") {
+      const style = child.getAttribute("style") || "";
+      if (style.includes("height:")) {
+        const m = style.match(/height:\s*(\d+)/);
+        blocks.push({ id: String(id++), type: "spacer", content: "", props: { height: m?.[1] || "24" } });
+      }
+    } else if (tag === "table") {
+      // Could be a button
+      const link = child.querySelector("a");
+      const td = child.querySelector("td");
+      if (link) {
+        const tdStyle = td?.getAttribute("style") || "";
+        const bgMatch = tdStyle.match(/background:\s*(#[a-fA-F0-9]+)/);
+        blocks.push({
+          id: String(id++), type: "button",
+          content: link.textContent?.trim() || "Klikk her",
+          props: {
+            url: link.getAttribute("href") || "#",
+            bgColor: bgMatch?.[1] || "#0ea5e9",
+            textColor: "#ffffff",
+          },
+        });
+      }
+    }
+  }
+  return blocks;
+}
+
   { id: "1", type: "heading", content: "Hei! 👋", props: { level: "1" } },
   { id: "2", type: "text", content: "Her er siste nytt fra AviSafe.", props: {} },
   { id: "3", type: "divider", content: "", props: {} },
