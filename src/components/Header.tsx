@@ -218,10 +218,7 @@ export const Header = () => {
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {switcherCompanies.length > 0 && (
               <CompanySwitcher
-                companies={switcherCompanies.map(c => ({
-                  ...c,
-                  isParent: !isSuperAdmin && accessibleCompanies.find(ac => ac.id === c.id)?.isParent || false,
-                }))}
+                companies={switcherCompanies}
                 currentCompanyId={companyId}
                 onSwitch={handleCompanySwitch}
               />
