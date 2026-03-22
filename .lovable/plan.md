@@ -1,23 +1,57 @@
 
 
-## Plan: Fiks SORA-arvebannere og synlighet
+## Plan: Fiks SORA-arv — avdelinger kan ikke lese morselskapets config (RLS-problem)
 
-### Problem 1: Morselskapet viser feil banner
-Norconsult (morselskapet) har en egen `company_sora_config`-rad, så `hasOwnConfig` settes til `true`. Banneret «Denne avdelingen har egne innstillinger som overstyrer morselskapet» vises — men Norconsult har ingen forelder å overstyre.
+### Rotårsak
+RLS-policyen på `company_sora_config` bruker `get_user_visible_company_ids()`, som returnerer brukerens eget selskap + dets barn. Når en bruker er i Bodø 1 (barn av Norconsult), inkluderer denne funksjonen **ikke** Norconsult. Derfor blokkeres `SELECT` mot morselskapets config, og fallback-logikken finner aldri parent-configen. Banneret vises aldri.
 
-**Fiks**: I `fetchConfig`, sjekk om selskapet har `parent_company_id`. Bare sett `hasOwnConfig` (med overstyrings-banner) dersom selskapet faktisk er en avdeling (har parent). For morselskapet vises det vanlige info-banneret.
+### Løsning
+Oppdater `get_user_visible_company_ids()` til å **også inkludere parent_company_id** i resultatet. Slik kan avdelingsbrukere lese morselskapets config (og andre delte ressurser).
 
-### Problem 2: Avdelinger ser ikke morselskapets tekst
-Fallback-logikken ser korrekt ut i koden — den henter morselskapets config inkl. `operative_restrictions` og `policy_notes`. Men det kan være at avdelingene allerede har en tom config-rad (upserted fra en tidligere lagring), som gjør at `data` ikke er null og fallback aldri kjører.
+### Endring — SQL-migrasjon
 
-**Fiks**: I `fetchConfig`, når `data` finnes men selskapet har `parent_company_id`, sett `hasOwnConfig=true` og hent også parent-navnet for banneret. Når `data` ikke finnes og parent config brukes, sørg for at `operative_restrictions` vises korrekt (dette fungerer allerede via `applyConfigData`).
+Endre funksjonen til å inkludere forelderen:
 
-### Endring — `CompanySoraConfigSection.tsx`
+```sql
+CREATE OR REPLACE FUNCTION get_user_visible_company_ids(_user_id uuid)
+RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM user_roles 
+      WHERE user_id = _user_id 
+      AND role IN ('administrator', 'admin', 'superadmin')
+    ) THEN
+      ARRAY(
+        SELECT DISTINCT id FROM (
+          -- Own company
+          SELECT id FROM companies WHERE id = (SELECT company_id FROM profiles WHERE id = _user_id)
+          UNION
+          -- Children of own company
+          SELECT id FROM companies WHERE parent_company_id = (SELECT company_id FROM profiles WHERE id = _user_id)
+          UNION
+          -- Parent of own company (NEW)
+          SELECT parent_company_id FROM companies WHERE id = (SELECT company_id FROM profiles WHERE id = _user_id) AND parent_company_id IS NOT NULL
+        ) sub
+      )
+    ELSE
+      ARRAY(
+        SELECT DISTINCT id FROM (
+          SELECT company_id AS id FROM profiles WHERE id = _user_id
+          UNION
+          -- Parent of own company (for reading shared resources)
+          SELECT parent_company_id AS id FROM companies WHERE id = (SELECT company_id FROM profiles WHERE id = _user_id) AND parent_company_id IS NOT NULL
+        ) sub
+      )
+  END
+$$;
+```
 
-1. Etter `data` er hentet (linje 141-143): sjekk `parent_company_id` for dette selskapet. Sett `hasOwnConfig` bare dersom selskapet er en avdeling med forelder.
-2. Flytt parent-sjekken slik at vi alltid vet om selskapet er en avdeling — uavhengig av om det har egen config.
-3. For morselskapet (ingen `parent_company_id`): vis det vanlige info-banneret (linje 364-374), aldri overstyrings-banneret.
+### Konsekvensanalyse
+Denne funksjonen brukes i RLS-policyer for `company_sora_config` (SELECT), og potensielt andre tabeller. Å inkludere parent betyr at avdelingsbrukere kan **lese** morselskapets data der denne funksjonen brukes. Skrive-policyer bruker `get_user_company_id()` (kun eget selskap), så ingen skrivetilgang til morselskapet gis.
+
+Bør sjekke hvilke andre tabeller som bruker `get_user_visible_company_ids` i RLS for å sikre at dette er ønsket oppførsel overalt.
 
 ### Filer
-- `src/components/admin/CompanySoraConfigSection.tsx` — fiks bannerlogikk basert på `parent_company_id`
+- SQL-migrasjon: oppdater `get_user_visible_company_ids()`
+- Ingen kodeendringer nødvendig — frontend-logikken er allerede korrekt
 
