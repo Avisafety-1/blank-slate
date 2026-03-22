@@ -35,6 +35,8 @@ import { RevenueCalculator } from "@/components/admin/RevenueCalculator";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { useTranslation } from "react-i18next";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { PLANS, ADDONS } from "@/config/subscriptionPlans";
@@ -1043,46 +1045,20 @@ const Admin = () => {
                                     {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
                                       <div>
                                         <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
-                                        <Select
-                                          value={profile.approval_company_ids?.includes('all') ? 'all' : 'specific'}
-                                          onValueChange={(value) => {
-                                            if (value === 'all') {
-                                              updateApprovalScope(profile.id, ['all']);
-                                            } else {
-                                              // Switch to specific: default to main company selected
-                                              updateApprovalScope(profile.id, [companyId || '']);
-                                            }
+                                        <DepartmentChecklist
+                                          departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                          selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
+                                          allSelected={profile.approval_company_ids?.includes('all') || false}
+                                          onToggleAll={(checked) => {
+                                            if (checked) updateApprovalScope(profile.id, ['all']);
+                                            else updateApprovalScope(profile.id, [companyId || '']);
                                           }}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder="Velg avdelinger" />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            <SelectItem value="all">Alle avdelinger</SelectItem>
-                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        {profile.approval_company_ids && !profile.approval_company_ids.includes('all') && (
-                                          <div className="mt-1 space-y-1">
-                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={profile.approval_company_ids?.includes(c.id) || false}
-                                                  onChange={(e) => {
-                                                    const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
-                                                    const newIds = e.target.checked
-                                                      ? [...current, c.id]
-                                                      : current.filter(id => id !== c.id);
-                                                    updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                  }}
-                                                  className="rounded border-border"
-                                                />
-                                                {c.navn}
-                                              </label>
-                                            ))}
-                                          </div>
-                                        )}
+                                          onToggle={(id, checked) => {
+                                            const current = profile.approval_company_ids?.filter(i => i !== 'all') || [];
+                                            const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                            updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                          }}
+                                        />
                                       </div>
                                     )}
                                     {eccairsEnabled && (
@@ -1108,45 +1084,21 @@ const Admin = () => {
                                     {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
                                       <div>
                                         <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
-                                        <Select
-                                          value={profile.incident_responsible_company_ids?.includes('all') ? 'all' : 'specific'}
-                                          onValueChange={(value) => {
-                                            if (value === 'all') {
-                                              updateIncidentScope(profile.id, ['all']);
-                                            } else {
-                                              updateIncidentScope(profile.id, [companyId || '']);
-                                            }
+                                        <DepartmentChecklist
+                                          departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                          selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
+                                          allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
+                                          onToggleAll={(checked) => {
+                                            if (checked) updateIncidentScope(profile.id, ['all']);
+                                            else updateIncidentScope(profile.id, [companyId || '']);
                                           }}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder="Velg avdelinger" />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            <SelectItem value="all">Alle avdelinger</SelectItem>
-                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        {profile.incident_responsible_company_ids && !profile.incident_responsible_company_ids.includes('all') && (
-                                          <div className="mt-1 space-y-1">
-                                            {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
-                                                  onChange={(e) => {
-                                                    const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
-                                                    const newIds = e.target.checked
-                                                      ? [...current, c.id]
-                                                      : current.filter(id => id !== c.id);
-                                                    updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                  }}
-                                                  className="rounded border-border"
-                                                />
-                                                {c.navn}
-                                              </label>
-                                            ))}
-                                          </div>
-                                        )}
+                                          onToggle={(id, checked) => {
+                                            const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
+                                            const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                            updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                          }}
+                                          allLabel="Alle avdelinger"
+                                        />
                                       </div>
                                     )}
                                     <div>
@@ -1222,44 +1174,22 @@ const Admin = () => {
                                         {profile.approval_company_ids?.includes('all') ? 'Alle' : `${(profile.approval_company_ids || []).length} avd.`}
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Godkjenner for avdelinger</p>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={profile.approval_company_ids?.includes('all') || false}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              updateApprovalScope(profile.id, ['all']);
-                                            } else {
-                                              updateApprovalScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                          className="rounded border-border"
-                                        />
-                                        <strong>Alle avdelinger</strong>
-                                      </label>
-                                      {!profile.approval_company_ids?.includes('all') && (
-                                        <>
-                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                              <input
-                                                type="checkbox"
-                                                checked={profile.approval_company_ids?.includes(c.id) || false}
-                                                onChange={(e) => {
-                                                  const current = profile.approval_company_ids?.filter(id => id !== 'all') || [];
-                                                  const newIds = e.target.checked
-                                                    ? [...current, c.id]
-                                                    : current.filter(id => id !== c.id);
-                                                  updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                }}
-                                                className="rounded border-border"
-                                              />
-                                              {c.navn}
-                                            </label>
-                                          ))}
-                                        </>
-                                      )}
+                                      <DepartmentChecklist
+                                        departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                        selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
+                                        allSelected={profile.approval_company_ids?.includes('all') || false}
+                                        onToggleAll={(checked) => {
+                                          if (checked) updateApprovalScope(profile.id, ['all']);
+                                          else updateApprovalScope(profile.id, [companyId || '']);
+                                        }}
+                                        onToggle={(id, checked) => {
+                                          const current = profile.approval_company_ids?.filter(i => i !== 'all') || [];
+                                          const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                          updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                        }}
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 )}
@@ -1290,63 +1220,38 @@ const Admin = () => {
                                         {profile.incident_responsible_company_ids?.includes('all') ? 'Alle' : `${(profile.incident_responsible_company_ids || []).length} avd.`}
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Ansvarlig for avdelinger</p>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={profile.incident_responsible_company_ids?.includes('all') || false}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              updateIncidentScope(profile.id, ['all']);
-                                            } else {
-                                              updateIncidentScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                          className="rounded border-border"
-                                        />
-                                        <strong>Alle avdelinger</strong>
-                                      </label>
-                                      {!profile.incident_responsible_company_ids?.includes('all') && (
-                                        <>
-                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                              <input
-                                                type="checkbox"
-                                                checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
-                                                onChange={(e) => {
-                                                  const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
-                                                  const newIds = e.target.checked
-                                                    ? [...current, c.id]
-                                                    : current.filter(id => id !== c.id);
-                                                  updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                }}
-                                                className="rounded border-border"
-                                              />
-                                              {c.navn}
-                                            </label>
-                                          ))}
-                                        </>
-                                      )}
+                                      <DepartmentChecklist
+                                        departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                        selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
+                                        allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
+                                        onToggleAll={(checked) => {
+                                          if (checked) updateIncidentScope(profile.id, ['all']);
+                                          else updateIncidentScope(profile.id, [companyId || '']);
+                                        }}
+                                        onToggle={(id, checked) => {
+                                          const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
+                                          const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                          updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                        }}
+                                        allLabel="Alle avdelinger"
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 )}
                               </div>
                               {!isChildCompany && childCompanies.length > 0 && (
-                                <Select 
-                                  value={profile.company_id || companyId || ""} 
-                                  onValueChange={(value) => changeDepartment(profile.id, value)}
-                                >
-                                  <SelectTrigger className="w-[160px] h-10">
-                                    <SelectValue placeholder="Avdeling" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-50">
-                                    <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
-                                    {childCompanies.map((c) => (
-                                      <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <div className="w-[180px]">
+                                  <SearchablePersonSelect
+                                    persons={[{ id: companyId || '', full_name: companyName || 'Hovedselskap' }, ...childCompanies.map(c => ({ id: c.id, full_name: c.navn }))]}
+                                    value={profile.company_id || companyId || ""}
+                                    onValueChange={(val) => { if (val) changeDepartment(profile.id, val); }}
+                                    placeholder="Avdeling"
+                                    searchPlaceholder="Søk avdeling..."
+                                    emptyText="Ingen avdelinger funnet."
+                                  />
+                                </div>
                               )}
                               {canManageRoles ? (
                                 <Select 
