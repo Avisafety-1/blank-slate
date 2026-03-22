@@ -86,6 +86,10 @@ export const CompanySoraConfigSection = () => {
   const [saving, setSaving] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [docSearchQuery, setDocSearchQuery] = useState("");
+  const [inherited, setInherited] = useState(false);
+  const [parentName, setParentName] = useState<string | null>(null);
+  const [hasOwnConfig, setHasOwnConfig] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [hardstopOpen, setHardstopOpen] = useState(true);
   const [restrictionsOpen, setRestrictionsOpen] = useState(false);
