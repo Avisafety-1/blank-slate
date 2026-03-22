@@ -34,6 +34,7 @@ import {
   Moon,
   Clock,
   Users,
+  Building2,
 } from "lucide-react";
 
 interface Document {
