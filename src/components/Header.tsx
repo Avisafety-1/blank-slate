@@ -53,9 +53,9 @@ export const Header = () => {
 
   // Determine which company list to show in the switcher
   const switcherCompanies = isSuperAdmin
-    ? companies.map(c => ({ id: c.id, navn: c.navn }))
+    ? companies.map(c => ({ id: c.id, navn: c.navn, isParent: false }))
     : accessibleCompanies.length > 1
-      ? accessibleCompanies.map(c => ({ id: c.id, navn: c.name }))
+      ? accessibleCompanies.map(c => ({ id: c.id, navn: c.name, isParent: c.isParent }))
       : [];
 
   const handleCompanySwitch = async (newCompanyId: string) => {
