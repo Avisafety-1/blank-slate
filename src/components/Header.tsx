@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Building2, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
+import { LogOut, Settings, Menu, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -52,9 +53,9 @@ export const Header = () => {
 
   // Determine which company list to show in the switcher
   const switcherCompanies = isSuperAdmin
-    ? companies.map(c => ({ id: c.id, navn: c.navn }))
+    ? companies.map(c => ({ id: c.id, navn: c.navn, isParent: false }))
     : accessibleCompanies.length > 1
-      ? accessibleCompanies.map(c => ({ id: c.id, navn: c.name }))
+      ? accessibleCompanies.map(c => ({ id: c.id, navn: c.name, isParent: c.isParent }))
       : [];
 
   const handleCompanySwitch = async (newCompanyId: string) => {
@@ -106,24 +107,12 @@ export const Header = () => {
           {/* Mobile company selector and menu */}
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
             {switcherCompanies.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
-                    <Building2 className="w-3.5 h-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {switcherCompanies.map((company) => (
-                    <DropdownMenuItem 
-                      key={company.id} 
-                      onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
-                    >
-                      {company.navn}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CompanySwitcher
+                companies={switcherCompanies}
+                currentCompanyId={companyId}
+                onSwitch={handleCompanySwitch}
+                compact
+              />
             )}
             
             {/* Mobile Navigation - Hamburger Menu */}
@@ -228,24 +217,11 @@ export const Header = () => {
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {switcherCompanies.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <Building2 className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {switcherCompanies.map((company) => (
-                    <DropdownMenuItem 
-                      key={company.id} 
-                      onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
-                    >
-                      {company.navn}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CompanySwitcher
+                companies={switcherCompanies}
+                currentCompanyId={companyId}
+                onSwitch={handleCompanySwitch}
+              />
             )}
             
             {/* Language toggle - Desktop */}
