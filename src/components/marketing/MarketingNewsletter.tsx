@@ -113,7 +113,7 @@ const defaultBlocks: EmailBlock[] = [
 /* ─── Main component ─── */
 export const MarketingNewsletter = () => {
   const [tab, setTab] = useState("subscribers");
-  const signupUrl = `${window.location.origin}/nyhetsbrev`;
+  const signupUrl = "https://app.avisafe.no/nyhetsbrev";
 
   return (
     <div className="space-y-4">
