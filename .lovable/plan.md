@@ -1,29 +1,27 @@
 
-## Plan: Forenkle e-postinnstillinger-dialogen for Resend
 
-### Problem
-EmailSettingsDialog viser fortsatt SMTP-konfigurasjon (host, port, passord, TLS) og en "Bruk AviSafe mailserver"-toggle, men backend bruker utelukkende Resend API. SMTP-feltene har ingen funksjon og er misvisende for selskapsadministratorer.
+## Plan: Legg til 35 avdelinger under Norconsult AS
 
-### Løsning
-Forenkle dialogen til kun å vise det som faktisk har effekt:
+### Tilnærming
+Sett inn 35 child companies i `companies`-tabellen med `parent_company_id` satt til Norconsult AS (`3562f82d-aff7-487b-9495-7f288a5bc0e3`). Arver innstillinger: `stripe_exempt: true`, `dji_flightlog_enabled: true`, `selskapstype: 'droneoperator'`.
 
-1. **Fjern** all SMTP-relatert UI:
-   - "Bruk AviSafe mailserver"-toggle og `AVISAFE_SMTP`-konstanten
-   - SMTP Host, Port, TLS, Brukernavn, Passord-felt
-   - `useAviSafe`-state og `handleUseAviSafeToggle`
+`registration_code` genereres automatisk av trigger.
 
-2. **Behold**:
-   - Avsendernavn-felt (`from_name`)
-   - Aktiver/deaktiver e-postsending-toggle (`enabled`)
-   - Test e-post-seksjon
-   - Lagre-knapp
+### Avdelingsnavn (35 stk)
+Bergen 1, Bergen 2, Bodø 1, Bodø 2, Gjøvik 1, Hamar 1, Jessheim 1, Kristiansand 1, Larvik 1, Levanger 1, Lillehammer 1, Lysaker 1, Mo i Rana 1, Molde 1, Namsos 1, Namsos 2, Odda 1, Os 1, Porsgrunn 1, Sandvika 1, Sandvika 2, Sandvika 3, Sandvika 4, Sandvika 5, Sandvika 6, Sandvika 7, Sandvika 8, Stavanger 1, Stjørdal 1, Trondheim 1, Trondheim 2, Tønsberg 1, Ulsteinvik 1, Voss 1, Ålesund 1
 
-3. **Oppdater**:
-   - Dialog-beskrivelse: fra "Konfigurer SMTP-innstillinger" til "Konfigurer avsender for e-post fra systemet"
-   - Info-alert: "E-post sendes via AviSafe (Resend). Du kan tilpasse avsendernavn nedenfor."
-   - `handleSave`: send kun `from_name`, `from_email` og `enabled` til RPC — sett SMTP-felt til standardverdier
+### SQL
+```sql
+INSERT INTO companies (navn, selskapstype, stripe_exempt, dji_flightlog_enabled, parent_company_id)
+VALUES
+  ('Bergen 1', 'droneoperator', true, true, '3562f82d-...'),
+  ('Bergen 2', 'droneoperator', true, true, '3562f82d-...'),
+  -- ... (35 rader totalt)
+```
 
-4. **Vurder** å fjerne `from_email`-feltet fra UI eller gjøre det read-only med info om at domenet må verifiseres i Resend. For nå: vis det som read-only med verdien `noreply@avisafe.no`.
+### Utføring
+Kjøres via `psql INSERT` (data-operasjon, ikke skjemaendring).
 
 ### Filer
-- `src/components/admin/EmailSettingsDialog.tsx` — forenkle UI, fjern SMTP-felt
+Ingen kodeendringer — kun datainnsetting.
+
