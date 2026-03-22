@@ -417,9 +417,10 @@ const ComposeTab = () => {
 
   const loadTemplate = (tpl: NewsletterTemplate) => {
     setSubject(tpl.subject);
-    // Since we store final HTML, set blocks to a single HTML block for editing
-    // Better UX: reset to default blocks and let user edit
-    toast({ title: `Mal «${tpl.name}» lastet`, description: "Emne er satt. Rediger innholdet i editoren." });
+    const parsed = htmlToBlocks(tpl.html_content);
+    setBlocks(parsed.length > 0 ? parsed : [...defaultBlocks]);
+    setSelectedBlock(null);
+    toast({ title: `Mal «${tpl.name}» lastet` });
     setShowLoadDialog(false);
   };
 
