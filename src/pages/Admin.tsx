@@ -1045,25 +1045,6 @@ const Admin = () => {
                                     {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
                                       <div>
                                         <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
-                                        <Select
-                                          value={profile.approval_company_ids?.includes('all') ? 'all' : 'specific'}
-                                          onValueChange={(value) => {
-                                            if (value === 'all') {
-                                              updateApprovalScope(profile.id, ['all']);
-                                            } else {
-                                              // Switch to specific: default to main company selected
-                                              updateApprovalScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder="Velg avdelinger" />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            <SelectItem value="all">Alle avdelinger</SelectItem>
-                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
-                                          </SelectContent>
-                                        </Select>
                                         <DepartmentChecklist
                                           departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
                                           selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
