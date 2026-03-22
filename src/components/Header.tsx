@@ -107,24 +107,15 @@ export const Header = () => {
           {/* Mobile company selector and menu */}
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
             {switcherCompanies.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
-                    <Building2 className="w-3.5 h-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {switcherCompanies.map((company) => (
-                    <DropdownMenuItem 
-                      key={company.id} 
-                      onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
-                    >
-                      {company.navn}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CompanySwitcher
+                companies={switcherCompanies.map(c => ({
+                  ...c,
+                  isParent: !isSuperAdmin && accessibleCompanies.find(ac => ac.id === c.id)?.isParent || false,
+                }))}
+                currentCompanyId={companyId}
+                onSwitch={handleCompanySwitch}
+                compact
+              />
             )}
             
             {/* Mobile Navigation - Hamburger Menu */}
