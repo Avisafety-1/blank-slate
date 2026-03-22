@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, sanitizeSubject, formatSenderAddress, getEmailHeaders } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +13,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
@@ -33,7 +32,6 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Get user profile including company_id
     const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: profile } = await serviceClient
       .from('profiles')
@@ -44,7 +42,6 @@ Deno.serve(async (req) => {
     const senderName = profile?.full_name || 'Ukjent bruker';
     const senderEmail = profile?.email || 'ukjent';
 
-    // Parse and validate body
     const { subject, message } = await req.json();
 
     if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
@@ -60,7 +57,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Melding kan ikke være lengre enn 5000 tegn' }), { status: 400, headers: corsHeaders });
     }
 
-    // Build HTML email
     const htmlBody = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -73,32 +69,15 @@ Deno.serve(async (req) => {
   <p style="font-size: 12px; color: #6b7280;">Denne meldingen ble sendt via AviSafe tilbakemeldingsskjema.</p>
 </body></html>`;
 
-    // Get SMTP config (falls back to default AviSafe SMTP)
     const emailConfig = await getEmailConfig(profile?.company_id);
-    const emailHeaders = getEmailHeaders();
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailConfig.host,
-        port: emailConfig.port,
-        tls: emailConfig.secure,
-        auth: {
-          username: emailConfig.user,
-          password: emailConfig.pass,
-        },
-      },
-    });
-
-    await client.send({
+    await sendEmail({
       from: formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail),
       to: 'support@avisafe.no',
       subject: sanitizeSubject(`Tilbakemelding: ${subject.trim()}`),
-      content: "auto",
       html: htmlBody,
-      ...emailHeaders,
+      replyTo: senderEmail,
     });
-
-    await client.close();
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (error) {

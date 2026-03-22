@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
 
 const corsHeaders = {
@@ -19,7 +19,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify caller is admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -49,7 +48,6 @@ serve(async (req) => {
       });
     }
 
-    // Get company_id from caller's profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_id')
@@ -73,27 +71,8 @@ serve(async (req) => {
     const emailConfig = await getEmailConfig(companyId || undefined);
     const fromName = emailConfig.fromName || companyName || 'AviSafe';
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders();
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailConfig.host,
-        port: emailConfig.port,
-        tls: emailConfig.secure,
-        auth: { username: emailConfig.user, password: emailConfig.pass },
-      },
-    });
-
-    await client.send({
-      from: senderAddress,
-      to: email,
-      subject: sanitizeSubject(template.subject),
-      html: template.content,
-      date: new Date().toUTCString(),
-      headers: emailHeaders.headers,
-    });
-
-    await client.close();
+    await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(template.subject), html: template.content });
 
     console.log(`✓ Invite email sent to ${email} from company ${companyName}`);
     return new Response(JSON.stringify({ success: true }), {

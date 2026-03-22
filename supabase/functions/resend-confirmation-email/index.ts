@@ -1,8 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
-import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +27,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user from auth
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'User not found', details: userError?.message }), {
@@ -43,7 +41,6 @@ serve(async (req) => {
       });
     }
 
-    // Fetch profile to get name and company
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('full_name, company_id, companies(navn)')
@@ -54,7 +51,6 @@ serve(async (req) => {
     const companyId = profile?.company_id || null;
     const companyName = (profile?.companies as any)?.navn || 'AviSafe';
 
-    // Generate a new confirmation link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email,
@@ -69,8 +65,6 @@ serve(async (req) => {
     const confirmationLink = linkData.properties.action_link;
     console.log(`Generated confirmation link for ${email}: ${confirmationLink}`);
 
-    // Build a confirmation email using user_welcome template as base,
-    // but override content to include the confirmation link
     const confirmationSubject = `Bekreft e-postadressen din – ${companyName}`;
     const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
     const confirmationHtml = `<!DOCTYPE html>
@@ -115,31 +109,11 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </body>
 </html>`;
 
-    // Send email
     const emailConfig = await getEmailConfig(companyId || undefined);
     const fromName = emailConfig.fromName || 'AviSafe';
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders();
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailConfig.host,
-        port: emailConfig.port,
-        tls: emailConfig.secure,
-        auth: { username: emailConfig.user, password: emailConfig.pass }
-      },
-    });
-
-    await client.send({
-      from: senderAddress,
-      to: email,
-      subject: sanitizeSubject(confirmationSubject),
-      html: confirmationHtml,
-      date: new Date().toUTCString(),
-      headers: emailHeaders.headers,
-    });
-
-    await client.close();
+    await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(confirmationSubject), html: confirmationHtml });
 
     console.log(`✓ Confirmation email sent to ${email}`);
     return new Response(JSON.stringify({ success: true, sentTo: email }), {
