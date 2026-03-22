@@ -738,6 +738,12 @@ const Resources = () => {
                         {person.tittel && (
                           <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
                         )}
+                        {person.company_id !== companyId && person.companies?.navn && (
+                          <Badge variant="secondary" className="mt-0.5 gap-1 text-xs">
+                            <Building2 className="w-3 h-3" />
+                            {person.companies.navn}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     

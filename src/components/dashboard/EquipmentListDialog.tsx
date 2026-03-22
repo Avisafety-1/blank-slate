@@ -76,6 +76,12 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-base sm:text-lg break-words hyphens-auto">{item.navn}</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground break-words hyphens-auto">{item.type}</p>
+                  {item.company_id !== companyId && item.companies?.navn && (
+                    <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                      <Building2 className="w-3 h-3" />
+                      {item.companies.navn}
+                    </Badge>
+                  )}
                 </div>
                 <StatusBadge status={(item.status || "Grønn") as Status} />
               </div>

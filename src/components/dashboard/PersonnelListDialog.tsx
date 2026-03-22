@@ -97,6 +97,12 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
                         Opprettet: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: nb })}
                       </p>
                     )}
+                    {person.company_id !== companyId && person.companies?.navn && (
+                      <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                        <Building2 className="w-3 h-3" />
+                        {person.companies.navn}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <StatusBadge status={person.calculatedStatus} />
