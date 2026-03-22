@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MediaLibraryPickerDialog } from "@/components/marketing/MediaLibraryPickerDialog";
 import {
   Loader2, Plus, Trash2, Send, Upload, Eye, Users, FileEdit, History,
-  Type, Image, Minus, MousePointerClick, Link2, Save, FolderOpen, Copy, ArrowUp, ArrowDown
+  Type, Image, Minus, MousePointerClick, Save, FolderOpen, Copy, ArrowUp, ArrowDown, ImagePlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
