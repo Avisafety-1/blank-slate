@@ -220,24 +220,14 @@ export const Header = () => {
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             {switcherCompanies.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <Building2 className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
-                  {switcherCompanies.map((company) => (
-                    <DropdownMenuItem 
-                      key={company.id} 
-                      onClick={() => handleCompanySwitch(company.id)}
-                      className={companyId === company.id ? "bg-accent/30 font-medium" : ""}
-                    >
-                      {company.navn}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CompanySwitcher
+                companies={switcherCompanies.map(c => ({
+                  ...c,
+                  isParent: !isSuperAdmin && accessibleCompanies.find(ac => ac.id === c.id)?.isParent || false,
+                }))}
+                currentCompanyId={companyId}
+                onSwitch={handleCompanySwitch}
+              />
             )}
             
             {/* Language toggle - Desktop */}
