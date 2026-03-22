@@ -198,7 +198,7 @@ const Resources = () => {
     try {
       const { data, error } = await (supabase as any)
         .from("equipment")
-        .select("*, companies(namn:navn)")
+        .select("*, companies(navn)")
         .eq("aktiv", true)
         .order("opprettet_dato", { ascending: false });
       
