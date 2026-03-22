@@ -90,6 +90,7 @@ export const CompanySoraConfigSection = () => {
   const [inherited, setInherited] = useState(false);
   const [parentName, setParentName] = useState<string | null>(null);
   const [hasOwnConfig, setHasOwnConfig] = useState(false);
+  const [isChild, setIsChild] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const [hardstopOpen, setHardstopOpen] = useState(true);
