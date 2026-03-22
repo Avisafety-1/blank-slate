@@ -1,38 +1,53 @@
 
 
-## Plan: 3D Dronemodell erstatter Attitude Indicator
+## Plan: Generer AI-søkemotor-spec for avisafe.no landingsside
 
-### Oversikt
-Bytt ut den 2D gyro/attitude-indikatoren i flyanalysen med en interaktiv 3D-modell av DJI Matrice T300 som roterer i sanntid basert på pitch, roll og yaw fra telemetrien.
+### Hva
+Generere en ferdig system-prompt/spec som du kan bruke i ditt landingsside-prosjekt. Denne speccen definerer en AI-assistent som kun svarer på spørsmål om Avisafe-plattformens funksjoner og tjenester. Ingen kodeendringer i dette prosjektet.
 
-### Steg 1: Installer avhengigheter
-- `three@>=0.133`
-- `@react-three/fiber@^8.18` (v8 for React 18)
-- `@react-three/drei@^9.122.0` (v9 for React 18)
+### Leveranse
+En komplett system-prompt som tekstfil til `/mnt/documents/avisafe-ai-spec.md`, klar til bruk i en edge function på landingssiden.
 
-### Steg 2: Kopier GLTF-modell til prosjektet
-- Pakk ut zip-filen og kopier GLTF/GLB + tilhørende filer (bin, teksturer) til `public/models/dji_matrice_t300/`
-- Plassering i `public/` slik at den lastes via URL uten bundling
+### Innhold i speccen
+Basert på gjennomgang av hele kodebasen, vil speccen dekke:
 
-### Steg 3: Ny komponent — `Drone3DViewer.tsx`
-Erstatter `DroneAttitudeIndicator`. Bruker `@react-three/fiber` Canvas med:
-- `useGLTF` fra drei for å laste modellen
-- Rotasjon basert på pitch/roll/yaw props (konvertert til radianer)
-- Ambient + directional light for god synlighet
-- `OrbitControls` disabled (kun telemetri styrer rotasjonen)
-- Semi-transparent bakgrunn som matcher nåværende glasskort-stil
-- Heading-tekst under canvas (som nå)
+**Kjernemoduler:**
+- Dashboard (draggable widgets, KPI, nyheter, AI-søk, aktive flygninger)
+- Oppdrag (opprettelse, planlegging, ruteplanlegging, vær/luftrom-sjekk, risikoanalyse, PDF/KMZ-eksport, sjekklister, kundeoversikt)
+- Kart (SafeSky live-trafikk, OpenAIP luftrom, væroverlay, befolknings-/arealbrukskart fra SSB, VLOS-måling, ruteplanlegging, KML/KMZ-import)
+- Ressurser (droner, utstyr, personell, kompetansehåndtering, vedlikeholdsplan, DroneTag-integrasjon)
+- Dokumenter (versjonskontroll, sjekklister, kategorisering, varsling utløpsdatoer, synlighet)
+- Hendelser (rapportering, oppfølgingsaktiviteter, ECCAIRS E2-rapportering til Luftfartstilsynet, PDF-eksport)
+- Kalender (hendelser, vedlikehold, oppdragsfrister, ICS-eksport, kalenderabonnement)
+- Status (statuspanel for hele organisasjonen)
+- Statistikk (KPI-dashboard, grafer, plattformaktivitetslogg)
 
-Samme props-interface som `DroneAttitudeIndicator` for drop-in-erstatning.
+**Avanserte funksjoner:**
+- SORA-risikoanalyse (Specific Operations Risk Assessment)
+- AI-risikoanalyse med automatiske anbefalinger
+- DJI-flightlog import (automatisk synkronisering + manuell)
+- 3D flyanalyse med telemetridata (pitch/roll/yaw, batteristatus, altitude, 3D-modell)
+- Droneregelverk-AI (chatbot for EASA/norsk droneregelverk)
+- Push-varsler (PWA)
+- Offline-støtte
+- Tofaktorautentisering (TOTP + passkeys/WebAuthn)
+- Flerspråklig (norsk/engelsk)
+- Moderselskap/avdeling-hierarki med settingsarv
 
-### Steg 4: Oppdater `FlightAnalysisDialog.tsx`
-- Importer `Drone3DViewer` i stedet for `DroneAttitudeIndicator`
-- Beholde samme overlay-posisjon (top-right, fyller kartets høyde på desktop)
-- Lazy-load med `React.lazy` + `Suspense` for å unngå at three.js blokkerer initial load
+**Abonnementer:**
+- Starter (99 kr/bruker/mnd)
+- Grower (199 kr/bruker/mnd)
+- Professional (299 kr/bruker/mnd)
+- Tillegg: SORA Admin, DJI-integrasjon, ECCAIRS
 
-### Filer
-- `package.json` — nye deps
-- `public/models/dji_matrice_t300/` — GLTF-modell
-- `src/components/dashboard/Drone3DViewer.tsx` — ny komponent
-- `src/components/dashboard/FlightAnalysisDialog.tsx` — bytt import
+**Integrasjoner:**
+- SafeSky (live lufttrafikk)
+- OpenAIP (luftrom, hindringer)
+- DJI FlightHub/flightlogs
+- DroneTag (Remote ID)
+- ECCAIRS/E2 (Luftfartstilsynet)
+- Stripe (betalinger)
+
+### Implementering
+Jeg bruker `lov-exec` for å skrive speccen til `/mnt/documents/avisafe-ai-spec.md`. Ingen endringer i kodebasen.
 
