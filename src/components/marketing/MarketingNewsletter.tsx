@@ -159,6 +159,7 @@ function htmlToBlocks(html: string): EmailBlock[] {
   return blocks;
 }
 
+const defaultBlocks: EmailBlock[] = [
   { id: "1", type: "heading", content: "Hei! 👋", props: { level: "1" } },
   { id: "2", type: "text", content: "Her er siste nytt fra AviSafe.", props: {} },
   { id: "3", type: "divider", content: "", props: {} },
