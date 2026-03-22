@@ -1,12 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 
 interface DroneListDialogProps {
   open: boolean;
