@@ -1084,24 +1084,6 @@ const Admin = () => {
                                     {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
                                       <div>
                                         <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
-                                        <Select
-                                          value={profile.incident_responsible_company_ids?.includes('all') ? 'all' : 'specific'}
-                                          onValueChange={(value) => {
-                                            if (value === 'all') {
-                                              updateIncidentScope(profile.id, ['all']);
-                                            } else {
-                                              updateIncidentScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder="Velg avdelinger" />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            <SelectItem value="all">Alle avdelinger</SelectItem>
-                                            <SelectItem value="specific">Spesifikke avdelinger</SelectItem>
-                                          </SelectContent>
-                                        </Select>
                                         <DepartmentChecklist
                                           departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
                                           selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
