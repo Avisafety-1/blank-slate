@@ -1,33 +1,23 @@
 
 
-## Plan: SORA-innstillinger arves fra morselskap til avdelinger
+## Plan: Fiks SORA-arvebannere og synlighet
 
-### Problem
-Både admin-UI og AI-risikovurdering henter SORA-konfig kun for brukerens aktive `company_id`. Avdelinger som ikke har egne innstillinger ser bare standardverdier — de arver ingenting fra morselskapet.
+### Problem 1: Morselskapet viser feil banner
+Norconsult (morselskapet) har en egen `company_sora_config`-rad, så `hasOwnConfig` settes til `true`. Banneret «Denne avdelingen har egne innstillinger som overstyrer morselskapet» vises — men Norconsult har ingen forelder å overstyre.
 
-### Løsning
-Legg til fallback-logikk: hvis en avdeling ikke har egen `company_sora_config`-rad, hent morselskapets konfig i stedet.
+**Fiks**: I `fetchConfig`, sjekk om selskapet har `parent_company_id`. Bare sett `hasOwnConfig` (med overstyrings-banner) dersom selskapet faktisk er en avdeling (har parent). For morselskapet vises det vanlige info-banneret.
 
-### Steg 1: Admin-UI — vis arvede innstillinger i avdelinger
-**Fil: `src/components/admin/CompanySoraConfigSection.tsx`**
+### Problem 2: Avdelinger ser ikke morselskapets tekst
+Fallback-logikken ser korrekt ut i koden — den henter morselskapets config inkl. `operative_restrictions` og `policy_notes`. Men det kan være at avdelingene allerede har en tom config-rad (upserted fra en tidligere lagring), som gjør at `data` ikke er null og fallback aldri kjører.
 
-- I `fetchConfig`: hvis ingen rad finnes for `companyId`, sjekk om selskapet har `parent_company_id` (via `companies`-tabellen), og hent morselskapets konfig som fallback.
-- Vis en info-banner øverst: «Disse innstillingene er arvet fra [Morselskap]. Endringer her gjelder kun denne avdelingen.»
-- Alle felt er redigerbare — avdelingen kan overstyre med egne verdier (som da lagres som egen rad).
-- Legg til en «Tilbakestill til morselskap»-knapp som sletter avdelingens egen rad (slik at den igjen arver).
+**Fiks**: I `fetchConfig`, når `data` finnes men selskapet har `parent_company_id`, sett `hasOwnConfig=true` og hent også parent-navnet for banneret. Når `data` ikke finnes og parent config brukes, sørg for at `operative_restrictions` vises korrekt (dette fungerer allerede via `applyConfigData`).
 
-### Steg 2: AI-risikovurdering — fallback til morselskap
-**Fil: `supabase/functions/ai-risk-assessment/index.ts`**
+### Endring — `CompanySoraConfigSection.tsx`
 
-- Etter linje 602: hvis `soraConfigData` er null, hent `parent_company_id` fra `companies`, og gjør nytt oppslag mot `company_sora_config` med morselskapets ID.
-- Dokumenter (linked_document_ids) hentes også fra morselskapets konfig i fallback-scenariet.
+1. Etter `data` er hentet (linje 141-143): sjekk `parent_company_id` for dette selskapet. Sett `hasOwnConfig` bare dersom selskapet er en avdeling med forelder.
+2. Flytt parent-sjekken slik at vi alltid vet om selskapet er en avdeling — uavhengig av om det har egen config.
+3. For morselskapet (ingen `parent_company_id`): vis det vanlige info-banneret (linje 364-374), aldri overstyrings-banneret.
 
-### Steg 3: Dokumenter — vis morselskapets dokumenter i avdeling
-**Fil: `src/components/admin/CompanySoraConfigSection.tsx`**
-
-- I `fetchDocuments`: hent også dokumenter fra morselskapet (der `visible_to_children = true`) slik at avdelingsadministratorer kan se hvilke dokumenter som er lenket.
-
-### Filer som endres
-- `src/components/admin/CompanySoraConfigSection.tsx` — fallback-logikk + arve-indikator i UI
-- `supabase/functions/ai-risk-assessment/index.ts` — fallback til parent config
+### Filer
+- `src/components/admin/CompanySoraConfigSection.tsx` — fiks bannerlogikk basert på `parent_company_id`
 
