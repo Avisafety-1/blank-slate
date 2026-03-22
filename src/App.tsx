@@ -181,6 +181,7 @@ const App = () => {
                   <Route path="/priser" element={<Suspense fallback={<LoadingSpinner />}><Priser /></Suspense>} />
                   <Route path="/sora-prosess" element={<Suspense fallback={<LoadingSpinner />}><SoraProcess /></Suspense>} />
                   <Route path="/bruksanvisning" element={<Suspense fallback={<LoadingSpinner />}><UserManualDownload /></Suspense>} />
+                  <Route path="/nyhetsbrev" element={<Suspense fallback={<LoadingSpinner />}><NewsletterSignup /></Suspense>} />
                   
                   {/* Protected routes with shared Header - app domain */}
                   <Route element={<AuthenticatedLayout />}>
