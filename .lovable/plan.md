@@ -1,39 +1,39 @@
 
 
-## Plan: Avdelinger arver selskapssettings fra morselskap
+## Plan: Fiks at avdelinger ser morselskapets droner/utstyr
 
-### Problem
-Når DJI, ECCAIRS, DroneTag eller auto-sync aktiveres på et morselskap, oppdateres kun morselskapets rad i `companies`-tabellen. Avdelinger har sine egne rader med standardverdier (alt av) og arver ingenting. Edge-funksjonen `dji-auto-sync` spør direkte mot `companies`-tabellen og finner ikke avdelinger som mangler egne flagg.
+### Rotårsak
+Forrige endring la til `parent_company_id` i `get_user_visible_company_ids()` slik at avdelinger kunne lese morselskapets SORA-config. Men denne funksjonen brukes også i RLS for `drones`, `equipment`, og andre tabeller — så nå ser avdelingsbrukere morselskapets droner og utstyr.
 
-### Løsning: Kaskade-oppdatering via database-trigger
-Opprett en PostgreSQL-trigger på `companies`-tabellen som automatisk propagerer relevante innstillinger til alle barn når et morselskap oppdateres. Dette sikrer at alle eksisterende og fremtidige queries fungerer uten fallback-logikk.
+### Løsning
+1. **Fjern parent fra `get_user_visible_company_ids()`** — tilbakestill til kun eget selskap + barn (for admins). Denne funksjonen brukes bredt for ressursisolasjon.
+2. **Lag en ny funksjon `get_user_readable_company_ids()`** som inkluderer parent. Bruk denne kun for tabeller der arv er ønsket (f.eks. `company_sora_config`).
+3. **Oppdater `company_sora_config` RLS** til å bruke den nye funksjonen.
 
-### Steg 1: SQL-migrasjon — kaskade-trigger
+### Steg 1: SQL-migrasjon
 
-Opprett en trigger-funksjon som kjører etter UPDATE på `companies`. Når følgende kolonner endres på et selskap som har barn, oppdateres alle barn automatisk:
-- `dji_flightlog_enabled`
-- `dji_auto_sync_enabled`
-- `dji_sync_from_date`
-- `dronelog_api_key`
-- `eccairs_enabled`
-- `dronetag_enabled`
+```sql
+-- Ny funksjon som inkluderer parent (for lesing av delt config)
+CREATE OR REPLACE FUNCTION get_user_readable_company_ids(_user_id uuid)
+RETURNS uuid[] ...
+-- Samme som nåværende get_user_visible_company_ids (med parent)
 
-Triggeren sjekker om selskapet har barn (`parent_company_id = id`) og oppdaterer kun kolonner som faktisk endret seg.
+-- Tilbakestill get_user_visible_company_ids UTEN parent
+CREATE OR REPLACE FUNCTION get_user_visible_company_ids(_user_id uuid)
+RETURNS uuid[] ...
+-- Kun eget selskap + barn (for admins)
 
-I tillegg: en engangs-UPDATE som synkroniserer eksisterende avdelinger med sine morselskaper nå.
+-- Oppdater SORA config RLS til å bruke ny funksjon
+DROP POLICY "Users can read own company config" ON company_sora_config;
+CREATE POLICY "Users can read own and parent company config"
+  ON company_sora_config FOR SELECT TO authenticated
+  USING (company_id = ANY(get_user_readable_company_ids(auth.uid())));
+```
 
-### Steg 2: AuthContext — utvid arv
-**Fil: `src/contexts/AuthContext.tsx`**
+### Steg 2: Sjekk andre tabeller som trenger parent-tilgang
+Kun `company_sora_config` trenger parent-lesing. Andre tabeller (drones, equipment, profiles, etc.) skal forbli isolert til eget selskap + barn.
 
-Legg til `dji_auto_sync_enabled` i parent-company-queryen slik at også denne verdien arves client-side (for UI-visning).
-
-### Steg 3: Admin-UI — vis arvede innstillinger
-**Fil: `src/components/admin/CompanyManagementSection.tsx`**
-
-For avdelinger (selskaper med `parent_company_id`): vis integrasjonsbryterne som disabled/låst med en info-tekst «Arvet fra morselskap». Bryterne kan kun endres på morselskapet.
-
-### Filer som endres
-- SQL-migrasjon (ny trigger + engangs-sync)
-- `src/contexts/AuthContext.tsx` — utvid parent-arv
-- `src/components/admin/CompanyManagementSection.tsx` — låste brytere for avdelinger
+### Filer
+- SQL-migrasjon (ny funksjon + tilbakestill gammel + oppdater SORA RLS)
+- Ingen kodeendringer nødvendig
 
