@@ -70,6 +70,7 @@ interface Company {
   dji_auto_sync_enabled: boolean;
   dji_sync_from_date: string | null;
   dronetag_enabled: boolean;
+  parent_company_id: string | null;
 }
 
 // Mobile expandable company card component
