@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +18,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find active flights older than 3 hours that haven't been notified yet
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
     const { data: longFlights, error: flightsError } = await supabase
@@ -46,7 +45,6 @@ serve(async (req) => {
 
     for (const flight of longFlights) {
       try {
-        // Get pilot email
         const { data: { user } } = await supabase.auth.admin.getUserById(flight.profile_id);
         if (!user?.email) {
           console.warn(`No email for user ${flight.profile_id}, skipping`);
@@ -77,7 +75,7 @@ serve(async (req) => {
           console.error(`Push failed for ${flight.profile_id}:`, pushErr);
         }
 
-        // 2. Send email
+        // 2. Send email via Resend
         try {
           const emailConfig = await getEmailConfig(flight.company_id);
           const fromName = emailConfig.fromName || 'AviSafe';
@@ -104,25 +102,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-          const client = new SMTPClient({
-            connection: {
-              hostname: emailConfig.host,
-              port: emailConfig.port,
-              tls: emailConfig.secure,
-              auth: { username: emailConfig.user, password: emailConfig.pass },
-            },
-          });
-
-          const emailHeaders = getEmailHeaders();
-          await client.send({
-            from: senderAddress,
-            to: user.email,
-            subject: sanitizeSubject('Påminnelse: Du har en aktiv flytur'),
-            html: htmlContent,
-            date: new Date().toUTCString(),
-            headers: emailHeaders.headers,
-          });
-          await client.close();
+          await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject('Påminnelse: Du har en aktiv flytur'), html: htmlContent });
           console.log(`Email sent to ${user.email}`);
         } catch (emailErr) {
           console.error(`Email failed for ${flight.profile_id}:`, emailErr);

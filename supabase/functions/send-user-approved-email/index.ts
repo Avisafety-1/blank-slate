@@ -1,8 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
-import { getTemplateAttachments } from "../_shared/attachment-utils.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 import { fixEmailImages } from "../_shared/template-utils.ts";
 
 const corsHeaders = {
@@ -33,12 +32,6 @@ serve(async (req) => {
 
     const { data: template } = await supabase.from('email_templates').select('id, subject, content').eq('company_id', company_id).eq('template_type', 'user_approved').maybeSingle();
 
-    let attachments: any[] = [];
-    if (template?.id) {
-      const attachmentResult = await getTemplateAttachments(template.id);
-      attachments = attachmentResult.attachments;
-    }
-
     let emailSubject = `Din bruker hos ${company_name} er godkjent`;
     let emailContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Hei ${user_name}!</h2><p>Din bruker hos <strong>${company_name}</strong> er nå godkjent.</p></body></html>`;
 
@@ -47,29 +40,14 @@ serve(async (req) => {
       emailContent = template.content.replace(/\{\{user_name\}\}/g, user_name).replace(/\{\{company_name\}\}/g, company_name);
     }
 
-    // Fix images to display correctly in email clients
     emailContent = fixEmailImages(emailContent);
 
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders();
 
-    const client = new SMTPClient({
-      connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } },
-    });
+    await sendEmail({ from: senderAddress, to: user_email, subject: sanitizeSubject(emailSubject), html: emailContent });
 
-    await client.send({
-      from: senderAddress,
-      to: user_email,
-      subject: sanitizeSubject(emailSubject),
-      html: emailContent,
-      date: new Date().toUTCString(),
-      headers: emailHeaders.headers,
-      attachments: attachments.length > 0 ? attachments : undefined,
-    });
-
-    await client.close();
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     console.error("Error:", error);

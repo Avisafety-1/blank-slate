@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
-import { getTemplateAttachments, getTemplateId } from "../_shared/attachment-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,8 +37,6 @@ serve(async (req: Request): Promise<Response> => {
     const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://login.avisafe.no/reset-password' } });
     if (!data?.properties?.action_link) throw new Error("Kunne ikke generere tilbakestillingslenke");
 
-    // Extract token_hash from Supabase action_link and build a client-side URL
-    // This prevents email security scanners from consuming the token server-side
     const actionUrl = new URL(data.properties.action_link);
     const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
     if (!tokenHash) throw new Error("Kunne ikke ekstrahere token fra lenke");
@@ -47,31 +44,12 @@ serve(async (req: Request): Promise<Response> => {
 
     const templateResult = await getEmailTemplateWithFallback(profile.company_id, 'password_reset', { user_name: profile.full_name || '', reset_link: resetLink, company_name: company?.navn || 'AviSafe' });
 
-    let attachments: any[] = [];
-    const templateId = await getTemplateId(profile.company_id, 'password_reset');
-    if (templateId) {
-      const attachmentResult = await getTemplateAttachments(templateId);
-      attachments = attachmentResult.attachments;
-    }
-
     const emailConfig = await getEmailConfig(profile.company_id);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders();
 
-    const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
+    await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
 
-    await client.send({ 
-      from: senderAddress, 
-      to: email, 
-      subject: sanitizeSubject(templateResult.subject), 
-      html: templateResult.content, 
-      date: new Date().toUTCString(), 
-      headers: emailHeaders.headers, 
-      attachments: attachments.length > 0 ? attachments : undefined 
-    });
-
-    await client.close();
     return new Response(JSON.stringify({ message: "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {
     console.error("Error:", error);

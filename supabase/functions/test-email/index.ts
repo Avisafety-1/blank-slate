@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,56 +22,30 @@ serve(async (req) => {
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const emailHeaders = getEmailHeaders();
     
-    // Use custom subject if provided (for testing Norwegian characters), otherwise default
     const rawSubject = customSubject || "Test e-post fra ditt system";
     const subject = sanitizeSubject(rawSubject);
-    const date = new Date().toUTCString();
 
-    // Log what we're sending for debugging
     console.log("=== Email Debug Info ===");
-    console.log("From (string):", senderAddress);
+    console.log("From:", senderAddress);
     console.log("To:", recipient_email);
-    console.log("Raw subject:", rawSubject);
-    console.log("Sanitized subject:", subject);
-    console.log("Date:", date);
-    console.log("Extra headers:", JSON.stringify(emailHeaders.headers));
-    console.log("SMTP Host:", emailConfig.host);
-    console.log("SMTP Port:", emailConfig.port);
+    console.log("Subject:", subject);
     console.log("========================");
 
-    const client = new SMTPClient({
-      connection: { 
-        hostname: emailConfig.host, 
-        port: emailConfig.port, 
-        tls: emailConfig.port === 465 || emailConfig.secure, 
-        auth: { username: emailConfig.user, password: emailConfig.pass } 
-      },
-    });
-
-    await client.send({
+    await sendEmail({
       from: senderAddress,
       to: recipient_email,
       subject: subject,
-      date: date,
-      headers: emailHeaders.headers,
-      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>SMTP: ${emailConfig.host}:${emailConfig.port}</p><p>From: ${senderAddress}</p><p>Subject: ${subject}</p></body></html>`,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>✓ Test e-post</h1><p>E-postinnstillingene fungerer korrekt.</p><p>From: ${senderAddress}</p><p>Subject: ${subject}</p><p>Sendt via Resend API.</p></body></html>`,
     });
 
-    await client.close();
-    
     return new Response(JSON.stringify({ 
       success: true, 
       message: "Test e-post sendt vellykket",
       debug: {
         from: senderAddress,
         to: recipient_email,
-        rawSubject: rawSubject,
-        sanitizedSubject: subject,
-        date: date,
-        headers: emailHeaders.headers,
-        smtp: `${emailConfig.host}:${emailConfig.port}`
+        subject: subject,
       }
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

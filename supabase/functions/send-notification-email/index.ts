@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 
@@ -39,7 +39,6 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
-      // Same-company users always eligible; parent-company users only if they have incident responsibility scope
       const { data: incidentCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const { data: sameCompanyUsers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
       let parentResponsibles: any[] = [];
@@ -55,24 +54,18 @@ serve(async (req: Request): Promise<Response> => {
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const templateResult = await getEmailTemplateWithFallback(companyId, 'incident_notification', { incident_title: incident.tittel, incident_severity: incident.alvorlighetsgrad, incident_location: incident.lokasjon || 'Ikke oppgitt', incident_description: incident.beskrivelse || '', company_name: company?.navn || '' });
-      const templateId = await getTemplateId(companyId, 'incident_notification');
-      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], skippedAttachmentDetails: [], totalSizeBytes: 0 };
-      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -87,24 +80,18 @@ serve(async (req: Request): Promise<Response> => {
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: mission.tittel, mission_location: mission.lokasjon, mission_date: missionDate, mission_status: mission.status || 'Planlagt', mission_description: mission.beskrivelse || '', company_name: company?.navn || '' });
-      const templateId = await getTemplateId(companyId, 'mission_notification');
-      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], skippedAttachmentDetails: [], totalSizeBytes: 0 };
-      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -113,7 +100,6 @@ serve(async (req: Request): Promise<Response> => {
       const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
       if (!adminRoles?.length) return new Response(JSON.stringify({ message: 'No admins' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      // Include parent company admins so they get notified about child company registrations
       const { data: childCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const companyIds = [companyId];
       if (childCompany?.parent_company_id) {
@@ -127,24 +113,18 @@ serve(async (req: Request): Promise<Response> => {
       if (!preferences?.length) return new Response(JSON.stringify({ message: 'No admins with notifications' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName });
-      const templateId = await getTemplateId(companyId, 'admin_new_user');
-      const attachmentResult = templateId ? await getTemplateAttachments(templateId) : { attachments: [], skippedAttachments: [], skippedAttachmentDetails: [], totalSizeBytes: 0 };
-      const emailAttachments = attachmentResult.attachments;
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let sentCount = 0;
       for (const pref of preferences) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers, attachments: emailAttachments.length > 0 ? emailAttachments : undefined });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         sentCount++;
       }
-      await client.close();
       return new Response(JSON.stringify({ message: `Sent ${sentCount} notifications` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -162,11 +142,8 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
-      const emailHeaders = getEmailHeaders();
-      await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
-      await client.close();
+      await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -175,24 +152,17 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`[APPROVAL] Started — companyId=${companyId}`);
       const missionData = mission || approvalMission;
 
-      // Only administrator and superadmin can approve missions — fetch their user IDs first
       const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
       if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      // Get all profiles with can_approve_missions = true who are admins
       const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
       console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      // Fetch parent company id for department hierarchy check
       const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const parentId = approvalCompany?.parent_company_id;
       console.log(`[APPROVAL] companyId=${companyId}, parent=${parentId ?? 'none'}`);
 
-      // Filter approvers strictly:
-      // - null scope → only same company as mission
-      // - ['all'] → same company OR parent company only
-      // - explicit list → must include mission's company_id
       const approvers = approverProfiles.filter((a: any) => {
         if (a.approval_company_ids?.includes('all')) {
           return a.company_id === companyId || (parentId && a.company_id === parentId);
@@ -222,17 +192,14 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const pref of notificationPrefs) {
         const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -267,17 +234,14 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const p of personnel) {
         const { data: { user } } = await supabase.auth.admin.getUserById(p.profile_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -330,17 +294,14 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(effectiveCompanyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
       let emailsSent = 0;
       for (const p of personnel) {
         const { data: { user } } = await supabase.auth.admin.getUserById(p.profile_id);
         if (!user?.email) continue;
-        const emailHeaders = getEmailHeaders();
-        await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject || 'Oppdrag godkjent'), html: templateResult.content, date: new Date().toUTCString(), headers: emailHeaders.headers });
+        await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject || 'Oppdrag godkjent'), html: templateResult.content });
         emailsSent++;
       }
-      await client.close();
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
@@ -355,18 +316,16 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
       const fixedHtmlContent = fixEmailImages(htmlContent);
       const validProfiles = profiles.filter(p => p.email);
 
-      // Pre-insert campaign — returned immediately to browser
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: companyId,
         recipient_type: dryRun ? 'users_dry_run' : 'users',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
-        emails_sent: validProfiles.length, // estimert
+        emails_sent: validProfiles.length,
         sent_to_emails: [],
         failed_emails: [],
       }).select('id').single();
@@ -374,21 +333,16 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_users: queued ${dryRun ? '[DRY RUN] ' : ''}${validProfiles.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        // Send synchronously — wait for all emails before returning response
         const sentToEmails: string[] = [];
         const failedEmails: string[] = [];
         for (const p of validProfiles) {
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            const emailHeaders = getEmailHeaders();
-            await client.send({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            await sendEmail({ from: senderAddress, to: p.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent });
             sentToEmails.push(p.email!);
             console.info(`bulk_email_users: ✓ sent to ${p.email}`);
           } catch (e) {
             failedEmails.push(p.email!);
             console.error(`bulk_email_users: ✗ failed for ${p.email}`, e);
-          } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
           }
         }
         if (campaign?.id) {
@@ -401,7 +355,6 @@ serve(async (req: Request): Promise<Response> => {
         console.info(`bulk_email_users: complete — sent: ${sentToEmails.length}, failed: ${failedEmails.length}`);
         return new Response(JSON.stringify({ success: true, emailsSent: sentToEmails.length, failedEmails, campaignId: campaign?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       } else {
-        // Dry run: just update with all recipients as "sent"
         const dryRunEmails = validProfiles.map(p => p.email!);
         if (campaign?.id) {
           await supabase.from('bulk_email_campaigns').update({
@@ -421,11 +374,9 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
       const fixedHtmlContent = fixEmailImages(htmlContent);
       const validCustomers = customers.filter(c => c.epost);
 
-      // Pre-insert campaign
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: companyId,
         recipient_type: dryRun ? 'customers_dry_run' : 'customers',
@@ -440,21 +391,16 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_customers: queued ${dryRun ? '[DRY RUN] ' : ''}${validCustomers.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        // Send synchronously — wait for all emails before returning response
         const sentToEmails: string[] = [];
         const failedEmails: string[] = [];
         for (const c of validCustomers) {
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            const emailHeaders = getEmailHeaders();
-            await client.send({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            await sendEmail({ from: senderAddress, to: c.epost!, subject: sanitizeSubject(subject), html: fixedHtmlContent });
             sentToEmails.push(c.epost!);
             console.info(`bulk_email_customers: ✓ sent to ${c.epost}`);
           } catch (e) {
             failedEmails.push(c.epost!);
             console.error(`bulk_email_customers: ✗ failed for ${c.epost}`, e);
-          } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
           }
         }
         if (campaign?.id) {
@@ -497,19 +443,16 @@ serve(async (req: Request): Promise<Response> => {
       const emailConfig = await getEmailConfig();
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
-
       const fixedHtmlContent = fixEmailImages(htmlContent);
       const validUsers = allAuthUsers.filter(u => u.email);
 
-      // Pre-insert campaign — returned immediately to browser
       const { data: campaign } = await supabase.from('bulk_email_campaigns').insert({
         company_id: null,
         recipient_type: dryRun ? 'all_users_dry_run' : 'all_users',
         subject,
         html_content: htmlContent,
         sent_by: sentBy || null,
-        emails_sent: validUsers.length, // estimert
+        emails_sent: validUsers.length,
         sent_to_emails: [],
         failed_emails: [],
       }).select('id').single();
@@ -517,21 +460,16 @@ serve(async (req: Request): Promise<Response> => {
       console.info(`bulk_email_all_users: queued ${dryRun ? '[DRY RUN] ' : ''}${validUsers.length} recipients, campaign ${campaign?.id}`);
 
       if (!dryRun) {
-        // Send synchronously — wait for all emails before returning response
         const sentToEmails: string[] = [];
         const failedEmails: string[] = [];
         for (const u of validUsers) {
-          const client = new SMTPClient({ connection: smtpConnection });
           try {
-            const emailHeaders = getEmailHeaders();
-            await client.send({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+            await sendEmail({ from: senderAddress, to: u.email!, subject: sanitizeSubject(subject), html: fixedHtmlContent });
             sentToEmails.push(u.email!);
             console.info(`bulk_email_all_users: ✓ sent to ${u.email}`);
           } catch (e) {
             failedEmails.push(u.email!);
             console.error(`bulk_email_all_users: ✗ failed for ${u.email}`, e);
-          } finally {
-            try { await client.close(); } catch (_) { /* ignore */ }
           }
         }
         if (campaign?.id) {
@@ -560,7 +498,6 @@ serve(async (req: Request): Promise<Response> => {
     // SEND TO MISSED — send campaign only to new/missed recipients
     // ============================================================
     if (type === 'send_to_missed' && campaignId) {
-      // Fetch the original campaign
       const { data: campaign, error: campaignError } = await supabase
         .from('bulk_email_campaigns')
         .select('*')
@@ -577,7 +514,6 @@ serve(async (req: Request): Promise<Response> => {
       let eligibleEmails: string[] = [];
 
       if (campaign.recipient_type === 'all_users') {
-        // Fetch all auth users
         let allAuthUsers: Array<{ email?: string }> = [];
         let page = 1;
         const perPage = 1000;
@@ -602,42 +538,33 @@ serve(async (req: Request): Promise<Response> => {
         eligibleEmails = (customers || []).map(c => c.epost).filter(Boolean) as string[];
       }
 
-      // Filter to only those NOT already in sent_to_emails
       const missedEmails = eligibleEmails.filter(email => !alreadySentEmails.has(email.toLowerCase()));
 
       if (missedEmails.length === 0) {
         return new Response(JSON.stringify({ success: true, emailsSent: 0, message: 'No new recipients' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
 
-      // Set up SMTP
       const emailConfig = campaign.recipient_type === 'all_users'
         ? await getEmailConfig()
         : await getEmailConfig(campaign.company_id || undefined);
       const fromName = emailConfig.fromName || "AviSafe";
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-      const smtpConnection = { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } };
 
       let emailsSent = 0;
       const newlySentEmails: string[] = [];
       const newlyFailedEmails: string[] = [];
 
-      // New SMTP client per recipient to avoid connection drops
       for (const email of missedEmails) {
-        const missedClient = new SMTPClient({ connection: smtpConnection });
         try {
-          const emailHeaders = getEmailHeaders();
-          await missedClient.send({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
+          await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(campaign.subject), html: fixedHtmlContent });
           emailsSent++;
           newlySentEmails.push(email);
         } catch (e) {
           newlyFailedEmails.push(email);
           console.error(`send_to_missed: failed for ${email}`, e);
-        } finally {
-          try { await missedClient.close(); } catch (_) { /* ignore */ }
         }
       }
 
-      // Update campaign with new recipients
       const updatedSentEmails = [...(campaign.sent_to_emails || []), ...newlySentEmails];
       const updatedFailedEmails = [...(campaign.failed_emails || []), ...newlyFailedEmails];
       await supabase.from('bulk_email_campaigns').update({
@@ -650,7 +577,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // ============================================================
-    // PREVIEW MISSED COUNT — count how many recipients would receive the campaign
+    // PREVIEW MISSED COUNT
     // ============================================================
     if (type === 'preview_missed_count' && campaignId) {
       const { data: campaign, error: campaignError } = await supabase
@@ -707,13 +634,10 @@ serve(async (req: Request): Promise<Response> => {
     const emailConfig = await getEmailConfig(companyId);
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
-    const client = new SMTPClient({ connection: { hostname: emailConfig.host, port: emailConfig.port, tls: emailConfig.secure, auth: { username: emailConfig.user, password: emailConfig.pass } } });
 
     const fixedHtmlContent = fixEmailImages(htmlContent);
 
-    const emailHeaders = getEmailHeaders();
-    await client.send({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent, date: new Date().toUTCString(), headers: emailHeaders.headers });
-    await client.close();
+    await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(subject), html: fixedHtmlContent });
 
     return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {

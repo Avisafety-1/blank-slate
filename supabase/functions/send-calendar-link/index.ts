@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getEmailConfig, getEmailHeaders, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { sendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,12 +19,10 @@ serve(async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -32,8 +30,7 @@ serve(async (req: Request): Promise<Response> => {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -41,29 +38,19 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!userId || !feedUrl || !companyId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get user email
     const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
     if (userError || !user?.email) {
       return new Response(JSON.stringify({ error: "Could not find user email" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get company name
-    const { data: company } = await supabase
-      .from("companies")
-      .select("navn")
-      .eq("id", companyId)
-      .single();
-
+    const { data: company } = await supabase.from("companies").select("navn").eq("id", companyId).single();
     const companyName = company?.navn || "AviSafe";
-    const webcalUrl = feedUrl.replace("https://", "webcal://");
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="no">
@@ -74,62 +61,20 @@ serve(async (req: Request): Promise<Response> => {
       <h1 style="font-size:24px;color:#1a1a2e;margin:0 0 8px 0;">📅 Din kalenderlenke</h1>
       <p style="font-size:14px;color:#666;margin:0;">${companyName}</p>
     </div>
-
     <div style="background:#f8f9fa;border-radius:12px;padding:24px;margin-bottom:24px;">
-      <p style="margin:0 0 16px 0;font-size:15px;">
-        Her er din personlige kalenderlenke for automatisk synkronisering av oppdrag og hendelser.
-      </p>
-
+      <p style="margin:0 0 16px 0;font-size:15px;">Her er din personlige kalenderlenke for automatisk synkronisering av oppdrag og hendelser.</p>
       <div style="text-align:center;margin:24px 0;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto;">
-          <tr>
-            <td style="border-radius:8px;background:#1a1a2e;">
-              <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;line-height:1.2;">
-                📅 Åpne kalenderlenke
-              </a>
-            </td>
-          </tr>
-        </table>
+        <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">📅 Åpne kalenderlenke</a>
       </div>
-
-      <p style="margin:16px 0 8px 0;font-size:13px;color:#888;text-align:center;">
-        Noen e-postapper (spesielt på iPhone/iPad) blokkerer enkelte lenketyper.<br/>
-        Fungerer ikke knappen? Trykk direkte på lenken under eller kopier den inn i kalenderappen via «Abonner fra URL».
-      </p>
-      <p style="margin:0 0 4px 0;text-align:center;word-break:break-all;">
+      <p style="margin:16px 0 0 0;text-align:center;word-break:break-all;">
         <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#1a1a2e;text-decoration:underline;">${feedUrl}</a>
       </p>
     </div>
-
-    <div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:24px;">
-      <h2 style="font-size:16px;color:#1a1a2e;margin:0 0 16px 0;">Manuelt oppsett</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 12px 0;">Kopier denne lenken hvis knappen over ikke fungerer:</p>
-      <div style="background:#f0f0f0;border-radius:6px;padding:12px;word-break:break-all;font-family:monospace;font-size:12px;color:#333;">
-        ${feedUrl}
-      </div>
-    </div>
-
     <div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;">
-      <h2 style="font-size:16px;color:#1a1a2e;margin:0 0 16px 0;">Slik legger du til</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="padding:8px 0;font-size:14px;vertical-align:top;"><strong>Google Calendar</strong></td>
-          <td style="padding:8px 0;font-size:13px;color:#666;">Innstillinger → Legg til kalender → Fra URL → Lim inn lenken</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0;font-size:14px;vertical-align:top;border-top:1px solid #f0f0f0;"><strong>iPhone / iPad</strong></td>
-          <td style="padding:8px 0;font-size:13px;color:#666;border-top:1px solid #f0f0f0;">Innstillinger → Kalender → Kontoer → Legg til konto → Annet → Abonner på kalender</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0;font-size:14px;vertical-align:top;border-top:1px solid #f0f0f0;"><strong>Outlook</strong></td>
-          <td style="padding:8px 0;font-size:13px;color:#666;border-top:1px solid #f0f0f0;">Legg til kalender → Abonner fra nettet → Lim inn lenken</td>
-        </tr>
-      </table>
+      <h2 style="font-size:16px;color:#1a1a2e;margin:0 0 16px 0;">Manuelt oppsett</h2>
+      <div style="background:#f0f0f0;border-radius:6px;padding:12px;word-break:break-all;font-family:monospace;font-size:12px;color:#333;">${feedUrl}</div>
     </div>
-
-    <p style="text-align:center;font-size:12px;color:#999;margin-top:32px;">
-      Denne lenken er personlig og bør ikke deles med andre.
-    </p>
+    <p style="text-align:center;font-size:12px;color:#999;margin-top:32px;">Denne lenken er personlig og bør ikke deles med andre.</p>
   </div>
 </body>
 </html>`;
@@ -138,25 +83,7 @@ serve(async (req: Request): Promise<Response> => {
     const fromName = emailConfig.fromName || "AviSafe";
     const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailConfig.host,
-        port: emailConfig.port,
-        tls: emailConfig.secure,
-        auth: { username: emailConfig.user, password: emailConfig.pass },
-      },
-    });
-
-    const emailHeaders = getEmailHeaders();
-    await client.send({
-      from: senderAddress,
-      to: user.email,
-      subject: sanitizeSubject(`Din kalenderlenke – ${companyName}`),
-      html: htmlContent,
-      date: new Date().toUTCString(),
-      headers: emailHeaders.headers,
-    });
-    await client.close();
+    await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(`Din kalenderlenke – ${companyName}`), html: htmlContent });
 
     console.log(`Calendar link email sent to ${user.email}`);
 
