@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useMemo, useEffect } from "react";
@@ -7,8 +8,9 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 
 interface PersonnelListDialogProps {
   open: boolean;
@@ -23,6 +25,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { isOnline } = usePresence();
+  const { companyId } = useAuth();
 
   // Calculate status for each person based on their competencies
   const personnelWithStatus = useMemo(() => {
@@ -93,6 +96,12 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
                       <p className="text-sm text-muted-foreground">
                         Opprettet: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: nb })}
                       </p>
+                    )}
+                    {person.company_id !== companyId && person.companies?.navn && (
+                      <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                        <Building2 className="w-3 h-3" />
+                        {person.companies.navn}
+                      </Badge>
                     )}
                   </div>
                 </div>

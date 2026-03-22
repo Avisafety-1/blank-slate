@@ -72,7 +72,7 @@ const fetchDrones = async () => {
 const fetchEquipment = async () => {
   const { data, error } = await supabase
     .from("equipment")
-    .select("*")
+    .select("*, companies(navn)")
     .eq("aktiv", true);
   
   if (error || !data) {
@@ -119,7 +119,7 @@ const fetchEquipment = async () => {
 const fetchPersonnel = async (companyId: string) => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("*, personnel_competencies(*)")
+    .select("*, personnel_competencies(*), companies(navn)")
     .eq("approved", true)
     .eq("company_id", companyId);
   

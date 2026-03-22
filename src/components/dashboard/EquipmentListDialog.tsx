@@ -1,12 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
-
+import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 
 interface EquipmentListDialogProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface EquipmentListDialogProps {
 export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated, statusFilter, onStatusFilterChange }: EquipmentListDialogProps) => {
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { companyId } = useAuth();
 
   const filteredEquipment = useMemo(() => {
     if (!statusFilter) return equipment;
@@ -74,6 +76,12 @@ export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipment
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-base sm:text-lg break-words hyphens-auto">{item.navn}</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground break-words hyphens-auto">{item.type}</p>
+                  {item.company_id !== companyId && item.companies?.navn && (
+                    <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                      <Building2 className="w-3 h-3" />
+                      {item.companies.navn}
+                    </Badge>
+                  )}
                 </div>
                 <StatusBadge status={(item.status || "Grønn") as Status} />
               </div>
