@@ -186,7 +186,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                 <User className="w-3 h-3" />
                 <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
               </div>
-              {isSuperAdminAvisafe && flight.companyName && (
+              {(isSuperAdminAvisafe || isParentCompany) && flight.companyName && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
                   <Building2 className="w-3 h-3" />
                   <span className="truncate">{flight.companyName}</span>
