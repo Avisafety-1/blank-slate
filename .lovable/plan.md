@@ -1,27 +1,33 @@
 
 
-## Plan: Legg til 35 avdelinger under Norconsult AS
+## Plan: SORA-innstillinger arves fra morselskap til avdelinger
 
-### Tilnærming
-Sett inn 35 child companies i `companies`-tabellen med `parent_company_id` satt til Norconsult AS (`3562f82d-aff7-487b-9495-7f288a5bc0e3`). Arver innstillinger: `stripe_exempt: true`, `dji_flightlog_enabled: true`, `selskapstype: 'droneoperator'`.
+### Problem
+Både admin-UI og AI-risikovurdering henter SORA-konfig kun for brukerens aktive `company_id`. Avdelinger som ikke har egne innstillinger ser bare standardverdier — de arver ingenting fra morselskapet.
 
-`registration_code` genereres automatisk av trigger.
+### Løsning
+Legg til fallback-logikk: hvis en avdeling ikke har egen `company_sora_config`-rad, hent morselskapets konfig i stedet.
 
-### Avdelingsnavn (35 stk)
-Bergen 1, Bergen 2, Bodø 1, Bodø 2, Gjøvik 1, Hamar 1, Jessheim 1, Kristiansand 1, Larvik 1, Levanger 1, Lillehammer 1, Lysaker 1, Mo i Rana 1, Molde 1, Namsos 1, Namsos 2, Odda 1, Os 1, Porsgrunn 1, Sandvika 1, Sandvika 2, Sandvika 3, Sandvika 4, Sandvika 5, Sandvika 6, Sandvika 7, Sandvika 8, Stavanger 1, Stjørdal 1, Trondheim 1, Trondheim 2, Tønsberg 1, Ulsteinvik 1, Voss 1, Ålesund 1
+### Steg 1: Admin-UI — vis arvede innstillinger i avdelinger
+**Fil: `src/components/admin/CompanySoraConfigSection.tsx`**
 
-### SQL
-```sql
-INSERT INTO companies (navn, selskapstype, stripe_exempt, dji_flightlog_enabled, parent_company_id)
-VALUES
-  ('Bergen 1', 'droneoperator', true, true, '3562f82d-...'),
-  ('Bergen 2', 'droneoperator', true, true, '3562f82d-...'),
-  -- ... (35 rader totalt)
-```
+- I `fetchConfig`: hvis ingen rad finnes for `companyId`, sjekk om selskapet har `parent_company_id` (via `companies`-tabellen), og hent morselskapets konfig som fallback.
+- Vis en info-banner øverst: «Disse innstillingene er arvet fra [Morselskap]. Endringer her gjelder kun denne avdelingen.»
+- Alle felt er redigerbare — avdelingen kan overstyre med egne verdier (som da lagres som egen rad).
+- Legg til en «Tilbakestill til morselskap»-knapp som sletter avdelingens egen rad (slik at den igjen arver).
 
-### Utføring
-Kjøres via `psql INSERT` (data-operasjon, ikke skjemaendring).
+### Steg 2: AI-risikovurdering — fallback til morselskap
+**Fil: `supabase/functions/ai-risk-assessment/index.ts`**
 
-### Filer
-Ingen kodeendringer — kun datainnsetting.
+- Etter linje 602: hvis `soraConfigData` er null, hent `parent_company_id` fra `companies`, og gjør nytt oppslag mot `company_sora_config` med morselskapets ID.
+- Dokumenter (linked_document_ids) hentes også fra morselskapets konfig i fallback-scenariet.
+
+### Steg 3: Dokumenter — vis morselskapets dokumenter i avdeling
+**Fil: `src/components/admin/CompanySoraConfigSection.tsx`**
+
+- I `fetchDocuments`: hent også dokumenter fra morselskapet (der `visible_to_children = true`) slik at avdelingsadministratorer kan se hvilke dokumenter som er lenket.
+
+### Filer som endres
+- `src/components/admin/CompanySoraConfigSection.tsx` — fallback-logikk + arve-indikator i UI
+- `supabase/functions/ai-risk-assessment/index.ts` — fallback til parent config
 
