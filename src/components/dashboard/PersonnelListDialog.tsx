@@ -25,6 +25,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { isOnline } = usePresence();
+  const { companyId } = useAuth();
 
   // Calculate status for each person based on their competencies
   const personnelWithStatus = useMemo(() => {
