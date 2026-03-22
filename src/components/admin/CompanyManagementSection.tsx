@@ -70,6 +70,7 @@ interface Company {
   dji_auto_sync_enabled: boolean;
   dji_sync_from_date: string | null;
   dronetag_enabled: boolean;
+  parent_company_id: string | null;
 }
 
 // Mobile expandable company card component
@@ -175,57 +176,63 @@ const MobileCompanyCard = ({
                 />
                 <Label className="text-sm">Status</Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.eccairs_enabled ?? false}
-                  onCheckedChange={() => onToggleEccairs(company)}
-                />
-                <Label className="text-sm">ECCAIRS</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.dji_flightlog_enabled}
-                  onCheckedChange={() => onToggleDji(company)}
-                />
-                <Label className="text-sm">DJI Flylogg</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.dronetag_enabled}
-                  onCheckedChange={() => onToggleDronetag(company)}
-                />
-                <Label className="text-sm">DroneTag</Label>
-              </div>
-              {company.dji_flightlog_enabled && (
+              {company.parent_company_id ? (
+                <p className="text-xs text-muted-foreground italic">Integrasjoner arves fra morselskap</p>
+              ) : (
                 <>
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={company.dji_auto_sync_enabled}
-                      onCheckedChange={() => onToggleAutoSync(company)}
+                      checked={company.eccairs_enabled ?? false}
+                      onCheckedChange={() => onToggleEccairs(company)}
                     />
-                    <Label className="text-sm">Auto-sync</Label>
+                    <Label className="text-sm">ECCAIRS</Label>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
-                          <CalendarIcon className="h-3 w-3 mr-1" />
-                          {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
-                          onSelect={(date) => onSyncDateChange(company, date)}
-                          disabled={(date) => date > new Date()}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.dji_flightlog_enabled}
+                      onCheckedChange={() => onToggleDji(company)}
+                    />
+                    <Label className="text-sm">DJI Flylogg</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.dronetag_enabled}
+                      onCheckedChange={() => onToggleDronetag(company)}
+                    />
+                    <Label className="text-sm">DroneTag</Label>
+                  </div>
+                  {company.dji_flightlog_enabled && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={company.dji_auto_sync_enabled}
+                          onCheckedChange={() => onToggleAutoSync(company)}
                         />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                        <Label className="text-sm">Auto-sync</Label>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
+                              onSelect={(date) => onSyncDateChange(company, date)}
+                              disabled={(date) => date > new Date()}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -662,98 +669,106 @@ export const CompanyManagementSection = () => {
                           </Label>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={company.eccairs_enabled ?? false}
-                            onCheckedChange={() => handleToggleEccairs(company)}
-                          />
-                          <Label className="cursor-pointer">
-                            <Badge
-                              variant={company.eccairs_enabled ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {company.eccairs_enabled ? "På" : "Av"}
-                            </Badge>
-                          </Label>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={company.dji_flightlog_enabled}
-                            onCheckedChange={() => handleToggleDji(company)}
-                          />
-                          <Label className="cursor-pointer">
-                            <Badge
-                              variant={company.dji_flightlog_enabled ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {company.dji_flightlog_enabled ? "På" : "Av"}
-                            </Badge>
-                          </Label>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={company.dronetag_enabled}
-                            onCheckedChange={() => handleToggleDronetag(company)}
-                          />
-                          <Label className="cursor-pointer">
-                            <Badge
-                              variant={company.dronetag_enabled ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {company.dronetag_enabled ? "På" : "Av"}
-                            </Badge>
-                          </Label>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {company.dji_flightlog_enabled ? (
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={company.dji_auto_sync_enabled}
-                              onCheckedChange={() => handleToggleAutoSync(company)}
-                            />
-                            <Label className="cursor-pointer">
-                              <Badge
-                                variant={company.dji_auto_sync_enabled ? "default" : "secondary"}
-                                className="text-xs"
-                              >
-                                {company.dji_auto_sync_enabled ? "På" : "Av"}
-                              </Badge>
-                            </Label>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {company.dji_flightlog_enabled ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal text-xs", !company.dji_sync_from_date && "text-muted-foreground")}>
-                                <CalendarIcon className="h-3 w-3 mr-1" />
-                                {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
-                                onSelect={(date) => handleSyncDateChange(company, date)}
-                                disabled={(date) => date > new Date()}
-                                initialFocus
-                                className={cn("p-3 pointer-events-auto")}
+                      {company.parent_company_id ? (
+                        <TableCell colSpan={5}>
+                          <span className="text-xs text-muted-foreground italic">Arvet fra morselskap</span>
+                        </TableCell>
+                      ) : (
+                        <>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={company.eccairs_enabled ?? false}
+                                onCheckedChange={() => handleToggleEccairs(company)}
                               />
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
+                              <Label className="cursor-pointer">
+                                <Badge
+                                  variant={company.eccairs_enabled ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {company.eccairs_enabled ? "På" : "Av"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={company.dji_flightlog_enabled}
+                                onCheckedChange={() => handleToggleDji(company)}
+                              />
+                              <Label className="cursor-pointer">
+                                <Badge
+                                  variant={company.dji_flightlog_enabled ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {company.dji_flightlog_enabled ? "På" : "Av"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={company.dronetag_enabled}
+                                onCheckedChange={() => handleToggleDronetag(company)}
+                              />
+                              <Label className="cursor-pointer">
+                                <Badge
+                                  variant={company.dronetag_enabled ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {company.dronetag_enabled ? "På" : "Av"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {company.dji_flightlog_enabled ? (
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={company.dji_auto_sync_enabled}
+                                  onCheckedChange={() => handleToggleAutoSync(company)}
+                                />
+                                <Label className="cursor-pointer">
+                                  <Badge
+                                    variant={company.dji_auto_sync_enabled ? "default" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {company.dji_auto_sync_enabled ? "På" : "Av"}
+                                  </Badge>
+                                </Label>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {company.dji_flightlog_enabled ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal text-xs", !company.dji_sync_from_date && "text-muted-foreground")}>
+                                    <CalendarIcon className="h-3 w-3 mr-1" />
+                                    {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
+                                    onSelect={(date) => handleSyncDateChange(company, date)}
+                                    disabled={(date) => date > new Date()}
+                                    initialFocus
+                                    className={cn("p-3 pointer-events-auto")}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
