@@ -351,7 +351,7 @@ const ComposeTab = () => {
   const [subject, setSubject] = useState("");
   const [blocks, setBlocks] = useState<EmailBlock[]>([...defaultBlocks]);
   const [sending, setSending] = useState(false);
-  const [preview, setPreview] = useState(false);
+  
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [templates, setTemplates] = useState<NewsletterTemplate[]>([]);
   const [templateName, setTemplateName] = useState("");
