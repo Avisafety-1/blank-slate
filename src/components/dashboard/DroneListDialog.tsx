@@ -81,6 +81,12 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                   {drone.internal_serial && (
                     <p className="text-sm text-muted-foreground">Internt SN: {drone.internal_serial}</p>
                   )}
+                  {drone.company_id !== companyId && drone.companies?.navn && (
+                    <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                      <Building2 className="w-3 h-3" />
+                      {drone.companies.navn}
+                    </Badge>
+                  )}
                 </div>
                 <StatusBadge status={drone.status as Status} />
               </div>
