@@ -1220,44 +1220,23 @@ const Admin = () => {
                                         {profile.incident_responsible_company_ids?.includes('all') ? 'Alle' : `${(profile.incident_responsible_company_ids || []).length} avd.`}
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-56 p-3 z-[1300]" align="start">
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Ansvarlig for avdelinger</p>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={profile.incident_responsible_company_ids?.includes('all') || false}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              updateIncidentScope(profile.id, ['all']);
-                                            } else {
-                                              updateIncidentScope(profile.id, [companyId || '']);
-                                            }
-                                          }}
-                                          className="rounded border-border"
-                                        />
-                                        <strong>Alle avdelinger</strong>
-                                      </label>
-                                      {!profile.incident_responsible_company_ids?.includes('all') && (
-                                        <>
-                                          {[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies].map((c) => (
-                                            <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer mb-1">
-                                              <input
-                                                type="checkbox"
-                                                checked={profile.incident_responsible_company_ids?.includes(c.id) || false}
-                                                onChange={(e) => {
-                                                  const current = profile.incident_responsible_company_ids?.filter(id => id !== 'all') || [];
-                                                  const newIds = e.target.checked
-                                                    ? [...current, c.id]
-                                                    : current.filter(id => id !== c.id);
-                                                  updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                                }}
-                                                className="rounded border-border"
-                                              />
-                                              {c.navn}
-                                            </label>
-                                          ))}
-                                        </>
-                                      )}
+                                      <DepartmentChecklist
+                                        departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                        selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
+                                        allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
+                                        onToggleAll={(checked) => {
+                                          if (checked) updateIncidentScope(profile.id, ['all']);
+                                          else updateIncidentScope(profile.id, [companyId || '']);
+                                        }}
+                                        onToggle={(id, checked) => {
+                                          const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
+                                          const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                          updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                        }}
+                                        allLabel="Alle avdelinger"
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 )}
