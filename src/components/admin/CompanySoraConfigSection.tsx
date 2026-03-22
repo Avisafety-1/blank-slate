@@ -102,8 +102,31 @@ export const CompanySoraConfigSection = () => {
     }
   }, [companyId]);
 
+  const applyConfigData = (d: any) => {
+    setConfig({
+      max_wind_speed_ms: Number(d.max_wind_speed_ms) || DEFAULT_CONFIG.max_wind_speed_ms,
+      max_wind_gust_ms: Number(d.max_wind_gust_ms) || DEFAULT_CONFIG.max_wind_gust_ms,
+      max_visibility_km: Number(d.max_visibility_km) || DEFAULT_CONFIG.max_visibility_km,
+      max_flight_altitude_m: Number(d.max_flight_altitude_m) || DEFAULT_CONFIG.max_flight_altitude_m,
+      require_backup_battery: Boolean(d.require_backup_battery),
+      require_observer: Boolean(d.require_observer),
+      min_temp_c: d.min_temp_c != null ? Number(d.min_temp_c) : DEFAULT_CONFIG.min_temp_c,
+      max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
+      allow_bvlos: Boolean(d.allow_bvlos),
+      allow_night_flight: Boolean(d.allow_night_flight),
+      max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
+      max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
+      operative_restrictions: d.operative_restrictions || "",
+      policy_notes: d.policy_notes || "",
+      linked_document_ids: (d.linked_document_ids as string[]) || [],
+    });
+  };
+
   const fetchConfig = async () => {
     setLoading(true);
+    setInherited(false);
+    setParentName(null);
+    setHasOwnConfig(false);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
@@ -115,25 +138,36 @@ export const CompanySoraConfigSection = () => {
       if (error) throw error;
 
       if (data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const d = data as any;
-        setConfig({
-          max_wind_speed_ms: Number(d.max_wind_speed_ms) || DEFAULT_CONFIG.max_wind_speed_ms,
-          max_wind_gust_ms: Number(d.max_wind_gust_ms) || DEFAULT_CONFIG.max_wind_gust_ms,
-          max_visibility_km: Number(d.max_visibility_km) || DEFAULT_CONFIG.max_visibility_km,
-          max_flight_altitude_m: Number(d.max_flight_altitude_m) || DEFAULT_CONFIG.max_flight_altitude_m,
-          require_backup_battery: Boolean(d.require_backup_battery),
-          require_observer: Boolean(d.require_observer),
-          min_temp_c: d.min_temp_c != null ? Number(d.min_temp_c) : DEFAULT_CONFIG.min_temp_c,
-          max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
-          allow_bvlos: Boolean(d.allow_bvlos),
-          allow_night_flight: Boolean(d.allow_night_flight),
-          max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
-          max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
-          operative_restrictions: d.operative_restrictions || "",
-          policy_notes: d.policy_notes || "",
-          linked_document_ids: (d.linked_document_ids as string[]) || [],
-        });
+        applyConfigData(data);
+        setHasOwnConfig(true);
+      } else {
+        // Fallback: check for parent company config
+        const { data: company } = await supabase
+          .from("companies")
+          .select("parent_company_id, navn")
+          .eq("id", companyId!)
+          .maybeSingle();
+
+        if (company?.parent_company_id) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: parentConfig } = await (supabase as any)
+            .from("company_sora_config")
+            .select("*")
+            .eq("company_id", company.parent_company_id)
+            .maybeSingle();
+
+          if (parentConfig) {
+            applyConfigData(parentConfig);
+            setInherited(true);
+            // Get parent name
+            const { data: parentCompany } = await supabase
+              .from("companies")
+              .select("navn")
+              .eq("id", company.parent_company_id)
+              .maybeSingle();
+            setParentName(parentCompany?.navn || "Morselskap");
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching SORA config:", error);
@@ -142,16 +176,64 @@ export const CompanySoraConfigSection = () => {
     }
   };
 
+  const handleResetToParent = async () => {
+    if (!companyId || !hasOwnConfig) return;
+    setResetting(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("company_sora_config")
+        .delete()
+        .eq("company_id", companyId);
+      if (error) throw error;
+      toast.success("Tilbakestilt til morselskapets innstillinger");
+      await fetchConfig();
+      await fetchDocuments();
+    } catch (error) {
+      console.error("Error resetting config:", error);
+      toast.error("Kunne ikke tilbakestille");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const fetchDocuments = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch own documents
+      const { data: ownDocs, error } = await supabase
         .from("documents")
         .select("id, tittel, kategori, beskrivelse")
-        .eq("company_id", companyId)
+        .eq("company_id", companyId!)
         .order("tittel");
 
       if (error) throw error;
-      setDocuments(data || []);
+
+      // Also fetch parent company documents visible to children
+      const { data: company } = await supabase
+        .from("companies")
+        .select("parent_company_id")
+        .eq("id", companyId!)
+        .maybeSingle();
+
+      let allDocs = ownDocs || [];
+
+      if (company?.parent_company_id) {
+        const { data: parentDocs } = await supabase
+          .from("documents")
+          .select("id, tittel, kategori, beskrivelse")
+          .eq("company_id", company.parent_company_id)
+          .eq("visible_to_children", true)
+          .order("tittel");
+
+        if (parentDocs?.length) {
+          // Merge, avoiding duplicates
+          const ownIds = new Set(allDocs.map((d) => d.id));
+          const uniqueParentDocs = parentDocs.filter((d) => !ownIds.has(d.id));
+          allDocs = [...allDocs, ...uniqueParentDocs];
+        }
+      }
+
+      setDocuments(allDocs);
     } catch (error) {
       console.error("Error fetching documents:", error);
     }
