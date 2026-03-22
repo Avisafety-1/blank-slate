@@ -1,12 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 
 interface DroneListDialogProps {
   open: boolean;
@@ -21,6 +23,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
   const [selectedDrone, setSelectedDrone] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const terminology = useTerminology();
+  const { companyId } = useAuth();
 
   const filteredDrones = useMemo(() => {
     if (!statusFilter) return drones;
@@ -77,6 +80,12 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                   <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
                   {drone.internal_serial && (
                     <p className="text-sm text-muted-foreground">Internt SN: {drone.internal_serial}</p>
+                  )}
+                  {drone.company_id !== companyId && drone.companies?.navn && (
+                    <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                      <Building2 className="w-3 h-3" />
+                      {drone.companies.navn}
+                    </Badge>
                   )}
                 </div>
                 <StatusBadge status={drone.status as Status} />

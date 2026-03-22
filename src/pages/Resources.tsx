@@ -1,6 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { AddDroneDialog } from "@/components/resources/AddDroneDialog";
@@ -135,6 +136,7 @@ const Resources = () => {
         .from("drones")
         .select(`
           *,
+          companies(navn),
           drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
           drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager))
         `)
@@ -404,6 +406,12 @@ const Resources = () => {
                       <div>
                         <h3 className="font-semibold">{drone.modell}</h3>
                         <p className="text-sm text-muted-foreground">{drone.registrering}</p>
+                        {drone.company_id !== companyId && drone.companies?.navn && (
+                          <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                            <Building2 className="w-3 h-3" />
+                            {drone.companies.navn}
+                          </Badge>
+                        )}
                       </div>
                       <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                     </div>
