@@ -1,39 +1,38 @@
 
 
-## Plan: Fiks at avdelinger ser morselskapets droner/utstyr
+## Plan: 3D Dronemodell erstatter Attitude Indicator
 
-### Rotårsak
-Forrige endring la til `parent_company_id` i `get_user_visible_company_ids()` slik at avdelinger kunne lese morselskapets SORA-config. Men denne funksjonen brukes også i RLS for `drones`, `equipment`, og andre tabeller — så nå ser avdelingsbrukere morselskapets droner og utstyr.
+### Oversikt
+Bytt ut den 2D gyro/attitude-indikatoren i flyanalysen med en interaktiv 3D-modell av DJI Matrice T300 som roterer i sanntid basert på pitch, roll og yaw fra telemetrien.
 
-### Løsning
-1. **Fjern parent fra `get_user_visible_company_ids()`** — tilbakestill til kun eget selskap + barn (for admins). Denne funksjonen brukes bredt for ressursisolasjon.
-2. **Lag en ny funksjon `get_user_readable_company_ids()`** som inkluderer parent. Bruk denne kun for tabeller der arv er ønsket (f.eks. `company_sora_config`).
-3. **Oppdater `company_sora_config` RLS** til å bruke den nye funksjonen.
+### Steg 1: Installer avhengigheter
+- `three@>=0.133`
+- `@react-three/fiber@^8.18` (v8 for React 18)
+- `@react-three/drei@^9.122.0` (v9 for React 18)
 
-### Steg 1: SQL-migrasjon
+### Steg 2: Kopier GLTF-modell til prosjektet
+- Pakk ut zip-filen og kopier GLTF/GLB + tilhørende filer (bin, teksturer) til `public/models/dji_matrice_t300/`
+- Plassering i `public/` slik at den lastes via URL uten bundling
 
-```sql
--- Ny funksjon som inkluderer parent (for lesing av delt config)
-CREATE OR REPLACE FUNCTION get_user_readable_company_ids(_user_id uuid)
-RETURNS uuid[] ...
--- Samme som nåværende get_user_visible_company_ids (med parent)
+### Steg 3: Ny komponent — `Drone3DViewer.tsx`
+Erstatter `DroneAttitudeIndicator`. Bruker `@react-three/fiber` Canvas med:
+- `useGLTF` fra drei for å laste modellen
+- Rotasjon basert på pitch/roll/yaw props (konvertert til radianer)
+- Ambient + directional light for god synlighet
+- `OrbitControls` disabled (kun telemetri styrer rotasjonen)
+- Semi-transparent bakgrunn som matcher nåværende glasskort-stil
+- Heading-tekst under canvas (som nå)
 
--- Tilbakestill get_user_visible_company_ids UTEN parent
-CREATE OR REPLACE FUNCTION get_user_visible_company_ids(_user_id uuid)
-RETURNS uuid[] ...
--- Kun eget selskap + barn (for admins)
+Samme props-interface som `DroneAttitudeIndicator` for drop-in-erstatning.
 
--- Oppdater SORA config RLS til å bruke ny funksjon
-DROP POLICY "Users can read own company config" ON company_sora_config;
-CREATE POLICY "Users can read own and parent company config"
-  ON company_sora_config FOR SELECT TO authenticated
-  USING (company_id = ANY(get_user_readable_company_ids(auth.uid())));
-```
-
-### Steg 2: Sjekk andre tabeller som trenger parent-tilgang
-Kun `company_sora_config` trenger parent-lesing. Andre tabeller (drones, equipment, profiles, etc.) skal forbli isolert til eget selskap + barn.
+### Steg 4: Oppdater `FlightAnalysisDialog.tsx`
+- Importer `Drone3DViewer` i stedet for `DroneAttitudeIndicator`
+- Beholde samme overlay-posisjon (top-right, fyller kartets høyde på desktop)
+- Lazy-load med `React.lazy` + `Suspense` for å unngå at three.js blokkerer initial load
 
 ### Filer
-- SQL-migrasjon (ny funksjon + tilbakestill gammel + oppdater SORA RLS)
-- Ingen kodeendringer nødvendig
+- `package.json` — nye deps
+- `public/models/dji_matrice_t300/` — GLTF-modell
+- `src/components/dashboard/Drone3DViewer.tsx` — ny komponent
+- `src/components/dashboard/FlightAnalysisDialog.tsx` — bytt import
 
