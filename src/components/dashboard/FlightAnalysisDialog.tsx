@@ -1,10 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
-import { DroneAttitudeIndicator } from "./DroneAttitudeIndicator";
+
+const Drone3DViewer = lazy(() => import("./Drone3DViewer").then(m => ({ default: m.Drone3DViewer })));
 import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
@@ -441,11 +442,13 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Attitude indicator overlay — fills map height on sm+ */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
             <div className="absolute top-2 right-2 bottom-2 z-10 w-[108px] sm:w-auto">
-              <DroneAttitudeIndicator
-                pitch={positions[currentIndex]?.pitch ?? 0}
-                roll={positions[currentIndex]?.roll ?? 0}
-                yaw={positions[currentIndex]?.yaw}
-              />
+              <Suspense fallback={<div className="w-full h-full rounded-lg bg-background/80 animate-pulse" />}>
+                <Drone3DViewer
+                  pitch={positions[currentIndex]?.pitch ?? 0}
+                  roll={positions[currentIndex]?.roll ?? 0}
+                  yaw={positions[currentIndex]?.yaw}
+                />
+              </Suspense>
             </div>
           )}
         </div>
