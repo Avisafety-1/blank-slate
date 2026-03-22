@@ -509,10 +509,11 @@ const ComposeTab = () => {
                   </>
                 )}
                 {selected.type === "image" && (
-                  <>
-                    <div><Label className="text-xs">Bilde-URL</Label><Input value={selected.props.src || ""} onChange={e => updateBlockProps(selected.id, "src", e.target.value)} placeholder="https://..." /></div>
-                    <div><Label className="text-xs">Alt-tekst</Label><Input value={selected.content} onChange={e => updateBlock(selected.id, { content: e.target.value })} /></div>
-                  </>
+                  <ImageBlockProps
+                    block={selected}
+                    onUpdateProps={(key, val) => updateBlockProps(selected.id, key, val)}
+                    onUpdateContent={(val) => updateBlock(selected.id, { content: val })}
+                  />
                 )}
                 {selected.type === "spacer" && (
                   <div><Label className="text-xs">Høyde (px)</Label><Input type="number" value={selected.props.height || "24"} onChange={e => updateBlockProps(selected.id, "height", e.target.value)} /></div>
