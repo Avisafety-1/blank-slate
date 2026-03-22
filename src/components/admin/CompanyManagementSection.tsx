@@ -176,57 +176,63 @@ const MobileCompanyCard = ({
                 />
                 <Label className="text-sm">Status</Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.eccairs_enabled ?? false}
-                  onCheckedChange={() => onToggleEccairs(company)}
-                />
-                <Label className="text-sm">ECCAIRS</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.dji_flightlog_enabled}
-                  onCheckedChange={() => onToggleDji(company)}
-                />
-                <Label className="text-sm">DJI Flylogg</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={company.dronetag_enabled}
-                  onCheckedChange={() => onToggleDronetag(company)}
-                />
-                <Label className="text-sm">DroneTag</Label>
-              </div>
-              {company.dji_flightlog_enabled && (
+              {company.parent_company_id ? (
+                <p className="text-xs text-muted-foreground italic">Integrasjoner arves fra morselskap</p>
+              ) : (
                 <>
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={company.dji_auto_sync_enabled}
-                      onCheckedChange={() => onToggleAutoSync(company)}
+                      checked={company.eccairs_enabled ?? false}
+                      onCheckedChange={() => onToggleEccairs(company)}
                     />
-                    <Label className="text-sm">Auto-sync</Label>
+                    <Label className="text-sm">ECCAIRS</Label>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
-                          <CalendarIcon className="h-3 w-3 mr-1" />
-                          {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
-                          onSelect={(date) => onSyncDateChange(company, date)}
-                          disabled={(date) => date > new Date()}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.dji_flightlog_enabled}
+                      onCheckedChange={() => onToggleDji(company)}
+                    />
+                    <Label className="text-sm">DJI Flylogg</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.dronetag_enabled}
+                      onCheckedChange={() => onToggleDronetag(company)}
+                    />
+                    <Label className="text-sm">DroneTag</Label>
+                  </div>
+                  {company.dji_flightlog_enabled && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={company.dji_auto_sync_enabled}
+                          onCheckedChange={() => onToggleAutoSync(company)}
                         />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                        <Label className="text-sm">Auto-sync</Label>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : undefined}
+                              onSelect={(date) => onSyncDateChange(company, date)}
+                              disabled={(date) => date > new Date()}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
