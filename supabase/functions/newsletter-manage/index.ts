@@ -33,13 +33,44 @@ function getAudienceId(): string {
   return id;
 }
 
+function getAdminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify superadmin
+    const body = await req.json();
+    const { action } = body;
+    const audienceId = getAudienceId();
+
+    // Public action — no auth required
+    if (action === "public-subscribe") {
+      const { email, first_name, last_name } = body;
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        throw new Error("Ugyldig e-postadresse");
+      }
+      const result = await resendFetch(`/audiences/${audienceId}/contacts`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          first_name: first_name || "",
+          last_name: last_name || "",
+          unsubscribed: false,
+        }),
+      });
+      return new Response(JSON.stringify({ ok: true, data: result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // All other actions require superadmin auth
     const authHeader = req.headers.get("authorization") ?? "";
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -49,10 +80,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
 
-    const { data: roleData } = await createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    )
+    const { data: roleData } = await getAdminClient()
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
@@ -60,10 +88,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!roleData) throw new Error("Forbidden: superadmin required");
-
-    const body = await req.json();
-    const { action } = body;
-    const audienceId = getAudienceId();
 
     let result: unknown;
 
@@ -88,7 +112,7 @@ Deno.serve(async (req) => {
         break;
       }
       case "import-contacts": {
-        const { emails } = body; // string[]
+        const { emails } = body;
         const results: unknown[] = [];
         for (const email of emails) {
           try {
@@ -106,7 +130,6 @@ Deno.serve(async (req) => {
       }
       case "create-broadcast": {
         const { subject, html, from_name } = body;
-        // Create broadcast
         const broadcast = await resendFetch("/broadcasts", {
           method: "POST",
           body: JSON.stringify({
@@ -116,12 +139,7 @@ Deno.serve(async (req) => {
             html,
           }),
         });
-        // Save to DB
-        const adminClient = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        await adminClient.from("newsletter_broadcasts").insert({
+        await getAdminClient().from("newsletter_broadcasts").insert({
           subject,
           html_content: html,
           resend_broadcast_id: broadcast.id,
@@ -136,23 +154,14 @@ Deno.serve(async (req) => {
         result = await resendFetch(`/broadcasts/${broadcast_id}/send`, {
           method: "POST",
         });
-        // Update local record
-        const adminClient2 = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        await adminClient2
+        await getAdminClient()
           .from("newsletter_broadcasts")
           .update({ status: "sent", sent_at: new Date().toISOString() })
           .eq("resend_broadcast_id", broadcast_id);
         break;
       }
       case "list-broadcasts": {
-        const adminClient3 = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        const { data } = await adminClient3
+        const { data } = await getAdminClient()
           .from("newsletter_broadcasts")
           .select("*")
           .order("created_at", { ascending: false });
