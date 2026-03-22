@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MediaLibraryPickerDialog } from "@/components/marketing/MediaLibraryPickerDialog";
 import {
-  Loader2, Plus, Trash2, Send, Upload, Eye, Users, FileEdit, History,
+  Loader2, Plus, Trash2, Send, Upload, Users, FileEdit, History,
   Type, Image, Minus, MousePointerClick, Save, FolderOpen, Copy, ArrowUp, ArrowDown, ImagePlus
 } from "lucide-react";
 import { format } from "date-fns";
