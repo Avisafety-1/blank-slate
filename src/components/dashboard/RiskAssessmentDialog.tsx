@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText } from "lucide-react";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
@@ -1163,18 +1164,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                         <div className="space-y-2">
                           <Label>Godkjent av</Label>
-                          <Select value={soraFormData.approved_by} onValueChange={(value) => setSoraFormData({ ...soraFormData, approved_by: value })}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Velg godkjenner (valgfritt)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {soraProfiles.map((profile) => (
-                                <SelectItem key={profile.id} value={profile.id}>
-                                  {profile.full_name || "Ukjent"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <SearchablePersonSelect
+                            persons={soraProfiles}
+                            value={soraFormData.approved_by || null}
+                            onValueChange={(val) => setSoraFormData({ ...soraFormData, approved_by: val || "" })}
+                            placeholder="Velg godkjenner (valgfritt)"
+                            searchPlaceholder="Søk person..."
+                          />
                         </div>
 
                         {existingSora?.approved_at && (
