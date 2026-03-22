@@ -23,7 +23,7 @@ function DroneModel({ pitch, roll, yaw }: Drone3DViewerProps) {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 2.2 / maxDim;
+    const scale = 2.75 / maxDim;
     clonedScene.scale.setScalar(scale);
     clonedScene.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
   }, [clonedScene]);
