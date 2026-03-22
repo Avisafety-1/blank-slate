@@ -33,17 +33,35 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [now, setNow] = useState(Date.now());
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
   const fetchFlights = useCallback(async () => {
     if (!companyId && !isSuperAdminAvisafe) return;
+
+    // Check for child companies to determine if this is a parent company
+    let childIds: string[] = [];
+    if (!isSuperAdminAvisafe && companyId) {
+      const { data: children } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId);
+      childIds = (children || []).map((c: any) => c.id);
+    }
+    const hasChildren = childIds.length > 0;
+    setIsParentCompany(hasChildren);
+
     let query = (supabase as any)
       .from('active_flights')
       .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
 
     if (!isSuperAdminAvisafe) {
-      query = query.eq('company_id', companyId);
+      if (hasChildren) {
+        query = query.in('company_id', [companyId, ...childIds]);
+      } else {
+        query = query.eq('company_id', companyId);
+      }
     }
 
     const { data, error } = await query;
@@ -145,7 +163,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
           </div>
         </div>
 
-        <div className={`space-y-1.5 sm:space-y-2 ${isSuperAdminAvisafe ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
+        <div className={`space-y-1.5 sm:space-y-2 ${(isSuperAdminAvisafe || isParentCompany) ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
           {flights.map((flight) => (
             <div
               key={flight.id}
@@ -168,7 +186,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                 <User className="w-3 h-3" />
                 <span className="truncate">{flight.pilot_name || flight.profileName || t('common.unknownName')}</span>
               </div>
-              {isSuperAdminAvisafe && flight.companyName && (
+              {(isSuperAdminAvisafe || isParentCompany) && flight.companyName && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
                   <Building2 className="w-3 h-3" />
                   <span className="truncate">{flight.companyName}</span>
