@@ -35,7 +35,7 @@ function DroneModel({ pitch, roll, yaw }: Drone3DViewerProps) {
     if (!groupRef.current) return;
     // Convert telemetry to rotation: pitch around X, yaw around Y, roll around Z
     targetRotation.current.set(
-      -pitch * DEG2RAD,
+      pitch * DEG2RAD,
       yaw !== undefined ? -yaw * DEG2RAD : 0,
       -roll * DEG2RAD,
       "YXZ"
