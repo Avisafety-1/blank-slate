@@ -269,6 +269,83 @@ const SubscribersTab = () => {
   );
 };
 
+/* ─── Image Block Properties ─── */
+const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
+  block: EmailBlock;
+  onUpdateProps: (key: string, val: string) => void;
+  onUpdateContent: (val: string) => void;
+}) => {
+  const { companyId } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !companyId) return;
+    setUploading(true);
+    try {
+      const path = `${companyId}/newsletter/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from("marketing-media").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("marketing-media").getPublicUrl(path);
+      onUpdateProps("src", urlData.publicUrl);
+      toast({ title: "Bilde lastet opp!" });
+    } catch (err: any) {
+      toast({ title: "Feil ved opplasting", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleMediaSelect = async (mediaIds: string[]) => {
+    if (!mediaIds.length) return;
+    // Fetch the URL of the first selected media
+    const { data } = await supabase.from("marketing_media").select("file_url").eq("id", mediaIds[0]).single();
+    if (data?.file_url) {
+      onUpdateProps("src", data.file_url);
+      toast({ title: "Bilde valgt fra biblioteket" });
+    }
+  };
+
+  return (
+    <>
+      {block.props.src && (
+        <div className="rounded-md overflow-hidden border border-border">
+          <img src={block.props.src} alt="Preview" className="w-full h-auto max-h-32 object-cover" />
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label className="text-xs">Bilde</Label>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+            Last opp
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setShowMediaPicker(true)}>
+            <ImagePlus className="w-3.5 h-3.5 mr-1" />Bibliotek
+          </Button>
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+      </div>
+      <div>
+        <Label className="text-xs">Eller lim inn URL</Label>
+        <Input value={block.props.src || ""} onChange={e => onUpdateProps("src", e.target.value)} placeholder="https://..." className="text-xs" />
+      </div>
+      <div>
+        <Label className="text-xs">Alt-tekst</Label>
+        <Input value={block.content} onChange={e => onUpdateContent(e.target.value)} className="text-xs" />
+      </div>
+      <MediaLibraryPickerDialog
+        open={showMediaPicker}
+        onOpenChange={setShowMediaPicker}
+        onSelect={handleMediaSelect}
+      />
+    </>
+  );
+};
+
 /* ─── Compose (Visual Editor) ─── */
 const ComposeTab = () => {
   const [subject, setSubject] = useState("");
