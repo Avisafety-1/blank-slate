@@ -23,6 +23,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
   const [selectedDrone, setSelectedDrone] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const terminology = useTerminology();
+  const { companyId } = useAuth();
 
   const filteredDrones = useMemo(() => {
     if (!statusFilter) return drones;
