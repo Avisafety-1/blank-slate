@@ -33,17 +33,35 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [now, setNow] = useState(Date.now());
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
   const fetchFlights = useCallback(async () => {
     if (!companyId && !isSuperAdminAvisafe) return;
+
+    // Check for child companies to determine if this is a parent company
+    let childIds: string[] = [];
+    if (!isSuperAdminAvisafe && companyId) {
+      const { data: children } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId);
+      childIds = (children || []).map((c: any) => c.id);
+    }
+    const hasChildren = childIds.length > 0;
+    setIsParentCompany(hasChildren);
+
     let query = (supabase as any)
       .from('active_flights')
       .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
 
     if (!isSuperAdminAvisafe) {
-      query = query.eq('company_id', companyId);
+      if (hasChildren) {
+        query = query.in('company_id', [companyId, ...childIds]);
+      } else {
+        query = query.eq('company_id', companyId);
+      }
     }
 
     const { data, error } = await query;
