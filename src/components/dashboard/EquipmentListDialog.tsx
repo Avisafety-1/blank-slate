@@ -21,6 +21,7 @@ interface EquipmentListDialogProps {
 export const EquipmentListDialog = ({ open, onOpenChange, equipment, onEquipmentUpdated, statusFilter, onStatusFilterChange }: EquipmentListDialogProps) => {
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { companyId } = useAuth();
 
   const filteredEquipment = useMemo(() => {
     if (!statusFilter) return equipment;
