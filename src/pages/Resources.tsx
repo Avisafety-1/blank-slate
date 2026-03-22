@@ -406,6 +406,12 @@ const Resources = () => {
                       <div>
                         <h3 className="font-semibold">{drone.modell}</h3>
                         <p className="text-sm text-muted-foreground">{drone.registrering}</p>
+                        {drone.company_id !== companyId && drone.companies?.navn && (
+                          <Badge variant="secondary" className="mt-1 gap-1 text-xs">
+                            <Building2 className="w-3 h-3" />
+                            {drone.companies.navn}
+                          </Badge>
+                        )}
                       </div>
                       <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                     </div>
