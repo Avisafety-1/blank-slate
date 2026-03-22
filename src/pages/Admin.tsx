@@ -1242,20 +1242,16 @@ const Admin = () => {
                                 )}
                               </div>
                               {!isChildCompany && childCompanies.length > 0 && (
-                                <Select 
-                                  value={profile.company_id || companyId || ""} 
-                                  onValueChange={(value) => changeDepartment(profile.id, value)}
-                                >
-                                  <SelectTrigger className="w-[160px] h-10">
-                                    <SelectValue placeholder="Avdeling" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-50">
-                                    <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
-                                    {childCompanies.map((c) => (
-                                      <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <div className="w-[180px]">
+                                  <SearchablePersonSelect
+                                    persons={[{ id: companyId || '', full_name: companyName || 'Hovedselskap' }, ...childCompanies.map(c => ({ id: c.id, full_name: c.navn }))]}
+                                    value={profile.company_id || companyId || ""}
+                                    onValueChange={(val) => { if (val) changeDepartment(profile.id, val); }}
+                                    placeholder="Avdeling"
+                                    searchPlaceholder="Søk avdeling..."
+                                    emptyText="Ingen avdelinger funnet."
+                                  />
+                                </div>
                               )}
                               {canManageRoles ? (
                                 <Select 
