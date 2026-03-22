@@ -1,38 +1,82 @@
 
 
-## Plan: Multi-select DJI cloud logs for bulk import
+## Plan: Erstatt denomailer/SMTP med Resend API
 
-### Current behavior
-- DJI cloud log list shows individual logs as clickable buttons
-- Clicking one immediately processes it via the DroneLog API and goes to the result step
-- Only one log can be imported at a time
+### Oversikt
+Alle 13 edge functions bruker i dag `denomailer` (SMTP) for å sende e-post via One.com. Vi erstatter dette med Resend sitt HTTP API, som er enklere, raskere og mer pålitelig enn SMTP fra edge functions.
 
-### New behavior
-- Each log row gets a checkbox for multi-select
-- A "select all" checkbox at the top
-- Selected count shown with an "Importer valgte" button
-- Clicking the button triggers bulk processing (same flow as file bulk upload) — each selected log is processed via `dji-process-log`, dedup-checked, auto-matched to drones/batteries, and saved to `pending_dji_logs`
-- Progress shown in `bulk-result` step with per-log status
-- Single-click on a log still works for quick single import (or we can keep it checkbox-only for consistency)
+### Steg 1: Legg til RESEND_API_KEY som secret
+Du trenger API-nøkkelen din fra Resend-dashboardet (resend.com → API Keys). Vi legger den til som en Supabase edge function secret.
 
-### Technical details
+### Steg 2: Lag ny shared `sendEmail`-funksjon
+Erstatt `email-config.ts` sin SMTP-logikk med en Resend HTTP-basert `sendEmail`-funksjon:
 
-**File: `src/components/UploadDroneLogDialog.tsx`**
+**Ny fil: `supabase/functions/_shared/resend-email.ts`**
+- Eksporterer `sendEmail({ from, to, subject, html, replyTo? })` som kaller `https://api.resend.com/emails`
+- Bruker `RESEND_API_KEY` fra miljøvariabler
+- Beholder `getEmailConfig()` for å hente `fromName`/`fromEmail` per selskap fra databasen
+- Beholder `sanitizeSubject()` og `formatSenderAddress()`
 
-1. **Add state**: `selectedDjiLogIds: Set<string>` to track checked logs
+### Steg 3: Oppdater alle 13 edge functions
+Fjern `SMTPClient`/`denomailer`-import og erstatt med `sendEmail` fra den nye shared filen. Berørte funksjoner:
 
-2. **Update DJI logs list UI** (lines 2246-2269):
-   - Add checkbox to each log row
-   - Add "select all" toggle at top
-   - Add "Importer valgte (N)" button at bottom
-   - Keep single-click as a quick-import option (bypasses checkbox)
+1. `send-notification-email` (723 linjer — største, håndterer mange e-posttyper)
+2. `send-customer-welcome-email`
+3. `send-user-welcome-email`
+4. `send-user-approved-email`
+5. `send-password-reset`
+6. `send-calendar-link`
+7. `send-feedback`
+8. `invite-user`
+9. `check-document-expiry`
+10. `check-maintenance-expiry`
+11. `check-competency-expiry`
+12. `check-long-flights`
+13. `resend-confirmation-email`
+14. `test-email`
 
-3. **Add `handleBulkDjiImport` function**: Loops through selected DJI logs sequentially (API rate limiting requires this), calling `dji-process-log` for each, then saving to `pending_dji_logs` — reusing the same dedup/match logic from `handleBulkUpload`. Shows progress in the `bulk-result` step.
+For hver funksjon:
+- Fjern `import { SMTPClient } from "denomailer"`
+- Fjern `new SMTPClient(...)`, `client.send(...)`, `client.close()`
+- Erstatt med `await sendEmail({ from, to, subject, html })`
 
-4. **Update `BulkResult` interface**: The `fileName` field will show the aircraft name/date for DJI cloud logs instead of a filename.
+### Steg 4: Oppdater `email-config.ts`
+- Fjern SMTP-spesifikke felt (`host`, `port`, `user`, `pass`, `secure`) fra `EmailConfig`
+- Behold `fromName` og `fromEmail` (brukes fortsatt for avsenderadresse)
+- Behold `getEmailConfig()` for selskaps-spesifikke avsenderinnstillinger fra databasen
+- Fjern `getEmailHeaders()` (ikke nødvendig med Resend API)
 
-5. **Add 15s cooldown between API calls** to respect DroneLog rate limits (existing pattern from `startImportCooldown`).
+### Steg 5: Håndter per-selskap avsender
+Resend krever at avsenderdomenet er verifisert. Hvis selskaper bruker egne domener, må de verifiseres i Resend. Default-avsender blir `noreply@avisafe.no` (allerede verifisert via One.com-koblingen din).
 
-### Files
-- `src/components/UploadDroneLogDialog.tsx` — add multi-select state, UI checkboxes, and bulk DJI import handler
+### Teknisk detalj — sendEmail-funksjonen
+
+```typescript
+export async function sendEmail({ from, to, subject, html, replyTo }: {
+  from: string; to: string; subject: string; html: string; replyTo?: string;
+}) {
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  if (!apiKey) throw new Error('RESEND_API_KEY not configured');
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html, reply_to: replyTo }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend error ${res.status}: ${err}`);
+  }
+  return await res.json();
+}
+```
+
+### Filer som endres
+- `supabase/functions/_shared/resend-email.ts` — ny fil
+- `supabase/functions/_shared/email-config.ts` — forenklet (fjern SMTP)
+- 14 edge functions — erstatt SMTP med `sendEmail()`
+
+### Forutsetning
+Du må ha Resend API-nøkkelen klar. Den finner du på [resend.com/api-keys](https://resend.com/api-keys).
 
