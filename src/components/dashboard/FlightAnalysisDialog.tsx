@@ -442,7 +442,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Attitude indicator overlay — fills map height on sm+ */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
             <div className="absolute top-2 right-2 bottom-2 z-10 w-[108px] sm:w-auto">
-              <Suspense fallback={<div className="w-full h-full rounded-lg bg-background/80 animate-pulse" />}>
+              <Suspense fallback={<div className="w-full h-full rounded-lg bg-background/80 animate-pulse flex items-center justify-center"><span className="text-[11px] text-muted-foreground">Laster 3D-modell…</span></div>}>
                 <Drone3DViewer
                   pitch={positions[currentIndex]?.pitch ?? 0}
                   roll={positions[currentIndex]?.roll ?? 0}
