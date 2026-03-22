@@ -263,7 +263,7 @@ const Resources = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*, personnel_competencies(*)")
+        .select("*, personnel_competencies(*), companies(navn)")
         .eq("approved", true)
         .order("created_at", { ascending: false });
       
