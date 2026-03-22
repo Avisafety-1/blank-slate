@@ -499,109 +499,136 @@ const ComposeTab = () => {
         </div>
       </div>
 
-      {/* Editor + Preview */}
-      <div className="flex items-center justify-end">
-        <Button size="sm" variant="ghost" onClick={() => setPreview(!preview)}>
-          <Eye className="w-4 h-4 mr-1" />{preview ? "Rediger" : "Forhåndsvis"}
-        </Button>
-      </div>
+      {/* Live editable preview + properties panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+        {/* Live email preview - editable */}
+        <div className="border border-border rounded-lg overflow-hidden bg-[#f4f4f7]">
+          <div className="flex justify-center py-8 px-4">
+            <div className="w-full max-w-[600px] bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="p-8 space-y-0">
+                {blocks.map((block, idx) => (
+                  <div
+                    key={block.id}
+                    className={`group relative rounded transition-all cursor-pointer ${selectedBlock === block.id ? "ring-2 ring-primary ring-offset-2" : "hover:ring-1 hover:ring-primary/30 hover:ring-offset-1"}`}
+                    onClick={() => setSelectedBlock(block.id)}
+                  >
+                    {/* Hover controls */}
+                    <div className="absolute -top-3 right-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <Button size="icon" variant="secondary" className="h-5 w-5 rounded-full shadow-sm" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, -1); }} disabled={idx === 0}><ArrowUp className="w-2.5 h-2.5" /></Button>
+                      <Button size="icon" variant="secondary" className="h-5 w-5 rounded-full shadow-sm" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 1); }} disabled={idx === blocks.length - 1}><ArrowDown className="w-2.5 h-2.5" /></Button>
+                      <Button size="icon" variant="destructive" className="h-5 w-5 rounded-full shadow-sm" onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}><Trash2 className="w-2.5 h-2.5" /></Button>
+                    </div>
 
-      {preview ? (
-        <div className="border border-border rounded-lg overflow-hidden bg-muted/20">
-          <iframe
-            srcDoc={generatedHtml}
-            className="w-full min-h-[500px] border-0"
-            title="E-post forhåndsvisning"
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-          {/* Block list */}
-          <div className="space-y-2">
-            {blocks.map((block, idx) => (
-              <div
-                key={block.id}
-                className={`group relative border rounded-lg p-3 cursor-pointer transition-colors ${selectedBlock === block.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-                onClick={() => setSelectedBlock(block.id)}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {block.type === "heading" ? "Overskrift" : block.type === "text" ? "Tekst" : block.type === "button" ? "Knapp" : block.type === "divider" ? "Linje" : block.type === "image" ? "Bilde" : "Mellomrom"}
-                  </Badge>
-                  <div className="ml-auto flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, -1); }} disabled={idx === 0}><ArrowUp className="w-3 h-3" /></Button>
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 1); }} disabled={idx === blocks.length - 1}><ArrowDown className="w-3 h-3" /></Button>
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                    {/* Inline-editable block rendering */}
+                    {block.type === "heading" && (
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className={`outline-none font-bold ${block.props.level === "2" ? "text-xl" : "text-2xl"} mb-4 break-words whitespace-pre-wrap`}
+                        style={{ color: block.props.color || "#1a1a2e", fontFamily: "Arial, sans-serif" }}
+                        onBlur={e => updateBlock(block.id, { content: e.currentTarget.textContent || "" })}
+                        dangerouslySetInnerHTML={{ __html: block.content }}
+                      />
+                    )}
+                    {block.type === "text" && (
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="outline-none text-[15px] leading-relaxed mb-4 break-words whitespace-pre-wrap"
+                        style={{ color: "#444", fontFamily: "Arial, sans-serif" }}
+                        onBlur={e => updateBlock(block.id, { content: e.currentTarget.textContent || "" })}
+                        dangerouslySetInnerHTML={{ __html: block.content }}
+                      />
+                    )}
+                    {block.type === "button" && (
+                      <div className="my-4">
+                        <span
+                          contentEditable
+                          suppressContentEditableWarning
+                          className="inline-block outline-none rounded-md px-7 py-3 font-semibold text-[15px]"
+                          style={{ background: block.props.bgColor || "#0ea5e9", color: block.props.textColor || "#fff", fontFamily: "Arial, sans-serif" }}
+                          onBlur={e => updateBlock(block.id, { content: e.currentTarget.textContent || "" })}
+                          dangerouslySetInnerHTML={{ __html: block.content }}
+                        />
+                      </div>
+                    )}
+                    {block.type === "divider" && (
+                      <hr className="border-t border-[#e2e8f0] my-6" />
+                    )}
+                    {block.type === "image" && (
+                      <div className="my-4">
+                        {block.props.src ? (
+                          <img src={block.props.src} alt={block.content} className="max-w-full h-auto rounded-lg" />
+                        ) : (
+                          <div className="h-32 bg-muted/50 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                            <Image className="w-5 h-5 mr-2" />Velg et bilde
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {block.type === "spacer" && (
+                      <div style={{ height: `${block.props.height || 24}px` }} />
+                    )}
                   </div>
-                </div>
-                {block.type === "divider" ? (
-                  <hr className="border-border" />
-                ) : block.type === "spacer" ? (
-                  <div className="h-4 bg-muted/30 rounded" />
-                ) : (
-                  <p className="text-sm text-foreground truncate">{block.content || "—"}</p>
+                ))}
+                {blocks.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8 text-sm">Legg til blokker for å bygge nyhetsbrevet</p>
                 )}
               </div>
-            ))}
-            {blocks.length === 0 && (
-              <p className="text-center text-muted-foreground py-8 text-sm">Legg til blokker for å bygge nyhetsbrevet</p>
-            )}
-          </div>
-
-          {/* Properties panel */}
-          <div className="border border-border rounded-lg p-3 bg-card/50 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Egenskaper</p>
-            {selected ? (
-              <>
-                {(selected.type === "heading" || selected.type === "text" || selected.type === "button") && (
-                  <div>
-                    <Label className="text-xs">Innhold</Label>
-                    <Textarea
-                      value={selected.content}
-                      onChange={e => updateBlock(selected.id, { content: e.target.value })}
-                      rows={selected.type === "text" ? 4 : 2}
-                      className="text-sm"
-                    />
-                  </div>
-                )}
-                {selected.type === "heading" && (
-                  <div>
-                    <Label className="text-xs">Nivå</Label>
-                    <Select value={selected.props.level || "1"} onValueChange={v => updateBlockProps(selected.id, "level", v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">H1 — Stor</SelectItem>
-                        <SelectItem value="2">H2 — Medium</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {selected.type === "button" && (
-                  <>
-                    <div><Label className="text-xs">URL</Label><Input value={selected.props.url || ""} onChange={e => updateBlockProps(selected.id, "url", e.target.value)} placeholder="https://..." /></div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-xs">Bakgrunn</Label><Input type="color" value={selected.props.bgColor || "#0ea5e9"} onChange={e => updateBlockProps(selected.id, "bgColor", e.target.value)} className="h-8 p-1" /></div>
-                      <div><Label className="text-xs">Tekst</Label><Input type="color" value={selected.props.textColor || "#ffffff"} onChange={e => updateBlockProps(selected.id, "textColor", e.target.value)} className="h-8 p-1" /></div>
-                    </div>
-                  </>
-                )}
-                {selected.type === "image" && (
-                  <ImageBlockProps
-                    block={selected}
-                    onUpdateProps={(key, val) => updateBlockProps(selected.id, key, val)}
-                    onUpdateContent={(val) => updateBlock(selected.id, { content: val })}
-                  />
-                )}
-                {selected.type === "spacer" && (
-                  <div><Label className="text-xs">Høyde (px)</Label><Input type="number" value={selected.props.height || "24"} onChange={e => updateBlockProps(selected.id, "height", e.target.value)} /></div>
-                )}
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">Velg en blokk for å redigere</p>
-            )}
+              {/* Footer preview */}
+              <div className="bg-[#f9fafb] px-10 py-5 text-center">
+                <p className="text-xs text-[#999] m-0">Du mottar dette fordi du abonnerer på vårt nyhetsbrev.</p>
+                <p className="text-xs text-[#999] mt-2"><span className="text-[#0ea5e9] underline cursor-default">Meld deg av</span></p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Properties panel */}
+        <div className="border border-border rounded-lg p-3 bg-card/50 space-y-3 h-fit sticky top-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase">Egenskaper</p>
+          {selected ? (
+            <>
+              <Badge variant="secondary" className="text-[10px]">
+                {selected.type === "heading" ? "Overskrift" : selected.type === "text" ? "Tekst" : selected.type === "button" ? "Knapp" : selected.type === "divider" ? "Linje" : selected.type === "image" ? "Bilde" : "Mellomrom"}
+              </Badge>
+              {selected.type === "heading" && (
+                <div>
+                  <Label className="text-xs">Nivå</Label>
+                  <Select value={selected.props.level || "1"} onValueChange={v => updateBlockProps(selected.id, "level", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">H1 — Stor</SelectItem>
+                      <SelectItem value="2">H2 — Medium</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {selected.type === "button" && (
+                <>
+                  <div><Label className="text-xs">URL</Label><Input value={selected.props.url || ""} onChange={e => updateBlockProps(selected.id, "url", e.target.value)} placeholder="https://..." /></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs">Bakgrunn</Label><Input type="color" value={selected.props.bgColor || "#0ea5e9"} onChange={e => updateBlockProps(selected.id, "bgColor", e.target.value)} className="h-8 p-1" /></div>
+                    <div><Label className="text-xs">Tekst</Label><Input type="color" value={selected.props.textColor || "#ffffff"} onChange={e => updateBlockProps(selected.id, "textColor", e.target.value)} className="h-8 p-1" /></div>
+                  </div>
+                </>
+              )}
+              {selected.type === "image" && (
+                <ImageBlockProps
+                  block={selected}
+                  onUpdateProps={(key, val) => updateBlockProps(selected.id, key, val)}
+                  onUpdateContent={(val) => updateBlock(selected.id, { content: val })}
+                />
+              )}
+              {selected.type === "spacer" && (
+                <div><Label className="text-xs">Høyde (px)</Label><Input type="number" value={selected.props.height || "24"} onChange={e => updateBlockProps(selected.id, "height", e.target.value)} /></div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Velg en blokk for å redigere</p>
+          )}
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
