@@ -90,6 +90,7 @@ export const CompanySoraConfigSection = () => {
   const [inherited, setInherited] = useState(false);
   const [parentName, setParentName] = useState<string | null>(null);
   const [hasOwnConfig, setHasOwnConfig] = useState(false);
+  const [isChild, setIsChild] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const [hardstopOpen, setHardstopOpen] = useState(true);
@@ -128,7 +129,28 @@ export const CompanySoraConfigSection = () => {
     setInherited(false);
     setParentName(null);
     setHasOwnConfig(false);
+    setIsChild(false);
     try {
+      // Always check if this company is a child
+      const { data: company } = await supabase
+        .from("companies")
+        .select("parent_company_id")
+        .eq("id", companyId!)
+        .maybeSingle();
+
+      const parentId = company?.parent_company_id || null;
+      setIsChild(!!parentId);
+
+      // Fetch parent name if child
+      if (parentId) {
+        const { data: parentCompany } = await supabase
+          .from("companies")
+          .select("navn")
+          .eq("id", parentId)
+          .maybeSingle();
+        setParentName(parentCompany?.navn || "Morselskap");
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("company_sora_config")
@@ -140,34 +162,21 @@ export const CompanySoraConfigSection = () => {
 
       if (data) {
         applyConfigData(data);
-        setHasOwnConfig(true);
-      } else {
-        // Fallback: check for parent company config
-        const { data: company } = await supabase
-          .from("companies")
-          .select("parent_company_id, navn")
-          .eq("id", companyId!)
+        if (parentId) {
+          setHasOwnConfig(true);
+        }
+      } else if (parentId) {
+        // Fallback: use parent company config
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: parentConfig } = await (supabase as any)
+          .from("company_sora_config")
+          .select("*")
+          .eq("company_id", parentId)
           .maybeSingle();
 
-        if (company?.parent_company_id) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: parentConfig } = await (supabase as any)
-            .from("company_sora_config")
-            .select("*")
-            .eq("company_id", company.parent_company_id)
-            .maybeSingle();
-
-          if (parentConfig) {
-            applyConfigData(parentConfig);
-            setInherited(true);
-            // Get parent name
-            const { data: parentCompany } = await supabase
-              .from("companies")
-              .select("navn")
-              .eq("id", company.parent_company_id)
-              .maybeSingle();
-            setParentName(parentCompany?.navn || "Morselskap");
-          }
+        if (parentConfig) {
+          applyConfigData(parentConfig);
+          setInherited(true);
         }
       }
     } catch (error) {
@@ -338,7 +347,7 @@ export const CompanySoraConfigSection = () => {
       )}
 
       {/* Reset to parent button */}
-      {hasOwnConfig && (
+      {hasOwnConfig && isChild && (
         <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
           <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div className="flex-1">
