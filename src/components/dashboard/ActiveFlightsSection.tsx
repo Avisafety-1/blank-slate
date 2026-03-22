@@ -163,7 +163,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
           </div>
         </div>
 
-        <div className={`space-y-1.5 sm:space-y-2 ${isSuperAdminAvisafe ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
+        <div className={`space-y-1.5 sm:space-y-2 ${(isSuperAdminAvisafe || isParentCompany) ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
           {flights.map((flight) => (
             <div
               key={flight.id}
