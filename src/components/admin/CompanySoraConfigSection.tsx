@@ -129,7 +129,28 @@ export const CompanySoraConfigSection = () => {
     setInherited(false);
     setParentName(null);
     setHasOwnConfig(false);
+    setIsChild(false);
     try {
+      // Always check if this company is a child
+      const { data: company } = await supabase
+        .from("companies")
+        .select("parent_company_id")
+        .eq("id", companyId!)
+        .maybeSingle();
+
+      const parentId = company?.parent_company_id || null;
+      setIsChild(!!parentId);
+
+      // Fetch parent name if child
+      if (parentId) {
+        const { data: parentCompany } = await supabase
+          .from("companies")
+          .select("navn")
+          .eq("id", parentId)
+          .maybeSingle();
+        setParentName(parentCompany?.navn || "Morselskap");
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("company_sora_config")
@@ -141,34 +162,21 @@ export const CompanySoraConfigSection = () => {
 
       if (data) {
         applyConfigData(data);
-        setHasOwnConfig(true);
-      } else {
-        // Fallback: check for parent company config
-        const { data: company } = await supabase
-          .from("companies")
-          .select("parent_company_id, navn")
-          .eq("id", companyId!)
+        if (parentId) {
+          setHasOwnConfig(true);
+        }
+      } else if (parentId) {
+        // Fallback: use parent company config
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: parentConfig } = await (supabase as any)
+          .from("company_sora_config")
+          .select("*")
+          .eq("company_id", parentId)
           .maybeSingle();
 
-        if (company?.parent_company_id) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: parentConfig } = await (supabase as any)
-            .from("company_sora_config")
-            .select("*")
-            .eq("company_id", company.parent_company_id)
-            .maybeSingle();
-
-          if (parentConfig) {
-            applyConfigData(parentConfig);
-            setInherited(true);
-            // Get parent name
-            const { data: parentCompany } = await supabase
-              .from("companies")
-              .select("navn")
-              .eq("id", company.parent_company_id)
-              .maybeSingle();
-            setParentName(parentCompany?.navn || "Morselskap");
-          }
+        if (parentConfig) {
+          applyConfigData(parentConfig);
+          setInherited(true);
         }
       }
     } catch (error) {
