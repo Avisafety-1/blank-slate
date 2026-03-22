@@ -604,6 +604,27 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
 
         companySoraConfig = soraConfigData;
 
+        // Fallback to parent company config if none found
+        if (!companySoraConfig) {
+          const { data: companyRow } = await supabase
+            .from('companies')
+            .select('parent_company_id')
+            .eq('id', companyId)
+            .maybeSingle();
+
+          if (companyRow?.parent_company_id) {
+            const { data: parentConfig } = await supabase
+              .from('company_sora_config' as any)
+              .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
+              .eq('company_id', companyRow.parent_company_id)
+              .maybeSingle();
+            if (parentConfig) {
+              companySoraConfig = parentConfig;
+              console.log(`Using parent company SORA config (parent_id=${companyRow.parent_company_id})`);
+            }
+          }
+        }
+
         if (companySoraConfig?.linked_document_ids?.length > 0) {
           const { data: linkedDocs } = await supabase
             .from('documents')

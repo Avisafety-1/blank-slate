@@ -323,16 +323,54 @@ export const CompanySoraConfigSection = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header info */}
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-        <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-medium">Selskapsspesifikke SORA-innstillinger</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Disse innstillingene overstyrer systemets standardverdier og sendes automatisk til AI-risikovurderingen for alle oppdrag i selskapet. Hardstop-grenser er absolutte og vil alltid utløse NO-GO uavhengig av andre scores.
-          </p>
+      {/* Inherited banner */}
+      {inherited && parentName && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+          <Building2 className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Arvet fra {parentName}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Disse innstillingene er arvet fra morselskapet. Endringer du gjør her lagres som egne innstillinger for denne avdelingen.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Reset to parent button */}
+      {hasOwnConfig && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+          <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Egne SORA-innstillinger</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Denne avdelingen har egne innstillinger som overstyrer morselskapet.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetToParent}
+            disabled={resetting}
+            className="flex-shrink-0"
+          >
+            {resetting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Tilbakestill til morselskap
+          </Button>
+        </div>
+      )}
+
+      {/* Header info */}
+      {!inherited && !hasOwnConfig && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+          <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Selskapsspesifikke SORA-innstillinger</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Disse innstillingene overstyrer systemets standardverdier og sendes automatisk til AI-risikovurderingen for alle oppdrag i selskapet. Hardstop-grenser er absolutte og vil alltid utløse NO-GO uavhengig av andre scores.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Kort 1: Hardstop-grenser */}
       <Collapsible open={hardstopOpen} onOpenChange={setHardstopOpen}>
