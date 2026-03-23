@@ -53,6 +53,7 @@ serve(async (req: Request): Promise<Response> => {
     const companyName = company?.navn || "AviSafe";
 
     const webcalUrl = feedUrl.replace('https://', 'webcal://');
+    const googleCalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalUrl)}`;
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="no">
@@ -65,14 +66,22 @@ serve(async (req: Request): Promise<Response> => {
     </div>
     <div style="background:#f8f9fa;border-radius:12px;padding:24px;margin-bottom:24px;">
       <p style="margin:0 0 16px 0;font-size:15px;">Her er din personlige kalenderlenke for automatisk synkronisering av oppdrag og hendelser.</p>
-      <p style="margin:0 0 16px 0;font-size:13px;color:#666;">Klikk knappen under for å åpne kalenderappen din og opprette et abonnement som oppdateres automatisk.</p>
       <div style="text-align:center;margin:24px 0;">
-        <a href="${webcalUrl}" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">📅 Abonner på kalender</a>
+        <a href="${googleCalUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1a1a2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">📅 Abonner med Google Calendar</a>
+      </div>
+      <div style="text-align:center;margin:8px 0 0 0;">
+        <a href="${feedUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#ffffff;color:#1a1a2e;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:bold;border:2px solid #1a1a2e;">📅 Åpne kalenderlenke</a>
       </div>
     </div>
     <div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;">
       <h2 style="font-size:16px;color:#1a1a2e;margin:0 0 8px 0;">Manuelt oppsett</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 12px 0;">Kopier denne URL-en og legg til manuelt i kalenderappen din (Fra URL / Fra internett):</p>
+      <p style="font-size:13px;color:#666;margin:0 0 12px 0;">Kopier denne URL-en og legg til manuelt i kalenderappen din:</p>
+      <ul style="font-size:13px;color:#666;margin:0 0 12px 0;padding-left:20px;">
+        <li><strong>Google Calendar:</strong> Legg til kalender → Fra URL</li>
+        <li><strong>iPhone:</strong> Innstillinger → Kalender → Kontoer → Abonner</li>
+        <li><strong>Outlook:</strong> Legg til kalender → Fra internett</li>
+        <li><strong>Samsung:</strong> Kalender → Innstillinger → Legg til konto → ICS-lenke</li>
+      </ul>
       <div style="background:#f0f0f0;border-radius:6px;padding:12px;word-break:break-all;font-family:monospace;font-size:12px;color:#333;">${feedUrl}</div>
     </div>
     <p style="text-align:center;font-size:12px;color:#999;margin-top:32px;">Denne lenken er personlig og bør ikke deles med andre.</p>
