@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     // 2. Missions (future only)
     const { data: missions } = await supabase
       .from("missions")
-      .select("id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, updated_at")
+      .select("id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, oppdatert_dato")
       .eq("company_id", companyId)
       .gte("tidspunkt", now.toISOString());
 
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
             ? new Date(mission.slutt_tidspunkt)
             : undefined,
           type: "Oppdrag",
-          updatedAt: mission.updated_at ? new Date(mission.updated_at) : undefined,
+          updatedAt: mission.oppdatert_dato ? new Date(mission.oppdatert_dato) : undefined,
         });
       }
     }
