@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
     // 5. Equipment with maintenance dates
     const { data: equipment } = await supabase
       .from("equipment")
-      .select("id, navn, neste_vedlikehold, updated_at")
+      .select("id, navn, neste_vedlikehold, oppdatert_dato")
       .eq("company_id", companyId)
       .not("neste_vedlikehold", "is", null)
       .gte("neste_vedlikehold", now.toISOString());
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
           startDate: new Date(eq.neste_vedlikehold!),
           type: "Vedlikehold",
           allDay: true,
-          updatedAt: eq.updated_at ? new Date(eq.updated_at) : undefined,
+          updatedAt: eq.oppdatert_dato ? new Date(eq.oppdatert_dato) : undefined,
         });
       }
     }
