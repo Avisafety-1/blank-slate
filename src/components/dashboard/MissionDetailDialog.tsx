@@ -209,6 +209,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               }}
               statusColors={statusColors}
               className="border"
+              latitude={currentMission.latitude}
+              longitude={currentMission.longitude}
             />
             {currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">

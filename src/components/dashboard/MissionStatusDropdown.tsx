@@ -15,6 +15,9 @@ interface MissionStatusDropdownProps {
   /** Badge color map – caller provides to match its own palette */
   statusColors: Record<string, string>;
   className?: string;
+  /** Mission coordinates for weather snapshot on completion */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const MissionStatusDropdown = ({
@@ -23,6 +26,8 @@ export const MissionStatusDropdown = ({
   onStatusChanged,
   statusColors,
   className = "",
+  latitude,
+  longitude,
 }: MissionStatusDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -33,9 +38,34 @@ export const MissionStatusDropdown = ({
       return;
     }
     setUpdating(true);
+
+    // Build update payload
+    const updatePayload: Record<string, any> = {
+      status: newStatus,
+      oppdatert_dato: new Date().toISOString(),
+    };
+
+    // Capture weather snapshot when completing a mission
+    if (newStatus === "Fullført" && currentStatus !== "Fullført" && latitude && longitude) {
+      try {
+        const { data: weatherData } = await supabase.functions.invoke("drone-weather", {
+          body: { lat: latitude, lon: longitude },
+        });
+        if (weatherData && !weatherData.error) {
+          updatePayload.weather_data_snapshot = {
+            data: weatherData,
+            captured_at: new Date().toISOString(),
+            source: "status_dropdown",
+          };
+        }
+      } catch (e) {
+        console.warn("Could not capture weather snapshot:", e);
+      }
+    }
+
     const { error } = await supabase
       .from("missions")
-      .update({ status: newStatus, oppdatert_dato: new Date().toISOString() })
+      .update(updatePayload)
       .eq("id", missionId);
 
     if (error) {
