@@ -334,14 +334,11 @@ export const CalendarWidget = () => {
     return getEventsForDate(checkDate).length > 0;
   };
 
-  const handleDateClick = (clickedDate: Date | undefined) => {
-    if (clickedDate) {
-      setSelectedDate(clickedDate);
-      setDialogOpen(true);
-      setShowAddForm(false);
-      setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
-      setDate(clickedDate);
-    }
+  const handleDateClick = (clickedDate: Date) => {
+    setSelectedDate(clickedDate);
+    setDialogOpen(true);
+    setShowAddForm(false);
+    setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
   };
 
   const handleEventClick = async (event: CalendarEvent) => {
