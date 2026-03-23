@@ -58,7 +58,7 @@ export const CalendarWidget = () => {
   const { companyId, user, ensureValidToken, isAdmin } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [month, setMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
