@@ -58,7 +58,7 @@ export const CalendarWidget = () => {
   const { companyId, user, ensureValidToken, isAdmin } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [month, setMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -334,14 +334,11 @@ export const CalendarWidget = () => {
     return getEventsForDate(checkDate).length > 0;
   };
 
-  const handleDateClick = (clickedDate: Date | undefined) => {
-    if (clickedDate) {
-      setSelectedDate(clickedDate);
-      setDialogOpen(true);
-      setShowAddForm(false);
-      setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
-      setDate(clickedDate);
-    }
+  const handleDateClick = (clickedDate: Date) => {
+    setSelectedDate(clickedDate);
+    setDialogOpen(true);
+    setShowAddForm(false);
+    setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
   };
 
   const handleEventClick = async (event: CalendarEvent) => {
@@ -468,9 +465,9 @@ export const CalendarWidget = () => {
         </div>
 
         <Calendar
-          mode="single"
-          selected={date}
-          onSelect={handleDateClick}
+          month={month}
+          onMonthChange={setMonth}
+          onDayClick={handleDateClick}
           locale={dateLocale}
           className={cn("rounded-md border-0 pointer-events-auto w-full")}
           classNames={{
