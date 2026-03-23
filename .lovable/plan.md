@@ -1,25 +1,44 @@
 
 
-## Plan: Fiks ForceReloadBanner safe-area på iPhone PWA
+## Plan: Fiks flicker for ikke-godkjente brukere
 
-### Problem
-Banneret bruker `fixed top-0` og havner under iOS statusbar (batteri, signal). Knappene blir uklikkbare.
+### Rotårsak
+`AuthenticatedLayout` (App.tsx linje 104) blokkerer unapproved brukere **kun** når `authRefreshing === false`. Når en refresh kjører (`authRefreshing = true`), faller logikken gjennom til full dashboard-rendering med Header. Når refreshen fullføres → `isApproved = false` → tilbake til uten Header → ny refresh trigger → dashboard vises igjen. Denne syklusen gjentas hvert sekund.
 
 ### Løsning
-Legg til `padding-top: env(safe-area-inset-top)` på banneret, samme mønster som allerede brukes i Dialog og ExpandedMapDialog.
 
-### Endring — `src/components/ForceReloadBanner.tsx`
-Endre div-klassen til å inkludere `pt-[env(safe-area-inset-top)]` via inline style (Tailwind støtter ikke `env()` direkte):
+#### Steg 1: AuthenticatedLayout — blokker unapproved brukere konsekvent
+**Fil: `src/App.tsx`**
 
-```tsx
-<div 
-  className="fixed top-0 left-0 right-0 z-[9999] bg-primary text-primary-foreground px-4 py-3 flex items-center justify-center gap-3 shadow-lg"
-  style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 0.75rem)` }}
->
+Endre linje 104 slik at unapproved brukere aldri ser full dashboard, selv under refresh:
+
+```typescript
+// Nåværende (feil):
+if (!isApproved && !isOfflineWithSession && !authRefreshing) {
+  return <Outlet />;
+}
+
+// Nytt (riktig):
+if (!isApproved && !isOfflineWithSession) {
+  return <Outlet />;  // Alltid la Index.tsx håndtere approval-gating
+}
 ```
 
-Dette skyver innholdet ned under statusbaren på iPhones med notch/dynamic island, mens det forblir uendret på enheter uten safe-area.
+Dette er trygt fordi Index.tsx allerede har sin egen approval-gate med retry-logikk. For allerede godkjente brukere under refresh vil `isApproved` forbli `true` (AuthContext bevarer eksisterende state under refresh).
 
-### Filer
-- `src/components/ForceReloadBanner.tsx`
+#### Steg 2: Index.tsx — vis approval-skjerm raskere
+**Fil: `src/pages/Index.tsx`**
+
+Fjern kravet om `approvalRetried` før approval-skjermen vises. Vis den umiddelbart når `profileLoaded && !isApproved`, men behold auto-retry i bakgrunnen slik at den automatisk oppdaterer seg hvis brukeren godkjennes:
+
+```typescript
+// Vis approval-skjerm umiddelbart (ikke vent på retry)
+if (!isApproved && !isOfflineWithCachedSession && !authRefreshing) {
+  // ...approval screen (fjern && approvalRetried)
+}
+```
+
+### Filer som endres
+- `src/App.tsx` — fjern `&& !authRefreshing` fra approval-sjekk
+- `src/pages/Index.tsx` — fjern `&& approvalRetried` fra approval-sjekk
 
