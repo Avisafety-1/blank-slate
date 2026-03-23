@@ -1,39 +1,33 @@
 
 
-## Plan: Fiks dagens dato i kalenderen — synlighet og klikkbarhet
+## Plan: Fiks dagens dato i /kalender — synlighet og klikkbarhet
 
 ### Problem
-1. **Fargen er for mørk**: `day_today` bruker `bg-accent text-accent-foreground`. I designsystemet er `--accent: 210 80% 28%` (mørk blå) og `--accent-foreground: 215 25% 26.6667%` (også mørk). Teksten er nesten usynlig mot bakgrunnen, og hendelsesprikken (også `bg-primary` = mørk blå) forsvinner helt.
-2. **Klikkbarhet**: `handleDateClick` setter `setDate(undefined)` etter klikk for å fjerne blå markering. Neste klikk på samme dag sender `undefined` fra `onSelect` fordi DayPicker tolker det som en deselect. Dagens dato kan dermed ikke klikkes to ganger etter hverandre.
+Samme problem som CalendarWidget hadde: `mode="single"` med `selected={date}` (initialisert til `new Date()`) gjør at dagens dato får `day_selected`-styling (mørk blå `bg-accent`) som overskriver `day_today`. Re-klikk på valgt dag sender `undefined` fra DayPicker.
 
-### Løsning
+### Løsning — `src/pages/Kalender.tsx`
 
-#### Fil: `src/components/dashboard/CalendarWidget.tsx`
-
-**1. Lysere today-styling (linje 503)**
+**1. State** (linje 67): Endre `date` til `month`-state for å styre visning uten seleksjon:
+```tsx
+const [month, setMonth] = useState<Date>(new Date());
 ```
-// Fra:
-day_today: "bg-accent text-accent-foreground"
 
-// Til:
-day_today: "bg-primary/15 text-foreground font-semibold"
+**2. Calendar-props** (linje 766-769): Fjern `mode="single"` og `selected`, bruk `onDayClick`:
+```tsx
+<Calendar
+  month={month}
+  onMonthChange={setMonth}
+  onDayClick={handleDateClick}
+  locale={nb}
 ```
-Lys blå bakgrunn (15% opacity av primary) med normal tekstfarge. Hendelsesprikken og datotallet blir godt synlig.
 
-**2. Fiks klikkbarhet (linje 337-344)**
-Ikke sett `date` til `undefined` — bruk den klikkede datoen. Håndter re-klikk ved å alltid åpne dialogen:
-```typescript
-const handleDateClick = (clickedDate: Date | undefined) => {
-  if (clickedDate) {
-    setDate(clickedDate);
-    setSelectedDate(clickedDate);
-    setDialogOpen(true);
-    setShowAddForm(false);
-    setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
-  }
-};
+**3. handleDateClick** (linje 396): Endre parameter fra `Date | undefined` til `Date`:
+```tsx
+const handleDateClick = (clickedDate: Date) => {
 ```
+
+**4. day_selected styling** (linje 794): Kan fjernes eller beholdes — den vil ikke lenger trigges uten `mode="single"`.
 
 ### Filer
-- `src/components/dashboard/CalendarWidget.tsx` (2 endringer)
+- `src/pages/Kalender.tsx` (3-4 linjer)
 
