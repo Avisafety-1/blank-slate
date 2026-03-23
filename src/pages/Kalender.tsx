@@ -762,9 +762,9 @@ export default function Kalender() {
                   </div>
 
                   <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateClick}
+                    month={month}
+                    onMonthChange={setMonth}
+                    onDayClick={handleDateClick}
                     locale={nb}
                     className={cn("rounded-md border-0 pointer-events-auto w-full")}
                     classNames={{
