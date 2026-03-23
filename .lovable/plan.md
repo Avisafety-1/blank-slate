@@ -1,25 +1,33 @@
 
 
-## Plan: Fiks missions i kalender-feed (kolonnenavn)
+## Plan: Fiks feil kolonnenavn i kalender-feed for equipment
 
-### Problem
-Missions-spørringen på linje 226 i `calendar-feed/index.ts` ber om `updated_at`, men kolonnen heter `oppdatert_dato` i missions-tabellen. Supabase returnerer en feil som ignoreres, så `missions` blir `null` og ingen oppdrag vises.
+### Funn
+Etter å ha sjekket alle tabellene mot databaseskjemaet:
 
-### Endring er kun i kalender-feeden
-Kolonnen `oppdatert_dato` er riktig kolonnenavn i missions-tabellen. Endringen er kun i `calendar-feed/index.ts` — ingen andre filer påvirkes.
+| Tabell | Brukt i koden | Faktisk kolonne | Status |
+|--------|--------------|-----------------|--------|
+| `calendar_events` | `updated_at` | `updated_at` | ✅ OK |
+| `missions` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK (nylig fikset) |
+| `documents` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK |
+| `drones` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK |
+| `equipment` | `updated_at` | `oppdatert_dato` | ❌ FEIL |
+| `drone_accessories` | `updated_at` | `updated_at` | ✅ OK |
+
+**Equipment-tabellen** bruker `updated_at` i spørringen (linje 293), men kolonnen heter `oppdatert_dato`. Samme type feil som missions hadde — spørringen feiler stille og equipment-vedlikehold vises ikke i kalenderen.
 
 ### Endring — `supabase/functions/calendar-feed/index.ts`
 
-**Linje 226** — endre select:
+**Linje 293** — endre select:
 ```
-"id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, updated_at"
+"id, navn, neste_vedlikehold, updated_at"
 →
-"id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, oppdatert_dato"
+"id, navn, neste_vedlikehold, oppdatert_dato"
 ```
 
-**Linje 241** — endre referanse i event-mapping:
+**Linje 307** — endre referanse:
 ```
-mission.updated_at → mission.oppdatert_dato
+eq.updated_at → eq.oppdatert_dato
 ```
 
 ### Filer
