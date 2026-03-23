@@ -340,7 +340,7 @@ export const CalendarWidget = () => {
       setDialogOpen(true);
       setShowAddForm(false);
       setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
-      setDate(undefined); // Clear selection so it doesn't stay blue
+      setDate(clickedDate);
     }
   };
 
