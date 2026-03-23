@@ -1,35 +1,39 @@
 
 
-## Plan: Fiks feil kolonnenavn i kalender-feed for equipment
+## Plan: Fiks dagens dato i kalenderen — synlighet og klikkbarhet
 
-### Funn
-Etter å ha sjekket alle tabellene mot databaseskjemaet:
+### Problem
+1. **Fargen er for mørk**: `day_today` bruker `bg-accent text-accent-foreground`. I designsystemet er `--accent: 210 80% 28%` (mørk blå) og `--accent-foreground: 215 25% 26.6667%` (også mørk). Teksten er nesten usynlig mot bakgrunnen, og hendelsesprikken (også `bg-primary` = mørk blå) forsvinner helt.
+2. **Klikkbarhet**: `handleDateClick` setter `setDate(undefined)` etter klikk for å fjerne blå markering. Neste klikk på samme dag sender `undefined` fra `onSelect` fordi DayPicker tolker det som en deselect. Dagens dato kan dermed ikke klikkes to ganger etter hverandre.
 
-| Tabell | Brukt i koden | Faktisk kolonne | Status |
-|--------|--------------|-----------------|--------|
-| `calendar_events` | `updated_at` | `updated_at` | ✅ OK |
-| `missions` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK (nylig fikset) |
-| `documents` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK |
-| `drones` | `oppdatert_dato` | `oppdatert_dato` | ✅ OK |
-| `equipment` | `updated_at` | `oppdatert_dato` | ❌ FEIL |
-| `drone_accessories` | `updated_at` | `updated_at` | ✅ OK |
+### Løsning
 
-**Equipment-tabellen** bruker `updated_at` i spørringen (linje 293), men kolonnen heter `oppdatert_dato`. Samme type feil som missions hadde — spørringen feiler stille og equipment-vedlikehold vises ikke i kalenderen.
+#### Fil: `src/components/dashboard/CalendarWidget.tsx`
 
-### Endring — `supabase/functions/calendar-feed/index.ts`
-
-**Linje 293** — endre select:
+**1. Lysere today-styling (linje 503)**
 ```
-"id, navn, neste_vedlikehold, updated_at"
-→
-"id, navn, neste_vedlikehold, oppdatert_dato"
-```
+// Fra:
+day_today: "bg-accent text-accent-foreground"
 
-**Linje 307** — endre referanse:
+// Til:
+day_today: "bg-primary/15 text-foreground font-semibold"
 ```
-eq.updated_at → eq.oppdatert_dato
+Lys blå bakgrunn (15% opacity av primary) med normal tekstfarge. Hendelsesprikken og datotallet blir godt synlig.
+
+**2. Fiks klikkbarhet (linje 337-344)**
+Ikke sett `date` til `undefined` — bruk den klikkede datoen. Håndter re-klikk ved å alltid åpne dialogen:
+```typescript
+const handleDateClick = (clickedDate: Date | undefined) => {
+  if (clickedDate) {
+    setDate(clickedDate);
+    setSelectedDate(clickedDate);
+    setDialogOpen(true);
+    setShowAddForm(false);
+    setNewEvent({ title: "", type: "Oppdrag", description: "", time: "09:00" });
+  }
+};
 ```
 
 ### Filer
-- `supabase/functions/calendar-feed/index.ts` (2 linjer)
+- `src/components/dashboard/CalendarWidget.tsx` (2 endringer)
 
