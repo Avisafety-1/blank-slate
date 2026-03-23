@@ -26,6 +26,8 @@ export const MissionStatusDropdown = ({
   onStatusChanged,
   statusColors,
   className = "",
+  latitude,
+  longitude,
 }: MissionStatusDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
