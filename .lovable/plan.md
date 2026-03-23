@@ -1,53 +1,36 @@
 
 
-## Plan: Generer AI-søkemotor-spec for avisafe.no landingsside
+## Plan: Lagre dronevær-snapshot ved alle fullføringspunkter
 
-### Hva
-Generere en ferdig system-prompt/spec som du kan bruke i ditt landingsside-prosjekt. Denne speccen definerer en AI-assistent som kun svarer på spørsmål om Avisafe-plattformens funksjoner og tjenester. Ingen kodeendringer i dette prosjektet.
+### Problem
+Vær-snapshot lagres kun når status endres til "Fullført" via redigeringsdialogen (`AddMissionDialog`). Men det finnes to andre steder der oppdrag settes til "Fullført" uten å lagre vær:
 
-### Leveranse
-En komplett system-prompt som tekstfil til `/mnt/documents/avisafe-ai-spec.md`, klar til bruk i en edge function på landingssiden.
+1. **MissionStatusDropdown** — dropdown på oppdragskortet (brukes oftest)
+2. **auto-complete-missions** edge function — automatisk fullføring
 
-### Innhold i speccen
-Basert på gjennomgang av hele kodebasen, vil speccen dekke:
+Når snapshot mangler, faller `MissionCard` og `MissionDetailDialog` tilbake til å hente live vær fordi `weather_data_snapshot` er `null`.
 
-**Kjernemoduler:**
-- Dashboard (draggable widgets, KPI, nyheter, AI-søk, aktive flygninger)
-- Oppdrag (opprettelse, planlegging, ruteplanlegging, vær/luftrom-sjekk, risikoanalyse, PDF/KMZ-eksport, sjekklister, kundeoversikt)
-- Kart (SafeSky live-trafikk, OpenAIP luftrom, væroverlay, befolknings-/arealbrukskart fra SSB, VLOS-måling, ruteplanlegging, KML/KMZ-import)
-- Ressurser (droner, utstyr, personell, kompetansehåndtering, vedlikeholdsplan, DroneTag-integrasjon)
-- Dokumenter (versjonskontroll, sjekklister, kategorisering, varsling utløpsdatoer, synlighet)
-- Hendelser (rapportering, oppfølgingsaktiviteter, ECCAIRS E2-rapportering til Luftfartstilsynet, PDF-eksport)
-- Kalender (hendelser, vedlikehold, oppdragsfrister, ICS-eksport, kalenderabonnement)
-- Status (statuspanel for hele organisasjonen)
-- Statistikk (KPI-dashboard, grafer, plattformaktivitetslogg)
+### Løsning
 
-**Avanserte funksjoner:**
-- SORA-risikoanalyse (Specific Operations Risk Assessment)
-- AI-risikoanalyse med automatiske anbefalinger
-- DJI-flightlog import (automatisk synkronisering + manuell)
-- 3D flyanalyse med telemetridata (pitch/roll/yaw, batteristatus, altitude, 3D-modell)
-- Droneregelverk-AI (chatbot for EASA/norsk droneregelverk)
-- Push-varsler (PWA)
-- Offline-støtte
-- Tofaktorautentisering (TOTP + passkeys/WebAuthn)
-- Flerspråklig (norsk/engelsk)
-- Moderselskap/avdeling-hierarki med settingsarv
+#### Steg 1: MissionStatusDropdown — hent og lagre vær ved fullføring
+**Fil: `src/components/dashboard/MissionStatusDropdown.tsx`**
 
-**Abonnementer:**
-- Starter (99 kr/bruker/mnd)
-- Grower (199 kr/bruker/mnd)
-- Professional (299 kr/bruker/mnd)
-- Tillegg: SORA Admin, DJI-integrasjon, ECCAIRS
+- Legg til `latitude` og `longitude` som props (allerede tilgjengelig fra mission-objektet i MissionCard)
+- Når `newStatus === "Fullført"` og `currentStatus !== "Fullført"`: kall `drone-weather` edge function med lat/lng, bygg snapshot-objektet, og inkluder `weather_data_snapshot` i update-queryen
+- Oppdater MissionCard til å sende lat/lng til dropdown
 
-**Integrasjoner:**
-- SafeSky (live lufttrafikk)
-- OpenAIP (luftrom, hindringer)
-- DJI FlightHub/flightlogs
-- DroneTag (Remote ID)
-- ECCAIRS/E2 (Luftfartstilsynet)
-- Stripe (betalinger)
+#### Steg 2: MissionCard — send koordinater til dropdown
+**Fil: `src/components/oppdrag/MissionCard.tsx`**
 
-### Implementering
-Jeg bruker `lov-exec` for å skrive speccen til `/mnt/documents/avisafe-ai-spec.md`. Ingen endringer i kodebasen.
+Pass `latitude` og `longitude` fra mission til `MissionStatusDropdown`.
+
+#### Steg 3: auto-complete-missions — lagre vær ved automatisk fullføring
+**Fil: `supabase/functions/auto-complete-missions/index.ts`**
+
+Når funksjonen setter et oppdrag til "Fullført", hent værdata via drone-weather-endpunktet (intern kall) og lagre snapshot. Fallback: sett `weather_data_snapshot` til et minimalt objekt med `captured_at` og en note om at data var utilgjengelig.
+
+### Filer som endres
+- `src/components/dashboard/MissionStatusDropdown.tsx` — hent vær + lagre snapshot
+- `src/components/oppdrag/MissionCard.tsx` — send lat/lng til dropdown
+- `supabase/functions/auto-complete-missions/index.ts` — lagre vær ved auto-fullføring
 
