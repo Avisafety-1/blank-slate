@@ -393,11 +393,9 @@ export default function Kalender() {
     }
   };
 
-  const handleDateClick = (clickedDate: Date | undefined) => {
-    if (clickedDate) {
-      setSelectedDate(clickedDate);
-      setDialogOpen(true);
-    }
+  const handleDateClick = (clickedDate: Date) => {
+    setSelectedDate(clickedDate);
+    setDialogOpen(true);
   };
 
   const handleMarkMaintenanceComplete = async (event: CalendarEvent, e: React.MouseEvent) => {
