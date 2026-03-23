@@ -186,13 +186,14 @@ Deno.serve(async (req) => {
     // 1. Calendar events (future only)
     const { data: calendarEvents } = await supabase
       .from("calendar_events")
-      .select("id, title, description, event_date, event_time, type")
+      .select("id, title, description, event_date, event_time, type, updated_at")
       .eq("company_id", companyId)
       .gte("event_date", now.toISOString().split("T")[0]);
 
     if (calendarEvents) {
       for (const event of calendarEvents) {
         const eventDate = new Date(event.event_date);
+        const updatedAt = event.updated_at ? new Date(event.updated_at) : undefined;
         if (event.event_time) {
           const [hours, minutes] = event.event_time.split(":");
           eventDate.setHours(parseInt(hours), parseInt(minutes));
@@ -203,6 +204,7 @@ Deno.serve(async (req) => {
             startDate: eventDate,
             type: event.type,
             allDay: false,
+            updatedAt,
           });
         } else {
           events.push({
@@ -212,6 +214,7 @@ Deno.serve(async (req) => {
             startDate: eventDate,
             type: event.type,
             allDay: true,
+            updatedAt,
           });
         }
       }
@@ -220,7 +223,7 @@ Deno.serve(async (req) => {
     // 2. Missions (future only)
     const { data: missions } = await supabase
       .from("missions")
-      .select("id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt")
+      .select("id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, updated_at")
       .eq("company_id", companyId)
       .gte("tidspunkt", now.toISOString());
 
@@ -235,6 +238,7 @@ Deno.serve(async (req) => {
             ? new Date(mission.slutt_tidspunkt)
             : undefined,
           type: "Oppdrag",
+          updatedAt: mission.updated_at ? new Date(mission.updated_at) : undefined,
         });
       }
     }
@@ -242,7 +246,7 @@ Deno.serve(async (req) => {
     // 3. Documents with expiry dates
     const { data: documents } = await supabase
       .from("documents")
-      .select("id, tittel, kategori, gyldig_til")
+      .select("id, tittel, kategori, gyldig_til, oppdatert_dato")
       .eq("company_id", companyId)
       .not("gyldig_til", "is", null)
       .gte("gyldig_til", now.toISOString());
@@ -256,6 +260,7 @@ Deno.serve(async (req) => {
           startDate: new Date(doc.gyldig_til!),
           type: "Dokument",
           allDay: true,
+          updatedAt: doc.oppdatert_dato ? new Date(doc.oppdatert_dato) : undefined,
         });
       }
     }
@@ -263,7 +268,7 @@ Deno.serve(async (req) => {
     // 4. Drones with inspection dates
     const { data: drones } = await supabase
       .from("drones")
-      .select("id, modell, neste_inspeksjon")
+      .select("id, modell, neste_inspeksjon, oppdatert_dato")
       .eq("company_id", companyId)
       .not("neste_inspeksjon", "is", null)
       .gte("neste_inspeksjon", now.toISOString());
@@ -277,6 +282,7 @@ Deno.serve(async (req) => {
           startDate: new Date(drone.neste_inspeksjon!),
           type: "Vedlikehold",
           allDay: true,
+          updatedAt: drone.oppdatert_dato ? new Date(drone.oppdatert_dato) : undefined,
         });
       }
     }
@@ -284,7 +290,7 @@ Deno.serve(async (req) => {
     // 5. Equipment with maintenance dates
     const { data: equipment } = await supabase
       .from("equipment")
-      .select("id, navn, neste_vedlikehold")
+      .select("id, navn, neste_vedlikehold, updated_at")
       .eq("company_id", companyId)
       .not("neste_vedlikehold", "is", null)
       .gte("neste_vedlikehold", now.toISOString());
@@ -298,6 +304,7 @@ Deno.serve(async (req) => {
           startDate: new Date(eq.neste_vedlikehold!),
           type: "Vedlikehold",
           allDay: true,
+          updatedAt: eq.updated_at ? new Date(eq.updated_at) : undefined,
         });
       }
     }
@@ -305,7 +312,7 @@ Deno.serve(async (req) => {
     // 6. Drone accessories with maintenance dates
     const { data: accessories } = await supabase
       .from("drone_accessories")
-      .select("id, navn, neste_vedlikehold")
+      .select("id, navn, neste_vedlikehold, updated_at")
       .eq("company_id", companyId)
       .not("neste_vedlikehold", "is", null)
       .gte("neste_vedlikehold", now.toISOString());
@@ -319,6 +326,7 @@ Deno.serve(async (req) => {
           startDate: new Date(acc.neste_vedlikehold!),
           type: "Vedlikehold",
           allDay: true,
+          updatedAt: acc.updated_at ? new Date(acc.updated_at) : undefined,
         });
       }
     }
