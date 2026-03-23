@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
           startDate: new Date(eq.neste_vedlikehold!),
           type: "Vedlikehold",
           allDay: true,
-          updatedAt: eq.updated_at ? new Date(eq.updated_at) : undefined,
+          updatedAt: eq.oppdatert_dato ? new Date(eq.oppdatert_dato) : undefined,
         });
       }
     }
