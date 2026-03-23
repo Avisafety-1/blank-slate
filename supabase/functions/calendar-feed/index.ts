@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
     // 5. Equipment with maintenance dates
     const { data: equipment } = await supabase
       .from("equipment")
-      .select("id, navn, neste_vedlikehold, updated_at")
+      .select("id, navn, neste_vedlikehold, oppdatert_dato")
       .eq("company_id", companyId)
       .not("neste_vedlikehold", "is", null)
       .gte("neste_vedlikehold", now.toISOString());
