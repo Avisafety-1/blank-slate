@@ -338,7 +338,7 @@ const Index = () => {
             <Button variant="outline" onClick={() => refetchUserInfo()}>
               {t('common.tryAgain', 'Prøv igjen')}
             </Button>
-            <Button onClick={() => navigate("/auth")}>{t('auth.backToLogin')}</Button>
+            <Button onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}>{t('auth.backToLogin')}</Button>
           </div>
         </div>
       </div>
