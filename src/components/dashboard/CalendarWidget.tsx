@@ -465,9 +465,9 @@ export const CalendarWidget = () => {
         </div>
 
         <Calendar
-          mode="single"
-          selected={date}
-          onSelect={handleDateClick}
+          month={month}
+          onMonthChange={setMonth}
+          onDayClick={handleDateClick}
           locale={dateLocale}
           className={cn("rounded-md border-0 pointer-events-auto w-full")}
           classNames={{
