@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
             ? new Date(mission.slutt_tidspunkt)
             : undefined,
           type: "Oppdrag",
-          updatedAt: mission.updated_at ? new Date(mission.updated_at) : undefined,
+          updatedAt: mission.oppdatert_dato ? new Date(mission.oppdatert_dato) : undefined,
         });
       }
     }
