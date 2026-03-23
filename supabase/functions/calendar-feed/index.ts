@@ -33,6 +33,7 @@ interface CalendarEvent {
   endDate?: Date;
   type: string;
   allDay?: boolean;
+  updatedAt?: Date;
 }
 
 function generateICSContent(events: CalendarEvent[], companyName: string): string {
