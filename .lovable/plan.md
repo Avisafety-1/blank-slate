@@ -1,36 +1,25 @@
 
 
-## Plan: Lagre dronevær-snapshot ved alle fullføringspunkter
+## Plan: Fiks ForceReloadBanner safe-area på iPhone PWA
 
 ### Problem
-Vær-snapshot lagres kun når status endres til "Fullført" via redigeringsdialogen (`AddMissionDialog`). Men det finnes to andre steder der oppdrag settes til "Fullført" uten å lagre vær:
-
-1. **MissionStatusDropdown** — dropdown på oppdragskortet (brukes oftest)
-2. **auto-complete-missions** edge function — automatisk fullføring
-
-Når snapshot mangler, faller `MissionCard` og `MissionDetailDialog` tilbake til å hente live vær fordi `weather_data_snapshot` er `null`.
+Banneret bruker `fixed top-0` og havner under iOS statusbar (batteri, signal). Knappene blir uklikkbare.
 
 ### Løsning
+Legg til `padding-top: env(safe-area-inset-top)` på banneret, samme mønster som allerede brukes i Dialog og ExpandedMapDialog.
 
-#### Steg 1: MissionStatusDropdown — hent og lagre vær ved fullføring
-**Fil: `src/components/dashboard/MissionStatusDropdown.tsx`**
+### Endring — `src/components/ForceReloadBanner.tsx`
+Endre div-klassen til å inkludere `pt-[env(safe-area-inset-top)]` via inline style (Tailwind støtter ikke `env()` direkte):
 
-- Legg til `latitude` og `longitude` som props (allerede tilgjengelig fra mission-objektet i MissionCard)
-- Når `newStatus === "Fullført"` og `currentStatus !== "Fullført"`: kall `drone-weather` edge function med lat/lng, bygg snapshot-objektet, og inkluder `weather_data_snapshot` i update-queryen
-- Oppdater MissionCard til å sende lat/lng til dropdown
+```tsx
+<div 
+  className="fixed top-0 left-0 right-0 z-[9999] bg-primary text-primary-foreground px-4 py-3 flex items-center justify-center gap-3 shadow-lg"
+  style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 0.75rem)` }}
+>
+```
 
-#### Steg 2: MissionCard — send koordinater til dropdown
-**Fil: `src/components/oppdrag/MissionCard.tsx`**
+Dette skyver innholdet ned under statusbaren på iPhones med notch/dynamic island, mens det forblir uendret på enheter uten safe-area.
 
-Pass `latitude` og `longitude` fra mission til `MissionStatusDropdown`.
-
-#### Steg 3: auto-complete-missions — lagre vær ved automatisk fullføring
-**Fil: `supabase/functions/auto-complete-missions/index.ts`**
-
-Når funksjonen setter et oppdrag til "Fullført", hent værdata via drone-weather-endpunktet (intern kall) og lagre snapshot. Fallback: sett `weather_data_snapshot` til et minimalt objekt med `captured_at` og en note om at data var utilgjengelig.
-
-### Filer som endres
-- `src/components/dashboard/MissionStatusDropdown.tsx` — hent vær + lagre snapshot
-- `src/components/oppdrag/MissionCard.tsx` — send lat/lng til dropdown
-- `supabase/functions/auto-complete-missions/index.ts` — lagre vær ved auto-fullføring
+### Filer
+- `src/components/ForceReloadBanner.tsx`
 
