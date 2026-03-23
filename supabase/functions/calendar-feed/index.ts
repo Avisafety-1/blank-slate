@@ -102,6 +102,15 @@ function generateICSContent(events: CalendarEvent[], companyName: string): strin
       lines.push(`CATEGORIES:${escapeICSText(event.type)}`);
     }
 
+    // LAST-MODIFIED and SEQUENCE for sync detection
+    if (event.updatedAt) {
+      lines.push(`LAST-MODIFIED:${formatICSDate(event.updatedAt)}`);
+      // SEQUENCE increases with each change - use minutes since epoch
+      lines.push(`SEQUENCE:${Math.floor(event.updatedAt.getTime() / 60000)}`);
+    } else {
+      lines.push(`SEQUENCE:0`);
+    }
+
     lines.push("END:VEVENT");
   }
 
