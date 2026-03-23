@@ -64,7 +64,7 @@ export default function Kalender() {
   const navigate = useNavigate();
   const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [month, setMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customEvents, setCustomEvents] = useState<CalendarEventDB[]>([]);
