@@ -1,21 +1,27 @@
 
 
-## Plan: Fiks kalender-e-post til å bruke webcal:// for abonnering
+## Plan: Fiks missions i kalender-feed (kolonnenavn)
 
 ### Problem
-E-posten sender en `https://` lenke til ICS-feeden. Når brukeren klikker på en `https://`-lenke, laster nettleseren/telefonen ned .ics-filen som en engangsimport i stedet for å opprette et kalenderabonnement. For at kalenderapper skal opprette et abonnement (som oppdateres automatisk), må lenken bruke `webcal://`-protokollen.
+Missions-spørringen på linje 226 i `calendar-feed/index.ts` ber om `updated_at`, men kolonnen heter `oppdatert_dato` i missions-tabellen. Supabase returnerer en feil som ignoreres, så `missions` blir `null` og ingen oppdrag vises.
 
-### Løsning
-Endre e-postmalen i `send-calendar-link/index.ts` til å bruke `webcal://` i hovedknappen ("Abonner på kalender"), mens den beholder `https://`-lenken i "Manuelt oppsett"-seksjonen for brukere som trenger å kopiere URL-en manuelt.
+### Endring er kun i kalender-feeden
+Kolonnen `oppdatert_dato` er riktig kolonnenavn i missions-tabellen. Endringen er kun i `calendar-feed/index.ts` — ingen andre filer påvirkes.
 
-### Endring — `supabase/functions/send-calendar-link/index.ts`
+### Endring — `supabase/functions/calendar-feed/index.ts`
 
-- Lag en `webcalUrl` ved å erstatte `https://` med `webcal://` i `feedUrl`
-- Hovedknappen: bruk `webcalUrl` som href, endre tekst til "Abonner på kalender"
-- Klikkbar lenke under knappen: vis `webcalUrl`
-- Manuelt oppsett-seksjonen: behold den originale `https://` URL-en (for kopiering til kalenderapper som krever manuell URL-innsetting)
-- Legg til en kort forklaring om at lenken åpner kalenderappen automatisk
+**Linje 226** — endre select:
+```
+"id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, updated_at"
+→
+"id, tittel, beskrivelse, tidspunkt, slutt_tidspunkt, oppdatert_dato"
+```
+
+**Linje 241** — endre referanse i event-mapping:
+```
+mission.updated_at → mission.oppdatert_dato
+```
 
 ### Filer
-- `supabase/functions/send-calendar-link/index.ts` — oppdater e-postmal med webcal://-lenker
+- `supabase/functions/calendar-feed/index.ts` (2 linjer)
 
