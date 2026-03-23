@@ -15,6 +15,9 @@ interface MissionStatusDropdownProps {
   /** Badge color map – caller provides to match its own palette */
   statusColors: Record<string, string>;
   className?: string;
+  /** Mission coordinates for weather snapshot on completion */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const MissionStatusDropdown = ({
