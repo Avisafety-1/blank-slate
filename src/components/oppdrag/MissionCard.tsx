@@ -132,6 +132,8 @@ export const MissionCard = ({
               onStatusChanged={fetchMissions}
               statusColors={statusColors}
               className="text-xs"
+              latitude={mission.latitude}
+              longitude={mission.longitude}
             />
             {mission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
