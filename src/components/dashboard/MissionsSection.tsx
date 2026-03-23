@@ -270,6 +270,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       onStatusChanged={fetchMissions}
                       statusColors={statusColors}
                       className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap"
+                      latitude={mission.latitude}
+                      longitude={mission.longitude}
                     />
                     {(() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
