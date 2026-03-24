@@ -1,33 +1,64 @@
 
 
-## Plan: Fiks dagens dato i /kalender — synlighet og klikkbarhet
+## Plan: Rydd opp user_companies ved selskapsbytte
 
 ### Problem
-Samme problem som CalendarWidget hadde: `mode="single"` med `selected={date}` (initialisert til `new Date()`) gjør at dagens dato får `day_selected`-styling (mørk blå `bg-accent`) som overskriver `day_today`. Re-klikk på valgt dag sender `undefined` fra DayPicker.
+Triggeren `sync_user_companies_on_role_change` fyrer kun på `user_roles`-endringer. Når en administrator flyttes fra morselskap til avdeling (profiles.company_id oppdateres), blir den gamle `user_companies`-raden stående. Brukeren beholder dermed tilgang til selskapsvelgeren og kan se/bytte til alle avdelinger — selv om de nå kun skal ha tilgang til sin egen avdeling.
 
-### Løsning — `src/pages/Kalender.tsx`
+### Løsning — Ny trigger på profiles
 
-**1. State** (linje 67): Endre `date` til `month`-state for å styre visning uten seleksjon:
-```tsx
-const [month, setMonth] = useState<Date>(new Date());
+Opprett en trigger-funksjon `sync_user_companies_on_company_change()` som fyrer `AFTER UPDATE OF company_id ON profiles`:
+
+```sql
+CREATE OR REPLACE FUNCTION sync_user_companies_on_company_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  -- Kun reager på faktisk endring av company_id
+  IF OLD.company_id IS NOT DISTINCT FROM NEW.company_id THEN
+    RETURN NEW;
+  END IF;
+
+  -- Sjekk om brukeren er administrator/superadmin
+  IF NOT EXISTS (
+    SELECT 1 FROM user_roles 
+    WHERE user_id = NEW.id 
+      AND role IN ('administrator', 'superadmin')
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Fjern gammel user_companies-rad for det forrige selskapet
+  IF OLD.company_id IS NOT NULL THEN
+    DELETE FROM user_companies 
+    WHERE user_id = NEW.id 
+      AND company_id = OLD.company_id;
+  END IF;
+
+  -- Legg til ny rad kun hvis det nye selskapet har barn
+  IF NEW.company_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM companies 
+    WHERE parent_company_id = NEW.company_id
+  ) THEN
+    INSERT INTO user_companies (user_id, company_id)
+    VALUES (NEW.id, NEW.company_id)
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_profile_company_change_sync
+AFTER UPDATE OF company_id ON profiles
+FOR EACH ROW
+EXECUTE FUNCTION sync_user_companies_on_company_change();
 ```
 
-**2. Calendar-props** (linje 766-769): Fjern `mode="single"` og `selected`, bruk `onDayClick`:
-```tsx
-<Calendar
-  month={month}
-  onMonthChange={setMonth}
-  onDayClick={handleDateClick}
-  locale={nb}
-```
-
-**3. handleDateClick** (linje 396): Endre parameter fra `Date | undefined` til `Date`:
-```tsx
-const handleDateClick = (clickedDate: Date) => {
-```
-
-**4. day_selected styling** (linje 794): Kan fjernes eller beholdes — den vil ikke lenger trigges uten `mode="single"`.
+### Hva dette gjør
+- Når en bruker flyttes fra morselskap til avdeling: den gamle `user_companies`-raden slettes, ingen ny opprettes (avdelinger har ikke barn) → selskapsvelgeren forsvinner
+- Når en bruker flyttes fra avdeling til morselskap: ny rad opprettes → selskapsvelgeren vises korrekt
+- Vanlige brukere (ikke admin) påvirkes ikke
 
 ### Filer
-- `src/pages/Kalender.tsx` (3-4 linjer)
+- Ny migrasjon (1 fil, kun SQL)
 
