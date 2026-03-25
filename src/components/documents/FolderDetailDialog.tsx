@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Trash2, Plus, FileText, Pencil, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
+import { Document } from "@/types";
 
 interface FolderDetailDialogProps {
   folder: { id: string; name: string } | null;
