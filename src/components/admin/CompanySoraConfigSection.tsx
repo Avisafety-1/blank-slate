@@ -84,6 +84,9 @@ const DEFAULT_CONFIG: SoraConfig = {
   operative_restrictions: "",
   policy_notes: "",
   linked_document_ids: [],
+  sora_based_approval: false,
+  sora_approval_threshold: 7.0,
+  sora_hardstop_requires_approval: true,
 };
 
 export const CompanySoraConfigSection = () => {
