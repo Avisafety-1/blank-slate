@@ -644,6 +644,9 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
 
     // 9e. Calculate civil twilight if required
     let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
+    let civilTwilightViolation = false;
+    let civilTwilightMissionTime = '';
+    let civilTwilightNoTime = false;
     if (companySoraConfig?.require_civil_twilight && lat && lng) {
       try {
         const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
@@ -659,12 +662,27 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           const ha = Math.acos(cosHA) * (180 / Math.PI);
           const dawnMin = 720 - 4 * (lng + ha) - eqTime;
           const duskMin = 720 - 4 * (lng - ha) - eqTime;
-          const base = new Date(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate());
+          const base = new Date(Date.UTC(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate()));
           const dawnUTC = new Date(base.getTime() + dawnMin * 60000);
           const duskUTC = new Date(base.getTime() + duskMin * 60000);
           const fmt = (d: Date) => d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' });
           civilTwilightInfo = { dawn: fmt(dawnUTC), dusk: fmt(duskUTC) };
           console.log(`Civil twilight calculated: dawn=${civilTwilightInfo.dawn}, dusk=${civilTwilightInfo.dusk}`);
+
+          // Deterministic comparison: check if mission time is outside twilight window
+          if (mission.tidspunkt) {
+            const missionTime = new Date(mission.tidspunkt);
+            civilTwilightMissionTime = fmt(missionTime);
+            if (missionTime < dawnUTC || missionTime > duskUTC) {
+              civilTwilightViolation = true;
+              console.log(`Civil twilight VIOLATION: mission at ${civilTwilightMissionTime} is outside ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
+            } else {
+              console.log(`Civil twilight OK: mission at ${civilTwilightMissionTime} is within ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
+            }
+          } else {
+            civilTwilightNoTime = true;
+            console.log('Civil twilight: no mission time set, will warn');
+          }
         } else {
           console.log('Civil twilight: polar conditions, no twilight boundary');
         }
