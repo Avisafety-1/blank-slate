@@ -68,6 +68,7 @@ interface Profile {
   incident_responsible_company_ids?: string[] | null;
   company_id?: string | null;
   companies?: { navn: string } | null;
+  is_technical_responsible?: boolean;
 }
 
 interface ChildCompanyOption {
