@@ -588,6 +588,21 @@ export const CompanySoraConfigSection = () => {
                     }
                   />
                 </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sunrise className="h-4 w-4 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium">Krev sivil skumring</p>
+                      <p className="text-xs text-muted-foreground">Oppdrag må gjennomføres innenfor sivil skumring (dawn–dusk). HARD STOP hvis utenfor.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={config.require_civil_twilight}
+                    onCheckedChange={(v) =>
+                      setConfig((p) => ({ ...p, require_civil_twilight: v }))
+                    }
+                  />
+                </div>
               </div>
 
               {/* Temperaturgrenser */}
