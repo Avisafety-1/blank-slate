@@ -85,6 +85,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [catalogModel, setCatalogModel] = useState<any>(null);
+  const [droneModels, setDroneModels] = useState<{id: string; name: string; eu_class: string; weight_kg: number; payload_kg: number; comment: string | null}[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
@@ -199,6 +201,36 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchTechnicalResponsibleName();
     }
   }, [drone]);
+
+  // Fetch drone models catalog when editing
+  useEffect(() => {
+    if (!isEditing) return;
+    const fetchDroneModels = async () => {
+      const { data } = await supabase
+        .from("drone_models")
+        .select("id, name, eu_class, weight_kg, payload_kg, comment")
+        .order("name");
+      if (data) setDroneModels(data);
+    };
+    fetchDroneModels();
+  }, [isEditing]);
+
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+    if (modelId && modelId !== "manual") {
+      const model = droneModels.find(m => m.id === modelId);
+      if (model) {
+        setFormData(prev => ({
+          ...prev,
+          modell: model.name,
+          klasse: model.eu_class,
+          vekt: model.weight_kg.toString(),
+          payload: model.payload_kg.toString(),
+          merknader: model.comment || prev.merknader,
+        }));
+      }
+    }
+  };
 
   // Fetch technical responsible persons for the dropdown
   useEffect(() => {
@@ -1392,8 +1424,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
             </>
-          ) : (
+           ) : (
             <>
+              {/* Drone catalog selector */}
+              <div className="border-b pb-4 mb-4">
+                <Label>Velg fra katalog (valgfritt)</Label>
+                <Select value={selectedModelId} onValueChange={handleModelSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Angi manuelt</SelectItem>
+                    {droneModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name} ({model.eu_class})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Velg en modell for å auto-fylle vekt, payload og klasse
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="modell">Modell</Label>
