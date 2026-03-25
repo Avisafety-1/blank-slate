@@ -87,8 +87,8 @@ export const ADDONS: AddonConfig[] = [
     id: 'sora_admin',
     name: 'SORA Admin',
     description: 'Avansert SORA risikoanalyse for droneoperasjoner',
-    price: 99,
-    priceId: 'price_1TB8tURrLM8xOFbk2fX9o05U',
+    price: 199,
+    priceId: 'price_1TBuBDRrLM8xOFbk8RA3Ypgs',
     productId: 'prod_U9RnvT5JMaB4V5',
   },
   {
