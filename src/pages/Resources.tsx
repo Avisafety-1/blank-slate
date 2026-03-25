@@ -738,11 +738,6 @@ const Resources = () => {
                         {person.tittel && (
                           <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
                         )}
-                        {person.is_technical_responsible && (
-                          <Badge variant="outline" className="mt-0.5 gap-1 text-xs border-primary/50 text-primary">
-                            Teknisk ansvarlig
-                          </Badge>
-                        )}
                         {person.company_id !== companyId && person.companies?.navn && (
                           <Badge variant="secondary" className="mt-0.5 gap-1 text-xs">
                             <Building2 className="w-3 h-3" />
