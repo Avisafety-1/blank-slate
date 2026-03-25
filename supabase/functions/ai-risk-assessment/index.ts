@@ -815,7 +815,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
-        civilTwilight: civilTwilightInfo,
+        civilTwilight: civilTwilightInfo ? { ...civilTwilightInfo, violation: civilTwilightViolation, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
       } : null,
     };
 
