@@ -338,6 +338,7 @@ export default function Kalender() {
       color: getColorForType("Vedlikehold"),
       sourceTable: 'drones',
       checklistId: drone.sjekkliste_id,
+      technicalResponsibleId: drone.technical_responsible_id,
     })),
     
     // Equipment (maintenance)
