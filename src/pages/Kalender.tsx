@@ -221,7 +221,7 @@ export default function Kalender() {
       // Fetch drones with inspection dates
       const { data: dronesData, error: dronesError } = await supabase
         .from('drones')
-        .select('id, modell, neste_inspeksjon, sjekkliste_id')
+        .select('id, modell, neste_inspeksjon, sjekkliste_id, technical_responsible_id')
         .not('neste_inspeksjon', 'is', null)
         .order('neste_inspeksjon', { ascending: true });
 
