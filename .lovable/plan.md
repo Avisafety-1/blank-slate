@@ -1,41 +1,45 @@
 
 
-## Solstormvurdering (Kp-indeks) i SORA
+## SORA-basert automatisk oppdragsgodkjenning
 
 ### Hva bygges
-Edge function `ai-risk-assessment` henter geomagnetisk Kp-indeks fra NOAA SWPC og inkluderer det i AI-konteksten. Ved lav aktivitet (Kp < 5) gis kun én kort setning. Ved høy aktivitet (Kp ≥ 5) gis advarsel om GPS/GNSS-påvirkning.
+En ny seksjon øverst i SORA Admin som lar selskapet konfigurere automatisk godkjenning av oppdrag basert på AI SORA-resultater. Tre nye database-kolonner, UI i admin-panelet, og logikk i edge function + frontend for auto-godkjenning.
 
-### Datakilde
-- `https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json`
-- Gratis, offentlig, ingen API-nøkkel, JSON-format
-- Returnerer 3-dagers Kp-prognose i 3-timers intervaller
+### Database-endringer (`company_sora_config`)
+Tre nye kolonner:
+- `sora_based_approval` (boolean, default false) — Master-toggle for SORA-basert godkjenning
+- `sora_approval_threshold` (numeric(3,1), default 7.0) — AI-score terskel (0-10). Verdier **under** denne krever godkjenning
+- `sora_hardstop_requires_approval` (boolean, default true) — Om hardstop alltid krever godkjenning
 
-### Teknisk endring — kun `supabase/functions/ai-risk-assessment/index.ts`
+### UI i CompanySoraConfigSection
+Ny collapsible-seksjon **øverst** (før hardstop-grenser):
 
-**1. Ny fetch (~etter linje 367, etter vær-henting):**
-- Hent Kp-forecast fra NOAA
-- Finn høyeste Kp-verdi for oppdragets dato
-- Bestem NOAA G-skala (G1=Kp5, G2=Kp6, G3=Kp7+)
-- Wrap i try/catch — feil skal ikke blokkere resten
+**«Godkjenning basert på SORA»**
+1. **Master-toggle**: «Godkjenning av oppdrag basert på SORA» — av/på
+2. Når på, vises:
+   - **Slider 0-10**: «AI SORA-terskel for automatisk godkjenning» — oppdrag med score >= denne verdien godkjennes automatisk
+   - **Toggle**: «Krev godkjenning ved hardstop» (default på) — uansett score, hardstop = krever godkjenning
 
-**2. Legg til i `contextData` (~linje 818):**
-```typescript
-solarActivity: { kpIndex, noaaScale, level }
-```
+### Logikk-endring i edge function
+Etter at AI-analysen er lagret i `ai-risk-assessment/index.ts` (linje ~1148):
+1. Hent selskapets `sora_based_approval`, `sora_approval_threshold`, `sora_hardstop_requires_approval`
+2. Hvis `sora_based_approval` er true:
+   - Hvis `hard_stop_triggered` og `sora_hardstop_requires_approval`: sett `approval_status = 'not_approved'` (krever manuell godkjenning)
+   - Ellers hvis `overall_score >= sora_approval_threshold` og ingen hardstop: sett `approval_status = 'approved'`
+   - Ellers: sett `approval_status = 'not_approved'`
+3. Oppdater `missions`-tabellen med ny `approval_status`
 
-**3. Oppdater systemprompten (~linje 930-området):**
-Ny seksjon rett før `### RESPONS-FORMAT`:
+### Logikk-endring i frontend (RiskAssessmentDialog)
+Etter at AI-resultat mottas (linje ~461):
+- Hvis resultatet indikerer auto-godkjenning, vis toast: «Oppdraget ble automatisk godkjent basert på SORA-vurderingen»
+- Refresh misjonslisten for å oppdatere badges
 
-```
-### SOLSTORM / GEOMAGNETISK AKTIVITET
-Hvis Kp < 5: Skriv KUN én kort setning, f.eks. "Geomagnetisk aktivitet vurdert — Kp X, ingen forstyrrelse forventet."
-Hvis Kp 5-6 (G1-G2): Advarsel om mulig GPS/GNSS-degradering. Reduser equipment score med 1.
-Hvis Kp 7+ (G3+): Sterk advarsel. Reduser equipment score med 2-3. Vurder caution/no-go.
-```
+### SoraConfig interface-oppdatering
+Legg til de tre nye feltene i `SoraConfig` interfacet og `DEFAULT_CONFIG`, samt i `applyConfigData()` og `handleSave()`.
 
-### Omfang
-- Ingen database-endringer
-- Ingen frontend-endringer
-- Ingen nye filer
-- Kun edge function-oppdatering
+### Filer som endres
+1. **Database-migrasjon**: Legg til 3 kolonner i `company_sora_config`
+2. **`src/components/admin/CompanySoraConfigSection.tsx`**: Ny seksjon øverst + state + save/load
+3. **`supabase/functions/ai-risk-assessment/index.ts`**: Auto-godkjenningslogikk etter save
+4. **`src/components/dashboard/RiskAssessmentDialog.tsx`**: Toast ved auto-godkjenning + refresh
 
