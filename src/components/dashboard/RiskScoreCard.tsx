@@ -48,7 +48,10 @@ export const RiskScoreCard = ({
   assessmentMethod,
   categoryComments,
   onCategoryCommentChange,
-  readOnly
+  readOnly,
+  approvalStatus,
+  approvalReason,
+  approvalThreshold
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
