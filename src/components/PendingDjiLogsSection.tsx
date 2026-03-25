@@ -60,7 +60,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     setLoading(true);
     const { data, error } = await supabase
       .from("pending_dji_logs")
-      .select("*, profiles:user_id(full_name)")
+      .select("*")
       .eq("company_id", companyId)
       .eq("status", "pending")
       .order("flight_date", { ascending: false })
@@ -69,7 +69,21 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     if (error) {
       console.error("Error fetching pending logs:", error);
     }
-    setLogs((data as PendingDjiLog[]) || []);
+
+    const rawLogs = (data || []) as PendingDjiLog[];
+
+    // Fetch owner names for unique user_ids
+    const userIds = [...new Set(rawLogs.map(l => l.user_id).filter(Boolean))] as string[];
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      const nameMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
+      rawLogs.forEach(l => { l.ownerName = l.user_id ? nameMap.get(l.user_id) || null : null; });
+    }
+
+    setLogs(rawLogs);
     setLoading(false);
   };
 
