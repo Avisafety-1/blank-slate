@@ -1,24 +1,45 @@
 
 
-## Problem: `stripeExempt` state is stale when `fireSubscriptionCheck` runs
+## Skumringstid (Civil Twilight) som SORA hardstop
 
-On line 508, `setStripeExempt(profileData.stripeExempt)` is called, and then on line 531, `fireSubscriptionCheck(userId, myVersion)` is called immediately after. But React state updates are asynchronous -- so when `fireSubscriptionCheck` checks `if (stripeExempt)` on line 573, it reads the **old** value (`false`), not the newly set `true`.
+### Hva bygges
+En ny toggle i SORA Admin-konfigurasjonen: **«Krev sivil skumring»**. Når aktivert, vil AI-risikovurderingen gi HARD STOP dersom et oppdrag er planlagt utenfor civil twilight-perioden (før morgen-skumring starter eller etter kveldsskumring slutter).
 
-This means stripe_exempt companies always fall through to the Stripe API call on every login.
+Skumringstidene beregnes **lokalt i koden** med en standard solposisjonsformel — ingen ekstern API nødvendig. Civil twilight er definert som perioden der solen er mellom 0° og -6° under horisonten, noe som kan beregnes nøyaktig fra dato og koordinater.
 
-The same issue applies to `companyId` -- it's read from state inside `fireSubscriptionCheck` but may not yet reflect the value just set via `setCompanyId`.
+### Tekniske endringer
 
-## Fix
+**1. Ny utility: `src/lib/civilTwilight.ts`**
+- Ren matematisk beregning av solens posisjon basert på dato, breddegrad og lengdegrad
+- Eksporterer funksjon `getCivilTwilightTimes(date, lat, lng)` som returnerer `{ dawn: Date, dusk: Date }`
+- Bruker standard astronomisk formel (solens deklinasjon, timevinkel ved -6°)
+- Ingen eksterne avhengigheter
 
-Pass `stripeExempt` and `companyId` as parameters to `fireSubscriptionCheck` instead of reading them from React state.
+**2. Database: Ny kolonne på `company_sora_config`**
+- `require_civil_twilight boolean DEFAULT false`
+- Migrasjon som legger til kolonnen
 
-### Changes in `src/contexts/AuthContext.tsx`
+**3. Frontend: `CompanySoraConfigSection.tsx`**
+- Legg til `require_civil_twilight` i `SoraConfig`-interfacet og `DEFAULT_CONFIG`
+- Ny toggle ved siden av «Tillat nattflyging»-seksjonen med ikon (Sunrise/Sunset)
+- Beskrivelse: «Krev at oppdrag gjennomføres innenfor sivil skumring. HARD STOP hvis utenfor.»
+- Les/skriv til databasen som de øvrige feltene
 
-1. **Update `fireSubscriptionCheck` signature** to accept `stripeExemptVal: boolean` and `effectiveCompanyId: string | null` as parameters
-2. **Update the function body** to use these parameters instead of `stripeExempt` and `companyId` from state
-3. **Update all call sites** (lines ~444, ~531, ~744, ~812) to pass the current values:
-   - From `refreshAuthState`: pass `profileData.stripeExempt` and `profileData.companyId`
-   - From cached profile path: pass the cached values
-   - From `onAuthStateChange` / visibility listeners: pass current state values (these run after state has settled)
+**4. AI-risikovurdering: `supabase/functions/ai-risk-assessment/index.ts`**
+- Les `require_civil_twilight` fra SORA-config
+- Beregn civil twilight for oppdragets dato og koordinater (kopier formelen inn i Edge Function)
+- Legg til i AI-prompten: «SIVIL SKUMRING: Selskapet krever at flyging skjer innenfor civil twilight (dawn–dusk). Oppdrag planlagt utenfor disse tidene er HARD STOP.»
+- Inkluder beregnede tider i konteksten slik at AI-en kan vurdere mot oppdragets planlagte tidspunkt
 
-This is a minimal, targeted fix that eliminates the race condition without restructuring the auth flow.
+**5. Supabase types oppdatering**
+- Oppdater `src/integrations/supabase/types.ts` med den nye kolonnen
+
+### Logikk for skumringsberegning
+Civil twilight beregnes med NOAA-formelen:
+1. Beregn solens deklinasjon fra dag-nummer i året
+2. Beregn timevinkelen når solen er ved -6° (civil twilight-grensen)
+3. Konverter til UTC-tid basert på lengdegrad
+4. Juster for tidssone
+
+Dette gir nøyaktige tider for alle lokasjoner i Norge (og globalt) uten eksterne API-kall.
+
