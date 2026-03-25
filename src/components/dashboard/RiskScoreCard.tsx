@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { AlertOctagon, CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CategoryScore {
