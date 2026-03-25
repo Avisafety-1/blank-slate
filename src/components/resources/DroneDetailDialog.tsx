@@ -184,6 +184,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
         sjekkliste_id: drone.sjekkliste_id || "",
       });
+      setFormTechnicalResponsibleId(drone.technical_responsible_id || null);
       setSelectedChecklistId(drone.sjekkliste_id || "");
       setIsEditing(false);
       setShowAddAccessory(false);
@@ -195,8 +196,34 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedDocuments();
       fetchMissionsSinceInspection();
       fetchLatestWarning();
+      fetchTechnicalResponsibleName();
     }
   }, [drone]);
+
+  // Fetch technical responsible persons for the dropdown
+  useEffect(() => {
+    if (!companyId) return;
+    const fetchTechPersons = async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name")
+        .eq("company_id", companyId)
+        .eq("is_technical_responsible", true)
+        .eq("approved", true);
+      setTechnicalResponsiblePersons(data || []);
+    };
+    fetchTechPersons();
+  }, [companyId]);
+
+  const fetchTechnicalResponsibleName = async () => {
+    if (!drone?.technical_responsible_id) { setTechnicalResponsibleName(null); return; }
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", drone.technical_responsible_id)
+      .single();
+    setTechnicalResponsibleName(data?.full_name || "Ukjent");
+  };
 
   const fetchLatestWarning = async () => {
     if (!drone) { setLatestWarning(null); return; }
