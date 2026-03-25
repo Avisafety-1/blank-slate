@@ -95,8 +95,8 @@ export const ADDONS: AddonConfig[] = [
     id: 'dji',
     name: 'DJI-integrasjon',
     description: 'Automatisk import av DJI-flightlogs',
-    price: 99,
-    priceId: 'price_1TB9IBRrLM8xOFbkijdJUsL7',
+    price: 199,
+    priceId: 'price_1TBuAiRrLM8xOFbkBbf8sL2H',
     productId: 'prod_U9SCO6vjcZPjBb',
   },
   {
