@@ -88,7 +88,7 @@ serve(async (req) => {
 
     const { data: drones } = await supabase
       .from('drones')
-      .select('id, modell, neste_inspeksjon, company_id, aktiv')
+      .select('id, modell, neste_inspeksjon, company_id, aktiv, technical_responsible_id')
       .eq('aktiv', true)
       .not('neste_inspeksjon', 'is', null);
 
