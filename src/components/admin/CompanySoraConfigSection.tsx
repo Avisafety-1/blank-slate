@@ -75,6 +75,7 @@ const DEFAULT_CONFIG: SoraConfig = {
   max_temp_c: 40,
   allow_bvlos: false,
   allow_night_flight: false,
+  require_civil_twilight: false,
   max_pilot_inactivity_days: null,
   max_population_density_per_km2: null,
   operative_restrictions: "",
