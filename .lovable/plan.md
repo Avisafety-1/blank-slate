@@ -1,45 +1,60 @@
 
 
-## Skumringstid (Civil Twilight) som SORA hardstop
+## Fix: Civil twilight HARD STOP virker ikke i AI SORA
 
-### Hva bygges
-En ny toggle i SORA Admin-konfigurasjonen: **«Krev sivil skumring»**. Når aktivert, vil AI-risikovurderingen gi HARD STOP dersom et oppdrag er planlagt utenfor civil twilight-perioden (før morgen-skumring starter eller etter kveldsskumring slutter).
+### Problem
+Prompten forteller AI-en å "vurdere oppdragets planlagte tidspunkt mot skumringstidene", men:
+1. Den sier ikke eksplisitt hva klokken er for oppdraget — AI-en må lete gjennom contextData selv
+2. AI-en gjør ingen deterministisk sammenligning — den "tolker" fritt og ignorerer det ofte
+3. Prompten burde gjøre sammenligningen i kode og gi AI-en et klart svar: "oppdraget er UTENFOR skumringstid → HARD STOP"
 
-Skumringstidene beregnes **lokalt i koden** med en standard solposisjonsformel — ingen ekstern API nødvendig. Civil twilight er definert som perioden der solen er mellom 0° og -6° under horisonten, noe som kan beregnes nøyaktig fra dato og koordinater.
+### Løsning
+Gjør sammenligningen **deterministisk i kode** (i edge function), ikke overlat det til AI-en.
 
-### Tekniske endringer
+### Endring i `supabase/functions/ai-risk-assessment/index.ts`
 
-**1. Ny utility: `src/lib/civilTwilight.ts`**
-- Ren matematisk beregning av solens posisjon basert på dato, breddegrad og lengdegrad
-- Eksporterer funksjon `getCivilTwilightTimes(date, lat, lng)` som returnerer `{ dawn: Date, dusk: Date }`
-- Bruker standard astronomisk formel (solens deklinasjon, timevinkel ved -6°)
-- Ingen eksterne avhengigheter
+**1. Utvid civil twilight-beregningen (linje ~645-674):**
+- Etter at `dawnUTC` og `duskUTC` er beregnet, sammenlign med oppdragets `tidspunkt`
+- Hvis `mission.tidspunkt` har en tid-komponent, sjekk om den faller utenfor dawn–dusk
+- Legg til et nytt felt: `civilTwilightViolation: boolean` og `missionTimeFormatted: string`
 
-**2. Database: Ny kolonne på `company_sora_config`**
-- `require_civil_twilight boolean DEFAULT false`
-- Migrasjon som legger til kolonnen
+```typescript
+let civilTwilightViolation = false;
+let missionTimeFormatted = '';
 
-**3. Frontend: `CompanySoraConfigSection.tsx`**
-- Legg til `require_civil_twilight` i `SoraConfig`-interfacet og `DEFAULT_CONFIG`
-- Ny toggle ved siden av «Tillat nattflyging»-seksjonen med ikon (Sunrise/Sunset)
-- Beskrivelse: «Krev at oppdrag gjennomføres innenfor sivil skumring. HARD STOP hvis utenfor.»
-- Les/skriv til databasen som de øvrige feltene
+if (civilTwilightInfo && mission.tidspunkt) {
+  const missionTime = new Date(mission.tidspunkt);
+  missionTimeFormatted = missionTime.toLocaleTimeString('no-NO', { 
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' 
+  });
+  // Compare actual UTC times
+  if (missionTime < dawnUTC || missionTime > duskUTC) {
+    civilTwilightViolation = true;
+  }
+}
+```
 
-**4. AI-risikovurdering: `supabase/functions/ai-risk-assessment/index.ts`**
-- Les `require_civil_twilight` fra SORA-config
-- Beregn civil twilight for oppdragets dato og koordinater (kopier formelen inn i Edge Function)
-- Legg til i AI-prompten: «SIVIL SKUMRING: Selskapet krever at flyging skjer innenfor civil twilight (dawn–dusk). Oppdrag planlagt utenfor disse tidene er HARD STOP.»
-- Inkluder beregnede tider i konteksten slik at AI-en kan vurdere mot oppdragets planlagte tidspunkt
+**2. Oppdater prompten (linje ~841):**
+Erstatt den nåværende vage instruksjonen med en eksplisitt, deterministisk melding:
 
-**5. Supabase types oppdatering**
-- Oppdater `src/integrations/supabase/types.ts` med den nye kolonnen
+- Hvis `civilTwilightViolation === true`:
+  `"SIVIL SKUMRING — HARD STOP: Oppdraget er planlagt kl. {missionTime} som er UTENFOR sivil skumring (dawn: {dawn}, dusk: {dusk}). Dette er et BRUDD og SKAL gi recommendation='no-go' og hard_stop_triggered=true."`
 
-### Logikk for skumringsberegning
-Civil twilight beregnes med NOAA-formelen:
-1. Beregn solens deklinasjon fra dag-nummer i året
-2. Beregn timevinkelen når solen er ved -6° (civil twilight-grensen)
-3. Konverter til UTC-tid basert på lengdegrad
-4. Juster for tidssone
+- Hvis `civilTwilightViolation === false`:
+  `"SIVIL SKUMRING: OK — Oppdraget kl. {missionTime} er innenfor sivil skumring (dawn: {dawn}, dusk: {dusk})."`
 
-Dette gir nøyaktige tider for alle lokasjoner i Norge (og globalt) uten eksterne API-kall.
+- Hvis ingen tidspunkt er satt på oppdraget:
+  `"SIVIL SKUMRING: Selskapet krever flyging innenfor sivil skumring (dawn: {dawn}, dusk: {dusk}), men oppdraget har ingen planlagt tid. ADVARSEL i rapporten."`
+
+**3. Legg til i contextData (~linje 793):**
+```typescript
+civilTwilight: civilTwilightInfo ? {
+  ...civilTwilightInfo,
+  violation: civilTwilightViolation,
+  missionTime: missionTimeFormatted
+} : null,
+```
+
+### Hvorfor dette fikser problemet
+AI-en slipper å gjette — koden har allerede sjekket og gir AI-en et klart "HARD STOP" eller "OK". Samme mønster som brukes for flyhøyde-grensen.
 
