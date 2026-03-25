@@ -404,6 +404,12 @@ export default function Kalender() {
     e.stopPropagation();
     
     if (!event.id || !event.sourceTable) return;
+
+    // Check technical responsible restriction for drones
+    if (event.sourceTable === 'drones' && event.technicalResponsibleId && user?.id !== event.technicalResponsibleId) {
+      toast.error('Kun teknisk ansvarlig kan utføre inspeksjon på denne dronen');
+      return;
+    }
     
     // Check if the event has a checklist configured
     if (event.checklistId) {
