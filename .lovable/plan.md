@@ -1,20 +1,22 @@
 
 
-## Plan: Velg modell fra katalog ved redigering av drone
+## Plan: Vis eier og «Mine logger»-filter på ventende flylogger
 
-### Hva
-Legge til en «Velg fra katalog»-dropdown i redigeringsmodus i DroneDetailDialog, slik at brukeren kan velge en dronemodell fra `drone_models`-tabellen. Når en modell velges, fylles klasse, vekt (MTOM), payload og merknader automatisk ut — akkurat som det allerede fungerer i AddDroneDialog.
+### Problem
+Alle ventende flylogger fra auto-sync vises i en felles liste uten å vise hvem som lastet dem opp. Brukeren ønsker å se eierens navn og kunne filtrere til kun sine egne logger.
 
-### Endringer
+### Løsning
 
-**Fil: `src/components/resources/DroneDetailDialog.tsx`**
+**Fil: `src/components/PendingDjiLogsSection.tsx`**
 
-1. Legg til state for `droneModels` (liste) og `selectedModelId` (valgt katalogmodell)
-2. Fetch `drone_models` fra Supabase når redigeringsmodus aktiveres (samme mønster som AddDroneDialog)
-3. Legg til en `handleModelSelect`-funksjon som fyller ut `formData.modell`, `formData.klasse`, `formData.vekt`, `formData.payload` og `formData.merknader` fra den valgte katalogmodellen
-4. I redigeringsskjemaet: legg til en Select-dropdown **over** modell-feltet med label «Velg fra katalog» der brukeren kan velge en modell eller «Manuell» for å skrive inn selv. Modell-inputfeltet beholdes og oppdateres automatisk, men er fortsatt redigerbart
+1. **Hent brukernavn via join**: Endre select fra `"*"` til `"*, profiles!pending_dji_logs_user_id_fkey(full_name)"` (eller tilsvarende join mot profiles-tabellen) for å hente navnet på brukeren som eier loggen.
 
-### Teknisk detalj
+2. **Vis eierens navn**: Legg til brukerens navn i hver logg-rad, under dato/varighet-linjen, f.eks. `· Ola Nordmann`.
 
-Gjenbruker samme `DroneModel`-interface og `handleModelSelect`-logikk som allerede finnes i `AddDroneDialog.tsx`. Ingen databaseendringer nødvendig — `drone_models`-tabellen eksisterer allerede.
+3. **«Mine logger»-toggle**: Legg til en Switch-komponent i headeren (ved siden av badge) med label «Kun mine». Filteret bruker `useAuth().user.id` til å sammenligne med `log.user_id`. Togglenstilstand lagres i komponentens state.
+
+4. **Oppdater PendingDjiLog-interfacet**: Legg til `user_id` og profildata i typen.
+
+### Ingen databaseendringer
+Tabellen `pending_dji_logs` har allerede `user_id`-kolonnen. Det trengs kun en frontend-endring.
 
