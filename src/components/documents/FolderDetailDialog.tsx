@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Trash2, Plus, FileText, Pencil, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
+import { Document } from "@/types";
 
 interface FolderDetailDialogProps {
   folder: { id: string; name: string } | null;
@@ -33,6 +35,46 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [searchPicker, setSearchPicker] = useState("");
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [docDetailOpen, setDocDetailOpen] = useState(false);
+
+  const getDocumentStatus = (doc: { gyldig_til?: string | null; varsel_dager_for_utløp?: number | null }): string => {
+    if (!doc.gyldig_til) return "Grønn";
+    const today = new Date();
+    const expiryDate = new Date(doc.gyldig_til);
+    const daysUntil = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntil < 0) return "Rød";
+    if (daysUntil <= (doc.varsel_dager_for_utløp || 30)) return "Gul";
+    return "Grønn";
+  };
+
+  const handleDocClick = async (documentId: string) => {
+    const { data } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("id", documentId)
+      .single();
+    if (data) {
+      const doc: Document = {
+        id: data.id,
+        tittel: data.tittel,
+        kategori: data.kategori as any,
+        versjon: data.versjon || "1.0",
+        varsel_dager_for_utløp: data.varsel_dager_for_utløp || 30,
+        synlighet: (data.global_visibility ? "Alle" : "Internt") as any,
+        sist_endret: new Date(data.oppdatert_dato || data.opprettet_dato || new Date()),
+        gyldig_til: data.gyldig_til ? new Date(data.gyldig_til) : undefined,
+        utsteder: data.beskrivelse ? undefined : undefined,
+        fil_url: data.fil_url || undefined,
+        fil_navn: data.fil_navn || undefined,
+        nettside_url: data.nettside_url || undefined,
+        beskrivelse: data.beskrivelse,
+        merknader: undefined,
+      };
+      setSelectedDocument(doc);
+      setDocDetailOpen(true);
+    }
+  };
 
   const loadFolderDocs = async () => {
     if (!folder) return;
@@ -133,6 +175,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   if (!folder) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
@@ -196,11 +239,11 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               ) : (
                 <div className="space-y-1">
                   {folderDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent/10">
+                    <div key={doc.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm truncate flex-1">{doc.tittel}</span>
                       {isAdmin && (
-                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeDoc(doc.id)}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -223,5 +266,13 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         )}
       </DialogContent>
     </Dialog>
+
+    <DocumentDetailDialog
+      open={docDetailOpen}
+      onOpenChange={setDocDetailOpen}
+      document={selectedDocument}
+      status={selectedDocument ? getDocumentStatus(selectedDocument as any) : "Grønn"}
+    />
+    </>
   );
 };
