@@ -441,7 +441,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('AuthContext: Both profile+role queries failed, using cached profile');
         applyCachedProfile(userId);
         // Still fire subscription check in background
-        fireSubscriptionCheck(userId, myVersion);
+        fireSubscriptionCheck(userId, myVersion, profileData.stripeExempt, profileData.companyId);
         return;
       }
 
@@ -528,7 +528,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthInitialized(true);
 
       // === PHASE 2: Slow subscription check (non-blocking) ===
-      fireSubscriptionCheck(userId, myVersion);
+      fireSubscriptionCheck(userId, myVersion, profileData.stripeExempt, profileData.companyId);
 
       // Auto-provision DroneLog API key if needed
       if (
@@ -568,9 +568,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
    * table (populated by stripe-webhook + check-subscription). Only if that cache
    * is stale (>10 min) or missing do we call the Edge Function (which hits Stripe).
    */
-  const fireSubscriptionCheck = async (userId: string, myVersion: number) => {
+  const fireSubscriptionCheck = async (userId: string, myVersion: number, stripeExemptVal?: boolean, effectiveCompanyId?: string | null) => {
+    // Use passed values (fresh from caller) or fall back to current state
+    const exemptFlag = stripeExemptVal ?? stripeExempt;
+    const resolvedCompanyId = effectiveCompanyId !== undefined ? effectiveCompanyId : companyId;
+
     // --- FAST PATH: stripe_exempt companies never need Stripe ---
-    if (stripeExempt) {
+    if (exemptFlag) {
       console.log('AuthContext: stripe_exempt — skipping subscription check');
       setSubscribed(true);
       setSubscriptionLoading(false);
@@ -579,14 +583,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // --- Try reading cached subscription from Supabase ---
     try {
-      const cachedCompanyId = companyId; // current state, already set in Phase 1
-      if (cachedCompanyId) {
+      if (resolvedCompanyId) {
         // Resolve parent company for subscription lookup
-        let subCompanyId = cachedCompanyId;
+        let subCompanyId = resolvedCompanyId;
         const { data: comp } = await supabase
           .from('companies')
           .select('parent_company_id')
-          .eq('id', cachedCompanyId)
+          .eq('id', resolvedCompanyId)
           .single();
         if (myVersion !== refreshVersionRef.current) return;
         if (comp?.parent_company_id) {
