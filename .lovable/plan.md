@@ -1,29 +1,22 @@
 
 
-## Tydelig godkjenningsstatus i AI SORA-resultatet
+## Fix: SORA terskel 0 ignoreres — default til 7
 
-### Hva bygges
-Etter at AI SORA-vurderingen er fullført, skal resultatet tydelig vise om oppdraget ble **automatisk godkjent**, **krever manuell godkjenning**, eller om SORA-basert godkjenning ikke er aktivert. Informasjonen vises som et fremtredende banner i `RiskScoreCard`, rett under eventuell HARD STOP-boks.
+### Problem
+I `ai-risk-assessment/index.ts` linje 1187:
+```typescript
+const threshold = Number(soraApprovalConfig.sora_approval_threshold) || 7.0;
+```
+`Number(0)` er `0`, som er falsy i JavaScript. `||`-operatoren faller gjennom til `7.0`. Så terskel 0 behandles som 7.
 
-### Tekniske endringer
+### Fix
+Bytt `||` til `??` (nullish coalescing) som kun faller gjennom ved `null`/`undefined`:
+```typescript
+const threshold = Number(soraApprovalConfig.sora_approval_threshold) ?? 7.0;
+```
 
-**1. Edge function — returnere godkjenningsdetaljer (`ai-risk-assessment/index.ts`)**
-Utvid response-objektet med mer kontekst enn bare `autoApproved`:
-- `approvalStatus`: `'approved'` | `'not_approved'` | `null` (null = ikke aktivert)
-- `approvalReason`: kort tekst som forklarer hvorfor (f.eks. "Score 8.2 >= terskel 7.0", "Hardstop utløst", "Score 5.1 < terskel 7.0")
-- `approvalThreshold`: den konfigurerte terskelverdien
+Samme sjekk bør gjøres for `overallScore` på linjen over — `?? 0` i stedet for eventuell `|| 0`.
 
-**2. RiskScoreCard — nytt banner (`RiskScoreCard.tsx`)**
-Legg til nye props: `approvalStatus`, `approvalReason`, `approvalThreshold`.
-Vis et banner mellom HARD STOP-boksen og Mission Overview:
-- **Godkjent**: Grønn boks med CheckCircle-ikon: "Oppdraget ble automatisk godkjent — AI-score [X] oppfyller terskel [Y]"
-- **Krever godkjenning**: Oransje/gul boks med AlertTriangle: "Oppdraget krever manuell godkjenning — [grunn]"
-
-**3. RiskAssessmentDialog — sende data videre**
-Lagre `approvalStatus`/`approvalReason`/`approvalThreshold` fra response i `currentAssessment` og pass dem til `RiskScoreCard`.
-
-### Filer som endres
-1. `supabase/functions/ai-risk-assessment/index.ts` — utvid response med approvalStatus/reason/threshold
-2. `src/components/dashboard/RiskScoreCard.tsx` — nytt godkjenningsbanner
-3. `src/components/dashboard/RiskAssessmentDialog.tsx` — pass nye props
+### Fil som endres
+- `supabase/functions/ai-risk-assessment/index.ts` — én linje, bytt `||` til `??`
 
