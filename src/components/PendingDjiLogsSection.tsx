@@ -27,7 +27,7 @@ interface PendingDjiLog {
   created_at: string;
   parsed_result: any;
   user_id: string | null;
-  profiles: { full_name: string | null } | null;
+  ownerName?: string | null;
 }
 
 interface PendingDjiLogsSectionProps {
