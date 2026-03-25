@@ -87,24 +87,24 @@ export const ADDONS: AddonConfig[] = [
     id: 'sora_admin',
     name: 'SORA Admin',
     description: 'Avansert SORA risikoanalyse for droneoperasjoner',
-    price: 99,
-    priceId: 'price_1TB8tURrLM8xOFbk2fX9o05U',
+    price: 199,
+    priceId: 'price_1TBuBDRrLM8xOFbk8RA3Ypgs',
     productId: 'prod_U9RnvT5JMaB4V5',
   },
   {
     id: 'dji',
     name: 'DJI-integrasjon',
     description: 'Automatisk import av DJI-flightlogs',
-    price: 99,
-    priceId: 'price_1TB9IBRrLM8xOFbkijdJUsL7',
+    price: 199,
+    priceId: 'price_1TBuAiRrLM8xOFbkBbf8sL2H',
     productId: 'prod_U9SCO6vjcZPjBb',
   },
   {
     id: 'eccairs',
     name: 'ECCAIRS-integrasjon',
     description: 'ECCAIRS E2-rapportering til Luftfartstilsynet',
-    price: 99,
-    priceId: 'price_1TB9JCRrLM8xOFbklvsgEyiV',
+    price: 199,
+    priceId: 'price_1TBuAiRrLM8xOFbkBbf8sL2H',
     productId: 'prod_U9SD6lFn3EcEYa',
   },
 ];
@@ -128,6 +128,9 @@ export const PRICE_TO_PLAN: Record<string, PlanId> = {
 };
 
 export const ADDON_PRICE_IDS: Record<string, AddonId> = {
+  'price_1TBuBDRrLM8xOFbk8RA3Ypgs': 'sora_admin',
+  'price_1TBuAiRrLM8xOFbkBbf8sL2H': 'dji',
+  // Legacy
   'price_1TB8tURrLM8xOFbk2fX9o05U': 'sora_admin',
   'price_1TB9IBRrLM8xOFbkijdJUsL7': 'dji',
   'price_1TB9JCRrLM8xOFbklvsgEyiV': 'eccairs',

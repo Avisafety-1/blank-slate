@@ -122,7 +122,7 @@ const Priser = () => {
         {/* Addons */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Tilleggsmoduler – 99 NOK/mnd per modul</CardTitle>
+            <CardTitle className="text-lg"><CardTitle className="text-lg">Tilleggsmoduler – 199 NOK/mnd per modul</CardTitle></CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
