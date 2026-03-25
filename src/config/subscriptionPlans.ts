@@ -104,7 +104,7 @@ export const ADDONS: AddonConfig[] = [
     name: 'ECCAIRS-integrasjon',
     description: 'ECCAIRS E2-rapportering til Luftfartstilsynet',
     price: 199,
-    priceId: 'price_1TBuAiRrLM8xOFbkBbf8sL2H',
+    priceId: 'price_1TBu9ARrLM8xOFbkj393UO2H',
     productId: 'prod_U9SD6lFn3EcEYa',
   },
 ];
