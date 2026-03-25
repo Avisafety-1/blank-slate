@@ -1,53 +1,31 @@
 
 
-## Plan: Teknisk ansvarlig for droner
+## Plan: Synkroniser vedlikeholdsvarsel med statusovergang grønn → gul
 
-### Oversikt
-Legg til rollen "Teknisk ansvarlig" som kan tildeles personell, og knytt en teknisk ansvarlig til hver drone. Kun denne personen kan utføre inspeksjon/vedlikehold og motta e-postvarsler.
+### Problem
+I dag sender `check-maintenance-expiry` e-post basert på brukerens `inspection_reminder_days`-innstilling, som er uavhengig av statusberegningen. Brukeren ønsker at varselet sendes nøyaktig når dronen skifter fra grønn til gul status — altså når `varsel_dager`, `varsel_timer` eller `varsel_oppdrag` trigges.
 
-### 1. Database-migrasjon
+### Løsning
 
-**Ny kolonne på `drones`-tabellen:**
-- `technical_responsible_id UUID REFERENCES profiles(id) ON DELETE SET NULL` — peker til personen som er teknisk ansvarlig for dronen
+**1. Ny kolonne på `drones`-tabellen**
+- `maintenance_notification_sent BOOLEAN DEFAULT false` — flagg som indikerer at varsel allerede er sendt for nåværende vedlikeholdsperiode
+- Tilbakestilles til `false` når inspeksjon utføres (i `performDroneInspection`)
 
-**Ny kolonne på `profiles`-tabellen:**
-- `is_technical_responsible BOOLEAN DEFAULT false` — markerer at personen har rollen "Teknisk ansvarlig"
+**2. Oppdater `check-maintenance-expiry` edge-funksjonen**
+- Hent alle aktive droner med utvidet select: `varsel_dager, varsel_timer, varsel_oppdrag, inspection_interval_hours, inspection_interval_missions, hours_at_last_inspection, flyvetimer, missions_at_last_inspection, maintenance_notification_sent`
+- For hver drone: beregn status med samme logikk som `calculateDroneInspectionStatus` (dato, timer, oppdrag)
+- For oppdragsbasert status: hent `flight_logs` og tell unike `mission_id` siden siste inspeksjon
+- Kun send varsel hvis:
+  - Kalkulert status er "Gul" eller "Rød" **OG**
+  - `maintenance_notification_sent` er `false`
+- Etter sending: sett `maintenance_notification_sent = true` på dronen
+- Fjern den gamle `inspection_reminder_days`-baserte logikken for droner
 
-### 2. DroneDetailDialog — Redigeringsmodus
-
-Legg til et nytt felt i redigeringsvisningen:
-- **Dropdown**: "Teknisk ansvarlig" — viser en `SearchablePersonSelect` med alle profiler i avdelingen (`company_id`) som har `is_technical_responsible = true`
-- Lagres som `technical_responsible_id` på dronen
-- I visningsmodusen vises navnet på den teknisk ansvarlige
-
-### 3. DroneDetailDialog — Inspeksjonstilgangskontroll
-
-Endre "Utfør inspeksjon"-knappen:
-- Hvis dronen har en `technical_responsible_id` satt, og innlogget bruker (`user.id`) ikke matcher denne, deaktiver knappen og vis en tooltip/tekst: "Kun teknisk ansvarlig kan utføre inspeksjon"
-- Gjelder for både manuell inspeksjon og sjekkliste-inspeksjon
-
-### 4. Kalender-inspeksjon
-
-Oppdater inspeksjons-logikken i `Kalender.tsx`:
-- Sjekk `technical_responsible_id` mot innlogget bruker før inspeksjon tillates
-
-### 5. ProfileDialog / Ressurser — Rollen "Teknisk ansvarlig"
-
-Legg til en toggle/checkbox i `PersonCompetencyDialog` eller `ProfileDialog` (admin-redigerbart) for å sette `is_technical_responsible = true` på en profil. Kun administratorer kan endre dette feltet.
-
-I Ressurser-siden: vis "Teknisk ansvarlig" som en badge på personellkort der det er satt.
-
-### 6. Vedlikeholdsvarsler — E-postfiltrering
-
-Oppdater `check-maintenance-expiry` edge-funksjonen:
-- For droner med `technical_responsible_id` satt: send kun vedlikeholdsvarsel til denne personen (ikke til alle administratorer i selskapet)
-- For droner uten teknisk ansvarlig: behold eksisterende oppførsel (varsel til alle med notifikasjoner aktivert)
+**3. Oppdater `performDroneInspection` i `src/lib/droneInspection.ts`**
+- Legg til `maintenance_notification_sent: false` i update-kallet, slik at flagget nullstilles etter inspeksjon
 
 ### Filer som endres
-- Ny migrasjon (1 SQL-fil)
-- `src/components/resources/DroneDetailDialog.tsx` — dropdown + tilgangskontroll
-- `src/pages/Kalender.tsx` — tilgangskontroll for inspeksjon
-- `src/components/resources/PersonCompetencyDialog.tsx` — toggle for rollen
-- `src/pages/Resources.tsx` — badge for teknisk ansvarlig
-- `supabase/functions/check-maintenance-expiry/index.ts` — filtrert varselruting
+- Ny migrasjon (1 SQL-fil) — ny kolonne `maintenance_notification_sent`
+- `supabase/functions/check-maintenance-expiry/index.ts` — ny statusberegningslogikk
+- `src/lib/droneInspection.ts` — tilbakestill flagg ved inspeksjon
 
