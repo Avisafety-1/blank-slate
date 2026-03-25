@@ -68,6 +68,7 @@ interface Profile {
   incident_responsible_company_ids?: string[] | null;
   company_id?: string | null;
   companies?: { navn: string } | null;
+  is_technical_responsible?: boolean;
 }
 
 interface ChildCompanyOption {
@@ -512,6 +513,25 @@ const Admin = () => {
       toast.error("Kunne ikke oppdatere innstilling");
     }
   };
+
+  const toggleTechResponsible = async (userId: string, currentValue: boolean) => {
+    try {
+      const newValue = !currentValue;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_technical_responsible: newValue } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, is_technical_responsible: newValue } : p
+      ));
+      toast.success(newValue ? 'Satt som teknisk ansvarlig' : 'Teknisk ansvarlig-rettighet fjernet');
+    } catch (error) {
+      console.error("Error toggling tech responsible:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
 
   const changeDepartment = async (userId: string, newCompanyId: string) => {
     try {
@@ -1077,6 +1097,15 @@ const Admin = () => {
                                       <Switch
                                         checked={profile.can_be_incident_responsible === true}
                                         onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
+                                        className="scale-75"
+                                        disabled={!canManageRoles}
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
+                                      <Switch
+                                        checked={profile.is_technical_responsible === true}
+                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
                                         className="scale-75"
                                         disabled={!canManageRoles}
                                       />
