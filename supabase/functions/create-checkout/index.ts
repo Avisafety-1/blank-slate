@@ -14,9 +14,9 @@ const PLAN_PRICES: Record<string, string> = {
 };
 
 const ADDON_PRICES: Record<string, string> = {
-  sora_admin: "price_1TB8tURrLM8xOFbk2fX9o05U",
-  dji: "price_1TB9IBRrLM8xOFbkijdJUsL7",
-  eccairs: "price_1TB9JCRrLM8xOFbklvsgEyiV",
+  sora_admin: "price_1TBuBDRrLM8xOFbk8RA3Ypgs",
+  dji: "price_1TBuAiRrLM8xOFbkBbf8sL2H",
+  eccairs: "price_1TBuAiRrLM8xOFbkBbf8sL2H",
 };
 
 const logStep = (step: string, details?: any) => {

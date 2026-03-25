@@ -128,6 +128,9 @@ export const PRICE_TO_PLAN: Record<string, PlanId> = {
 };
 
 export const ADDON_PRICE_IDS: Record<string, AddonId> = {
+  'price_1TBuBDRrLM8xOFbk8RA3Ypgs': 'sora_admin',
+  'price_1TBuAiRrLM8xOFbkBbf8sL2H': 'dji',
+  // Legacy
   'price_1TB8tURrLM8xOFbk2fX9o05U': 'sora_admin',
   'price_1TB9IBRrLM8xOFbkijdJUsL7': 'dji',
   'price_1TB9JCRrLM8xOFbklvsgEyiV': 'eccairs',

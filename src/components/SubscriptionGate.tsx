@@ -129,7 +129,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
                 onCheckedChange={() => toggleAddon(addon.id)}
               />
               <div>
-                <p className="font-medium text-xs">{addon.name} – 99 NOK/mnd</p>
+                <p className="font-medium text-xs"><p className="font-medium text-xs">{addon.name} – {addon.price} NOK/mnd</p></p>
                 <p className="text-xs text-muted-foreground">{addon.description}</p>
               </div>
             </label>
