@@ -189,6 +189,8 @@ const Documents = () => {
               onSortChange={setSortOption}
             />
 
+            <FolderGrid isAdmin={isAdmin} companyId={companyId} />
+
             <DocumentsList
               documents={filteredDocuments || []}
               isLoading={isLoading}
