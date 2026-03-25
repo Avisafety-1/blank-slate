@@ -500,6 +500,9 @@ export type Database = {
           require_backup_battery: boolean
           require_civil_twilight: boolean
           require_observer: boolean
+          sora_approval_threshold: number
+          sora_based_approval: boolean
+          sora_hardstop_requires_approval: boolean
           updated_at: string
         }
         Insert: {
@@ -522,6 +525,9 @@ export type Database = {
           require_backup_battery?: boolean
           require_civil_twilight?: boolean
           require_observer?: boolean
+          sora_approval_threshold?: number
+          sora_based_approval?: boolean
+          sora_hardstop_requires_approval?: boolean
           updated_at?: string
         }
         Update: {
@@ -544,6 +550,9 @@ export type Database = {
           require_backup_battery?: boolean
           require_civil_twilight?: boolean
           require_observer?: boolean
+          sora_approval_threshold?: number
+          sora_based_approval?: boolean
+          sora_hardstop_requires_approval?: boolean
           updated_at?: string
         }
         Relationships: [

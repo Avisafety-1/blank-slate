@@ -62,6 +62,9 @@ interface SoraConfig {
   operative_restrictions: string;
   policy_notes: string;
   linked_document_ids: string[];
+  sora_based_approval: boolean;
+  sora_approval_threshold: number;
+  sora_hardstop_requires_approval: boolean;
 }
 
 const DEFAULT_CONFIG: SoraConfig = {
@@ -81,6 +84,9 @@ const DEFAULT_CONFIG: SoraConfig = {
   operative_restrictions: "",
   policy_notes: "",
   linked_document_ids: [],
+  sora_based_approval: false,
+  sora_approval_threshold: 7.0,
+  sora_hardstop_requires_approval: true,
 };
 
 export const CompanySoraConfigSection = () => {
@@ -96,6 +102,7 @@ export const CompanySoraConfigSection = () => {
   const [isChild, setIsChild] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  const [approvalOpen, setApprovalOpen] = useState(true);
   const [hardstopOpen, setHardstopOpen] = useState(true);
   const [restrictionsOpen, setRestrictionsOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -125,6 +132,9 @@ export const CompanySoraConfigSection = () => {
       operative_restrictions: d.operative_restrictions || "",
       policy_notes: d.policy_notes || "",
       linked_document_ids: (d.linked_document_ids as string[]) || [],
+      sora_based_approval: Boolean(d.sora_based_approval),
+      sora_approval_threshold: d.sora_approval_threshold != null ? Number(d.sora_approval_threshold) : DEFAULT_CONFIG.sora_approval_threshold,
+      sora_hardstop_requires_approval: d.sora_hardstop_requires_approval != null ? Boolean(d.sora_hardstop_requires_approval) : DEFAULT_CONFIG.sora_hardstop_requires_approval,
     });
   };
 
@@ -279,6 +289,9 @@ export const CompanySoraConfigSection = () => {
             operative_restrictions: config.operative_restrictions || null,
             policy_notes: config.policy_notes || null,
             linked_document_ids: config.linked_document_ids,
+            sora_based_approval: config.sora_based_approval,
+            sora_approval_threshold: config.sora_approval_threshold,
+            sora_hardstop_requires_approval: config.sora_hardstop_requires_approval,
           },
           { onConflict: "company_id" }
         );
@@ -386,6 +399,102 @@ export const CompanySoraConfigSection = () => {
           </div>
         </div>
       )}
+
+      {/* Kort 0: SORA-basert godkjenning */}
+      <Collapsible open={approvalOpen} onOpenChange={setApprovalOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    Godkjenning basert på SORA
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    Automatisk godkjenning av oppdrag basert på AI SORA-resultater
+                  </CardDescription>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${approvalOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="text-sm font-medium">Godkjenning av oppdrag basert på SORA</p>
+                    <p className="text-xs text-muted-foreground">
+                      Når aktivert vil oppdrag automatisk godkjennes hvis AI SORA-score er over terskelen og ingen hardstop er utløst
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={config.sora_based_approval}
+                  onCheckedChange={(v) =>
+                    setConfig((p) => ({ ...p, sora_based_approval: v }))
+                  }
+                />
+              </div>
+
+              {config.sora_based_approval && (
+                <div className="space-y-6 pt-2 border-t border-border">
+                  {/* Threshold slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">
+                        AI SORA-terskel for automatisk godkjenning
+                      </Label>
+                      <Badge variant="outline" className="text-sm font-mono">
+                        {config.sora_approval_threshold.toFixed(1)}
+                      </Badge>
+                    </div>
+                    <Slider
+                      value={[config.sora_approval_threshold]}
+                      onValueChange={([v]) =>
+                        setConfig((p) => ({ ...p, sora_approval_threshold: v }))
+                      }
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>0 — Alltid godkjenning</span>
+                      <span>10 — Krever perfekt score</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Oppdrag med AI-score ≥ {config.sora_approval_threshold.toFixed(1)} godkjennes automatisk. Lavere score krever manuell godkjenning.
+                    </p>
+                  </div>
+
+                  {/* Hardstop toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <div>
+                        <p className="text-sm font-medium">Krev godkjenning ved hardstop</p>
+                        <p className="text-xs text-muted-foreground">
+                          Uansett score — hvis en hardstop utløses kreves alltid manuell godkjenning
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={config.sora_hardstop_requires_approval}
+                      onCheckedChange={(v) =>
+                        setConfig((p) => ({ ...p, sora_hardstop_requires_approval: v }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Kort 1: Hardstop-grenser */}
       <Collapsible open={hardstopOpen} onOpenChange={setHardstopOpen}>
