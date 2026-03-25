@@ -321,6 +321,17 @@ const Index = () => {
     );
   }
 
+  if (!isApproved && !isOfflineWithCachedSession && !authInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <img src="/avisafe-logo-text.png" alt="AviSafe" className="h-16 w-auto mx-auto mb-4 animate-pulse" />
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
   if (!isApproved && !isOfflineWithCachedSession && !authRefreshing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
