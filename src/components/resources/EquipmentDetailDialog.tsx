@@ -14,6 +14,8 @@ import { useState, useEffect } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
+import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
@@ -62,6 +64,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const { user, companyId, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const { checklists } = useChecklists();
+  const deptVis = useDepartmentVisibility("equipment", initialEquipment?.id, companyId || undefined, open);
   const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -296,6 +299,9 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         .eq("id", equipment.id);
 
       if (error) throw error;
+
+      // Save department visibility
+      await deptVis.saveVisibility();
 
       toast.success("Utstyr oppdatert");
       setIsEditing(false);
@@ -905,6 +911,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             </>
           )}
         </div>
+
+        {isEditing && isAdmin && deptVis.hasDepartments && (
+          <div className="border-t border-border pt-3">
+            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <DepartmentChecklist
+              departments={deptVis.childDepartments}
+              selectedIds={deptVis.selectedDeptIds}
+              onToggle={deptVis.handleToggle}
+              allSelected={deptVis.allSelected}
+              onToggleAll={deptVis.handleToggleAll}
+              allLabel="Alle avdelinger"
+            />
+          </div>
+        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {isAdmin && !isEditing && (

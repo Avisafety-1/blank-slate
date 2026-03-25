@@ -829,6 +829,42 @@ export type Database = {
           },
         ]
       }
+      drone_department_visibility: {
+        Row: {
+          company_id: string
+          created_at: string
+          drone_id: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          drone_id: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          drone_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_department_visibility_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_department_visibility_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drone_documents: {
         Row: {
           company_id: string
@@ -1790,6 +1826,42 @@ export type Database = {
             columns: ["sjekkliste_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_department_visibility: {
+        Row: {
+          company_id: string
+          created_at: string
+          equipment_id: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          equipment_id: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          equipment_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_department_visibility_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_department_visibility_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
         ]

@@ -22,6 +22,8 @@ import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialo
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
+import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
@@ -77,6 +79,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const queryClient = useQueryClient();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+  const deptVis = useDepartmentVisibility("drone", initialDrone?.id, companyId || undefined, open);
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -680,6 +683,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         .eq("id", drone.id);
 
       if (error) throw error;
+
+      // Save department visibility
+      await deptVis.saveVisibility();
 
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
@@ -1729,6 +1735,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </>
           )}
         </div>
+
+        {isEditing && isAdmin && deptVis.hasDepartments && (
+          <div className="border-t border-border pt-3">
+            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <DepartmentChecklist
+              departments={deptVis.childDepartments}
+              selectedIds={deptVis.selectedDeptIds}
+              onToggle={deptVis.handleToggle}
+              allSelected={deptVis.allSelected}
+              onToggleAll={deptVis.handleToggleAll}
+              allLabel="Alle avdelinger"
+            />
+          </div>
+        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {isAdmin && !isEditing && (
