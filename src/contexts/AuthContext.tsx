@@ -585,11 +585,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (resolvedCompanyId) {
         // Resolve parent company for subscription lookup
-        let subCompanyId = cachedCompanyId;
+        let subCompanyId = resolvedCompanyId;
         const { data: comp } = await supabase
           .from('companies')
           .select('parent_company_id')
-          .eq('id', cachedCompanyId)
+          .eq('id', resolvedCompanyId)
           .single();
         if (myVersion !== refreshVersionRef.current) return;
         if (comp?.parent_company_id) {
