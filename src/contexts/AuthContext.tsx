@@ -528,7 +528,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthInitialized(true);
 
       // === PHASE 2: Slow subscription check (non-blocking) ===
-      fireSubscriptionCheck(userId, myVersion);
+      fireSubscriptionCheck(userId, myVersion, profileData.stripeExempt, profileData.companyId);
 
       // Auto-provision DroneLog API key if needed
       if (
