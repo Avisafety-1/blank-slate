@@ -1153,6 +1153,40 @@ Returner en JSON-respons med denne strukturen:
       // Still return the analysis even if save fails
     }
 
+    // 11. SORA-based auto-approval
+    let autoApproved = false;
+    try {
+      const { data: soraApprovalConfig } = await supabase
+        .from('company_sora_config')
+        .select('sora_based_approval, sora_approval_threshold, sora_hardstop_requires_approval')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (soraApprovalConfig?.sora_based_approval && missionId) {
+        const overallScore = aiAnalysis.overall_score ?? 0;
+        const hardStopTriggered = aiAnalysis.hard_stop_triggered === true;
+        const threshold = Number(soraApprovalConfig.sora_approval_threshold) || 7.0;
+        const hardstopRequiresApproval = soraApprovalConfig.sora_hardstop_requires_approval !== false;
+
+        if (hardStopTriggered && hardstopRequiresApproval) {
+          // Hardstop → requires manual approval
+          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
+          console.log('SORA auto-approval: DENIED (hardstop triggered)');
+        } else if (overallScore >= threshold && !hardStopTriggered) {
+          // Score meets threshold and no hardstop → auto-approve
+          await supabase.from('missions').update({ approval_status: 'approved' }).eq('id', missionId);
+          autoApproved = true;
+          console.log('SORA auto-approval: APPROVED (score', overallScore, '>=', threshold, ')');
+        } else {
+          // Score below threshold → requires manual approval
+          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
+          console.log('SORA auto-approval: DENIED (score', overallScore, '<', threshold, ')');
+        }
+      }
+    } catch (approvalErr) {
+      console.error('SORA auto-approval error (non-blocking):', approvalErr);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       assessment: savedAssessment || {
@@ -1161,6 +1195,7 @@ Returner en JSON-respons med denne strukturen:
         airspace_warnings: airspaceWarnings,
       },
       aiAnalysis,
+      autoApproved,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

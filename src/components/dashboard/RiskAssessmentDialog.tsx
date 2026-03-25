@@ -462,7 +462,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       setCurrentAssessment(result.aiAnalysis);
       setCurrentAssessmentId(result.assessment?.id || null);
       setActiveTab('result');
-      toast.success(t('riskAssessment.completed', 'Risikovurdering fullført'));
+      if (result.autoApproved) {
+        toast.success('Oppdraget ble automatisk godkjent basert på SORA-vurderingen');
+      } else {
+        toast.success(t('riskAssessment.completed', 'Risikovurdering fullført'));
+      }
       loadPreviousAssessments();
     } catch (error) {
       console.error('Risk assessment error:', error);
