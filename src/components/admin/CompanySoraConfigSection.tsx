@@ -35,6 +35,7 @@ import {
   Clock,
   Users,
   Building2,
+  Sunrise,
 } from "lucide-react";
 
 interface Document {
@@ -55,6 +56,7 @@ interface SoraConfig {
   max_temp_c: number;
   allow_bvlos: boolean;
   allow_night_flight: boolean;
+  require_civil_twilight: boolean;
   max_pilot_inactivity_days: number | null;
   max_population_density_per_km2: number | null;
   operative_restrictions: string;
@@ -73,6 +75,7 @@ const DEFAULT_CONFIG: SoraConfig = {
   max_temp_c: 40,
   allow_bvlos: false,
   allow_night_flight: false,
+  require_civil_twilight: false,
   max_pilot_inactivity_days: null,
   max_population_density_per_km2: null,
   operative_restrictions: "",
@@ -116,6 +119,7 @@ export const CompanySoraConfigSection = () => {
       max_temp_c: d.max_temp_c != null ? Number(d.max_temp_c) : DEFAULT_CONFIG.max_temp_c,
       allow_bvlos: Boolean(d.allow_bvlos),
       allow_night_flight: Boolean(d.allow_night_flight),
+      require_civil_twilight: Boolean(d.require_civil_twilight),
       max_pilot_inactivity_days: d.max_pilot_inactivity_days != null ? Number(d.max_pilot_inactivity_days) : null,
       max_population_density_per_km2: d.max_population_density_per_km2 != null ? Number(d.max_population_density_per_km2) : null,
       operative_restrictions: d.operative_restrictions || "",
@@ -269,6 +273,7 @@ export const CompanySoraConfigSection = () => {
             max_temp_c: config.max_temp_c,
             allow_bvlos: config.allow_bvlos,
             allow_night_flight: config.allow_night_flight,
+            require_civil_twilight: config.require_civil_twilight,
             max_pilot_inactivity_days: config.max_pilot_inactivity_days,
             max_population_density_per_km2: config.max_population_density_per_km2,
             operative_restrictions: config.operative_restrictions || null,
@@ -580,6 +585,21 @@ export const CompanySoraConfigSection = () => {
                     checked={config.allow_night_flight}
                     onCheckedChange={(v) =>
                       setConfig((p) => ({ ...p, allow_night_flight: v }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sunrise className="h-4 w-4 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium">Krev sivil skumring</p>
+                      <p className="text-xs text-muted-foreground">Oppdrag må gjennomføres innenfor sivil skumring (dawn–dusk). HARD STOP hvis utenfor.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={config.require_civil_twilight}
+                    onCheckedChange={(v) =>
+                      setConfig((p) => ({ ...p, require_civil_twilight: v }))
                     }
                   />
                 </div>

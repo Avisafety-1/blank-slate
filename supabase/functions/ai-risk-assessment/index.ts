@@ -598,7 +598,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       try {
         const { data: soraConfigData } = await supabase
           .from('company_sora_config' as any)
-          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
+          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
           .eq('company_id', companyId)
           .maybeSingle();
 
@@ -615,7 +615,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           if (companyRow?.parent_company_id) {
             const { data: parentConfig } = await supabase
               .from('company_sora_config' as any)
-              .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
+              .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
               .eq('company_id', companyRow.parent_company_id)
               .maybeSingle();
             if (parentConfig) {
@@ -642,7 +642,37 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
-    // Use provided droneId or first assigned drone
+    // 9e. Calculate civil twilight if required
+    let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
+    if (companySoraConfig?.require_civil_twilight && lat && lng) {
+      try {
+        const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
+        const DEG_TO_RAD = Math.PI / 180;
+        const doy = Math.floor((missionDate.getTime() - new Date(missionDate.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+        const gamma = ((2 * Math.PI) / 365) * (doy - 1);
+        const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) - 0.014615 * Math.cos(2 * gamma) - 0.04089 * Math.sin(2 * gamma));
+        const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+        const zenith = 96;
+        const latRad = lat * DEG_TO_RAD;
+        const cosHA = (Math.cos(zenith * DEG_TO_RAD) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
+        if (cosHA >= -1 && cosHA <= 1) {
+          const ha = Math.acos(cosHA) * (180 / Math.PI);
+          const dawnMin = 720 - 4 * (lng + ha) - eqTime;
+          const duskMin = 720 - 4 * (lng - ha) - eqTime;
+          const base = new Date(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate());
+          const dawnUTC = new Date(base.getTime() + dawnMin * 60000);
+          const duskUTC = new Date(base.getTime() + duskMin * 60000);
+          const fmt = (d: Date) => d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' });
+          civilTwilightInfo = { dawn: fmt(dawnUTC), dusk: fmt(duskUTC) };
+          console.log(`Civil twilight calculated: dawn=${civilTwilightInfo.dawn}, dusk=${civilTwilightInfo.dusk}`);
+        } else {
+          console.log('Civil twilight: polar conditions, no twilight boundary');
+        }
+      } catch (e) {
+        console.error('Civil twilight calc error:', e);
+      }
+    }
+
     const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
     const droneData: any = effectiveDroneId 
       ? assignedDrones.find((d: any) => d.id === effectiveDroneId) || assignedDrones[0]
@@ -760,12 +790,14 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           maxTempC: companySoraConfig.max_temp_c ?? 40,
           allowBvlos: companySoraConfig.allow_bvlos ?? false,
           allowNightFlight: companySoraConfig.allow_night_flight ?? false,
+          requireCivilTwilight: companySoraConfig.require_civil_twilight ?? false,
           maxPilotInactivityDays: companySoraConfig.max_pilot_inactivity_days ?? null,
           maxPopulationDensityPerKm2: companySoraConfig.max_population_density_per_km2 ?? null,
         },
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
+        civilTwilight: civilTwilightInfo,
       } : null,
     };
 
@@ -806,6 +838,7 @@ ${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selska
 ${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
 ${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
 ${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.' : ''}
+${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? `SIVIL SKUMRING: Selskapet krever at flyging skjer innenfor sivil skumring. Dato: ${mission.tidspunkt || 'i dag'}. Civil twilight dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk} (norsk tid). Oppdrag planlagt utenfor dette tidsvinduet er HARD STOP. Vurder oppdragets planlagte tidspunkt (mission.scheduledTime) mot disse grensene.` : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
@@ -823,6 +856,7 @@ ${companySoraConfig.max_pilot_inactivity_days ? `- Maks pilotinaktivitet: ${comp
 ${companySoraConfig.max_population_density_per_km2 ? `- Maks befolkningstetthet: ${companySoraConfig.max_population_density_per_km2} pers/km²` : ''}
 - Krev reservebatteri: ${companySoraConfig.require_backup_battery ? 'JA — OBLIGATORISK' : 'Nei'}
 - Krev observatør: ${companySoraConfig.require_observer ? 'JA — OBLIGATORISK' : 'Nei'}
+${companySoraConfig.require_civil_twilight ? `- Krev sivil skumring: JA — HARD STOP utenfor dawn/dusk${civilTwilightInfo ? ` (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk})` : ''}` : ''}
 
 Hvis flyhøyde i oppdraget overstiger ${companySoraConfig.max_flight_altitude_m} m AGL, SKAL recommendation="no-go" og hard_stop_triggered=true returneres.
 
