@@ -790,12 +790,14 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           maxTempC: companySoraConfig.max_temp_c ?? 40,
           allowBvlos: companySoraConfig.allow_bvlos ?? false,
           allowNightFlight: companySoraConfig.allow_night_flight ?? false,
+          requireCivilTwilight: companySoraConfig.require_civil_twilight ?? false,
           maxPilotInactivityDays: companySoraConfig.max_pilot_inactivity_days ?? null,
           maxPopulationDensityPerKm2: companySoraConfig.max_population_density_per_km2 ?? null,
         },
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
+        civilTwilight: civilTwilightInfo,
       } : null,
     };
 
