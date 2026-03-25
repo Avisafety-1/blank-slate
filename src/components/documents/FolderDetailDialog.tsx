@@ -238,11 +238,11 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               ) : (
                 <div className="space-y-1">
                   {folderDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent/10">
+                    <div key={doc.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm truncate flex-1">{doc.tittel}</span>
                       {isAdmin && (
-                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeDoc(doc.id)}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       )}
