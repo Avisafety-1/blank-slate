@@ -10,7 +10,7 @@ const corsHeaders = {
 const ADDON_PRICES: Record<string, string> = {
   sora_admin: "price_1TBuBDRrLM8xOFbk8RA3Ypgs",
   dji: "price_1TBuAiRrLM8xOFbkBbf8sL2H",
-  eccairs: "price_1TBuAiRrLM8xOFbkBbf8sL2H",
+  eccairs: "price_1TBu9ARrLM8xOFbkj393UO2H",
 };
 
 const ADDON_PRICE_IDS: Record<string, string> = {
