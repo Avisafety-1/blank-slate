@@ -50,6 +50,7 @@ export async function performDroneInspection(params: {
       neste_inspeksjon: nextInspection,
       hours_at_last_inspection: currentFlyvetimer,
       missions_at_last_inspection: totalMissions ?? 0,
+      maintenance_notification_sent: false,
     })
     .eq("id", droneId);
 
