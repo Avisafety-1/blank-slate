@@ -376,8 +376,10 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         const kpRaw: string[][] = await kpRes.json();
         // Format: [["time_tag","Kp","observed","noaa_scale"], ["2026-03-25 00:00:00","2.33","observed","0"], ...]
         // Find highest Kp for mission date
-        // Use mission date if available, otherwise use today's date (UTC)
-        const missionDateStr = mission.dato || new Date().toISOString().substring(0, 10);
+        // Extract date from mission.tidspunkt (ISO timestamp) or fall back to today
+        const missionDateStr = mission.tidspunkt
+          ? new Date(mission.tidspunkt).toISOString().substring(0, 10)
+          : new Date().toISOString().substring(0, 10);
         let maxKp = 0;
         let matchedDate = false;
         for (let i = 1; i < kpRaw.length; i++) {
