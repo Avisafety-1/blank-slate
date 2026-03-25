@@ -907,6 +907,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
+              {/* Technical responsible display */}
+              {drone.technical_responsible_id && (
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Teknisk ansvarlig</p>
+                    <p className="text-sm">{technicalResponsibleName || "Laster..."}</p>
+                  </div>
+                </div>
+              )}
+
               {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days || drone.inspection_interval_hours || drone.inspection_interval_missions) && (
                 <div className="border-t border-border pt-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -914,24 +925,41 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       <Calendar className="w-4 h-4" />
                       Inspeksjon
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      onClick={() => {
-                        if (!user || !companyId) return;
-                        
-                        if (drone.sjekkliste_id) {
-                          setChecklistDialogOpen(true);
-                          return;
-                        }
-                        
-                        setConfirmInspectionOpen(true);
-                      }}
-                    >
-                      <Wrench className="w-4 h-4 mr-1" />
-                      Utfør inspeksjon
-                    </Button>
+                    {(() => {
+                      const isTechRestricted = drone.technical_responsible_id && user?.id !== drone.technical_responsible_id;
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-full sm:w-auto">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                  disabled={!!isTechRestricted}
+                                  onClick={() => {
+                                    if (!user || !companyId) return;
+                                    if (drone.sjekkliste_id) {
+                                      setChecklistDialogOpen(true);
+                                      return;
+                                    }
+                                    setConfirmInspectionOpen(true);
+                                  }}
+                                >
+                                  <Wrench className="w-4 h-4 mr-1" />
+                                  Utfør inspeksjon
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isTechRestricted && (
+                              <TooltipContent>
+                                <p>Kun teknisk ansvarlig ({technicalResponsibleName}) kan utføre inspeksjon</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })()}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {drone.sist_inspeksjon && (
