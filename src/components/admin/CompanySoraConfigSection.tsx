@@ -132,6 +132,9 @@ export const CompanySoraConfigSection = () => {
       operative_restrictions: d.operative_restrictions || "",
       policy_notes: d.policy_notes || "",
       linked_document_ids: (d.linked_document_ids as string[]) || [],
+      sora_based_approval: Boolean(d.sora_based_approval),
+      sora_approval_threshold: d.sora_approval_threshold != null ? Number(d.sora_approval_threshold) : DEFAULT_CONFIG.sora_approval_threshold,
+      sora_hardstop_requires_approval: d.sora_hardstop_requires_approval != null ? Boolean(d.sora_hardstop_requires_approval) : DEFAULT_CONFIG.sora_hardstop_requires_approval,
     });
   };
 
