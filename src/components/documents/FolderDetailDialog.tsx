@@ -175,6 +175,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   if (!folder) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
