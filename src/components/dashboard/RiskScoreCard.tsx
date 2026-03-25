@@ -130,6 +130,38 @@ export const RiskScoreCard = ({
         </div>
       )}
 
+      {/* Approval Status Banner */}
+      {approvalStatus === 'approved' && (
+        <div className="p-4 rounded-lg border-2 border-green-500 bg-green-500/10">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-green-700 dark:text-green-300">
+                {t('riskAssessment.autoApproved', 'Oppdraget ble automatisk godkjent')}
+              </h3>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                {approvalReason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {approvalStatus === 'not_approved' && (
+        <div className="p-4 rounded-lg border-2 border-yellow-500 bg-yellow-500/10">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-yellow-700 dark:text-yellow-300">
+                {t('riskAssessment.requiresApproval', 'Oppdraget krever manuell godkjenning')}
+              </h3>
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                {approvalReason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mission Overview */}
       {missionOverview && (
         <div className="p-3 rounded-lg bg-muted/50 border overflow-hidden">

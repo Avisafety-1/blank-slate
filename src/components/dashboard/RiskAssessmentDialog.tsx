@@ -805,6 +805,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       onCategoryCommentChange={(category, comment) => 
                         setCategoryComments(prev => ({ ...prev, [category]: comment }))
                       }
+                      approvalStatus={currentAssessment._approvalStatus}
+                      approvalReason={currentAssessment._approvalReason}
+                      approvalThreshold={currentAssessment._approvalThreshold}
                     />
 
                     {/* Save comments button */}
