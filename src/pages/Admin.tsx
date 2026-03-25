@@ -514,6 +514,25 @@ const Admin = () => {
     }
   };
 
+  const toggleTechResponsible = async (userId: string, currentValue: boolean) => {
+    try {
+      const newValue = !currentValue;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_technical_responsible: newValue } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, is_technical_responsible: newValue } : p
+      ));
+      toast.success(newValue ? 'Satt som teknisk ansvarlig' : 'Teknisk ansvarlig-rettighet fjernet');
+    } catch (error) {
+      console.error("Error toggling tech responsible:", error);
+      toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+
   const changeDepartment = async (userId: string, newCompanyId: string) => {
     try {
       const { error } = await supabase
