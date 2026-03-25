@@ -32,6 +32,7 @@ interface Person {
   id: string;
   full_name: string;
   personnel_competencies?: Competency[];
+  is_technical_responsible?: boolean;
 }
 
 interface PersonCompetencyDialogProps {
