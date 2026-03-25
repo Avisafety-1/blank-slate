@@ -414,23 +414,43 @@ Deno.serve(async (req) => {
       const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
       console.log(`Advisory AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
-      // Dynamic callsign: company name + sequential number
+      // Dynamic callsign: use parent company name if child, else own name
       let callSign = 'avisafe01';
       try {
         const { data: company } = await supabase
           .from('companies')
-          .select('navn')
+          .select('navn, parent_company_id')
           .eq('id', mission.company_id)
           .single();
 
-        const companyName = company?.navn || 'avisafe';
+        let companyName = company?.navn || 'avisafe';
+
+        // If this is a child company, use the parent company's name for callsign
+        if (company?.parent_company_id) {
+          const { data: parentCompany } = await supabase
+            .from('companies')
+            .select('navn')
+            .eq('id', company.parent_company_id)
+            .single();
+          if (parentCompany?.navn) {
+            companyName = parentCompany.navn;
+          }
+        }
+
         const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
 
-        // Count active advisory flights for the same company to get sequential number
+        // Count active advisory flights across the parent and all its children
+        const parentId = company?.parent_company_id || mission.company_id;
+        const { data: siblingCompanies } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('parent_company_id', parentId);
+        const hierarchyIds = [parentId, ...(siblingCompanies || []).map(c => c.id)];
+
         const { data: companyFlights } = await supabase
           .from('active_flights')
           .select('mission_id')
-          .eq('company_id', mission.company_id)
+          .in('company_id', hierarchyIds)
           .eq('publish_mode', 'advisory')
           .order('start_time', { ascending: true });
 
