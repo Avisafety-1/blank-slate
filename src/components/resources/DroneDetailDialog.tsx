@@ -684,6 +684,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
+      // Save department visibility
+      await deptVis.saveVisibility();
+
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
       onDroneUpdated();

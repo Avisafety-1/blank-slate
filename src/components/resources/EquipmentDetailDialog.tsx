@@ -300,6 +300,9 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
       if (error) throw error;
 
+      // Save department visibility
+      await deptVis.saveVisibility();
+
       toast.success("Utstyr oppdatert");
       setIsEditing(false);
       onEquipmentUpdated();
