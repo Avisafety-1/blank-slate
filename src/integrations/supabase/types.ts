@@ -1192,6 +1192,7 @@ export type Database = {
           internal_serial: string | null
           kjøpsdato: string | null
           klasse: string | null
+          maintenance_notification_sent: boolean | null
           merknader: string | null
           missions_at_last_inspection: number | null
           modell: string
@@ -1224,6 +1225,7 @@ export type Database = {
           internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
+          maintenance_notification_sent?: boolean | null
           merknader?: string | null
           missions_at_last_inspection?: number | null
           modell: string
@@ -1256,6 +1258,7 @@ export type Database = {
           internal_serial?: string | null
           kjøpsdato?: string | null
           klasse?: string | null
+          maintenance_notification_sent?: boolean | null
           merknader?: string | null
           missions_at_last_inspection?: number | null
           modell?: string

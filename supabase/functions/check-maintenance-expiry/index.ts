@@ -15,7 +15,47 @@ interface MaintenanceItem {
   expiryDate: Date;
   daysUntilExpiry: number;
   companyId: string;
+  statusLevel: string;
 }
+
+// ─── Status calculation (mirrors src/lib/maintenanceStatus.ts) ───
+
+type Status = 'Grønn' | 'Gul' | 'Rød';
+
+function calculateMaintenanceStatus(nextDate: string | null, warningDays = 14): Status {
+  if (!nextDate) return 'Grønn';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(nextDate);
+  d.setHours(0, 0, 0, 0);
+  const daysUntil = Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysUntil < 0) return 'Rød';
+  if (daysUntil <= warningDays) return 'Gul';
+  return 'Grønn';
+}
+
+function calculateUsageStatus(currentUsage: number, limit: number | null, warningMargin: number | null): Status {
+  if (!limit || limit <= 0) return 'Grønn';
+  if (currentUsage >= limit) return 'Rød';
+  const threshold = (warningMargin != null && warningMargin > 0) ? limit - warningMargin : limit * 0.8;
+  if (currentUsage >= threshold) return 'Gul';
+  return 'Grønn';
+}
+
+const PRIORITY: Record<Status, number> = { 'Rød': 2, 'Gul': 1, 'Grønn': 0 };
+function worstStatus(a: Status, b: Status): Status {
+  return PRIORITY[a] >= PRIORITY[b] ? a : b;
+}
+
+function calculateDroneInspectionStatus(drone: any, missionsSinceInspection: number): Status {
+  const dateStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
+  const hoursSince = (drone.flyvetimer ?? 0) - (drone.hours_at_last_inspection ?? 0);
+  const hoursStatus = calculateUsageStatus(hoursSince, drone.inspection_interval_hours, drone.varsel_timer);
+  const missionsStatus = calculateUsageStatus(missionsSinceInspection, drone.inspection_interval_missions, drone.varsel_oppdrag);
+  return [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), 'Grønn' as Status);
+}
+
+// ─── Push notifications helper ───
 
 async function sendPushNotifications(supabase: any, userId: string, title: string, body: string) {
   try {
@@ -24,20 +64,17 @@ async function sendPushNotifications(supabase: any, userId: string, title: strin
       .select('push_enabled, push_maintenance_reminder')
       .eq('user_id', userId)
       .single();
-
     if (!prefs?.push_enabled || !prefs?.push_maintenance_reminder) return false;
 
     const { data: subscriptions } = await supabase
       .from('push_subscriptions')
       .select('*')
       .eq('user_id', userId);
-
     if (!subscriptions || subscriptions.length === 0) return false;
 
     const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
     const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
     const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT');
-
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_SUBJECT) return false;
 
     const webPush = await import("https://esm.sh/web-push@3.6.7");
@@ -70,6 +107,24 @@ async function sendPushNotifications(supabase: any, userId: string, title: strin
   }
 }
 
+// ─── Count unique missions since last inspection for a drone ───
+
+async function countMissionsSinceInspection(supabase: any, droneId: string, sistInspeksjon: string | null): Promise<number> {
+  let query = supabase
+    .from('flight_logs')
+    .select('mission_id')
+    .eq('drone_id', droneId)
+    .not('mission_id', 'is', null);
+  if (sistInspeksjon) {
+    query = query.gt('flight_date', sistInspeksjon);
+  }
+  const { data } = await query;
+  if (!data) return 0;
+  return new Set(data.map((r: any) => r.mission_id)).size;
+}
+
+// ─── Main handler ───
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -86,12 +141,13 @@ serve(async (req) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // ── Fetch drones with status-relevant fields ──
     const { data: drones } = await supabase
       .from('drones')
-      .select('id, modell, neste_inspeksjon, company_id, aktiv, technical_responsible_id')
-      .eq('aktiv', true)
-      .not('neste_inspeksjon', 'is', null);
+      .select('id, modell, neste_inspeksjon, company_id, aktiv, technical_responsible_id, varsel_dager, varsel_timer, varsel_oppdrag, inspection_interval_hours, inspection_interval_missions, hours_at_last_inspection, flyvetimer, missions_at_last_inspection, sist_inspeksjon, maintenance_notification_sent')
+      .eq('aktiv', true);
 
+    // ── Equipment & accessories (unchanged — still date-based) ──
     const { data: equipment } = await supabase
       .from('equipment')
       .select('id, navn, neste_vedlikehold, company_id, aktiv')
@@ -103,6 +159,7 @@ serve(async (req) => {
       .select('id, navn, neste_vedlikehold, company_id')
       .not('neste_vedlikehold', 'is', null);
 
+    // ── Notification prefs ──
     const { data: notificationPrefs } = await supabase
       .from('notification_preferences')
       .select('user_id, inspection_reminder_days, email_inspection_reminder, push_enabled, push_maintenance_reminder')
@@ -115,7 +172,7 @@ serve(async (req) => {
       );
     }
 
-    const userIds = notificationPrefs.map(p => p.user_id);
+    const userIds = notificationPrefs.map((p: any) => p.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, company_id, full_name')
@@ -124,14 +181,34 @@ serve(async (req) => {
 
     const { data: authUsers } = await supabase.auth.admin.listUsers();
 
+    // ── Pre-calculate drone statuses & collect which need notification ──
+    const droneStatusMap = new Map<string, { status: Status; missionsSince: number }>();
+    const dronesNeedingNotification: string[] = [];
+
+    if (drones) {
+      for (const drone of drones) {
+        let missionsSince = 0;
+        if (drone.inspection_interval_missions) {
+          missionsSince = await countMissionsSinceInspection(supabase, drone.id, drone.sist_inspeksjon);
+        }
+        const status = calculateDroneInspectionStatus(drone, missionsSince);
+        droneStatusMap.set(drone.id, { status, missionsSince });
+
+        // If status is Gul or Rød AND notification not yet sent → flag it
+        if ((status === 'Gul' || status === 'Rød') && !drone.maintenance_notification_sent) {
+          dronesNeedingNotification.push(drone.id);
+        }
+      }
+    }
+
     let totalEmailsSent = 0;
     let totalPushSent = 0;
 
     for (const pref of notificationPrefs) {
-      const profile = profiles?.find(p => p.id === pref.user_id);
+      const profile = profiles?.find((p: any) => p.id === pref.user_id);
       if (!profile) continue;
 
-      const authUser = authUsers?.users.find(u => u.id === pref.user_id);
+      const authUser = authUsers?.users.find((u: any) => u.id === pref.user_id);
       if (!authUser?.email) continue;
 
       const reminderDays = pref.inspection_reminder_days || 14;
@@ -140,23 +217,36 @@ serve(async (req) => {
 
       const itemsNeedingAttention: MaintenanceItem[] = [];
 
-      const companyDrones = drones?.filter(d => d.company_id === profile.company_id) || [];
+      // ── Drones: use calculated status instead of reminder days ──
+      const companyDrones = drones?.filter((d: any) => d.company_id === profile.company_id) || [];
       for (const drone of companyDrones) {
-        // If drone has a technical responsible, only that person gets notified
         if (drone.technical_responsible_id && drone.technical_responsible_id !== pref.user_id) continue;
 
-        const expiryDate = new Date(drone.neste_inspeksjon);
-        expiryDate.setHours(0, 0, 0, 0);
-        if (expiryDate <= reminderDate && expiryDate >= today) {
+        const info = droneStatusMap.get(drone.id);
+        if (!info) continue;
+
+        // Only include drones with Gul/Rød status that haven't been notified yet
+        if ((info.status === 'Gul' || info.status === 'Rød') && !drone.maintenance_notification_sent) {
+          const expiryDate = drone.neste_inspeksjon ? new Date(drone.neste_inspeksjon) : new Date();
+          expiryDate.setHours(0, 0, 0, 0);
+          const daysUntil = drone.neste_inspeksjon
+            ? Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+            : 0;
+
           itemsNeedingAttention.push({
-            id: drone.id, name: drone.modell, type: 'drone', expiryDate,
-            daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+            id: drone.id,
+            name: drone.modell,
+            type: 'drone',
+            expiryDate,
+            daysUntilExpiry: daysUntil,
             companyId: drone.company_id,
+            statusLevel: info.status,
           });
         }
       }
 
-      const companyEquipment = equipment?.filter(e => e.company_id === profile.company_id) || [];
+      // ── Equipment: still date-based (unchanged) ──
+      const companyEquipment = equipment?.filter((e: any) => e.company_id === profile.company_id) || [];
       for (const equip of companyEquipment) {
         const expiryDate = new Date(equip.neste_vedlikehold);
         expiryDate.setHours(0, 0, 0, 0);
@@ -165,11 +255,13 @@ serve(async (req) => {
             id: equip.id, name: equip.navn, type: 'equipment', expiryDate,
             daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
             companyId: equip.company_id,
+            statusLevel: 'Gul',
           });
         }
       }
 
-      const companyAccessories = accessories?.filter(a => a.company_id === profile.company_id) || [];
+      // ── Accessories: still date-based (unchanged) ──
+      const companyAccessories = accessories?.filter((a: any) => a.company_id === profile.company_id) || [];
       for (const acc of companyAccessories) {
         const expiryDate = new Date(acc.neste_vedlikehold);
         expiryDate.setHours(0, 0, 0, 0);
@@ -178,6 +270,7 @@ serve(async (req) => {
             id: acc.id, name: acc.navn, type: 'accessory', expiryDate,
             daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
             companyId: acc.company_id,
+            statusLevel: 'Gul',
           });
         }
       }
@@ -186,10 +279,11 @@ serve(async (req) => {
 
       itemsNeedingAttention.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
 
+      // ── Push notification ──
       if (pref.push_enabled && pref.push_maintenance_reminder) {
         const pushTitle = 'Vedlikeholdspåminnelse';
         const pushBody = itemsNeedingAttention.length === 1
-          ? `${itemsNeedingAttention[0].name} krever vedlikehold om ${itemsNeedingAttention[0].daysUntilExpiry} dager`
+          ? `${itemsNeedingAttention[0].name} krever vedlikehold`
           : `${itemsNeedingAttention.length} ressurser krever vedlikehold snart`;
         const pushSent = await sendPushNotifications(supabase, pref.user_id, pushTitle, pushBody);
         if (pushSent) totalPushSent++;
@@ -197,6 +291,7 @@ serve(async (req) => {
 
       if (!pref.email_inspection_reminder) continue;
 
+      // ── Build email ──
       const { data: companyData } = await supabase
         .from('companies')
         .select('navn')
@@ -222,7 +317,8 @@ serve(async (req) => {
       if (template) {
         const itemsList = itemsNeedingAttention.map(item => {
           const dateStr = item.expiryDate.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
-          return `${typeLabels[item.type]}: ${item.name} - ${dateStr} (om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'})`;
+          const statusLabel = item.type === 'drone' ? ` [${item.statusLevel}]` : '';
+          return `${typeLabels[item.type]}: ${item.name} - ${dateStr}${statusLabel}`;
         }).join('\n');
 
         emailSubject = template.subject
@@ -237,13 +333,16 @@ serve(async (req) => {
       } else {
         const itemsListHtml = itemsNeedingAttention.map(item => {
           const dateStr = item.expiryDate.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
-          const urgencyColor = item.daysUntilExpiry <= 3 ? '#ef4444' : item.daysUntilExpiry <= 7 ? '#f59e0b' : '#3b82f6';
-          return `<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid ${urgencyColor};"><h3 style="color:#333;font-size:16px;margin:0 0 8px 0;">${item.name}</h3><div style="margin-bottom:5px;"><strong style="color:#666;">Type:</strong><span style="color:#333;margin-left:8px;">${typeLabels[item.type]}</span></div><div><strong style="color:#666;">Vedlikehold/inspeksjon:</strong><span style="color:${urgencyColor};margin-left:8px;">${dateStr} (om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'})</span></div></div>`;
+          const urgencyColor = item.statusLevel === 'Rød' ? '#ef4444' : '#f59e0b';
+          const statusText = item.type === 'drone'
+            ? (item.statusLevel === 'Rød' ? 'Forfalt' : 'Nærmer seg')
+            : `om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'}`;
+          return `<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid ${urgencyColor};"><h3 style="color:#333;font-size:16px;margin:0 0 8px 0;">${item.name}</h3><div style="margin-bottom:5px;"><strong style="color:#666;">Type:</strong><span style="color:#333;margin-left:8px;">${typeLabels[item.type]}</span></div><div><strong style="color:#666;">Status:</strong><span style="color:${urgencyColor};margin-left:8px;">${statusText}</span></div></div>`;
         }).join('');
 
         emailSubject = `Vedlikeholdspåminnelse: ${itemsNeedingAttention.length} ${itemsNeedingAttention.length === 1 ? 'ressurs' : 'ressurser'} krever oppmerksomhet`;
 
-        emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0;"><div style="max-width:600px;margin:0 auto;padding:20px;"><div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:white;padding:30px 20px;border-radius:12px 12px 0 0;text-align:center;"><h1 style="margin:0;font-size:24px;">Vedlikeholdspåminnelse</h1><p style="margin:10px 0 0 0;opacity:0.9;">${companyName}</p></div><div style="background:#ffffff;padding:30px 20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;"><p style="color:#666;margin-bottom:20px;">Hei${profile.full_name ? ' ' + profile.full_name : ''},</p><p style="color:#666;margin-bottom:20px;">Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>${itemsListHtml}<p style="color:#666;margin-top:25px;">Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p></div><div style="text-align:center;padding:20px;color:#666;font-size:12px;"><p>Denne e-posten er sendt automatisk fra AviSafe.<br>Du kan justere varslingsinnstillingene i din profil.</p></div></div></body></html>`;
+        emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0;"><div style="max-width:600px;margin:0 auto;padding:20px;"><div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:white;padding:30px 20px;border-radius:12px 12px 0 0;text-align:center;"><h1 style="margin:0;font-size:24px;">Vedlikeholdspåminnelse</h1><p style="margin:10px 0 0 0;opacity:0.9;">${companyName}</p></div><div style="background:#ffffff;padding:30px 20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;"><p style="color:#666;margin-bottom:20px;">Hei${profile.full_name ? ' ' + profile.full_name : ''},</p><p style="color:#666;margin-bottom:20px;">Følgende ressurser har vedlikehold eller inspeksjon som krever oppmerksomhet:</p>${itemsListHtml}<p style="color:#666;margin-top:25px;">Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p></div><div style="text-align:center;padding:20px;color:#666;font-size:12px;"><p>Denne e-posten er sendt automatisk fra AviSafe.<br>Du kan justere varslingsinnstillingene i din profil.</p></div></div></body></html>`;
       }
 
       try {
@@ -256,10 +355,19 @@ serve(async (req) => {
       }
     }
 
+    // ── Mark drones as notified ──
+    if (dronesNeedingNotification.length > 0) {
+      await supabase
+        .from('drones')
+        .update({ maintenance_notification_sent: true })
+        .in('id', dronesNeedingNotification);
+      console.log(`Marked ${dronesNeedingNotification.length} drones as notified.`);
+    }
+
     console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push notifications.`);
 
     return new Response(
-      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: notificationPrefs.length }),
+      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: notificationPrefs.length, dronesNotified: dronesNeedingNotification.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
