@@ -858,6 +858,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         linkedDocuments: linkedDocumentSummary || null,
         civilTwilight: civilTwilightInfo ? { ...civilTwilightInfo, violation: civilTwilightViolation, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
       } : null,
+      solarActivity,
     };
 
     // Professional SMS System Prompt
