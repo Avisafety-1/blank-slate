@@ -945,6 +945,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Stripe-exempt companies never need to call Stripe
+    if (stripeExempt) {
+      setSubscribed(true);
+      setSubscriptionLoading(false);
+      return;
+    }
+
+    // Manual check always calls Edge Function (e.g. after checkout)
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
