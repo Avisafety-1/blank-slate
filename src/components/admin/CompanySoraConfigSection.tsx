@@ -289,6 +289,9 @@ export const CompanySoraConfigSection = () => {
             operative_restrictions: config.operative_restrictions || null,
             policy_notes: config.policy_notes || null,
             linked_document_ids: config.linked_document_ids,
+            sora_based_approval: config.sora_based_approval,
+            sora_approval_threshold: config.sora_approval_threshold,
+            sora_hardstop_requires_approval: config.sora_hardstop_requires_approval,
           },
           { onConflict: "company_id" }
         );
