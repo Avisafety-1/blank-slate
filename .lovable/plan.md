@@ -1,36 +1,37 @@
 
 
-## Fix: DJI auto-sync resets on company save
+## Fix: Vis loading-spinner i stedet for «Avventer godkjenning» under innlasting
 
-### Root cause
-In `CompanyManagementDialog.tsx`, the `onSubmit` function sets `dji_flightlog_enabled: inheritedDjiEnabled` in the update payload. `inheritedDjiEnabled` is initialized to `false` and only updated when creating a new child company (`isCreating && parentId`). When editing an existing company, this always writes `false` to the database.
+### Problem
+Når du logger inn tar det ~3 sekunder å hente profilen. I denne perioden vises «Avventer godkjenning»-skjermen selv om du faktisk er godkjent. Problemet oppstår fordi `isApproved` er `false` som default-verdi mens profilen lastes.
 
-### Fix (single change)
-**File: `src/components/admin/CompanyManagementDialog.tsx`**
+### Årsak
+I `AuthenticatedLayout` (App.tsx) faller `!isApproved` gjennom til `<Outlet />` som rendrer Index.tsx direkte. Index.tsx sjekker `!isApproved && !authRefreshing` på linje 324, men `authRefreshing` kan allerede være `false` etter at den initielle profil-hentingen er ferdig — selv om brukeren faktisk er godkjent i databasen. Det skjer også et kort vindu mellom `profileLoaded = true` og den ferske profil-dataen der `isApproved` fortsatt er `false`.
 
-Remove `dji_flightlog_enabled` from the update payload when editing an existing company. It should only be included when creating.
+### Løsning
+**Fil: `src/pages/Index.tsx`** (linje 324-346)
 
-Change the `companyData` construction (lines 186-199) so that `dji_flightlog_enabled` is only included in the object when `isCreating`:
+Legg til en ekstra sjekk: Hvis brukeren nettopp logget inn (profilen ble nettopp lastet) og `isApproved` er false, vis en loading-spinner med AviSafe-logo i stedet for «Avventer godkjenning»-skjermen. Bruk `authInitialized` fra AuthContext for å avgjøre om auth-flyten er fullstendig initialisert.
 
-```typescript
-const companyData: any = {
-  navn: data.navn,
-  selskapstype: data.selskapstype,
-  org_nummer: data.org_nummer || null,
-  adresse: data.adresse || null,
-  adresse_lat: data.adresse_lat || null,
-  adresse_lon: data.adresse_lon || null,
-  kontakt_epost: data.kontakt_epost || null,
-  kontakt_telefon: data.kontakt_telefon || null,
-  stripe_exempt: inheritedStripeExempt,
-  parent_company_id: parentId,
-  departments_enabled: departmentsEnabled,
-};
+Konkret endring:
+- Hent `authInitialized` fra `useAuth()`
+- Før «Avventer godkjenning»-blokken: Hvis `!isApproved && !authInitialized`, vis loading-skjerm med AviSafe-logo og spinner
+- «Avventer godkjenning»-skjermen vises kun når `authInitialized` er `true` og `isApproved` fortsatt er `false`
 
-if (isCreating) {
-  companyData.dji_flightlog_enabled = inheritedDjiEnabled;
+```tsx
+// Ny sjekk FØR pending approval
+if (!isApproved && !authInitialized) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <img src="/avisafe-logo-text.png" alt="AviSafe" className="h-16 w-auto mx-auto mb-4" />
+        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+      </div>
+    </div>
+  );
 }
 ```
 
-This ensures existing DJI settings are preserved when editing a company.
+### Én fil, én endring
+Kun `src/pages/Index.tsx` endres. Ingen database- eller backend-endringer.
 
