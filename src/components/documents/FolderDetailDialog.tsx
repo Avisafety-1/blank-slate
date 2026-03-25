@@ -35,6 +35,46 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [searchPicker, setSearchPicker] = useState("");
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [docDetailOpen, setDocDetailOpen] = useState(false);
+
+  const getDocumentStatus = (doc: { gyldig_til?: string | null; varsel_dager_for_utløp?: number | null }): string => {
+    if (!doc.gyldig_til) return "Grønn";
+    const today = new Date();
+    const expiryDate = new Date(doc.gyldig_til);
+    const daysUntil = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntil < 0) return "Rød";
+    if (daysUntil <= (doc.varsel_dager_for_utløp || 30)) return "Gul";
+    return "Grønn";
+  };
+
+  const handleDocClick = async (documentId: string) => {
+    const { data } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("id", documentId)
+      .single();
+    if (data) {
+      const doc: Document = {
+        id: data.id,
+        tittel: data.tittel,
+        kategori: data.kategori as any,
+        versjon: data.versjon || "1.0",
+        varsel_dager_for_utløp: data.varsel_dager_for_utløp || 30,
+        synlighet: (data.global_visibility ? "Alle" : "Internt") as any,
+        sist_endret: new Date(data.oppdatert_dato || data.opprettet_dato || new Date()),
+        gyldig_til: data.gyldig_til ? new Date(data.gyldig_til) : undefined,
+        utsteder: data.beskrivelse ? undefined : undefined,
+        fil_url: data.fil_url || undefined,
+        fil_navn: data.fil_navn || undefined,
+        nettside_url: data.nettside_url || undefined,
+        beskrivelse: data.beskrivelse,
+        merknader: undefined,
+      };
+      setSelectedDocument(doc);
+      setDocDetailOpen(true);
+    }
+  };
 
   const loadFolderDocs = async () => {
     if (!folder) return;
