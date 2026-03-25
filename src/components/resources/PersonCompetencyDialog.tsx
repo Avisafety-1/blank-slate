@@ -32,6 +32,7 @@ interface Person {
   id: string;
   full_name: string;
   personnel_competencies?: Competency[];
+  is_technical_responsible?: boolean;
 }
 
 interface PersonCompetencyDialogProps {
@@ -47,8 +48,9 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
-  const { companyId } = useAuth();
+  const { companyId, isAdmin } = useAuth();
   const [person, setPerson] = useState<Person | null>(initialPerson);
+  const [isTechResponsible, setIsTechResponsible] = useState(initialPerson?.is_technical_responsible || false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export function PersonCompetencyDialog({
   // Update local person state when prop changes
   useEffect(() => {
     setPerson(initialPerson);
+    setIsTechResponsible(initialPerson?.is_technical_responsible || false);
   }, [initialPerson]);
 
   // Real-time subscription for competency updates
@@ -408,6 +411,39 @@ export function PersonCompetencyDialog({
 
           <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)] w-full max-w-full">
             <div className="pr-3 sm:pr-4 max-w-full overflow-hidden">
+
+            {/* Technical responsible toggle - admin only */}
+            {isAdmin && (
+              <div className="flex items-center justify-between p-3 mb-4 border rounded-lg bg-card">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tech-responsible" className="text-sm font-medium">
+                    Teknisk ansvarlig
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Kan utføre inspeksjon/vedlikehold på droner
+                  </p>
+                </div>
+                <Switch
+                  id="tech-responsible"
+                  checked={isTechResponsible}
+                  onCheckedChange={async (checked) => {
+                    setIsTechResponsible(checked);
+                    const { error } = await (supabase as any)
+                      .from("profiles")
+                      .update({ is_technical_responsible: checked })
+                      .eq("id", person!.id);
+                    if (error) {
+                      toast({ title: "Feil", description: "Kunne ikke oppdatere rollen", variant: "destructive" });
+                      setIsTechResponsible(!checked);
+                    } else {
+                      toast({ title: "Suksess", description: checked ? "Satt som teknisk ansvarlig" : "Fjernet som teknisk ansvarlig" });
+                      onCompetencyUpdated();
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             {/* Existing Competencies */}
             <div className="space-y-3 mb-6 min-w-0">
               <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>

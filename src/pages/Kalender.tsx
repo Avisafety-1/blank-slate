@@ -45,6 +45,7 @@ interface CalendarEvent {
   isCustom?: boolean;
   sourceTable?: string;
   checklistId?: string | null;
+  technicalResponsibleId?: string | null;
 }
 
 type CalendarEventDB = Tables<"calendar_events">;
@@ -221,7 +222,7 @@ export default function Kalender() {
       // Fetch drones with inspection dates
       const { data: dronesData, error: dronesError } = await supabase
         .from('drones')
-        .select('id, modell, neste_inspeksjon, sjekkliste_id')
+        .select('id, modell, neste_inspeksjon, sjekkliste_id, technical_responsible_id')
         .not('neste_inspeksjon', 'is', null)
         .order('neste_inspeksjon', { ascending: true });
 
@@ -337,6 +338,7 @@ export default function Kalender() {
       color: getColorForType("Vedlikehold"),
       sourceTable: 'drones',
       checklistId: drone.sjekkliste_id,
+      technicalResponsibleId: drone.technical_responsible_id,
     })),
     
     // Equipment (maintenance)
@@ -402,6 +404,12 @@ export default function Kalender() {
     e.stopPropagation();
     
     if (!event.id || !event.sourceTable) return;
+
+    // Check technical responsible restriction for drones
+    if (event.sourceTable === 'drones' && event.technicalResponsibleId && user?.id !== event.technicalResponsibleId) {
+      toast.error('Kun teknisk ansvarlig kan utføre inspeksjon på denne dronen');
+      return;
+    }
     
     // Check if the event has a checklist configured
     if (event.checklistId) {

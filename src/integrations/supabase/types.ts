@@ -1203,6 +1203,7 @@ export type Database = {
           sist_inspeksjon: string | null
           sjekkliste_id: string | null
           status: string
+          technical_responsible_id: string | null
           tilgjengelig: boolean
           user_id: string | null
           varsel_dager: number | null
@@ -1234,6 +1235,7 @@ export type Database = {
           sist_inspeksjon?: string | null
           sjekkliste_id?: string | null
           status?: string
+          technical_responsible_id?: string | null
           tilgjengelig?: boolean
           user_id?: string | null
           varsel_dager?: number | null
@@ -1265,6 +1267,7 @@ export type Database = {
           sist_inspeksjon?: string | null
           sjekkliste_id?: string | null
           status?: string
+          technical_responsible_id?: string | null
           tilgjengelig?: boolean
           user_id?: string | null
           varsel_dager?: number | null
@@ -1285,6 +1288,13 @@ export type Database = {
             columns: ["sjekkliste_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drones_technical_responsible_id_fkey"
+            columns: ["technical_responsible_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3519,6 +3529,7 @@ export type Database = {
           full_name: string | null
           id: string
           incident_responsible_company_ids: string[] | null
+          is_technical_responsible: boolean | null
           nødkontakt_navn: string | null
           nødkontakt_telefon: string | null
           signature_url: string | null
@@ -3544,6 +3555,7 @@ export type Database = {
           full_name?: string | null
           id: string
           incident_responsible_company_ids?: string[] | null
+          is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
           signature_url?: string | null
@@ -3569,6 +3581,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           incident_responsible_company_ids?: string[] | null
+          is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
           signature_url?: string | null

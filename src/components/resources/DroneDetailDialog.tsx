@@ -11,7 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck } from "lucide-react";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
@@ -51,6 +53,7 @@ interface Drone {
   varsel_timer: number | null;
   varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
+  technical_responsible_id: string | null;
 }
 
 interface Accessory {
@@ -96,6 +99,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
+  const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
+  const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     modell: "",
     serienummer: "",
@@ -178,6 +184,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
         sjekkliste_id: drone.sjekkliste_id || "",
       });
+      setFormTechnicalResponsibleId(drone.technical_responsible_id || null);
       setSelectedChecklistId(drone.sjekkliste_id || "");
       setIsEditing(false);
       setShowAddAccessory(false);
@@ -189,8 +196,34 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchLinkedDocuments();
       fetchMissionsSinceInspection();
       fetchLatestWarning();
+      fetchTechnicalResponsibleName();
     }
   }, [drone]);
+
+  // Fetch technical responsible persons for the dropdown
+  useEffect(() => {
+    if (!companyId) return;
+    const fetchTechPersons = async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name")
+        .eq("company_id", companyId)
+        .eq("is_technical_responsible", true)
+        .eq("approved", true);
+      setTechnicalResponsiblePersons(data || []);
+    };
+    fetchTechPersons();
+  }, [companyId]);
+
+  const fetchTechnicalResponsibleName = async () => {
+    if (!drone?.technical_responsible_id) { setTechnicalResponsibleName(null); return; }
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", drone.technical_responsible_id)
+      .single();
+    setTechnicalResponsibleName(data?.full_name || "Ukjent");
+  };
 
   const fetchLatestWarning = async () => {
     if (!drone) { setLatestWarning(null); return; }
@@ -594,7 +627,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
-          // Preserve full timestamp if user hasn't changed the date part
           sist_inspeksjon: formData.sist_inspeksjon
             ? (formData.sist_inspeksjon.includes('T') ? formData.sist_inspeksjon : formData.sist_inspeksjon || null)
             : null,
@@ -611,6 +643,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
           varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
+          technical_responsible_id: formTechnicalResponsibleId || null,
         })
         .eq("id", drone.id);
 
@@ -874,6 +907,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
+              {/* Technical responsible display */}
+              {drone.technical_responsible_id && (
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Teknisk ansvarlig</p>
+                    <p className="text-sm">{technicalResponsibleName || "Laster..."}</p>
+                  </div>
+                </div>
+              )}
+
               {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days || drone.inspection_interval_hours || drone.inspection_interval_missions) && (
                 <div className="border-t border-border pt-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -881,24 +925,41 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       <Calendar className="w-4 h-4" />
                       Inspeksjon
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      onClick={() => {
-                        if (!user || !companyId) return;
-                        
-                        if (drone.sjekkliste_id) {
-                          setChecklistDialogOpen(true);
-                          return;
-                        }
-                        
-                        setConfirmInspectionOpen(true);
-                      }}
-                    >
-                      <Wrench className="w-4 h-4 mr-1" />
-                      Utfør inspeksjon
-                    </Button>
+                    {(() => {
+                      const isTechRestricted = drone.technical_responsible_id && user?.id !== drone.technical_responsible_id;
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-full sm:w-auto">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                  disabled={!!isTechRestricted}
+                                  onClick={() => {
+                                    if (!user || !companyId) return;
+                                    if (drone.sjekkliste_id) {
+                                      setChecklistDialogOpen(true);
+                                      return;
+                                    }
+                                    setConfirmInspectionOpen(true);
+                                  }}
+                                >
+                                  <Wrench className="w-4 h-4 mr-1" />
+                                  Utfør inspeksjon
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isTechRestricted && (
+                              <TooltipContent>
+                                <p>Kun teknisk ansvarlig ({technicalResponsibleName}) kan utføre inspeksjon</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })()}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {drone.sist_inspeksjon && (
@@ -1585,6 +1646,24 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </p>
                 </div>
               )}
+
+              {/* Technical responsible dropdown in edit mode */}
+              <div className="border-t pt-4">
+                <Label>Teknisk ansvarlig</Label>
+                <SearchablePersonSelect
+                  persons={technicalResponsiblePersons}
+                  value={formTechnicalResponsibleId}
+                  onValueChange={setFormTechnicalResponsibleId}
+                  placeholder="Velg teknisk ansvarlig..."
+                  searchPlaceholder="Søk teknisk ansvarlig..."
+                  emptyText="Ingen med rollen «Teknisk ansvarlig» funnet."
+                  allowNone
+                  noneLabel="Ingen"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Kun denne personen kan utføre inspeksjon og mottar vedlikeholdsvarsel
+                </p>
+              </div>
 
               <div>
                 <Label htmlFor="merknader">Merknader</Label>
