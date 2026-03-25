@@ -6,7 +6,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+/** Convert a Date to the local `YYYY-MM-DDTHH:mm` format expected by datetime-local inputs */
+function toLocalDatetimeString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -122,7 +132,7 @@ export const AddMissionDialog = ({
         setFormData({
           tittel: mission.tittel || "",
           lokasjon: mission.lokasjon || "",
-          tidspunkt: mission.tidspunkt ? new Date(mission.tidspunkt).toISOString().slice(0, 16) : "",
+          tidspunkt: mission.tidspunkt ? toLocalDatetimeString(new Date(mission.tidspunkt)) : "",
           beskrivelse: mission.beskrivelse || "",
           merknader: mission.merknader || "",
           status: mission.status || "Planlagt",
@@ -435,7 +445,7 @@ export const AddMissionDialog = ({
         const updateData: any = {
           tittel: formData.tittel,
           lokasjon: formData.lokasjon,
-          tidspunkt: formData.tidspunkt,
+          tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
           beskrivelse: formData.beskrivelse,
           merknader: formData.merknader,
           status: formData.status,
@@ -564,7 +574,7 @@ export const AddMissionDialog = ({
           .insert({
             tittel: formData.tittel,
             lokasjon: formData.lokasjon,
-            tidspunkt: formData.tidspunkt,
+            tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
             beskrivelse: formData.beskrivelse,
             merknader: formData.merknader,
             status: formData.status,
