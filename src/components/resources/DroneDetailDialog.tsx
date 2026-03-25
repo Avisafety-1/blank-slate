@@ -627,7 +627,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
-          // Preserve full timestamp if user hasn't changed the date part
           sist_inspeksjon: formData.sist_inspeksjon
             ? (formData.sist_inspeksjon.includes('T') ? formData.sist_inspeksjon : formData.sist_inspeksjon || null)
             : null,
@@ -644,6 +643,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
           varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
+          technical_responsible_id: formTechnicalResponsibleId || null,
         })
         .eq("id", drone.id);
 
