@@ -1,24 +1,53 @@
 
 
-## Plan: Bevar selskapsvelger-tilgang ved hierarkisk bytte
+## Plan: Teknisk ansvarlig for droner
 
-### Problem
-Den nye triggeren `sync_user_companies_on_company_change` sletter `user_companies`-raden når `profiles.company_id` oppdateres. Men `switchCompany` bruker nettopp denne mekanismen for å bytte kontekst — så en morselskaps-admin som bytter til en avdeling mister selskapsvelgeren og kan ikke navigere tilbake.
+### Oversikt
+Legg til rollen "Teknisk ansvarlig" som kan tildeles personell, og knytt en teknisk ansvarlig til hver drone. Kun denne personen kan utføre inspeksjon/vedlikehold og motta e-postvarsler.
 
-### Årsak
-Triggeren skiller ikke mellom:
-1. **Kontekstbytte** (admin bytter mellom mor/barn via selskapsvelgeren) — skal beholde tilgang
-2. **Permanent overflytting** (admin blir flyttet til et helt annet selskap) — skal miste tilgang
+### 1. Database-migrasjon
 
-### Løsning — Oppdater triggeren
+**Ny kolonne på `drones`-tabellen:**
+- `technical_responsible_id UUID REFERENCES profiles(id) ON DELETE SET NULL` — peker til personen som er teknisk ansvarlig for dronen
 
-Legg til en sjekk i starten av triggeren: hvis gammelt og nytt selskap er i samme hierarki (forelder/barn-relasjon), gjør ingenting:
+**Ny kolonne på `profiles`-tabellen:**
+- `is_technical_responsible BOOLEAN DEFAULT false` — markerer at personen har rollen "Teknisk ansvarlig"
 
-```sql
--- Hvis byttet er innenfor samme hierarki, ikke rør user_companies
-IF EXISTS (
-  SELECT 1 FROM companies 
-  WHERE id = NEW.company_id AND parent_company_id = OLD.company_id
-) OR EXISTS (
-  SELECT 1 FROM companies 
-  WHERE id = OLD.company_id AND parent_company_
+### 2. DroneDetailDialog — Redigeringsmodus
+
+Legg til et nytt felt i redigeringsvisningen:
+- **Dropdown**: "Teknisk ansvarlig" — viser en `SearchablePersonSelect` med alle profiler i avdelingen (`company_id`) som har `is_technical_responsible = true`
+- Lagres som `technical_responsible_id` på dronen
+- I visningsmodusen vises navnet på den teknisk ansvarlige
+
+### 3. DroneDetailDialog — Inspeksjonstilgangskontroll
+
+Endre "Utfør inspeksjon"-knappen:
+- Hvis dronen har en `technical_responsible_id` satt, og innlogget bruker (`user.id`) ikke matcher denne, deaktiver knappen og vis en tooltip/tekst: "Kun teknisk ansvarlig kan utføre inspeksjon"
+- Gjelder for både manuell inspeksjon og sjekkliste-inspeksjon
+
+### 4. Kalender-inspeksjon
+
+Oppdater inspeksjons-logikken i `Kalender.tsx`:
+- Sjekk `technical_responsible_id` mot innlogget bruker før inspeksjon tillates
+
+### 5. ProfileDialog / Ressurser — Rollen "Teknisk ansvarlig"
+
+Legg til en toggle/checkbox i `PersonCompetencyDialog` eller `ProfileDialog` (admin-redigerbart) for å sette `is_technical_responsible = true` på en profil. Kun administratorer kan endre dette feltet.
+
+I Ressurser-siden: vis "Teknisk ansvarlig" som en badge på personellkort der det er satt.
+
+### 6. Vedlikeholdsvarsler — E-postfiltrering
+
+Oppdater `check-maintenance-expiry` edge-funksjonen:
+- For droner med `technical_responsible_id` satt: send kun vedlikeholdsvarsel til denne personen (ikke til alle administratorer i selskapet)
+- For droner uten teknisk ansvarlig: behold eksisterende oppførsel (varsel til alle med notifikasjoner aktivert)
+
+### Filer som endres
+- Ny migrasjon (1 SQL-fil)
+- `src/components/resources/DroneDetailDialog.tsx` — dropdown + tilgangskontroll
+- `src/pages/Kalender.tsx` — tilgangskontroll for inspeksjon
+- `src/components/resources/PersonCompetencyDialog.tsx` — toggle for rollen
+- `src/pages/Resources.tsx` — badge for teknisk ansvarlig
+- `supabase/functions/check-maintenance-expiry/index.ts` — filtrert varselruting
+
