@@ -1733,6 +1733,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           )}
         </div>
 
+        {isEditing && isAdmin && deptVis.hasDepartments && (
+          <div className="border-t border-border pt-3">
+            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <DepartmentChecklist
+              departments={deptVis.childDepartments}
+              selectedIds={deptVis.selectedDeptIds}
+              onToggle={deptVis.handleToggle}
+              allSelected={deptVis.allSelected}
+              onToggleAll={deptVis.handleToggleAll}
+              allLabel="Alle avdelinger"
+            />
+          </div>
+        )}
+
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {isAdmin && !isEditing && (
             <AlertDialog>
