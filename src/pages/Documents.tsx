@@ -12,6 +12,7 @@ import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialo
 import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDialog";
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
+import FolderGrid from "@/components/documents/FolderGrid";
 
 export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "annet";
 export type DocumentSortOption = "newest" | "oldest" | "expiry" | "alpha_asc" | "alpha_desc";
@@ -187,6 +188,8 @@ const Documents = () => {
               sortOption={sortOption}
               onSortChange={setSortOption}
             />
+
+            <FolderGrid isAdmin={isAdmin} companyId={companyId} />
 
             <DocumentsList
               documents={filteredDocuments || []}
