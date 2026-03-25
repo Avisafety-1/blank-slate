@@ -128,7 +128,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
         <Badge variant="secondary" className="text-xs">{displayedLogs.length}</Badge>
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex items-center gap-1.5">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} className="scale-75" />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
         </div>
