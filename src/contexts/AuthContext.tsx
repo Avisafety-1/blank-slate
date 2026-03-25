@@ -441,7 +441,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('AuthContext: Both profile+role queries failed, using cached profile');
         applyCachedProfile(userId);
         // Still fire subscription check in background
-        fireSubscriptionCheck(userId, myVersion);
+        fireSubscriptionCheck(userId, myVersion, profileData.stripeExempt, profileData.companyId);
         return;
       }
 
