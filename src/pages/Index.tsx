@@ -10,7 +10,7 @@ import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
 import { ActiveFlightsSection } from "@/components/dashboard/ActiveFlightsSection";
-import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, ChevronDown } from "lucide-react";
+import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
