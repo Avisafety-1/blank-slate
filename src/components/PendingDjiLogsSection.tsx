@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Clock, Plane, CheckCircle, XCircle, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -24,6 +26,8 @@ interface PendingDjiLog {
   error_message: string | null;
   created_at: string;
   parsed_result: any;
+  user_id: string | null;
+  ownerName?: string | null;
 }
 
 interface PendingDjiLogsSectionProps {
@@ -35,11 +39,12 @@ export interface PendingDjiLogsSectionRef {
 }
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog }, ref) => {
-  const { companyId } = useAuth();
+  const { companyId, user } = useAuth();
   const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const [onlyMine, setOnlyMine] = useState(false);
   const djiEnabled = hasAddon('dji');
 
   useImperativeHandle(ref, () => ({
@@ -64,7 +69,21 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     if (error) {
       console.error("Error fetching pending logs:", error);
     }
-    setLogs((data as PendingDjiLog[]) || []);
+
+    const rawLogs = (data || []) as PendingDjiLog[];
+
+    // Fetch owner names for unique user_ids
+    const userIds = [...new Set(rawLogs.map(l => l.user_id).filter(Boolean))] as string[];
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      const nameMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
+      rawLogs.forEach(l => { l.ownerName = l.user_id ? nameMap.get(l.user_id) || null : null; });
+    }
+
+    setLogs(rawLogs);
     setLoading(false);
   };
 
@@ -101,58 +120,68 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     <p className="text-xs text-muted-foreground">Ingen logger til behandling</p>
   );
 
+  const displayedLogs = onlyMine ? logs.filter(l => l.user_id === user?.id) : logs;
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
-        <Badge variant="secondary" className="text-xs">{logs.length}</Badge>
+        <Badge variant="secondary" className="text-xs">{displayedLogs.length}</Badge>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} className="scale-75" />
+          <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
+        </div>
       </div>
       <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-        {logs.map(log => (
-          <button
-            key={log.id}
-            onClick={() => onSelectLog(log)}
-            className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition-all text-left group"
-          >
-            <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-medium truncate">
-                  {log.aircraft_name || log.aircraft_sn || "Ukjent drone"}
-                </p>
-                {log.matched_drone_id && (
-                  <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
-                )}
-                {!log.matched_drone_id && (
-                  <AlertTriangle className="w-3 h-3 text-yellow-500 shrink-0" />
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {log.flight_date
-                  ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
-                  : "Ukjent dato"}
-                {log.duration_seconds
-                  ? ` · ${Math.round(log.duration_seconds / 60)} min`
-                  : ""}
-                {log.max_height_m ? ` · ${Math.round(log.max_height_m)}m` : ""}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
-              onClick={(e) => handleDismiss(e, log.id)}
-              disabled={dismissingId === log.id}
+        {displayedLogs.map(log => {
+          const ownerName = log.ownerName;
+          return (
+            <button
+              key={log.id}
+              onClick={() => onSelectLog(log)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition-all text-left group"
             >
-              {dismissingId === log.id ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
-              )}
-            </Button>
-          </button>
-        ))}
+              <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-medium truncate">
+                    {log.aircraft_name || log.aircraft_sn || "Ukjent drone"}
+                  </p>
+                  {log.matched_drone_id && (
+                    <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+                  )}
+                  {!log.matched_drone_id && (
+                    <AlertTriangle className="w-3 h-3 text-yellow-500 shrink-0" />
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {log.flight_date
+                    ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
+                    : "Ukjent dato"}
+                  {log.duration_seconds
+                    ? ` · ${Math.round(log.duration_seconds / 60)} min`
+                    : ""}
+                  {log.max_height_m ? ` · ${Math.round(log.max_height_m)}m` : ""}
+                  {ownerName ? ` · ${ownerName}` : ""}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={(e) => handleDismiss(e, log.id)}
+                disabled={dismissingId === log.id}
+              >
+                {dismissingId === log.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </Button>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
