@@ -62,6 +62,9 @@ interface SoraConfig {
   operative_restrictions: string;
   policy_notes: string;
   linked_document_ids: string[];
+  sora_based_approval: boolean;
+  sora_approval_threshold: number;
+  sora_hardstop_requires_approval: boolean;
 }
 
 const DEFAULT_CONFIG: SoraConfig = {
