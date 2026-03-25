@@ -142,6 +142,9 @@ serve(async (req) => {
 
       const companyDrones = drones?.filter(d => d.company_id === profile.company_id) || [];
       for (const drone of companyDrones) {
+        // If drone has a technical responsible, only that person gets notified
+        if (drone.technical_responsible_id && drone.technical_responsible_id !== pref.user_id) continue;
+
         const expiryDate = new Date(drone.neste_inspeksjon);
         expiryDate.setHours(0, 0, 0, 0);
         if (expiryDate <= reminderDate && expiryDate >= today) {
