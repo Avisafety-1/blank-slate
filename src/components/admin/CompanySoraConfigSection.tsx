@@ -273,6 +273,7 @@ export const CompanySoraConfigSection = () => {
             max_temp_c: config.max_temp_c,
             allow_bvlos: config.allow_bvlos,
             allow_night_flight: config.allow_night_flight,
+            require_civil_twilight: config.require_civil_twilight,
             max_pilot_inactivity_days: config.max_pilot_inactivity_days,
             max_population_density_per_km2: config.max_population_density_per_km2,
             operative_restrictions: config.operative_restrictions || null,
