@@ -366,6 +366,47 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
+    // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
+    let solarActivity: { kpIndex: number; noaaScale: string; level: string } | null = null;
+    try {
+      const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (kpRes.ok) {
+        const kpRaw: string[][] = await kpRes.json();
+        // Format: [["time_tag","Kp","observed","noaa_scale"], ["2026-03-25 00:00:00","2.33","observed","0"], ...]
+        // Find highest Kp for mission date
+        const missionDateStr = mission.dato || '';
+        let maxKp = 0;
+        for (let i = 1; i < kpRaw.length; i++) {
+          const row = kpRaw[i];
+          if (!row || row.length < 2) continue;
+          const rowDate = (row[0] || '').substring(0, 10); // "2026-03-25"
+          const kpVal = parseFloat(row[1]);
+          if (missionDateStr && rowDate === missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
+            maxKp = kpVal;
+          }
+          // If no mission date match, just track overall max as fallback
+          if (!missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
+            maxKp = kpVal;
+          }
+        }
+        const roundedKp = Math.round(maxKp * 10) / 10;
+        let noaaScale = 'G0';
+        let level = 'low';
+        if (roundedKp >= 9) { noaaScale = 'G5'; level = 'extreme'; }
+        else if (roundedKp >= 8) { noaaScale = 'G4'; level = 'severe'; }
+        else if (roundedKp >= 7) { noaaScale = 'G3'; level = 'strong'; }
+        else if (roundedKp >= 6) { noaaScale = 'G2'; level = 'moderate'; }
+        else if (roundedKp >= 5) { noaaScale = 'G1'; level = 'minor'; }
+
+        solarActivity = { kpIndex: roundedKp, noaaScale, level };
+        console.log(`Solar activity: Kp=${roundedKp}, scale=${noaaScale}, level=${level}`);
+      }
+    } catch (e) {
+      console.error('Solar activity fetch error (non-blocking):', e);
+    }
+
     // 9. Fetch airspace warnings
     let airspaceWarnings: any[] = [];
     if (lat && lng) {
