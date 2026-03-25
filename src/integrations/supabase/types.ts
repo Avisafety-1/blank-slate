@@ -498,6 +498,7 @@ export type Database = {
           operative_restrictions: string | null
           policy_notes: string | null
           require_backup_battery: boolean
+          require_civil_twilight: boolean
           require_observer: boolean
           updated_at: string
         }
@@ -519,6 +520,7 @@ export type Database = {
           operative_restrictions?: string | null
           policy_notes?: string | null
           require_backup_battery?: boolean
+          require_civil_twilight?: boolean
           require_observer?: boolean
           updated_at?: string
         }
@@ -540,6 +542,7 @@ export type Database = {
           operative_restrictions?: string | null
           policy_notes?: string | null
           require_backup_battery?: boolean
+          require_civil_twilight?: boolean
           require_observer?: boolean
           updated_at?: string
         }
