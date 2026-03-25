@@ -22,6 +22,8 @@ import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialo
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
+import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
