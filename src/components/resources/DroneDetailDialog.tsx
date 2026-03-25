@@ -51,6 +51,7 @@ interface Drone {
   varsel_timer: number | null;
   varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
+  technical_responsible_id: string | null;
 }
 
 interface Accessory {
