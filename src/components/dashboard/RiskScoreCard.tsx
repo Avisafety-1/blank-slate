@@ -33,6 +33,9 @@ interface RiskScoreCardProps {
   categoryComments?: Record<string, string>;
   onCategoryCommentChange?: (category: string, comment: string) => void;
   readOnly?: boolean;
+  approvalStatus?: 'approved' | 'not_approved' | null;
+  approvalReason?: string | null;
+  approvalThreshold?: number | null;
 }
 
 export const RiskScoreCard = ({ 
