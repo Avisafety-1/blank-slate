@@ -838,6 +838,7 @@ ${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selska
 ${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
 ${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
 ${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.' : ''}
+${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? `SIVIL SKUMRING: Selskapet krever at flyging skjer innenfor sivil skumring. Dato: ${mission.tidspunkt || 'i dag'}. Civil twilight dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk} (norsk tid). Oppdrag planlagt utenfor dette tidsvinduet er HARD STOP. Vurder oppdragets planlagte tidspunkt (mission.scheduledTime) mot disse grensene.` : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
