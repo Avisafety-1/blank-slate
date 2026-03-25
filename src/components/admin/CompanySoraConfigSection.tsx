@@ -35,6 +35,7 @@ import {
   Clock,
   Users,
   Building2,
+  Sunrise,
 } from "lucide-react";
 
 interface Document {
