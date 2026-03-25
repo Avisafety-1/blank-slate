@@ -644,6 +644,9 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
 
     // 9e. Calculate civil twilight if required
     let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
+    let civilTwilightViolation = false;
+    let civilTwilightMissionTime = '';
+    let civilTwilightNoTime = false;
     if (companySoraConfig?.require_civil_twilight && lat && lng) {
       try {
         const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
@@ -659,12 +662,27 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           const ha = Math.acos(cosHA) * (180 / Math.PI);
           const dawnMin = 720 - 4 * (lng + ha) - eqTime;
           const duskMin = 720 - 4 * (lng - ha) - eqTime;
-          const base = new Date(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate());
+          const base = new Date(Date.UTC(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate()));
           const dawnUTC = new Date(base.getTime() + dawnMin * 60000);
           const duskUTC = new Date(base.getTime() + duskMin * 60000);
           const fmt = (d: Date) => d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' });
           civilTwilightInfo = { dawn: fmt(dawnUTC), dusk: fmt(duskUTC) };
           console.log(`Civil twilight calculated: dawn=${civilTwilightInfo.dawn}, dusk=${civilTwilightInfo.dusk}`);
+
+          // Deterministic comparison: check if mission time is outside twilight window
+          if (mission.tidspunkt) {
+            const missionTime = new Date(mission.tidspunkt);
+            civilTwilightMissionTime = fmt(missionTime);
+            if (missionTime < dawnUTC || missionTime > duskUTC) {
+              civilTwilightViolation = true;
+              console.log(`Civil twilight VIOLATION: mission at ${civilTwilightMissionTime} is outside ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
+            } else {
+              console.log(`Civil twilight OK: mission at ${civilTwilightMissionTime} is within ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
+            }
+          } else {
+            civilTwilightNoTime = true;
+            console.log('Civil twilight: no mission time set, will warn');
+          }
         } else {
           console.log('Civil twilight: polar conditions, no twilight boundary');
         }
@@ -797,7 +815,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
-        civilTwilight: civilTwilightInfo,
+        civilTwilight: civilTwilightInfo ? { ...civilTwilightInfo, violation: civilTwilightViolation, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
       } : null,
     };
 
@@ -838,7 +856,7 @@ ${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selska
 ${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
 ${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
 ${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.' : ''}
-${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? `SIVIL SKUMRING: Selskapet krever at flyging skjer innenfor sivil skumring. Dato: ${mission.tidspunkt || 'i dag'}. Civil twilight dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk} (norsk tid). Oppdrag planlagt utenfor dette tidsvinduet er HARD STOP. Vurder oppdragets planlagte tidspunkt (mission.scheduledTime) mot disse grensene.` : ''}
+${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `SIVIL SKUMRING — HARD STOP: Oppdraget er planlagt kl. ${civilTwilightMissionTime} som er UTENFOR sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Dette er et BRUDD og SKAL gi recommendation='no-go' og hard_stop_triggered=true. Forklar i rapporten at tidspunktet bryter selskapets krav om flyging innenfor sivil skumring.` : civilTwilightNoTime ? `SIVIL SKUMRING — ADVARSEL: Selskapet krever flyging innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), men oppdraget har ingen planlagt tid. Gi advarsel i rapporten om at tidspunkt MÅ bekreftes innenfor skumringstidene før flyging.` : `SIVIL SKUMRING: OK — Oppdraget kl. ${civilTwilightMissionTime} er innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Bekreft kort i rapporten at skumringstid er overholdt.`) : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
