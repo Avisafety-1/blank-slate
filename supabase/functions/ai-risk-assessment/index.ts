@@ -856,6 +856,7 @@ ${companySoraConfig.max_pilot_inactivity_days ? `- Maks pilotinaktivitet: ${comp
 ${companySoraConfig.max_population_density_per_km2 ? `- Maks befolkningstetthet: ${companySoraConfig.max_population_density_per_km2} pers/km²` : ''}
 - Krev reservebatteri: ${companySoraConfig.require_backup_battery ? 'JA — OBLIGATORISK' : 'Nei'}
 - Krev observatør: ${companySoraConfig.require_observer ? 'JA — OBLIGATORISK' : 'Nei'}
+${companySoraConfig.require_civil_twilight ? `- Krev sivil skumring: JA — HARD STOP utenfor dawn/dusk${civilTwilightInfo ? ` (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk})` : ''}` : ''}
 
 Hvis flyhøyde i oppdraget overstiger ${companySoraConfig.max_flight_altitude_m} m AGL, SKAL recommendation="no-go" og hard_stop_triggered=true returneres.
 
