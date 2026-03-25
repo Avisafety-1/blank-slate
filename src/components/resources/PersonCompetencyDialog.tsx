@@ -84,7 +84,7 @@ export function PersonCompetencyDialog({
   // Update local person state when prop changes
   useEffect(() => {
     setPerson(initialPerson);
-    setIsTechResponsible(initialPerson?.is_technical_responsible || false);
+    
   }, [initialPerson]);
 
   // Real-time subscription for competency updates
