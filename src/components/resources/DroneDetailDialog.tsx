@@ -1647,6 +1647,24 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               )}
 
+              {/* Technical responsible dropdown in edit mode */}
+              <div className="border-t pt-4">
+                <Label>Teknisk ansvarlig</Label>
+                <SearchablePersonSelect
+                  persons={technicalResponsiblePersons}
+                  value={formTechnicalResponsibleId}
+                  onValueChange={setFormTechnicalResponsibleId}
+                  placeholder="Velg teknisk ansvarlig..."
+                  searchPlaceholder="Søk teknisk ansvarlig..."
+                  emptyText="Ingen med rollen «Teknisk ansvarlig» funnet."
+                  allowNone
+                  noneLabel="Ingen"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Kun denne personen kan utføre inspeksjon og mottar vedlikeholdsvarsel
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="merknader">Merknader</Label>
                 <Textarea
