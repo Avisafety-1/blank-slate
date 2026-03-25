@@ -56,6 +56,7 @@ interface SoraConfig {
   max_temp_c: number;
   allow_bvlos: boolean;
   allow_night_flight: boolean;
+  require_civil_twilight: boolean;
   max_pilot_inactivity_days: number | null;
   max_population_density_per_km2: number | null;
   operative_restrictions: string;
