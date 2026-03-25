@@ -99,6 +99,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
+  const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
+  const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     modell: "",
     serienummer: "",
