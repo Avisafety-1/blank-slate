@@ -642,7 +642,37 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
-    // Use provided droneId or first assigned drone
+    // 9e. Calculate civil twilight if required
+    let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
+    if (companySoraConfig?.require_civil_twilight && lat && lng) {
+      try {
+        const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
+        const DEG_TO_RAD = Math.PI / 180;
+        const doy = Math.floor((missionDate.getTime() - new Date(missionDate.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+        const gamma = ((2 * Math.PI) / 365) * (doy - 1);
+        const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) - 0.014615 * Math.cos(2 * gamma) - 0.04089 * Math.sin(2 * gamma));
+        const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+        const zenith = 96;
+        const latRad = lat * DEG_TO_RAD;
+        const cosHA = (Math.cos(zenith * DEG_TO_RAD) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
+        if (cosHA >= -1 && cosHA <= 1) {
+          const ha = Math.acos(cosHA) * (180 / Math.PI);
+          const dawnMin = 720 - 4 * (lng + ha) - eqTime;
+          const duskMin = 720 - 4 * (lng - ha) - eqTime;
+          const base = new Date(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate());
+          const dawnUTC = new Date(base.getTime() + dawnMin * 60000);
+          const duskUTC = new Date(base.getTime() + duskMin * 60000);
+          const fmt = (d: Date) => d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' });
+          civilTwilightInfo = { dawn: fmt(dawnUTC), dusk: fmt(duskUTC) };
+          console.log(`Civil twilight calculated: dawn=${civilTwilightInfo.dawn}, dusk=${civilTwilightInfo.dusk}`);
+        } else {
+          console.log('Civil twilight: polar conditions, no twilight boundary');
+        }
+      } catch (e) {
+        console.error('Civil twilight calc error:', e);
+      }
+    }
+
     const effectiveDroneId = droneId || (assignedDrones[0] as any)?.id;
     const droneData: any = effectiveDroneId 
       ? assignedDrones.find((d: any) => d.id === effectiveDroneId) || assignedDrones[0]
