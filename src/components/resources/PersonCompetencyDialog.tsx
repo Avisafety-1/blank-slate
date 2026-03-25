@@ -48,8 +48,9 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
-  const { companyId } = useAuth();
+  const { companyId, isAdmin } = useAuth();
   const [person, setPerson] = useState<Person | null>(initialPerson);
+  const [isTechResponsible, setIsTechResponsible] = useState(initialPerson?.is_technical_responsible || false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
