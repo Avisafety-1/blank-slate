@@ -376,19 +376,33 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         const kpRaw: string[][] = await kpRes.json();
         // Format: [["time_tag","Kp","observed","noaa_scale"], ["2026-03-25 00:00:00","2.33","observed","0"], ...]
         // Find highest Kp for mission date
-        const missionDateStr = mission.dato || '';
+        // Use mission date if available, otherwise use today's date (UTC)
+        const missionDateStr = mission.dato || new Date().toISOString().substring(0, 10);
         let maxKp = 0;
+        let matchedDate = false;
         for (let i = 1; i < kpRaw.length; i++) {
           const row = kpRaw[i];
           if (!row || row.length < 2) continue;
-          const rowDate = (row[0] || '').substring(0, 10); // "2026-03-25"
+          const rowDate = (row[0] || '').substring(0, 10);
           const kpVal = parseFloat(row[1]);
-          if (missionDateStr && rowDate === missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
+          if (rowDate === missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
             maxKp = kpVal;
+            matchedDate = true;
           }
-          // If no mission date match, just track overall max as fallback
-          if (!missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
-            maxKp = kpVal;
+        }
+        // If no data for mission date, check tomorrow as fallback (forecast)
+        if (!matchedDate) {
+          const tomorrow = new Date(missionDateStr);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = tomorrow.toISOString().substring(0, 10);
+          for (let i = 1; i < kpRaw.length; i++) {
+            const row = kpRaw[i];
+            if (!row || row.length < 2) continue;
+            const rowDate = (row[0] || '').substring(0, 10);
+            const kpVal = parseFloat(row[1]);
+            if ((rowDate === missionDateStr || rowDate === tomorrowStr) && !isNaN(kpVal) && kpVal > maxKp) {
+              maxKp = kpVal;
+            }
           }
         }
         const roundedKp = Math.round(maxKp * 10) / 10;
