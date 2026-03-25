@@ -163,8 +163,10 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                     ? ` · ${Math.round(log.duration_seconds / 60)} min`
                     : ""}
                   {log.max_height_m ? ` · ${Math.round(log.max_height_m)}m` : ""}
-                  {ownerName ? ` · ${ownerName}` : ""}
                 </p>
+                {ownerName && (
+                  <p className="text-[11px] text-muted-foreground">{ownerName}</p>
+                )}
               </div>
               <Button
                 variant="ghost"
