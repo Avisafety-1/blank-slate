@@ -459,7 +459,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
-      setCurrentAssessment(result.aiAnalysis);
+      setCurrentAssessment({
+        ...result.aiAnalysis,
+        _approvalStatus: result.approvalStatus || null,
+        _approvalReason: result.approvalReason || null,
+        _approvalThreshold: result.approvalThreshold || null,
+      });
       setCurrentAssessmentId(result.assessment?.id || null);
       setActiveTab('result');
       if (result.autoApproved) {
@@ -800,6 +805,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       onCategoryCommentChange={(category, comment) => 
                         setCategoryComments(prev => ({ ...prev, [category]: comment }))
                       }
+                      approvalStatus={currentAssessment._approvalStatus}
+                      approvalReason={currentAssessment._approvalReason}
+                      approvalThreshold={currentAssessment._approvalThreshold}
                     />
 
                     {/* Save comments button */}

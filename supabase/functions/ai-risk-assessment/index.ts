@@ -1155,6 +1155,9 @@ Returner en JSON-respons med denne strukturen:
 
     // 11. SORA-based auto-approval
     let autoApproved = false;
+    let approvalStatus: 'approved' | 'not_approved' | null = null;
+    let approvalReason: string | null = null;
+    let approvalThreshold: number | null = null;
     try {
       const { data: soraApprovalConfig } = await supabase
         .from('company_sora_config')
@@ -1167,19 +1170,23 @@ Returner en JSON-respons med denne strukturen:
         const hardStopTriggered = aiAnalysis.hard_stop_triggered === true;
         const threshold = Number(soraApprovalConfig.sora_approval_threshold) || 7.0;
         const hardstopRequiresApproval = soraApprovalConfig.sora_hardstop_requires_approval !== false;
+        approvalThreshold = threshold;
 
         if (hardStopTriggered && hardstopRequiresApproval) {
-          // Hardstop → requires manual approval
           await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
+          approvalStatus = 'not_approved';
+          approvalReason = `Hardstop utløst — krever manuell godkjenning`;
           console.log('SORA auto-approval: DENIED (hardstop triggered)');
         } else if (overallScore >= threshold && !hardStopTriggered) {
-          // Score meets threshold and no hardstop → auto-approve
           await supabase.from('missions').update({ approval_status: 'approved' }).eq('id', missionId);
           autoApproved = true;
+          approvalStatus = 'approved';
+          approvalReason = `AI-score ${overallScore.toFixed(1)} oppfyller terskel ${threshold.toFixed(1)}`;
           console.log('SORA auto-approval: APPROVED (score', overallScore, '>=', threshold, ')');
         } else {
-          // Score below threshold → requires manual approval
           await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
+          approvalStatus = 'not_approved';
+          approvalReason = `AI-score ${overallScore.toFixed(1)} er under terskel ${threshold.toFixed(1)} — krever manuell godkjenning`;
           console.log('SORA auto-approval: DENIED (score', overallScore, '<', threshold, ')');
         }
       }
@@ -1196,6 +1203,9 @@ Returner en JSON-respons med denne strukturen:
       },
       aiAnalysis,
       autoApproved,
+      approvalStatus,
+      approvalReason,
+      approvalThreshold,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

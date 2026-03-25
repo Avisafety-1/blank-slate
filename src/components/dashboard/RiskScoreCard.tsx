@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { AlertOctagon, CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CategoryScore {
@@ -33,6 +33,9 @@ interface RiskScoreCardProps {
   categoryComments?: Record<string, string>;
   onCategoryCommentChange?: (category: string, comment: string) => void;
   readOnly?: boolean;
+  approvalStatus?: 'approved' | 'not_approved' | null;
+  approvalReason?: string | null;
+  approvalThreshold?: number | null;
 }
 
 export const RiskScoreCard = ({ 
@@ -45,7 +48,10 @@ export const RiskScoreCard = ({
   assessmentMethod,
   categoryComments,
   onCategoryCommentChange,
-  readOnly
+  readOnly,
+  approvalStatus,
+  approvalReason,
+  approvalThreshold
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
@@ -118,6 +124,38 @@ export const RiskScoreCard = ({
               </h3>
               <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                 {hardStopReason || t('riskAssessment.hardStopGeneric', 'Kritiske terskler er overskredet')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Status Banner */}
+      {approvalStatus === 'approved' && (
+        <div className="p-4 rounded-lg border-2 border-green-500 bg-green-500/10">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-green-700 dark:text-green-300">
+                {t('riskAssessment.autoApproved', 'Oppdraget ble automatisk godkjent')}
+              </h3>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                {approvalReason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {approvalStatus === 'not_approved' && (
+        <div className="p-4 rounded-lg border-2 border-yellow-500 bg-yellow-500/10">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-yellow-700 dark:text-yellow-300">
+                {t('riskAssessment.requiresApproval', 'Oppdraget krever manuell godkjenning')}
+              </h3>
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                {approvalReason}
               </p>
             </div>
           </div>
