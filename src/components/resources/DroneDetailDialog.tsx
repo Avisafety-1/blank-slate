@@ -202,6 +202,36 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     }
   }, [drone]);
 
+  // Fetch drone models catalog when editing
+  useEffect(() => {
+    if (!isEditing) return;
+    const fetchDroneModels = async () => {
+      const { data } = await supabase
+        .from("drone_models")
+        .select("id, name, eu_class, weight_kg, payload_kg, comment")
+        .order("name");
+      if (data) setDroneModels(data);
+    };
+    fetchDroneModels();
+  }, [isEditing]);
+
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+    if (modelId && modelId !== "manual") {
+      const model = droneModels.find(m => m.id === modelId);
+      if (model) {
+        setFormData(prev => ({
+          ...prev,
+          modell: model.name,
+          klasse: model.eu_class,
+          vekt: model.weight_kg.toString(),
+          payload: model.payload_kg.toString(),
+          merknader: model.comment || prev.merknader,
+        }));
+      }
+    }
+  };
+
   // Fetch technical responsible persons for the dropdown
   useEffect(() => {
     if (!companyId) return;
