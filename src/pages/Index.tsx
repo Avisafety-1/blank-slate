@@ -10,7 +10,7 @@ import { KPIChart } from "@/components/dashboard/KPIChart";
 import { NewsSection } from "@/components/dashboard/NewsSection";
 import { DraggableSection } from "@/components/dashboard/DraggableSection";
 import { ActiveFlightsSection } from "@/components/dashboard/ActiveFlightsSection";
-import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, ChevronDown } from "lucide-react";
+import { Shield, Clock, Play, Square, Radio, MapPin, AlertTriangle, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { LogFlightTimeDialog } from "@/components/LogFlightTimeDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -52,7 +52,7 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, checkSubscription, authRefreshing, refetchUserInfo } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -316,6 +316,17 @@ const Index = () => {
         <div className="text-center">
           <img src="/avisafe-logo-text.png" alt="AviSafe" className="h-16 w-auto mx-auto mb-4 animate-pulse" />
           <p className="text-lg">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isApproved && !isOfflineWithCachedSession && !authInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <img src="/avisafe-logo-text.png" alt="AviSafe" className="h-16 w-auto mx-auto mb-4 animate-pulse" />
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
         </div>
       </div>
     );
