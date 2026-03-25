@@ -972,6 +972,13 @@ VIKTIG: Oppgi alltid befolkningstettheten i naturlig tekst i "actual_conditions"
 
 VIKTIG SPRÅKREGEL: Bruk ALDRI tekniske variabelnavn som "landUse.groundRiskClassification", "maxDensity", "grcImpact", "grcIncrement", "populationDensity" eller lignende i output-teksten. Skriv ALT på naturlig, forståelig norsk som en pilot uten teknisk bakgrunn kan forstå. Eksempel: IKKE skriv "landUse.groundRiskClassification='low'" — skriv i stedet "Arealbruken i området er klassifisert som lav risiko (ubebygd/fritidsområde)".
 
+### SOLSTORM / GEOMAGNETISK AKTIVITET
+Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
+${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solarActivity.noaaScale}, ${solarActivity.level}).` : 'Solstormdata er ikke tilgjengelig.'}
+- Hvis Kp < 5 (G0): Skriv KUN én kort setning i equipment-kategoriens "factors", f.eks. "Geomagnetisk aktivitet vurdert — Kp ${solarActivity?.kpIndex ?? '?'}, ingen forstyrrelse forventet." IKKE utdyp mer enn dette.
+- Hvis Kp 5–6 (G1–G2): Advarsel i equipment "concerns" om mulig GPS/GNSS-degradering. Reduser equipment score med 1 poeng.
+- Hvis Kp 7+ (G3+): Sterk advarsel. Reduser equipment score med 2–3 poeng. Vurder caution eller no-go avhengig av total risiko.
+
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
 
