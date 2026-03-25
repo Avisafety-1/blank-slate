@@ -1081,6 +1081,15 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
+                                      <Switch
+                                        checked={profile.is_technical_responsible === true}
+                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
+                                        className="scale-75"
+                                        disabled={!canManageRoles}
+                                      />
+                                    </div>
                                     {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
                                       <div>
                                         <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
