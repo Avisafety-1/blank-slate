@@ -1424,8 +1424,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
             </>
-          ) : (
+           ) : (
             <>
+              {/* Drone catalog selector */}
+              <div className="border-b pb-4 mb-4">
+                <Label>Velg fra katalog (valgfritt)</Label>
+                <Select value={selectedModelId} onValueChange={handleModelSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Angi manuelt</SelectItem>
+                    {droneModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name} ({model.eu_class})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Velg en modell for å auto-fylle vekt, payload og klasse
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="modell">Modell</Label>
