@@ -79,6 +79,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const queryClient = useQueryClient();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
+  const deptVis = useDepartmentVisibility("drone", initialDrone?.id, companyId || undefined, open);
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

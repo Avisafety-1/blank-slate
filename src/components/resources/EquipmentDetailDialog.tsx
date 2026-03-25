@@ -64,6 +64,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const { user, companyId, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const { checklists } = useChecklists();
+  const deptVis = useDepartmentVisibility("equipment", initialEquipment?.id, companyId || undefined, open);
   const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
