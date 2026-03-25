@@ -1054,6 +1054,15 @@ const Admin = () => {
                                       </div>
                                     )}
                                     <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
+                                      <Switch
+                                        checked={profile.is_technical_responsible === true}
+                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
+                                        className="scale-75"
+                                        disabled={!canManageRoles}
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
                                       <Switch
                                         checked={profile.can_approve_missions === true}
@@ -1097,15 +1106,6 @@ const Admin = () => {
                                       <Switch
                                         checked={profile.can_be_incident_responsible === true}
                                         onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
-                                        className="scale-75"
-                                        disabled={!canManageRoles}
-                                      />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
-                                      <Switch
-                                        checked={profile.is_technical_responsible === true}
-                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
                                         className="scale-75"
                                         disabled={!canManageRoles}
                                       />
