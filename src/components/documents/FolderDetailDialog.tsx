@@ -265,5 +265,13 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         )}
       </DialogContent>
     </Dialog>
+
+    <DocumentDetailDialog
+      open={docDetailOpen}
+      onOpenChange={setDocDetailOpen}
+      document={selectedDocument}
+      status={selectedDocument ? getDocumentStatus(selectedDocument as any) : "Grønn"}
+    />
+    </>
   );
 };
