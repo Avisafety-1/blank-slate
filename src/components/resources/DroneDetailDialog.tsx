@@ -910,7 +910,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               {/* Technical responsible display */}
               {drone.technical_responsible_id && (
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Teknisk ansvarlig</p>
                     <p className="text-sm">{technicalResponsibleName || "Laster..."}</p>
