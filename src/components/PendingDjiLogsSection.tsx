@@ -135,7 +135,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
       </div>
       <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
         {displayedLogs.map(log => {
-          const ownerName = log.profiles?.full_name;
+          const ownerName = log.ownerName;
           return (
             <button
               key={log.id}
