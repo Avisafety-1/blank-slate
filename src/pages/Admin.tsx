@@ -1190,6 +1190,15 @@ const Admin = () => {
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
+                                  checked={profile.is_technical_responsible === true}
+                                  onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
+                                  className="scale-75"
+                                  disabled={!canManageRoles}
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Teknisk ansvarlig</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                <Switch
                                   checked={profile.can_approve_missions === true}
                                   onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
                                   className="scale-75"
