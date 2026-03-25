@@ -45,6 +45,7 @@ interface CalendarEvent {
   isCustom?: boolean;
   sourceTable?: string;
   checklistId?: string | null;
+  technicalResponsibleId?: string | null;
 }
 
 type CalendarEventDB = Tables<"calendar_events">;
