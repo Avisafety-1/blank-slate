@@ -558,8 +558,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  /** Phase 2: Fire subscription check in background, apply when ready */
-  const fireSubscriptionCheck = (userId: string, myVersion: number) => {
+  const SUB_CACHE_MAX_AGE_MS = 10 * 60_000; // 10 minutes
+
+  /**
+   * Phase 2: Fire subscription check in background, apply when ready.
+   *
+   * Optimization: For stripe_exempt companies we skip Stripe entirely.
+   * For non-exempt companies we first try to read from the company_subscriptions
+   * table (populated by stripe-webhook + check-subscription). Only if that cache
+   * is stale (>10 min) or missing do we call the Edge Function (which hits Stripe).
+   */
+  const fireSubscriptionCheck = async (userId: string, myVersion: number) => {
+    // --- FAST PATH: stripe_exempt companies never need Stripe ---
+    if (stripeExempt) {
+      console.log('AuthContext: stripe_exempt — skipping subscription check');
+      setSubscribed(true);
+      setSubscriptionLoading(false);
+      return;
+    }
+
+    // --- Try reading cached subscription from Supabase ---
+    try {
+      const cachedCompanyId = companyId; // current state, already set in Phase 1
+      if (cachedCompanyId) {
+        // Resolve parent company for subscription lookup
+        let subCompanyId = cachedCompanyId;
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('parent_company_id')
+          .eq('id', cachedCompanyId)
+          .single();
+        if (myVersion !== refreshVersionRef.current) return;
+        if (comp?.parent_company_id) {
+          subCompanyId = comp.parent_company_id;
+        }
+
+        const { data: cachedSub } = await supabase
+          .from('company_subscriptions')
+          .select('*')
+          .eq('company_id', subCompanyId)
+          .maybeSingle();
+        if (myVersion !== refreshVersionRef.current) return;
+
+        if (cachedSub?.updated_at) {
+          const age = Date.now() - new Date(cachedSub.updated_at).getTime();
+          if (age < SUB_CACHE_MAX_AGE_MS) {
+            console.log(`AuthContext: Using cached subscription (age ${Math.round(age / 1000)}s)`);
+            const isActive = cachedSub.status === 'active' || cachedSub.status === 'trialing';
+            applySubscriptionData({
+              subscribed: isActive,
+              plan: cachedSub.plan,
+              seat_count: cachedSub.seat_count,
+              addons: cachedSub.addons ?? [],
+              subscription_end: cachedSub.current_period_end,
+              cancel_at_period_end: cachedSub.cancel_at_period_end,
+              is_trial: cachedSub.is_trial,
+              trial_end: cachedSub.trial_end,
+              had_previous_subscription: true,
+              is_billing_owner: cachedSub.billing_user_id === userId,
+            });
+            return;
+          }
+          console.log(`AuthContext: Cached subscription stale (age ${Math.round(age / 1000)}s), calling Stripe`);
+        }
+      }
+    } catch (e) {
+      console.warn('AuthContext: Failed to read cached subscription, falling back to Edge Function', e);
+    }
+
+    // --- SLOW PATH: Call Edge Function (Stripe API) ---
+    fireSubscriptionEdgeFunction(userId, myVersion);
+  };
+
+  /** Call the check-subscription Edge Function (Stripe API) */
+  const fireSubscriptionEdgeFunction = (userId: string, myVersion: number) => {
     supabase.functions.invoke('check-subscription').then((result) => {
       if (myVersion !== refreshVersionRef.current) return;
       if (result.error) {
@@ -873,6 +945,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Stripe-exempt companies never need to call Stripe
+    if (stripeExempt) {
+      setSubscribed(true);
+      setSubscriptionLoading(false);
+      return;
+    }
+
+    // Manual check always calls Edge Function (e.g. after checkout)
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
