@@ -366,6 +366,47 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
       }
     }
 
+    // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
+    let solarActivity: { kpIndex: number; noaaScale: string; level: string } | null = null;
+    try {
+      const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (kpRes.ok) {
+        const kpRaw: string[][] = await kpRes.json();
+        // Format: [["time_tag","Kp","observed","noaa_scale"], ["2026-03-25 00:00:00","2.33","observed","0"], ...]
+        // Find highest Kp for mission date
+        const missionDateStr = mission.dato || '';
+        let maxKp = 0;
+        for (let i = 1; i < kpRaw.length; i++) {
+          const row = kpRaw[i];
+          if (!row || row.length < 2) continue;
+          const rowDate = (row[0] || '').substring(0, 10); // "2026-03-25"
+          const kpVal = parseFloat(row[1]);
+          if (missionDateStr && rowDate === missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
+            maxKp = kpVal;
+          }
+          // If no mission date match, just track overall max as fallback
+          if (!missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
+            maxKp = kpVal;
+          }
+        }
+        const roundedKp = Math.round(maxKp * 10) / 10;
+        let noaaScale = 'G0';
+        let level = 'low';
+        if (roundedKp >= 9) { noaaScale = 'G5'; level = 'extreme'; }
+        else if (roundedKp >= 8) { noaaScale = 'G4'; level = 'severe'; }
+        else if (roundedKp >= 7) { noaaScale = 'G3'; level = 'strong'; }
+        else if (roundedKp >= 6) { noaaScale = 'G2'; level = 'moderate'; }
+        else if (roundedKp >= 5) { noaaScale = 'G1'; level = 'minor'; }
+
+        solarActivity = { kpIndex: roundedKp, noaaScale, level };
+        console.log(`Solar activity: Kp=${roundedKp}, scale=${noaaScale}, level=${level}`);
+      }
+    } catch (e) {
+      console.error('Solar activity fetch error (non-blocking):', e);
+    }
+
     // 9. Fetch airspace warnings
     let airspaceWarnings: any[] = [];
     if (lat && lng) {
@@ -817,6 +858,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         linkedDocuments: linkedDocumentSummary || null,
         civilTwilight: civilTwilightInfo ? { ...civilTwilightInfo, violation: civilTwilightViolation, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
       } : null,
+      solarActivity,
     };
 
     // Professional SMS System Prompt
@@ -929,6 +971,13 @@ Feltet "populationDensity" inneholder faktiske personantall per km² hentet fra 
 VIKTIG: Oppgi alltid befolkningstettheten i naturlig tekst i "actual_conditions", f.eks. "Maks befolkningstetthet i området er ca. 21 personer per km²". Nevn også GRC-påvirkningen på forståelig norsk i complexity_factors.
 
 VIKTIG SPRÅKREGEL: Bruk ALDRI tekniske variabelnavn som "landUse.groundRiskClassification", "maxDensity", "grcImpact", "grcIncrement", "populationDensity" eller lignende i output-teksten. Skriv ALT på naturlig, forståelig norsk som en pilot uten teknisk bakgrunn kan forstå. Eksempel: IKKE skriv "landUse.groundRiskClassification='low'" — skriv i stedet "Arealbruken i området er klassifisert som lav risiko (ubebygd/fritidsområde)".
+
+### SOLSTORM / GEOMAGNETISK AKTIVITET
+Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
+${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solarActivity.noaaScale}, ${solarActivity.level}).` : 'Solstormdata er ikke tilgjengelig.'}
+- Hvis Kp < 5 (G0): Skriv KUN én kort setning i equipment-kategoriens "factors", f.eks. "Geomagnetisk aktivitet vurdert — Kp ${solarActivity?.kpIndex ?? '?'}, ingen forstyrrelse forventet." IKKE utdyp mer enn dette.
+- Hvis Kp 5–6 (G1–G2): Advarsel i equipment "concerns" om mulig GPS/GNSS-degradering. Reduser equipment score med 1 poeng.
+- Hvis Kp 7+ (G3+): Sterk advarsel. Reduser equipment score med 2–3 poeng. Vurder caution eller no-go avhengig av total risiko.
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
