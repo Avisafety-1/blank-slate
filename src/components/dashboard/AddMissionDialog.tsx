@@ -132,7 +132,7 @@ export const AddMissionDialog = ({
         setFormData({
           tittel: mission.tittel || "",
           lokasjon: mission.lokasjon || "",
-          tidspunkt: mission.tidspunkt ? new Date(mission.tidspunkt).toISOString().slice(0, 16) : "",
+          tidspunkt: mission.tidspunkt ? toLocalDatetimeString(new Date(mission.tidspunkt)) : "",
           beskrivelse: mission.beskrivelse || "",
           merknader: mission.merknader || "",
           status: mission.status || "Planlagt",
