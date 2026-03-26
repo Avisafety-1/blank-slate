@@ -223,7 +223,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 Venter godkjenning
               </Badge>
             )}
-            {companySettings.require_mission_approval && currentMission.approval_status === 'approved' && (
+            {showApproval && currentMission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
