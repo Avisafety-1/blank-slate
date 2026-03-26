@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
     setShowAllAirspaceWarnings(checked);
+    invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
   };
 
