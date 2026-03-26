@@ -115,10 +115,31 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     setTabs(data || []);
   };
 
+  const loadFolderMeta = async () => {
+    if (!folder) return;
+    const { data } = await supabase
+      .from("document_folders")
+      .select("visible_to_children")
+      .eq("id", folder.id)
+      .single();
+    if (data) setVisibleToChildren(data.visible_to_children ?? false);
+  };
+
+  const checkHasChildren = async () => {
+    if (!companyId) return;
+    const { count } = await supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_company_id", companyId);
+    setHasChildren((count ?? 0) > 0);
+  };
+
   useEffect(() => {
     if (open && folder) {
       loadFolderDocs();
       loadTabs();
+      loadFolderMeta();
+      checkHasChildren();
       setShowPicker(false);
       setEditing(false);
       setActiveTab(null);
