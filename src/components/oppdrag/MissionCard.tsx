@@ -749,9 +749,9 @@ export const MissionCard = ({
               <div key={i} className="text-sm bg-muted/50 rounded-md p-2">
                 <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
                 {c.comment}
-                <span className="ml-1 text-xs text-muted-foreground">
+                {c.created_at && <span className="ml-1 text-xs text-muted-foreground">
                   ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short', year: 'numeric' })})
-                </span>
+                </span>}
               </div>
             ))}
           </div>
