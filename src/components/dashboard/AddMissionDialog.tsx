@@ -78,6 +78,7 @@ export const AddMissionDialog = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const companySettings = useCompanySettings();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [drones, setDrones] = useState<Drone[]>([]);
