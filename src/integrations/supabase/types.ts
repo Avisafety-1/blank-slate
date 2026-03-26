@@ -719,18 +719,21 @@ export type Database = {
           document_id: string
           folder_id: string
           id: string
+          tab_id: string | null
         }
         Insert: {
           added_at?: string | null
           document_id: string
           folder_id: string
           id?: string
+          tab_id?: string | null
         }
         Update: {
           added_at?: string | null
           document_id?: string
           folder_id?: string
           id?: string
+          tab_id?: string | null
         }
         Relationships: [
           {
@@ -742,6 +745,45 @@ export type Database = {
           },
           {
             foreignKeyName: "document_folder_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folder_items_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "document_folder_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_folder_tabs: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folder_tabs_folder_id_fkey"
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "document_folders"
