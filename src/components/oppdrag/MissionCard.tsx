@@ -296,11 +296,13 @@ export const MissionCard = ({
             <p className="text-foreground">
               {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : "Ikke angitt"}
             </p>
-            {mission.slutt_tidspunkt && (
-              <p className="text-xs text-muted-foreground">
-                til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
-              </p>
-            )}
+            {mission.slutt_tidspunkt && (() => {
+              try {
+                return <p className="text-xs text-muted-foreground">
+                  til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
+                </p>;
+              } catch { return null; }
+            })()}
           </div>
         </div>
       </div>
