@@ -46,6 +46,7 @@ export const ChildCompaniesSection = () => {
   const [parentCompanyName, setParentCompanyName] = useState<string>("");
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
     if (!companyId) return;
@@ -91,14 +92,39 @@ export const ChildCompaniesSection = () => {
       .from("companies")
       .update({ show_all_airspace_warnings: checked } as any)
       .eq("id", companyId);
-    setSavingSettings(false);
     if (error) {
+      setSavingSettings(false);
       toast.error("Kunne ikke lagre innstilling");
       return;
     }
+
+    // If "apply to children" is on, propagate to all child companies
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ show_all_airspace_warnings: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
     setShowAllAirspaceWarnings(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
+  };
+
+  const handleToggleApplyToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyToChildren(checked);
+    if (checked) {
+      // Propagate current setting to all children now
+      setSavingSettings(true);
+      await supabase
+        .from("companies")
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings } as any)
+        .eq("parent_company_id", companyId);
+      setSavingSettings(false);
+      toast.success("Innstilling anvendt på alle avdelinger");
+    }
   };
 
   const handleAdd = () => {
@@ -163,6 +189,20 @@ export const ChildCompaniesSection = () => {
               id="show-all-airspace"
               checked={showAllAirspaceWarnings}
               onCheckedChange={handleToggleAirspaceWarnings}
+              disabled={savingSettings}
+            />
+          </div>
+          <div className="flex items-center justify-between pl-4 border-l-2 border-muted ml-1">
+            <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
+              <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Når aktivert vil innstillingen også settes på alle avdelinger i selskapet
+              </div>
+            </Label>
+            <Switch
+              id="apply-children"
+              checked={applyToChildren}
+              onCheckedChange={handleToggleApplyToChildren}
               disabled={savingSettings}
             />
           </div>
