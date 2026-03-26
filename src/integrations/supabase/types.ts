@@ -4444,6 +4444,15 @@ export type Database = {
             }
             Returns: string
           }
+      bulk_upsert_geojson_features: {
+        Args: { p_features: Json; p_table_name: string }
+        Returns: Json
+      }
+      bulk_upsert_naturvern_zones: { Args: { p_features: Json }; Returns: Json }
+      bulk_upsert_vern_restrictions: {
+        Args: { p_features: Json }
+        Returns: Json
+      }
       can_read_folder: { Args: { _folder_id: string }; Returns: boolean }
       can_user_access_company: {
         Args: { _company_id: string; _user_id: string }
