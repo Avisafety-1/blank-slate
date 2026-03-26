@@ -798,6 +798,7 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          visible_to_children: boolean
         }
         Insert: {
           company_id: string
@@ -805,6 +806,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name: string
+          visible_to_children?: boolean
         }
         Update: {
           company_id?: string
@@ -812,6 +814,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          visible_to_children?: boolean
         }
         Relationships: [
           {

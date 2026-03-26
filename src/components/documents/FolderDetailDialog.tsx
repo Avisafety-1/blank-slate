@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Trash2, Plus, FileText, Pencil, X, FolderPlus } from "lucide-react";
+import { Trash2, Plus, FileText, Pencil, X, FolderPlus, Building2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { Document } from "@/types";
@@ -50,6 +51,8 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [showNewTab, setShowNewTab] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState("");
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [hasChildren, setHasChildren] = useState(false);
 
   const getDocumentStatus = (doc: { gyldig_til?: string | null; varsel_dager_for_utløp?: number | null }): string => {
     if (!doc.gyldig_til) return "Grønn";
@@ -112,10 +115,31 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     setTabs(data || []);
   };
 
+  const loadFolderMeta = async () => {
+    if (!folder) return;
+    const { data } = await supabase
+      .from("document_folders")
+      .select("visible_to_children")
+      .eq("id", folder.id)
+      .single();
+    if (data) setVisibleToChildren(data.visible_to_children ?? false);
+  };
+
+  const checkHasChildren = async () => {
+    if (!companyId) return;
+    const { count } = await supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_company_id", companyId);
+    setHasChildren((count ?? 0) > 0);
+  };
+
   useEffect(() => {
     if (open && folder) {
       loadFolderDocs();
       loadTabs();
+      loadFolderMeta();
+      checkHasChildren();
       setShowPicker(false);
       setEditing(false);
       setActiveTab(null);
@@ -196,6 +220,14 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     await supabase.from("document_folders").update({ name: editName.trim() }).eq("id", folder.id);
     toast.success("Mappenavn oppdatert");
     setEditing(false);
+    onRefresh();
+  };
+
+  const toggleVisibleToChildren = async (checked: boolean) => {
+    if (!folder) return;
+    setVisibleToChildren(checked);
+    await supabase.from("document_folders").update({ visible_to_children: checked }).eq("id", folder.id);
+    toast.success(checked ? "Mappen er nå synlig for avdelinger" : "Mappen er nå kun synlig for dette selskapet");
     onRefresh();
   };
 
@@ -381,13 +413,22 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               )}
             </ScrollArea>
             {isAdmin && (
-              <div className="flex gap-2 justify-between pt-2 border-t">
-                <Button variant="destructive" size="sm" onClick={deleteFolder}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Slett mappe
-                </Button>
-                <Button size="sm" onClick={openPicker}>
-                  <Plus className="h-4 w-4 mr-1" /> Legg til dokumenter
-                </Button>
+              <div className="space-y-3 pt-2 border-t">
+                {hasChildren && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch checked={visibleToChildren} onCheckedChange={toggleVisibleToChildren} />
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground">Synlig for alle avdelinger</span>
+                  </label>
+                )}
+                <div className="flex gap-2 justify-between">
+                  <Button variant="destructive" size="sm" onClick={deleteFolder}>
+                    <Trash2 className="h-4 w-4 mr-1" /> Slett mappe
+                  </Button>
+                  <Button size="sm" onClick={openPicker}>
+                    <Plus className="h-4 w-4 mr-1" /> Legg til dokumenter
+                  </Button>
+                </div>
               </div>
             )}
           </>
