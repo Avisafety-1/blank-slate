@@ -217,7 +217,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               latitude={currentMission.latitude}
               longitude={currentMission.longitude}
             />
-            {companySettings.require_mission_approval && currentMission.approval_status === 'pending_approval' && (
+            {showApproval && currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter godkjenning
