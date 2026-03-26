@@ -88,6 +88,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     mission?.airspaceWarnings ?? null
   );
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const companySettings = useCompanySettings();
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
