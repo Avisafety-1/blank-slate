@@ -214,6 +214,7 @@ export const getResourceConflictsForMission = (
   const otherMissions = allMissions.filter((m) => m.id !== missionId);
 
   for (const mission of otherMissions) {
+    if (!mission.tidspunkt) continue;
     const mStart = new Date(mission.tidspunkt);
     const mEnd = mission.slutt_tidspunkt ? new Date(mission.slutt_tidspunkt) : null;
     const conflictType = checkTimeOverlap(currentStart, currentEnd, mStart, mEnd);
