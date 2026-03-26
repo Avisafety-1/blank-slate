@@ -1,25 +1,51 @@
 
 
-## Slå sammen naturvern og vern-restriksjoner til ett kartlag
+## Viewport-basert henting av verneområder (og andre tunge lag)
 
 ### Problem
-To separate kartlag vises i lagkontrollen, men kun det ene (vern-restriksjoner) ble synlig. Brukeren ønsker ett samlet lag kalt "Verneområder".
+Når "Verneområder"-laget aktiveres, hentes **alle** naturvernområder og vern-restriksjoner fra databasen på én gang — potensielt tusenvis av polygoner med tung geometri. Dette kan overbelaste både Supabase og nettleseren, og var sannsynligvis årsaken til krasjet.
 
-### Endring
+### Løsning: Hent kun det som er synlig på kartet
 
-**Fil: `src/components/OpenAIPMap.tsx`**
+Bruk kartets bounding box (`map.getBounds()`) til å filtrere soner server-side med PostGIS `ST_Intersects`. Oppdater ved panorering/zoom (`moveend`-event).
 
-1. Fjern det separate `vernRestriksjonLayer` og dets `layerConfigs.push(...)` (linje 405-407)
-2. Legg begge datasett inn i én felles `L.layerGroup` kalt `naturvernLayer`
-3. Endre navn fra "Naturvernområder" til "Verneområder" (linje 403)
-4. Sett `enabled: true` (siden vern-restriksjoner var enabled)
-5. Oppdater begge fetch-kallene til å bruke samme `naturvernLayer`:
-   - `fetchNaturvernZones({ layer: naturvernLayer, mode })` (allerede riktig)
-   - `fetchVernRestrictionZones({ layer: naturvernLayer, mode })` (endre fra `vernRestriksjonLayer`)
-6. Gjør det samme i refetch-blokken (linje 591-592)
+### Tekniske endringer
 
-### Resultat
-- Én knapp i lagkontrollen: "Verneområder" med treePine-ikon
-- Begge datasett (naturvernområder + ferdsels-/landingsforbud) tegnes i samme lag
-- Fargekodingen skiller dem fortsatt visuelt (grønn for naturvern, rød/oransje for restriksjoner)
+#### 1. Ny database-funksjon (migrasjon)
+Lag en RPC-funksjon `get_zones_in_bounds` som tar `min_lat, min_lng, max_lat, max_lng` og returnerer kun soner som overlapper med viewporten:
+
+```sql
+CREATE FUNCTION get_naturvern_in_bounds(...)
+  SELECT external_id, name, verneform, geometry
+  FROM naturvern_zones
+  WHERE ST_Intersects(geometry, ST_MakeEnvelope(min_lng, min_lat, max_lng, max_lat, 4326))
+  LIMIT 500;
+
+CREATE FUNCTION get_vern_restrictions_in_bounds(...)
+  -- Samme mønster for vern_restriction_zones
+```
+
+Inkluder spatial indeks (`CREATE INDEX ... USING GIST(geometry)`) hvis ikke allerede opprettet.
+
+#### 2. Oppdater `src/lib/mapDataFetchers.ts`
+- `fetchNaturvernZones` og `fetchVernRestrictionZones` tar nå en `bounds: L.LatLngBounds` parameter
+- Kaller RPC i stedet for `.from().select()` med paginering
+- Fjern all paginering — RPC-en håndterer filtrering og limit
+
+#### 3. Oppdater `src/components/OpenAIPMap.tsx`
+- Legg til `moveend`-event på kartet som re-fetcher verneområder med nye bounds
+- Debounce med ~300ms for å unngå spam under panorering
+- Send `map.getBounds()` til fetch-funksjonene
+- Fjern initial fetch av verneområder ved oppstart — la `moveend` trigge første henting
+
+### Fordeler
+- Kun 100-500 soner lastes om gangen i stedet for tusenvis
+- Supabase-prosjektet belastes minimalt
+- Nettleseren rendrer langt færre polygoner
+- Spatial indeks gjør spørringen rask (~ms)
+
+### Filer som endres
+1. **Ny migrasjon** — `get_naturvern_in_bounds`, `get_vern_restrictions_in_bounds` + GIST-indeks
+2. **`src/lib/mapDataFetchers.ts`** — bounds-parameter, RPC-kall
+3. **`src/components/OpenAIPMap.tsx`** — `moveend`-listener med debounce
 
