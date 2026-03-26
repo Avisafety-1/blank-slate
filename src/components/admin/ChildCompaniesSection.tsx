@@ -40,6 +40,7 @@ interface ChildCompany {
 export const ChildCompaniesSection = () => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
   const [children, setChildren] = useState<ChildCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
