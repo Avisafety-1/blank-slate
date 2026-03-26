@@ -281,7 +281,7 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
-              <div className="rounded-lg border-2 border-border/60 border-dashed p-3 flex items-center justify-between">
+              <div className="rounded-lg border-2 border-primary/20 border-dashed bg-muted/20 p-3 flex items-center justify-between">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
