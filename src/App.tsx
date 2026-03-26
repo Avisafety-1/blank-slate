@@ -18,7 +18,7 @@ import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { useForceReload } from "@/hooks/useForceReload";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
+
 
 // Synchronous imports — needed immediately
 import Auth from "./pages/Auth";
@@ -75,7 +75,7 @@ const AuthenticatedLayout = () => {
   const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
-  useAppHeartbeat();
+  
 
   // Prefetch common lazy-loaded pages after initial render
   useEffect(() => {
