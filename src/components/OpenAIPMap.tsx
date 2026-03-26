@@ -541,7 +541,7 @@ export function OpenAIPMap({
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
     fetchNaturvernZones({ layer: naturvernLayer, mode });
-    fetchVernRestrictionZones({ layer: vernRestriksjonLayer, mode });
+    fetchVernRestrictionZones({ layer: naturvernLayer, mode });
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
