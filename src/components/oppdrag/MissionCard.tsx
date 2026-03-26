@@ -139,7 +139,7 @@ export const MissionCard = ({
               latitude={mission.latitude}
               longitude={mission.longitude}
             />
-            {companySettings.require_mission_approval && mission.approval_status === 'pending_approval' && (
+            {showApproval && mission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter på godkjenning
