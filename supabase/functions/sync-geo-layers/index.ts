@@ -37,6 +37,66 @@ const VERN_RESTRICTION_SUB_LAYERS = [
   { layerIndex: 2, restrictionType: 'LANDINGSFORBUD' },
 ];
 
+// Convert Esri JSON geometry to GeoJSON geometry
+function esriGeometryToGeoJson(esriGeom: any): any | null {
+  if (!esriGeom) return null;
+
+  if (esriGeom.rings) {
+    if (esriGeom.rings.length === 1) {
+      return { type: 'Polygon', coordinates: esriGeom.rings };
+    }
+    // Multiple rings: check if they are separate polygons or holes
+    // Simple heuristic: treat as MultiPolygon if >1 outer ring
+    return { type: 'Polygon', coordinates: esriGeom.rings };
+  }
+
+  if (esriGeom.paths) {
+    if (esriGeom.paths.length === 1) {
+      return { type: 'LineString', coordinates: esriGeom.paths[0] };
+    }
+    return { type: 'MultiLineString', coordinates: esriGeom.paths };
+  }
+
+  if (esriGeom.x !== undefined && esriGeom.y !== undefined) {
+    return { type: 'Point', coordinates: [esriGeom.x, esriGeom.y] };
+  }
+
+  return null;
+}
+
+// Fetch paginated features from Esri JSON endpoint (f=json)
+async function fetchEsriFeaturesPaginated(baseUrl: string): Promise<{ attributes: any; geometry: any }[]> {
+  const allFeatures: any[] = [];
+  let offset = 0;
+  const pageSize = 2000;
+
+  while (true) {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const url = `${baseUrl}${separator}resultOffset=${offset}&resultRecordCount=${pageSize}`;
+    console.log(`  Fetching Esri page at offset ${offset}...`);
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data = await response.json();
+
+    // Esri JSON error check
+    if (data.error) {
+      throw new Error(`Esri error: ${data.error.message || JSON.stringify(data.error)}`);
+    }
+
+    const features = data.features || [];
+    allFeatures.push(...features);
+    console.log(`  Got ${features.length} Esri features (total: ${allFeatures.length})`);
+
+    if (features.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return allFeatures;
+}
+
+// Fetch paginated GeoJSON features
 async function fetchAllFeaturesPaginated(baseUrl: string): Promise<any[]> {
   const allFeatures: any[] = [];
   let offset = 0;
@@ -87,7 +147,7 @@ Deno.serve(async (req) => {
 
     const results: Record<string, any> = {};
 
-    // 1. Sync standard layers (using generic upsert_geojson_feature)
+    // 1. Sync standard layers (GeoJSON format - these ArcGIS instances support f=geojson)
     for (const [layerId, config] of Object.entries(LAYER_SOURCES)) {
       console.log(`Fetching ${layerId}...`);
       try {
@@ -128,17 +188,24 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Sync naturvern_zones (paginated, dedicated RPC)
-    console.log('Fetching naturvern_zones (paginated)...');
+    // 2. Sync naturvern_zones (Esri JSON format, paginated)
+    console.log('Fetching naturvern_zones (Esri JSON, paginated)...');
     try {
-      const naturvernUrl = 'https://kart.miljodirektoratet.no/arcgis/rest/services/vern/FeatureServer/0/query?where=1%3D1&outFields=navn,verneform,offisieltNavn&outSR=4326&f=geojson';
-      const features = await fetchAllFeaturesPaginated(naturvernUrl);
+      const naturvernUrl = 'https://kart.miljodirektoratet.no/arcgis/rest/services/vern/FeatureServer/0/query?where=1%3D1&outFields=navn,verneform,offisieltNavn,OBJECTID&outSR=4326&f=json';
+      const features = await fetchEsriFeaturesPaginated(naturvernUrl);
       console.log(`Processing ${features.length} naturvern features...`);
-      let successCount = 0, errorCount = 0;
+      let successCount = 0, errorCount = 0, skippedCount = 0;
 
       for (const feature of features) {
         try {
-          const props = feature.properties || {};
+          const props = feature.attributes || {};
+          const geojsonGeom = esriGeometryToGeoJson(feature.geometry);
+
+          if (!geojsonGeom) {
+            skippedCount++;
+            continue;
+          }
+
           const name = props.navn || props.offisieltNavn || 'Ukjent';
           const verneform = props.verneform || null;
           const externalId = getExternalId(props, `naturvern_${successCount}`);
@@ -147,7 +214,7 @@ Deno.serve(async (req) => {
             p_external_id: externalId,
             p_name: name,
             p_verneform: verneform,
-            p_geometry_geojson: JSON.stringify(feature.geometry),
+            p_geometry_geojson: JSON.stringify(geojsonGeom),
             p_properties: props
           });
 
@@ -156,52 +223,69 @@ Deno.serve(async (req) => {
         } catch (e) { console.error('Error processing naturvern feature:', e); errorCount++; }
       }
 
-      results['naturvern_zones'] = { success: true, total: features.length, successCount, errorCount };
-      console.log(`naturvern_zones: ${successCount} ok, ${errorCount} failed`);
+      results['naturvern_zones'] = { success: true, total: features.length, successCount, errorCount, skippedCount };
+      console.log(`naturvern_zones: ${successCount} ok, ${errorCount} failed, ${skippedCount} skipped (no geometry)`);
     } catch (e) {
       console.error('Error syncing naturvern_zones:', e);
       results['naturvern_zones'] = { success: false, error: e instanceof Error ? e.message : 'Unknown' };
     }
 
-    // 3. Sync vern_restriction_zones (3 sub-layers, dedicated RPC)
-    console.log('Fetching vern_restriction_zones (3 sub-layers)...');
+    // 3. Sync vern_restriction_zones (Esri JSON format, 3 sub-layers)
+    console.log('Fetching vern_restriction_zones (Esri JSON, 3 sub-layers)...');
     try {
-      let totalSuccess = 0, totalError = 0, totalFeatures = 0;
+      let totalSuccess = 0, totalError = 0, totalFeatures = 0, totalSkipped = 0;
 
       for (const sub of VERN_RESTRICTION_SUB_LAYERS) {
-        const url = `${VERN_RESTRICTION_BASE_URL}/${sub.layerIndex}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`;
+        const url = `${VERN_RESTRICTION_BASE_URL}/${sub.layerIndex}/query?where=1%3D1&outFields=*&outSR=4326&f=json`;
         console.log(`  Fetching sub-layer ${sub.layerIndex} (${sub.restrictionType})...`);
         
-        const response = await fetch(url);
-        if (!response.ok) { console.error(`HTTP error for sub-layer ${sub.layerIndex}: ${response.status}`); continue; }
-        
-        const geojson = await response.json();
-        const features = geojson.features || [];
-        totalFeatures += features.length;
-        console.log(`  Got ${features.length} features for ${sub.restrictionType}`);
+        try {
+          const response = await fetch(url);
+          if (!response.ok) { console.error(`HTTP error for sub-layer ${sub.layerIndex}: ${response.status}`); continue; }
+          
+          const data = await response.json();
+          
+          if (data.error) {
+            console.error(`Esri error for sub-layer ${sub.layerIndex}:`, data.error);
+            continue;
+          }
 
-        for (const feature of features) {
-          try {
-            const props = feature.properties || {};
-            const name = findName(props, ['navn', 'name', 'NAVN', 'NAME']);
-            const externalId = getExternalId(props, `vern_restr_${sub.layerIndex}_${totalSuccess}`);
+          const features = data.features || [];
+          totalFeatures += features.length;
+          console.log(`  Got ${features.length} features for ${sub.restrictionType}`);
 
-            const { error } = await supabase.rpc('upsert_vern_restriction', {
-              p_external_id: externalId,
-              p_name: name,
-              p_restriction_type: sub.restrictionType,
-              p_geometry_geojson: JSON.stringify(feature.geometry),
-              p_properties: props
-            });
+          for (const feature of features) {
+            try {
+              const props = feature.attributes || {};
+              const geojsonGeom = esriGeometryToGeoJson(feature.geometry);
 
-            if (error) { console.error(`Error upserting vern restriction ${externalId}:`, error); totalError++; }
-            else totalSuccess++;
-          } catch (e) { console.error('Error processing vern restriction:', e); totalError++; }
+              if (!geojsonGeom) {
+                totalSkipped++;
+                continue;
+              }
+
+              const name = findName(props, ['navn', 'name', 'NAVN', 'NAME']);
+              const externalId = getExternalId(props, `vern_restr_${sub.layerIndex}_${totalSuccess}`);
+
+              const { error } = await supabase.rpc('upsert_vern_restriction', {
+                p_external_id: externalId,
+                p_name: name,
+                p_restriction_type: sub.restrictionType,
+                p_geometry_geojson: JSON.stringify(geojsonGeom),
+                p_properties: props
+              });
+
+              if (error) { console.error(`Error upserting vern restriction ${externalId}:`, error); totalError++; }
+              else totalSuccess++;
+            } catch (e) { console.error('Error processing vern restriction:', e); totalError++; }
+          }
+        } catch (e) {
+          console.error(`Error fetching sub-layer ${sub.layerIndex}:`, e);
         }
       }
 
-      results['vern_restriction_zones'] = { success: true, total: totalFeatures, successCount: totalSuccess, errorCount: totalError };
-      console.log(`vern_restriction_zones: ${totalSuccess} ok, ${totalError} failed`);
+      results['vern_restriction_zones'] = { success: true, total: totalFeatures, successCount: totalSuccess, errorCount: totalError, skippedCount: totalSkipped };
+      console.log(`vern_restriction_zones: ${totalSuccess} ok, ${totalError} failed, ${totalSkipped} skipped`);
     } catch (e) {
       console.error('Error syncing vern_restriction_zones:', e);
       results['vern_restriction_zones'] = { success: false, error: e instanceof Error ? e.message : 'Unknown' };
