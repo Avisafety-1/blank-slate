@@ -542,6 +542,10 @@ export function OpenAIPMap({
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
+      if (map.getZoom() < 10) {
+        naturvernLayer.clearLayers();
+        return;
+      }
       const b = map.getBounds();
       const bounds = {
         minLat: b.getSouth(),
