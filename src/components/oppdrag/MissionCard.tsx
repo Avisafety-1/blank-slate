@@ -98,6 +98,8 @@ export const MissionCard = ({
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
