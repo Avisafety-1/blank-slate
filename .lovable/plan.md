@@ -1,40 +1,55 @@
 
 
-## Analyse: Hvorfor «test» er synlig men «test2» ikke
+## Fix: Feilmelding ved klikk på "Fullførte oppdrag"
 
-### Funn fra databasen
-Begge mappene er identiske i konfigurasjonen:
-- **test** (`f322dd50`): `company_id = af43f04e`, `visible_to_children = true`
-- **test2** (`b323fd6b`): `company_id = af43f04e`, `visible_to_children = true`
+### Sannsynlige årsaker
 
-`can_read_folder`-funksjonen og alle RLS-policyer er korrekt satt opp. For avdelingsbrukeren (`contact@hh-vr.com`, company `5730368c`):
-- `get_parent_company_id('5730368c')` returnerer `af43f04e` (riktig)
-- Begge mapper matcher vilkåret `visible_to_children = true AND company_id = parent`
+1. **`tidspunkt` kan være null/undefined** for noen fullførte oppdrag (f.eks. auto-fullførte). Linje 297 i MissionCard kaller `format(new Date(mission.tidspunkt), ...)` uten null-sjekk. Hvis `tidspunkt` er `undefined`, gir `new Date(undefined)` "Invalid Date", og `date-fns format()` kaster `RangeError: Invalid time value` som crasher hele komponenten.
 
-### Sannsynlig årsak
-Session-replay viser at brukerens siste handling var en "Mappe slettet"-toast mens de var på Moderavdeling-kontoen. Det er mulig at:
-1. Testen ble gjort før den siste migrasjonen (`20260326074033`) var ferdig deployet
-2. React-query cachen viste foreldede data (queryKey er `["document-folders", companyId]`, som ikke invalideres automatisk ved selskapsbytte tilbake)
+2. **"Avbrutt"-oppdrag mangler i spørringen**: Fullførte-fanen henter kun `status = "Fullført"`, men "Avbrutt"-oppdrag er også relevante for fullførte. Dette er ikke en feilårsak, men en mangel.
 
-### Tiltak for å eliminere slike problemer
+3. **Stille feil i datahenting**: Hvis noen av de parallelle spørringene (personell, droner, utstyr osv.) feiler for fullførte oppdrag, fanger catch-blokken det og viser toast "Kunne ikke laste oppdrag", men gir ingen detaljer.
 
-1. **Legg til `refetchOnWindowFocus: true`** i FolderGrid-queryen, slik at mapper alltid re-hentes når brukeren bytter tilbake til fanen/vinduet
-2. **Invalidere folder-cachen ved selskapsbytte** — queryKey bruker `companyId`, men avdelingsbrukeren har alltid samme `companyId` (sin egen), så cachen oppdateres ikke selv om moderselskapet endrer deling
-3. **Legg til en visuelt ikon** på delte mapper (som nyheter allerede har) for å tydeliggjøre at mappen kommer fra moderselskapet
+### Plan
 
-### Konkret plan
+**Fil: `src/components/oppdrag/MissionCard.tsx`**
+- Legg til null-sjekk for `mission.tidspunkt` på linje 297: vis "Ikke angitt" hvis null/undefined i stedet for å krasje
+- Legg til null-sjekk for `log.flight_date` på linje 682
+- Legg til null-sjekk for `incident.hendelsestidspunkt` på linje 650
 
-**Fil: `src/components/documents/FolderGrid.tsx`**
-- Legg til `refetchOnWindowFocus: true` og `staleTime: 0` for å sikre at mappedata alltid er fersk
-- Inkluder `visible_to_children` og `company_id` i select-spørringen, slik at man kan vise et delingsikon for mapper som er arvet fra moderselskapet
+**Fil: `src/hooks/useOppdragData.ts`**
+- Inkluder "Avbrutt" i fullførte-fanen: `.in("status", ["Fullført", "Avbrutt"])` (linje 123)
+- Gjør det samme i søkefunksjonen (linje 261)
+- Legg til mer detaljert console.error i catch-blokken for å vise hvilken sub-spørring som feiler
 
-Dette er en liten frontend-endring. Selve RLS-logikken er allerede korrekt — problemet er at gammel cache-data vises etter selskapsbytte eller migrasjonsdeployment.
+**Fil: `src/components/oppdrag/OppdragFilterBar.tsx`**
+- Oppdater tab-teksten fra "Fullførte" til "Fullførte og avbrutte" (eller behold "Fullførte" men inkluder begge statuser)
 
 ### Tekniske detaljer
+
 ```text
-Endring i FolderGrid.tsx queryFn:
-- select("id, name") → select("id, name, company_id, visible_to_children")
-- Legg til refetchOnWindowFocus: true, staleTime: 0
-- Vis Building-ikon på mapper der company_id !== brukerens companyId
+// MissionCard linje 297 - før:
+format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })
+
+// etter:
+mission.tidspunkt
+  ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })
+  : "Ikke angitt"
+```
+
+```text
+// useOppdragData linje 122-124 - før:
+if (tab === "active") {
+  query = query.in("status", ["Planlagt", "Pågående"]);
+} else {
+  query = query.eq("status", "Fullført");
+}
+
+// etter:
+if (tab === "active") {
+  query = query.in("status", ["Planlagt", "Pågående"]);
+} else {
+  query = query.in("status", ["Fullført", "Avbrutt"]);
+}
 ```
 
