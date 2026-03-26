@@ -524,16 +524,26 @@ export async function fetchActiveAdvisories(params: {
 export async function fetchNaturvernZones(params: FetchParams) {
   const { layer, mode } = params;
   try {
-    const { data, error } = await supabase
-      .from('naturvern_zones')
-      .select('external_id, name, verneform, geometry, properties');
-
-    if (error || !data) {
-      console.error('Feil ved henting av naturvernområder:', error);
-      return;
+    // Paginate to avoid 1000-row default limit
+    let allData: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('naturvern_zones')
+        .select('external_id, name, verneform, geometry, properties')
+        .range(from, from + pageSize - 1);
+      if (error) {
+        console.error('Feil ved henting av naturvernområder:', error);
+        return;
+      }
+      if (!data || data.length === 0) break;
+      allData = allData.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
     }
 
-    layer.clearLayers();
+    // Don't clearLayers here — shared layer group
 
     const verneformColors: Record<string, string> = {
       'Nasjonalpark': '#15803d',
@@ -545,7 +555,7 @@ export async function fetchNaturvernZones(params: FetchParams) {
       'Plantefredningsområde': '#84cc16',
     };
 
-    for (const zone of data) {
+    for (const zone of allData) {
       if (!zone.geometry) continue;
       try {
         const geojsonFeature = {
@@ -578,7 +588,7 @@ export async function fetchNaturvernZones(params: FetchParams) {
         // Skip individual zones that fail
       }
     }
-    console.log(`Rendered ${data.length} naturvernområder`);
+    console.log(`Rendered ${allData.length} naturvernområder`);
   } catch (err) {
     console.error('Kunne ikke hente naturvernområder:', err);
   }
@@ -596,7 +606,7 @@ export async function fetchVernRestrictionZones(params: FetchParams) {
       return;
     }
 
-    layer.clearLayers();
+    // Don't clearLayers here — shared layer group with naturvern
 
     const restrictionColors: Record<string, string> = {
       'FERDSELSFORBUD': '#dc2626',

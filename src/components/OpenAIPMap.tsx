@@ -540,6 +540,7 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    naturvernLayer.clearLayers();
     fetchNaturvernZones({ layer: naturvernLayer, mode });
     fetchVernRestrictionZones({ layer: naturvernLayer, mode });
 
@@ -584,6 +585,7 @@ export function OpenAIPMap({
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+        naturvernLayer.clearLayers();
         fetchNaturvernZones({ layer: naturvernLayer, mode });
         fetchVernRestrictionZones({ layer: naturvernLayer, mode });
         
