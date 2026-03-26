@@ -50,19 +50,32 @@ export const MissionStatusDropdown = ({
 
     // Capture weather snapshot when completing a mission
     if (newStatus === "Fullført" && currentStatus !== "Fullført" && latitude && longitude) {
-      try {
-        const { data: weatherData } = await supabase.functions.invoke("drone-weather", {
-          body: { lat: latitude, lon: longitude },
-        });
-        if (weatherData && !weatherData.error) {
-          updatePayload.weather_data_snapshot = {
-            data: weatherData,
-            captured_at: new Date().toISOString(),
-            source: "status_dropdown",
-          };
+      const missionTime = tidspunkt ? new Date(tidspunkt) : null;
+      const hoursAgo = missionTime ? (Date.now() - missionTime.getTime()) / (1000 * 60 * 60) : 0;
+
+      if (missionTime && hoursAgo > 24) {
+        // Historisk oppdrag – ikke hent nåværende vær
+        updatePayload.weather_data_snapshot = {
+          captured_at: new Date().toISOString(),
+          unavailable: true,
+          reason: "historical",
+          source: "status_dropdown",
+        };
+      } else {
+        try {
+          const { data: weatherData } = await supabase.functions.invoke("drone-weather", {
+            body: { lat: latitude, lon: longitude },
+          });
+          if (weatherData && !weatherData.error) {
+            updatePayload.weather_data_snapshot = {
+              data: weatherData,
+              captured_at: new Date().toISOString(),
+              source: "status_dropdown",
+            };
+          }
+        } catch (e) {
+          console.warn("Could not capture weather snapshot:", e);
         }
-      } catch (e) {
-        console.warn("Could not capture weather snapshot:", e);
       }
     }
 
