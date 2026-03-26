@@ -275,7 +275,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       latitude={mission.latitude}
                       longitude={mission.longitude}
                     />
-                    {(() => {
+                    {companySettings.require_mission_approval && (() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
                       const approvalLabel = approvalStatus === 'approved' ? 'Godkjent' : approvalStatus === 'pending_approval' ? 'Venter' : 'Ikke godkjent';
                       const approvalColor = approvalStatus === 'approved' 
