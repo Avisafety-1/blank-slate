@@ -356,7 +356,7 @@ export const ChildCompaniesSection = () => {
                     id="require-sora"
                     checked={requireSoraOnMissions}
                     onCheckedChange={handleToggleRequireSora}
-                    disabled={savingSettings}
+                    disabled={savingSettings || soraApprovalEnabled}
                   />
                 </div>
                 {requireSoraOnMissions && (
