@@ -5335,6 +5335,16 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_naturvern_zone: {
+        Args: {
+          p_external_id: string
+          p_geometry_geojson: string
+          p_name: string
+          p_properties: Json
+          p_verneform: string
+        }
+        Returns: string
+      }
       upsert_openaip_airspace: {
         Args: {
           p_geometry_geojson: string
@@ -5348,6 +5358,16 @@ export type Database = {
           p_zone_type: string
         }
         Returns: undefined
+      }
+      upsert_vern_restriction: {
+        Args: {
+          p_external_id: string
+          p_geometry_geojson: string
+          p_name: string
+          p_properties: Json
+          p_restriction_type: string
+        }
+        Returns: string
       }
     }
     Enums: {
