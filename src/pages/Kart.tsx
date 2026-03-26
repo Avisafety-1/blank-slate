@@ -30,6 +30,7 @@ export default function KartPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
+  useAppHeartbeat();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [focusFlightId, setFocusFlightId] = useState<string | null>(null);
