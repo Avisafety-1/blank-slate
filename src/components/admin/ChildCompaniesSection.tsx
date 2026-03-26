@@ -267,6 +267,20 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm">Oppdrag krever godkjenning</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    SORA-spesifikk godkjenningslogikk overstyrer dette valget
+                  </div>
+                </Label>
+                <Switch
+                  id="require-approval"
+                  checked={requireMissionApproval}
+                  onCheckedChange={handleToggleRequireMissionApproval}
+                  disabled={savingSettings}
+                />
+              </div>
               <div className="flex items-center justify-between pl-4 border-l-2 border-muted ml-1">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
