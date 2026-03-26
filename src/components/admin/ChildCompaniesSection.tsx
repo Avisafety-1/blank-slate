@@ -97,6 +97,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
     setShowAllAirspaceWarnings(checked);
+    invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
   };
 
