@@ -340,6 +340,12 @@ const DocumentCardModal = ({
             <DialogTitle>
               {isCreating ? "Nytt dokument" : readOnly ? "Dokument" : "Rediger dokument"}
             </DialogTitle>
+            {document && !isCreating && (
+              <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4">
+                {document.opprettet_av && <span>Opprettet av: {document.opprettet_av}</span>}
+                {document.opprettet_dato && <span>Opprettet: {format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb })}</span>}
+              </div>
+            )}
           </DialogHeader>
 
           <Form {...form}>
