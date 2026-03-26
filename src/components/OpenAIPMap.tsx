@@ -540,9 +540,29 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
-    naturvernLayer.clearLayers();
-    fetchNaturvernZones({ layer: naturvernLayer, mode });
-    fetchVernRestrictionZones({ layer: naturvernLayer, mode });
+    // Viewport-based verneområder fetching with debounce
+    const fetchVerneomraader = () => {
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(),
+        minLng: b.getWest(),
+        maxLat: b.getNorth(),
+        maxLng: b.getEast(),
+      };
+      naturvernLayer.clearLayers();
+      fetchNaturvernZones({ layer: naturvernLayer, mode, bounds });
+      fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
+    };
+
+    let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchVern = () => {
+      if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
+      vernDebounceTimer = setTimeout(fetchVerneomraader, 300);
+    };
+
+    // Initial fetch + listen for map moves
+    fetchVerneomraader();
+    map.on('moveend', debouncedFetchVern);
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
