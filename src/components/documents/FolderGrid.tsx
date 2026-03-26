@@ -18,8 +18,7 @@ interface Folder {
   item_count: number;
 }
 
-const FolderGrid = ({ isAdmin, companyId }: FolderGridProps) => {
-  const [createOpen, setCreateOpen] = useState(false);
+const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: FolderGridProps) => {
   const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
