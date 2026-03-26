@@ -451,6 +451,16 @@ export const CompanySoraConfigSection = () => {
                           { onConflict: "company_id" }
                         );
                       if (error) throw error;
+
+                      // When enabling SORA-based approval, auto-disable require_sora_on_missions
+                      if (v && companyId) {
+                        await supabase
+                          .from("companies")
+                          .update({ require_sora_on_missions: false } as any)
+                          .eq("id", companyId);
+                        invalidateCompanySettingsCache();
+                      }
+
                       toast.success(v ? "SORA-basert godkjenning aktivert" : "SORA-basert godkjenning deaktivert");
                     } catch (err) {
                       console.error("Error saving sora_based_approval:", err);
