@@ -397,6 +397,7 @@ export type Database = {
           dronelog_api_key: string | null
           dronetag_enabled: boolean
           eccairs_enabled: boolean | null
+          hide_reporter_identity: boolean
           id: string
           kontakt_epost: string | null
           kontakt_telefon: string | null
@@ -425,6 +426,7 @@ export type Database = {
           dronelog_api_key?: string | null
           dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
+          hide_reporter_identity?: boolean
           id?: string
           kontakt_epost?: string | null
           kontakt_telefon?: string | null
@@ -453,6 +455,7 @@ export type Database = {
           dronelog_api_key?: string | null
           dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
+          hide_reporter_identity?: boolean
           id?: string
           kontakt_epost?: string | null
           kontakt_telefon?: string | null
