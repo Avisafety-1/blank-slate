@@ -1,35 +1,32 @@
 
 
-## Fix: Crash ved "Fullførte oppdrag"
+## Fix: Crash ved åpning av oppdragsdetaljer (wind_speed)
 
 ### Rotårsak
-`getResourceConflictsForMission` (linje 217 i `useResourceConflicts.ts`) kaller `new Date(mission.tidspunkt)` for **alle** oppdrag i listen. Hvis et oppdrag har `tidspunkt = null`, gir dette "Invalid Date", og `isSameDay()` kaster en feil som krasjer hele siden. Sjekken på linje 208 beskytter bare det *aktive* oppdraget, ikke de andre i loopen.
+`DroneWeatherPanel` aksesserer `savedWeatherData.current.wind_speed` (linje 302) uten å sjekke om `current` finnes. Noen lagrede vær-snapshots mangler `current`-objektet (f.eks. hvis API-kallet feilet delvis, eller datastrukturen ble endret).
 
 ### Plan
 
-**Fil: `src/hooks/useResourceConflicts.ts`**
-- Linje 216-217: Legg til null-sjekk i loopen — hopp over oppdrag uten `tidspunkt`:
+**Fil: `src/components/DroneWeatherPanel.tsx`**
+- Linje 244: Legg til en guard som sjekker at `savedWeatherData.current` finnes før rendering av historisk værdata. Hvis `current` mangler, vis en enkel melding som "Værdata ufullstendig" i stedet for å krasje.
+
 ```typescript
-for (const mission of otherMissions) {
-  if (!mission.tidspunkt) continue;  // <-- ny linje
-  const mStart = new Date(mission.tidspunkt);
-  ...
-}
+// Linje 244 — endre fra:
+if (isHistorical && savedWeatherData) {
+
+// til:
+if (isHistorical && savedWeatherData) {
+  if (!savedWeatherData.current) {
+    return (
+      <Card className="mt-3 p-3 bg-card/50 border">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Info className="w-3.5 h-3.5" />
+          <span>Værdata ufullstendig for dette oppdraget</span>
+        </div>
+      </Card>
+    );
+  }
 ```
 
-**Fil: `src/components/oppdrag/MissionCard.tsx`**
-- Linje 301: Legg til try/catch eller sjekk for `slutt_tidspunkt` som kan ha ugyldig datoformat (allerede guarded med `&&`, men legger til en ekstra safety):
-```typescript
-{mission.slutt_tidspunkt && (() => {
-  try {
-    return <p className="text-xs text-muted-foreground">
-      til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
-    </p>;
-  } catch { return null; }
-})()}
-```
-
-- Linje 751: Samme for `c.created_at` i approver_comments
-
-Disse to endringene er små og eliminerer alle gjenværende crash-punkter for null/ugyldig dato-data.
+Én liten endring — eliminerer crashen uten å påvirke oppdrag med korrekt lagret værdata.
 
