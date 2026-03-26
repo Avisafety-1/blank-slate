@@ -16,6 +16,7 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 type Incident = Tables<"incidents">;
 
