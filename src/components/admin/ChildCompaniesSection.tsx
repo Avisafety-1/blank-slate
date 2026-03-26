@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -49,6 +50,8 @@ export const ChildCompaniesSection = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
+  const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
+  const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
@@ -79,7 +82,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -87,6 +90,8 @@ export const ChildCompaniesSection = () => {
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
       setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
+      setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
+      setRequireSoraSteps((data as any).require_sora_steps ?? 1);
     }
   };
 
@@ -168,6 +173,58 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleRequireSora = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ require_sora_on_missions: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ require_sora_on_missions: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setRequireSoraOnMissions(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
+  const handleChangeSoraSteps = async (steps: number) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ require_sora_steps: steps } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ require_sora_steps: steps } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setRequireSoraSteps(steps);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleApplyToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyToChildren(checked);
@@ -175,7 +232,7 @@ export const ChildCompaniesSection = () => {
       setSavingSettings(true);
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
       toast.success("Innstilling anvendt på alle avdelinger");
@@ -280,6 +337,41 @@ export const ChildCompaniesSection = () => {
                   onCheckedChange={handleToggleRequireMissionApproval}
                   disabled={savingSettings}
                 />
+              </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Krev SORA på alle oppdrag</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="require-sora"
+                    checked={requireSoraOnMissions}
+                    onCheckedChange={handleToggleRequireSora}
+                    disabled={savingSettings}
+                  />
+                </div>
+                {requireSoraOnMissions && (
+                  <div className="pl-1 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                    <RadioGroup
+                      value={String(requireSoraSteps)}
+                      onValueChange={(v) => handleChangeSoraSteps(Number(v))}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="1" id="sora-step-1" />
+                        <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="2" id="sora-step-2" />
+                        <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
               </div>
               <div className="rounded-lg border-2 border-primary/20 border-dashed bg-muted/20 p-3 flex items-center justify-between">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">

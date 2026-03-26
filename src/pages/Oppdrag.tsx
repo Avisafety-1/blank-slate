@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useOppdragData } from "@/hooks/useOppdragData";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { RouteData } from "@/components/dashboard/AddMissionDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { Loader2 } from "lucide-react";
@@ -19,6 +21,8 @@ const Oppdrag = () => {
   const { isAdmin } = useRoleCheck();
   const { checklists } = useChecklists();
   const data = useOppdragData();
+  const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
 
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -299,7 +303,7 @@ const Oppdrag = () => {
                     onEdit={handleEditMission}
                     onDelete={setDeletingMission}
                     onNewRiskAssessment={handleNewRiskAssessment}
-                    onSubmitForApproval={data.handleSubmitForApproval}
+                    onSubmitForApproval={(m) => data.handleSubmitForApproval(m, companySettings, soraApprovalEnabled)}
                     onExportPdf={handleExportPdfClick}
                     onExportKmz={(m) => exportToKMZ(m, data.user?.id, data.companyId)}
                     onImportKml={(missionId) => {

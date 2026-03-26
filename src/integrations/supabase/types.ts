@@ -406,6 +406,8 @@ export type Database = {
           parent_company_id: string | null
           registration_code: string
           require_mission_approval: boolean
+          require_sora_on_missions: boolean
+          require_sora_steps: number
           selskapstype: string | null
           show_all_airspace_warnings: boolean
           stripe_exempt: boolean
@@ -436,6 +438,8 @@ export type Database = {
           parent_company_id?: string | null
           registration_code: string
           require_mission_approval?: boolean
+          require_sora_on_missions?: boolean
+          require_sora_steps?: number
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
@@ -466,6 +470,8 @@ export type Database = {
           parent_company_id?: string | null
           registration_code?: string
           require_mission_approval?: boolean
+          require_sora_on_missions?: boolean
+          require_sora_steps?: number
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean

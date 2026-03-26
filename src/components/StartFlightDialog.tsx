@@ -1,4 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -134,6 +136,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // DroneTag enabled flag for the company
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
+
+  // SORA requirement check
+  const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const [missingSora, setMissingSora] = useState(false);
 
   // Fetch company-level checklist settings
   useEffect(() => {
@@ -316,8 +323,24 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setNinoxApproved(false);
       setNinoxChecking(false);
       setShowNinoxConfirm(false);
+      setMissingSora(false);
     }
   }, [open]);
+
+  // Check SORA requirement for selected mission
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none' || !companySettings.require_sora_on_missions || soraApprovalEnabled) {
+      setMissingSora(false);
+      return;
+    }
+    (async () => {
+      const { count } = await supabase
+        .from('mission_risk_assessments')
+        .select('id', { count: 'exact', head: true })
+        .eq('mission_id', selectedMissionId);
+      setMissingSora((count ?? 0) < companySettings.require_sora_steps);
+    })();
+  }, [selectedMissionId, companySettings.require_sora_on_missions, companySettings.require_sora_steps, soraApprovalEnabled]);
 
   // Check if selected mission is in a 5km zone
   useEffect(() => {
@@ -1111,6 +1134,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
+            {/* SORA requirement warning */}
+            {missingSora && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
+                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
+                <p className="text-amber-600 dark:text-amber-400">
+                  SORA-analyse mangler. Gjennomfør SORA før du starter flyging.
+                </p>
+              </div>
+            )}
+
             {/* Ninox approval warning */}
             {missionIn5kmZone && !ninoxApproved && !ninoxChecking && (
               <div className="flex items-start gap-2 rounded-lg bg-red-500/10 p-3 text-sm">
@@ -1146,7 +1179,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </Button>
             <Button 
               onClick={handleStartFlightClick} 
-              disabled={loading || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && (!selectedDronetagId || selectedDronetagId === 'none'))}
+              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && (!selectedDronetagId || selectedDronetagId === 'none'))}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
