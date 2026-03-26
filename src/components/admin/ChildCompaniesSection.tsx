@@ -91,14 +91,39 @@ export const ChildCompaniesSection = () => {
       .from("companies")
       .update({ show_all_airspace_warnings: checked } as any)
       .eq("id", companyId);
-    setSavingSettings(false);
     if (error) {
+      setSavingSettings(false);
       toast.error("Kunne ikke lagre innstilling");
       return;
     }
+
+    // If "apply to children" is on, propagate to all child companies
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ show_all_airspace_warnings: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
     setShowAllAirspaceWarnings(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
+  };
+
+  const handleToggleApplyToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyToChildren(checked);
+    if (checked) {
+      // Propagate current setting to all children now
+      setSavingSettings(true);
+      await supabase
+        .from("companies")
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings } as any)
+        .eq("parent_company_id", companyId);
+      setSavingSettings(false);
+      toast.success("Innstilling anvendt på alle avdelinger");
+    }
   };
 
   const handleAdd = () => {
