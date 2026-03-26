@@ -138,6 +138,35 @@ export const ChildCompaniesSection = () => {
 
   return (
     <div className="space-y-4">
+      {/* Selskapsinnstillinger */}
+      <GlassCard>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Selskapsinnstillinger — {parentCompanyName}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Innstillinger som gjelder for ditt selskap
+          </p>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
+              <div className="font-medium text-sm">Vis alle luftromsadvarsler på oppdragskortene</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
+              </div>
+            </Label>
+            <Switch
+              id="show-all-airspace"
+              checked={showAllAirspaceWarnings}
+              onCheckedChange={handleToggleAirspaceWarnings}
+              disabled={savingSettings}
+            />
+          </div>
+        </div>
+      </GlassCard>
+
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
