@@ -18,6 +18,8 @@ interface MissionStatusDropdownProps {
   /** Mission coordinates for weather snapshot on completion */
   latitude?: number | null;
   longitude?: number | null;
+  /** Mission scheduled time – used to skip weather for historical missions */
+  tidspunkt?: string | null;
 }
 
 export const MissionStatusDropdown = ({
