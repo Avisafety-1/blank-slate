@@ -137,6 +137,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // DroneTag enabled flag for the company
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
 
+  // SORA requirement check
+  const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const [missingSora, setMissingSora] = useState(false);
+
   // Fetch company-level checklist settings
   useEffect(() => {
     const fetchCompanyChecklists = async () => {
