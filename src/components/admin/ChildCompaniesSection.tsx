@@ -177,6 +177,10 @@ export const ChildCompaniesSection = () => {
 
   const handleToggleRequireSora = async (checked: boolean) => {
     if (!companyId) return;
+    if (checked && soraApprovalEnabled) {
+      toast.error("Kan ikke aktiveres når SORA-basert godkjenning er på");
+      return;
+    }
     setSavingSettings(true);
     const { error } = await supabase
       .from("companies")
