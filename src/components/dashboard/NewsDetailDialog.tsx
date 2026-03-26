@@ -112,8 +112,8 @@ export const NewsDetailDialog = ({ open, onOpenChange, news, onEdit }: NewsDetai
             )}
           </div>
           
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <div className="whitespace-pre-wrap text-foreground leading-relaxed">
+          <div className="prose prose-sm max-w-none dark:prose-invert overflow-y-auto">
+            <div className="whitespace-pre-wrap text-foreground leading-relaxed break-words">
               {news.innhold}
             </div>
           </div>
