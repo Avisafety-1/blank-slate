@@ -137,19 +137,19 @@ export const MissionCard = ({
               latitude={mission.latitude}
               longitude={mission.longitude}
             />
-            {mission.approval_status === 'pending_approval' && (
+            {companySettings.require_mission_approval && mission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter på godkjenning
               </Badge>
             )}
-            {mission.approval_status === 'approved' && (
+            {companySettings.require_mission_approval && mission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
-            {mission.approval_status === 'not_approved' && (
+            {companySettings.require_mission_approval && mission.approval_status === 'not_approved' && (
               <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 border-gray-500/30">
                 Ikke godkjent
               </Badge>
