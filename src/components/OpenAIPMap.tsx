@@ -585,7 +585,7 @@ export function OpenAIPMap({
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
         fetchNaturvernZones({ layer: naturvernLayer, mode });
-        fetchVernRestrictionZones({ layer: vernRestriksjonLayer, mode });
+        fetchVernRestrictionZones({ layer: naturvernLayer, mode });
         
         // 5. Check realtime channel state and resubscribe if needed
         if ((mapChannel as any).state !== 'joined') {
