@@ -1,55 +1,35 @@
 
 
-## Fix: Feilmelding ved klikk på "Fullførte oppdrag"
+## Fix: Crash ved "Fullførte oppdrag"
 
-### Sannsynlige årsaker
-
-1. **`tidspunkt` kan være null/undefined** for noen fullførte oppdrag (f.eks. auto-fullførte). Linje 297 i MissionCard kaller `format(new Date(mission.tidspunkt), ...)` uten null-sjekk. Hvis `tidspunkt` er `undefined`, gir `new Date(undefined)` "Invalid Date", og `date-fns format()` kaster `RangeError: Invalid time value` som crasher hele komponenten.
-
-2. **"Avbrutt"-oppdrag mangler i spørringen**: Fullførte-fanen henter kun `status = "Fullført"`, men "Avbrutt"-oppdrag er også relevante for fullførte. Dette er ikke en feilårsak, men en mangel.
-
-3. **Stille feil i datahenting**: Hvis noen av de parallelle spørringene (personell, droner, utstyr osv.) feiler for fullførte oppdrag, fanger catch-blokken det og viser toast "Kunne ikke laste oppdrag", men gir ingen detaljer.
+### Rotårsak
+`getResourceConflictsForMission` (linje 217 i `useResourceConflicts.ts`) kaller `new Date(mission.tidspunkt)` for **alle** oppdrag i listen. Hvis et oppdrag har `tidspunkt = null`, gir dette "Invalid Date", og `isSameDay()` kaster en feil som krasjer hele siden. Sjekken på linje 208 beskytter bare det *aktive* oppdraget, ikke de andre i loopen.
 
 ### Plan
 
+**Fil: `src/hooks/useResourceConflicts.ts`**
+- Linje 216-217: Legg til null-sjekk i loopen — hopp over oppdrag uten `tidspunkt`:
+```typescript
+for (const mission of otherMissions) {
+  if (!mission.tidspunkt) continue;  // <-- ny linje
+  const mStart = new Date(mission.tidspunkt);
+  ...
+}
+```
+
 **Fil: `src/components/oppdrag/MissionCard.tsx`**
-- Legg til null-sjekk for `mission.tidspunkt` på linje 297: vis "Ikke angitt" hvis null/undefined i stedet for å krasje
-- Legg til null-sjekk for `log.flight_date` på linje 682
-- Legg til null-sjekk for `incident.hendelsestidspunkt` på linje 650
-
-**Fil: `src/hooks/useOppdragData.ts`**
-- Inkluder "Avbrutt" i fullførte-fanen: `.in("status", ["Fullført", "Avbrutt"])` (linje 123)
-- Gjør det samme i søkefunksjonen (linje 261)
-- Legg til mer detaljert console.error i catch-blokken for å vise hvilken sub-spørring som feiler
-
-**Fil: `src/components/oppdrag/OppdragFilterBar.tsx`**
-- Oppdater tab-teksten fra "Fullførte" til "Fullførte og avbrutte" (eller behold "Fullførte" men inkluder begge statuser)
-
-### Tekniske detaljer
-
-```text
-// MissionCard linje 297 - før:
-format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })
-
-// etter:
-mission.tidspunkt
-  ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })
-  : "Ikke angitt"
+- Linje 301: Legg til try/catch eller sjekk for `slutt_tidspunkt` som kan ha ugyldig datoformat (allerede guarded med `&&`, men legger til en ekstra safety):
+```typescript
+{mission.slutt_tidspunkt && (() => {
+  try {
+    return <p className="text-xs text-muted-foreground">
+      til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
+    </p>;
+  } catch { return null; }
+})()}
 ```
 
-```text
-// useOppdragData linje 122-124 - før:
-if (tab === "active") {
-  query = query.in("status", ["Planlagt", "Pågående"]);
-} else {
-  query = query.eq("status", "Fullført");
-}
+- Linje 751: Samme for `c.created_at` i approver_comments
 
-// etter:
-if (tab === "active") {
-  query = query.in("status", ["Planlagt", "Pågående"]);
-} else {
-  query = query.in("status", ["Fullført", "Avbrutt"]);
-}
-```
+Disse to endringene er små og eliminerer alle gjenværende crash-punkter for null/ugyldig dato-data.
 
