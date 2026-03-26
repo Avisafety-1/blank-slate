@@ -405,6 +405,7 @@ export type Database = {
           org_nummer: string | null
           parent_company_id: string | null
           registration_code: string
+          require_mission_approval: boolean
           selskapstype: string | null
           show_all_airspace_warnings: boolean
           stripe_exempt: boolean
@@ -434,6 +435,7 @@ export type Database = {
           org_nummer?: string | null
           parent_company_id?: string | null
           registration_code: string
+          require_mission_approval?: boolean
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
@@ -463,6 +465,7 @@ export type Database = {
           org_nummer?: string | null
           parent_company_id?: string | null
           registration_code?: string
+          require_mission_approval?: boolean
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean

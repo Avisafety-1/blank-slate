@@ -214,19 +214,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               latitude={currentMission.latitude}
               longitude={currentMission.longitude}
             />
-            {currentMission.approval_status === 'pending_approval' && (
+            {companySettings.require_mission_approval && currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter godkjenning
               </Badge>
             )}
-            {currentMission.approval_status === 'approved' && (
+            {companySettings.require_mission_approval && currentMission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
-            {(!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
+            {companySettings.require_mission_approval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
               <Badge 
                 variant="outline" 
                 className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"

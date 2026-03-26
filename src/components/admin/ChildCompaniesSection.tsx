@@ -48,6 +48,7 @@ export const ChildCompaniesSection = () => {
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
+  const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
@@ -78,13 +79,14 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval")
       .eq("id", companyId)
       .single();
     if (data) {
       setParentCompanyName(data.navn);
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
       setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
+      setRequireMissionApproval((data as any).require_mission_approval ?? false);
     }
   };
 
@@ -140,6 +142,32 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleRequireMissionApproval = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ require_mission_approval: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ require_mission_approval: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setRequireMissionApproval(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleApplyToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyToChildren(checked);
@@ -147,7 +175,7 @@ export const ChildCompaniesSection = () => {
       setSavingSettings(true);
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
       toast.success("Innstilling anvendt på alle avdelinger");
@@ -236,6 +264,20 @@ export const ChildCompaniesSection = () => {
                   id="hide-reporter"
                   checked={hideReporterIdentity}
                   onCheckedChange={handleToggleHideReporter}
+                  disabled={savingSettings}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm">Oppdrag krever godkjenning</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    SORA-spesifikk godkjenningslogikk overstyrer dette valget
+                  </div>
+                </Label>
+                <Switch
+                  id="require-approval"
+                  checked={requireMissionApproval}
+                  onCheckedChange={handleToggleRequireMissionApproval}
                   disabled={savingSettings}
                 />
               </div>

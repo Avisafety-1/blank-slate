@@ -5,11 +5,13 @@ import { useAuth } from "@/contexts/AuthContext";
 interface CompanySettings {
   show_all_airspace_warnings: boolean;
   hide_reporter_identity: boolean;
+  require_mission_approval: boolean;
 }
 
 const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
   hide_reporter_identity: false,
+  require_mission_approval: false,
 };
 
 // Simple in-memory cache keyed by companyId
@@ -45,6 +47,7 @@ export function useCompanySettings() {
           const s: CompanySettings = {
             show_all_airspace_warnings: data.show_all_airspace_warnings ?? false,
             hide_reporter_identity: data.hide_reporter_identity ?? false,
+            require_mission_approval: data.require_mission_approval ?? false,
           };
           cache[companyId] = { settings: s, ts: Date.now() };
           setSettings(s);
