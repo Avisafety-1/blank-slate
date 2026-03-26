@@ -354,8 +354,24 @@ export const useOppdragData = () => {
   }, []);
 
   // Handlers
-  const handleSubmitForApproval = async (mission: Mission) => {
+  const handleSubmitForApproval = async (mission: Mission, companySettings?: { require_sora_on_missions?: boolean; require_sora_steps?: number }, soraApprovalEnabled?: boolean) => {
     try {
+      // Check if SORA is required (only when sora_based_approval is NOT active)
+      if (companySettings?.require_sora_on_missions && !soraApprovalEnabled) {
+        const { count, error: countError } = await supabase
+          .from('mission_risk_assessments')
+          .select('id', { count: 'exact', head: true })
+          .eq('mission_id', mission.id);
+
+        if (countError) throw countError;
+
+        const requiredSteps = companySettings.require_sora_steps ?? 1;
+        if ((count ?? 0) < requiredSteps) {
+          toast.error('Gjennomfør SORA først');
+          return;
+        }
+      }
+
       const { data: approvers, error: approverError } = await supabase
         .rpc('get_mission_approvers', { target_company_id: companyId! });
 

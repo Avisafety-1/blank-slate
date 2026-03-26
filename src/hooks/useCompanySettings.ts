@@ -52,6 +52,8 @@ export function useCompanySettings() {
             show_all_airspace_warnings: data.show_all_airspace_warnings ?? false,
             hide_reporter_identity: data.hide_reporter_identity ?? false,
             require_mission_approval: data.require_mission_approval ?? false,
+            require_sora_on_missions: data.require_sora_on_missions ?? false,
+            require_sora_steps: data.require_sora_steps ?? 1,
           };
           cache[companyId] = { settings: s, ts: Date.now() };
           setSettings(s);
