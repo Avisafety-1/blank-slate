@@ -75,6 +75,9 @@ export default function KartPage() {
       setRoutePlanningState(state);
       if (state.existingRoute) {
         setCurrentRoute(state.existingRoute);
+        if (state.existingRoute.soraSettings) {
+          setSoraSettings(state.existingRoute.soraSettings);
+        }
       }
     }
     if (state?.focusFlightId) {
