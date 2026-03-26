@@ -3241,6 +3241,39 @@ export type Database = {
           },
         ]
       }
+      naturvern_zones: {
+        Row: {
+          description: string | null
+          external_id: string | null
+          geometry: unknown
+          id: string
+          name: string | null
+          properties: Json | null
+          synced_at: string | null
+          verneform: string | null
+        }
+        Insert: {
+          description?: string | null
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          name?: string | null
+          properties?: Json | null
+          synced_at?: string | null
+          verneform?: string | null
+        }
+        Update: {
+          description?: string | null
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          name?: string | null
+          properties?: Json | null
+          synced_at?: string | null
+          verneform?: string | null
+        }
+        Relationships: []
+      }
       news: {
         Row: {
           company_id: string
@@ -4076,6 +4109,39 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vern_restriction_zones: {
+        Row: {
+          description: string | null
+          external_id: string | null
+          geometry: unknown
+          id: string
+          name: string | null
+          properties: Json | null
+          restriction_type: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          description?: string | null
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          name?: string | null
+          properties?: Json | null
+          restriction_type?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          description?: string | null
+          external_id?: string | null
+          geometry?: unknown
+          id?: string
+          name?: string | null
+          properties?: Json | null
+          restriction_type?: string | null
+          synced_at?: string | null
         }
         Relationships: []
       }

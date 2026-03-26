@@ -117,6 +117,34 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
               message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             }
+          } else if (r.z_type === 'NATURVERN') {
+            if (r.route_inside) {
+              message = `Ruten går gjennom naturvernområde «${r.z_name}». Sjekk verneforskriften for eventuelle restriksjoner.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til naturvernområde «${r.z_name}», ${distStr} unna.`;
+            }
+          } else if (r.z_type === 'FERDSELSFORBUD') {
+            if (r.route_inside) {
+              message = `Ruten går gjennom område med ferdselsforbud «${r.z_name}». Droneflyvning kan være forbudt.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til område med ferdselsforbud «${r.z_name}», ${distStr} unna.`;
+            }
+          } else if (r.z_type === 'LANDINGSFORBUD') {
+            if (r.route_inside) {
+              message = `Ruten går gjennom område med landingsforbud «${r.z_name}». Landing/start forbudt.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til område med landingsforbud «${r.z_name}», ${distStr} unna.`;
+            }
+          } else if (r.z_type === 'LAVFLYVING') {
+            if (r.route_inside) {
+              message = `Ruten går gjennom område med lavflyvingsforbud under 300m «${r.z_name}».`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til område med lavflyvingsforbud «${r.z_name}», ${distStr} unna.`;
+            }
           } else if (r.route_inside) {
             message = `Ruten går gjennom ${r.z_type}-sone «${r.z_name}».`;
           } else {
