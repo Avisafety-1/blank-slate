@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Trash2, Plus, FileText, Pencil, X } from "lucide-react";
+import { Trash2, Plus, FileText, Pencil, X, FolderPlus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { Document } from "@/types";
@@ -19,9 +19,16 @@ interface FolderDetailDialogProps {
   isAdmin: boolean;
 }
 
+interface FolderTab {
+  id: string;
+  name: string;
+  sort_order: number;
+}
+
 interface FolderDoc {
   id: string;
   document_id: string;
+  tab_id: string | null;
   tittel: string;
   kategori: string;
 }
@@ -29,6 +36,8 @@ interface FolderDoc {
 export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAdmin }: FolderDetailDialogProps) => {
   const { companyId } = useAuth();
   const [folderDocs, setFolderDocs] = useState<FolderDoc[]>([]);
+  const [tabs, setTabs] = useState<FolderTab[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null); // null = "Alle"
   const [showPicker, setShowPicker] = useState(false);
   const [allDocs, setAllDocs] = useState<{ id: string; tittel: string; kategori: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -37,6 +46,10 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [editName, setEditName] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [docDetailOpen, setDocDetailOpen] = useState(false);
+  const [newTabName, setNewTabName] = useState("");
+  const [showNewTab, setShowNewTab] = useState(false);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState("");
 
   const getDocumentStatus = (doc: { gyldig_til?: string | null; varsel_dager_for_utløp?: number | null }): string => {
     if (!doc.gyldig_til) return "Grønn";
@@ -49,11 +62,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   };
 
   const handleDocClick = async (documentId: string) => {
-    const { data } = await supabase
-      .from("documents")
-      .select("*")
-      .eq("id", documentId)
-      .single();
+    const { data } = await supabase.from("documents").select("*").eq("id", documentId).single();
     if (data) {
       const doc: Document = {
         id: data.id,
@@ -64,7 +73,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         synlighet: (data.global_visibility ? "Alle" : "Internt") as any,
         sist_endret: new Date(data.oppdatert_dato || data.opprettet_dato || new Date()),
         gyldig_til: data.gyldig_til ? new Date(data.gyldig_til) : undefined,
-        utsteder: data.beskrivelse ? undefined : undefined,
+        utsteder: undefined,
         fil_url: data.fil_url || undefined,
         fil_navn: data.fil_navn || undefined,
         nettside_url: data.nettside_url || undefined,
@@ -80,33 +89,50 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     if (!folder) return;
     const { data } = await supabase
       .from("document_folder_items")
-      .select("id, document_id, documents:document_id(tittel, kategori)")
+      .select("id, document_id, tab_id, documents:document_id(tittel, kategori)")
       .eq("folder_id", folder.id);
     setFolderDocs(
       (data || []).map((d: any) => ({
         id: d.id,
         document_id: d.document_id,
+        tab_id: d.tab_id,
         tittel: d.documents?.tittel || "Ukjent",
         kategori: d.documents?.kategori || "",
       }))
     );
   };
 
+  const loadTabs = async () => {
+    if (!folder) return;
+    const { data } = await supabase
+      .from("document_folder_tabs")
+      .select("id, name, sort_order")
+      .eq("folder_id", folder.id)
+      .order("sort_order", { ascending: true });
+    setTabs(data || []);
+  };
+
   useEffect(() => {
     if (open && folder) {
       loadFolderDocs();
+      loadTabs();
       setShowPicker(false);
       setEditing(false);
+      setActiveTab(null);
+      setShowNewTab(false);
+      setEditingTabId(null);
     }
   }, [open, folder]);
 
   const openPicker = async () => {
-    const { data } = await supabase
-      .from("documents")
-      .select("id, tittel, kategori")
-      .order("tittel");
+    const { data } = await supabase.from("documents").select("id, tittel, kategori").order("tittel");
     setAllDocs(data || []);
-    const existing = new Set(folderDocs.map((d) => d.document_id));
+    // Pre-select docs already in this tab (or all if "Alle" tab)
+    const existing = new Set(
+      folderDocs
+        .filter((d) => activeTab === null || d.tab_id === activeTab)
+        .map((d) => d.document_id)
+    );
     setSelectedIds(existing);
     setShowPicker(true);
     setSearchPicker("");
@@ -123,16 +149,24 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
 
   const savePicker = async () => {
     if (!folder) return;
-    const existingIds = new Set(folderDocs.map((d) => d.document_id));
+    const tabFilter = activeTab;
+    const relevantDocs = folderDocs.filter((d) =>
+      tabFilter === null ? true : d.tab_id === tabFilter
+    );
+    const existingIds = new Set(relevantDocs.map((d) => d.document_id));
     const toAdd = [...selectedIds].filter((id) => !existingIds.has(id));
-    const toRemove = folderDocs.filter((d) => !selectedIds.has(d.document_id));
+    const toRemove = relevantDocs.filter((d) => !selectedIds.has(d.document_id));
 
     if (toRemove.length) {
       await supabase.from("document_folder_items").delete().in("id", toRemove.map((d) => d.id));
     }
     if (toAdd.length) {
       await supabase.from("document_folder_items").insert(
-        toAdd.map((document_id) => ({ folder_id: folder.id, document_id }))
+        toAdd.map((document_id) => ({
+          folder_id: folder.id,
+          document_id,
+          tab_id: tabFilter,
+        }))
       );
     }
     toast.success("Mappeinnhold oppdatert");
@@ -151,10 +185,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const deleteFolder = async () => {
     if (!folder) return;
     const { error } = await supabase.from("document_folders").delete().eq("id", folder.id);
-    if (error) {
-      toast.error("Kunne ikke slette mappen");
-      return;
-    }
+    if (error) { toast.error("Kunne ikke slette mappen"); return; }
     toast.success("Mappe slettet");
     onOpenChange(false);
     onRefresh();
@@ -168,9 +199,46 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     onRefresh();
   };
 
+  // Tab management
+  const createTab = async () => {
+    if (!folder || !newTabName.trim()) return;
+    const nextOrder = tabs.length > 0 ? Math.max(...tabs.map((t) => t.sort_order)) + 1 : 0;
+    const { error } = await supabase.from("document_folder_tabs").insert({
+      folder_id: folder.id,
+      name: newTabName.trim(),
+      sort_order: nextOrder,
+    });
+    if (error) { toast.error("Kunne ikke opprette fane"); return; }
+    toast.success("Fane opprettet");
+    setNewTabName("");
+    setShowNewTab(false);
+    loadTabs();
+  };
+
+  const renameTab = async () => {
+    if (!editingTabId || !editingTabName.trim()) return;
+    await supabase.from("document_folder_tabs").update({ name: editingTabName.trim() }).eq("id", editingTabId);
+    toast.success("Fanenavn oppdatert");
+    setEditingTabId(null);
+    loadTabs();
+  };
+
+  const deleteTab = async (tabId: string) => {
+    // Documents in this tab will have tab_id set to null (ON DELETE SET NULL)
+    await supabase.from("document_folder_tabs").delete().eq("id", tabId);
+    toast.success("Fane slettet");
+    if (activeTab === tabId) setActiveTab(null);
+    loadTabs();
+    loadFolderDocs();
+  };
+
   const filteredPickerDocs = allDocs.filter(
     (d) => !searchPicker || d.tittel.toLowerCase().includes(searchPicker.toLowerCase())
   );
+
+  const visibleDocs = activeTab === null
+    ? folderDocs
+    : folderDocs.filter((d) => d.tab_id === activeTab);
 
   if (!folder) return null;
 
@@ -181,13 +249,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         <DialogHeader>
           {editing ? (
             <div className="flex items-center gap-2">
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="text-lg font-semibold"
-                onKeyDown={(e) => e.key === "Enter" && saveRename()}
-                autoFocus
-              />
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="text-lg font-semibold" onKeyDown={(e) => e.key === "Enter" && saveRename()} autoFocus />
               <Button size="sm" onClick={saveRename}>Lagre</Button>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
             </div>
@@ -204,20 +266,84 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           <DialogDescription>{folderDocs.length} dokument{folderDocs.length !== 1 ? "er" : ""}</DialogDescription>
         </DialogHeader>
 
+        {/* Tabs bar */}
+        {(tabs.length > 0 || isAdmin) && !showPicker && (
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-border">
+            <button
+              onClick={() => setActiveTab(null)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
+                activeTab === null ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
+              }`}
+            >
+              Alle
+            </button>
+            {tabs.map((tab) => (
+              <div key={tab.id} className="flex items-center group">
+                {editingTabId === tab.id ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={editingTabName}
+                      onChange={(e) => setEditingTabName(e.target.value)}
+                      className="h-7 text-xs w-24"
+                      onKeyDown={(e) => e.key === "Enter" && renameTab()}
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={renameTab}><Pencil className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingTabId(null)}><X className="h-3 w-3" /></Button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
+                        activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                    {isAdmin && (
+                      <div className="hidden group-hover:flex items-center">
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => { setEditingTabId(tab.id); setEditingTabName(tab.name); }}>
+                          <Pencil className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => deleteTab(tab.id)}>
+                          <X className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+            {isAdmin && !showNewTab && (
+              <button onClick={() => setShowNewTab(true)} className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {isAdmin && showNewTab && (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={newTabName}
+                  onChange={(e) => setNewTabName(e.target.value)}
+                  placeholder="Fanenavn..."
+                  className="h-7 text-xs w-24"
+                  onKeyDown={(e) => e.key === "Enter" && createTab()}
+                  autoFocus
+                />
+                <Button size="sm" className="h-7 text-xs px-2" onClick={createTab}>OK</Button>
+                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowNewTab(false)}><X className="h-3 w-3" /></Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {showPicker ? (
           <div className="flex-1 flex flex-col gap-3 min-h-0">
-            <Input
-              placeholder="Søk dokumenter..."
-              value={searchPicker}
-              onChange={(e) => setSearchPicker(e.target.value)}
-            />
+            <Input placeholder="Søk dokumenter..." value={searchPicker} onChange={(e) => setSearchPicker(e.target.value)} />
             <ScrollArea className="flex-1 min-h-0 max-h-[50vh] border rounded-md p-2">
               {filteredPickerDocs.map((doc) => (
                 <label key={doc.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-accent/10 rounded cursor-pointer">
-                  <Checkbox
-                    checked={selectedIds.has(doc.id)}
-                    onCheckedChange={() => toggleDoc(doc.id)}
-                  />
+                  <Checkbox checked={selectedIds.has(doc.id)} onCheckedChange={() => toggleDoc(doc.id)} />
                   <span className="text-sm truncate">{doc.tittel}</span>
                   <span className="text-xs text-muted-foreground ml-auto">{doc.kategori}</span>
                 </label>
@@ -234,11 +360,13 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         ) : (
           <>
             <ScrollArea className="flex-1 max-h-[40vh]">
-              {folderDocs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">Ingen dokumenter i denne mappen</p>
+              {visibleDocs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  {activeTab ? "Ingen dokumenter i denne fanen" : "Ingen dokumenter i denne mappen"}
+                </p>
               ) : (
                 <div className="space-y-1">
-                  {folderDocs.map((doc) => (
+                  {visibleDocs.map((doc) => (
                     <div key={doc.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <span className="text-sm flex-1 break-words leading-snug">{doc.tittel}</span>
