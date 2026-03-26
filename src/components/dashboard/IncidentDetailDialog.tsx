@@ -52,7 +52,7 @@ const statusColors = {
 };
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
-  const { user, companyId, ensureValidToken, isAdmin } = useAuth();
+  const { user, companyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
   const companySettings = useCompanySettings();
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
