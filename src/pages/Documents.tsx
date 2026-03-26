@@ -170,6 +170,10 @@ const Documents = () => {
                     <ListChecks className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Ny sjekkliste</span>
                   </Button>
+                  <Button onClick={() => setCreateFolderOpen(true)} variant="secondary" size="default">
+                    <FolderPlus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Ny mappe</span>
+                  </Button>
                   <Button onClick={() => setCreateDialogOpen(true)} size="default">
                     <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Nytt dokument</span>
@@ -177,6 +181,8 @@ const Documents = () => {
                 </div>
               )}
             </div>
+
+            <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
 
             <DocumentsFilterBar
               searchQuery={searchQuery}
@@ -188,8 +194,6 @@ const Documents = () => {
               sortOption={sortOption}
               onSortChange={setSortOption}
             />
-
-            <FolderGrid isAdmin={isAdmin} companyId={companyId} />
 
             <DocumentsList
               documents={filteredDocuments || []}

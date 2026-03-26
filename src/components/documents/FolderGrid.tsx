@@ -68,18 +68,9 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
             </div>
           </button>
         ))}
-        {isAdmin && (
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="aspect-square rounded-lg border border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1.5 hover:bg-accent/15 transition-colors cursor-pointer"
-          >
-            <Plus className="h-7 w-7 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Ny mappe</span>
-          </button>
-        )}
       </div>
 
-      <CreateFolderDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={refetch} />
+      <CreateFolderDialog open={createOpen} onOpenChange={onCreateOpenChange} onSuccess={refetch} />
       <FolderDetailDialog
         folder={selectedFolder}
         open={detailOpen}
