@@ -28,6 +28,8 @@ import {
   fetchDroneTelemetry,
   fetchActiveAdvisories,
   fetchPilotPositions,
+  fetchNaturvernZones,
+  fetchVernRestrictionZones,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
