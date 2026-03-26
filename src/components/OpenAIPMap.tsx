@@ -28,6 +28,8 @@ import {
   fetchDroneTelemetry,
   fetchActiveAdvisories,
   fetchPilotPositions,
+  fetchNaturvernZones,
+  fetchVernRestrictionZones,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -396,16 +398,12 @@ export function OpenAIPMap({
     });
     layerConfigs.push({ id: "nrl", name: "Luftfartshindre (NRL)", layer: nrlLayer, enabled: false, icon: "alertTriangle" });
 
-    // Naturvernområder (nasjonalparker, naturreservater osv.)
-    const naturvernLayer = L.tileLayer.wms("https://kart.miljodirektoratet.no/arcgis/services/vern/MapServer/WMSServer?", {
-      layers: "naturvern_klasser_omrade", format: "image/png", transparent: true, opacity: 0.7, attribution: 'Naturvern © Miljødirektoratet',
-    });
+    // Naturvernområder (nasjonalparker, naturreservater osv.) — vektorlag fra DB
+    const naturvernLayer = L.layerGroup();
     layerConfigs.push({ id: "naturvern", name: "Naturvernområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
 
-    // Vern-restriksjoner (ferdsels-/landingsforbud, lavflyvingsforbud)
-    const vernRestriksjonLayer = L.tileLayer.wms("https://kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer?", {
-      layers: "ferdselsforbud,landingsforbud,lavflyving_forbudt_under_300m", format: "image/png", transparent: true, opacity: 0.7, attribution: 'Vern-restriksjoner © Miljødirektoratet',
-    }).addTo(map);
+    // Vern-restriksjoner (ferdsels-/landingsforbud, lavflyvingsforbud) — vektorlag fra DB
+    const vernRestriksjonLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "vern_restriksjoner", name: "Vern-restriksjoner (ferdsel/landing)", layer: vernRestriksjonLayer, enabled: true, icon: "ban" });
 
     // SSB Arealbruk
@@ -546,6 +544,8 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    fetchNaturvernZones({ layer: naturvernLayer, mode });
+    fetchVernRestrictionZones({ layer: vernRestriksjonLayer, mode });
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
@@ -588,6 +588,8 @@ export function OpenAIPMap({
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+        fetchNaturvernZones({ layer: naturvernLayer, mode });
+        fetchVernRestrictionZones({ layer: vernRestriksjonLayer, mode });
         
         // 5. Check realtime channel state and resubscribe if needed
         if ((mapChannel as any).state !== 'joined') {

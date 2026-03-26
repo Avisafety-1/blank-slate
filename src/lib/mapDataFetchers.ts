@@ -521,6 +521,135 @@ export async function fetchActiveAdvisories(params: {
   }
 }
 
+export async function fetchNaturvernZones(params: FetchParams) {
+  const { layer, mode } = params;
+  try {
+    const { data, error } = await supabase
+      .from('naturvern_zones')
+      .select('external_id, name, verneform, geometry, properties');
+
+    if (error || !data) {
+      console.error('Feil ved henting av naturvernområder:', error);
+      return;
+    }
+
+    layer.clearLayers();
+
+    const verneformColors: Record<string, string> = {
+      'Nasjonalpark': '#15803d',
+      'Naturreservat': '#166534',
+      'Landskapsvernområde': '#4ade80',
+      'Biotopvernområde': '#22c55e',
+      'Marint verneområde': '#0ea5e9',
+      'Dyrefredningsområde': '#a3e635',
+      'Plantefredningsområde': '#84cc16',
+    };
+
+    for (const zone of data) {
+      if (!zone.geometry) continue;
+      try {
+        const geojsonFeature = {
+          type: 'Feature' as const,
+          geometry: zone.geometry,
+          properties: { name: zone.name, verneform: zone.verneform },
+        };
+
+        const color = verneformColors[zone.verneform || ''] || '#16a34a';
+
+        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style: {
+            color,
+            weight: 1.5,
+            fillColor: color,
+            fillOpacity: 0.15,
+          },
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+            const p = feature.properties || {};
+            let popup = `<strong>🌿 Naturvernområde</strong><br/>`;
+            popup += `<strong>${p.name || 'Ukjent'}</strong><br/>`;
+            if (p.verneform) popup += `Verneform: ${p.verneform}<br/>`;
+            layer.bindPopup(popup);
+          } : undefined,
+        });
+        geoJsonLayer.addTo(layer);
+      } catch (err) {
+        // Skip individual zones that fail
+      }
+    }
+    console.log(`Rendered ${data.length} naturvernområder`);
+  } catch (err) {
+    console.error('Kunne ikke hente naturvernområder:', err);
+  }
+}
+
+export async function fetchVernRestrictionZones(params: FetchParams) {
+  const { layer, mode } = params;
+  try {
+    const { data, error } = await supabase
+      .from('vern_restriction_zones')
+      .select('external_id, name, restriction_type, geometry, properties');
+
+    if (error || !data) {
+      console.error('Feil ved henting av vern-restriksjoner:', error);
+      return;
+    }
+
+    layer.clearLayers();
+
+    const restrictionColors: Record<string, string> = {
+      'FERDSELSFORBUD': '#dc2626',
+      'LANDINGSFORBUD': '#f97316',
+      'LAVFLYVING': '#eab308',
+    };
+
+    const restrictionLabels: Record<string, string> = {
+      'FERDSELSFORBUD': 'Ferdselsforbud',
+      'LANDINGSFORBUD': 'Landingsforbud',
+      'LAVFLYVING': 'Lavflyvingsforbud under 300m',
+    };
+
+    for (const zone of data) {
+      if (!zone.geometry) continue;
+      try {
+        const geojsonFeature = {
+          type: 'Feature' as const,
+          geometry: zone.geometry,
+          properties: { name: zone.name, restriction_type: zone.restriction_type },
+        };
+
+        const color = restrictionColors[zone.restriction_type || ''] || '#ef4444';
+        const label = restrictionLabels[zone.restriction_type || ''] || zone.restriction_type || 'Restriksjon';
+
+        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style: {
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.2,
+            dashArray: '5, 5',
+          },
+          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+            const p = feature.properties || {};
+            let popup = `<strong>⛔ ${label}</strong><br/>`;
+            popup += `<strong>${p.name || 'Ukjent'}</strong>`;
+            layer.bindPopup(popup);
+          } : undefined,
+        });
+        geoJsonLayer.addTo(layer);
+      } catch (err) {
+        // Skip individual zones that fail
+      }
+    }
+    console.log(`Rendered ${data.length} vern-restriksjoner`);
+  } catch (err) {
+    console.error('Kunne ikke hente vern-restriksjoner:', err);
+  }
+}
+
 export async function fetchPilotPositions(params: {
   pilotPositionsLayer: L.LayerGroup;
   flightMarkersRef: React.MutableRefObject<Map<string, L.Marker>>;
