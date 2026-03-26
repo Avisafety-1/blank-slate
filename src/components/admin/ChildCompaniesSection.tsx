@@ -238,8 +238,8 @@ export const ChildCompaniesSection = () => {
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border p-3 flex items-center justify-between">
                 <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Vis alle luftromsadvarsler på oppdragskortene</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
@@ -253,7 +253,7 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="rounded-lg border border-border p-3 flex items-center justify-between">
                 <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Skjul identitet til rapportør av hendelser</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
@@ -267,7 +267,7 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="rounded-lg border border-border p-3 flex items-center justify-between">
                 <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Oppdrag krever godkjenning</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
@@ -281,7 +281,7 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
-              <div className="flex items-center justify-between pl-4 border-l-2 border-muted ml-1">
+              <div className="rounded-lg border border-border border-dashed p-3 flex items-center justify-between">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
