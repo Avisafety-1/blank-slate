@@ -3250,6 +3250,7 @@ export type Database = {
           name: string | null
           properties: Json | null
           synced_at: string | null
+          updated_at: string | null
           verneform: string | null
         }
         Insert: {
@@ -3260,6 +3261,7 @@ export type Database = {
           name?: string | null
           properties?: Json | null
           synced_at?: string | null
+          updated_at?: string | null
           verneform?: string | null
         }
         Update: {
@@ -3270,6 +3272,7 @@ export type Database = {
           name?: string | null
           properties?: Json | null
           synced_at?: string | null
+          updated_at?: string | null
           verneform?: string | null
         }
         Relationships: []
@@ -4122,6 +4125,7 @@ export type Database = {
           properties: Json | null
           restriction_type: string | null
           synced_at: string | null
+          updated_at: string | null
         }
         Insert: {
           description?: string | null
@@ -4132,6 +4136,7 @@ export type Database = {
           properties?: Json | null
           restriction_type?: string | null
           synced_at?: string | null
+          updated_at?: string | null
         }
         Update: {
           description?: string | null
@@ -4142,6 +4147,7 @@ export type Database = {
           properties?: Json | null
           restriction_type?: string | null
           synced_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
