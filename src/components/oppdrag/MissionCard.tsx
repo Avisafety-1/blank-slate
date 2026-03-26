@@ -647,7 +647,7 @@ export const MissionCard = ({
                         </Badge>
                       )}
                       <span className="text-muted-foreground">
-                        {format(new Date(incident.hendelsestidspunkt), "dd. MMM yyyy", { locale: nb })}
+                        {incident.hendelsestidspunkt ? format(new Date(incident.hendelsestidspunkt), "dd. MMM yyyy", { locale: nb }) : "—"}
                       </span>
                     </div>
                   </div>
