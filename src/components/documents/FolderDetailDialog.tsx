@@ -177,7 +177,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
         <DialogHeader>
           {editing ? (
             <div className="flex items-center gap-2">
@@ -239,9 +239,9 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               ) : (
                 <div className="space-y-1">
                   {folderDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate flex-1">{doc.tittel}</span>
+                    <div key={doc.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="text-sm flex-1 break-words leading-snug">{doc.tittel}</span>
                       {isAdmin && (
                         <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}>
                           <X className="h-3.5 w-3.5" />
