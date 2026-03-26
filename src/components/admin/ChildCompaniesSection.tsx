@@ -78,12 +78,13 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity")
       .eq("id", companyId)
       .single();
     if (data) {
       setParentCompanyName(data.navn);
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
+      setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
     }
   };
 
