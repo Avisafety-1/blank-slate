@@ -561,22 +561,74 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="medvirkende_aarsak">Medvirkende årsak (valgfritt)</Label>
-            <Select
-              value={formData.medvirkende_aarsak}
-              onValueChange={(value) => setFormData({ ...formData, medvirkende_aarsak: value })}
-            >
-              <SelectTrigger id="medvirkende_aarsak">
-                <SelectValue placeholder="Velg medvirkende årsak..." />
-              </SelectTrigger>
-              <SelectContent>
-                {contributingCauses.map((cause) => (
-                  <SelectItem key={cause.id} value={cause.navn}>
-                    {cause.navn}
-                  </SelectItem>
+            <Label>Medvirkende årsak (valgfritt)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {formData.medvirkende_aarsak
+                      ? formData.medvirkende_aarsak.split(", ").length + " valgt"
+                      : "Velg medvirkende årsaker..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {contributingCauses.map((cause) => {
+                    const selected = formData.medvirkende_aarsak
+                      ? formData.medvirkende_aarsak.split(", ").includes(cause.navn)
+                      : false;
+                    return (
+                      <label
+                        key={cause.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(checked) => {
+                            const current = formData.medvirkende_aarsak
+                              ? formData.medvirkende_aarsak.split(", ").filter(Boolean)
+                              : [];
+                            const next = checked
+                              ? [...current, cause.navn]
+                              : current.filter((c) => c !== cause.navn);
+                            setFormData({ ...formData, medvirkende_aarsak: next.join(", ") });
+                          }}
+                        />
+                        {cause.navn}
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {formData.medvirkende_aarsak && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {formData.medvirkende_aarsak.split(", ").map((cause) => (
+                  <span key={cause} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+                    {cause}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = formData.medvirkende_aarsak
+                          .split(", ")
+                          .filter((c) => c !== cause)
+                          .join(", ");
+                        setFormData({ ...formData, medvirkende_aarsak: next });
+                      }}
+                      className="hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
