@@ -151,7 +151,7 @@ export const MissionCard = ({
                 Godkjent
               </Badge>
             )}
-            {companySettings.require_mission_approval && mission.approval_status === 'not_approved' && (
+            {showApproval && mission.approval_status === 'not_approved' && (
               <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 border-gray-500/30">
                 Ikke godkjent
               </Badge>
