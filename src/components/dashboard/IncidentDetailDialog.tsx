@@ -492,7 +492,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Rapportert av</p>
-                  <p className="text-base">{incident.rapportert_av}</p>
+                  <p className="text-base">{companySettings.hide_reporter_identity ? "Anonym" : incident.rapportert_av}</p>
                 </div>
               </div>
             )}

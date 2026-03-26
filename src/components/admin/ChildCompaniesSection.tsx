@@ -101,7 +101,6 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    // If "apply to children" is on, propagate to all child companies
     if (applyToChildren) {
       await supabase
         .from("companies")

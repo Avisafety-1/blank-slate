@@ -44,6 +44,7 @@ export function useCompanySettings() {
         if (data) {
           const s: CompanySettings = {
             show_all_airspace_warnings: data.show_all_airspace_warnings ?? false,
+            hide_reporter_identity: data.hide_reporter_identity ?? false,
           };
           cache[companyId] = { settings: s, ts: Date.now() };
           setSettings(s);
