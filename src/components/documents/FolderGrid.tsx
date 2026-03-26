@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderDetailDialog } from "./FolderDetailDialog";
 
 interface FolderGridProps {
   isAdmin: boolean;
   companyId: string | null;
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
 }
 
 interface Folder {
