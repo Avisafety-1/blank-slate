@@ -97,6 +97,7 @@ export const MissionCard = ({
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const companySettings = useCompanySettings();
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
