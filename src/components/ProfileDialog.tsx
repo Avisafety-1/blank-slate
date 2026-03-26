@@ -1330,6 +1330,25 @@ export const ProfileDialog = () => {
                       </div>
                     </div>
 
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Nødnumre</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <a href="tel:110" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
+                          <span className="text-lg font-bold">110</span>
+                          <span className="text-xs text-muted-foreground">Brann</span>
+                        </a>
+                        <a href="tel:112" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
+                          <span className="text-lg font-bold">112</span>
+                          <span className="text-xs text-muted-foreground">Politi</span>
+                        </a>
+                        <a href="tel:113" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
+                          <span className="text-lg font-bold">113</span>
+                          <span className="text-xs text-muted-foreground">Ambulanse</span>
+                        </a>
+                      </div>
+                    </div>
+
                     {isEditing && (
                       <div className="flex gap-2 pt-4">
                         <Button onClick={handleSaveProfile} size="sm" className="flex-1 sm:flex-none">
