@@ -20,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 
 interface ChildCompany {
   id: string;
@@ -39,6 +40,7 @@ interface ChildCompany {
 export const ChildCompaniesSection = () => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
   const [children, setChildren] = useState<ChildCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -175,6 +177,10 @@ export const ChildCompaniesSection = () => {
 
   const handleToggleRequireSora = async (checked: boolean) => {
     if (!companyId) return;
+    if (checked && soraApprovalEnabled) {
+      toast.error("Kan ikke aktiveres når SORA-basert godkjenning er på");
+      return;
+    }
     setSavingSettings(true);
     const { error } = await supabase
       .from("companies")
@@ -350,7 +356,7 @@ export const ChildCompaniesSection = () => {
                     id="require-sora"
                     checked={requireSoraOnMissions}
                     onCheckedChange={handleToggleRequireSora}
-                    disabled={savingSettings}
+                    disabled={savingSettings || soraApprovalEnabled}
                   />
                 </div>
                 {requireSoraOnMissions && (
