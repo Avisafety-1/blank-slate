@@ -12,6 +12,7 @@ import { EccairsAttachmentUpload } from "@/components/eccairs/EccairsAttachmentU
 import { EccairsSettingsDialog } from "@/components/eccairs/EccairsSettingsDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -137,6 +138,7 @@ const getEccairsStatusClass = (status?: string): string => {
 const Hendelser = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, companyId, departmentsEnabled } = useAuth();
+  const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
   const [oppfolgingsansvarlige, setOppfolgingsansvarlige] = useState<Record<string, string>>({});
@@ -1002,7 +1004,7 @@ const Hendelser = () => {
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Rapportert av: {incident.rapportert_av}</span>
+                        <span>Rapportert av: {companySettings.hide_reporter_identity ? "Anonym" : incident.rapportert_av}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
