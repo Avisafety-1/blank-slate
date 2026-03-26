@@ -1,32 +1,28 @@
 
 
-## Legg til minimum zoom-nivå for verneområder
+## Fix: Gjenopprett SORA-innstillinger ved redigering via navigasjons-state
 
 ### Problem
-Hvis brukeren zoomer langt ut, sendes en spørring som treffer tusenvis av polygoner — unødvendig belastning på DB og nettleser, selv med LIMIT 500.
+Det finnes to innganger til ruteredigering i `Kart.tsx`:
+
+1. **Fra oppdragsdialogen på kartet** (`handleEditMissionRoute`, linje 178) — her gjenopprettes `soraSettings` korrekt fra `route.soraSettings`
+2. **Via navigasjons-state** (useEffect linje 71-87) — her settes `existingRoute` som `currentRoute`, men **soraSettings hentes aldri ut og settes**. Derfor forblir toggle "av".
 
 ### Løsning
-Legg til en sjekk i `fetchVerneomraader()`-funksjonen i `OpenAIPMap.tsx`: hvis `map.getZoom() < 10`, rydd laget og ikke hent data. Vis eventuelt en liten toast/melding.
 
-### Endring
+**Fil: `src/pages/Kart.tsx`**
 
-**Fil: `src/components/OpenAIPMap.tsx`**
+I useEffect-blokken (linje 71-87), etter `setCurrentRoute(state.existingRoute)` på linje 77, legg til:
 
-I `fetchVerneomraader()`-funksjonen (som kalles ved `moveend`):
-
-```
-if (map.getZoom() < 10) {
-  naturvernLayer.clearLayers();
-  return;
+```ts
+if (state.existingRoute.soraSettings) {
+  setSoraSettings(state.existingRoute.soraSettings);
 }
 ```
 
-Dette er 2-3 linjer kode, ingen andre filer berørt.
+Dette er 3 linjer kode, ingen andre filer berørt. `existingRoute` er av typen `RouteData` som allerede inneholder `soraSettings?: SoraSettings`.
 
-### Vurdering: Beholde DB vs. bytte til WMS
-DB-tilnærmingen er riktig fordi:
-- Gir interaktive popups med navn, verneform, restriksjonsdetaljer
-- Data er allerede synkronisert og indeksert
-- Med min-zoom-guard er belastningen minimal
-- WMS ville fjernet all interaktivitet og gjort oss avhengig av ekstern server-tilgjengelighet
+### Resultat
+- Når man navigerer til kartet for å redigere en rute som ble lagret med SORA-buffersoner, vil toggle automatisk stå på "på" og sonene vises
+- Panelet forblir lukket (collapsible `open = false`) som ønsket
 
