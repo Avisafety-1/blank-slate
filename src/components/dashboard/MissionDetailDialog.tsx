@@ -90,6 +90,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   );
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
