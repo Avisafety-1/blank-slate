@@ -30,6 +30,7 @@ export const MissionStatusDropdown = ({
   className = "",
   latitude,
   longitude,
+  tidspunkt,
 }: MissionStatusDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
