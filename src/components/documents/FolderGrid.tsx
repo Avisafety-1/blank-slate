@@ -25,17 +25,20 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
   const { data: folders, refetch } = useQuery({
     queryKey: ["document-folders", companyId],
     queryFn: async () => {
-      const { data: foldersData } = await supabase
+      const { data: foldersData, error: foldersError } = await supabase
         .from("document_folders")
         .select("id, name")
         .order("created_at", { ascending: true });
 
+      if (foldersError) {
+        console.error("FolderGrid: failed to load folders", foldersError);
+        throw foldersError;
+      }
       if (!foldersData?.length) return [];
 
       const { data: items } = await supabase
         .from("document_folder_items")
         .select("folder_id");
-
       const countMap = new Map<string, number>();
       (items || []).forEach((item: any) => {
         countMap.set(item.folder_id, (countMap.get(item.folder_id) || 0) + 1);
