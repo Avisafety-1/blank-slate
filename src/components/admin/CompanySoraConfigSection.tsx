@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { syncSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
+import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -450,6 +451,16 @@ export const CompanySoraConfigSection = () => {
                           { onConflict: "company_id" }
                         );
                       if (error) throw error;
+
+                      // When enabling SORA-based approval, auto-disable require_sora_on_missions
+                      if (v && companyId) {
+                        await supabase
+                          .from("companies")
+                          .update({ require_sora_on_missions: false } as any)
+                          .eq("id", companyId);
+                        invalidateCompanySettingsCache();
+                      }
+
                       toast.success(v ? "SORA-basert godkjenning aktivert" : "SORA-basert godkjenning deaktivert");
                     } catch (err) {
                       console.error("Error saving sora_based_approval:", err);
