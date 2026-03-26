@@ -1,31 +1,36 @@
 
 
-## Vis hvem som lastet opp dokumentet i DocumentCardModal
+## Legg til «Skjul identitet til rapportør» i selskapsinnstillinger
 
-### Problem
-Når man klikker på et dokument fra /dokumenter vises ingen informasjon om hvem som lastet det opp, selv om `opprettet_av` (e-post) allerede lagres i databasen.
+### Endringer
 
-### Løsning
-Legg til en info-seksjon i `DocumentCardModal.tsx` som viser:
-- **Opprettet av**: hentes fra `opprettet_av`-feltet (e-post) på dokumentet
-- **Opprettet dato**: fra `opprettet_dato`
-
-### Endring
-
-**`src/components/documents/DocumentCardModal.tsx`**
-- Etter DialogTitle (linje ~343), legg til en liten metadata-seksjon som viser `document.opprettet_av` og formatert `document.opprettet_dato`
-- Kun vist når man ser et eksisterende dokument (ikke ved opprettelse)
-- `opprettet_av` er allerede tilgjengelig på `Document`-typen fra `Documents.tsx` (den hentes i queryen)
-
-Eksempel plassering -- rett under `<DialogTitle>`:
-```tsx
-{document && !isCreating && (
-  <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4">
-    {document.opprettet_av && <span>Opprettet av: {document.opprettet_av}</span>}
-    <span>Opprettet: {format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb })}</span>
-  </div>
-)}
+#### 1. Database-migrasjon
+Ny kolonne på `companies`:
+```sql
+ALTER TABLE companies ADD COLUMN hide_reporter_identity boolean NOT NULL DEFAULT false;
 ```
 
-En fil endres, 5 linjer kode.
+#### 2. `src/components/admin/ChildCompaniesSection.tsx`
+- Legg til state `hideReporterIdentity` og hent/lagre den sammen med `show_all_airspace_warnings`
+- Ny toggle-rad under luftromsadvarsler-togglern med label «Skjul identitet til rapportør av hendelser» og beskrivelse «Når aktivert vises ikke navnet på den som rapporterte hendelsen»
+- «Gjelder for alle underavdelinger»-togglern flyttes til bunnen og propagerer **begge** innstillinger til underavdelinger
+
+#### 3. `src/hooks/useCompanySettings.ts`
+- Legg til `hide_reporter_identity: boolean` i `CompanySettings`-interfacet og hent verdien fra `companies`
+
+#### 4. Skjul rapportør-identitet i visningene
+Tre steder viser `rapportert_av`:
+
+- **`src/pages/Hendelser.tsx`** (~linje 1002): Vis «Anonym» i stedet for `incident.rapportert_av` når `hide_reporter_identity` er `true`
+- **`src/components/dashboard/IncidentDetailDialog.tsx`** (~linje 490): Samme logikk
+- **`src/components/ProfileDialog.tsx`**: Hendelser tilknyttet bruker — her vises de uansett da brukeren ser sine egne
+
+Alle tre bruker `useCompanySettings()` for å hente flagget.
+
+### Filer som endres
+1. Database-migrasjon (ny kolonne)
+2. `src/components/admin/ChildCompaniesSection.tsx` — ny toggle + propagering
+3. `src/hooks/useCompanySettings.ts` — nytt felt
+4. `src/pages/Hendelser.tsx` — skjul rapportør
+5. `src/components/dashboard/IncidentDetailDialog.tsx` — skjul rapportør
 
