@@ -337,6 +337,40 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Krev SORA på alle oppdrag</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="require-sora"
+                    checked={requireSoraOnMissions}
+                    onCheckedChange={handleToggleRequireSora}
+                    disabled={savingSettings}
+                  />
+                </div>
+                {requireSoraOnMissions && (
+                  <div className="pl-1 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                    <RadioGroup
+                      value={String(requireSoraSteps)}
+                      onValueChange={(v) => handleChangeSoraSteps(Number(v))}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="1" id="sora-step-1" />
+                        <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="2" id="sora-step-2" />
+                        <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
               <div className="rounded-lg border-2 border-primary/20 border-dashed bg-muted/20 p-3 flex items-center justify-between">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
