@@ -48,6 +48,7 @@ export const ChildCompaniesSection = () => {
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
+  const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
