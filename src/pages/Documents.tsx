@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus, ListChecks, FolderPlus } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
 import DocumentsList from "@/components/documents/DocumentsList";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
