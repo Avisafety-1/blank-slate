@@ -1,36 +1,45 @@
 
 
-## Legg til «Skjul identitet til rapportør» i selskapsinnstillinger
+## Ny selskapsinnstilling: «Oppdrag krever godkjenning»
 
 ### Endringer
 
 #### 1. Database-migrasjon
-Ny kolonne på `companies`:
 ```sql
-ALTER TABLE companies ADD COLUMN hide_reporter_identity boolean NOT NULL DEFAULT false;
+ALTER TABLE companies ADD COLUMN require_mission_approval boolean NOT NULL DEFAULT false;
 ```
 
 #### 2. `src/components/admin/ChildCompaniesSection.tsx`
-- Legg til state `hideReporterIdentity` og hent/lagre den sammen med `show_all_airspace_warnings`
-- Ny toggle-rad under luftromsadvarsler-togglern med label «Skjul identitet til rapportør av hendelser» og beskrivelse «Når aktivert vises ikke navnet på den som rapporterte hendelsen»
-- «Gjelder for alle underavdelinger»-togglern flyttes til bunnen og propagerer **begge** innstillinger til underavdelinger
+- Ny state `requireMissionApproval`
+- Hent og lagre verdien i `fetchParentSettings`
+- Ny toggle med:
+  - Label: **Oppdrag krever godkjenning**
+  - Undertekst: **SORA-spesifikk godkjenningslogikk overstyrer dette valget**
+- Ny handler `handleToggleRequireMissionApproval` (samme mønster som de andre)
+- Propager til barn i `handleToggleApplyToChildren`
 
 #### 3. `src/hooks/useCompanySettings.ts`
-- Legg til `hide_reporter_identity: boolean` i `CompanySettings`-interfacet og hent verdien fra `companies`
+- Legg til `require_mission_approval: boolean` i `CompanySettings`
+- Hent verdien fra `companies`
 
-#### 4. Skjul rapportør-identitet i visningene
-Tre steder viser `rapportert_av`:
+#### 4. Bruk innstillingen i godkjenningslogikken
+I **`src/components/dashboard/MissionsSection.tsx`** og **`src/components/dashboard/MissionDetailDialog.tsx`**:
+- Hent `useCompanySettings()`
+- Når `require_mission_approval` er `true`: nye oppdrag starter med `approval_status = 'not_approved'` og viser godkjenningsbadge (dette er allerede default-oppførsel)
+- Når `false`: skjul godkjenningsbadge og «Send til godkjenning»-knapp, slik at oppdrag ikke trenger godkjenning
 
-- **`src/pages/Hendelser.tsx`** (~linje 1002): Vis «Anonym» i stedet for `incident.rapportert_av` når `hide_reporter_identity` er `true`
-- **`src/components/dashboard/IncidentDetailDialog.tsx`** (~linje 490): Samme logikk
-- **`src/components/ProfileDialog.tsx`**: Hendelser tilknyttet bruker — her vises de uansett da brukeren ser sine egne
+I **`src/components/oppdrag/MissionCard.tsx`**:
+- Samme logikk: skjul godkjenningsbadge og menyvalg når innstillingen er av
 
-Alle tre bruker `useCompanySettings()` for å hente flagget.
+I **`src/components/dashboard/StartFlightDialog.tsx`**:
+- Når `require_mission_approval` er `false`: ikke blokker oppstart basert på `approval_status`
 
 ### Filer som endres
 1. Database-migrasjon (ny kolonne)
-2. `src/components/admin/ChildCompaniesSection.tsx` — ny toggle + propagering
+2. `src/components/admin/ChildCompaniesSection.tsx` — ny toggle
 3. `src/hooks/useCompanySettings.ts` — nytt felt
-4. `src/pages/Hendelser.tsx` — skjul rapportør
-5. `src/components/dashboard/IncidentDetailDialog.tsx` — skjul rapportør
+4. `src/components/dashboard/MissionsSection.tsx` — betinget godkjennings-UI
+5. `src/components/dashboard/MissionDetailDialog.tsx` — betinget godkjennings-UI
+6. `src/components/oppdrag/MissionCard.tsx` — betinget badge/meny
+7. `src/components/dashboard/StartFlightDialog.tsx` — betinget blokkering
 
