@@ -138,6 +138,7 @@ export const ChildCompaniesSection = () => {
     setHideReporterIdentity(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
+  };
 
   const handleToggleApplyToChildren = async (checked: boolean) => {
     if (!companyId) return;
