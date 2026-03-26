@@ -12,7 +12,13 @@ const defaultSettings: CompanySettings = {
 
 // Simple in-memory cache keyed by companyId
 const cache: Record<string, { settings: CompanySettings; ts: number }> = {};
-const CACHE_TTL = 60_000; // 1 minute
+const CACHE_TTL = 30_000; // 30 seconds
+
+export function invalidateCompanySettingsCache() {
+  for (const key of Object.keys(cache)) {
+    delete cache[key];
+  }
+}
 
 export function useCompanySettings() {
   const { companyId } = useAuth();
