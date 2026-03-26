@@ -137,7 +137,7 @@ const getEccairsStatusClass = (status?: string): string => {
 
 const Hendelser = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, companyId, departmentsEnabled } = useAuth();
+  const { user, loading: authLoading, companyId, departmentsEnabled, isAdmin } = useAuth();
   const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
@@ -1004,7 +1004,7 @@ const Hendelser = () => {
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Rapportert av: {companySettings.hide_reporter_identity ? "Anonym" : incident.rapportert_av}</span>
+                        <span>Rapportert av: {companySettings.hide_reporter_identity && !(isAdmin && departmentsEnabled) ? "Anonym" : incident.rapportert_av}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
