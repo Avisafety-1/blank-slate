@@ -605,9 +605,7 @@ export function OpenAIPMap({
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
-        naturvernLayer.clearLayers();
-        fetchNaturvernZones({ layer: naturvernLayer, mode });
-        fetchVernRestrictionZones({ layer: naturvernLayer, mode });
+        fetchVerneomraader();
         
         // 5. Check realtime channel state and resubscribe if needed
         if ((mapChannel as any).state !== 'joined') {
