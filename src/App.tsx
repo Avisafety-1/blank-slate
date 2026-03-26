@@ -75,7 +75,7 @@ const AuthenticatedLayout = () => {
   const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
-  useAppHeartbeat();
+  
 
   // Prefetch common lazy-loaded pages after initial render
   useEffect(() => {

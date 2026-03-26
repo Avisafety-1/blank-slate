@@ -17,7 +17,7 @@ const SAFESKY_BEACONS_URL = `https://${SAFESKY_HOST}${SAFESKY_PATH}?${SAFESKY_QU
 const HEARTBEAT_TIMEOUT_MS = 120000;
 
 // How old beacons should be before deletion (30 seconds)
-const BEACON_MAX_AGE_MS = 30000;
+const BEACON_MAX_AGE_MS = 60000;
 
 interface SafeSkyBeacon {
   id: string;
