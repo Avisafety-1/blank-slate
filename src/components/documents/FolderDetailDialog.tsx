@@ -51,6 +51,8 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [showNewTab, setShowNewTab] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState("");
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [hasChildren, setHasChildren] = useState(false);
 
   const getDocumentStatus = (doc: { gyldig_til?: string | null; varsel_dager_for_utløp?: number | null }): string => {
     if (!doc.gyldig_til) return "Grønn";
