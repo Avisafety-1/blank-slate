@@ -294,7 +294,7 @@ export const MissionCard = ({
           <div>
             <p className="text-muted-foreground">Tidspunkt</p>
             <p className="text-foreground">
-              {format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })}
+              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : "Ikke angitt"}
             </p>
             {mission.slutt_tidspunkt && (
               <p className="text-xs text-muted-foreground">
@@ -647,7 +647,7 @@ export const MissionCard = ({
                         </Badge>
                       )}
                       <span className="text-muted-foreground">
-                        {format(new Date(incident.hendelsestidspunkt), "dd. MMM yyyy", { locale: nb })}
+                        {incident.hendelsestidspunkt ? format(new Date(incident.hendelsestidspunkt), "dd. MMM yyyy", { locale: nb }) : "—"}
                       </span>
                     </div>
                   </div>
@@ -679,7 +679,7 @@ export const MissionCard = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb })}</span>
+                    <span>{log.flight_date ? format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb }) : "—"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
