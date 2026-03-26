@@ -399,8 +399,8 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "nrl", name: "Luftfartshindre (NRL)", layer: nrlLayer, enabled: false, icon: "alertTriangle" });
 
     // Verneområder (naturvern + ferdsels-/landingsforbud) — vektorlag fra DB
-    const naturvernLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: true, icon: "treePine" });
+    const naturvernLayer = L.layerGroup();
+    layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
 
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
