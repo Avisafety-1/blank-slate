@@ -6,12 +6,16 @@ interface CompanySettings {
   show_all_airspace_warnings: boolean;
   hide_reporter_identity: boolean;
   require_mission_approval: boolean;
+  require_sora_on_missions: boolean;
+  require_sora_steps: number;
 }
 
 const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
   hide_reporter_identity: false,
   require_mission_approval: false,
+  require_sora_on_missions: false,
+  require_sora_steps: 1,
 };
 
 // Simple in-memory cache keyed by companyId
