@@ -4,10 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface CompanySettings {
   show_all_airspace_warnings: boolean;
+  hide_reporter_identity: boolean;
 }
 
 const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
+  hide_reporter_identity: false,
 };
 
 // Simple in-memory cache keyed by companyId
