@@ -257,7 +257,7 @@ export const ChildCompaniesSection = () => {
                 <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Skjul identitet til rapportør av hendelser</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vises ikke navnet på den som rapporterte hendelsen
+                    Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
                   </div>
                 </Label>
                 <Switch
