@@ -35,6 +35,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const { t, i18n } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
+  const companySettings = useCompanySettings();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
