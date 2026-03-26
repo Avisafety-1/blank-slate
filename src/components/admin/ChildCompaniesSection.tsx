@@ -49,6 +49,8 @@ export const ChildCompaniesSection = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
+  const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
+  const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
