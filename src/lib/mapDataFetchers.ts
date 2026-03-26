@@ -521,29 +521,24 @@ export async function fetchActiveAdvisories(params: {
   }
 }
 
-export async function fetchNaturvernZones(params: FetchParams) {
-  const { layer, mode } = params;
-  try {
-    // Paginate to avoid 1000-row default limit
-    let allData: any[] = [];
-    let from = 0;
-    const pageSize = 1000;
-    while (true) {
-      const { data, error } = await supabase
-        .from('naturvern_zones')
-        .select('external_id, name, verneform, geometry, properties')
-        .range(from, from + pageSize - 1);
-      if (error) {
-        console.error('Feil ved henting av naturvernområder:', error);
-        return;
-      }
-      if (!data || data.length === 0) break;
-      allData = allData.concat(data);
-      if (data.length < pageSize) break;
-      from += pageSize;
-    }
+export interface BoundsFetchParams extends FetchParams {
+  bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number };
+}
 
-    // Don't clearLayers here — shared layer group
+export async function fetchNaturvernZones(params: BoundsFetchParams) {
+  const { layer, mode, bounds } = params;
+  try {
+    const { data, error } = await supabase.rpc('get_naturvern_in_bounds', {
+      min_lat: bounds.minLat,
+      min_lng: bounds.minLng,
+      max_lat: bounds.maxLat,
+      max_lng: bounds.maxLng,
+    });
+
+    if (error || !data) {
+      console.error('Feil ved henting av naturvernområder:', error);
+      return;
+    }
 
     const verneformColors: Record<string, string> = {
       'Nasjonalpark': '#15803d',
@@ -555,7 +550,7 @@ export async function fetchNaturvernZones(params: FetchParams) {
       'Plantefredningsområde': '#84cc16',
     };
 
-    for (const zone of allData) {
+    for (const zone of data) {
       if (!zone.geometry) continue;
       try {
         const geojsonFeature = {
@@ -588,7 +583,7 @@ export async function fetchNaturvernZones(params: FetchParams) {
         // Skip individual zones that fail
       }
     }
-    console.log(`Rendered ${allData.length} naturvernområder`);
+    console.log(`Rendered ${data.length} naturvernområder (viewport)`);
   } catch (err) {
     console.error('Kunne ikke hente naturvernområder:', err);
   }
