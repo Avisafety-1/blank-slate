@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { ExpandedMapDialog } from "./ExpandedMapDialog";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
@@ -87,6 +88,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     mission?.airspaceWarnings ?? null
   );
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const companySettings = useCompanySettings();
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
@@ -305,9 +307,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     longitude={effectiveLng}
                     routePoints={routeCoords}
                     cachedWarnings={cachedAirspaceWarnings ?? undefined}
+                    showAll={companySettings.show_all_airspace_warnings}
                     onAirspaceResult={(warnings) => {
                       setHas5kmZone(warnings.some(w => w.zone_type === '5KM'));
-                      // Cache the result on the mission object for subsequent opens
                       if (!cachedAirspaceWarnings && warnings.length > 0) {
                         setCachedAirspaceWarnings(warnings);
                         if (mission) {

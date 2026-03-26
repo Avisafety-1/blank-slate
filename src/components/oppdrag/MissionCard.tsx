@@ -30,6 +30,7 @@ import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropd
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import {
@@ -96,6 +97,7 @@ export const MissionCard = ({
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const companySettings = useCompanySettings();
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -526,6 +528,7 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               routePoints={routeCoords}
+              showAll={companySettings.show_all_airspace_warnings}
               onAirspaceResult={(warnings) => {
                 const found = warnings.some(w => w.zone_type === '5KM');
                 setHas5kmZone(found);

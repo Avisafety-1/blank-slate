@@ -27,6 +27,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
@@ -77,6 +78,7 @@ export const AddMissionDialog = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const companySettings = useCompanySettings();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [drones, setDrones] = useState<Drone[]>([]);
@@ -828,6 +830,7 @@ export const AddMissionDialog = ({
               latitude={formData.latitude} 
               longitude={formData.longitude}
               routePoints={routeData?.coordinates}
+              showAll={companySettings.show_all_airspace_warnings}
             />
             
             <DroneWeatherPanel 

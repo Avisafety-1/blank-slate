@@ -405,6 +405,7 @@ export type Database = {
           parent_company_id: string | null
           registration_code: string
           selskapstype: string | null
+          show_all_airspace_warnings: boolean
           stripe_exempt: boolean
           updated_at: string
         }
@@ -432,6 +433,7 @@ export type Database = {
           parent_company_id?: string | null
           registration_code: string
           selskapstype?: string | null
+          show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
           updated_at?: string
         }
@@ -459,6 +461,7 @@ export type Database = {
           parent_company_id?: string | null
           registration_code?: string
           selskapstype?: string | null
+          show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
           updated_at?: string
         }
