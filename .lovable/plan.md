@@ -1,37 +1,67 @@
 
+Mål: fikse at mapper med «Synlig for alle avdelinger» faktisk blir synlige for avdelingsbrukere.
 
-## Fix: Profildialogen blinker etter kansellert Stripe-abonnement
+Hva jeg har funnet
+- `document_folders`, `document_folder_items` og `document_folder_tabs` har nå egne delingsregler, men logikken er duplisert flere steder.
+- `FolderGrid` skjuler feil ved lesing: hvis `document_folders`-spørringen feiler eller returnerer uventet tomt, behandles det som `[]`, så UI ser bare tomt ut.
+- Arkitekturen deres har allerede et tydelig skille mellom:
+  - `get_user_visible_company_ids()` for operativt eierskap
+  - `get_user_readable_company_ids()` for lesing oppover/nedover i hierarkiet
+- For mapper er dette en lese-/delingsfunksjon, så dagens policy-oppsett er sannsynligvis for skjørt og bør forenkles.
 
-### Problemet
-Når et abonnement kanselleres i Stripe, oppdaterer webhooken `company_subscriptions.status` til `canceled`. Deretter:
+Plan
+1. Samle mappe-leselogikken i én sikker tilgangsregel
+- Lage én felles, sikker regel for “kan denne brukeren lese denne mappen?” i databasen.
+- Bruke eksisterende hierarki-funksjoner i stedet for å gjenta parent-subqueries i hver policy.
+- Dette gjør at selve mappen blir vurdert likt overalt.
 
-1. `SubscriptionGate` sjekker: `subscriptionLoading || authRefreshing` → sant → viser barna (appen)
-2. Refresh fullføres → `authRefreshing = false`, `subscribed = false` → viser betalingsmuren
-3. En ny refresh trigges (TOKEN_REFRESHED, visibility change, periodisk) → `authRefreshing = true` → viser barna igjen
-4. Repeat → **blinkende loop**
+2. Bytte SELECT-policyene for mappe-tabellene til samme regel
+- Oppdatere SELECT på:
+  - `document_folders`
+  - `document_folder_items`
+  - `document_folder_tabs`
+- Målet er at mappe, faner og innhold følger samme delingsregel og ikke kan komme ut av sync.
 
-Problemet er at `authRefreshing` i SubscriptionGate-betingelsen lar appen "skinne gjennom" under hver refresh-syklus, selv når abonnementet allerede er bekreftet kansellert.
+3. Beholde skrivetilgang streng
+- INSERT/UPDATE/DELETE skal fortsatt kun være for selskapet som eier mappen.
+- Deling til avdelinger skal bare gi lesetilgang, ikke redigering.
 
-### Løsning
-Endre `SubscriptionGate` slik at `authRefreshing` **ikke** brukes som bypass-betingelse etter at subscription-status allerede er kjent. Appen skal kun vise barn under `subscriptionLoading` (initial lastestadium), ikke under påfølgende refreshes.
+4. Gjøre frontend robust ved feil
+- Oppdatere `FolderGrid.tsx` så feil fra Supabase ikke blir tolket som “ingen mapper”.
+- Hvis lesing feiler, skal vi få tydelig feil i konsoll/UI i stedet for en stille tom visning.
+- Dette gjør videre feilsøking mye enklere dersom noe fortsatt blokkeres av RLS.
 
-### Endring i `src/components/SubscriptionGate.tsx`
+5. Verifisere hele flyten med deling
+- Testscenario:
+  1. Logg inn som moderavdeling
+  2. Opprett/åpne mappe
+  3. Slå på “Synlig for alle avdelinger”
+  4. Bytt til avdeling / test avdelingsbruker
+  5. Bekreft at mappen vises i grid
+  6. Bekreft at faner og dokumenter i mappen vises
+  7. Bekreft at avdelingen ikke kan redigere/slette morselskapets mappe
 
-Erstatt den eksisterende bypass-betingelsen:
-```typescript
-// FØR:
-if (subscriptionLoading || !user || !profileLoaded || !isApproved || isSuperAdmin || subscribed || stripeExempt || authRefreshing) {
-  return <>{children}</>;
-}
+Hvis nødvendig i samme runde
+- Hvis mappen blir synlig, men dokumentene inni fortsatt ikke kan åpnes fra avdeling, justerer jeg også dokument-lesing slik at delt mappeinnhold ikke stopper på underliggende dokument-RLS.
 
-// ETTER:
-if (!user || !profileLoaded || subscriptionLoading || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
-  return <>{children}</>;
-}
+Tekniske detaljer
+```text
+Før:
+UI -> document_folders policy A
+   -> document_folder_items policy B
+   -> document_folder_tabs policy C
+   -> feil i én av dem ser bare ut som “tomt”
+
+Etter:
+UI -> felles mappe-leseregel
+   -> folders/items/tabs bruker samme regel
+   -> frontend viser faktisk feil hvis lesing feiler
 ```
 
-Fjern `authRefreshing` fra betingelsen. `subscriptionLoading` dekker allerede den initiale lastingen. Når subscription-status er satt (loading = false), skal resultatet stå fast selv under bakgrunns-refreshes.
-
-### Fil som endres
-- `src/components/SubscriptionGate.tsx` — fjern `authRefreshing` fra bypass-betingelsen (én linje)
-
+Filer / områder som endres
+- Database-migrasjon for RLS på:
+  - `document_folders`
+  - `document_folder_items`
+  - `document_folder_tabs`
+- `src/components/documents/FolderGrid.tsx`
+- Eventuelt `src/components/documents/FolderDetailDialog.tsx` hvis jeg må justere lesing av delt innhold i samme flyt
