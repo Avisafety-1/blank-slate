@@ -424,22 +424,34 @@ export const AddMissionDialog = ({
           const lng = formData.longitude || (routeData?.coordinates?.[0]?.lng);
           
           if (lat && lng) {
-            try {
-              const { data: weatherData } = await supabase.functions.invoke('drone-weather', {
-                body: { lat, lon: lng }
-              });
-              
-              if (weatherData) {
-                weatherSnapshot = {
-                  captured_at: new Date().toISOString(),
-                  current: weatherData.current,
-                  warnings: weatherData.warnings || [],
-                  drone_flight_recommendation: weatherData.drone_flight_recommendation
-                };
+            // Sjekk om oppdragets tidspunkt er mer enn 24 timer gammelt
+            const missionTime = new Date(formData.tidspunkt);
+            const hoursAgo = (Date.now() - missionTime.getTime()) / (1000 * 60 * 60);
+            
+            if (hoursAgo > 24) {
+              // Historisk oppdrag – ikke hent nåværende vær
+              weatherSnapshot = {
+                captured_at: new Date().toISOString(),
+                unavailable: true,
+                reason: 'historical',
+              };
+            } else {
+              try {
+                const { data: weatherData } = await supabase.functions.invoke('drone-weather', {
+                  body: { lat, lon: lng }
+                });
+                
+                if (weatherData) {
+                  weatherSnapshot = {
+                    captured_at: new Date().toISOString(),
+                    current: weatherData.current,
+                    warnings: weatherData.warnings || [],
+                    drone_flight_recommendation: weatherData.drone_flight_recommendation
+                  };
+                }
+              } catch (weatherErr) {
+                console.error('Could not fetch weather for snapshot:', weatherErr);
               }
-            } catch (weatherErr) {
-              console.error('Could not fetch weather for snapshot:', weatherErr);
-              // Fortsett selv om værdatahenting feiler
             }
           }
         }

@@ -240,8 +240,19 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     );
   }
 
-  // Hvis vi har historiske data, vis disse
+   // Hvis vi har historiske data, vis disse
   if (isHistorical && savedWeatherData) {
+    // Sjekk om vær er markert som utilgjengelig (historisk oppdrag)
+    if ((savedWeatherData as any).unavailable) {
+      return (
+        <Card className="mt-3 p-3 bg-card/50 border">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Værdata ikke tilgjengelig for historiske oppdrag</span>
+          </div>
+        </Card>
+      );
+    }
     if (!savedWeatherData.current) {
       return (
         <Card className="mt-3 p-3 bg-card/50 border">

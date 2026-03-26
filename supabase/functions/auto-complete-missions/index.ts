@@ -48,56 +48,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch weather snapshots for missions with coordinates
-    const weatherSnapshots = new Map<string, any>();
-    const weatherFetchPromises = missionsToComplete
-      .filter(m => m.latitude && m.longitude)
-      .map(async (m) => {
-        try {
-          const metUrl = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${m.latitude}&lon=${m.longitude}`;
-          const metRes = await fetch(metUrl, {
-            headers: { 'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)' },
-          });
-          if (metRes.ok) {
-            const metData = await metRes.json();
-            const current = metData.properties?.timeseries?.[0]?.data?.instant?.details;
-            const next1h = metData.properties?.timeseries?.[0]?.data?.next_1_hours;
-            weatherSnapshots.set(m.id, {
-              data: {
-                current: {
-                  temperature: current?.air_temperature || null,
-                  wind_speed: current?.wind_speed || null,
-                  wind_gust: current?.wind_speed_of_gust || null,
-                  wind_direction: current?.wind_from_direction || null,
-                  humidity: current?.relative_humidity || null,
-                  dew_point: current?.dew_point_temperature ?? null,
-                  precipitation: next1h?.details?.precipitation_amount || 0,
-                  symbol: next1h?.summary?.symbol_code || 'unknown',
-                },
-              },
-              captured_at: new Date().toISOString(),
-              source: 'auto_complete',
-            });
-          }
-        } catch (e) {
-          console.warn(`Weather fetch failed for mission ${m.id}:`, e);
-        }
-      });
-
-    await Promise.allSettled(weatherFetchPromises);
-
-    // Update each mission individually to include weather snapshot if available
+    // Auto-completed missions are by definition >24h old, so weather would be inaccurate.
+    // Mark as unavailable instead of fetching current weather.
     let completedCount = 0;
     for (const mission of missionsToComplete) {
       const updatePayload: Record<string, any> = {
         status: 'Fullført',
         oppdatert_dato: new Date().toISOString(),
+        weather_data_snapshot: {
+          captured_at: new Date().toISOString(),
+          unavailable: true,
+          reason: 'historical',
+          source: 'auto_complete',
+        },
       };
-
-      const snapshot = weatherSnapshots.get(mission.id);
-      if (snapshot) {
-        updatePayload.weather_data_snapshot = snapshot;
-      }
 
       const { error: updateError } = await supabase
         .from('missions')
@@ -108,7 +72,7 @@ Deno.serve(async (req) => {
         console.error(`Error updating mission ${mission.id}:`, updateError);
       } else {
         completedCount++;
-        console.log(`  - ${mission.tittel} (${mission.id}) - status changed from ${mission.status} to Fullført${snapshot ? ' (with weather snapshot)' : ''}`);
+        console.log(`  - ${mission.tittel} (${mission.id}) - status changed from ${mission.status} to Fullført (weather unavailable - historical)`);
       }
     }
 
@@ -120,12 +84,10 @@ Deno.serve(async (req) => {
         message: `Auto-completed ${completedCount} missions`,
         checked: missionsToComplete.length,
         completed: completedCount,
-        with_weather: weatherSnapshots.size,
         missions: missionsToComplete.map(m => ({
           id: m.id,
           tittel: m.tittel,
           previous_status: m.status,
-          has_weather: weatherSnapshots.has(m.id),
         })),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
