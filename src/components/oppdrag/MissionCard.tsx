@@ -235,7 +235,7 @@ export const MissionCard = ({
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Tilknytt sjekkliste
             </DropdownMenuItem>
-            {mission.approval_status === 'not_approved' && (
+            {companySettings.require_mission_approval && mission.approval_status === 'not_approved' && (
               <DropdownMenuItem onClick={() => onSubmitForApproval(mission)}>
                 <Send className="h-4 w-4 mr-2" />
                 Send til godkjenning
