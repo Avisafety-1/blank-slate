@@ -499,6 +499,20 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         <AlertDialogFooter>
           <AlertDialogCancel>Avbryt</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
+            // SORA-sjekk: krev SORA før godkjenning
+            if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
+              const { count } = await supabase
+                .from('mission_risk_assessments')
+                .select('id', { count: 'exact', head: true })
+                .eq('mission_id', currentMission.id);
+              const requiredSteps = companySettings.require_sora_steps ?? 1;
+              if ((count ?? 0) < requiredSteps) {
+                toast.error('Gjennomfør SORA først');
+                setApprovalConfirmOpen(false);
+                return;
+              }
+            }
+
             // Check if anyone can approve missions
             const { data: approvers, error: approverError } = await supabase
               .rpc('get_mission_approvers', { target_company_id: companyId! });
