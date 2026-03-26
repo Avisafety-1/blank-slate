@@ -303,7 +303,7 @@ const Oppdrag = () => {
                     onEdit={handleEditMission}
                     onDelete={setDeletingMission}
                     onNewRiskAssessment={handleNewRiskAssessment}
-                    onSubmitForApproval={data.handleSubmitForApproval}
+                    onSubmitForApproval={(m) => data.handleSubmitForApproval(m, companySettings, soraApprovalEnabled)}
                     onExportPdf={handleExportPdfClick}
                     onExportKmz={(m) => exportToKMZ(m, data.user?.id, data.companyId)}
                     onImportKml={(missionId) => {
