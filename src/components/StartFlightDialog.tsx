@@ -323,6 +323,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setNinoxApproved(false);
       setNinoxChecking(false);
       setShowNinoxConfirm(false);
+      setMissingSora(false);
     }
   }, [open]);
 
