@@ -42,6 +42,9 @@ export const ChildCompaniesSection = () => {
   const [selectedCompany, setSelectedCompany] = useState<ChildCompany | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<ChildCompany | null>(null);
+  const [parentCompanyName, setParentCompanyName] = useState<string>("");
+  const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const fetchChildren = async () => {
     if (!companyId) return;
