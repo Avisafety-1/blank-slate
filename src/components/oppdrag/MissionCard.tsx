@@ -679,7 +679,7 @@ export const MissionCard = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb })}</span>
+                    <span>{log.flight_date ? format(new Date(log.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb }) : "—"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
