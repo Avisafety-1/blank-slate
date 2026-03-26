@@ -393,6 +393,20 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
+
+              // SORA-sjekk: krev SORA før godkjenning
+              if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
+                const { count } = await supabase
+                  .from('mission_risk_assessments')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('mission_id', approvalConfirmMissionId);
+                const requiredSteps = companySettings.require_sora_steps ?? 1;
+                if ((count ?? 0) < requiredSteps) {
+                  toast.error('Gjennomfør SORA først');
+                  setApprovalConfirmMissionId(null);
+                  return;
+                }
+              }
               
               // Check if anyone can approve missions
               const { data: approvers, error: approverError } = await supabase
