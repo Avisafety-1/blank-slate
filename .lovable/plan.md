@@ -1,36 +1,32 @@
 
 
-## Optimalisere luftromssjekk (`check_mission_airspace`)
+## Legg til minimum zoom-nivå for verneområder
 
 ### Problem
-Funksjonen `check_mission_airspace` spør nå 5 tabeller med `ST_DWithin(geometry::geography, ...)`. De to nye tabellene (`naturvern_zones`, `vern_restriction_zones`) mangler **geography-cast GIST-indekser**, som betyr at PostgreSQL gjør full sekvensielt scan med tung geography-konvertering per rad. Dette gjor at RPC-kallet tar for lang tid.
+Hvis brukeren zoomer langt ut, sendes en spørring som treffer tusenvis av polygoner — unødvendig belastning på DB og nettleser, selv med LIMIT 500.
 
 ### Løsning
+Legg til en sjekk i `fetchVerneomraader()`-funksjonen i `OpenAIPMap.tsx`: hvis `map.getZoom() < 10`, rydd laget og ikke hent data. Vis eventuelt en liten toast/melding.
 
-#### 1. Ny migrasjon: Geography GIST-indekser + statement_timeout
+### Endring
 
-Legg til de manglende indeksene (samme mønster som AIP/NSM/RPAS-tabellene fikk i migrasjon `20260318`):
+**Fil: `src/components/OpenAIPMap.tsx`**
 
-```sql
-CREATE INDEX IF NOT EXISTS idx_naturvern_zones_geog
-  ON naturvern_zones USING gist ((geometry::geography));
+I `fetchVerneomraader()`-funksjonen (som kalles ved `moveend`):
 
-CREATE INDEX IF NOT EXISTS idx_vern_restriction_zones_geog
-  ON vern_restriction_zones USING gist ((geometry::geography));
+```
+if (map.getZoom() < 10) {
+  naturvernLayer.clearLayers();
+  return;
+}
 ```
 
-Legg også til `SET statement_timeout = '8s'` på funksjonen for å hindre at den henger for lenge.
+Dette er 2-3 linjer kode, ingen andre filer berørt.
 
-#### 2. Optimaliser SQL-funksjonen
-
-Oppdater `check_mission_airspace` med to forbedringer:
-- Naturvern og vern-restriksjoner bruker kun **2 km** radius i stedet for 5 km (disse er informasjonelle, ikke kritiske luftromssoner)
-- Legg til `LIMIT 200` på hele resultatet for å begrense responsstørrelse
-- Sett `statement_timeout` til 8 sekunder som sikkerhetsnett
-
-#### 3. Klient-side: allerede OK
-`AirspaceWarnings.tsx` har allerede 8s timeout med `AbortController`. Ingen endringer trengs i frontend.
-
-### Filer som endres
-1. **Ny migrasjon** -- geography GIST-indekser + oppdatert `check_mission_airspace` med lavere radius og timeout
+### Vurdering: Beholde DB vs. bytte til WMS
+DB-tilnærmingen er riktig fordi:
+- Gir interaktive popups med navn, verneform, restriksjonsdetaljer
+- Data er allerede synkronisert og indeksert
+- Med min-zoom-guard er belastningen minimal
+- WMS ville fjernet all interaktivitet og gjort oss avhengig av ekstern server-tilgjengelighet
 
