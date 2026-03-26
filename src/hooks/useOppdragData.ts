@@ -120,7 +120,7 @@ export const useOppdragData = () => {
       if (tab === "active") {
         query = query.in("status", ["Planlagt", "Pågående"]);
       } else {
-        query = query.eq("status", "Fullført");
+        query = query.in("status", ["Fullført", "Avbrutt"]);
       }
 
       const { data, error } = await query;
