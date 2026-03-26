@@ -46,6 +46,7 @@ export const ChildCompaniesSection = () => {
   const [parentCompanyName, setParentCompanyName] = useState<string>("");
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [applyToChildren, setApplyToChildren] = useState(false);
 
   const fetchChildren = async () => {
     if (!companyId) return;
