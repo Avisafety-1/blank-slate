@@ -230,8 +230,10 @@ Deno.serve(async (req) => {
       console.log('Fetching naturvern_zones (Esri JSON, ID-based chunking)...');
       try {
         const naturvernBaseUrl = 'https://kart.miljodirektoratet.no/arcgis/rest/services/vern/FeatureServer/0/query?where=1%3D1';
-        const objectIds = await fetchObjectIds(naturvernBaseUrl);
-        console.log(`Got ${objectIds.length} naturvern object IDs`);
+        const allObjectIds = await fetchObjectIds(naturvernBaseUrl);
+        // Apply offset and limit for resumable sync
+        const objectIds = allObjectIds.slice(idOffset, idOffset + idLimit);
+        console.log(`Got ${allObjectIds.length} naturvern object IDs, processing ${objectIds.length} (offset=${idOffset}, limit=${idLimit})`);
 
         let totalSuccess = 0, totalError = 0, totalSkipped = 0;
         const idChunks = chunk(objectIds, CHUNK_SIZE);
