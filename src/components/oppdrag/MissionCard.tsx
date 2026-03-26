@@ -145,7 +145,7 @@ export const MissionCard = ({
                 Venter på godkjenning
               </Badge>
             )}
-            {companySettings.require_mission_approval && mission.approval_status === 'approved' && (
+            {showApproval && mission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
