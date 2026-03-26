@@ -153,11 +153,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Support partial sync via query param: ?layer=naturvern or ?layer=vern_restriction_zones
+    // Support partial sync via query params:
+    // ?layer=naturvern_zones  - sync only naturvern
+    // ?offset=1750            - start from ID index (for resuming)
+    // ?limit=1500             - max IDs to process (default 1500)
     const url = new URL(req.url);
     const layerFilter = url.searchParams.get('layer');
+    const idOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const idLimit = parseInt(url.searchParams.get('limit') || '1500', 10);
 
-    console.log(`Starting geo layers sync${layerFilter ? ` (filter: ${layerFilter})` : ' (all layers)'}...`);
+    console.log(`Starting geo layers sync${layerFilter ? ` (filter: ${layerFilter})` : ' (all layers)'}${idOffset ? ` offset=${idOffset}` : ''} limit=${idLimit}...`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
