@@ -4640,6 +4640,21 @@ export type Database = {
           id: string
         }[]
       }
+      get_naturvern_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+        }
+        Returns: {
+          external_id: string
+          geometry: Json
+          name: string
+          properties: Json
+          verneform: string
+        }[]
+      }
       get_parent_company_id: { Args: { _company_id: string }; Returns: string }
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
@@ -4665,6 +4680,21 @@ export type Database = {
       get_user_visible_company_ids: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_vern_restrictions_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+        }
+        Returns: {
+          external_id: string
+          geometry: Json
+          name: string
+          properties: Json
+          restriction_type: string
+        }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
       has_role: {

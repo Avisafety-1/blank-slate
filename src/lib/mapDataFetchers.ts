@@ -589,19 +589,20 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
   }
 }
 
-export async function fetchVernRestrictionZones(params: FetchParams) {
-  const { layer, mode } = params;
+export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
+  const { layer, mode, bounds } = params;
   try {
-    const { data, error } = await supabase
-      .from('vern_restriction_zones')
-      .select('external_id, name, restriction_type, geometry, properties');
+    const { data, error } = await supabase.rpc('get_vern_restrictions_in_bounds', {
+      min_lat: bounds.minLat,
+      min_lng: bounds.minLng,
+      max_lat: bounds.maxLat,
+      max_lng: bounds.maxLng,
+    });
 
     if (error || !data) {
       console.error('Feil ved henting av vern-restriksjoner:', error);
       return;
     }
-
-    // Don't clearLayers here — shared layer group with naturvern
 
     const restrictionColors: Record<string, string> = {
       'FERDSELSFORBUD': '#dc2626',
@@ -649,7 +650,7 @@ export async function fetchVernRestrictionZones(params: FetchParams) {
         // Skip individual zones that fail
       }
     }
-    console.log(`Rendered ${data.length} vern-restriksjoner`);
+    console.log(`Rendered ${data.length} vern-restriksjoner (viewport)`);
   } catch (err) {
     console.error('Kunne ikke hente vern-restriksjoner:', err);
   }
