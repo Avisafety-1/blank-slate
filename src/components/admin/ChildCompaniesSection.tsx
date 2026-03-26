@@ -114,6 +114,31 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleHideReporter = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ hide_reporter_identity: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ hide_reporter_identity: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setHideReporterIdentity(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+
   const handleToggleApplyToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyToChildren(checked);
