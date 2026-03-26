@@ -27,15 +27,15 @@ export function useCompanySettings() {
       return;
     }
 
-    supabase
+    (supabase
       .from("companies")
-      .select("show_all_airspace_warnings")
+      .select("*")
       .eq("id", companyId)
-      .single()
-      .then(({ data }) => {
+      .single() as any)
+      .then(({ data }: any) => {
         if (data) {
           const s: CompanySettings = {
-            show_all_airspace_warnings: (data as any).show_all_airspace_warnings ?? false,
+            show_all_airspace_warnings: data.show_all_airspace_warnings ?? false,
           };
           cache[companyId] = { settings: s, ts: Date.now() };
           setSettings(s);
