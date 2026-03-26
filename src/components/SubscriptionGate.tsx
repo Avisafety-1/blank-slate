@@ -9,7 +9,7 @@ import { useState } from "react";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 export const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
-  const { user, isApproved, profileLoaded, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, hadPreviousSubscription, signOut, authRefreshing } = useAuth();
+  const { user, isApproved, profileLoaded, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, hadPreviousSubscription, signOut } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
@@ -17,7 +17,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
 
   // Don't gate if: still loading, no user, profile not loaded yet, not approved, superadmin,
   // has subscription, stripe exempt, OR auth is currently refreshing (avoid flash of paywall)
-  if (subscriptionLoading || !user || !profileLoaded || !isApproved || isSuperAdmin || subscribed || stripeExempt || authRefreshing) {
+  if (!user || !profileLoaded || subscriptionLoading || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
     return <>{children}</>;
   }
 
