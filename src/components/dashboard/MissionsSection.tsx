@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
