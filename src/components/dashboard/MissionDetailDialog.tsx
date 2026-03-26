@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { ExpandedMapDialog } from "./ExpandedMapDialog";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";

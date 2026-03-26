@@ -247,12 +247,19 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     );
   };
 
+  // If showAll is true, render all warnings without collapsible
+  if (showAll) {
+    return (
+      <div className="space-y-2 mt-3">
+        {warnings.map((warning, index) => renderAlert(warning, index))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2 mt-3">
-      {/* Vis første (mest alvorlige) advarsel */}
       {renderAlert(firstWarning, 0)}
       
-      {/* Vis dropdown for resten hvis det finnes flere */}
       {remainingCount > 0 && (
         <Collapsible 
           key={`collapsible-${warnings.length}`}

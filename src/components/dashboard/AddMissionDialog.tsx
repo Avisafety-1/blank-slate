@@ -27,6 +27,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
