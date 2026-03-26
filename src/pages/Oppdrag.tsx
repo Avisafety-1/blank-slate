@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useOppdragData } from "@/hooks/useOppdragData";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { RouteData } from "@/components/dashboard/AddMissionDialog";
 import { GlassCard } from "@/components/GlassCard";
 import { Loader2 } from "lucide-react";
