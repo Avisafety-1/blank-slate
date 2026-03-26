@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FolderOpen } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { FolderOpen, Building2 } from "lucide-react";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderDetailDialog } from "./FolderDetailDialog";
 
@@ -15,19 +16,22 @@ interface FolderGridProps {
 interface Folder {
   id: string;
   name: string;
+  company_id: string;
   item_count: number;
+  inherited: boolean;
 }
 
 const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: FolderGridProps) => {
   const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const { companyId: userCompanyId } = useAuth();
 
   const { data: folders, refetch } = useQuery({
     queryKey: ["document-folders", companyId],
     queryFn: async () => {
       const { data: foldersData, error: foldersError } = await supabase
         .from("document_folders")
-        .select("id, name")
+        .select("id, name, company_id, visible_to_children")
         .order("created_at", { ascending: true });
 
       if (foldersError) {
@@ -47,10 +51,14 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
       return foldersData.map((f: any) => ({
         id: f.id,
         name: f.name,
+        company_id: f.company_id,
         item_count: countMap.get(f.id) || 0,
+        inherited: f.company_id !== userCompanyId,
       })) as Folder[];
     },
     enabled: !!companyId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   if (!folders?.length && !isAdmin) return null;
@@ -64,7 +72,12 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
             onClick={() => { setSelectedFolder(folder); setDetailOpen(true); }}
             className="rounded-lg border border-glass bg-card/80 backdrop-blur-md flex items-center gap-3 hover:bg-accent/15 transition-colors cursor-pointer p-3 sm:p-4 sm:flex-col sm:items-center sm:justify-center sm:aspect-square"
           >
-            <FolderOpen className="h-7 w-7 sm:h-9 sm:w-9 text-primary shrink-0" />
+            <div className="relative shrink-0">
+              <FolderOpen className="h-7 w-7 sm:h-9 sm:w-9 text-primary" />
+              {folder.inherited && (
+                <Building2 className="absolute -top-1 -right-1 h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </div>
             <div className="flex flex-col sm:items-center min-w-0">
               <span className="text-sm sm:text-xs font-medium text-foreground text-left sm:text-center line-clamp-2 leading-tight">{folder.name}</span>
               <span className="text-[11px] sm:text-[10px] text-muted-foreground">{folder.item_count} dok.</span>
