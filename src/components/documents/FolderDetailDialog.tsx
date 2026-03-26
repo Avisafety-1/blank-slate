@@ -177,7 +177,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           {editing ? (
             <div className="flex items-center gap-2">
