@@ -606,7 +606,7 @@ export async function fetchVernRestrictionZones(params: FetchParams) {
       return;
     }
 
-    layer.clearLayers();
+    // Don't clearLayers here — shared layer group with naturvern
 
     const restrictionColors: Record<string, string> = {
       'FERDSELSFORBUD': '#dc2626',
