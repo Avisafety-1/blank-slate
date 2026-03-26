@@ -1,4 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { useState, useEffect } from 'react';
 import {
   Dialog,
