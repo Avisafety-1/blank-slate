@@ -21,6 +21,8 @@ const Oppdrag = () => {
   const { isAdmin } = useRoleCheck();
   const { checklists } = useChecklists();
   const data = useOppdragData();
+  const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
 
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState("");
