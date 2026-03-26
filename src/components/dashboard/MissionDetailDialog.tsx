@@ -229,7 +229,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 Godkjent
               </Badge>
             )}
-            {companySettings.require_mission_approval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
+            {showApproval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
               <Badge 
                 variant="outline" 
                 className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"
