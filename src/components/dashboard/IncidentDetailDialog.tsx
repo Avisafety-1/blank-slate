@@ -449,11 +449,11 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 Hovedårsak: {incident.hovedaarsak}
               </Badge>
             )}
-            {incident.medvirkende_aarsak && (
-              <Badge variant="outline" className="bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30">
-                Medvirkende: {incident.medvirkende_aarsak}
+            {incident.medvirkende_aarsak && incident.medvirkende_aarsak.split(", ").map((cause: string) => (
+              <Badge key={cause} variant="outline" className="bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30">
+                Medvirkende: {cause}
               </Badge>
-            )}
+            ))}
           </div>
 
           <div className="space-y-3">

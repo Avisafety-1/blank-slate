@@ -956,11 +956,11 @@ const Hendelser = () => {
                             {incident.hovedaarsak}
                           </Badge>
                         )}
-                        {incident.medvirkende_aarsak && (
-                          <Badge variant="outline" className="bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700/30 dark:text-slate-100 dark:border-slate-600">
-                            {incident.medvirkende_aarsak}
+                        {incident.medvirkende_aarsak && incident.medvirkende_aarsak.split(", ").map((cause) => (
+                          <Badge key={cause} variant="outline" className="bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700/30 dark:text-slate-100 dark:border-slate-600">
+                            {cause}
                           </Badge>
-                        )}
+                        ))}
                       </div>
                     </div>
                     
