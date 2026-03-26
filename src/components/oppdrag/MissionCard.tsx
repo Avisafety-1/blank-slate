@@ -294,7 +294,7 @@ export const MissionCard = ({
           <div>
             <p className="text-muted-foreground">Tidspunkt</p>
             <p className="text-foreground">
-              {format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb })}
+              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : "Ikke angitt"}
             </p>
             {mission.slutt_tidspunkt && (
               <p className="text-xs text-muted-foreground">
