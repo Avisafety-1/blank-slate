@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus, ListChecks, FolderPlus } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
 import DocumentsList from "@/components/documents/DocumentsList";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
@@ -58,6 +58,7 @@ const Documents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
 
   useEffect(() => {
@@ -170,6 +171,10 @@ const Documents = () => {
                     <ListChecks className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Ny sjekkliste</span>
                   </Button>
+                  <Button onClick={() => setCreateFolderOpen(true)} variant="secondary" size="default">
+                    <FolderPlus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Ny mappe</span>
+                  </Button>
                   <Button onClick={() => setCreateDialogOpen(true)} size="default">
                     <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Nytt dokument</span>
@@ -177,6 +182,8 @@ const Documents = () => {
                 </div>
               )}
             </div>
+
+            <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
 
             <DocumentsFilterBar
               searchQuery={searchQuery}
@@ -188,8 +195,6 @@ const Documents = () => {
               sortOption={sortOption}
               onSortChange={setSortOption}
             />
-
-            <FolderGrid isAdmin={isAdmin} companyId={companyId} />
 
             <DocumentsList
               documents={filteredDocuments || []}

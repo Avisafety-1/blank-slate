@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderDetailDialog } from "./FolderDetailDialog";
 
 interface FolderGridProps {
   isAdmin: boolean;
   companyId: string | null;
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
 }
 
 interface Folder {
@@ -16,8 +18,7 @@ interface Folder {
   item_count: number;
 }
 
-const FolderGrid = ({ isAdmin, companyId }: FolderGridProps) => {
-  const [createOpen, setCreateOpen] = useState(false);
+const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: FolderGridProps) => {
   const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -67,18 +68,9 @@ const FolderGrid = ({ isAdmin, companyId }: FolderGridProps) => {
             </div>
           </button>
         ))}
-        {isAdmin && (
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="aspect-square rounded-lg border border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1.5 hover:bg-accent/15 transition-colors cursor-pointer"
-          >
-            <Plus className="h-7 w-7 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Ny mappe</span>
-          </button>
-        )}
       </div>
 
-      <CreateFolderDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={refetch} />
+      <CreateFolderDialog open={createOpen} onOpenChange={onCreateOpenChange} onSuccess={refetch} />
       <FolderDetailDialog
         folder={selectedFolder}
         open={detailOpen}
