@@ -223,6 +223,14 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     onRefresh();
   };
 
+  const toggleVisibleToChildren = async (checked: boolean) => {
+    if (!folder) return;
+    setVisibleToChildren(checked);
+    await supabase.from("document_folders").update({ visible_to_children: checked }).eq("id", folder.id);
+    toast.success(checked ? "Mappen er nå synlig for avdelinger" : "Mappen er nå kun synlig for dette selskapet");
+    onRefresh();
+  };
+
   // Tab management
   const createTab = async () => {
     if (!folder || !newTabName.trim()) return;
