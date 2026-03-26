@@ -1,32 +1,41 @@
 
 
-## Fix: Crash ved åpning av oppdragsdetaljer (wind_speed)
+## Fix: Naturvernområder på kartet
 
-### Rotårsak
-`DroneWeatherPanel` aksesserer `savedWeatherData.current.wind_speed` (linje 302) uten å sjekke om `current` finnes. Noen lagrede vær-snapshots mangler `current`-objektet (f.eks. hvis API-kallet feilet delvis, eller datastrukturen ble endret).
+### Problem
+Det nåværende laget bruker feil WMS-tjeneste og feil lag-ID:
+- **Bruker**: `vern_restriksjonsomrader/MapServer/WMSServer` med `layers: "0"` (= "landingsforbud_forsvaret" — militære landingsforbud)
+- **Bør bruke**: `vern/MapServer/WMSServer` med `layers: "naturvern_klasser_omrade"` (faktiske verneområder med fargekoding etter vernekategori)
+
+Miljødirektoratets `vern`-tjeneste har følgende relevante lag:
+- `naturvern_klasser_omrade` — verneområder fargekategorisert (nasjonalpark, naturreservat, landskapsvern osv.)
+- `naturvern_grense` — grenselinjer
+- `foreslatt_naturvern_omrade` — foreslåtte verneområder
 
 ### Plan
 
-**Fil: `src/components/DroneWeatherPanel.tsx`**
-- Linje 244: Legg til en guard som sjekker at `savedWeatherData.current` finnes før rendering av historisk værdata. Hvis `current` mangler, vis en enkel melding som "Værdata ufullstendig" i stedet for å krasje.
+**Fil: `src/components/OpenAIPMap.tsx` (linje 399-403)**
 
-```typescript
-// Linje 244 — endre fra:
-if (isHistorical && savedWeatherData) {
+Endre WMS-URL og lag-parameter:
 
-// til:
-if (isHistorical && savedWeatherData) {
-  if (!savedWeatherData.current) {
-    return (
-      <Card className="mt-3 p-3 bg-card/50 border">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Info className="w-3.5 h-3.5" />
-          <span>Værdata ufullstendig for dette oppdraget</span>
-        </div>
-      </Card>
-    );
-  }
+```text
+Før:
+  URL:    kart.miljodirektoratet.no/arcgis/services/vern_restriksjonsomrader/MapServer/WMSServer
+  layers: "0"
+
+Etter:
+  URL:    kart.miljodirektoratet.no/arcgis/services/vern/MapServer/WMSServer
+  layers: "naturvern_klasser_omrade"
 ```
 
-Én liten endring — eliminerer crashen uten å påvirke oppdrag med korrekt lagret værdata.
+I tillegg legge til et separat lag for restriksjonsområder (landingsforbud/lavflyvingsforbud) som eget kartlag med passende navn, slik at brukerne kan se begge:
+
+1. **Naturvernområder** (grønn, `vern` → `naturvern_klasser_omrade`) — viser nasjonalparker, naturreservater osv.
+2. **Vern-restriksjoner (ferdsel/landing)** (rød/oransje, `vern_restriksjonsomrader` → `ferdselsforbud,landingsforbud,lavflyving_forbudt_under_300m`) — viser ferdsels- og landingsforbud som er direkte droneoperasjonsrelevante
+
+Begge satt til `enabled: false` som standard (brukeren slår på ved behov), bortsett fra restriksjonslagene som er mest driftskritiske.
+
+### Teknisk endring
+
+Én fil endres: `src/components/OpenAIPMap.tsx`, linjene 399-403. Erstatter dagens enkelt-lag med to separate lag med korrekte WMS-URLer og lag-IDer.
 
