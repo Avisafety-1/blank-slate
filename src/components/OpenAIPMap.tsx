@@ -398,13 +398,9 @@ export function OpenAIPMap({
     });
     layerConfigs.push({ id: "nrl", name: "Luftfartshindre (NRL)", layer: nrlLayer, enabled: false, icon: "alertTriangle" });
 
-    // Naturvernområder (nasjonalparker, naturreservater osv.) — vektorlag fra DB
-    const naturvernLayer = L.layerGroup();
-    layerConfigs.push({ id: "naturvern", name: "Naturvernområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
-
-    // Vern-restriksjoner (ferdsels-/landingsforbud, lavflyvingsforbud) — vektorlag fra DB
-    const vernRestriksjonLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "vern_restriksjoner", name: "Vern-restriksjoner (ferdsel/landing)", layer: vernRestriksjonLayer, enabled: true, icon: "ban" });
+    // Verneområder (naturvern + ferdsels-/landingsforbud) — vektorlag fra DB
+    const naturvernLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: true, icon: "treePine" });
 
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
