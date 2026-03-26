@@ -1,40 +1,25 @@
 
 
-## Naturvernområder og vern-restriksjoner fra databasen i kartet
+## Slå sammen naturvern og vern-restriksjoner til ett kartlag
 
-### Nåværende situasjon
-- **AIP-soner** (P/R/D/RMZ/TMZ/ATZ): hentes fra Supabase → vektorlag med popups ✅
-- **NSM, RPAS**: hentes fra ArcGIS direkte som GeoJSON → vektorlag med popups
-- **Naturvern + vern-restriksjoner**: vises som **WMS bildelag** (ingen popups, ingen interaktivitet utover synlighet)
+### Problem
+To separate kartlag vises i lagkontrollen, men kun det ene (vern-restriksjoner) ble synlig. Brukeren ønsker ett samlet lag kalt "Verneområder".
 
 ### Endring
-Erstatte de to WMS-lagene med vektorlag som henter data fra `naturvern_zones` og `vern_restriction_zones` i databasen — samme mønster som `fetchAllAipZones` gjør i dag.
 
-### Plan
+**Fil: `src/components/OpenAIPMap.tsx`**
 
-**Fil: `src/lib/mapDataFetchers.ts`** — legg til to nye funksjoner:
+1. Fjern det separate `vernRestriksjonLayer` og dets `layerConfigs.push(...)` (linje 405-407)
+2. Legg begge datasett inn i én felles `L.layerGroup` kalt `naturvernLayer`
+3. Endre navn fra "Naturvernområder" til "Verneområder" (linje 403)
+4. Sett `enabled: true` (siden vern-restriksjoner var enabled)
+5. Oppdater begge fetch-kallene til å bruke samme `naturvernLayer`:
+   - `fetchNaturvernZones({ layer: naturvernLayer, mode })` (allerede riktig)
+   - `fetchVernRestrictionZones({ layer: naturvernLayer, mode })` (endre fra `vernRestriksjonLayer`)
+6. Gjør det samme i refetch-blokken (linje 591-592)
 
-1. **`fetchNaturvernZones()`** — henter fra `naturvern_zones`-tabellen
-   - Fargekoding basert på `verneform` (nasjonalpark = grønn, naturreservat = mørkegrønn, landskapsvernområde = lysegrønn, etc.)
-   - Popup med navn, verneform og eventuelle properties
-   - Lav fillOpacity (0.15) for å ikke overdominere kartet
-
-2. **`fetchVernRestrictionZones()`** — henter fra `vern_restriction_zones`-tabellen
-   - Fargekoding basert på `restriction_type` (FERDSELSFORBUD = rød, LANDINGSFORBUD = oransje, LAVFLYVING = gul)
-   - Popup med navn og restriksjonstype
-
-**Fil: `src/components/OpenAIPMap.tsx`** — bytt ut WMS-lagene:
-- Erstatt `naturvernLayer` (WMS) med et `L.layerGroup()` som fylles av `fetchNaturvernZones()`
-- Erstatt `vernRestriksjonLayer` (WMS) med et `L.layerGroup()` som fylles av `fetchVernRestrictionZones()`
-- Kall de nye funksjonene på samme sted som `fetchNsmData()` etc. kalles (linje 540-543, og re-fetch ved auth-endring linje 580-585)
-
-### Fordeler
-- Raskere lasting (data allerede i Supabase, ingen ekstern WMS-server)
-- Interaktive popups med navn og detaljer
-- Konsistent med hvordan AIP-soner fungerer
-- Data er allerede synkronisert via `sync-geo-layers`
-
-### Filer som endres
-1. `src/lib/mapDataFetchers.ts` — to nye eksporterte funksjoner
-2. `src/components/OpenAIPMap.tsx` — bytt WMS → vektorlag, kall nye funksjoner
+### Resultat
+- Én knapp i lagkontrollen: "Verneområder" med treePine-ikon
+- Begge datasett (naturvernområder + ferdsels-/landingsforbud) tegnes i samme lag
+- Fargekodingen skiller dem fortsatt visuelt (grønn for naturvern, rød/oransje for restriksjoner)
 
