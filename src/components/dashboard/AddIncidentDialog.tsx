@@ -586,7 +586,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                     return (
                       <label
                         key={cause.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer text-sm"
                       >
                         <Checkbox
                           checked={selected}
