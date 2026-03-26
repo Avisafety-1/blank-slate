@@ -31,6 +31,7 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import {
@@ -98,6 +99,8 @@ export const MissionCard = ({
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -137,19 +140,19 @@ export const MissionCard = ({
               latitude={mission.latitude}
               longitude={mission.longitude}
             />
-            {companySettings.require_mission_approval && mission.approval_status === 'pending_approval' && (
+            {showApproval && mission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter på godkjenning
               </Badge>
             )}
-            {companySettings.require_mission_approval && mission.approval_status === 'approved' && (
+            {showApproval && mission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
-            {companySettings.require_mission_approval && mission.approval_status === 'not_approved' && (
+            {showApproval && mission.approval_status === 'not_approved' && (
               <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 border-gray-500/30">
                 Ikke godkjent
               </Badge>
@@ -235,7 +238,7 @@ export const MissionCard = ({
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Tilknytt sjekkliste
             </DropdownMenuItem>
-            {companySettings.require_mission_approval && mission.approval_status === 'not_approved' && (
+            {showApproval && mission.approval_status === 'not_approved' && (
               <DropdownMenuItem onClick={() => onSubmitForApproval(mission)}>
                 <Send className="h-4 w-4 mr-2" />
                 Send til godkjenning

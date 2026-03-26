@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -36,6 +37,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const { companyId, departmentsEnabled } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -275,7 +278,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       latitude={mission.latitude}
                       longitude={mission.longitude}
                     />
-                    {companySettings.require_mission_approval && (() => {
+                    {showApproval && (() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
                       const approvalLabel = approvalStatus === 'approved' ? 'Godkjent' : approvalStatus === 'pending_approval' ? 'Venter' : 'Ikke godkjent';
                       const approvalColor = approvalStatus === 'approved' 

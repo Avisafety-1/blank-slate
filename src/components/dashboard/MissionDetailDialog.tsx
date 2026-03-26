@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
 import { ExpandedMapDialog } from "./ExpandedMapDialog";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
@@ -89,6 +90,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   );
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const companySettings = useCompanySettings();
+  const soraApprovalEnabled = useSoraApprovalEnabled();
+  const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
 
@@ -214,19 +217,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               latitude={currentMission.latitude}
               longitude={currentMission.longitude}
             />
-            {companySettings.require_mission_approval && currentMission.approval_status === 'pending_approval' && (
+            {showApproval && currentMission.approval_status === 'pending_approval' && (
               <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
                 <Clock className="h-3 w-3 mr-1" />
                 Venter godkjenning
               </Badge>
             )}
-            {companySettings.require_mission_approval && currentMission.approval_status === 'approved' && (
+            {showApproval && currentMission.approval_status === 'approved' && (
               <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
-            {companySettings.require_mission_approval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
+            {showApproval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
               <Badge 
                 variant="outline" 
                 className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"
