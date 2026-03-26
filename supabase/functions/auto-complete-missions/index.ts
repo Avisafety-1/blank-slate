@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
         console.error(`Error updating mission ${mission.id}:`, updateError);
       } else {
         completedCount++;
-        console.log(`  - ${mission.tittel} (${mission.id}) - status changed from ${mission.status} to Fullført${snapshot ? ' (with weather snapshot)' : ''}`);
+        console.log(`  - ${mission.tittel} (${mission.id}) - status changed from ${mission.status} to Fullført (weather unavailable - historical)`);
       }
     }
 
@@ -84,12 +84,10 @@ Deno.serve(async (req) => {
         message: `Auto-completed ${completedCount} missions`,
         checked: missionsToComplete.length,
         completed: completedCount,
-        with_weather: weatherSnapshots.size,
         missions: missionsToComplete.map(m => ({
           id: m.id,
           tittel: m.tittel,
           previous_status: m.status,
-          has_weather: weatherSnapshots.has(m.id),
         })),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
