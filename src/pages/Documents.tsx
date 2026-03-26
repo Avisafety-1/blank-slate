@@ -58,6 +58,7 @@ const Documents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
 
   useEffect(() => {
