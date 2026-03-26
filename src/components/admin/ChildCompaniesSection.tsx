@@ -81,7 +81,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -89,6 +89,8 @@ export const ChildCompaniesSection = () => {
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
       setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
+      setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
+      setRequireSoraSteps((data as any).require_sora_steps ?? 1);
     }
   };
 
