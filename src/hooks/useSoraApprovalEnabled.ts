@@ -4,27 +4,43 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const cache: Record<string, { enabled: boolean; ts: number }> = {};
 const CACHE_TTL = 30_000;
+const SORA_APPROVAL_EVENT = "sora-approval-enabled-changed";
+
+type SoraApprovalEventDetail = {
+  companyId: string;
+  enabled: boolean;
+};
 
 export function invalidateSoraApprovalCache() {
   for (const key of Object.keys(cache)) delete cache[key];
+}
+
+export function syncSoraApprovalEnabled(companyId: string, enabled: boolean) {
+  cache[companyId] = { enabled, ts: Date.now() };
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<SoraApprovalEventDetail>(SORA_APPROVAL_EVENT, {
+        detail: { companyId, enabled },
+      })
+    );
+  }
 }
 
 export function useSoraApprovalEnabled(): boolean {
   const { companyId } = useAuth();
   const [enabled, setEnabled] = useState(false);
 
-  const fetch = () => {
+  const fetch = async () => {
     if (!companyId) return;
-    (supabase
+    const { data } = (await (supabase
       .from("company_sora_config")
       .select("sora_based_approval")
       .eq("company_id", companyId)
-      .maybeSingle() as any)
-      .then(({ data }: any) => {
-        const val = !!data?.sora_based_approval;
-        cache[companyId] = { enabled: val, ts: Date.now() };
-        setEnabled(val);
-      });
+      .maybeSingle() as any)) as any;
+
+    const val = !!data?.sora_based_approval;
+    cache[companyId] = { enabled: val, ts: Date.now() };
+    setEnabled(val);
   };
 
   useEffect(() => {
@@ -41,7 +57,12 @@ export function useSoraApprovalEnabled(): boolean {
       .channel(`sora-config-${companyId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "company_sora_config", filter: `company_id=eq.${companyId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "company_sora_config",
+          filter: `company_id=eq.${companyId}`,
+        },
         () => {
           invalidateSoraApprovalCache();
           fetch();
@@ -49,7 +70,17 @@ export function useSoraApprovalEnabled(): boolean {
       )
       .subscribe();
 
+    const handleLocalSync = (event: Event) => {
+      const detail = (event as CustomEvent<SoraApprovalEventDetail>).detail;
+      if (!detail || detail.companyId !== companyId) return;
+      cache[companyId] = { enabled: detail.enabled, ts: Date.now() };
+      setEnabled(detail.enabled);
+    };
+
+    window.addEventListener(SORA_APPROVAL_EVENT, handleLocalSync);
+
     return () => {
+      window.removeEventListener(SORA_APPROVAL_EVENT, handleLocalSync);
       supabase.removeChannel(channel);
     };
   }, [companyId]);
