@@ -1,42 +1,17 @@
 
 
-## Fiks: SORA-sjekk mangler i dashbordet ved godkjenning
+## Blokkér «Krev SORA på alle oppdrag» når SORA-basert godkjenning er aktiv
 
 ### Problem
-Dashbordet har to steder med egen godkjenningslogikk som oppdaterer `approval_status` direkte uten å sjekke SORA-kravet (`require_sora_on_missions`). Sjekken finnes kun i `useOppdragData.ts` (brukt fra `/oppdrag`-siden).
+Når `sora_based_approval` er aktivert i SORA-konfig, gir det ikke mening å også ha `require_sora_on_missions` på — de to innstillingene overlapper og skaper forvirring.
 
 ### Løsning
-Legg til SORA-sjekk i begge dashbord-komponentene, identisk med logikken i `useOppdragData.ts`:
-- Sjekk `require_sora_on_missions` fra `useCompanySettings`
-- Sjekk `useSoraApprovalEnabled` — hvis aktiv, hopp over sjekken
-- Tell `mission_risk_assessments` for oppdraget
-- Hvis antall < `require_sora_steps`: vis toast «Gjennomfør SORA først» og avbryt
+I `ChildCompaniesSection.tsx`:
 
-### Filer som endres
+1. Importer og bruk `useSoraApprovalEnabled()` for å sjekke om SORA-basert godkjenning er aktiv.
+2. I `handleToggleRequireSora`: hvis `checked === true` og `soraApprovalEnabled === true`, vis toast `"Kan ikke aktiveres når SORA-basert godkjenning er på"` og returner uten å lagre.
+3. Valgfritt: Visuelt disable switchen og/eller vis forklarende undertekst når SORA-basert godkjenning er aktiv.
 
-#### 1. `src/components/dashboard/MissionsSection.tsx`
-- Importer `useCompanySettings` og `useSoraApprovalEnabled`
-- I `AlertDialogAction`-onClick (linje 394): legg til SORA-sjekk før `approval_status`-oppdateringen
-- Hvis SORA mangler: toast + return
-
-#### 2. `src/components/dashboard/MissionDetailDialog.tsx`
-- Importer `useCompanySettings` og `useSoraApprovalEnabled`
-- I `AlertDialogAction`-onClick (linje 501): legg til samme SORA-sjekk
-- Hvis SORA mangler: toast + return
-
-### Kodelogikk (begge steder)
-```ts
-// Før approval_status-oppdateringen:
-if (companySettings?.require_sora_on_missions && !soraApprovalEnabled) {
-  const { count } = await supabase
-    .from('mission_risk_assessments')
-    .select('id', { count: 'exact', head: true })
-    .eq('mission_id', missionId);
-  const requiredSteps = companySettings.require_sora_steps ?? 1;
-  if ((count ?? 0) < requiredSteps) {
-    toast.error('Gjennomfør SORA først');
-    return;
-  }
-}
-```
+### Fil som endres
+- `src/components/admin/ChildCompaniesSection.tsx` — importer `useSoraApprovalEnabled`, legg til sjekk i `handleToggleRequireSora`, disable switch visuelt.
 
