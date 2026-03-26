@@ -437,6 +437,10 @@ export const CompanySoraConfigSection = () => {
                   checked={config.sora_based_approval}
                   onCheckedChange={async (v) => {
                     setConfig((p) => ({ ...p, sora_based_approval: v }));
+                    if (companyId) {
+                      syncSoraApprovalEnabled(companyId, v);
+                    }
+
                     // Auto-save this toggle immediately
                     try {
                       const { error } = await (supabase as any)
@@ -451,6 +455,9 @@ export const CompanySoraConfigSection = () => {
                       console.error("Error saving sora_based_approval:", err);
                       toast.error("Kunne ikke lagre innstillingen");
                       setConfig((p) => ({ ...p, sora_based_approval: !v }));
+                      if (companyId) {
+                        syncSoraApprovalEnabled(companyId, !v);
+                      }
                     }
                   }}
                 />
