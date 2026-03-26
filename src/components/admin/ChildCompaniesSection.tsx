@@ -78,6 +78,23 @@ export const ChildCompaniesSection = () => {
   useEffect(() => {
     fetchChildren();
     fetchParentSettings();
+
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`company-settings-${companyId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "companies", filter: `id=eq.${companyId}` },
+        () => {
+          fetchParentSettings();
+          invalidateCompanySettingsCache();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [companyId]);
 
   const fetchParentSettings = async () => {
