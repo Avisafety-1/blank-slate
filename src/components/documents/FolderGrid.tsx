@@ -53,16 +53,18 @@ const FolderGrid = ({ isAdmin, companyId }: FolderGridProps) => {
 
   return (
     <>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {folders?.map((folder) => (
           <button
             key={folder.id}
             onClick={() => { setSelectedFolder(folder); setDetailOpen(true); }}
-            className="aspect-square rounded-lg border border-glass bg-card/80 backdrop-blur-md flex flex-col items-center justify-center gap-1.5 hover:bg-accent/15 transition-colors cursor-pointer p-2"
+            className="rounded-lg border border-glass bg-card/80 backdrop-blur-md flex items-center gap-3 hover:bg-accent/15 transition-colors cursor-pointer p-3 sm:p-4 sm:flex-col sm:items-center sm:justify-center sm:aspect-square"
           >
-            <FolderOpen className="h-8 w-8 text-primary" />
-            <span className="text-xs font-medium text-foreground text-center line-clamp-2 leading-tight">{folder.name}</span>
-            <span className="text-[10px] text-muted-foreground">{folder.item_count} dok.</span>
+            <FolderOpen className="h-7 w-7 sm:h-9 sm:w-9 text-primary shrink-0" />
+            <div className="flex flex-col sm:items-center min-w-0">
+              <span className="text-sm sm:text-xs font-medium text-foreground text-left sm:text-center line-clamp-2 leading-tight">{folder.name}</span>
+              <span className="text-[11px] sm:text-[10px] text-muted-foreground">{folder.item_count} dok.</span>
+            </div>
           </button>
         ))}
         {isAdmin && (
