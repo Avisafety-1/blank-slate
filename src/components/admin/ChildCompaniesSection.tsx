@@ -192,8 +192,21 @@ export const ChildCompaniesSection = () => {
               disabled={savingSettings}
             />
           </div>
+          <div className="flex items-center justify-between pl-4 border-l-2 border-muted ml-1">
+            <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
+              <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Når aktivert vil innstillingen også settes på alle avdelinger i selskapet
+              </div>
+            </Label>
+            <Switch
+              id="apply-children"
+              checked={applyToChildren}
+              onCheckedChange={handleToggleApplyToChildren}
+              disabled={savingSettings}
+            />
+          </div>
         </div>
-      </GlassCard>
 
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
