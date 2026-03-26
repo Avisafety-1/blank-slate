@@ -1,45 +1,37 @@
 
 
-## Ny selskapsinnstilling: «Oppdrag krever godkjenning»
+## SORA-basert godkjenning overstyrer «Oppdrag krever godkjenning»
+
+### Problem
+Når `sora_based_approval` er aktivert i SORA-konfig, skal godkjenningsbadgen alltid vises (uavhengig av `require_mission_approval`-togglen). Default-status skal være «Ikke godkjent» til SORA auto-godkjenning trigger eller manuell godkjenning skjer.
+
+### Løsning
+Lage en hook som sjekker om SORA-basert godkjenning er aktiv, og bruke den i tillegg til `require_mission_approval` for å avgjøre om godkjennings-UI vises.
 
 ### Endringer
 
-#### 1. Database-migrasjon
-```sql
-ALTER TABLE companies ADD COLUMN require_mission_approval boolean NOT NULL DEFAULT false;
+#### 1. Ny hook: `src/hooks/useSoraApprovalEnabled.ts`
+- Henter `sora_based_approval` fra `company_sora_config` for gjeldende `companyId`
+- Returnerer `boolean`
+- Cacher resultatet (samme mønster som `useCompanySettings`)
+
+#### 2. Oppdater godkjennings-UI i 3 filer
+Erstatt `companySettings.require_mission_approval` med:
+```ts
+const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
 ```
 
-#### 2. `src/components/admin/ChildCompaniesSection.tsx`
-- Ny state `requireMissionApproval`
-- Hent og lagre verdien i `fetchParentSettings`
-- Ny toggle med:
-  - Label: **Oppdrag krever godkjenning**
-  - Undertekst: **SORA-spesifikk godkjenningslogikk overstyrer dette valget**
-- Ny handler `handleToggleRequireMissionApproval` (samme mønster som de andre)
-- Propager til barn i `handleToggleApplyToChildren`
+Filer:
+- **`src/components/dashboard/MissionsSection.tsx`** — linje 278
+- **`src/components/dashboard/MissionDetailDialog.tsx`** — linje 217, 223, 229
+- **`src/components/oppdrag/MissionCard.tsx`** — linje 140, 146, 152, 238
 
-#### 3. `src/hooks/useCompanySettings.ts`
-- Legg til `require_mission_approval: boolean` i `CompanySettings`
-- Hent verdien fra `companies`
-
-#### 4. Bruk innstillingen i godkjenningslogikken
-I **`src/components/dashboard/MissionsSection.tsx`** og **`src/components/dashboard/MissionDetailDialog.tsx`**:
-- Hent `useCompanySettings()`
-- Når `require_mission_approval` er `true`: nye oppdrag starter med `approval_status = 'not_approved'` og viser godkjenningsbadge (dette er allerede default-oppførsel)
-- Når `false`: skjul godkjenningsbadge og «Send til godkjenning»-knapp, slik at oppdrag ikke trenger godkjenning
-
-I **`src/components/oppdrag/MissionCard.tsx`**:
-- Samme logikk: skjul godkjenningsbadge og menyvalg når innstillingen er av
-
-I **`src/components/dashboard/StartFlightDialog.tsx`**:
-- Når `require_mission_approval` er `false`: ikke blokker oppstart basert på `approval_status`
+#### 3. StartFlightDialog (hvis relevant)
+- Sjekk om `soraApprovalEnabled` også skal blokkere flystart når `approval_status !== 'approved'`
 
 ### Filer som endres
-1. Database-migrasjon (ny kolonne)
-2. `src/components/admin/ChildCompaniesSection.tsx` — ny toggle
-3. `src/hooks/useCompanySettings.ts` — nytt felt
-4. `src/components/dashboard/MissionsSection.tsx` — betinget godkjennings-UI
-5. `src/components/dashboard/MissionDetailDialog.tsx` — betinget godkjennings-UI
-6. `src/components/oppdrag/MissionCard.tsx` — betinget badge/meny
-7. `src/components/dashboard/StartFlightDialog.tsx` — betinget blokkering
+1. `src/hooks/useSoraApprovalEnabled.ts` — ny hook
+2. `src/components/dashboard/MissionsSection.tsx` — bruk `showApproval`
+3. `src/components/dashboard/MissionDetailDialog.tsx` — bruk `showApproval`
+4. `src/components/oppdrag/MissionCard.tsx` — bruk `showApproval`
 
