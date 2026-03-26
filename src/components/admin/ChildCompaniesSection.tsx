@@ -143,11 +143,10 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     setApplyToChildren(checked);
     if (checked) {
-      // Propagate current setting to all children now
       setSavingSettings(true);
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
       toast.success("Innstilling anvendt på alle avdelinger");
