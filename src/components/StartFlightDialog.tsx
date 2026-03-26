@@ -326,6 +326,21 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }
   }, [open]);
 
+  // Check SORA requirement for selected mission
+  useEffect(() => {
+    if (!selectedMissionId || selectedMissionId === 'none' || !companySettings.require_sora_on_missions || soraApprovalEnabled) {
+      setMissingSora(false);
+      return;
+    }
+    (async () => {
+      const { count } = await supabase
+        .from('mission_risk_assessments')
+        .select('id', { count: 'exact', head: true })
+        .eq('mission_id', selectedMissionId);
+      setMissingSora((count ?? 0) < companySettings.require_sora_steps);
+    })();
+  }, [selectedMissionId, companySettings.require_sora_on_missions, companySettings.require_sora_steps, soraApprovalEnabled]);
+
   // Check if selected mission is in a 5km zone
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') {
