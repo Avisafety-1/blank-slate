@@ -207,6 +207,7 @@ export const ChildCompaniesSection = () => {
             />
           </div>
         </div>
+      </GlassCard>
 
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
