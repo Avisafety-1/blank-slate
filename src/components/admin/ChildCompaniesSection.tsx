@@ -67,7 +67,37 @@ export const ChildCompaniesSection = () => {
 
   useEffect(() => {
     fetchChildren();
+    fetchParentSettings();
   }, [companyId]);
+
+  const fetchParentSettings = async () => {
+    if (!companyId) return;
+    const { data } = await supabase
+      .from("companies")
+      .select("navn, show_all_airspace_warnings")
+      .eq("id", companyId)
+      .single();
+    if (data) {
+      setParentCompanyName(data.navn);
+      setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
+    }
+  };
+
+  const handleToggleAirspaceWarnings = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ show_all_airspace_warnings: checked } as any)
+      .eq("id", companyId);
+    setSavingSettings(false);
+    if (error) {
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+    setShowAllAirspaceWarnings(checked);
+    toast.success("Innstilling lagret");
+  };
 
   const handleAdd = () => {
     setSelectedCompany(null);
