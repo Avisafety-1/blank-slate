@@ -413,13 +413,22 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               )}
             </ScrollArea>
             {isAdmin && (
-              <div className="flex gap-2 justify-between pt-2 border-t">
-                <Button variant="destructive" size="sm" onClick={deleteFolder}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Slett mappe
-                </Button>
-                <Button size="sm" onClick={openPicker}>
-                  <Plus className="h-4 w-4 mr-1" /> Legg til dokumenter
-                </Button>
+              <div className="space-y-3 pt-2 border-t">
+                {hasChildren && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch checked={visibleToChildren} onCheckedChange={toggleVisibleToChildren} />
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground">Synlig for alle avdelinger</span>
+                  </label>
+                )}
+                <div className="flex gap-2 justify-between">
+                  <Button variant="destructive" size="sm" onClick={deleteFolder}>
+                    <Trash2 className="h-4 w-4 mr-1" /> Slett mappe
+                  </Button>
+                  <Button size="sm" onClick={openPicker}>
+                    <Plus className="h-4 w-4 mr-1" /> Legg til dokumenter
+                  </Button>
+                </div>
               </div>
             )}
           </>
