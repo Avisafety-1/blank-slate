@@ -172,6 +172,58 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleRequireSora = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ require_sora_on_missions: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ require_sora_on_missions: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setRequireSoraOnMissions(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
+  const handleChangeSoraSteps = async (steps: number) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ require_sora_steps: steps } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applyToChildren) {
+      await supabase
+        .from("companies")
+        .update({ require_sora_steps: steps } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setRequireSoraSteps(steps);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleApplyToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyToChildren(checked);
@@ -179,7 +231,7 @@ export const ChildCompaniesSection = () => {
       setSavingSettings(true);
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
       toast.success("Innstilling anvendt på alle avdelinger");
