@@ -736,15 +736,7 @@ export async function fetchPilotPositions(params: {
 
 const NVE_BASE = "https://nve.geodataonline.no/arcgis/rest/services/Nettanlegg4/MapServer";
 
-interface KraftLayerDef {
-  layerId: number;
-  label: string;
-  color: string;
-  weight: number;
-  dashArray?: string;
-  minZoom: number;
-  isPoint?: boolean;
-}
+
 
 interface KraftLayerDef {
   layerId: number;
