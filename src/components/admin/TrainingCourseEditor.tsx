@@ -37,6 +37,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [passingScore, setPassingScore] = useState(80);
   const [validityMonths, setValidityMonths] = useState<number | null>(null);
   const [hasPermanentValidity, setHasPermanentValidity] = useState(true);
+  const [displayMode, setDisplayMode] = useState<"list" | "paginated">("list");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
