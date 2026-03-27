@@ -277,7 +277,57 @@ const Resources = () => {
       toast.error(t('resources.couldNotLoadPersonnel'));
     }
   };
+  const fetchPendingCourses = async () => {
+    if (!navigator.onLine) return;
+    try {
+      // Get all published available_to_all courses
+      const { data: allCourses } = await supabase
+        .from("training_courses")
+        .select("id")
+        .eq("status", "published")
+        .eq("available_to_all", true);
+      const allCourseIds = (allCourses || []).map((c: any) => c.id);
 
+      // Get all assignments (pending + completed)
+      const { data: assignments } = await supabase
+        .from("training_assignments")
+        .select("profile_id, course_id, completed_at, passed");
+
+      // Build counts per person
+      const counts: Record<string, number> = {};
+      
+      // Count pending assignments per person
+      (assignments || []).forEach((a: any) => {
+        if (!a.completed_at) {
+          counts[a.profile_id] = (counts[a.profile_id] || 0) + 1;
+        }
+      });
+
+      // Count available_to_all courses not yet completed by each person in personnel
+      if (allCourseIds.length > 0) {
+        const completedByPerson: Record<string, Set<string>> = {};
+        (assignments || []).forEach((a: any) => {
+          if (a.passed) {
+            if (!completedByPerson[a.profile_id]) completedByPerson[a.profile_id] = new Set();
+            completedByPerson[a.profile_id].add(a.course_id);
+          }
+        });
+        
+        personnel.forEach((p: any) => {
+          const completed = completedByPerson[p.id] || new Set();
+          const pending = allCourseIds.filter((id: string) => !completed.has(id)).length;
+          // Add to existing count (avoiding double-counting assigned ones)
+          const assignedPending = (assignments || []).filter((a: any) => a.profile_id === p.id && !a.completed_at).map((a: any) => a.course_id);
+          const additionalFromAll = allCourseIds.filter((id: string) => !completed.has(id) && !assignedPending.includes(id)).length;
+          counts[p.id] = (counts[p.id] || 0) + additionalFromAll;
+        });
+      }
+
+      setPendingCourseCounts(counts);
+    } catch (err) {
+      console.error("Error fetching pending courses:", err);
+    }
+  };
 
 
 
