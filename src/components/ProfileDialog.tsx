@@ -1838,6 +1838,46 @@ export const ProfileDialog = () => {
                   </Card>
                 )}
 
+                {/* Pending Training */}
+                {pendingTraining.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        Kurs og tester til gjennomføring ({pendingTraining.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {pendingTraining.map((assignment: any) => (
+                          <div
+                            key={assignment.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-border"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {(assignment.training_courses as any)?.title || "Kurs"}
+                              </p>
+                              {(assignment.training_courses as any)?.description && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {(assignment.training_courses as any).description}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setTakeCourseAssignmentId(assignment.id)}
+                            >
+                              <GraduationCap className="h-4 w-4 mr-1" />
+                              Ta kurs
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Follow-up Incidents */}
                 <Card>
                   <CardHeader>
