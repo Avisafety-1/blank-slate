@@ -62,6 +62,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setPassingScore(course.passing_score);
         setValidityMonths(course.validity_months);
         setHasPermanentValidity(!course.validity_months);
+        setDisplayMode((course as any).display_mode === "paginated" ? "paginated" : "list");
       }
 
       const { data: questionsData } = await supabase
