@@ -382,7 +382,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   <div className="flex items-center gap-2">
                     {q.image_url ? (
                       <div className="relative">
-                        <img src={q.image_url} alt="" className="h-20 w-20 object-cover rounded" />
+                        <img src={q.image_url} alt="" className={`${isEditorFullscreen ? "max-h-[50vh] w-auto" : "h-20 w-20"} object-cover rounded`} />
                         <Button
                           size="sm"
                           variant="ghost"
