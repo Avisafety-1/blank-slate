@@ -1,49 +1,85 @@
 
+## Fiks kraftledninger-laget ved å bytte fra WMS til ArcGIS GeoJSON
 
-## Fiks kraftledninger-kartlaget (NVE)
+### Hva jeg fant
+Problemet er sannsynligvis ikke bare zoom. NVE-dataene finnes, men den valgte **WMS-løsningen svarer ikke brukbart**:
+- `GetMap` mot `.../WmsServer` gir `Parameter 'layers' contains unacceptable layer names`
+- Samme datasett fungerer derimot via **ArcGIS REST query** på `.../MapServer/{layerId}/query?...&f=geojson`
 
-### Problem
-Kartlaget bruker `gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer` som ikke returnerer synlige data. Tjenesten er utdatert.
-
-### Funn fra undersøkelse
-- NVE har oppgradert til **Nettanlegg4** på `nve.geodataonline.no`
-- Layers 0-6 har alle `defaultVisibility: false` og **skaleavhengig visning** (f.eks. Transmisjonsnett synlig opp til 1:10M, Distribusjonsnett kun under 1:640K)
-- Feature-query bekrefter at data finnes (kraftledninger med eier, spenning, etc.)
-- Den gamle Nettanlegg3-tjenesten returnerer konsekvent blanke bilder
+Det betyr at toggleen kan være “på”, men laget har fortsatt ingen gyldig kartgrafikk å vise.
 
 ### Løsning
-Oppdater `OpenAIPMap.tsx`:
+Bytt implementasjonen fra et WMS-tilelag til et **vektorlag hentet fra ArcGIS REST** innenfor gjeldende kartutsnitt.
 
-1. **Bytt URL** til Nettanlegg4: `https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?`
-2. **Bruk korrekte lag-navn**: `Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner`
-3. **Legg til `minZoom: 8`** på Leaflet-laget slik at det kun vises når zoomet nok inn til at WMS-tjenesten faktisk tegner features
-4. **Legg til `version: '1.1.1'`** for kompatibilitet med ArcGIS WMS
+### Endringer
 
-### Endring i kode
-```ts
-// FRA:
-const kraftledningerLayer = L.tileLayer.wms(
-  "https://gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer?",
-  { layers: "0,1,2,3", ... }
-);
+#### 1. `src/components/OpenAIPMap.tsx`
+- Erstatt `kraftledningerLayer = L.tileLayer.wms(...)` med `L.layerGroup()`
+- Registrer dette fortsatt som `id: "kraftledninger"`
+- Legg til egen pane, f.eks. `powerPane`, så laget får riktig z-index og kan skrus av/på uten å kollidere med andre lag
+- Når laget toggles på:
+  - kjør en fetch med én gang
+- Når kartet flyttes/zoomes:
+  - hent data på nytt **kun hvis laget er aktivert**
+- Når laget toggles av:
+  - tøm layer group
 
-// TIL:
-const kraftledningerLayer = L.tileLayer.wms(
-  "https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?",
-  {
-    layers: "Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner",
-    format: "image/png",
-    transparent: true,
-    opacity: 0.8,
-    version: "1.1.1",
-    attribution: 'Nettanlegg © <a href="https://www.nve.no">NVE</a>',
-  }
-);
-```
+#### 2. `src/lib/mapDataFetchers.ts`
+Legg til en ny helper, f.eks. `fetchKraftledningerInBounds(...)`, som:
+- bruker ArcGIS REST query-endepunkter:
+  - `MapServer/0` = transmisjonsnett
+  - `MapServer/1` = regionalnett
+  - `MapServer/2` = distribusjonsnett
+  - `MapServer/3` = sjøkabler
+  - `MapServer/5` = transformatorstasjoner
+- sender inn viewport som geometri/filter
+- ber om `outSR=4326&f=geojson`
+- renderer:
+  - linjer som `L.geoJSON(...)`
+  - stasjoner som `pointToLayer(...)`
 
-### Fil som endres
-- `src/components/OpenAIPMap.tsx` — oppdater WMS-URL og lag-parametere
+### Foreslått datalogikk
+Bruk zoomstyring for å unngå for mye data:
+- zoom 8+: transmisjonsnett + regionalnett
+- zoom 11+: sjøkabler + transformatorstasjoner
+- zoom 12/13+: distribusjonsnett
+- hopp over `Master og stolper` i første versjon, siden det blir ekstremt tett
 
-### Risiko
-Hvis NVE-tjenesten fortsatt ikke viser data (skaleavhengighet kan gjøre at lite vises ved lav zoom), kan vi som alternativ hente GeoJSON fra feature-endepunktet og tegne linjene client-side.
+Dette gir et lag som faktisk blir synlig uten å overbelaste kartet.
 
+### Visuell stil
+- Transmisjonsnett: tydelig blå/grønn
+- Regionalnett: oransje
+- Distribusjonsnett: lysere gul/oransje
+- Sjøkabler: stiplet cyan
+- Transformatorstasjoner: små sirkelmarkører
+
+Popup kan vise:
+- type
+- eier
+- spenning (kV)
+- navn når det finnes
+
+### Ekstra hardening
+Jeg ville også samtidig sikre `setGeoJsonInteractivity(...)` i `OpenAIPMap.tsx`:
+- ikke kall `addInteractiveTarget` / `removeInteractiveTarget` hvis layer ikke lenger har map eller DOM-element
+- dette matcher runtime-feilene du har nå fra Leaflet og gjør kartet mer stabilt ved refresh/hot reload
+
+### Hvorfor dette er riktig retning
+Den nåværende WMS-veien ser ut til å være feil/uforenlig for dette datasettet i Leaflet-oppsettet deres. ArcGIS REST-query fungerer faktisk og lar oss:
+- hente ekte data
+- begrense til viewport
+- style laget tydeligere
+- få popups og bedre kontroll på ytelse
+
+### Filer som endres
+1. `src/components/OpenAIPMap.tsx`
+2. `src/lib/mapDataFetchers.ts`
+
+### Testing
+Etter implementasjon bør vi teste:
+1. slå på “Kraftledninger (NVE)”
+2. zoome inn over Trondheim/Oslo-området
+3. bekrefte at linjer og stasjoner vises
+4. slå laget av/på flere ganger
+5. sjekke at route planning fortsatt fungerer uten at laget stjeler klikk
