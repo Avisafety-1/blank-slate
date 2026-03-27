@@ -4145,6 +4145,41 @@ export type Database = {
           },
         ]
       }
+      training_course_folders: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          visible_to_children: boolean
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          visible_to_children?: boolean
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          visible_to_children?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_course_folders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_courses: {
         Row: {
           available_to_all: boolean
@@ -4153,7 +4188,9 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_mode: string
+          folder_id: string | null
           fullscreen: boolean
+          global_visibility: boolean
           id: string
           passing_score: number
           status: string
@@ -4168,7 +4205,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_mode?: string
+          folder_id?: string | null
           fullscreen?: boolean
+          global_visibility?: boolean
           id?: string
           passing_score?: number
           status?: string
@@ -4183,7 +4222,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_mode?: string
+          folder_id?: string | null
           fullscreen?: boolean
+          global_visibility?: boolean
           id?: string
           passing_score?: number
           status?: string
@@ -4197,6 +4238,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_courses_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "training_course_folders"
             referencedColumns: ["id"]
           },
         ]
