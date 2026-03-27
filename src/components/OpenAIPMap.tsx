@@ -757,6 +757,32 @@ export function OpenAIPMap({
         else controls.stop();
       }
     }
+
+    // Kraftledninger: fetch data on enable, clear on disable
+    if (id === 'kraftledninger') {
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) {
+              layer.layer.addTo(map);
+              fetchKraftledningerInBounds({
+                layer: layer.layer as L.LayerGroup,
+                bounds: map.getBounds(),
+                zoom: map.getZoom(),
+                pane: 'powerPane',
+                mode: modeRef.current,
+              });
+            } else {
+              (layer.layer as L.LayerGroup).clearLayers();
+              layer.layer.remove();
+            }
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
+    }
     
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
