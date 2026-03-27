@@ -879,6 +879,18 @@ export function PersonCompetencyDialog({
           }
         }}
       />
+
+      {takeCourseAssignmentId && (
+        <TakeCourseDialog
+          assignmentId={takeCourseAssignmentId}
+          open={!!takeCourseAssignmentId}
+          onOpenChange={(open) => { if (!open) setTakeCourseAssignmentId(null); }}
+          onCompleted={() => {
+            setTakeCourseAssignmentId(null);
+            onCompetencyUpdated();
+          }}
+        />
+      )}
     </>
   );
 }
