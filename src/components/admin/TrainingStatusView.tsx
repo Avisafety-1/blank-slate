@@ -100,7 +100,7 @@ export const TrainingStatusView = ({ courseId, courseTitle, onBack }: Props) => 
                     {!a.completed_at ? (
                       <Badge variant="secondary">Ikke fullført</Badge>
                     ) : a.passed ? (
-                      <Badge className="bg-green-600 text-white">Bestått</Badge>
+                      <Badge className="bg-primary text-primary-foreground">Bestått</Badge>
                     ) : (
                       <Badge variant="destructive">Ikke bestått</Badge>
                     )}

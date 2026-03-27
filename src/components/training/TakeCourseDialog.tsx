@@ -194,7 +194,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
               Krav: {course?.passing_score}% · Din score: {score}%
             </p>
             {passed && course?.validity_months && (
-              <Badge className="bg-green-600 text-white">
+              <Badge variant="default">
                 Gyldig i {course.validity_months} måneder
               </Badge>
             )}
