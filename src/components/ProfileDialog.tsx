@@ -119,6 +119,8 @@ export const ProfileDialog = () => {
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
+  const [pendingTraining, setPendingTraining] = useState<any[]>([]);
+  const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
