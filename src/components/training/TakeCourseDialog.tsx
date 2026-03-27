@@ -336,7 +336,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
             </Button>
             {answeredCount === questions.length && (
               <Button size="sm" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Sender inn..." : "Send inn"}
+                {submitting ? "Fullfører..." : "Fullfør"}
               </Button>
             )}
           </div>
