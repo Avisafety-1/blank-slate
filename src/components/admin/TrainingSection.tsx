@@ -433,6 +433,34 @@ export const TrainingSection = () => {
           <FolderOpen className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">{activeFolder.name}</h3>
           <Badge variant="secondary" className="text-xs">{displayedCourses.length} kurs</Badge>
+          {!activeFolder.inherited && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                // Show courses not in any folder
+                const available = courses.filter(c => !c.folder_id);
+                if (available.length === 0) {
+                  toast.info("Ingen kurs tilgjengelig utenfor mapper");
+                  return;
+                }
+                const courseNames = available.map(c => c.title).join("\n");
+                // Simple multi-select via prompt isn't great, use a loop approach
+                const selected = prompt(`Skriv tittel (eller del av tittel) på kurset du vil legge til i mappen "${activeFolder.name}":\n\nTilgjengelige:\n${courseNames}`);
+                if (selected) {
+                  const match = available.find(c => c.title.toLowerCase().includes(selected.toLowerCase()));
+                  if (match) {
+                    handleMoveCourse(match.id, activeFolderId);
+                  } else {
+                    toast.error("Fant ikke kurset");
+                  }
+                }
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Legg til kurs
+            </Button>
+          )}
         </div>
       )}
 
