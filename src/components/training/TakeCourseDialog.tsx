@@ -35,6 +35,7 @@ interface CourseData {
   passing_score: number;
   validity_months: number | null;
   display_mode: string;
+  fullscreen: boolean;
 }
 
 export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted }: Props) => {
