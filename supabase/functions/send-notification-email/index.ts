@@ -26,6 +26,7 @@ interface EmailRequest {
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
+  trainingAssigned?: { recipientId: string; courseName: string; };
 }
 
 serve(async (req: Request): Promise<Response> => {
