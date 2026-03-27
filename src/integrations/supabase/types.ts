@@ -4283,27 +4283,33 @@ export type Database = {
       }
       training_questions: {
         Row: {
+          content_json: Json | null
           course_id: string
           created_at: string
           id: string
           image_url: string | null
           question_text: string
+          slide_type: string
           sort_order: number
         }
         Insert: {
+          content_json?: Json | null
           course_id: string
           created_at?: string
           id?: string
           image_url?: string | null
           question_text: string
+          slide_type?: string
           sort_order?: number
         }
         Update: {
+          content_json?: Json | null
           course_id?: string
           created_at?: string
           id?: string
           image_url?: string | null
           question_text?: string
+          slide_type?: string
           sort_order?: number
         }
         Relationships: [
