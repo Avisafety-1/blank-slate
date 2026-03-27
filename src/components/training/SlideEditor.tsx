@@ -67,7 +67,7 @@ export const SlideEditor = ({ content, onChange, placeholder = "Skriv innhold he
       const { error } = await supabase.storage.from("logbook-images").upload(path, file);
       if (error) { toast.error("Bildeopplasting feilet"); return; }
       const { data: urlData } = supabase.storage.from("logbook-images").getPublicUrl(path);
-      editor.chain().focus().setImage({ src: urlData.publicUrl }).run();
+      (editor.chain().focus() as any).setImage({ src: urlData.publicUrl }).run();
     };
     input.click();
   }, [companyId, editor]);
