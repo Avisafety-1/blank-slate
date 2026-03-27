@@ -306,6 +306,19 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               )}
             </div>
           </div>
+          <div>
+            <Label>Visningsformat</Label>
+            <div className="flex items-center gap-4 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="displayMode" checked={displayMode === "list"} onChange={() => setDisplayMode("list")} className="accent-primary" />
+                <span className="text-sm">Alle spørsmål på én side</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="displayMode" checked={displayMode === "paginated"} onChange={() => setDisplayMode("paginated")} className="accent-primary" />
+                <span className="text-sm">Ett spørsmål per side</span>
+              </label>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
