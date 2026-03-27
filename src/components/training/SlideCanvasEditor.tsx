@@ -50,15 +50,15 @@ const genId = () => Math.random().toString(36).slice(2, 10);
 
 const FONT_SIZES = ["14px", "18px", "24px", "32px", "40px", "56px", "72px"];
 
-// --- Inline TipTap for text elements ---
+// --- Inline TipTap for text elements (no toolbar inside — toolbar is external) ---
 const InlineTextEditor = ({
   content,
   onChange,
-  scale,
+  editorRef,
 }: {
   content: any;
   onChange: (c: any) => void;
-  scale: number;
+  editorRef: React.MutableRefObject<any>;
 }) => {
   const editor = useEditor({
     extensions: [
@@ -74,10 +74,14 @@ const InlineTextEditor = ({
     onUpdate: ({ editor }) => onChange(editor.getJSON()),
     editorProps: {
       attributes: {
-        class: "slide-text-editor prose prose-sm max-w-none focus:outline-none h-full overflow-auto p-3",
+        class: "prose prose-sm max-w-none focus:outline-none h-full overflow-auto p-3",
       },
     },
   });
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor, editorRef]);
 
   useEffect(() => {
     if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
@@ -87,104 +91,64 @@ const InlineTextEditor = ({
 
   if (!editor) return null;
 
+  return (
+    <div className="h-full overflow-auto" onMouseDown={(e) => e.stopPropagation()}>
+      <EditorContent editor={editor} className="h-full" />
+    </div>
+  );
+};
+
+// --- Floating text toolbar rendered outside the canvas ---
+const FloatingTextToolbar = ({ editor }: { editor: any }) => {
+  if (!editor) return null;
+
   const currentFontSize = editor.getAttributes("textStyle").fontSize || "18px";
 
+  const ToolBtn = ({ active, onClick, children, title }: { active?: boolean; onClick: () => void; children: React.ReactNode; title?: string }) => (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className={`p-1.5 rounded ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent/15 hover:text-foreground"}`}
+    >
+      {children}
+    </button>
+  );
+
   return (
-    <div className="h-full flex flex-col">
-      {/* Mini toolbar */}
-      <div
-        className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b bg-muted/60 shrink-0"
-        onMouseDown={(e) => e.stopPropagation()}
-        style={{ transform: `scale(${1 / Math.max(scale, 0.3)})`, transformOrigin: "top left", width: `${100 * Math.max(scale, 0.3)}%` }}
+    <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-lg border bg-popover shadow-md">
+      <select
+        value={currentFontSize}
+        onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
+        className="h-7 text-sm border rounded bg-background px-1.5 mr-1 cursor-pointer"
       >
-        {/* Font size selector */}
-        <select
-          value={currentFontSize}
-          onChange={(e) => {
-            editor.chain().focus().setFontSize(e.target.value).run();
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="h-7 text-sm border rounded bg-background px-1.5 mr-1"
-        >
-          {FONT_SIZES.map((s) => (
-            <option key={s} value={s}>{parseInt(s)}px</option>
-          ))}
-        </select>
-
-        <div className="w-px h-5 bg-border mx-1" />
-
-        {[
-          { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), title: "Fet" },
-          { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), title: "Kursiv" },
-          { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), title: "Understreking" },
-        ].map(({ icon: Icon, action, active, title }, i) => (
-          <button
-            key={i}
-            type="button"
-            title={title}
-            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
-            className={`p-1 rounded ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
+        {FONT_SIZES.map((s) => (
+          <option key={s} value={s}>{parseInt(s)}px</option>
         ))}
+      </select>
 
-        <div className="w-px h-4 bg-border mx-0.5" />
+      <div className="w-px h-5 bg-border mx-0.5" />
 
-        {[
-          { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: editor.isActive("heading", { level: 1 }), title: "H1" },
-          { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), title: "H2" },
-          { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive("heading", { level: 3 }), title: "H3" },
-        ].map(({ icon: Icon, action, active, title }, i) => (
-          <button
-            key={`h${i}`}
-            type="button"
-            title={title}
-            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
-            className={`p-1 rounded ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
+      <ToolBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Fet"><Bold className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} title="Kursiv"><Italic className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Understreking"><UnderlineIcon className="h-4 w-4" /></ToolBtn>
 
-        <div className="w-px h-4 bg-border mx-0.5" />
+      <div className="w-px h-5 bg-border mx-0.5" />
 
-        {[
-          { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), title: "Kulepunkter" },
-          { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), title: "Nummerert liste" },
-        ].map(({ icon: Icon, action, active, title }, i) => (
-          <button
-            key={`l${i}`}
-            type="button"
-            title={title}
-            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
-            className={`p-1 rounded ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
+      <ToolBtn active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="H1"><Heading1 className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="H2"><Heading2 className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="H3"><Heading3 className="h-4 w-4" /></ToolBtn>
 
-        <div className="w-px h-4 bg-border mx-0.5" />
+      <div className="w-px h-5 bg-border mx-0.5" />
 
-        {[
-          { icon: AlignLeft, action: () => editor.chain().focus().setTextAlign("left").run(), active: editor.isActive({ textAlign: "left" }), title: "Venstrejuster" },
-          { icon: AlignCenter, action: () => editor.chain().focus().setTextAlign("center").run(), active: editor.isActive({ textAlign: "center" }), title: "Sentrer" },
-          { icon: AlignRight, action: () => editor.chain().focus().setTextAlign("right").run(), active: editor.isActive({ textAlign: "right" }), title: "Høyrejuster" },
-        ].map(({ icon: Icon, action, active, title }, i) => (
-          <button
-            key={`a${i}`}
-            type="button"
-            title={title}
-            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
-            className={`p-1 rounded ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-auto" onMouseDown={(e) => e.stopPropagation()}>
-        <EditorContent editor={editor} className="h-full" />
-      </div>
+      <ToolBtn active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Kulepunkter"><List className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Nummerert liste"><ListOrdered className="h-4 w-4" /></ToolBtn>
+
+      <div className="w-px h-5 bg-border mx-0.5" />
+
+      <ToolBtn active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} title="Venstre"><AlignLeft className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()} title="Sentrer"><AlignCenter className="h-4 w-4" /></ToolBtn>
+      <ToolBtn active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()} title="Høyre"><AlignRight className="h-4 w-4" /></ToolBtn>
     </div>
   );
 };
