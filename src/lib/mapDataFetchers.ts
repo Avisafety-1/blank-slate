@@ -801,7 +801,9 @@ export async function fetchKraftledningerInBounds(params: {
           style: def.isPoint ? undefined : {
             color: def.color,
             weight: def.weight,
-            opacity: 0.85,
+            opacity: def.isPolygon ? 0.5 : 0.85,
+            fillColor: def.isPolygon ? def.color : undefined,
+            fillOpacity: def.fillOpacity ?? (def.isPolygon ? 0.08 : 0),
             dashArray: def.dashArray,
           },
           pointToLayer: def.isPoint ? (_f, latlng) => {
