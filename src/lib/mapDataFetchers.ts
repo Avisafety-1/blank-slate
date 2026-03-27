@@ -801,7 +801,7 @@ export async function fetchKraftledningerInBounds(params: {
           pointToLayer: def.isPoint ? (_f, latlng) => {
             return L.circleMarker(latlng, {
               pane,
-              radius: 5,
+              radius: def.layerId === 4 ? 3 : 5,
               fillColor: def.color,
               color: "#fff",
               weight: 1,
