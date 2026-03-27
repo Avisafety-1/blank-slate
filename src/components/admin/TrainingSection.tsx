@@ -33,6 +33,7 @@ export const TrainingSection = () => {
   const [assignCourseId, setAssignCourseId] = useState<string | null>(null);
   const [statusCourseId, setStatusCourseId] = useState<string | null>(null);
   const [publishDialogCourse, setPublishDialogCourse] = useState<Course | null>(null);
+  const [previewCourseId, setPreviewCourseId] = useState<string | null>(null);
 
   const fetchCourses = async () => {
     if (!companyId) return;
