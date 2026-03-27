@@ -1378,6 +1378,12 @@ const Admin = () => {
               <RevenueCalculator />
             </TabsContent>
           )}
+
+          {!isChildCompany && (
+            <TabsContent value="training" className="mt-4 sm:mt-8">
+              <TrainingSection />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
