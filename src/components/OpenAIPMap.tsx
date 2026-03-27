@@ -30,6 +30,7 @@ import {
   fetchPilotPositions,
   fetchNaturvernZones,
   fetchVernRestrictionZones,
+  fetchKraftledningerInBounds,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
