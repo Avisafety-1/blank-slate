@@ -577,6 +577,26 @@ export function OpenAIPMap({
     fetchVerneomraader();
     map.on('moveend', debouncedFetchVern);
 
+    // Kraftledninger: refetch on moveend if layer is enabled
+    let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchKraft = () => {
+      if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
+      kraftDebounceTimer = setTimeout(() => {
+        // Check if layer is currently enabled
+        const isEnabled = kraftledningerLayer && (map.hasLayer(kraftledningerLayer));
+        if (isEnabled) {
+          fetchKraftledningerInBounds({
+            layer: kraftledningerLayer,
+            bounds: map.getBounds(),
+            zoom: map.getZoom(),
+            pane: 'powerPane',
+            mode: modeRef.current,
+          });
+        }
+      }, 500);
+    };
+    map.on('moveend', debouncedFetchKraft);
+
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
