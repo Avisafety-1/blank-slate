@@ -736,6 +736,8 @@ export async function fetchPilotPositions(params: {
 
 const NVE_BASE = "https://nve.geodataonline.no/arcgis/rest/services/Nettanlegg4/MapServer";
 
+
+
 interface KraftLayerDef {
   layerId: number;
   label: string;
@@ -744,14 +746,21 @@ interface KraftLayerDef {
   dashArray?: string;
   minZoom: number;
   isPoint?: boolean;
+  isPolygon?: boolean;
+  fillOpacity?: number;
 }
 
 const KRAFT_LAYERS: KraftLayerDef[] = [
+  // Polygoner først (rendres under alt annet)
+  { layerId: 6, label: "Områdekonsesjonær", color: "#94a3b8", weight: 1, minZoom: 8, isPolygon: true, fillOpacity: 0.08 },
+  // Linjer
   { layerId: 0, label: "Transmisjonsnett", color: "#2563eb", weight: 3, minZoom: 8 },
   { layerId: 1, label: "Regionalnett", color: "#f97316", weight: 2, minZoom: 8 },
   { layerId: 3, label: "Sjøkabel", color: "#06b6d4", weight: 2, dashArray: "6, 4", minZoom: 11 },
-  { layerId: 5, label: "Transformatorstasjon", color: "#a855f7", weight: 0, minZoom: 11, isPoint: true },
   { layerId: 2, label: "Distribusjonsnett", color: "#eab308", weight: 1.5, minZoom: 13 },
+  // Punkter
+  { layerId: 5, label: "Transformatorstasjon", color: "#a855f7", weight: 0, minZoom: 11, isPoint: true },
+  { layerId: 4, label: "Mast/stolpe", color: "#64748b", weight: 0, minZoom: 16, isPoint: true },
 ];
 
 export async function fetchKraftledningerInBounds(params: {
@@ -784,13 +793,15 @@ export async function fetchKraftledningerInBounds(params: {
           style: def.isPoint ? undefined : {
             color: def.color,
             weight: def.weight,
-            opacity: 0.85,
+            opacity: def.isPolygon ? 0.5 : 0.85,
+            fillColor: def.isPolygon ? def.color : undefined,
+            fillOpacity: def.fillOpacity ?? (def.isPolygon ? 0.08 : 0),
             dashArray: def.dashArray,
           },
           pointToLayer: def.isPoint ? (_f, latlng) => {
             return L.circleMarker(latlng, {
               pane,
-              radius: 5,
+              radius: def.layerId === 4 ? 3 : 5,
               fillColor: def.color,
               color: "#fff",
               weight: 1,
