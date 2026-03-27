@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
+import { TrainingSection } from "@/components/admin/TrainingSection";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { useTranslation } from "react-i18next";
 import { usePlanGating } from "@/hooks/usePlanGating";
@@ -676,6 +677,12 @@ const Admin = () => {
               <TabsTrigger value="child-companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span>Avdelinger</span>
+              </TabsTrigger>
+            )}
+            {!isChildCompany && (
+              <TabsTrigger value="training" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+                <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span>Opplæring</span>
               </TabsTrigger>
             )}
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
@@ -1369,6 +1376,12 @@ const Admin = () => {
           {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
             <TabsContent value="calculator" className="mt-4 sm:mt-8">
               <RevenueCalculator />
+            </TabsContent>
+          )}
+
+          {!isChildCompany && (
+            <TabsContent value="training" className="mt-4 sm:mt-8">
+              <TrainingSection />
             </TabsContent>
           )}
         </Tabs>
