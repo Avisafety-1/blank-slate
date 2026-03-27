@@ -109,7 +109,7 @@ const InlineTextEditor = ({
           ))}
         </select>
 
-        <div className="w-px h-4 bg-border mx-0.5" />
+        <div className="w-px h-5 bg-border mx-1" />
 
         {[
           { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), title: "Fet" },
