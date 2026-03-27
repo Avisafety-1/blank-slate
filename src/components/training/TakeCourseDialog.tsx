@@ -323,6 +323,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   const renderResultView = () => (
     <div className="text-center py-8 space-y-4">
+      {previewMode && (
+        <Badge variant="secondary" className="mb-2">Forhåndsvisning</Badge>
+      )}
       {passed ? (
         <CheckCircle className="h-16 w-16 text-primary mx-auto" />
       ) : (
@@ -335,14 +338,19 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       <p className="text-sm text-muted-foreground">
         Krav: {course?.passing_score}% · Din score: {score}%
       </p>
-      {passed && course?.validity_months && (
+      {!previewMode && passed && course?.validity_months && (
         <Badge variant="default">
           Gyldig i {course.validity_months} måneder
         </Badge>
       )}
-      {passed && (
+      {!previewMode && passed && (
         <p className="text-sm text-muted-foreground">
           Kurset er lagret som kompetanse på din profil.
+        </p>
+      )}
+      {previewMode && (
+        <p className="text-sm text-muted-foreground">
+          Dette er en forhåndsvisning — ingen data er lagret.
         </p>
       )}
       <Button onClick={handleCloseResults} className="mt-4">
