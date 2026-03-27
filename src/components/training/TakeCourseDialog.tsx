@@ -365,7 +365,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
           Avbryt
         </Button>
         <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Sender inn..." : "Send inn besvarelse"}
+          {submitting ? "Fullfører..." : "Fullfør"}
         </Button>
       </div>
     </div>
