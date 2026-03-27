@@ -209,6 +209,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         passing_score: passingScore,
         validity_months: hasPermanentValidity ? null : validityMonths,
         display_mode: displayMode,
+        fullscreen,
         updated_at: new Date().toISOString(),
       };
 
