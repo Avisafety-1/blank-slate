@@ -81,6 +81,30 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
       const { error } = await supabase.from("training_assignments").insert(inserts);
       if (error) throw error;
 
+      // Fetch course title for email
+      const { data: courseData } = await supabase
+        .from("training_courses")
+        .select("title")
+        .eq("id", courseId)
+        .single();
+
+      const courseName = courseData?.title || "Kurs";
+
+      // Send notification emails (fire and forget)
+      for (const profileId of selectedIds) {
+        const profile = profiles.find((p) => p.id === profileId);
+        supabase.functions.invoke("send-notification-email", {
+          body: {
+            type: "notify_training_assigned",
+            companyId: profile?.company_id || companyId,
+            trainingAssigned: {
+              recipientId: profileId,
+              courseName,
+            },
+          },
+        }).catch((err) => console.error("Email error:", err));
+      }
+
       toast.success(`${selectedIds.size} ansatte tildelt kurset`);
       onOpenChange(false);
     } catch (err) {

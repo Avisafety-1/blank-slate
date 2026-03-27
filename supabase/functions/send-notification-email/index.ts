@@ -26,6 +26,7 @@ interface EmailRequest {
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
+  trainingAssigned?: { recipientId: string; courseName: string; };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -35,7 +36,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, dry_run: dryRun }: EmailRequest & { dry_run?: boolean } = await req.json();
+    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -243,6 +244,48 @@ serve(async (req: Request): Promise<Response> => {
         emailsSent++;
       }
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Handle training assigned notification
+    if (type === 'notify_training_assigned' && trainingAssigned && companyId) {
+      const { data: { user: recipientUser } } = await supabase.auth.admin.getUserById(trainingAssigned.recipientId);
+      if (!recipientUser?.email) {
+        return new Response(JSON.stringify({ success: true, message: 'No email' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+
+      const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+      const htmlBody = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.logo { text-align: center; padding: 20px 20px 10px 20px; }
+.header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+</style></head><body>
+<div class="container">
+<div class="logo"><img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" /></div>
+<div class="header"><h1 style="margin:0;font-size:20px;">Du har fått tildelt et kurs</h1></div>
+<div class="content">
+<h2 style="margin-top:0;">${trainingAssigned.courseName}</h2>
+<p>Du har blitt tildelt et nytt kurs/test som må gjennomføres.</p>
+<p>Logg inn i AviSafe for å starte kurset. Du finner det under din profil → Oppfølging.</p>
+<p style="color:#666;font-size:12px;margin-top:20px;">— ${company?.navn || 'AviSafe'}</p>
+</div></div></body></html>`;
+
+      await sendEmail({
+        from: senderAddress,
+        to: recipientUser.email,
+        subject: sanitizeSubject(`Nytt kurs tildelt: ${trainingAssigned.courseName}`),
+        html: htmlBody,
+      });
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Handle mission approved notification to pilots

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2 } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
@@ -22,6 +22,7 @@ import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { MissionDetailDialog } from "./dashboard/MissionDetailDialog";
 import { SignaturePad } from "./SignaturePad";
+import { TakeCourseDialog } from "./training/TakeCourseDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -118,6 +119,8 @@ export const ProfileDialog = () => {
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [followUpIncidents, setFollowUpIncidents] = useState<Incident[]>([]);
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
+  const [pendingTraining, setPendingTraining] = useState<any[]>([]);
+  const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
@@ -163,7 +166,7 @@ export const ProfileDialog = () => {
     const fetchBadgeCounts = async () => {
       try {
         // Run incident count and approval check in parallel
-        const [incidentsResult, approvalResult] = await Promise.all([
+        const [incidentsResult, approvalResult, trainingResult] = await Promise.all([
           supabase
             .from("incidents")
             .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url")
@@ -175,10 +178,19 @@ export const ProfileDialog = () => {
             .select("can_approve_missions, company_id")
             .eq("id", user.id)
             .single(),
+          supabase
+            .from("training_assignments")
+            .select("id, course_id, training_courses(title, description)")
+            .eq("profile_id", user.id)
+            .is("completed_at", null),
         ]);
 
         if (incidentsResult.data) {
           setFollowUpIncidents(incidentsResult.data);
+        }
+
+        if (trainingResult.data) {
+          setPendingTraining(trainingResult.data);
         }
 
         if (approvalResult.data?.can_approve_missions && approvalResult.data.company_id) {
@@ -362,6 +374,14 @@ export const ProfileDialog = () => {
       } else {
         setPendingApprovalMissions([]);
       }
+
+      // Fetch pending training assignments
+      const { data: trainingData } = await supabase
+        .from("training_assignments")
+        .select("id, course_id, training_courses(title, description)")
+        .eq("profile_id", user.id)
+        .is("completed_at", null);
+      setPendingTraining(trainingData || []);
 
       // Fetch notification preferences
       const { data: prefsData } = await supabase
@@ -732,12 +752,12 @@ export const ProfileDialog = () => {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" title={t('profile.title')} className="relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8">
           <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
+          {(followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length) > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full"
             >
-              {followUpIncidents.length + pendingApprovalMissions.length}
+              {followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length}
             </Badge>
           )}
         </Button>
@@ -778,12 +798,12 @@ export const ProfileDialog = () => {
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
-                  {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
+                  {(followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length) > 0 && (
                     <Badge
                       variant="destructive"
                       className="ml-1 h-5 min-w-5 px-1 flex items-center justify-center text-xs leading-none rounded-full pointer-events-none shrink-0"
                     >
-                      {followUpIncidents.length + pendingApprovalMissions.length}
+                      {followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -1818,6 +1838,46 @@ export const ProfileDialog = () => {
                   </Card>
                 )}
 
+                {/* Pending Training */}
+                {pendingTraining.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        Kurs og tester til gjennomføring ({pendingTraining.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {pendingTraining.map((assignment: any) => (
+                          <div
+                            key={assignment.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-border"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {(assignment.training_courses as any)?.title || "Kurs"}
+                              </p>
+                              {(assignment.training_courses as any)?.description && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {(assignment.training_courses as any).description}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setTakeCourseAssignmentId(assignment.id)}
+                            >
+                              <GraduationCap className="h-4 w-4 mr-1" />
+                              Ta kurs
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Follow-up Incidents */}
                 <Card>
                   <CardHeader>
@@ -2165,6 +2225,20 @@ export const ProfileDialog = () => {
         mission={selectedMission}
         onMissionUpdated={fetchUserData}
       />
+
+      {/* Take Course Dialog */}
+      {takeCourseAssignmentId && (
+        <TakeCourseDialog
+          assignmentId={takeCourseAssignmentId}
+          open={!!takeCourseAssignmentId}
+          onOpenChange={(open) => { if (!open) setTakeCourseAssignmentId(null); }}
+          onCompleted={() => {
+            setTakeCourseAssignmentId(null);
+            setPendingTraining((prev) => prev.filter((t: any) => t.id !== takeCourseAssignmentId));
+            fetchUserData();
+          }}
+        />
+      )}
     </Dialog>
   );
 };
