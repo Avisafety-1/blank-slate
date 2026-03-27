@@ -452,6 +452,31 @@ export function PersonCompetencyDialog({
     );
   };
 
+  const handleTakeCourse = async (course: any) => {
+    if (course.assignmentId) {
+      setTakeCourseAssignmentId(course.assignmentId);
+      return;
+    }
+    // Create assignment on-the-fly for available_to_all course
+    if (!person) return;
+    try {
+      const { data, error } = await supabase
+        .from("training_assignments")
+        .insert({
+          course_id: course.id,
+          profile_id: person.id,
+          company_id: companyId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      setTakeCourseAssignmentId(data.id);
+    } catch (err) {
+      console.error("Error creating assignment:", err);
+      toast({ title: "Feil", description: "Kunne ikke starte kurset", variant: "destructive" });
+    }
+  };
+
   if (!person) return null;
 
   return (
