@@ -1,43 +1,40 @@
 
 
-## Kurs tilgjengelig for alle + visning på personellkort
-
-### Nåværende oppførsel
-«Publiser» setter bare `status = 'published'` i `training_courses`. Kurs kan deretter tildeles manuelt til enkeltpersoner via «Tildel»-dialogen. Det er ingen måte å gjøre et kurs tilgjengelig for alle ansatte automatisk, og personellkortet på `/ressurser` viser ikke tilgjengelige kurs.
+## Kurs-varsel på profil-oppfølging + e-postvarsling ved tildeling
 
 ### Hva som skal bygges
 
-#### 1. Database: Ny kolonne `available_to_all` på `training_courses`
-- `available_to_all boolean NOT NULL DEFAULT false`
-- Når `true`: kurset er tilgjengelig for alle ansatte i selskapet (og avdelinger)
-- Når `false`: kun tildelte personer ser kurset
-
-#### 2. Admin: Utvidet publiseringsflyt i `TrainingSection.tsx`
-- Når admin trykker «Publiser», vis en liten dialog/popover med to valg:
-  - **«Tilgjengelig for alle»** — setter `available_to_all = true` og `status = 'published'`
-  - **«Tildel spesifikke personer»** — setter `status = 'published'` og åpner `TrainingAssignmentDialog`
-- Eksisterende «Tildel»-knapp beholdes for å legge til flere personer senere
-
-#### 3. Personellkort: Vis tilgjengelige kurs i `PersonCompetencyDialog.tsx`
-- Ny seksjon «Tilgjengelige kurs» under eksisterende kompetanser
-- Henter kurs der enten:
-  - `available_to_all = true` og `status = 'published'` (for selskapets hierarki), eller
-  - det finnes en `training_assignment` for denne personen som ikke er fullført
-- Filtrerer bort kurs personen allerede har bestått (og som ikke er utløpt)
+#### 1. ProfileDialog: Ny «Kurs/Tester»-seksjon i Oppfølging-tabben
+- Hent `training_assignments` for innlogget bruker der `completed_at IS NULL`
+- Join med `training_courses` for å få tittel, beskrivelse
+- Vis som en ny `Card` i Oppfølging-tabben (mellom oppdragsgodkjenning og hendelser)
+- Tittel: «Kurs og tester til gjennomføring (N)»
 - Hver rad viser kurstittel + knapp «Ta kurs» som åpner `TakeCourseDialog`
+- Antall ventende kurs legges til i badge-tellingen på Oppfølging-tabben og profil-ikonet
 
-#### 4. Automatisk kompetanse ved fullføring (allerede implementert)
-- `TakeCourseDialog` oppretter allerede `personnel_competencies` med `validity_months` → dette fungerer
-- Må sikre at `påvirker_status = true` settes automatisk på kompetansen
-
-#### 5. Personellkort på `/ressurser`-listen
-- Vis en liten badge/indikator på personellkortet dersom personen har ventende kurs (ikke fullført)
-- F.eks. et lite `GraduationCap`-ikon med antall
+#### 2. E-post ved kurstildeling
+- I `TrainingAssignmentDialog.handleAssign()`: etter vellykket insert, hent kurstittel og send e-post til hver tildelt person via `send-notification-email`
+- Legg til en ny type i `send-notification-email` edge function: `type === 'training_assigned'`
+- E-posten inneholder: kurstittel, melding om å logge inn for å gjennomføre kurset
+- Bruker eksisterende e-postinfrastruktur (Resend via `send-notification-email`)
 
 ### Filer som endres
-1. **Database-migrasjon** — `ALTER TABLE training_courses ADD COLUMN available_to_all boolean NOT NULL DEFAULT false`
-2. **`src/components/admin/TrainingSection.tsx`** — publiseringsflyt med valg mellom «alle» og «spesifikke»
-3. **`src/components/resources/PersonCompetencyDialog.tsx`** — ny seksjon for tilgjengelige kurs + TakeCourseDialog-integrasjon
-4. **`src/components/training/TakeCourseDialog.tsx`** — sett `påvirker_status: true` på kompetansen
-5. **`src/pages/Resources.tsx`** — badge på personellkort for ventende kurs
+1. **`src/components/ProfileDialog.tsx`**
+   - Ny state `pendingTraining` (array med assignment + course-data)
+   - Hent i `fetchBadgeCounts` og `fetchUserData`
+   - Ny Card i Oppfølging-tabben med TakeCourseDialog-integrasjon
+   - Oppdater badge-telling til å inkludere `pendingTraining.length`
+
+2. **`src/components/admin/TrainingAssignmentDialog.tsx`**
+   - Etter insert: hent kurstittel, loop gjennom tildelte og kall `send-notification-email` med `type: 'training_assigned'`
+
+3. **`supabase/functions/send-notification-email/index.ts`**
+   - Ny branch for `type === 'training_assigned'`
+   - Aksepterer `trainingAssigned: { recipientId, courseName, companyId }`
+   - Henter brukerens e-post, sjekker notification_preferences, sender e-post med kursinformasjon
+
+### Tekniske detaljer
+- Ingen nye DB-tabeller eller kolonner trengs
+- E-posttypen bruker eksisterende notification_preferences — kan gjenbruke `email_followup_assigned` eller vi kan la den alltid sende (kurset er obligatorisk)
+- Badge-telling: `followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length`
 
