@@ -235,9 +235,8 @@ export const TrainingSection = () => {
 
   const handleToggleGlobal = async (course: Course) => {
     try {
-      const { error } = await supabase
-        .from("training_courses")
-        .update({ global_visibility: !course.global_visibility } as any)
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ global_visibility: !course.global_visibility })
         .eq("id", course.id);
       if (error) throw error;
       toast.success(course.global_visibility ? "Global deling deaktivert" : "Kurs delt med alle selskaper");
