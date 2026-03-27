@@ -237,6 +237,12 @@ export const TrainingSection = () => {
                   <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
                     <Edit className="h-3.5 w-3.5" />
                   </Button>
+                  {(course.question_count || 0) > 0 && (
+                    <Button size="sm" variant="outline" onClick={() => setPreviewCourseId(course.id)}>
+                      <Play className="h-3.5 w-3.5 mr-1" />
+                      Preview
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
                     {course.status === "published" ? "Avpubliser" : "Publiser"}
                   </Button>
