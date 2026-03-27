@@ -1,70 +1,43 @@
 
 
-## Opplæringsmodul — ny tab på admin-siden
+## Kurs tilgjengelig for alle + visning på personellkort
 
-### Oversikt
-Bygge en komplett opplæringsmodul der selskapet kan opprette kurs/tester med spørsmål (inkl. bildeopplasting), tildele kurs til ansatte, spore gjennomføringsstatus, og automatisk registrere bestått kurs som kompetanse med valgfri varighet.
+### Nåværende oppførsel
+«Publiser» setter bare `status = 'published'` i `training_courses`. Kurs kan deretter tildeles manuelt til enkeltpersoner via «Tildel»-dialogen. Det er ingen måte å gjøre et kurs tilgjengelig for alle ansatte automatisk, og personellkortet på `/ressurser` viser ikke tilgjengelige kurs.
 
-### Databasetabeller (4 nye tabeller)
+### Hva som skal bygges
 
-**`training_courses`** — kurs/tester
-- `id`, `company_id`, `title`, `description`, `status` (draft/published), `passing_score` (prosent, default 80), `validity_months` (hvor lenge godkjenningen varer, null = evig), `created_by`, `created_at`, `updated_at`
+#### 1. Database: Ny kolonne `available_to_all` på `training_courses`
+- `available_to_all boolean NOT NULL DEFAULT false`
+- Når `true`: kurset er tilgjengelig for alle ansatte i selskapet (og avdelinger)
+- Når `false`: kun tildelte personer ser kurset
 
-**`training_questions`** — spørsmål i et kurs
-- `id`, `course_id` (FK), `question_text`, `image_url` (valgfritt bilde), `sort_order`, `created_at`
+#### 2. Admin: Utvidet publiseringsflyt i `TrainingSection.tsx`
+- Når admin trykker «Publiser», vis en liten dialog/popover med to valg:
+  - **«Tilgjengelig for alle»** — setter `available_to_all = true` og `status = 'published'`
+  - **«Tildel spesifikke personer»** — setter `status = 'published'` og åpner `TrainingAssignmentDialog`
+- Eksisterende «Tildel»-knapp beholdes for å legge til flere personer senere
 
-**`training_question_options`** — svaralternativer
-- `id`, `question_id` (FK), `option_text`, `is_correct` (boolean), `sort_order`
+#### 3. Personellkort: Vis tilgjengelige kurs i `PersonCompetencyDialog.tsx`
+- Ny seksjon «Tilgjengelige kurs» under eksisterende kompetanser
+- Henter kurs der enten:
+  - `available_to_all = true` og `status = 'published'` (for selskapets hierarki), eller
+  - det finnes en `training_assignment` for denne personen som ikke er fullført
+- Filtrerer bort kurs personen allerede har bestått (og som ikke er utløpt)
+- Hver rad viser kurstittel + knapp «Ta kurs» som åpner `TakeCourseDialog`
 
-**`training_assignments`** — tildeling + gjennomføringsstatus
-- `id`, `course_id` (FK), `profile_id` (FK), `company_id`, `assigned_at`, `completed_at`, `score` (prosent), `passed` (boolean), `competency_id` (FK til personnel_competencies, settes ved bestått)
+#### 4. Automatisk kompetanse ved fullføring (allerede implementert)
+- `TakeCourseDialog` oppretter allerede `personnel_competencies` med `validity_months` → dette fungerer
+- Må sikre at `påvirker_status = true` settes automatisk på kompetansen
 
-RLS: Basert på `company_id` og `get_user_visible_company_ids()` for hierarkisk tilgang.
+#### 5. Personellkort på `/ressurser`-listen
+- Vis en liten badge/indikator på personellkortet dersom personen har ventende kurs (ikke fullført)
+- F.eks. et lite `GraduationCap`-ikon med antall
 
-### Nye filer
-
-**`src/components/admin/TrainingSection.tsx`** (~hovedkomponent for tabben)
-- Liste over kurs med status-badges (kladd/publisert)
-- Knapper: «Nytt kurs», «Rediger», «Publiser/Avpubliser»
-- Gjennomføringsstatus-oversikt per kurs (antall tildelt, fullført, bestått)
-- Filtrer ansatte på tvers av avdelinger
-
-**`src/components/admin/TrainingCourseEditor.tsx`** — kursredigering
-- Tittel, beskrivelse, beståttprosent, gyldighetsperiode
-- Legg til/fjern/rekkefølge spørsmål
-- Per spørsmål: tekst, valgfritt bilde (upload til `logbook-images`), svaralternativer med markering av riktig svar
-- Lagre som kladd eller publiser
-
-**`src/components/admin/TrainingAssignmentDialog.tsx`** — tildel kurs til ansatte
-- Velg ansatte (søkbar, på tvers av avdelinger)
-- Vis hvem som allerede er tildelt
-
-**`src/components/admin/TrainingStatusView.tsx`** — gjennomføringsoversikt
-- Tabell med alle tildelte ansatte, status, score, dato
-- Filtrer per avdeling
-
-**`src/components/training/TakeCourseDialog.tsx`** — kurset slik ansatte tar det
-- Viser spørsmål ett om gangen eller alle samlet
-- Velg svar, send inn, beregn score
-- Ved bestått: oppretter automatisk en `personnel_competencies`-rad med type «Kurs», navn = kurstittelen, `utstedt_dato` = nå, `utloper_dato` = nå + validity_months
-
-### Endring i eksisterende fil
-
-**`src/pages/Admin.tsx`** — minimal endring:
-- Importer `TrainingSection`
-- Legg til ny `TabsTrigger` (value="training") ved siden av «Avdelinger»-tabben med et `GraduationCap`-ikon
-- Legg til `TabsContent` som rendrer `<TrainingSection />`
-
-### Flyten
-1. Admin oppretter kurs → legger til spørsmål med svaralternativer → lagrer som kladd eller publiserer
-2. Admin tildeler kurset til ansatte (på tvers av avdelinger)
-3. Ansatt ser tildelte kurs (via ressurssiden eller en egen visning) → tar testen
-4. Score beregnes automatisk → ved bestått opprettes kompetanse-rad med varighet
-5. Admin ser gjennomføringsstatus for alle ansatte
-
-### Tekniske detaljer
-- Bilder lastes opp til `logbook-images`-bøtten med sti `{company_id}/training-{question_id}-{timestamp}.ext`
-- Kursdata hentes med Supabase client, ikke edge functions
-- Alle nye komponenter i separate filer for å unngå å blåse opp eksisterende kode
-- Tabben synlig for alle admins (ikke bare superadmin), men ikke for child company admins med mindre vi ønsker det
+### Filer som endres
+1. **Database-migrasjon** — `ALTER TABLE training_courses ADD COLUMN available_to_all boolean NOT NULL DEFAULT false`
+2. **`src/components/admin/TrainingSection.tsx`** — publiseringsflyt med valg mellom «alle» og «spesifikke»
+3. **`src/components/resources/PersonCompetencyDialog.tsx`** — ny seksjon for tilgjengelige kurs + TakeCourseDialog-integrasjon
+4. **`src/components/training/TakeCourseDialog.tsx`** — sett `påvirker_status: true` på kompetansen
+5. **`src/pages/Resources.tsx`** — badge på personellkort for ventende kurs
 
