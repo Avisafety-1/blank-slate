@@ -291,8 +291,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl font-bold">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
-      </div>
+        <h2 className="text-xl font-bold flex-1">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
+        <Button variant="ghost" size="sm" onClick={toggleEditorFullscreen}>
+          {isEditorFullscreen ? <Minimize className="h-4 w-4 mr-1" /> : <Maximize className="h-4 w-4 mr-1" />}
+          {isEditorFullscreen ? "Avslutt fullskjerm" : "Fullskjerm-redigering"}
+        </Button>
 
       <Card>
         <CardHeader>
