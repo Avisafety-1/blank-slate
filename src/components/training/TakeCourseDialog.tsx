@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface Props {
-  assignmentId: string;
+  assignmentId?: string;
+  courseId?: string;
+  previewMode?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompleted?: () => void;
