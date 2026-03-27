@@ -30,6 +30,7 @@ import {
   fetchPilotPositions,
   fetchNaturvernZones,
   fetchVernRestrictionZones,
+  fetchKraftledningerInBounds,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -415,16 +416,12 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
 
-    // NVE Kraftledninger
-    const kraftledningerLayer = L.tileLayer.wms("https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?", {
-      layers: "Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.8,
-      version: "1.1.1",
-      minZoom: 8,
-      attribution: 'Nettanlegg © <a href="https://www.nve.no">NVE</a>',
-    });
+    // NVE Kraftledninger (vector via ArcGIS REST)
+    if (!map.getPane('powerPane')) {
+      map.createPane('powerPane');
+      map.getPane('powerPane')!.style.zIndex = '450';
+    }
+    const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
     // RPAS, NSM, AIP, RMZ layers
@@ -580,6 +577,26 @@ export function OpenAIPMap({
     fetchVerneomraader();
     map.on('moveend', debouncedFetchVern);
 
+    // Kraftledninger: refetch on moveend if layer is enabled
+    let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchKraft = () => {
+      if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
+      kraftDebounceTimer = setTimeout(() => {
+        // Check if layer is currently enabled
+        const isEnabled = kraftledningerLayer && (map.hasLayer(kraftledningerLayer));
+        if (isEnabled) {
+          fetchKraftledningerInBounds({
+            layer: kraftledningerLayer,
+            bounds: map.getBounds(),
+            zoom: map.getZoom(),
+            pane: 'powerPane',
+            mode: modeRef.current,
+          });
+        }
+      }, 500);
+    };
+    map.on('moveend', debouncedFetchKraft);
+
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
@@ -636,7 +653,9 @@ export function OpenAIPMap({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
+      if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       map.off('moveend', debouncedFetchVern);
+      map.off('moveend', debouncedFetchKraft);
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
@@ -759,6 +778,32 @@ export function OpenAIPMap({
         if (enabled) controls.start();
         else controls.stop();
       }
+    }
+
+    // Kraftledninger: fetch data on enable, clear on disable
+    if (id === 'kraftledninger') {
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) {
+              layer.layer.addTo(map);
+              fetchKraftledningerInBounds({
+                layer: layer.layer as L.LayerGroup,
+                bounds: map.getBounds(),
+                zoom: map.getZoom(),
+                pane: 'powerPane',
+                mode: modeRef.current,
+              });
+            } else {
+              (layer.layer as L.LayerGroup).clearLayers();
+              layer.layer.remove();
+            }
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
     }
     
     setLayers((prevLayers) =>
