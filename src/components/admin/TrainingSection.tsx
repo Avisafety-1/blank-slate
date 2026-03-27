@@ -201,9 +201,13 @@ export const TrainingSection = () => {
   const handleDeleteFolder = async (folderId: string) => {
     if (!confirm("Er du sikker på at du vil slette denne mappen? Kurs i mappen flyttes ut.")) return;
     try {
-      // Unassign courses from the folder
-      await supabase.from("training_courses").update({ folder_id: null } as any).eq("folder_id" as any, folderId);
-      const { error } = await supabase.from("training_course_folders" as any).delete().eq("id", folderId);
+      // Unassign courses from the folder first
+      const { error: moveErr } = await (supabase.from("training_courses") as any)
+        .update({ folder_id: null })
+        .eq("folder_id", folderId);
+      if (moveErr) console.warn("Could not unassign courses:", moveErr);
+
+      const { error } = await (supabase.from("training_course_folders") as any).delete().eq("id", folderId);
       if (error) throw error;
       toast.success("Mappe slettet");
       if (activeFolderId === folderId) setActiveFolderId(null);
