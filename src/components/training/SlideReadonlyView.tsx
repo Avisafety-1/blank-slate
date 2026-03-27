@@ -1,6 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
+import ImageResize from "tiptap-extension-resize-image";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { useEffect } from "react";
@@ -15,7 +15,7 @@ export const SlideReadonlyView = ({ content, className = "" }: Props) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Image.configure({ inline: false }),
+      ImageResize.configure({ inline: false }),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
