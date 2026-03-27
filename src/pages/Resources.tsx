@@ -1,6 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip, Building2 } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip, Building2, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -60,6 +60,7 @@ const Resources = () => {
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState("alle");
   const [personnelStatusFilter, setPersonnelStatusFilter] = useState("alle");
   const [personnelRoleFilter, setPersonnelRoleFilter] = useState("alle");
+  const [pendingCourseCounts, setPendingCourseCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
@@ -73,6 +74,7 @@ const Resources = () => {
       fetchEquipment();
       fetchDronetags();
       fetchPersonnel();
+      fetchPendingCourses();
     }
 
     // Real-time subscriptions — single consolidated channel
@@ -85,6 +87,7 @@ const Resources = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, guardedFetch(fetchPersonnel))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, guardedFetch(fetchPersonnel))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'training_assignments' }, guardedFetch(fetchPendingCourses))
       .subscribe();
 
     return () => {
@@ -275,7 +278,57 @@ const Resources = () => {
       toast.error(t('resources.couldNotLoadPersonnel'));
     }
   };
+  const fetchPendingCourses = async () => {
+    if (!navigator.onLine) return;
+    try {
+      // Get all published available_to_all courses
+      const { data: allCourses } = await supabase
+        .from("training_courses")
+        .select("id")
+        .eq("status", "published")
+        .eq("available_to_all", true);
+      const allCourseIds = (allCourses || []).map((c: any) => c.id);
 
+      // Get all assignments (pending + completed)
+      const { data: assignments } = await supabase
+        .from("training_assignments")
+        .select("profile_id, course_id, completed_at, passed");
+
+      // Build counts per person
+      const counts: Record<string, number> = {};
+      
+      // Count pending assignments per person
+      (assignments || []).forEach((a: any) => {
+        if (!a.completed_at) {
+          counts[a.profile_id] = (counts[a.profile_id] || 0) + 1;
+        }
+      });
+
+      // Count available_to_all courses not yet completed by each person in personnel
+      if (allCourseIds.length > 0) {
+        const completedByPerson: Record<string, Set<string>> = {};
+        (assignments || []).forEach((a: any) => {
+          if (a.passed) {
+            if (!completedByPerson[a.profile_id]) completedByPerson[a.profile_id] = new Set();
+            completedByPerson[a.profile_id].add(a.course_id);
+          }
+        });
+        
+        personnel.forEach((p: any) => {
+          const completed = completedByPerson[p.id] || new Set();
+          const pending = allCourseIds.filter((id: string) => !completed.has(id)).length;
+          // Add to existing count (avoiding double-counting assigned ones)
+          const assignedPending = (assignments || []).filter((a: any) => a.profile_id === p.id && !a.completed_at).map((a: any) => a.course_id);
+          const additionalFromAll = allCourseIds.filter((id: string) => !completed.has(id) && !assignedPending.includes(id)).length;
+          counts[p.id] = (counts[p.id] || 0) + additionalFromAll;
+        });
+      }
+
+      setPendingCourseCounts(counts);
+    } catch (err) {
+      console.error("Error fetching pending courses:", err);
+    }
+  };
 
 
 
@@ -742,6 +795,12 @@ const Resources = () => {
                           <Badge variant="secondary" className="mt-0.5 gap-1 text-xs">
                             <Building2 className="w-3 h-3" />
                             {person.companies.navn}
+                          </Badge>
+                        )}
+                        {(pendingCourseCounts[person.id] || 0) > 0 && (
+                          <Badge variant="outline" className="mt-0.5 gap-1 text-xs border-primary/50 text-primary">
+                            <GraduationCap className="w-3 h-3" />
+                            {pendingCourseCounts[person.id]} kurs
                           </Badge>
                         )}
                       </div>

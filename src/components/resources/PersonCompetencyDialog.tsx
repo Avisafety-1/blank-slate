@@ -11,11 +11,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
+import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 
 interface Competency {
   id: string;
@@ -55,6 +56,8 @@ export function PersonCompetencyDialog({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   
   // New competency form state
   const [newType, setNewType] = useState("");
@@ -84,8 +87,67 @@ export function PersonCompetencyDialog({
   // Update local person state when prop changes
   useEffect(() => {
     setPerson(initialPerson);
-    
   }, [initialPerson]);
+
+  // Fetch available courses for this person
+  useEffect(() => {
+    if (!person?.id || !open) { setAvailableCourses([]); return; }
+    const fetchCourses = async () => {
+      try {
+        // Get courses available to all
+        const { data: allCourses } = await supabase
+          .from("training_courses")
+          .select("id, title, description, passing_score, validity_months")
+          .eq("status", "published")
+          .eq("available_to_all", true);
+
+        // Get assigned courses for this person (not completed)
+        const { data: assignments } = await supabase
+          .from("training_assignments")
+          .select("id, course_id, completed_at, passed, training_courses(id, title, description, passing_score, validity_months)")
+          .eq("profile_id", person.id);
+
+        // Get completed & passed course IDs (not expired)
+        const passedCourseIds = new Set<string>();
+        (assignments || []).forEach((a: any) => {
+          if (a.passed && a.completed_at) {
+            const course = a.training_courses;
+            if (course?.validity_months) {
+              const completedAt = new Date(a.completed_at);
+              const expiresAt = new Date(completedAt.getFullYear(), completedAt.getMonth() + course.validity_months, completedAt.getDate());
+              if (expiresAt > new Date()) passedCourseIds.add(a.course_id);
+            } else {
+              passedCourseIds.add(a.course_id);
+            }
+          }
+        });
+
+        // Pending assigned courses (not completed)
+        const pendingAssigned = (assignments || [])
+          .filter((a: any) => !a.completed_at && a.training_courses)
+          .map((a: any) => ({ ...a.training_courses, assignmentId: a.id }));
+
+        // Available-to-all courses not yet passed
+        const availableAll = (allCourses || [])
+          .filter((c: any) => !passedCourseIds.has(c.id))
+          .map((c: any) => ({ ...c, assignmentId: null }));
+
+        // Merge (avoid duplicates)
+        const seenIds = new Set<string>();
+        const merged: any[] = [];
+        for (const c of [...pendingAssigned, ...availableAll]) {
+          if (!seenIds.has(c.id)) {
+            seenIds.add(c.id);
+            merged.push(c);
+          }
+        }
+        setAvailableCourses(merged);
+      } catch (err) {
+        console.error("Error fetching available courses:", err);
+      }
+    };
+    fetchCourses();
+  }, [person?.id, open]);
 
   // Real-time subscription for competency updates
   useEffect(() => {
@@ -390,6 +452,31 @@ export function PersonCompetencyDialog({
     );
   };
 
+  const handleTakeCourse = async (course: any) => {
+    if (course.assignmentId) {
+      setTakeCourseAssignmentId(course.assignmentId);
+      return;
+    }
+    // Create assignment on-the-fly for available_to_all course
+    if (!person) return;
+    try {
+      const { data, error } = await supabase
+        .from("training_assignments")
+        .insert({
+          course_id: course.id,
+          profile_id: person.id,
+          company_id: companyId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      setTakeCourseAssignmentId(data.id);
+    } catch (err) {
+      console.error("Error creating assignment:", err);
+      toast({ title: "Feil", description: "Kunne ikke starte kurset", variant: "destructive" });
+    }
+  };
+
   if (!person) return null;
 
   return (
@@ -618,7 +705,33 @@ export function PersonCompetencyDialog({
               )}
             </div>
 
-            {/* Add New Competency Form */}
+            {/* Available Courses */}
+            {availableCourses.length > 0 && (
+              <div className="space-y-3 mb-6 min-w-0">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Tilgjengelige kurs
+                </h3>
+                {availableCourses.map((course) => (
+                  <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{course.title}</p>
+                      {course.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{course.description}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Bestått: {course.passing_score}% · {course.validity_months ? `Gyldig ${course.validity_months} mnd` : "Permanent"}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => handleTakeCourse(course)}>
+                      Ta kurs
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+
             <div className="border-t pt-4 mt-4 min-w-0 overflow-hidden">
               <h3 className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
               <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0">
@@ -766,6 +879,18 @@ export function PersonCompetencyDialog({
           }
         }}
       />
+
+      {takeCourseAssignmentId && (
+        <TakeCourseDialog
+          assignmentId={takeCourseAssignmentId}
+          open={!!takeCourseAssignmentId}
+          onOpenChange={(open) => { if (!open) setTakeCourseAssignmentId(null); }}
+          onCompleted={() => {
+            setTakeCourseAssignmentId(null);
+            onCompetencyUpdated();
+          }}
+        />
+      )}
     </>
   );
 }
