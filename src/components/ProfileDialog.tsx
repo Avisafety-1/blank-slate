@@ -1781,7 +1781,7 @@ export const ProfileDialog = () => {
                           {pendingApprovalMissions.map((mission) => (
                             <div
                               key={mission.id}
-                              className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden min-w-0"
+                              className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden min-w-0"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
