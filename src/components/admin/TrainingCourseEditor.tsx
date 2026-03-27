@@ -322,6 +322,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               </label>
             </div>
           </div>
+          <div className="flex items-center gap-3 mt-3">
+            <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
+            <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
+          </div>
         </CardContent>
       </Card>
 

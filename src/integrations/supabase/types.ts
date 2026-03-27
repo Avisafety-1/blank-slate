@@ -4153,6 +4153,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_mode: string
+          fullscreen: boolean
           id: string
           passing_score: number
           status: string
@@ -4167,6 +4168,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_mode?: string
+          fullscreen?: boolean
           id?: string
           passing_score?: number
           status?: string
@@ -4181,6 +4183,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_mode?: string
+          fullscreen?: boolean
           id?: string
           passing_score?: number
           status?: string
