@@ -54,9 +54,11 @@ const FONT_SIZES = ["14px", "18px", "24px", "32px", "40px", "56px", "72px"];
 const InlineTextEditor = ({
   content,
   onChange,
+  scale,
 }: {
   content: any;
   onChange: (c: any) => void;
+  scale: number;
 }) => {
   const editor = useEditor({
     extensions: [
