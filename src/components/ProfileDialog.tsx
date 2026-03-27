@@ -1841,10 +1841,10 @@ export const ProfileDialog = () => {
                 {/* Pending Training */}
                 {pendingTraining.length > 0 && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5" />
-                        Kurs og tester til gjennomføring ({pendingTraining.length})
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <GraduationCap className="h-5 w-5 shrink-0" />
+                        <span className="break-words">Kurs og tester ({pendingTraining.length})</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1852,20 +1852,21 @@ export const ProfileDialog = () => {
                         {pendingTraining.map((assignment: any) => (
                           <div
                             key={assignment.id}
-                            className="flex items-center justify-between p-3 rounded-lg border border-border"
+                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border"
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">
+                              <p className="font-medium text-sm break-words">
                                 {(assignment.training_courses as any)?.title || "Kurs"}
                               </p>
                               {(assignment.training_courses as any)?.description && (
-                                <p className="text-xs text-muted-foreground truncate">
+                                <p className="text-xs text-muted-foreground line-clamp-2">
                                   {(assignment.training_courses as any).description}
                                 </p>
                               )}
                             </div>
                             <Button
                               size="sm"
+                              className="self-start sm:self-center shrink-0"
                               onClick={() => setTakeCourseAssignmentId(assignment.id)}
                             >
                               <GraduationCap className="h-4 w-4 mr-1" />
