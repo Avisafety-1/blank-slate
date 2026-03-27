@@ -542,11 +542,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     </Button>
                   </div>
 
-                  {/* TipTap editor for content */}
-                  <SlideEditor
-                    content={s.content_json}
-                    onChange={(json) => updateSlide(sIdx, "content_json", json)}
-                    placeholder={s.slide_type === "content" ? "Skriv innhold her..." : "Skriv spørsmålsteksten her..."}
+                  {/* Canvas editor for content */}
+                  <SlideCanvasEditor
+                    data={isCanvasFormat(s.content_json) ? s.content_json as CanvasData : migrateToCanvas(s.content_json)}
+                    onChange={(canvasData) => updateSlide(sIdx, "content_json", canvasData)}
                   />
 
                   {/* Question options */}
