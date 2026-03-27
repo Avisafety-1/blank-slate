@@ -210,6 +210,7 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
   const [resizeState, setResizeState] = useState<{ id: string; startX: number; startY: number; elW: number; elH: number; elX: number; elY: number; corner: string } | null>(null);
   const [containerWidth, setContainerWidth] = useState(960);
   const [showShapePicker, setShowShapePicker] = useState(false);
+  const textEditorRefs = useRef<Record<string, any>>({});
 
   const scale = containerWidth / CANVAS_W;
   const elements = data.elements || [];
