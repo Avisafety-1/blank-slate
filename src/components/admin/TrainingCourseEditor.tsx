@@ -296,6 +296,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {isEditorFullscreen ? <Minimize className="h-4 w-4 mr-1" /> : <Maximize className="h-4 w-4 mr-1" />}
           {isEditorFullscreen ? "Avslutt fullskjerm" : "Fullskjerm-redigering"}
         </Button>
+      </div>
 
       <Card>
         <CardHeader>
