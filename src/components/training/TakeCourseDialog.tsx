@@ -283,8 +283,14 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const handleCloseResults = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
     onOpenChange(false);
-    onCompleted?.();
+    if (!previewMode) onCompleted?.();
+  };
+
+  const handleClose = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    onOpenChange(false);
   };
 
   const answeredCount = questions.filter((q) => answers[q.id]).length;
