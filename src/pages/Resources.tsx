@@ -74,6 +74,7 @@ const Resources = () => {
       fetchEquipment();
       fetchDronetags();
       fetchPersonnel();
+      fetchPendingCourses();
     }
 
     // Real-time subscriptions — single consolidated channel
