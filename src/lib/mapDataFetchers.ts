@@ -745,6 +745,7 @@ interface KraftLayerDef {
   weight: number;
   dashArray?: string;
   minZoom: number;
+  maxZoom?: number;
   isPoint?: boolean;
   isPolygon?: boolean;
   fillOpacity?: number;
@@ -752,7 +753,7 @@ interface KraftLayerDef {
 
 const KRAFT_LAYERS: KraftLayerDef[] = [
   // Polygoner først (rendres under alt annet)
-  { layerId: 6, label: "Områdekonsesjonær", color: "#94a3b8", weight: 1, minZoom: 8, isPolygon: true, fillOpacity: 0.08 },
+  { layerId: 6, label: "Områdekonsesjonær", color: "#94a3b8", weight: 1, minZoom: 8, maxZoom: 10, isPolygon: true, fillOpacity: 0.15 },
   // Linjer
   { layerId: 0, label: "Transmisjonsnett", color: "#2563eb", weight: 3, minZoom: 8 },
   { layerId: 1, label: "Regionalnett", color: "#f97316", weight: 2, minZoom: 8 },
@@ -778,7 +779,7 @@ export async function fetchKraftledningerInBounds(params: {
   const envelope = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
 
   const fetches = KRAFT_LAYERS
-    .filter(def => zoom >= def.minZoom)
+    .filter(def => zoom >= def.minZoom && (!def.maxZoom || zoom <= def.maxZoom))
     .map(async (def) => {
       try {
         const url = `${NVE_BASE}/${def.layerId}/query?where=1%3D1&geometry=${encodeURIComponent(envelope)}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000`;
