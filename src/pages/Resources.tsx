@@ -60,6 +60,7 @@ const Resources = () => {
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState("alle");
   const [personnelStatusFilter, setPersonnelStatusFilter] = useState("alle");
   const [personnelRoleFilter, setPersonnelRoleFilter] = useState("alle");
+  const [pendingCourseCounts, setPendingCourseCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
