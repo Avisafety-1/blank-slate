@@ -745,6 +745,7 @@ interface KraftLayerDef {
   weight: number;
   dashArray?: string;
   minZoom: number;
+  maxZoom?: number;
   isPoint?: boolean;
   isPolygon?: boolean;
   fillOpacity?: number;
