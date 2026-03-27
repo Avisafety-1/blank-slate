@@ -447,6 +447,11 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
         )}
       </div>
 
+      {/* Floating text toolbar — shown above canvas when a text element is selected */}
+      {selectedId && selectedEl?.type === "text" && textEditorRefs.current[selectedId] && (
+        <FloatingTextToolbar editor={textEditorRefs.current[selectedId]} />
+      )}
+
       {/* Canvas */}
       <div
         ref={canvasRef}
@@ -464,26 +469,52 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
               <div
                 key={el.id}
                 className={`absolute ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/40"}`}
-                style={{ left: el.x, top: el.y, width: el.width, height: el.height, cursor: dragState?.id === el.id ? "grabbing" : "grab" }}
-                onMouseDown={(e) => handleMouseDown(e, el)}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
+                style={{ left: el.x, top: el.y, width: el.width, height: el.height }}
               >
                 {el.type === "text" && (
-                  <div className="w-full h-full bg-transparent rounded overflow-hidden border border-transparent hover:border-muted">
-                    <InlineTextEditor
-                      content={el.content}
-                      onChange={(c) => updateElement(el.id, { content: c })}
-                      scale={scale}
-                    />
+                  <div className="w-full h-full flex flex-col bg-transparent rounded overflow-hidden border border-transparent hover:border-muted">
+                    {/* Drag handle bar */}
+                    <div
+                      className="h-6 bg-muted/40 hover:bg-muted/70 cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 border-b border-muted/30"
+                      onMouseDown={(e) => handleMouseDown(e, el)}
+                    >
+                      <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-h-0">
+                      <InlineTextEditor
+                        content={el.content}
+                        onChange={(c) => updateElement(el.id, { content: c })}
+                        editorRef={{ current: textEditorRefs.current[el.id], set current(v: any) { textEditorRefs.current[el.id] = v; } } as any}
+                      />
+                    </div>
                   </div>
                 )}
                 {el.type === "image" && (
-                  <img src={el.src} alt="" className="w-full h-full object-contain rounded pointer-events-none select-none" draggable={false} />
+                  <img
+                    src={el.src} alt=""
+                    className="w-full h-full object-contain rounded pointer-events-none select-none" draggable={false}
+                    onMouseDown={(e) => handleMouseDown(e, el)}
+                  />
                 )}
                 {el.type === "shape" && (
                   <div className="w-full h-full pointer-events-none select-none">
                     <ShapeRenderer el={el} />
                   </div>
+                )}
+                {/* Click overlay for non-text elements to select + drag */}
+                {el.type !== "text" && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ cursor: dragState?.id === el.id ? "grabbing" : "grab" }}
+                    onMouseDown={(e) => handleMouseDown(e, el)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
+                  />
+                )}
+                {el.type === "text" && (
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
+                  />
                 )}
                 {isSelected && resizeHandles(el)}
               </div>
