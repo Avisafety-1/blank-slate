@@ -78,31 +78,46 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     setSubmitted(false);
     setScore(null);
     setCurrentPage(0);
+    setAnswers({});
     try {
-      const { data: assignment } = await supabase
-        .from("training_assignments")
-        .select("course_id, saved_answers")
-        .eq("id", assignmentId)
-        .single();
+      let targetCourseId: string;
 
-      if (!assignment) throw new Error("Assignment not found");
+      if (previewMode && directCourseId) {
+        targetCourseId = directCourseId;
+      } else if (assignmentId) {
+        const { data: assignment } = await supabase
+          .from("training_assignments")
+          .select("course_id, saved_answers")
+          .eq("id", assignmentId)
+          .single();
 
-      // Restore saved answers if any
-      const savedAnswers = assignment.saved_answers as Record<string, string> | null;
-      setAnswers(savedAnswers || {});
+        if (!assignment) throw new Error("Assignment not found");
+        targetCourseId = assignment.course_id;
+        const savedAnswers = assignment.saved_answers as Record<string, string> | null;
+        setAnswers(savedAnswers || {});
+      } else {
+        throw new Error("No assignment or course specified");
+      }
 
       const { data: courseData } = await supabase
         .from("training_courses")
         .select("*")
-        .eq("id", assignment.course_id)
+        .eq("id", targetCourseId)
         .single();
 
-      setCourse(courseData as CourseData);
+      setCourse({ ...courseData, fullscreen: (courseData as any)?.fullscreen || false } as CourseData);
+
+      // Auto-enter fullscreen if course has it enabled
+      if ((courseData as any)?.fullscreen && !previewMode) {
+        setTimeout(() => {
+          dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
+        }, 300);
+      }
 
       const { data: questionsData } = await supabase
         .from("training_questions")
         .select("*")
-        .eq("course_id", assignment.course_id)
+        .eq("course_id", targetCourseId)
         .order("sort_order");
 
       if (questionsData && questionsData.length > 0) {
@@ -120,9 +135,12 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         setQuestions(qs);
 
         // If we have saved answers, jump to first unanswered question in paginated mode
-        if (savedAnswers && (courseData as any)?.display_mode === "paginated") {
-          const firstUnanswered = qs.findIndex((q: Question) => !savedAnswers[q.id]);
-          if (firstUnanswered > 0) setCurrentPage(firstUnanswered);
+        if (!previewMode && assignmentId) {
+          const savedAnswers = answers;
+          if (savedAnswers && (courseData as any)?.display_mode === "paginated") {
+            const firstUnanswered = qs.findIndex((q: Question) => !savedAnswers[q.id]);
+            if (firstUnanswered > 0) setCurrentPage(firstUnanswered);
+          }
         }
       }
     } catch (err) {
