@@ -93,22 +93,51 @@ export const TrainingSection = () => {
   };
 
   const handleTogglePublish = async (course: Course) => {
-    const newStatus = course.status === "published" ? "draft" : "published";
-    if (newStatus === "published" && (course.question_count || 0) === 0) {
+    if (course.status === "published") {
+      // Unpublish
+      try {
+        const { error } = await supabase
+          .from("training_courses")
+          .update({ status: "draft", available_to_all: false, updated_at: new Date().toISOString() })
+          .eq("id", course.id);
+        if (error) throw error;
+        toast.success("Kurs satt til kladd");
+        fetchCourses();
+      } catch (err) {
+        console.error("Error unpublishing:", err);
+        toast.error("Kunne ikke oppdatere kursstatus");
+      }
+      return;
+    }
+    // Publishing — show choice dialog
+    if ((course.question_count || 0) === 0) {
       toast.error("Kurset må ha minst ett spørsmål for å publiseres");
       return;
     }
+    setPublishDialogCourse(course);
+  };
+
+  const handlePublishWithMode = async (mode: "all" | "specific") => {
+    if (!publishDialogCourse) return;
     try {
       const { error } = await supabase
         .from("training_courses")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", course.id);
+        .update({
+          status: "published",
+          available_to_all: mode === "all",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", publishDialogCourse.id);
       if (error) throw error;
-      toast.success(newStatus === "published" ? "Kurs publisert" : "Kurs satt til kladd");
+      toast.success("Kurs publisert");
+      if (mode === "specific") {
+        setAssignCourseId(publishDialogCourse.id);
+      }
+      setPublishDialogCourse(null);
       fetchCourses();
     } catch (err) {
-      console.error("Error toggling publish:", err);
-      toast.error("Kunne ikke oppdatere kursstatus");
+      console.error("Error publishing:", err);
+      toast.error("Kunne ikke publisere kurs");
     }
   };
 
