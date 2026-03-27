@@ -1,85 +1,70 @@
 
-## Fiks kraftledninger-laget ved å bytte fra WMS til ArcGIS GeoJSON
 
-### Hva jeg fant
-Problemet er sannsynligvis ikke bare zoom. NVE-dataene finnes, men den valgte **WMS-løsningen svarer ikke brukbart**:
-- `GetMap` mot `.../WmsServer` gir `Parameter 'layers' contains unacceptable layer names`
-- Samme datasett fungerer derimot via **ArcGIS REST query** på `.../MapServer/{layerId}/query?...&f=geojson`
+## Opplæringsmodul — ny tab på admin-siden
 
-Det betyr at toggleen kan være “på”, men laget har fortsatt ingen gyldig kartgrafikk å vise.
+### Oversikt
+Bygge en komplett opplæringsmodul der selskapet kan opprette kurs/tester med spørsmål (inkl. bildeopplasting), tildele kurs til ansatte, spore gjennomføringsstatus, og automatisk registrere bestått kurs som kompetanse med valgfri varighet.
 
-### Løsning
-Bytt implementasjonen fra et WMS-tilelag til et **vektorlag hentet fra ArcGIS REST** innenfor gjeldende kartutsnitt.
+### Databasetabeller (4 nye tabeller)
 
-### Endringer
+**`training_courses`** — kurs/tester
+- `id`, `company_id`, `title`, `description`, `status` (draft/published), `passing_score` (prosent, default 80), `validity_months` (hvor lenge godkjenningen varer, null = evig), `created_by`, `created_at`, `updated_at`
 
-#### 1. `src/components/OpenAIPMap.tsx`
-- Erstatt `kraftledningerLayer = L.tileLayer.wms(...)` med `L.layerGroup()`
-- Registrer dette fortsatt som `id: "kraftledninger"`
-- Legg til egen pane, f.eks. `powerPane`, så laget får riktig z-index og kan skrus av/på uten å kollidere med andre lag
-- Når laget toggles på:
-  - kjør en fetch med én gang
-- Når kartet flyttes/zoomes:
-  - hent data på nytt **kun hvis laget er aktivert**
-- Når laget toggles av:
-  - tøm layer group
+**`training_questions`** — spørsmål i et kurs
+- `id`, `course_id` (FK), `question_text`, `image_url` (valgfritt bilde), `sort_order`, `created_at`
 
-#### 2. `src/lib/mapDataFetchers.ts`
-Legg til en ny helper, f.eks. `fetchKraftledningerInBounds(...)`, som:
-- bruker ArcGIS REST query-endepunkter:
-  - `MapServer/0` = transmisjonsnett
-  - `MapServer/1` = regionalnett
-  - `MapServer/2` = distribusjonsnett
-  - `MapServer/3` = sjøkabler
-  - `MapServer/5` = transformatorstasjoner
-- sender inn viewport som geometri/filter
-- ber om `outSR=4326&f=geojson`
-- renderer:
-  - linjer som `L.geoJSON(...)`
-  - stasjoner som `pointToLayer(...)`
+**`training_question_options`** — svaralternativer
+- `id`, `question_id` (FK), `option_text`, `is_correct` (boolean), `sort_order`
 
-### Foreslått datalogikk
-Bruk zoomstyring for å unngå for mye data:
-- zoom 8+: transmisjonsnett + regionalnett
-- zoom 11+: sjøkabler + transformatorstasjoner
-- zoom 12/13+: distribusjonsnett
-- hopp over `Master og stolper` i første versjon, siden det blir ekstremt tett
+**`training_assignments`** — tildeling + gjennomføringsstatus
+- `id`, `course_id` (FK), `profile_id` (FK), `company_id`, `assigned_at`, `completed_at`, `score` (prosent), `passed` (boolean), `competency_id` (FK til personnel_competencies, settes ved bestått)
 
-Dette gir et lag som faktisk blir synlig uten å overbelaste kartet.
+RLS: Basert på `company_id` og `get_user_visible_company_ids()` for hierarkisk tilgang.
 
-### Visuell stil
-- Transmisjonsnett: tydelig blå/grønn
-- Regionalnett: oransje
-- Distribusjonsnett: lysere gul/oransje
-- Sjøkabler: stiplet cyan
-- Transformatorstasjoner: små sirkelmarkører
+### Nye filer
 
-Popup kan vise:
-- type
-- eier
-- spenning (kV)
-- navn når det finnes
+**`src/components/admin/TrainingSection.tsx`** (~hovedkomponent for tabben)
+- Liste over kurs med status-badges (kladd/publisert)
+- Knapper: «Nytt kurs», «Rediger», «Publiser/Avpubliser»
+- Gjennomføringsstatus-oversikt per kurs (antall tildelt, fullført, bestått)
+- Filtrer ansatte på tvers av avdelinger
 
-### Ekstra hardening
-Jeg ville også samtidig sikre `setGeoJsonInteractivity(...)` i `OpenAIPMap.tsx`:
-- ikke kall `addInteractiveTarget` / `removeInteractiveTarget` hvis layer ikke lenger har map eller DOM-element
-- dette matcher runtime-feilene du har nå fra Leaflet og gjør kartet mer stabilt ved refresh/hot reload
+**`src/components/admin/TrainingCourseEditor.tsx`** — kursredigering
+- Tittel, beskrivelse, beståttprosent, gyldighetsperiode
+- Legg til/fjern/rekkefølge spørsmål
+- Per spørsmål: tekst, valgfritt bilde (upload til `logbook-images`), svaralternativer med markering av riktig svar
+- Lagre som kladd eller publiser
 
-### Hvorfor dette er riktig retning
-Den nåværende WMS-veien ser ut til å være feil/uforenlig for dette datasettet i Leaflet-oppsettet deres. ArcGIS REST-query fungerer faktisk og lar oss:
-- hente ekte data
-- begrense til viewport
-- style laget tydeligere
-- få popups og bedre kontroll på ytelse
+**`src/components/admin/TrainingAssignmentDialog.tsx`** — tildel kurs til ansatte
+- Velg ansatte (søkbar, på tvers av avdelinger)
+- Vis hvem som allerede er tildelt
 
-### Filer som endres
-1. `src/components/OpenAIPMap.tsx`
-2. `src/lib/mapDataFetchers.ts`
+**`src/components/admin/TrainingStatusView.tsx`** — gjennomføringsoversikt
+- Tabell med alle tildelte ansatte, status, score, dato
+- Filtrer per avdeling
 
-### Testing
-Etter implementasjon bør vi teste:
-1. slå på “Kraftledninger (NVE)”
-2. zoome inn over Trondheim/Oslo-området
-3. bekrefte at linjer og stasjoner vises
-4. slå laget av/på flere ganger
-5. sjekke at route planning fortsatt fungerer uten at laget stjeler klikk
+**`src/components/training/TakeCourseDialog.tsx`** — kurset slik ansatte tar det
+- Viser spørsmål ett om gangen eller alle samlet
+- Velg svar, send inn, beregn score
+- Ved bestått: oppretter automatisk en `personnel_competencies`-rad med type «Kurs», navn = kurstittelen, `utstedt_dato` = nå, `utloper_dato` = nå + validity_months
+
+### Endring i eksisterende fil
+
+**`src/pages/Admin.tsx`** — minimal endring:
+- Importer `TrainingSection`
+- Legg til ny `TabsTrigger` (value="training") ved siden av «Avdelinger»-tabben med et `GraduationCap`-ikon
+- Legg til `TabsContent` som rendrer `<TrainingSection />`
+
+### Flyten
+1. Admin oppretter kurs → legger til spørsmål med svaralternativer → lagrer som kladd eller publiserer
+2. Admin tildeler kurset til ansatte (på tvers av avdelinger)
+3. Ansatt ser tildelte kurs (via ressurssiden eller en egen visning) → tar testen
+4. Score beregnes automatisk → ved bestått opprettes kompetanse-rad med varighet
+5. Admin ser gjennomføringsstatus for alle ansatte
+
+### Tekniske detaljer
+- Bilder lastes opp til `logbook-images`-bøtten med sti `{company_id}/training-{question_id}-{timestamp}.ext`
+- Kursdata hentes med Supabase client, ikke edge functions
+- Alle nye komponenter i separate filer for å unngå å blåse opp eksisterende kode
+- Tabben synlig for alle admins (ikke bare superadmin), men ikke for child company admins med mindre vi ønsker det
+
