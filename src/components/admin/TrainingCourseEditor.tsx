@@ -286,7 +286,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
 
   return (
-    <div className="space-y-6">
+    <div ref={editorRef} className={`space-y-6 ${isEditorFullscreen ? "bg-background p-6 overflow-y-auto h-full" : ""}`}>
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
