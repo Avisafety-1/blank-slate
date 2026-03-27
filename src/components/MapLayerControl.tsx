@@ -11,7 +11,8 @@ import {
   Shield,
   Navigation,
   Radar,
-  Users
+  Users,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
