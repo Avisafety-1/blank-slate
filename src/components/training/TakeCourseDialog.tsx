@@ -325,7 +325,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       <Card key={s.id}>
         <CardContent className="pt-4 space-y-3">
           {s.content_json ? (
-            <SlideReadonlyView content={s.content_json} />
+            s.content_json.elements ? (
+              <SlideCanvasReadonly data={s.content_json} />
+            ) : (
+              <SlideReadonlyView content={s.content_json} />
+            )
           ) : (
             <p className="font-medium">
               <span className="text-muted-foreground mr-2">{questionSlides.indexOf(s) + 1}.</span>
