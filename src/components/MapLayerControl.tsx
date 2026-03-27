@@ -38,6 +38,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   navigation: Navigation,
   radar: Radar,
   users: Users,
+  zap: Zap,
 };
 
 export interface LayerConfig {
