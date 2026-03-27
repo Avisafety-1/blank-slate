@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, GripVertical, Maximize, Minimize, FileText, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { SlideEditor } from "@/components/training/SlideEditor";
+import { SlideCanvasEditor, type CanvasData } from "@/components/training/SlideCanvasEditor";
 import type { JSONContent } from "@tiptap/react";
 
 interface QuestionOption {
