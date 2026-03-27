@@ -38,7 +38,7 @@ interface CourseData {
   fullscreen: boolean;
 }
 
-export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted }: Props) => {
+export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
   const { user, companyId } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -50,12 +50,28 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
   const [submitting, setSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const isPaginated = course?.display_mode === "paginated";
 
   useEffect(() => {
     if (open) loadCourse();
-  }, [open, assignmentId]);
+  }, [open, assignmentId, directCourseId]);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
+    }
+  }, []);
 
   const loadCourse = async () => {
     setLoading(true);
