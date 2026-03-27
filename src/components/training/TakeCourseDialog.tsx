@@ -398,10 +398,17 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSaveAndClose} disabled={savingProgress}>
-              <Save className="h-4 w-4 mr-1" />
-              {savingProgress ? "Lagrer..." : "Lagre og lukk"}
-            </Button>
+            {!previewMode && (
+              <Button variant="ghost" size="sm" onClick={handleSaveAndClose} disabled={savingProgress}>
+                <Save className="h-4 w-4 mr-1" />
+                {savingProgress ? "Lagrer..." : "Lagre og lukk"}
+              </Button>
+            )}
+            {previewMode && (
+              <Button variant="ghost" size="sm" onClick={handleClose}>
+                Lukk
+              </Button>
+            )}
             {answeredCount === questions.length && (
               <Button size="sm" onClick={handleSubmit} disabled={submitting}>
                 {submitting ? "Fullfører..." : "Fullfør"}
