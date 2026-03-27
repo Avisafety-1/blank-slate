@@ -307,7 +307,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         <Card key={s.id}>
           <CardContent className="pt-4">
             {s.content_json ? (
-              <SlideReadonlyView content={s.content_json} />
+              s.content_json.elements ? (
+                <SlideCanvasReadonly data={s.content_json} />
+              ) : (
+                <SlideReadonlyView content={s.content_json} />
+              )
             ) : (
               <p className="text-muted-foreground text-sm">Innholdsside</p>
             )}
