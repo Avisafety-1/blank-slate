@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
 import { TrainingStatusView } from "./TrainingStatusView";
+import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Course {
