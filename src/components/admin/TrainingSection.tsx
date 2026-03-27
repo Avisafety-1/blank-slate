@@ -267,6 +267,40 @@ export const TrainingSection = () => {
           }}
         />
       )}
+
+      {/* Publish mode dialog */}
+      <Dialog open={!!publishDialogCourse} onOpenChange={(open) => { if (!open) setPublishDialogCourse(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Publiser kurs</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Hvordan skal kurset gjøres tilgjengelig?</p>
+          <div className="grid gap-3 pt-2">
+            <Button
+              variant="outline"
+              className="justify-start gap-3 h-auto py-3"
+              onClick={() => handlePublishWithMode("all")}
+            >
+              <Globe className="h-5 w-5 text-primary shrink-0" />
+              <div className="text-left">
+                <p className="font-medium">Tilgjengelig for alle</p>
+                <p className="text-xs text-muted-foreground">Alle ansatte kan ta kurset fra sitt personellkort</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start gap-3 h-auto py-3"
+              onClick={() => handlePublishWithMode("specific")}
+            >
+              <UserCheck className="h-5 w-5 text-primary shrink-0" />
+              <div className="text-left">
+                <p className="font-medium">Tildel spesifikke personer</p>
+                <p className="text-xs text-muted-foreground">Velg hvilke ansatte som skal ta kurset</p>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
