@@ -415,6 +415,13 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
 
+    // NVE Kraftledninger
+    const kraftledningerLayer = L.tileLayer.wms("https://gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer?", {
+      layers: "0,1,2,3", format: "image/png", transparent: true, opacity: 0.7,
+      attribution: 'Nettanlegg © <a href="https://www.nve.no">NVE</a>',
+    });
+    layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
+
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
