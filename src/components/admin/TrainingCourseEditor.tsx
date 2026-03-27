@@ -37,6 +37,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [passingScore, setPassingScore] = useState(80);
   const [validityMonths, setValidityMonths] = useState<number | null>(null);
   const [hasPermanentValidity, setHasPermanentValidity] = useState(true);
+  const [displayMode, setDisplayMode] = useState<"list" | "paginated">("list");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
@@ -61,6 +62,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setPassingScore(course.passing_score);
         setValidityMonths(course.validity_months);
         setHasPermanentValidity(!course.validity_months);
+        setDisplayMode((course as any).display_mode === "paginated" ? "paginated" : "list");
       }
 
       const { data: questionsData } = await supabase
@@ -204,6 +206,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         description: description.trim() || null,
         passing_score: passingScore,
         validity_months: hasPermanentValidity ? null : validityMonths,
+        display_mode: displayMode,
         updated_at: new Date().toISOString(),
       };
 
@@ -301,6 +304,19 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   <Input type="number" min={1} value={validityMonths || ""} onChange={(e) => setValidityMonths(Number(e.target.value) || null)} />
                 </div>
               )}
+            </div>
+          </div>
+          <div>
+            <Label>Visningsformat</Label>
+            <div className="flex items-center gap-4 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="displayMode" checked={displayMode === "list"} onChange={() => setDisplayMode("list")} className="accent-primary" />
+                <span className="text-sm">Alle spørsmål på én side</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="displayMode" checked={displayMode === "paginated"} onChange={() => setDisplayMode("paginated")} className="accent-primary" />
+                <span className="text-sm">Ett spørsmål per side</span>
+              </label>
             </div>
           </div>
         </CardContent>

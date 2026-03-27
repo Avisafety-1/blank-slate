@@ -4087,6 +4087,7 @@ export type Database = {
           id: string
           passed: boolean | null
           profile_id: string
+          saved_answers: Json | null
           score: number | null
         }
         Insert: {
@@ -4098,6 +4099,7 @@ export type Database = {
           id?: string
           passed?: boolean | null
           profile_id: string
+          saved_answers?: Json | null
           score?: number | null
         }
         Update: {
@@ -4109,6 +4111,7 @@ export type Database = {
           id?: string
           passed?: boolean | null
           profile_id?: string
+          saved_answers?: Json | null
           score?: number | null
         }
         Relationships: [
@@ -4149,6 +4152,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          display_mode: string
           id: string
           passing_score: number
           status: string
@@ -4162,6 +4166,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          display_mode?: string
           id?: string
           passing_score?: number
           status?: string
@@ -4175,6 +4180,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          display_mode?: string
           id?: string
           passing_score?: number
           status?: string
