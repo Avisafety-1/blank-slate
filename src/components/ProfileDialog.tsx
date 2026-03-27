@@ -1816,14 +1816,11 @@ export const ProfileDialog = () => {
                                     className="text-sm"
                                   />
                                   <div className="flex flex-wrap gap-2">
-                                    <Button size="sm" onClick={() => handleSaveComment(mission.id)}>
-                                      Lagre
-                                    </Button>
-                                    <Button size="sm" variant="secondary" onClick={() => handleNotifyPilot(mission.id, missionComment)}>
+                                    <Button size="sm" variant="secondary" className="hover:bg-muted/50" onClick={async () => { await handleSaveComment(mission.id); await handleNotifyPilot(mission.id, missionComment); }}>
                                       <Send className="h-4 w-4 mr-1" />
                                       Send varsel til pilot
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
+                                    <Button size="sm" variant="outline" className="hover:bg-muted/50" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
                                       Tilbake
                                     </Button>
                                   </div>
