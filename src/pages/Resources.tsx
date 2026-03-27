@@ -796,6 +796,12 @@ const Resources = () => {
                             {person.companies.navn}
                           </Badge>
                         )}
+                        {(pendingCourseCounts[person.id] || 0) > 0 && (
+                          <Badge variant="outline" className="mt-0.5 gap-1 text-xs border-primary/50 text-primary">
+                            <GraduationCap className="w-3 h-3" />
+                            {pendingCourseCounts[person.id]} kurs
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     
