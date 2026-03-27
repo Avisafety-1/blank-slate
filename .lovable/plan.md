@@ -1,24 +1,25 @@
 
 
-## Tydligere visuell separasjon på «Oppdrag til godkjenning»
+## Fullskjerm-redigering + større bilder i fullskjerm
 
-### Problem
-Oppføringene i godkjenningslisten bruker `border border-border` som er subtilt og gjør at de flyter sammen visuelt.
+### Hva som bygges
 
-### Løsning
-Bruk samme visuell stil som selskapsinnstillingene: `rounded-lg border-2 border-primary/30 bg-muted/30 p-4`. I tillegg legge til litt mer spacing mellom oppføringene (`space-y-4` i stedet for `space-y-3`).
+1. **Større bilder i fullskjerm-modus (TakeCourseDialog)**
+   - Endre `max-h-48` på bilder til `max-h-[60vh]` når dialogen er i fullskjerm
+   - Bruke `isFullscreen`-state som allerede finnes til å betinget sette bildestørrelse
 
-### Fil som endres
-**`src/components/ProfileDialog.tsx`** — én endring:
+2. **Fullskjerm-redigeringsmodus (TrainingCourseEditor)**
+   - Legge til en «Fullskjerm-redigering»-knapp i editoren (ved siden av «Legg til spørsmål»)
+   - Bruker Browser Fullscreen API på editorens wrapper-div
+   - I fullskjerm: editoren fyller hele skjermen med scroll, spørsmålskort vises med samme layout som TakeCourseDialog (WYSIWYG)
+   - Bilder vises store (`max-h-[50vh]`) i fullskjerm-redigeringsmodus
+   - Beholder alle redigeringsfunksjoner (input-felter, slett, legg til) men i fullskjerm-layout
+   - Knapp for å gå ut av fullskjerm i topphjørnet
 
-Linje ~1780-1784: Endre wrapper-div per oppdrag fra:
-```
-className="p-3 rounded-lg border border-border space-y-2 cursor-pointer hover:bg-accent/50"
-```
-til:
-```
-className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-accent/50"
-```
+### Filer som endres
 
-Og endre `space-y-3` på container-diven (linje ~1780) til `space-y-4` for mer luft mellom kortene.
+| Fil | Endring |
+|-----|---------|
+| `src/components/training/TakeCourseDialog.tsx` | Bildet bruker `isFullscreen ? "max-h-[60vh]" : "max-h-48"` |
+| `src/components/admin/TrainingCourseEditor.tsx` | Legg til `useRef`, `useState(isFullscreen)`, fullscreenchange-lytter, toggle-knapp, og betinget `max-h-[50vh]` på bilder + `bg-background overflow-y-auto` på wrapper i fullskjerm |
 
