@@ -289,6 +289,27 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
   };
 
+  // Helper to detect canvas format vs old TipTap format
+  const isCanvasFormat = (json: any): boolean => {
+    return json && Array.isArray(json.elements);
+  };
+
+  // Migrate old TipTap content to canvas format with a single text element
+  const migrateToCanvas = (json: JSONContent | null): CanvasData => {
+    if (!json) return { elements: [] };
+    return {
+      elements: [{
+        id: Math.random().toString(36).slice(2, 10),
+        type: "text",
+        x: 100,
+        y: 80,
+        width: 1720,
+        height: 920,
+        content: json,
+      }],
+    };
+  };
+
   if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
 
   const activeSlide = slides[activeSlideIdx];
