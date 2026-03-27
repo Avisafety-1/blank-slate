@@ -14,7 +14,7 @@ import {
   Heading1, Heading2, Heading3, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight,
   ArrowRight, ArrowDown, ArrowUp, ArrowLeft as ArrowLeftIcon,
-  Minus, Square, Circle,
+  Minus, Square, Circle, GripHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
