@@ -221,9 +221,8 @@ export const TrainingSection = () => {
 
   const handleMoveCourse = async (courseId: string, folderId: string | null) => {
     try {
-      const { error } = await supabase
-        .from("training_courses")
-        .update({ folder_id: folderId } as any)
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ folder_id: folderId })
         .eq("id", courseId);
       if (error) throw error;
       toast.success(folderId ? "Kurs flyttet til mappe" : "Kurs fjernet fra mappe");
