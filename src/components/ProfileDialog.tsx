@@ -375,6 +375,14 @@ export const ProfileDialog = () => {
         setPendingApprovalMissions([]);
       }
 
+      // Fetch pending training assignments
+      const { data: trainingData } = await supabase
+        .from("training_assignments")
+        .select("id, course_id, training_courses(title, description)")
+        .eq("profile_id", user.id)
+        .is("completed_at", null);
+      setPendingTraining(trainingData || []);
+
       // Fetch notification preferences
       const { data: prefsData } = await supabase
         .from("notification_preferences")
