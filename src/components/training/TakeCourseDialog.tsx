@@ -449,10 +449,18 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent ref={dialogRef} className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{course?.title || "Kurs"}</DialogTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <DialogTitle className="truncate">{course?.title || "Kurs"}</DialogTitle>
+              {previewMode && <Badge variant="secondary" className="shrink-0">Forhåndsvisning</Badge>}
+            </div>
+            <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={toggleFullscreen}>
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </div>
           {course?.description && <p className="text-sm text-muted-foreground">{course.description}</p>}
         </DialogHeader>
 
