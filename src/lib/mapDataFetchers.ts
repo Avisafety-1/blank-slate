@@ -753,7 +753,7 @@ interface KraftLayerDef {
 
 const KRAFT_LAYERS: KraftLayerDef[] = [
   // Polygoner først (rendres under alt annet)
-  { layerId: 6, label: "Områdekonsesjonær", color: "#94a3b8", weight: 1, minZoom: 8, maxZoom: 10, isPolygon: true, fillOpacity: 0.15 },
+  
   // Linjer
   { layerId: 0, label: "Transmisjonsnett", color: "#2563eb", weight: 3, minZoom: 8 },
   { layerId: 1, label: "Regionalnett", color: "#f97316", weight: 2, minZoom: 8 },
