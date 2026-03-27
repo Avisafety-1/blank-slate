@@ -415,16 +415,12 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
 
-    // NVE Kraftledninger
-    const kraftledningerLayer = L.tileLayer.wms("https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?", {
-      layers: "Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.8,
-      version: "1.1.1",
-      minZoom: 8,
-      attribution: 'Nettanlegg © <a href="https://www.nve.no">NVE</a>',
-    });
+    // NVE Kraftledninger (vector via ArcGIS REST)
+    if (!map.getPane('powerPane')) {
+      map.createPane('powerPane');
+      map.getPane('powerPane')!.style.zIndex = '450';
+    }
+    const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
     // RPAS, NSM, AIP, RMZ layers
