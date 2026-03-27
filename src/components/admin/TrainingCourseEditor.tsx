@@ -376,11 +376,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   </div>
                 </div>
 
-                {/* TipTap editor for content */}
-                <SlideEditor
-                  content={activeSlide.content_json}
-                  onChange={(json) => updateSlide(activeSlideIdx, "content_json", json)}
-                  placeholder={activeSlide.slide_type === "content" ? "Skriv innhold her (overskrifter, tekst, bilder, lister...)" : "Skriv spørsmålsteksten her..."}
+                {/* Canvas editor for content */}
+                <SlideCanvasEditor
+                  data={isCanvasFormat(activeSlide.content_json) ? activeSlide.content_json as CanvasData : migrateToCanvas(activeSlide.content_json)}
+                  onChange={(canvasData) => updateSlide(activeSlideIdx, "content_json", canvasData)}
                 />
 
                 {/* Question options (only for question slides) */}
