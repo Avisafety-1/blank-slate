@@ -653,7 +653,9 @@ export function OpenAIPMap({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
+      if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       map.off('moveend', debouncedFetchVern);
+      map.off('moveend', debouncedFetchKraft);
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
