@@ -102,7 +102,7 @@ const InlineTextEditor = ({
             editor.chain().focus().setFontSize(e.target.value).run();
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="h-6 text-xs border rounded bg-background px-1 mr-1"
+          className="h-7 text-sm border rounded bg-background px-1.5 mr-1"
         >
           {FONT_SIZES.map((s) => (
             <option key={s} value={s}>{parseInt(s)}px</option>
