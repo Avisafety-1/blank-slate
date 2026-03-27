@@ -54,11 +54,11 @@ const FONT_SIZES = ["14px", "18px", "24px", "32px", "40px", "56px", "72px"];
 const InlineTextEditor = ({
   content,
   onChange,
-  editorRef,
+  onEditorReady,
 }: {
   content: any;
   onChange: (c: any) => void;
-  editorRef: React.MutableRefObject<any>;
+  onEditorReady: (editor: any) => void;
 }) => {
   const editor = useEditor({
     extensions: [
