@@ -42,10 +42,26 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (courseId) loadCourse();
   }, [courseId]);
+
+  useEffect(() => {
+    const handler = () => setIsEditorFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleEditorFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      editorRef.current?.requestFullscreen?.();
+    }
+  }, []);
 
   const loadCourse = async () => {
     if (!courseId) return;
