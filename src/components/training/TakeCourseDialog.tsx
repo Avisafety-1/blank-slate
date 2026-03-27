@@ -184,7 +184,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const handleSubmit = async () => {
-    if (!course || !user) return;
+    if (!course) return;
 
     const unanswered = questions.filter((q) => !answers[q.id]);
     if (unanswered.length > 0) {
@@ -195,6 +195,23 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       }
       return;
     }
+
+    if (previewMode) {
+      // Preview mode: just show score without saving
+      let correct = 0;
+      questions.forEach((q) => {
+        const selectedOptionId = answers[q.id];
+        const correctOption = q.options.find((o) => o.is_correct);
+        if (correctOption && correctOption.id === selectedOptionId) correct++;
+      });
+      const scorePercent = Math.round((correct / questions.length) * 100);
+      setScore(scorePercent);
+      setPassed(scorePercent >= course.passing_score);
+      setSubmitted(true);
+      return;
+    }
+
+    if (!user) return;
 
     setSubmitting(true);
     try {
