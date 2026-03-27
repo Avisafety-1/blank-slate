@@ -731,3 +731,89 @@ export async function fetchPilotPositions(params: {
     console.error('Error fetching pilot positions:', err);
   }
 }
+
+// --- Kraftledninger (NVE) via ArcGIS REST ---
+
+const NVE_BASE = "https://nve.geodataonline.no/arcgis/rest/services/Nettanlegg4/MapServer";
+
+interface KraftLayerDef {
+  layerId: number;
+  label: string;
+  color: string;
+  weight: number;
+  dashArray?: string;
+  minZoom: number;
+  isPoint?: boolean;
+}
+
+const KRAFT_LAYERS: KraftLayerDef[] = [
+  { layerId: 0, label: "Transmisjonsnett", color: "#2563eb", weight: 3, minZoom: 8 },
+  { layerId: 1, label: "Regionalnett", color: "#f97316", weight: 2, minZoom: 8 },
+  { layerId: 3, label: "Sjøkabel", color: "#06b6d4", weight: 2, dashArray: "6, 4", minZoom: 11 },
+  { layerId: 5, label: "Transformatorstasjon", color: "#a855f7", weight: 0, minZoom: 11, isPoint: true },
+  { layerId: 2, label: "Distribusjonsnett", color: "#eab308", weight: 1.5, minZoom: 13 },
+];
+
+export async function fetchKraftledningerInBounds(params: {
+  layer: L.LayerGroup;
+  bounds: L.LatLngBounds;
+  zoom: number;
+  pane: string;
+  mode: string;
+}) {
+  const { layer, bounds, zoom, pane, mode } = params;
+  layer.clearLayers();
+
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const envelope = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
+
+  const fetches = KRAFT_LAYERS
+    .filter(def => zoom >= def.minZoom)
+    .map(async (def) => {
+      try {
+        const url = `${NVE_BASE}/${def.layerId}/query?where=1%3D1&geometry=${encodeURIComponent(envelope)}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const geojson = await res.json();
+        if (!geojson.features?.length) return;
+
+        const geoLayer = L.geoJSON(geojson, {
+          pane,
+          interactive: mode !== "routePlanning",
+          style: def.isPoint ? undefined : {
+            color: def.color,
+            weight: def.weight,
+            opacity: 0.85,
+            dashArray: def.dashArray,
+          },
+          pointToLayer: def.isPoint ? (_f, latlng) => {
+            return L.circleMarker(latlng, {
+              pane,
+              radius: 5,
+              fillColor: def.color,
+              color: "#fff",
+              weight: 1,
+              fillOpacity: 0.8,
+            });
+          } : undefined,
+          onEachFeature: mode !== "routePlanning" ? (feature, l) => {
+            const p = feature.properties || {};
+            const name = p.NAVN || p.navn || p.Navn || p.name || "";
+            const eier = p.EIER || p.eier || p.Eier || "";
+            const spenning = p.SPENNING || p.spenning || p.Spenning || "";
+            let popup = `<strong>${def.label}</strong>`;
+            if (name) popup += `<br/>${name}`;
+            if (eier) popup += `<br/>Eier: ${eier}`;
+            if (spenning) popup += `<br/>Spenning: ${spenning} kV`;
+            l.bindPopup(popup);
+          } : undefined,
+        });
+        geoLayer.addTo(layer);
+      } catch (err) {
+        console.error(`Feil ved henting av NVE lag ${def.layerId}:`, err);
+      }
+    });
+
+  await Promise.all(fetches);
+}
