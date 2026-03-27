@@ -91,8 +91,9 @@ const InlineTextEditor = ({
     <div className="h-full flex flex-col">
       {/* Mini toolbar */}
       <div
-        className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b bg-muted/60 shrink-0"
+        className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b bg-muted/60 shrink-0"
         onMouseDown={(e) => e.stopPropagation()}
+        style={{ transform: `scale(${1 / Math.max(scale, 0.3)})`, transformOrigin: "top left", width: `${100 * Math.max(scale, 0.3)}%` }}
       >
         {/* Font size selector */}
         <select
