@@ -484,7 +484,7 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
                       <InlineTextEditor
                         content={el.content}
                         onChange={(c) => updateElement(el.id, { content: c })}
-                        editorRef={{ current: textEditorRefs.current[el.id], set current(v: any) { textEditorRefs.current[el.id] = v; } } as any}
+                        onEditorReady={(ed) => { textEditorRefs.current[el.id] = ed; }}
                       />
                     </div>
                   </div>
