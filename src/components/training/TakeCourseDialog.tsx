@@ -425,12 +425,14 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       {questions.map((q, idx) => renderQuestion(q, idx))}
 
       <div className="flex justify-end gap-2 sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
-        <Button variant="ghost" onClick={handleSaveAndClose} disabled={savingProgress}>
-          <Save className="h-4 w-4 mr-1" />
-          {savingProgress ? "Lagrer..." : "Lagre og lukk"}
-        </Button>
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
-          Avbryt
+        {!previewMode && (
+          <Button variant="ghost" onClick={handleSaveAndClose} disabled={savingProgress}>
+            <Save className="h-4 w-4 mr-1" />
+            {savingProgress ? "Lagrer..." : "Lagre og lukk"}
+          </Button>
+        )}
+        <Button variant="outline" onClick={handleClose}>
+          {previewMode ? "Lukk" : "Avbryt"}
         </Button>
         <Button onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Fullfører..." : "Fullfør"}
