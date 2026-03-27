@@ -171,6 +171,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
       const scorePercent = Math.round((correct / questions.length) * 100);
       const didPass = scorePercent >= course.passing_score;
 
+      // Show results first
       setScore(scorePercent);
       setPassed(didPass);
       setSubmitted(true);
@@ -179,7 +180,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
         completed_at: new Date().toISOString(),
         score: scorePercent,
         passed: didPass,
-        saved_answers: null, // Clear saved progress
+        saved_answers: null,
       };
 
       if (didPass) {
@@ -188,32 +189,48 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
           ? new Date(now.getFullYear(), now.getMonth() + course.validity_months, now.getDate())
           : null;
 
-        const { data: compData, error: compErr } = await supabase
-          .from("personnel_competencies")
-          .insert({
-            profile_id: user.id,
-            type: "Kurs",
-            navn: course.title,
-            utstedt_dato: now.toISOString().split("T")[0],
-            utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
-            påvirker_status: true,
-          })
-          .select("id")
-          .single();
+        try {
+          const { data: compData, error: compErr } = await supabase
+            .from("personnel_competencies")
+            .insert({
+              profile_id: user.id,
+              type: "Kurs",
+              navn: course.title,
+              utstedt_dato: now.toISOString().split("T")[0],
+              utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
+              påvirker_status: true,
+            })
+            .select("id")
+            .single();
 
-        if (!compErr && compData) {
-          updatePayload.competency_id = compData.id;
+          if (!compErr && compData) {
+            updatePayload.competency_id = compData.id;
+          }
+        } catch (compError) {
+          console.error("Error creating competency:", compError);
         }
       }
 
-      await supabase.from("training_assignments").update(updatePayload).eq("id", assignmentId);
-      onCompleted?.();
+      const { error: updateError } = await supabase
+        .from("training_assignments")
+        .update(updatePayload)
+        .eq("id", assignmentId);
+
+      if (updateError) {
+        console.error("Error updating assignment:", updateError);
+      }
     } catch (err) {
       console.error("Error submitting:", err);
-      toast.error("Kunne ikke sende inn besvarelsen");
+      toast.error("Kunne ikke fullføre kurset");
+      setSubmitted(false);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCloseResults = () => {
+    onOpenChange(false);
+    onCompleted?.();
   };
 
   const answeredCount = questions.filter((q) => answers[q.id]).length;
