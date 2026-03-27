@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { SlideReadonlyView } from "@/components/training/SlideReadonlyView";
 
 interface Props {
   assignmentId?: string;
@@ -20,9 +21,11 @@ interface Props {
   onCompleted?: () => void;
 }
 
-interface Question {
+interface SlideData {
   id: string;
+  slide_type: string;
   question_text: string;
+  content_json: any;
   image_url: string | null;
   sort_order: number;
   options: { id: string; option_text: string; is_correct: boolean; sort_order: number }[];
@@ -41,7 +44,7 @@ interface CourseData {
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
   const { user, companyId } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [slides, setSlides] = useState<SlideData[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
@@ -54,6 +57,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const isPaginated = course?.display_mode === "paginated";
+  const questionSlides = slides.filter(s => s.slide_type === "question");
 
   useEffect(() => {
     if (open) loadCourse();
@@ -107,7 +111,6 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
       setCourse({ ...courseData, fullscreen: (courseData as any)?.fullscreen || false } as CourseData);
 
-      // Auto-enter fullscreen if course has it enabled
       if ((courseData as any)?.fullscreen && !previewMode) {
         setTimeout(() => {
           dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
@@ -128,17 +131,21 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           .in("question_id", qIds)
           .order("sort_order");
 
-        const qs = questionsData.map((q: any) => ({
-          ...q,
+        const loadedSlides: SlideData[] = questionsData.map((q: any) => ({
+          id: q.id,
+          slide_type: q.slide_type || "question",
+          question_text: q.question_text,
+          content_json: q.content_json || null,
+          image_url: q.image_url,
+          sort_order: q.sort_order,
           options: (optionsData || []).filter((o: any) => o.question_id === q.id),
         }));
-        setQuestions(qs);
+        setSlides(loadedSlides);
 
-        // If we have saved answers, jump to first unanswered question in paginated mode
         if (!previewMode && assignmentId) {
           const savedAnswers = answers;
           if (savedAnswers && (courseData as any)?.display_mode === "paginated") {
-            const firstUnanswered = qs.findIndex((q: Question) => !savedAnswers[q.id]);
+            const firstUnanswered = loadedSlides.findIndex((s) => s.slide_type === "question" && !savedAnswers[s.id]);
             if (firstUnanswered > 0) setCurrentPage(firstUnanswered);
           }
         }
@@ -177,8 +184,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     const newAnswers = { ...answers, [questionId]: optionId };
     setAnswers(newAnswers);
 
-    // In paginated mode, auto-advance after a short delay
-    if (isPaginated && currentPage < questions.length - 1) {
+    if (isPaginated && currentPage < slides.length - 1) {
       setTimeout(() => setCurrentPage((p) => p + 1), 350);
     }
   };
@@ -186,25 +192,24 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const handleSubmit = async () => {
     if (!course) return;
 
-    const unanswered = questions.filter((q) => !answers[q.id]);
+    const unanswered = questionSlides.filter((q) => !answers[q.id]);
     if (unanswered.length > 0) {
-      toast.error(`Du må svare på alle ${questions.length} spørsmål`);
+      toast.error(`Du må svare på alle ${questionSlides.length} spørsmål`);
       if (isPaginated) {
-        const firstIdx = questions.findIndex((q) => !answers[q.id]);
+        const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !answers[s.id]);
         setCurrentPage(firstIdx);
       }
       return;
     }
 
     if (previewMode) {
-      // Preview mode: just show score without saving
       let correct = 0;
-      questions.forEach((q) => {
+      questionSlides.forEach((q) => {
         const selectedOptionId = answers[q.id];
         const correctOption = q.options.find((o) => o.is_correct);
         if (correctOption && correctOption.id === selectedOptionId) correct++;
       });
-      const scorePercent = Math.round((correct / questions.length) * 100);
+      const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       setScore(scorePercent);
       setPassed(scorePercent >= course.passing_score);
       setSubmitted(true);
@@ -216,16 +221,15 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     setSubmitting(true);
     try {
       let correct = 0;
-      questions.forEach((q) => {
+      questionSlides.forEach((q) => {
         const selectedOptionId = answers[q.id];
         const correctOption = q.options.find((o) => o.is_correct);
         if (correctOption && correctOption.id === selectedOptionId) correct++;
       });
 
-      const scorePercent = Math.round((correct / questions.length) * 100);
+      const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       const didPass = scorePercent >= course.passing_score;
 
-      // Show results first
       setScore(scorePercent);
       setPassed(didPass);
       setSubmitted(true);
@@ -293,33 +297,54 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     onOpenChange(false);
   };
 
-  const answeredCount = questions.filter((q) => answers[q.id]).length;
-  const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+  const answeredCount = questionSlides.filter((q) => answers[q.id]).length;
+  const progressPercent = questionSlides.length > 0 ? Math.round((answeredCount / questionSlides.length) * 100) : 0;
 
-  const renderQuestion = (q: Question, idx: number) => (
-    <Card key={q.id}>
-      <CardContent className="pt-4 space-y-3">
-        <p className="font-medium">
-          <span className="text-muted-foreground mr-2">{idx + 1}.</span>
-          {q.question_text}
-        </p>
-        {q.image_url && (
-          <img src={q.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
-        )}
-        <RadioGroup
-          value={answers[q.id] || ""}
-          onValueChange={(v) => handleSelectAnswer(q.id, v)}
-        >
-          {q.options.map((o) => (
-            <div key={o.id} className="flex items-center gap-2">
-              <RadioGroupItem value={o.id} id={o.id} />
-              <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
-            </div>
-          ))}
-        </RadioGroup>
-      </CardContent>
-    </Card>
-  );
+  const renderSlide = (s: SlideData, idx: number) => {
+    if (s.slide_type === "content") {
+      return (
+        <Card key={s.id}>
+          <CardContent className="pt-4">
+            {s.content_json ? (
+              <SlideReadonlyView content={s.content_json} />
+            ) : (
+              <p className="text-muted-foreground text-sm">Innholdsside</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Question slide
+    return (
+      <Card key={s.id}>
+        <CardContent className="pt-4 space-y-3">
+          {s.content_json ? (
+            <SlideReadonlyView content={s.content_json} />
+          ) : (
+            <p className="font-medium">
+              <span className="text-muted-foreground mr-2">{questionSlides.indexOf(s) + 1}.</span>
+              {s.question_text}
+            </p>
+          )}
+          {s.image_url && (
+            <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
+          )}
+          <RadioGroup
+            value={answers[s.id] || ""}
+            onValueChange={(v) => handleSelectAnswer(s.id, v)}
+          >
+            {s.options.map((o) => (
+              <div key={o.id} className="flex items-center gap-2">
+                <RadioGroupItem value={o.id} id={o.id} />
+                <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderResultView = () => (
     <div className="text-center py-8 space-y-4">
@@ -360,20 +385,20 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   );
 
   const renderPaginatedView = () => {
-    const q = questions[currentPage];
-    if (!q) return null;
+    const s = slides[currentPage];
+    if (!s) return null;
 
     return (
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Spørsmål {currentPage + 1} av {questions.length}</span>
-            <span>{answeredCount} besvart</span>
+            <span>Side {currentPage + 1} av {slides.length}</span>
+            <span>{answeredCount}/{questionSlides.length} besvart</span>
           </div>
           <Progress value={progressPercent} className="h-2" />
         </div>
 
-        {renderQuestion(q, currentPage)}
+        {renderSlide(s, currentPage)}
 
         <div className="flex items-center justify-between sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
           <div className="flex gap-2">
@@ -386,7 +411,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               <ChevronLeft className="h-4 w-4 mr-1" />
               Forrige
             </Button>
-            {currentPage < questions.length - 1 && (
+            {currentPage < slides.length - 1 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -409,7 +434,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                 Lukk
               </Button>
             )}
-            {answeredCount === questions.length && (
+            {answeredCount === questionSlides.length && questionSlides.length > 0 && (
               <Button size="sm" onClick={handleSubmit} disabled={submitting}>
                 {submitting ? "Fullfører..." : "Fullfør"}
               </Button>
@@ -424,12 +449,12 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{answeredCount} av {questions.length} besvart</span>
+          <span>{answeredCount} av {questionSlides.length} besvart</span>
         </div>
         <Progress value={progressPercent} className="h-2" />
       </div>
 
-      {questions.map((q, idx) => renderQuestion(q, idx))}
+      {slides.map((s, idx) => renderSlide(s, idx))}
 
       <div className="flex justify-end gap-2 sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
         {!previewMode && (
