@@ -280,7 +280,12 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
           Gyldig i {course.validity_months} måneder
         </Badge>
       )}
-      <Button onClick={() => onOpenChange(false)} className="mt-4">
+      {passed && (
+        <p className="text-sm text-muted-foreground">
+          Kurset er lagret som kompetanse på din profil.
+        </p>
+      )}
+      <Button onClick={handleCloseResults} className="mt-4">
         Lukk
       </Button>
     </div>
