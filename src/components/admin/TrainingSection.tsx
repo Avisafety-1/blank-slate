@@ -312,6 +312,15 @@ export const TrainingSection = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {previewCourseId && (
+        <TakeCourseDialog
+          courseId={previewCourseId}
+          previewMode
+          open={!!previewCourseId}
+          onOpenChange={(open) => { if (!open) setPreviewCourseId(null); }}
+        />
+      )}
     </div>
   );
 };
