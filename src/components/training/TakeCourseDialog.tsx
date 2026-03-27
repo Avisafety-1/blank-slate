@@ -182,7 +182,7 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
         ) : submitted ? (
           <div className="text-center py-8 space-y-4">
             {passed ? (
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+              <CheckCircle className="h-16 w-16 text-primary mx-auto" />
             ) : (
               <XCircle className="h-16 w-16 text-destructive mx-auto" />
             )}
