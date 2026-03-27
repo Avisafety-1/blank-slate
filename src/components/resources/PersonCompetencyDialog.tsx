@@ -87,8 +87,67 @@ export function PersonCompetencyDialog({
   // Update local person state when prop changes
   useEffect(() => {
     setPerson(initialPerson);
-    
   }, [initialPerson]);
+
+  // Fetch available courses for this person
+  useEffect(() => {
+    if (!person?.id || !open) { setAvailableCourses([]); return; }
+    const fetchCourses = async () => {
+      try {
+        // Get courses available to all
+        const { data: allCourses } = await supabase
+          .from("training_courses")
+          .select("id, title, description, passing_score, validity_months")
+          .eq("status", "published")
+          .eq("available_to_all", true);
+
+        // Get assigned courses for this person (not completed)
+        const { data: assignments } = await supabase
+          .from("training_assignments")
+          .select("id, course_id, completed_at, passed, training_courses(id, title, description, passing_score, validity_months)")
+          .eq("profile_id", person.id);
+
+        // Get completed & passed course IDs (not expired)
+        const passedCourseIds = new Set<string>();
+        (assignments || []).forEach((a: any) => {
+          if (a.passed && a.completed_at) {
+            const course = a.training_courses;
+            if (course?.validity_months) {
+              const completedAt = new Date(a.completed_at);
+              const expiresAt = new Date(completedAt.getFullYear(), completedAt.getMonth() + course.validity_months, completedAt.getDate());
+              if (expiresAt > new Date()) passedCourseIds.add(a.course_id);
+            } else {
+              passedCourseIds.add(a.course_id);
+            }
+          }
+        });
+
+        // Pending assigned courses (not completed)
+        const pendingAssigned = (assignments || [])
+          .filter((a: any) => !a.completed_at && a.training_courses)
+          .map((a: any) => ({ ...a.training_courses, assignmentId: a.id }));
+
+        // Available-to-all courses not yet passed
+        const availableAll = (allCourses || [])
+          .filter((c: any) => !passedCourseIds.has(c.id))
+          .map((c: any) => ({ ...c, assignmentId: null }));
+
+        // Merge (avoid duplicates)
+        const seenIds = new Set<string>();
+        const merged: any[] = [];
+        for (const c of [...pendingAssigned, ...availableAll]) {
+          if (!seenIds.has(c.id)) {
+            seenIds.add(c.id);
+            merged.push(c);
+          }
+        }
+        setAvailableCourses(merged);
+      } catch (err) {
+        console.error("Error fetching available courses:", err);
+      }
+    };
+    fetchCourses();
+  }, [person?.id, open]);
 
   // Real-time subscription for competency updates
   useEffect(() => {
