@@ -1,43 +1,49 @@
 
 
-## Legg til kartlag for høyspentledninger (NVE)
+## Fiks kraftledninger-kartlaget (NVE)
 
-### Bakgrunn
-Den opplastede filen er en **WMS-feilmelding**, ikke kartdata. Men NVE tilbyr en offentlig WMS/ArcGIS-tjeneste for nettanlegg (høyspentlinjer, master, transformatorstasjoner osv.) som vi kan bruke.
+### Problem
+Kartlaget bruker `gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer` som ikke returnerer synlige data. Tjenesten er utdatert.
 
-**Kilde**: NVE Nettanlegg — `https://gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer`
+### Funn fra undersøkelse
+- NVE har oppgradert til **Nettanlegg4** på `nve.geodataonline.no`
+- Layers 0-6 har alle `defaultVisibility: false` og **skaleavhengig visning** (f.eks. Transmisjonsnett synlig opp til 1:10M, Distribusjonsnett kun under 1:640K)
+- Feature-query bekrefter at data finnes (kraftledninger med eier, spenning, etc.)
+- Den gamle Nettanlegg3-tjenesten returnerer konsekvent blanke bilder
 
 ### Løsning
-Legg til et nytt valgfritt kartlag «Kraftledninger (NVE)» i `OpenAIPMap.tsx`, med samme mønster som NRL, Arealbruk og Befolkning-lagene.
+Oppdater `OpenAIPMap.tsx`:
 
-### Endringer
+1. **Bytt URL** til Nettanlegg4: `https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?`
+2. **Bruk korrekte lag-navn**: `Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner`
+3. **Legg til `minZoom: 8`** på Leaflet-laget slik at det kun vises når zoomet nok inn til at WMS-tjenesten faktisk tegner features
+4. **Legg til `version: '1.1.1'`** for kompatibilitet med ArcGIS WMS
 
-**`src/components/OpenAIPMap.tsx`**:
-- Legg til et nytt WMS-lag etter NRL-laget:
+### Endring i kode
 ```ts
+// FRA:
 const kraftledningerLayer = L.tileLayer.wms(
   "https://gis3.nve.no/map/services/Nettanlegg3/MapServer/WMSServer?",
+  { layers: "0,1,2,3", ... }
+);
+
+// TIL:
+const kraftledningerLayer = L.tileLayer.wms(
+  "https://nve.geodataonline.no/arcgis/services/Nettanlegg4/MapServer/WmsServer?",
   {
-    layers: "0,1,2,3",  // Kraftledninger, master, trafostasjoner, sjøkabler
+    layers: "Transmisjonsnett_luftledning,Regionalnett_luftledning,Distribusjonsnett,Sjokabler,Transformatorstasjoner",
     format: "image/png",
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.8,
+    version: "1.1.1",
     attribution: 'Nettanlegg © <a href="https://www.nve.no">NVE</a>',
   }
 );
-layerConfigs.push({
-  id: "kraftledninger",
-  name: "Kraftledninger (NVE)",
-  layer: kraftledningerLayer,
-  enabled: false,
-  icon: "alertTriangle",
-});
 ```
-- Laget er **av som standard** og kan slås på via kartlag-kontrollen.
 
-**`src/components/MapLayerControl.tsx`**:
-- Eventuelt legge til et `Zap`-ikon fra lucide-react i `iconMap` for bedre visuell representasjon (lynsymbol for strøm).
+### Fil som endres
+- `src/components/OpenAIPMap.tsx` — oppdater WMS-URL og lag-parametere
 
-### Teknisk detalj
-NVE Nettanlegg3 MapServer eksponerer WMS-endepunkt. Layer-IDer (0, 1, 2, 3 osv.) dekker ulike elementer i kraftnettet. Vi starter med de viktigste lagene og justerer ved behov.
+### Risiko
+Hvis NVE-tjenesten fortsatt ikke viser data (skaleavhengighet kan gjøre at lite vises ved lav zoom), kan vi som alternativ hente GeoJSON fra feature-endepunktet og tegne linjene client-side.
 
