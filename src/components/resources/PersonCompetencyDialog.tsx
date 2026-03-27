@@ -56,6 +56,8 @@ export function PersonCompetencyDialog({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   
   // New competency form state
   const [newType, setNewType] = useState("");
