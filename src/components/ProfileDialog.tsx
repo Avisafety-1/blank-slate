@@ -2225,6 +2225,20 @@ export const ProfileDialog = () => {
         mission={selectedMission}
         onMissionUpdated={fetchUserData}
       />
+
+      {/* Take Course Dialog */}
+      {takeCourseAssignmentId && (
+        <TakeCourseDialog
+          assignmentId={takeCourseAssignmentId}
+          open={!!takeCourseAssignmentId}
+          onOpenChange={(open) => { if (!open) setTakeCourseAssignmentId(null); }}
+          onCompleted={() => {
+            setTakeCourseAssignmentId(null);
+            setPendingTraining((prev) => prev.filter((t: any) => t.id !== takeCourseAssignmentId));
+            fetchUserData();
+          }}
+        />
+      )}
     </Dialog>
   );
 };
