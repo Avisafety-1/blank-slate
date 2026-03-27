@@ -38,6 +38,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [validityMonths, setValidityMonths] = useState<number | null>(null);
   const [hasPermanentValidity, setHasPermanentValidity] = useState(true);
   const [displayMode, setDisplayMode] = useState<"list" | "paginated">("list");
+  const [fullscreen, setFullscreen] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
@@ -63,6 +64,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setValidityMonths(course.validity_months);
         setHasPermanentValidity(!course.validity_months);
         setDisplayMode((course as any).display_mode === "paginated" ? "paginated" : "list");
+        setFullscreen((course as any).fullscreen || false);
       }
 
       const { data: questionsData } = await supabase
@@ -207,6 +209,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         passing_score: passingScore,
         validity_months: hasPermanentValidity ? null : validityMonths,
         display_mode: displayMode,
+        fullscreen,
         updated_at: new Date().toISOString(),
       };
 
@@ -318,6 +321,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 <span className="text-sm">Ett spørsmål per side</span>
               </label>
             </div>
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
+            <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
           </div>
         </CardContent>
       </Card>

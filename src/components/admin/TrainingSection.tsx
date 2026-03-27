@@ -4,11 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
 import { TrainingStatusView } from "./TrainingStatusView";
+import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Course {
@@ -32,6 +33,7 @@ export const TrainingSection = () => {
   const [assignCourseId, setAssignCourseId] = useState<string | null>(null);
   const [statusCourseId, setStatusCourseId] = useState<string | null>(null);
   const [publishDialogCourse, setPublishDialogCourse] = useState<Course | null>(null);
+  const [previewCourseId, setPreviewCourseId] = useState<string | null>(null);
 
   const fetchCourses = async () => {
     if (!companyId) return;
@@ -235,6 +237,12 @@ export const TrainingSection = () => {
                   <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
                     <Edit className="h-3.5 w-3.5" />
                   </Button>
+                  {(course.question_count || 0) > 0 && (
+                    <Button size="sm" variant="outline" onClick={() => setPreviewCourseId(course.id)}>
+                      <Play className="h-3.5 w-3.5 mr-1" />
+                      Preview
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
                     {course.status === "published" ? "Avpubliser" : "Publiser"}
                   </Button>
@@ -304,6 +312,15 @@ export const TrainingSection = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {previewCourseId && (
+        <TakeCourseDialog
+          courseId={previewCourseId}
+          previewMode
+          open={!!previewCourseId}
+          onOpenChange={(open) => { if (!open) setPreviewCourseId(null); }}
+        />
+      )}
     </div>
   );
 };
