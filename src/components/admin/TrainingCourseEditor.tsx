@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Trash2, GripVertical, ImagePlus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, GripVertical, ImagePlus, Maximize, Minimize } from "lucide-react";
 import { toast } from "sonner";
 
 interface QuestionOption {
@@ -42,10 +42,26 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (courseId) loadCourse();
   }, [courseId]);
+
+  useEffect(() => {
+    const handler = () => setIsEditorFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleEditorFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      editorRef.current?.requestFullscreen?.();
+    }
+  }, []);
 
   const loadCourse = async () => {
     if (!courseId) return;
@@ -270,12 +286,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
 
   return (
-    <div className="space-y-6">
+    <div ref={editorRef} className={`space-y-6 ${isEditorFullscreen ? "bg-background p-6 overflow-y-auto h-full" : ""}`}>
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl font-bold">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
+        <h2 className="text-xl font-bold flex-1">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
+        <Button variant="ghost" size="sm" onClick={toggleEditorFullscreen}>
+          {isEditorFullscreen ? <Minimize className="h-4 w-4 mr-1" /> : <Maximize className="h-4 w-4 mr-1" />}
+          {isEditorFullscreen ? "Avslutt fullskjerm" : "Fullskjerm-redigering"}
+        </Button>
       </div>
 
       <Card>
@@ -362,7 +382,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   <div className="flex items-center gap-2">
                     {q.image_url ? (
                       <div className="relative">
-                        <img src={q.image_url} alt="" className="h-20 w-20 object-cover rounded" />
+                        <img src={q.image_url} alt="" className={`${isEditorFullscreen ? "max-h-[50vh] w-auto" : "h-20 w-20"} object-cover rounded`} />
                         <Button
                           size="sm"
                           variant="ghost"

@@ -304,7 +304,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           {q.question_text}
         </p>
         {q.image_url && (
-          <img src={q.image_url} alt="" className="max-h-48 rounded object-contain" />
+          <img src={q.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
         )}
         <RadioGroup
           value={answers[q.id] || ""}
