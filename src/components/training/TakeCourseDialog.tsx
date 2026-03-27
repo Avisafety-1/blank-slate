@@ -141,20 +141,12 @@ export const TakeCourseDialog = ({ assignmentId, open, onOpenChange, onCompleted
           ? new Date(now.getFullYear(), now.getMonth() + course.validity_months, now.getDate())
           : null;
 
-        // Get profile's company_id
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("company_id")
-          .eq("id", user.id)
-          .single();
-
         const { data: compData, error: compErr } = await supabase
           .from("personnel_competencies")
           .insert({
             profile_id: user.id,
-            company_id: profile?.company_id || companyId,
             type: "Kurs",
-            name: course.title,
+            navn: course.title,
             utstedt_dato: now.toISOString().split("T")[0],
             utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
           })
