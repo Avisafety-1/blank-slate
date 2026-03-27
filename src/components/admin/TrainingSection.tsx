@@ -4,11 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
 import { TrainingStatusView } from "./TrainingStatusView";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Course {
   id: string;
