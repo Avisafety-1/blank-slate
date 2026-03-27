@@ -166,7 +166,7 @@ export const ProfileDialog = () => {
     const fetchBadgeCounts = async () => {
       try {
         // Run incident count and approval check in parallel
-        const [incidentsResult, approvalResult] = await Promise.all([
+        const [incidentsResult, approvalResult, trainingResult] = await Promise.all([
           supabase
             .from("incidents")
             .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url")
@@ -178,10 +178,19 @@ export const ProfileDialog = () => {
             .select("can_approve_missions, company_id")
             .eq("id", user.id)
             .single(),
+          supabase
+            .from("training_assignments")
+            .select("id, course_id, training_courses(title, description)")
+            .eq("profile_id", user.id)
+            .is("completed_at", null),
         ]);
 
         if (incidentsResult.data) {
           setFollowUpIncidents(incidentsResult.data);
+        }
+
+        if (trainingResult.data) {
+          setPendingTraining(trainingResult.data);
         }
 
         if (approvalResult.data?.can_approve_missions && approvalResult.data.company_id) {
