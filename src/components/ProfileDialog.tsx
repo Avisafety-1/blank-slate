@@ -785,6 +785,14 @@ export const ProfileDialog = () => {
                 <TabsTrigger value="competencies" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Award className="h-3 w-3" />
                   <span>{t('profile.competencies')}</span>
+                  {pendingTraining.length > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-1 h-5 min-w-5 px-1 flex items-center justify-center text-xs leading-none rounded-full pointer-events-none shrink-0"
+                    >
+                      {pendingTraining.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="emergency" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Heart className="h-3 w-3" />
@@ -798,12 +806,12 @@ export const ProfileDialog = () => {
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
                   <span>Oppfølging</span>
-                  {(followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length) > 0 && (
+                  {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
                     <Badge
                       variant="destructive"
                       className="ml-1 h-5 min-w-5 px-1 flex items-center justify-center text-xs leading-none rounded-full pointer-events-none shrink-0"
                     >
-                      {followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length}
+                      {followUpIncidents.length + pendingApprovalMissions.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -1201,6 +1209,47 @@ export const ProfileDialog = () => {
 
               {/* Competencies Tab */}
               <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+                {/* Pending Training */}
+                {pendingTraining.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <GraduationCap className="h-5 w-5 shrink-0" />
+                        <span className="break-words">Kurs og tester ({pendingTraining.length})</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {pendingTraining.map((assignment: any) => (
+                          <div
+                            key={assignment.id}
+                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm break-words">
+                                {(assignment.training_courses as any)?.title || "Kurs"}
+                              </p>
+                              {(assignment.training_courses as any)?.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {(assignment.training_courses as any).description}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              className="self-start sm:self-center shrink-0"
+                              onClick={() => setTakeCourseAssignmentId(assignment.id)}
+                            >
+                              <GraduationCap className="h-4 w-4 mr-1" />
+                              Ta kurs
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card className="border-0 shadow-none sm:border sm:shadow-sm">
                   <CardHeader className="px-2 sm:px-6">
                     <div className="flex flex-col items-center gap-2">
@@ -1717,47 +1766,6 @@ export const ProfileDialog = () => {
 
               {/* Oppfølging Tab */}
               <TabsContent value="incidents" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
-                {/* Pending Training */}
-                {pendingTraining.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <GraduationCap className="h-5 w-5 shrink-0" />
-                        <span className="break-words">Kurs og tester ({pendingTraining.length})</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {pendingTraining.map((assignment: any) => (
-                          <div
-                            key={assignment.id}
-                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm break-words">
-                                {(assignment.training_courses as any)?.title || "Kurs"}
-                              </p>
-                              {(assignment.training_courses as any)?.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {(assignment.training_courses as any).description}
-                                </p>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              className="self-start sm:self-center shrink-0"
-                              onClick={() => setTakeCourseAssignmentId(assignment.id)}
-                            >
-                              <GraduationCap className="h-4 w-4 mr-1" />
-                              Ta kurs
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
