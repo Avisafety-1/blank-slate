@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
+import ImageResize from "tiptap-extension-resize-image";
 import type { CanvasData, CanvasElement } from "./SlideCanvasEditor";
 
 const CANVAS_W = 1920;
