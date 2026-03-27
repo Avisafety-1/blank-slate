@@ -1,89 +1,52 @@
 
 
-## TipTap WYSIWYG Kurseditor + Mappeadministrasjon
+## PowerPoint-lignende fritt-plasserte elementer i slide-editoren
 
-### Oversikt
-Bygge en slide-basert kurseditor med TipTap som gir ekte WYSIWYG-opplevelse, samt forbedre mappeadministrasjonen slik at man kan legge eksisterende kurs inn i mapper.
+### Problem
+Dagens TipTap-editor er dokumentflyt-basert — tekst og bilder flyter lineært nedover. Brukeren ønsker PowerPoint-stil: fritt plasserte tekstbokser og bilder som kan dras rundt og skaleres uavhengig på et canvas.
 
-### 1. Mappeadministrasjon — «Legg til eksisterende kurs»
+### Løsning
+Bygg et **canvas-basert slide-system** der hver slide inneholder en liste med fritt plasserte elementer (tekstbokser, bilder). Hvert element har `x`, `y`, `width`, `height` og kan dras/resizes. TipTap brukes fortsatt inne i tekstboksene for rik tekst.
 
-**Fil: `src/components/admin/TrainingSection.tsx`**
-- Når man er inne i en mappe, vis en «Legg til kurs»-knapp
-- Åpner en dialog som viser alle kurs som ikke tilhører en mappe (`folder_id IS NULL`)
-- Velg ett eller flere kurs → setter `folder_id` på valgte kurs
-- Kursene forsvinner da fra hovedoversikten
-
-### 2. Database — Utvide slides-modellen
-
-Ny migrasjon på `training_questions`:
-```sql
-ALTER TABLE training_questions
-  ADD COLUMN slide_type text NOT NULL DEFAULT 'question',
-  ADD COLUMN content_json jsonb;
+### Datamodell
+Utvid `content_json` til å lagre en liste med elementer:
+```json
+{
+  "elements": [
+    { "id": "abc", "type": "text", "x": 100, "y": 50, "width": 400, "height": 200, "content": { /* TipTap JSON */ } },
+    { "id": "def", "type": "image", "x": 500, "y": 100, "width": 300, "height": 200, "src": "https://..." }
+  ]
+}
 ```
-- `slide_type`: `'content'` (ren informasjonsside) eller `'question'` (quiz-side)
-- `content_json`: TipTap JSON-dokument med rik tekst, bilder, lister etc.
-- Eksisterende spørsmål beholdes som `slide_type = 'question'`
+Ingen databasemigrasjon nødvendig — `content_json` er allerede `jsonb`.
 
-### 3. TipTap-editor komponent
+### Ny komponent: `SlideCanvasEditor.tsx`
+- Canvas med fast 16:9 proporsjon (1920x1080 intern oppløsning, skalert med `transform: scale()`)
+- Elementer rendres med absolutt posisjonering
+- Drag: `mousedown/mousemove/mouseup` på elementet for å flytte
+- Resize: håndtak i hjørnene for å endre størrelse
+- Valgt element får blå ramme med resize-håndtak
+- Toolbar-knapper: «Legg til tekstboks», «Legg til bilde», «Slett valgt»
+- Tekstbokser: Klikk for å redigere (inline TipTap med miniverktøylinje for formattering)
+- Bilder: Last opp → plasseres på canvas med standard størrelse, kan flyttes/resizes
 
-**Ny fil: `src/components/training/SlideEditor.tsx`**
-
-Pakker som installeres: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-image`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-placeholder`
-
-Verktøylinje med:
-- **Tekst**: Overskrift (H1, H2, H3), brødtekst, fet, kursiv, understreking
-- **Lister**: Kulepunkter, nummererte lister
-- **Bilde**: Last opp bilde, bildestørrelse (liten/medium/stor/full bredde)
-- **Blokker**: Inforamme (farget boks rundt innhold), skillelinje
-- **Pil-ikoner**: Sett inn pil-emoji/SVG som inline-element
-
-Editoren rendrer innholdet i 16:9-proporsjon i fullskjerm for WYSIWYG-effekt.
-
-### 4. Kurseditor omskriving (fullskjerm)
-
-**Fil: `src/components/admin/TrainingCourseEditor.tsx`**
-
-I fullskjerm-redigeringsmodus:
-- Venstre sidebar: Miniatyrbilder av alle slides (drag for å sortere)
-- Hovedområde: TipTap-editor for valgt slide
-- Knapper: «Legg til innholdsside» og «Legg til spørsmålsside»
-- For spørsmålssider: TipTap-editor for spørsmålsteksten + svaralternativer under
-- For innholdssider: Bare TipTap-editoren (ingen svaralternativer)
-
-Normal modus (uten fullskjerm) beholder dagens liste-layout men bruker TipTap i stedet for plain textarea for spørsmålstekst.
-
-### 5. Kursvisning (TakeCourseDialog)
-
-**Fil: `src/components/training/TakeCourseDialog.tsx`**
-
-- Rendrer TipTap JSON som read-only HTML for innholdssider
-- Innholdssider har bare en «Neste»-knapp, ingen svaralternativer
-- Spørsmålssider viser rik tekst + svaralternativer som før
-- Ved scoring telles bare slides med `slide_type = 'question'`
-
-### 6. Animasjoner og dekorative elementer
-
-Via TipTap custom extensions:
-- **Inforamme**: En farget boks man kan sette rundt innhold (blå, gul, rød, grønn)
-- **Pil-blokk**: Sett inn pil-ikoner (→ ↓ ↑ ←) som kan brukes i forklaringer
-- Hover-animasjoner på slides i sidebar (scale-in)
+### Ny komponent: `SlideCanvasReadonly.tsx`
+- Samme skalerte canvas, men uten drag/resize/redigering
+- Rendrer elementer på faste posisjoner
+- Brukes i `TakeCourseDialog` for visning
 
 ### Filer som endres/opprettes
 
-| Fil | Handling |
-|-----|----------|
-| `supabase/migrations/xxx.sql` | Legg til `slide_type`, `content_json` på `training_questions` |
-| `src/components/training/SlideEditor.tsx` | **Ny** — TipTap wrapper med toolbar |
-| `src/components/training/SlideReadonlyView.tsx` | **Ny** — Read-only TipTap renderer |
-| `src/components/admin/TrainingCourseEditor.tsx` | Omskrives til slide-basert med TipTap |
-| `src/components/training/TakeCourseDialog.tsx` | Støtte for innholdssider og rik tekst |
-| `src/components/admin/TrainingSection.tsx` | «Legg til kurs i mappe»-dialog |
-| `package.json` | TipTap-avhengigheter |
+| Fil | Endring |
+|-----|---------|
+| `src/components/training/SlideCanvasEditor.tsx` | **Ny** — Canvas med draggable/resizable elementer + inline TipTap |
+| `src/components/training/SlideCanvasReadonly.tsx` | **Ny** — Read-only canvas renderer |
+| `src/components/admin/TrainingCourseEditor.tsx` | Bruk `SlideCanvasEditor` i stedet for `SlideEditor` i hovedredigeringsområdet |
+| `src/components/training/TakeCourseDialog.tsx` | Bruk `SlideCanvasReadonly` for å vise innholdssider |
 
 ### Tekniske detaljer
-- TipTap lagrer innhold som JSON (`content_json`), som er kompakt og kan rendres uten editoren
-- `question_text` beholdes som fallback for bakoverkompatibilitet
-- Bildeopplasting gjenbruker eksisterende `logbook-images` bucket
-- Slide-sortering bruker eksisterende `sort_order`-feltet
+- Ren React + CSS for drag/resize (ingen ekstra biblioteker nødvendig)
+- Skalering: `containerWidth / 1920` brukes som scale-faktor, mus-koordinater konverteres tilbake til 1920x1080
+- `SlideEditor.tsx` og `SlideReadonlyView.tsx` beholdes som fallback for eksisterende slides med gammelt format
+- Migrering av eksisterende innhold: Hvis `content_json` har gammelt TipTap-format (ingen `elements`-array), rendres det i en enkelt fullbredde-tekstboks automatisk
 
