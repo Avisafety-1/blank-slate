@@ -4144,6 +4144,7 @@ export type Database = {
       }
       training_courses: {
         Row: {
+          available_to_all: boolean
           company_id: string
           created_at: string
           created_by: string | null
@@ -4156,6 +4157,7 @@ export type Database = {
           validity_months: number | null
         }
         Insert: {
+          available_to_all?: boolean
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -4168,6 +4170,7 @@ export type Database = {
           validity_months?: number | null
         }
         Update: {
+          available_to_all?: boolean
           company_id?: string
           created_at?: string
           created_by?: string | null

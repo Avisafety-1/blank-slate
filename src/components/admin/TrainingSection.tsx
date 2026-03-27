@@ -222,6 +222,9 @@ export const TrainingSection = () => {
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>{course.question_count} spørsmål · Bestått: {course.passing_score}%</p>
                   <p>Gyldighet: {course.validity_months ? `${course.validity_months} mnd` : "Permanent"}</p>
+                  {(course as any).available_to_all && course.status === "published" && (
+                    <p className="text-primary flex items-center gap-1"><Globe className="h-3 w-3" /> Tilgjengelig for alle</p>
+                  )}
                   {course.assignment_stats && course.assignment_stats.total > 0 && (
                     <p className="text-foreground">
                       {course.assignment_stats.passed}/{course.assignment_stats.total} bestått
