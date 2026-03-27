@@ -87,6 +87,7 @@ const Resources = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, guardedFetch(fetchPersonnel))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, guardedFetch(fetchPersonnel))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'training_assignments' }, guardedFetch(fetchPendingCourses))
       .subscribe();
 
     return () => {
