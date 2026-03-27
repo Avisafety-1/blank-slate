@@ -22,6 +22,7 @@ import { PersonCompetencyDialog } from "./resources/PersonCompetencyDialog";
 import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { MissionDetailDialog } from "./dashboard/MissionDetailDialog";
 import { SignaturePad } from "./SignaturePad";
+import { TakeCourseDialog } from "./training/TakeCourseDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
