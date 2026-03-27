@@ -31,7 +31,7 @@ export const SlideEditor = ({ content, onChange, placeholder = "Skriv innhold he
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
-      ImageResize.configure({ inline: false, allowBase64: true }),
+      ImageResize,
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Placeholder.configure({ placeholder }),
