@@ -779,7 +779,7 @@ export async function fetchKraftledningerInBounds(params: {
   const envelope = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
 
   const fetches = KRAFT_LAYERS
-    .filter(def => zoom >= def.minZoom)
+    .filter(def => zoom >= def.minZoom && (!def.maxZoom || zoom <= def.maxZoom))
     .map(async (def) => {
       try {
         const url = `${NVE_BASE}/${def.layerId}/query?where=1%3D1&geometry=${encodeURIComponent(envelope)}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000`;
