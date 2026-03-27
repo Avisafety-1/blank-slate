@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, GripVertical, Maximize, Minimize, FileText, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { SlideEditor } from "@/components/training/SlideEditor";
+import { SlideCanvasEditor, type CanvasData } from "@/components/training/SlideCanvasEditor";
 import type { JSONContent } from "@tiptap/react";
 
 interface QuestionOption {
@@ -288,6 +289,27 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
   };
 
+  // Helper to detect canvas format vs old TipTap format
+  const isCanvasFormat = (json: any): boolean => {
+    return json && Array.isArray(json.elements);
+  };
+
+  // Migrate old TipTap content to canvas format with a single text element
+  const migrateToCanvas = (json: JSONContent | null): CanvasData => {
+    if (!json) return { elements: [] };
+    return {
+      elements: [{
+        id: Math.random().toString(36).slice(2, 10),
+        type: "text",
+        x: 100,
+        y: 80,
+        width: 1720,
+        height: 920,
+        content: json,
+      }],
+    };
+  };
+
   if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
 
   const activeSlide = slides[activeSlideIdx];
@@ -375,11 +397,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   </div>
                 </div>
 
-                {/* TipTap editor for content */}
-                <SlideEditor
-                  content={activeSlide.content_json}
-                  onChange={(json) => updateSlide(activeSlideIdx, "content_json", json)}
-                  placeholder={activeSlide.slide_type === "content" ? "Skriv innhold her (overskrifter, tekst, bilder, lister...)" : "Skriv spørsmålsteksten her..."}
+                {/* Canvas editor for content */}
+                <SlideCanvasEditor
+                  data={isCanvasFormat(activeSlide.content_json) ? activeSlide.content_json as CanvasData : migrateToCanvas(activeSlide.content_json)}
+                  onChange={(canvasData) => updateSlide(activeSlideIdx, "content_json", canvasData)}
                 />
 
                 {/* Question options (only for question slides) */}
@@ -542,11 +563,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     </Button>
                   </div>
 
-                  {/* TipTap editor for content */}
-                  <SlideEditor
-                    content={s.content_json}
-                    onChange={(json) => updateSlide(sIdx, "content_json", json)}
-                    placeholder={s.slide_type === "content" ? "Skriv innhold her..." : "Skriv spørsmålsteksten her..."}
+                  {/* Canvas editor for content */}
+                  <SlideCanvasEditor
+                    data={isCanvasFormat(s.content_json) ? s.content_json as CanvasData : migrateToCanvas(s.content_json)}
+                    onChange={(canvasData) => updateSlide(sIdx, "content_json", canvasData)}
                   />
 
                   {/* Question options */}

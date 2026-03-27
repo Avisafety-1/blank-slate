@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { SlideReadonlyView } from "@/components/training/SlideReadonlyView";
+import { SlideCanvasReadonly } from "@/components/training/SlideCanvasReadonly";
 
 interface Props {
   assignmentId?: string;
@@ -306,7 +307,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         <Card key={s.id}>
           <CardContent className="pt-4">
             {s.content_json ? (
-              <SlideReadonlyView content={s.content_json} />
+              s.content_json.elements ? (
+                <SlideCanvasReadonly data={s.content_json} />
+              ) : (
+                <SlideReadonlyView content={s.content_json} />
+              )
             ) : (
               <p className="text-muted-foreground text-sm">Innholdsside</p>
             )}
@@ -320,7 +325,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       <Card key={s.id}>
         <CardContent className="pt-4 space-y-3">
           {s.content_json ? (
-            <SlideReadonlyView content={s.content_json} />
+            s.content_json.elements ? (
+              <SlideCanvasReadonly data={s.content_json} />
+            ) : (
+              <SlideReadonlyView content={s.content_json} />
+            )
           ) : (
             <p className="font-medium">
               <span className="text-muted-foreground mr-2">{questionSlides.indexOf(s) + 1}.</span>
