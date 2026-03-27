@@ -80,8 +80,8 @@ const InlineTextEditor = ({
   });
 
   useEffect(() => {
-    editorRef.current = editor;
-  }, [editor, editorRef]);
+    if (editor) onEditorReady(editor);
+  }, [editor]);
 
   useEffect(() => {
     if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
