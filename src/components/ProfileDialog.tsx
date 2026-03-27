@@ -744,12 +744,12 @@ export const ProfileDialog = () => {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" title={t('profile.title')} className="relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8">
           <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
+          {(followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length) > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full"
             >
-              {followUpIncidents.length + pendingApprovalMissions.length}
+              {followUpIncidents.length + pendingApprovalMissions.length + pendingTraining.length}
             </Badge>
           )}
         </Button>
