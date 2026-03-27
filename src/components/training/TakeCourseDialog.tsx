@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { SlideReadonlyView } from "@/components/training/SlideReadonlyView";
+import { SlideCanvasReadonly } from "@/components/training/SlideCanvasReadonly";
 
 interface Props {
   assignmentId?: string;
