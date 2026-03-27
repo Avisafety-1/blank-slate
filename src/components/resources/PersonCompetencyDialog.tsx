@@ -705,7 +705,33 @@ export function PersonCompetencyDialog({
               )}
             </div>
 
-            {/* Add New Competency Form */}
+            {/* Available Courses */}
+            {availableCourses.length > 0 && (
+              <div className="space-y-3 mb-6 min-w-0">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Tilgjengelige kurs
+                </h3>
+                {availableCourses.map((course) => (
+                  <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{course.title}</p>
+                      {course.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{course.description}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Bestått: {course.passing_score}% · {course.validity_months ? `Gyldig ${course.validity_months} mnd` : "Permanent"}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => handleTakeCourse(course)}>
+                      Ta kurs
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+
             <div className="border-t pt-4 mt-4 min-w-0 overflow-hidden">
               <h3 className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
               <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0">
