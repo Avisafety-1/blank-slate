@@ -54,9 +54,11 @@ const FONT_SIZES = ["14px", "18px", "24px", "32px", "40px", "56px", "72px"];
 const InlineTextEditor = ({
   content,
   onChange,
+  scale,
 }: {
   content: any;
   onChange: (c: any) => void;
+  scale: number;
 }) => {
   const editor = useEditor({
     extensions: [
@@ -91,8 +93,9 @@ const InlineTextEditor = ({
     <div className="h-full flex flex-col">
       {/* Mini toolbar */}
       <div
-        className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b bg-muted/60 shrink-0"
+        className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b bg-muted/60 shrink-0"
         onMouseDown={(e) => e.stopPropagation()}
+        style={{ transform: `scale(${1 / Math.max(scale, 0.3)})`, transformOrigin: "top left", width: `${100 * Math.max(scale, 0.3)}%` }}
       >
         {/* Font size selector */}
         <select
@@ -101,14 +104,14 @@ const InlineTextEditor = ({
             editor.chain().focus().setFontSize(e.target.value).run();
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="h-6 text-xs border rounded bg-background px-1 mr-1"
+          className="h-7 text-sm border rounded bg-background px-1.5 mr-1"
         >
           {FONT_SIZES.map((s) => (
             <option key={s} value={s}>{parseInt(s)}px</option>
           ))}
         </select>
 
-        <div className="w-px h-4 bg-border mx-0.5" />
+        <div className="w-px h-5 bg-border mx-1" />
 
         {[
           { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), title: "Fet" },
@@ -505,6 +508,7 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
                     <InlineTextEditor
                       content={el.content}
                       onChange={(c) => updateElement(el.id, { content: c })}
+                      scale={scale}
                     />
                   </div>
                 )}
