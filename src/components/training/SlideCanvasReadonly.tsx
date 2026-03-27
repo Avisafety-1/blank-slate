@@ -15,6 +15,7 @@ const ReadonlyText = ({ content }: { content: any }) => {
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      ImageResize,
     ],
     content: content || undefined,
     editable: false,

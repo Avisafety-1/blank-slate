@@ -66,6 +66,7 @@ const InlineTextEditor = ({
       Placeholder.configure({ placeholder: "Skriv tekst..." }),
       TextStyle,
       FontSize,
+      ImageResize,
     ],
     content: content || undefined,
     onUpdate: ({ editor }) => onChange(editor.getJSON()),
