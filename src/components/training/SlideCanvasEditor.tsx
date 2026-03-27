@@ -508,6 +508,7 @@ export const SlideCanvasEditor = ({ data, onChange }: Props) => {
                     <InlineTextEditor
                       content={el.content}
                       onChange={(c) => updateElement(el.id, { content: c })}
+                      scale={scale}
                     />
                   </div>
                 )}
