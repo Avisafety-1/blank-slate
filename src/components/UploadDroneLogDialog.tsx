@@ -241,11 +241,20 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   }, [open, companyId]);
 
   useEffect(() => {
-    if (open && !hasAddon('dji')) {
+    if (open && !hasAddon('dji') && !ardupilotEnabled) {
       toast.error('DJI-integrasjon krever DJI-tilleggsmodulen');
       onOpenChange(false);
     }
-  }, [open]);
+    // Auto-skip method step for ardupilot-only companies
+    if (open && ardupilotEnabled && !djiEnabled) {
+      setLogType('ardupilot');
+      setStep('upload');
+    }
+    // Set logType to dji when only dji is enabled
+    if (open && djiEnabled && !ardupilotEnabled) {
+      setLogType('dji');
+    }
+  }, [open, ardupilotEnabled, djiEnabled]);
   const terminology = useTerminology();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
