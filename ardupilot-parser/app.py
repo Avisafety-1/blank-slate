@@ -387,6 +387,18 @@ def _parse_bin(path: str) -> dict:
             except Exception:
                 pass
 
+        elif msg_type == "RCIN":
+            try:
+                rcin_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "c1": getattr(msg, "C1", 1500),
+                    "c2": getattr(msg, "C2", 1500),
+                    "c3": getattr(msg, "C3", 1000),
+                    "c4": getattr(msg, "C4", 1500),
+                })
+            except Exception:
+                pass
+
         elif msg_type == "PARM":
             try:
                 params[msg.Name] = msg.Value
