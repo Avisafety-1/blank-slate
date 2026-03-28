@@ -226,13 +226,7 @@ function normalizeToUnified(raw: any) {
     if (vs > maxVSpeed) maxVSpeed = vs;
   }
 
-  // ── Battery — split by instance for dual-battery ──
-  const batt0 = battery.filter((b) => (b.instance || 0) === 0);
-  const batt1 = battery.filter((b) => (b.instance || 0) === 1);
-  const isDualBattery = batt1.length > 0;
-
-  // Primary battery stats (instance 0, or all if no instance field)
-  const primaryBatt = batt0.length > 0 ? batt0 : battery;
+  // Battery stats (using already-computed primaryBatt/batt0/batt1/isDualBattery)
 
   const validBatteryReadings = primaryBatt
     .map((b) => b.remaining)
