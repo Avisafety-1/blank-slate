@@ -2203,7 +2203,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.zip" multiple className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             <DialogFooter>
