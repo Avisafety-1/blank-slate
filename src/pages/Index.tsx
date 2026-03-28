@@ -571,7 +571,7 @@ const Index = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
                               <Upload className="w-4 h-4" />
-                              {t('dronelog.uploadDjiLog', 'Last opp DJI-flylogg')}
+                              {t('dronelog.uploadDjiLog', 'Last opp flylogg')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
