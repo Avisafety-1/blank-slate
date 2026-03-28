@@ -1,54 +1,74 @@
 
 
-## Fix: "Failed to fetch" på mobil ved flylogg-opplasting
+## Fix: "Failed to fetch" kun på Samsung mobil
 
-### Analyse
+### Diagnose
 
-Feilen skjer kun på mobil (ikke iPad), kommer umiddelbart, og rammer begge loggtyper. Tre problemer identifisert:
+Edge function-loggene viser **ingen innkommende requests** fra Samsung. Det betyr at forespørselen aldri forlater enheten. Feilen skjer på både preview og published, men kun på Samsung (ikke iPad). Dette peker mot en Samsung-spesifikk klient-side blokkering.
 
-### Problem 1: `process-ardupilot` krasjer ved auth
-Linje 31 bruker `supabase.auth.getClaims(token)` som **ikke finnes** i supabase-js@2. Dette gir runtime-krasj (500) ved enhver POST-request til ArduPilot-endpointet.
+Sannsynlig årsak: Appen bruker direkte `fetch()` med manuell URL-konstruksjon og header-setting for å kalle edge functions. På Samsung (spesielt i PWA-modus eller Samsung Internet) kan dette blokkeres av:
+- Gammel/stale service worker som cachéer feil
+- Samsung Internets innebygde tracker-blokkering som fanger opp cross-origin POST til `.supabase.co`
+- FormData-håndtering som oppfører seg annerledes på Android vs iOS
 
-### Problem 2: Mobil-spesifikk "Failed to fetch"
-"Failed to fetch" betyr at requesten aldri når serveren. På mobil (men ikke iPad) kan dette skyldes:
-- PWA standalone-modus har strengere nettverkshåndtering
-- Filen leses inn i minnet som FormData, men mobil har mer begrenset minne
-- Ingen retry-logikk for nettverksfeil
+### Løsning
 
-### Problem 3: Ingen feilkategorisering
-Catch-blokken i `handleUpload` viser bare `error.message` uten å skille mellom nettverksfeil, auth-feil og serverfeil. Det gjør det umulig å vite hva som feiler.
+Bytte alle manuelle `fetch()`-kall mot edge functions til `supabase.functions.invoke()`. Dette:
+- Bruker Supabase-klientens innebygde fetch-wrapper (med retry-logikk)
+- Håndterer auth-headers automatisk
+- Konstruerer URL riktig via klienten
+- Fungerer med FormData som body-parameter
 
-### Endringer
+### Endringer i `src/components/UploadDroneLogDialog.tsx`
 
-**1. `supabase/functions/process-ardupilot/index.ts` — Fix auth**
-```typescript
-// Linje 30-37: Bytt getClaims til getUser (samme som process-dronelog)
-const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-if (authError || !authUser) {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}
+**1. `handleUpload` (linje 638-685)**
+Erstatt:
+```ts
+const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+const formData = new FormData();
+formData.append('file', file);
+const response = await fetchWithRetry(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${session.access_token}` },
+  body: formData,
+});
+```
+Med:
+```ts
+const formData = new FormData();
+formData.append('file', file);
+const { data, error } = await supabase.functions.invoke(endpoint, { body: formData });
+if (error) throw error;
+const result: DroneLogResult = data;
 ```
 
-**2. `src/components/UploadDroneLogDialog.tsx` — Robust upload med retry**
-I `handleUpload` (linje 617-661):
-- Wrap fetch i try/catch som skiller `TypeError` (nettverksfeil / "Failed to fetch") fra HTTP-feil
-- Ved nettverksfeil: automatisk retry 1 gang etter 1 sekund
-- Vis spesifikk feilmelding: "Nettverksfeil — sjekk internettforbindelsen og prøv igjen" i stedet for generisk "Failed to fetch"
-- Samme fix i `handleBulkUpload`
+**2. `handleBulkUpload` (linje 691-809)**
+Samme endring: bytt direkte fetch med `supabase.functions.invoke(bulkEndpoint, { body: formData })`.
 
-**3. Forbedret feillogging i catch**
-Legg til `console.error` med feiltype (network/auth/server) så vi kan diagnostisere videre om feilen vedvarer.
+**3. `callDronelogAction` (linje 166-190)**
+Erstatt manuell fetch med:
+```ts
+const { data, error } = await supabase.functions.invoke('process-dronelog', {
+  body: { action, ...payload },
+});
+if (error) throw error;
+return data;
+```
+
+**4. `handleSelectPendingLog` (linje 1095-1130)**
+Erstatt manuell fetch til `dji-process-single` med `supabase.functions.invoke('dji-process-single', { body: { pending_log_id } })`.
+
+**5. Fjern `fetchWithRetry`-hjelperen** (linje 617-636) da den ikke lenger trengs. Supabase-klientens fetch-wrapper i `client.ts` håndterer allerede 401-retry.
 
 ### Filer som endres
+
 | Fil | Endring |
 |-----|---------|
-| `supabase/functions/process-ardupilot/index.ts` | `getClaims` → `getUser()` |
-| `src/components/UploadDroneLogDialog.tsx` | Retry-logikk + bedre feilmeldinger for nettverksfeil |
+| `src/components/UploadDroneLogDialog.tsx` | Bytt 4 manuelle fetch-kall til `supabase.functions.invoke()`, fjern `fetchWithRetry` |
 
 ### Forventet resultat
-- ArduPilot-opplasting slutter å krasje på auth
-- Nettverksfeil på mobil får automatisk retry
-- Brukeren ser konkret feilmelding i stedet for "Failed to fetch"
+- Edge function-kall bruker Supabase-klientens robuste transportlag
+- Samsung-spesifikke problemer med manuell cross-origin fetch unngås
+- DJI-logikk forblir funksjonelt uendret
+- Eksisterende retry-logikk i `client.ts` gjelder automatisk
 
