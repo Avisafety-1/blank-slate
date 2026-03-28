@@ -26,7 +26,8 @@ interface CachedProfile {
   userRole: string | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  djiFlightlogEnabled: boolean;
+   djiFlightlogEnabled: boolean;
+  ardupilotFlightlogEnabled: boolean;
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
