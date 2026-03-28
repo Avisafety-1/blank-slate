@@ -556,7 +556,7 @@ const Index = () => {
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
                     <div className="flex flex-col gap-2">
-                      {djiFlightlogEnabled ? (
+                      {hasFlightLogUpload ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button className="w-full gap-2 hidden lg:flex justify-center" variant="secondary">

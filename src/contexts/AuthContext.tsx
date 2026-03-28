@@ -1017,6 +1017,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyLon,
       isSuperAdmin, 
       djiFlightlogEnabled,
+      ardupilotFlightlogEnabled,
       departmentsEnabled,
       isAdmin,
       isApproved,
