@@ -13,7 +13,7 @@ from flask import Flask, Response, jsonify, request
 
 app = Flask(__name__)
 
-PARSER_SECRET = os.environ.get("PARSER_SECRET", "")
+PARSER_SECRET = os.environ.get("ARDUPILOT_PARSER_SECRET", "")
 
 # ArduCopter flight mode mapping
 COPTER_MODES = {
