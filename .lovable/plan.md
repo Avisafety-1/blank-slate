@@ -1,82 +1,57 @@
 
 
-## ArduPilot Parser Forbedringer — app.py
+## Legg til RCIN-parsing for ArduPilot
 
-### Endringer i `ardupilot-parser/app.py`
+### Hva som mangler
+- `app.py` parser ikke `RCIN`-meldinger
+- Edge function mapper ikke RC-data til `rcAileron`, `rcElevator`, `rcThrottle`, `rcRudder`
+- UI-et (StickWidget, RC-grafer) er allerede ferdig — det trenger bare data
 
-**1. Vehicle-type-basert mode-resolving**
+### Endringer
 
-Problemet: Mode-mapping prøver COPTER_MODES først, deretter PLANE_MODES, uansett kjøretøytype. Mode 5 betyr "LOITER" for copter men "FLY_BY_WIRE_A" for plane.
-
-Løsning:
-- Flytt vehicle_type-deteksjon til **første pass** (scan MSG-meldinger først)
-- Legg til ROVER_MODES og SUB_MODES
-- Velg riktig map basert på detektert vehicle_type
-- Implementert som to-pass: pass 1 finner firmware, pass 2 parser alt
-
-Nye mode-maps:
+**`ardupilot-parser/app.py`**
+- Parse `RCIN`-meldinger i pass 2:
 ```python
-ROVER_MODES = {
-    0: "MANUAL", 1: "ACRO", 3: "STEERING", 4: "HOLD",
-    5: "LOITER", 6: "FOLLOW", 7: "SIMPLE", 10: "AUTO",
-    11: "RTL", 12: "SMART_RTL", 15: "GUIDED",
-}
-
-SUB_MODES = {
-    0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
-    4: "GUIDED", 7: "CIRCLE", 9: "SURFACE", 16: "POSHOLD",
-    19: "MANUAL",
-}
+elif msg_type == "RCIN":
+    try:
+        rcin_list.append({
+            "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+            "c1": getattr(msg, "C1", 1500),
+            "c2": getattr(msg, "C2", 1500),
+            "c3": getattr(msg, "C3", 1000),
+            "c4": getattr(msg, "C4", 1500),
+        })
+    except Exception:
+        pass
 ```
+- Returner `"rcin": rcin_list` i output
 
-**2. GPS leap second korreksjon**
+**`supabase/functions/process-ardupilot/index.ts`**
+- Les `raw.rcin` array
+- Interpoler RCIN-verdier inn i hver posisjon:
+  - `C1` → `rcAileron` (Roll)
+  - `C2` → `rcElevator` (Pitch)
+  - `C3` → `rcThrottle`
+  - `C4` → `rcRudder` (Yaw)
+- Verdier sendes som rå PWM (~1000-2000) — StickWidget normaliserer allerede fra 364-1684 (DJI-range), så vi justerer StickWidget til å håndtere standard PWM-range (1000-2000) for ArduPilot
 
-GPS-tid er ~18 sekunder foran UTC (per 2024). Legger til leap second offset i `_gps_to_utc_iso`:
-```python
-GPS_LEAP_SECONDS = 18  # as of 2024
-dt = GPS_EPOCH + timedelta(weeks=..., milliseconds=...) - timedelta(seconds=GPS_LEAP_SECONDS)
-```
+**`src/components/dashboard/StickWidget.tsx`**
+- Oppdater normalize-range til å håndtere både DJI (364-1684) og standard PWM (1000-2000):
+  - Autodetekt basert på verdier (hvis > 900 → PWM-range)
+  - Eller: bruk 1000-2000 som universell range (DJI-verdier mappes uansett korrekt)
 
-**3. Summary-blokk i output**
-
-Ny `summary`-seksjon beregnet server-side:
-```python
-"summary": {
-    "duration_s": ...,
-    "max_alt_m": ...,
-    "max_speed_mps": ...,
-    "distance_m": ...,
-    "battery_start_v": ...,
-    "battery_end_v": ...,
-    "battery_min_v": ...,
-    "error_count": ...,
-    "event_count": ...,
-    "warning_count": ...,
-}
-```
-
-Beregnes fra GPS (alt, spd, distanse via haversine), battery (volt), errors og events.
-
-**4. Meldingsfilter: behold rå, returner filtrert**
-
-I stedet for å kaste bort filtrerte meldinger:
-- `messages`: filtrert liste (som i dag)
-- `messages_all`: komplett liste uten filtrering
-
-UI bruker `messages`, men rådataene er tilgjengelige for debugging/revisjon.
-
-**5. Mindre forbedringer**
-- Reduser aggressivt meldingsfilter: fjern "ekf" og "gps 1:" fra SKIP-listen (kan inneholde viktige varsler)
-- Mode-nummer beholdes alltid som `mode_num` for referanse
-
-### Filer som endres
+### Filer
 
 | Fil | Endring |
 |-----|---------|
-| `ardupilot-parser/app.py` | Alt over: to-pass parsing, ROVER/SUB modes, leap seconds, summary, messages_all |
+| `ardupilot-parser/app.py` | Parse RCIN C1-C4, returner `rcin` array |
+| `supabase/functions/process-ardupilot/index.ts` | Interpoler RCIN → rcAileron/rcElevator/rcThrottle/rcRudder i positions |
+| `src/components/dashboard/StickWidget.tsx` | Utvid normalize til PWM-range (1000-2000) |
 
 ### Etter endring
-Bruker kjører `cd ardupilot-parser && fly deploy`
+- `cd ardupilot-parser && fly deploy`
+- Edge function deployes automatisk
 
-Edge function trenger ingen endring — den kan bruke `summary`-feltet direkte for å populere normaliserte felter.
+### Svar på spørsmål 2
+3D-modellen og kunstig horisont drives av **ATT-telemetri** (pitch, roll, yaw) som allerede interpoleres inn i hver posisjon for ArduPilot. Når du skrubber tidslinjen, oppdateres `Drone3DViewer` og `DroneAttitudeIndicator` i sanntid basert på disse verdiene. Dette fungerer allerede for ArduPilot-logger.
 
