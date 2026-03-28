@@ -161,8 +161,8 @@ export const useStatusData = () => {
         refetchOnWindowFocus: true,
       },
       {
-        queryKey: ['personnel', companyId],
-        queryFn: () => fetchPersonnel(companyId!),
+        queryKey: ['personnel', companyId, user?.id],
+        queryFn: () => fetchPersonnel(companyId!, user!.id),
         enabled: !!user && !!companyId,
         staleTime: 5000,
         refetchOnWindowFocus: true,
