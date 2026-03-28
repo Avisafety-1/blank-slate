@@ -7,6 +7,7 @@ using pymavlink.
 import datetime
 import io
 import json
+import math as _math
 import math
 import os
 import tempfile
