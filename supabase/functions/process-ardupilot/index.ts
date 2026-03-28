@@ -358,6 +358,23 @@ function interpolateAttitude(
   return { pitch: closest.pitch, roll: closest.roll, yaw: closest.yaw };
 }
 
+function sanitizeResult(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'number') {
+    if (!Number.isFinite(obj)) return null;
+    return obj;
+  }
+  if (Array.isArray(obj)) return obj.map(sanitizeResult);
+  if (typeof obj === 'object') {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = sanitizeResult(v);
+    }
+    return out;
+  }
+  return obj;
+}
+
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
