@@ -14,9 +14,12 @@ const normalize = (val: number, min: number, max: number) =>
   Math.max(0, Math.min(1, (val - min) / (max - min)));
 
 export const StickWidget = ({ x, y, label, xLabel, yLabel }: StickWidgetProps) => {
-  // DJI RC values: 364–1684, center 1024
-  const nx = normalize(x, 364, 1684);
-  const ny = normalize(y, 364, 1684);
+  // Auto-detect range: ArduPilot PWM (1000-2000) vs DJI (364-1684)
+  const isArduPilot = x > 900 || y > 900;
+  const min = isArduPilot ? 1000 : 364;
+  const max = isArduPilot ? 2000 : 1684;
+  const nx = normalize(x, min, max);
+  const ny = normalize(y, min, max);
 
   const cx = PAD + nx * RANGE;
   const cy = PAD + (1 - ny) * RANGE; // invert Y so up = positive

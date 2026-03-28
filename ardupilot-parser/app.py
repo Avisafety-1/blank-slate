@@ -430,6 +430,7 @@ def _parse_bin(path: str) -> dict:
         "errors": err_list,
         "events": ev_list,
         "ctun": ctun_list,
+        "rcin": rcin_list,
         "params": params,
         "vehicle_type": vehicle_type,
         "firmware_version": firmware_version,
