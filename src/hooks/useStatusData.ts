@@ -116,12 +116,17 @@ const fetchEquipment = async () => {
   return equipmentWithMissions;
 };
 
-const fetchPersonnel = async (companyId: string) => {
+const fetchPersonnel = async (companyId: string, userId: string) => {
+  const { data: companyIds } = await supabase
+    .rpc("get_user_visible_company_ids", { _user_id: userId });
+
+  const visibleIds = companyIds?.length ? companyIds : [companyId];
+
   const { data, error } = await supabase
     .from("profiles")
     .select("*, personnel_competencies(*), companies(navn)")
     .eq("approved", true)
-    .eq("company_id", companyId);
+    .in("company_id", visibleIds);
   
   if (error || !data) {
     throw error;
