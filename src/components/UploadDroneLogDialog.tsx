@@ -513,7 +513,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     modell: result?.aircraftName || result?.droneType || '',
     serienummer: unmatchedDroneSN,
     internal_serial: unmatchedDroneSN,
-    merknader: 'Importert fra DJI-logg',
+    merknader: (result as any)?.source === 'ardupilot' ? 'Importert fra ArduPilot-logg' : 'Importert fra DJI-logg',
   } : undefined;
 
   const fetchDrones = async () => {
