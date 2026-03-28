@@ -223,9 +223,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // Fetch company flight log capabilities
   const [djiEnabled, setDjiEnabled] = useState(true);
   const [ardupilotEnabled, setArdupilotEnabled] = useState(false);
+  const [capabilitiesLoaded, setCapabilitiesLoaded] = useState(false);
 
   useEffect(() => {
     if (open && companyId) {
+      setCapabilitiesLoaded(false);
       supabase
         .from("companies")
         .select("dji_flightlog_enabled, ardupilot_enabled")
@@ -236,25 +238,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             setDjiEnabled(data.dji_flightlog_enabled ?? true);
             setArdupilotEnabled(data.ardupilot_enabled ?? false);
           }
+          setCapabilitiesLoaded(true);
         });
     }
   }, [open, companyId]);
 
   useEffect(() => {
-    if (open && !hasAddon('dji') && !ardupilotEnabled) {
+    if (!open || !capabilitiesLoaded) return;
+
+    if (!hasAddon('dji') && !ardupilotEnabled) {
       toast.error('DJI-integrasjon krever DJI-tilleggsmodulen');
       onOpenChange(false);
     }
     // Auto-skip method step for ardupilot-only companies
-    if (open && ardupilotEnabled && !djiEnabled) {
+    if (ardupilotEnabled && !djiEnabled) {
       setLogType('ardupilot');
       setStep('upload');
     }
     // Set logType to dji when only dji is enabled
-    if (open && djiEnabled && !ardupilotEnabled) {
+    if (djiEnabled && !ardupilotEnabled) {
       setLogType('dji');
     }
-  }, [open, ardupilotEnabled, djiEnabled]);
+  }, [open, capabilitiesLoaded, ardupilotEnabled, djiEnabled]);
   const terminology = useTerminology();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
