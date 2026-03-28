@@ -1644,7 +1644,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
       await markPendingLogApproved(logData?.id);
-      toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
+      toast.success(t('dronelog.missionCreated', `Nytt oppdrag opprettet fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg!`));
       // Return to method step so user can continue processing pending logs
       resetState();
       pendingLogsRef.current?.refresh();
