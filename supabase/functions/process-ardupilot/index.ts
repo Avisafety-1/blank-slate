@@ -461,6 +461,7 @@ function interpolateBattery(
   return battery[lo];
 }
 
+function sanitizeResult(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'number') {
     if (!Number.isFinite(obj)) return null;
