@@ -152,6 +152,12 @@ function normalizeToUnified(raw: any) {
   const startUtc: string | null = raw.start_utc || null;
   const endUtc: string | null = raw.end_utc || null;
 
+  // ── Battery — split by instance for dual-battery (needed before positions loop) ──
+  const batt0 = battery.filter((b) => (b.instance || 0) === 0);
+  const batt1 = battery.filter((b) => (b.instance || 0) === 1);
+  const isDualBattery = batt1.length > 0;
+  const primaryBatt = batt0.length > 0 ? batt0 : battery;
+
   // ── Positions (sample ~2500 max) ──
   const sampleRate = Math.max(1, Math.floor(gps.length / 2500));
   const positions: Array<Record<string, any>> = [];
