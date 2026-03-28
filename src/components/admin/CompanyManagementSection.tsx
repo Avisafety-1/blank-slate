@@ -704,7 +704,7 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       {company.parent_company_id ? (
-                        <TableCell colSpan={5}>
+                        <TableCell colSpan={6}>
                           <span className="text-xs text-muted-foreground italic">Arvet fra morselskap</span>
                         </TableCell>
                       ) : (
