@@ -7,6 +7,7 @@ using pymavlink.
 import datetime
 import io
 import json
+import math
 import os
 import tempfile
 
@@ -18,8 +19,10 @@ PARSER_SECRET = os.environ.get("ARDUPILOT_PARSER_SECRET", "")
 
 # ── GPS epoch for UTC conversion ──
 GPS_EPOCH = datetime.datetime(1980, 1, 6, tzinfo=datetime.timezone.utc)
+GPS_LEAP_SECONDS = 18  # GPS is ahead of UTC by this many seconds (as of 2024)
 
-# ArduCopter flight mode mapping
+# ── Flight mode maps per vehicle type ──
+
 COPTER_MODES = {
     0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
     4: "GUIDED", 5: "LOITER", 6: "RTL", 7: "CIRCLE",
@@ -30,7 +33,6 @@ COPTER_MODES = {
     25: "SYSTEMID", 26: "AUTOROTATE", 27: "AUTO_RTL",
 }
 
-# ArduPlane flight mode mapping
 PLANE_MODES = {
     0: "MANUAL", 1: "CIRCLE", 2: "STABILIZE", 3: "TRAINING",
     4: "ACRO", 5: "FLY_BY_WIRE_A", 6: "FLY_BY_WIRE_B",
@@ -39,6 +41,25 @@ PLANE_MODES = {
     17: "QSTABILIZE", 18: "QHOVER", 19: "QLOITER",
     20: "QLAND", 21: "QRTL", 22: "QAUTOTUNE", 23: "QACRO",
     24: "THERMAL",
+}
+
+ROVER_MODES = {
+    0: "MANUAL", 1: "ACRO", 3: "STEERING", 4: "HOLD",
+    5: "LOITER", 6: "FOLLOW", 7: "SIMPLE", 10: "AUTO",
+    11: "RTL", 12: "SMART_RTL", 15: "GUIDED",
+}
+
+SUB_MODES = {
+    0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
+    4: "GUIDED", 7: "CIRCLE", 9: "SURFACE", 16: "POSHOLD",
+    19: "MANUAL",
+}
+
+VEHICLE_MODE_MAPS = {
+    "ArduCopter": COPTER_MODES,
+    "ArduPlane": PLANE_MODES,
+    "ArduRover": ROVER_MODES,
+    "ArduSub": SUB_MODES,
 }
 
 # ArduPilot ERR subsystem names
@@ -68,9 +89,9 @@ EV_NAMES = {
     58: "BOTTOMED", 59: "NOT_BOTTOMED",
 }
 
-# Message prefixes to skip (boot/system noise)
+# Message prefixes to skip for UI (raw messages still kept in messages_all)
 SKIP_MSG_PREFIXES = [
-    "gimbal ", "fmuv", "chibios", "u-blox", "gps 1:", "ekf",
+    "gimbal ", "fmuv", "chibios", "u-blox",
     "frame:", "rcout:", "barometer", "compass", "imu", "ins",
     "terrain:", "rally", "fence", "param ",
 ]
@@ -83,10 +104,25 @@ def _gps_to_utc_iso(gps_week, gps_ms):
     if gps_week <= 0 or gps_ms < 0:
         return None
     try:
-        dt = GPS_EPOCH + datetime.timedelta(weeks=int(gps_week), milliseconds=int(gps_ms))
+        dt = (
+            GPS_EPOCH
+            + datetime.timedelta(weeks=int(gps_week), milliseconds=int(gps_ms))
+            - datetime.timedelta(seconds=GPS_LEAP_SECONDS)
+        )
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     except (OverflowError, ValueError):
         return None
+
+
+def _haversine(lat1, lon1, lat2, lon2):
+    """Calculate distance in meters between two GPS points."""
+    R = 6371000
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 @app.route("/", methods=["GET"])
@@ -115,7 +151,6 @@ def parse():
     if not uploaded.filename:
         return jsonify({"error": "Empty filename"}), 400
 
-    # pymavlink needs a real file path
     with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
         uploaded.save(tmp)
         tmp_path = tmp.name
@@ -133,7 +168,7 @@ def parse():
 
 
 def _should_skip_message(text: str) -> bool:
-    """Return True if this MSG should be filtered out."""
+    """Return True if this MSG should be filtered out for UI display."""
     lower = text.lower().strip()
     for prefix in SKIP_MSG_PREFIXES:
         if lower.startswith(prefix):
@@ -141,9 +176,47 @@ def _should_skip_message(text: str) -> bool:
     return False
 
 
+def _detect_vehicle_type(path: str) -> tuple:
+    """Pass 1: scan MSG messages to detect vehicle type and firmware version."""
+    from pymavlink import mavutil
+
+    mlog = mavutil.mavlink_connection(path, dialect="ardupilotmega")
+    vehicle_type = "ArduPilot"
+    firmware_version = None
+
+    while True:
+        msg = mlog.recv_match(type="MSG", blocking=False)
+        if msg is None:
+            break
+        try:
+            text = msg.Message
+            txt_lower = text.lower()
+            for tag, vtype in [
+                ("arducopter", "ArduCopter"),
+                ("arduplane", "ArduPlane"),
+                ("ardurover", "ArduRover"),
+                ("ardusub", "ArduSub"),
+            ]:
+                if tag in txt_lower:
+                    vehicle_type = vtype
+                    firmware_version = text.strip()
+                    return vehicle_type, firmware_version
+        except Exception:
+            pass
+
+    return vehicle_type, firmware_version
+
+
 def _parse_bin(path: str) -> dict:
     from pymavlink import mavutil
 
+    # ── Pass 1: detect vehicle type ──
+    vehicle_type, firmware_version = _detect_vehicle_type(path)
+
+    # Choose mode map based on vehicle type
+    mode_map = VEHICLE_MODE_MAPS.get(vehicle_type, COPTER_MODES)
+
+    # ── Pass 2: full parse ──
     mlog = mavutil.mavlink_connection(path, dialect="ardupilotmega")
 
     gps_list = []
@@ -151,13 +224,12 @@ def _parse_bin(path: str) -> dict:
     attitude_list = []
     modes_list = []
     messages_list = []
+    messages_all_list = []
     vibe_list = []
     err_list = []
     ev_list = []
     ctun_list = []
     params = {}
-    vehicle_type = "ArduPilot"
-    firmware_version = None
 
     while True:
         msg = mlog.recv_match(blocking=False)
@@ -212,9 +284,7 @@ def _parse_bin(path: str) -> dict:
                 mode_name = getattr(msg, "Mode", None)
 
                 if mode_num is not None:
-                    resolved = COPTER_MODES.get(mode_num)
-                    if resolved is None:
-                        resolved = PLANE_MODES.get(mode_num)
+                    resolved = mode_map.get(mode_num)
                     if resolved:
                         mode_name = resolved
                     elif mode_name is None:
@@ -234,13 +304,12 @@ def _parse_bin(path: str) -> dict:
         elif msg_type == "MSG":
             try:
                 text = msg.Message
-                txt_lower = text.lower()
-                if firmware_version is None:
-                    for tag in ("arducopter", "arduplane", "ardurover", "ardusub"):
-                        if tag in txt_lower:
-                            firmware_version = text.strip()
-                            break
-
+                # Always keep in raw list
+                messages_all_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "text": text,
+                })
+                # Filtered list for UI
                 if not _should_skip_message(text):
                     messages_list.append({
                         "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
@@ -307,33 +376,6 @@ def _parse_bin(path: str) -> dict:
             except Exception:
                 pass
 
-    # Detect vehicle type
-    if firmware_version:
-        fl = firmware_version.lower()
-        if "arducopter" in fl:
-            vehicle_type = "ArduCopter"
-        elif "arduplane" in fl:
-            vehicle_type = "ArduPlane"
-        elif "ardurover" in fl:
-            vehicle_type = "ArduRover"
-        elif "ardusub" in fl:
-            vehicle_type = "ArduSub"
-    else:
-        for m in messages_list:
-            txt = m.get("text", "").lower()
-            if "arducopter" in txt:
-                vehicle_type = "ArduCopter"
-                break
-            elif "arduplane" in txt:
-                vehicle_type = "ArduPlane"
-                break
-            elif "ardurover" in txt:
-                vehicle_type = "ArduRover"
-                break
-            elif "ardusub" in txt:
-                vehicle_type = "ArduSub"
-                break
-
     # ── Compute UTC timestamps from GPS week/ms ──
     start_utc = None
     end_utc = None
@@ -344,12 +386,16 @@ def _parse_bin(path: str) -> dict:
                 start_utc = utc
             end_utc = utc
 
+    # ── Build summary ──
+    summary = _build_summary(gps_list, battery_list, err_list, ev_list, vibe_list, start_utc, end_utc)
+
     return {
         "gps": gps_list,
         "battery": battery_list,
         "attitude": attitude_list,
         "modes": modes_list,
         "messages": messages_list,
+        "messages_all": messages_all_list,
         "vibe": vibe_list,
         "errors": err_list,
         "events": ev_list,
@@ -359,6 +405,67 @@ def _parse_bin(path: str) -> dict:
         "firmware_version": firmware_version,
         "start_utc": start_utc,
         "end_utc": end_utc,
+        "summary": summary,
+    }
+
+
+def _build_summary(gps_list, battery_list, err_list, ev_list, vibe_list, start_utc, end_utc):
+    """Compute a summary block from parsed data."""
+    # Duration
+    duration_s = 0
+    if start_utc and end_utc:
+        try:
+            fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
+            t0 = datetime.datetime.strptime(start_utc, fmt)
+            t1 = datetime.datetime.strptime(end_utc, fmt)
+            duration_s = max(0, (t1 - t0).total_seconds())
+        except Exception:
+            pass
+
+    # Max altitude, max speed, total distance from GPS
+    max_alt = 0
+    max_speed = 0
+    total_distance = 0
+    prev_lat = None
+    prev_lng = None
+    for g in gps_list:
+        alt = g.get("alt", 0) or 0
+        spd = g.get("spd", 0) or 0
+        if alt > max_alt:
+            max_alt = alt
+        if spd > max_speed:
+            max_speed = spd
+        lat = g.get("lat", 0)
+        lng = g.get("lng", 0)
+        if prev_lat is not None and lat != 0 and lng != 0:
+            total_distance += _haversine(prev_lat, prev_lng, lat, lng)
+        if lat != 0 and lng != 0:
+            prev_lat = lat
+            prev_lng = lng
+
+    # Battery summary (instance 0)
+    batt0 = [b for b in battery_list if (b.get("instance") or 0) == 0]
+    battery_start_v = batt0[0]["volt"] if batt0 else None
+    battery_end_v = batt0[-1]["volt"] if batt0 else None
+    battery_min_v = min((b["volt"] for b in batt0 if b.get("volt") is not None), default=None)
+
+    # Vibration warning count
+    warning_count = 0
+    for v in vibe_list:
+        if any((v.get(k, 0) or 0) > 0 for k in ("clip0", "clip1", "clip2")):
+            warning_count += 1
+
+    return {
+        "duration_s": round(duration_s, 1),
+        "max_alt_m": round(max_alt, 1),
+        "max_speed_mps": round(max_speed, 1),
+        "distance_m": round(total_distance, 1),
+        "battery_start_v": round(battery_start_v, 2) if battery_start_v is not None else None,
+        "battery_end_v": round(battery_end_v, 2) if battery_end_v is not None else None,
+        "battery_min_v": round(battery_min_v, 2) if battery_min_v is not None else None,
+        "error_count": len(err_list),
+        "event_count": len(ev_list),
+        "warning_count": warning_count,
     }
 
 
