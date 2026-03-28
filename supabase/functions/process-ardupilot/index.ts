@@ -446,7 +446,21 @@ function interpolateAttitude(
   return { pitch: closest.pitch, roll: closest.roll, yaw: closest.yaw };
 }
 
-function sanitizeResult(obj: any): any {
+function interpolateBattery(
+  battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; temp?: number | null }>,
+  timeMs: number
+): { volt: number; curr?: number; remaining?: number | null; temp?: number | null } | null {
+  if (battery.length === 0) return null;
+  let lo = 0;
+  let hi = battery.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (battery[mid].time_ms < timeMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return battery[lo];
+}
+
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'number') {
     if (!Number.isFinite(obj)) return null;
