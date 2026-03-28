@@ -614,6 +614,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const fetchWithRetry = async (url: string, options: RequestInit, retries = 1): Promise<Response> => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await fetch(url, options);
+      } catch (err: any) {
+        console.warn(`[DroneLog] fetch attempt ${attempt + 1} failed:`, err.message);
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000));
+          // Refresh session before retry
+          const { data: { session: freshSession } } = await supabase.auth.getSession();
+          if (freshSession) {
+            (options.headers as Record<string, string>).Authorization = `Bearer ${freshSession.access_token}`;
+          }
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error('Unreachable');
+  };
+
   const handleUpload = async () => {
     if (!file) return;
     setIsProcessing(true);
@@ -627,12 +648,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       // Route to correct edge function based on file type
       const fileName = file.name.toLowerCase();
-      const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && fileName.endsWith('.bin'));
+      const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && (fileName.endsWith('.bin') || fileName.endsWith('.zip')));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
+      const response = await fetchWithRetry(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` } as Record<string, string>,
         body: formData,
       });
 
@@ -651,8 +672,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await findMatchingFlightLog(data);
       setStep('result');
     } catch (error: any) {
-      console.error('DroneLog upload error:', error);
-      if (isApiLimitError(error)) {
+      console.error('[DroneLog] upload error:', error);
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('Nettverksfeil — sjekk internettforbindelsen og prøv igjen.', { duration: 6000 });
+      } else if (isApiLimitError(error)) {
         const { message, type } = getDronelogErrorMessage(error);
         type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
       } else { toast.error(t('dronelog.uploadError', 'Kunne ikke behandle flyloggen: ') + error.message); }
@@ -692,11 +715,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const formData = new FormData();
         formData.append('file', bulkFiles[i]);
         const bulkFileName = bulkFiles[i].name.toLowerCase();
-        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && bulkFileName.endsWith('.bin'));
+        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
+        const response = await fetchWithRetry(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${session.access_token}` } as Record<string, string>,
           body: formData,
         });
         if (!response.ok) {
