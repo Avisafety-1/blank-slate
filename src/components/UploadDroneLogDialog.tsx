@@ -589,7 +589,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
+      // Route to correct edge function based on file type
+      const isArduPilot = file.name.toLowerCase().endsWith('.bin');
+      const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
