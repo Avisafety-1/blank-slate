@@ -1,40 +1,23 @@
 
 
-## Fix: Personelloversikt viser ikke ansatte fra underavdelinger
+## Fix: Opplæring-tabben vises for Norconsult
 
 ### Problem
-`fetchPersonnel` i `src/hooks/useStatusData.ts` (linje 124) filtrerer med `.eq("company_id", companyId)`, som kun henter personell fra brukerens aktive selskap. For et morselskap (Norconsult) burde det vise personell fra alle underavdelinger (inkl. Bergen).
-
-Droner og utstyr har ikke dette problemet fordi de bruker RLS uten eksplisitt `company_id`-filter.
+Betingelsen på linje 1384 er `isSuperAdmin || departmentsEnabled`. Norconsult har `departments_enabled = true` (de er morselskap med avdelinger), så de får full tilgang til opplæring.
 
 ### Løsning
-Erstatt `.eq("company_id", companyId)` med en sjekk mot alle synlige selskaper via `get_user_visible_company_ids`.
+Endre betingelsen til kun `isSuperAdmin`. Da får bare AviSafe-superadmins tilgang til opplæringsinnholdet. Alle andre selskaper (inkludert Norconsult) ser "Side under utvikling".
 
-**`src/hooks/useStatusData.ts`** — endre `fetchPersonnel`:
+### Endring
 
-```typescript
-const fetchPersonnel = async (companyId: string, userId: string) => {
-  // Get all visible company IDs for hierarchy support
-  const { data: companyIds } = await supabase
-    .rpc("get_user_visible_company_ids", { _user_id: userId });
+**`src/pages/Admin.tsx` linje 1384:**
+```
+// Fra:
+{isSuperAdmin || departmentsEnabled ? (
 
-  const visibleIds = companyIds?.length ? companyIds : [companyId];
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*, personnel_competencies(*), companies(navn)")
-    .eq("approved", true)
-    .in("company_id", visibleIds);
-  
-  // ... rest unchanged
-};
+// Til:
+{isSuperAdmin ? (
 ```
 
-Oppdater kallet til `fetchPersonnel(companyId!, user!.id)` og query-key til å inkludere `user.id`.
-
-### Filer som endres
-
-| Fil | Endring |
-|-----|---------|
-| `src/hooks/useStatusData.ts` | Bruk `get_user_visible_company_ids` i stedet for enkelt `company_id`-filter |
+En enkelt linje-endring.
 
