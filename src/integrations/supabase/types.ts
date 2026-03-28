@@ -3592,6 +3592,7 @@ export type Database = {
           max_height_m: number | null
           parsed_result: Json | null
           processed_flight_log_id: string | null
+          source_file_type: string | null
           status: string
           total_distance_m: number | null
           user_id: string
@@ -3611,6 +3612,7 @@ export type Database = {
           max_height_m?: number | null
           parsed_result?: Json | null
           processed_flight_log_id?: string | null
+          source_file_type?: string | null
           status?: string
           total_distance_m?: number | null
           user_id: string
@@ -3630,6 +3632,7 @@ export type Database = {
           max_height_m?: number | null
           parsed_result?: Json | null
           processed_flight_log_id?: string | null
+          source_file_type?: string | null
           status?: string
           total_distance_m?: number | null
           user_id?: string
