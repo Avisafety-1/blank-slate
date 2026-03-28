@@ -1,40 +1,74 @@
 
 
-## Fix: ArduPilot .zip-filer rutes til feil edge function
+## Fix ArduPilot Log Parsing — Riktigere Data
 
-### Problem
-Frontenden sjekker kun `file.name.endsWith('.bin')` for å rute til `process-ardupilot`. Når du laster opp en `.zip`-fil (som inneholder en ArduPilot `.bin`), sendes den til `process-dronelog` (DJI-parseren), som ikke kan lese ArduPilot-data — derav 500-feilen.
+### Problemer identifisert fra skjermbildet
 
-Edge function `process-ardupilot` håndterer allerede `.zip`-filer med `.bin` inni, men frontenden sender dem aldri dit.
+1. **"Min. batteri: 1804%"** — Parseren bruker `CurrTot` (kumulativ mAh forbrukt) som `remaining`. Dette er IKKE prosent. ArduPilot BATT-meldinger har et `Rem`-felt for gjenværende prosent i nyere firmware.
+2. **"Modus: 5", "Modus: 9", "Modus: 6"** — Numeriske modus-IDer i stedet for navn (5=LOITER, 6=RTL, 9=LAND).
+3. **For mange «message»-hendelser** — Firmware-versjoner, gimbal device_id, boot-meldinger osv. vises som hendelser.
+4. **"ArduCopter ArduCopter"** — Både `aircraftName` og `droneType` satt til samme verdi, UI viser begge.
+5. **"10.606966666666667 min"** — Ikke avrundet.
 
-### Løsning
-Brukeren må kunne velge filtype, eller systemet må forsøke å gjette. Enkleste tilnærming: legg til en valgmulighet i upload-dialogen der brukeren kan angi at det er en ArduPilot-logg, ELLER inspiser zip-innholdet klient-side.
+### Endringer
 
-**Anbefalt: La brukeren velge loggtype** — en enkel toggle/select i upload-dialogen.
+#### 1. Python-parser (`ardupilot-parser/app.py`)
 
-### Endring
+**Batteri**: Bruk `Rem` (remaining %) i stedet for `CurrTot`. Legg til `CurrTot` som separat felt for referanse.
 
-**`src/components/UploadDroneLogDialog.tsx`**
-
-1. Legg til state `logType: 'auto' | 'dji' | 'ardupilot'` (default `'auto'`)
-2. Vis en enkel Select/RadioGroup under filopplasteren: «Loggtype: Automatisk / DJI / ArduPilot»
-3. Oppdater rutinglogikken (linje 593 og 657):
-
-```text
-// Nåværende:
-const isArduPilot = file.name.toLowerCase().endsWith('.bin');
-
-// Nytt:
-const fileName = file.name.toLowerCase();
-const isArduPilot = logType === 'ardupilot' 
-  || (logType === 'auto' && (fileName.endsWith('.bin')));
+```python
+battery_list.append({
+    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+    "volt": msg.Volt,
+    "curr": getattr(msg, "Curr", None),
+    "remaining": getattr(msg, "Rem", None),  # prosent 0-100
+    "curr_tot": getattr(msg, "CurrTot", None),  # mAh forbrukt
+    "temp": getattr(msg, "Temp", None),
+})
 ```
 
-Når brukeren eksplisitt velger «ArduPilot», sendes `.zip`-filer til `process-ardupilot`. I «auto»-modus fungerer det som i dag (`.bin` → ArduPilot, alt annet → DJI).
+**Modus**: Legg til ArduCopter mode-mapping:
+
+```python
+COPTER_MODES = {
+    0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
+    4: "GUIDED", 5: "LOITER", 6: "RTL", 7: "CIRCLE",
+    9: "LAND", 11: "DRIFT", 13: "SPORT", 14: "FLIP",
+    15: "AUTOTUNE", 16: "POSHOLD", 17: "BRAKE",
+    18: "THROW", 19: "AVOID_ADSB", 20: "GUIDED_NOGPS",
+    21: "SMART_RTL",
+}
+```
+
+Bruk `ModeNum` til oppslag: `mode_name = COPTER_MODES.get(msg.ModeNum, f"MODE_{msg.ModeNum}")`.
+
+**Meldinger**: Filtrer ut boot/system-meldinger. Behold bare relevante:
+
+```python
+SKIP_PREFIXES = ["gimbal ", "fmuv", "ChibiOS", "u-blox", "GPS 1:", "EKF"]
+```
+
+**Firmware-versjon**: Trekk ut ArduCopter-versjon som eget felt (`firmware_version`).
+
+**Etter endring**: Krever `fly deploy` for å oppdatere Fly.io-tjenesten.
+
+#### 2. Edge function (`supabase/functions/process-ardupilot/index.ts`)
+
+- **`aircraftName`**: Sett til firmware-versjon hvis tilgjengelig (f.eks. "ArduCopter V3.6.12"), ellers `vehicleType`
+- **`droneType`**: Sett til `null` for å unngå duplisering i UI
+- **`durationMinutes`**: Rund av til 1 desimal
+- **`minBattery`**: Ignorer verdier over 100 (tyder på feil data)
+- **Meldingsfiltrering i events**: Fjern duplikate meldinger, grupper gjentatte mode_change
 
 ### Filer som endres
 
 | Fil | Endring |
 |-----|---------|
-| `src/components/UploadDroneLogDialog.tsx` | Legg til `logType` state + Select-komponent + oppdater ruting på 2 steder |
+| `ardupilot-parser/app.py` | Batteri `Rem`, mode-mapping, meldingsfiltrering, firmware-versjon |
+| `supabase/functions/process-ardupilot/index.ts` | Fiks aircraftName/droneType, avrunding, batterivalidering, event-filtrering |
+
+### Deploy-steg
+1. Kodeendringer i begge filer
+2. Bruker kjører `cd ardupilot-parser && fly deploy` for Python-parseren
+3. Edge function deployes automatisk av Lovable
 
