@@ -246,6 +246,7 @@ def _parse_bin(path: str) -> dict:
     err_list = []
     ev_list = []
     ctun_list = []
+    rcin_list = []
     params = {}
 
     while True:
