@@ -26,7 +26,8 @@ interface CachedProfile {
   userRole: string | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  djiFlightlogEnabled: boolean;
+   djiFlightlogEnabled: boolean;
+  ardupilotFlightlogEnabled: boolean;
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
@@ -50,6 +51,7 @@ interface AuthContextType {
   companyLon: number | null;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  ardupilotFlightlogEnabled: boolean;
   departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
@@ -88,6 +90,7 @@ const AuthContext = createContext<AuthContextType>({
   companyLon: null,
   isSuperAdmin: false,
   djiFlightlogEnabled: false,
+  ardupilotFlightlogEnabled: false,
   departmentsEnabled: false,
   isAdmin: false,
   isApproved: false,
@@ -148,6 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [djiFlightlogEnabled, setDjiFlightlogEnabled] = useState(false);
+  const [ardupilotFlightlogEnabled, setArdupilotFlightlogEnabled] = useState(false);
   const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
@@ -176,6 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsApproved(false);
     setProfileLoaded(false);
     setDjiFlightlogEnabled(false);
+    setArdupilotFlightlogEnabled(false);
     setDepartmentsEnabled(false);
     setUserRole(null);
     setStripeExempt(false);
@@ -269,6 +274,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(cached.isAdmin);
       setIsSuperAdmin(cached.isSuperAdmin);
       setDjiFlightlogEnabled(cached.djiFlightlogEnabled ?? false);
+      setArdupilotFlightlogEnabled(cached.ardupilotFlightlogEnabled ?? false);
       setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
       if (cached.accessibleCompanies?.length) {
@@ -398,6 +404,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               adresse_lat,
               adresse_lon,
               dji_flightlog_enabled,
+              ardupilot_enabled,
               dronelog_api_key,
               stripe_exempt,
               parent_company_id,
@@ -433,6 +440,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin: isAdmin,
         isSuperAdmin: isSuperAdmin,
         djiFlightlogEnabled: false,
+        ardupilotFlightlogEnabled: false,
         stripeExempt: false,
         departmentsEnabled: false,
       };
@@ -457,6 +465,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyLat = company?.adresse_lat || null;
         profileData.companyLon = company?.adresse_lon || null;
         profileData.djiFlightlogEnabled = company?.dji_flightlog_enabled ?? false;
+        profileData.ardupilotFlightlogEnabled = company?.ardupilot_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
@@ -465,7 +474,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             const { data: parentCompany } = await supabase
               .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled')
+              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
               .eq('id', parentCompanyId)
               .single();
             // Re-check version after await
@@ -504,6 +513,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setArdupilotFlightlogEnabled(profileData.ardupilotFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
       setProfileLoaded(true);
@@ -1007,6 +1017,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       companyLon,
       isSuperAdmin, 
       djiFlightlogEnabled,
+      ardupilotFlightlogEnabled,
       departmentsEnabled,
       isAdmin,
       isApproved,

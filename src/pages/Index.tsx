@@ -52,7 +52,8 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const hasFlightLogUpload = djiFlightlogEnabled || ardupilotFlightlogEnabled;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -405,7 +406,7 @@ const Index = () => {
           {/* Mobile-only flight buttons */}
           <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
-            {djiFlightlogEnabled ? (
+            {hasFlightLogUpload ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2 justify-center" variant="secondary">
@@ -555,7 +556,7 @@ const Index = () => {
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
                     <div className="flex flex-col gap-2">
-                      {djiFlightlogEnabled ? (
+                      {hasFlightLogUpload ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button className="w-full gap-2 hidden lg:flex justify-center" variant="secondary">
