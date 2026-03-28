@@ -602,35 +602,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const fetchWithRetry = async (url: string, options: RequestInit, retries = 1): Promise<Response> => {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        return await fetch(url, options);
-      } catch (err: any) {
-        console.warn(`[DroneLog] fetch attempt ${attempt + 1} failed:`, err.message);
-        if (attempt < retries) {
-          await new Promise(r => setTimeout(r, 1000));
-          // Refresh session before retry
-          const { data: { session: freshSession } } = await supabase.auth.getSession();
-          if (freshSession) {
-            (options.headers as Record<string, string>).Authorization = `Bearer ${freshSession.access_token}`;
-          }
-          continue;
-        }
-        throw err;
-      }
-    }
-    throw new Error('Unreachable');
-  };
-
   const handleUpload = async () => {
     if (!file) return;
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error(t('errors.generic')); return; }
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const formData = new FormData();
       formData.append('file', file);
 
@@ -639,29 +614,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && (fileName.endsWith('.bin') || fileName.endsWith('.zip')));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
 
-      const response = await fetchWithRetry(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` } as Record<string, string>,
-        body: formData,
-      });
+      const { data, error } = await supabase.functions.invoke(endpoint, { body: formData });
+      if (error) throw error;
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || err.details || 'Upload failed');
-      }
-
-      const data: DroneLogResult = await response.json();
-      console.log('[DroneLog] startTime from API:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
-      setResult(data);
+      const result: DroneLogResult = data;
+      console.log('[DroneLog] startTime from API:', result.startTime, '| aircraftSN:', result.aircraftSN, '| aircraftSerial:', result.aircraftSerial);
+      setResult(result);
       if (!selectedDroneId) {
-        matchDroneFromResult(data);
+        matchDroneFromResult(result);
       }
-      matchBatteryFromResult(data);
-      await findMatchingFlightLog(data);
+      matchBatteryFromResult(result);
+      await findMatchingFlightLog(result);
       setStep('result');
     } catch (error: any) {
       console.error('[DroneLog] upload error:', error);
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('Load failed')) {
         toast.error('Nettverksfeil — sjekk internettforbindelsen og prøv igjen.', { duration: 6000 });
       } else if (isApiLimitError(error)) {
         const { message, type } = getDronelogErrorMessage(error);
