@@ -452,6 +452,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
     setSyncJustTriggered(false);
+    setLogType('auto');
   };
 
   // ── Battery matching helper ──
