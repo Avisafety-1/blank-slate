@@ -470,6 +470,21 @@ function interpolateBattery(
   return battery[lo];
 }
 
+function interpolateRcin(
+  rcin: Array<{ time_ms: number; c1: number; c2: number; c3: number; c4: number }>,
+  timeMs: number
+): { c1: number; c2: number; c3: number; c4: number } | null {
+  if (rcin.length === 0) return null;
+  let lo = 0;
+  let hi = rcin.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (rcin[mid].time_ms < timeMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return rcin[lo];
+}
+
 function sanitizeResult(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'number') {
