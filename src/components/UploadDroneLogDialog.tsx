@@ -263,6 +263,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
+  const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
 
   // Logbook state
   const [pilotId, setPilotId] = useState("");
