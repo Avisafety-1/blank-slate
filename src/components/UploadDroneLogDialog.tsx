@@ -2253,7 +2253,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <p className="text-xs text-muted-foreground">Velg ArduPilot for .zip med .bin-filer. Automatisk gjenkjenner .bin-filer.</p>
             </div>
             )}
-            </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
