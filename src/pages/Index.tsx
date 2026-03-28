@@ -52,7 +52,8 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const hasFlightLogUpload = djiFlightlogEnabled || ardupilotFlightlogEnabled;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
