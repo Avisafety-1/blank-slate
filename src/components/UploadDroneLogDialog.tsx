@@ -2233,6 +2233,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
+            {djiEnabled && ardupilotEnabled && (
             <div className="space-y-2">
               <Label>Loggtype</Label>
               <RadioGroup value={logType} onValueChange={(v) => setLogType(v as 'auto' | 'dji' | 'ardupilot')} className="flex gap-4">
@@ -2250,6 +2251,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 </div>
               </RadioGroup>
               <p className="text-xs text-muted-foreground">Velg ArduPilot for .zip med .bin-filer. Automatisk gjenkjenner .bin-filer.</p>
+            </div>
+            )}
             </div>
 
             <DialogFooter>
