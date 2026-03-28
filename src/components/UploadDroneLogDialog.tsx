@@ -1271,7 +1271,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       : r.batteryFullCapacity;
 
     return {
-      source: 'dronelogapi' as any,
+      source: ((r as any)?.source === 'ardupilot' ? 'ardupilot' : 'dronelogapi') as any,
       dronelog_sha256: r.sha256Hash || null,
       start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
       end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
