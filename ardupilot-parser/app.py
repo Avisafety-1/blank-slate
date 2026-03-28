@@ -16,6 +16,11 @@ app = Flask(__name__)
 PARSER_SECRET = os.environ.get("PARSER_SECRET", "")
 
 
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"status": "ok", "service": "ardupilot-parser"})
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
