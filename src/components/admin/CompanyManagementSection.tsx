@@ -744,6 +744,22 @@ export const CompanyManagementSection = () => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Switch
+                                checked={company.ardupilot_enabled}
+                                onCheckedChange={() => handleToggleArdupilot(company)}
+                              />
+                              <Label className="cursor-pointer">
+                                <Badge
+                                  variant={company.ardupilot_enabled ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {company.ardupilot_enabled ? "På" : "Av"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
                                 checked={company.dronetag_enabled}
                                 onCheckedChange={() => handleToggleDronetag(company)}
                               />
