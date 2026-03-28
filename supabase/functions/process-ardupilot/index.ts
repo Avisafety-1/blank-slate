@@ -162,8 +162,9 @@ function normalizeToUnified(raw: any) {
     if (!p.lat || !p.lng || (p.lat === 0 && p.lng === 0)) continue;
 
     const att = interpolateAttitude(attitude, p.time_ms);
+    const battReading = interpolateBattery(primaryBatt, p.time_ms);
 
-    positions.push({
+    const pos: Record<string, any> = {
       lat: p.lat,
       lng: p.lng,
       alt: p.alt || 0,
@@ -174,7 +175,18 @@ function normalizeToUnified(raw: any) {
       roll: att?.roll || 0,
       yaw: att?.yaw || 0,
       gpsNum: p.nSat || 0,
-    });
+    };
+
+    if (battReading) {
+      if (battReading.volt != null) pos.voltage = battReading.volt;
+      if (battReading.curr != null) pos.current = battReading.curr;
+      if (battReading.temp != null) pos.temp = battReading.temp;
+      if (battReading.remaining != null && battReading.remaining >= 0 && battReading.remaining <= 100) {
+        pos.battery = battReading.remaining;
+      }
+    }
+
+    positions.push(pos);
   }
 
   // ── Duration ──
