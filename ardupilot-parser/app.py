@@ -4,6 +4,7 @@ Receives a .bin file via POST /parse, returns structured JSON
 using pymavlink.
 """
 
+import datetime
 import io
 import json
 import os
@@ -14,6 +15,9 @@ from flask import Flask, Response, jsonify, request
 app = Flask(__name__)
 
 PARSER_SECRET = os.environ.get("ARDUPILOT_PARSER_SECRET", "")
+
+# ── GPS epoch for UTC conversion ──
+GPS_EPOCH = datetime.datetime(1980, 1, 6, tzinfo=datetime.timezone.utc)
 
 # ArduCopter flight mode mapping
 COPTER_MODES = {
@@ -37,12 +41,52 @@ PLANE_MODES = {
     24: "THERMAL",
 }
 
+# ArduPilot ERR subsystem names
+ERR_SUBSYS = {
+    1: "MAIN", 2: "RADIO", 3: "COMPASS", 4: "OPTFLOW",
+    5: "FAILSAFE_RADIO", 6: "FAILSAFE_BATT", 7: "FAILSAFE_GPS",
+    8: "FAILSAFE_GCS", 9: "FAILSAFE_FENCE", 10: "FLIGHT_MODE",
+    11: "GPS", 12: "CRASH_CHECK", 13: "FLIP", 14: "AUTOTUNE",
+    15: "PARACHUTE", 16: "EKF_CHECK", 17: "FAILSAFE_EKF",
+    18: "BARO", 19: "CPU", 20: "FAILSAFE_ADSB",
+    21: "TERRAIN", 22: "NAVIGATION", 23: "FAILSAFE_TERRAIN",
+    24: "EKF_PRIMARY", 25: "THRUST_LOSS", 26: "FAILSAFE_SENSOR",
+    27: "FAILSAFE_LEAK", 28: "PILOT_INPUT",
+}
+
+# ArduPilot EV event IDs
+EV_NAMES = {
+    7: "AP_STATE_SAVE_TRIM", 8: "AP_STATE_SAVE_EEPROM",
+    10: "ARMED", 11: "DISARMED", 15: "AUTO_ARMED",
+    17: "LAND_COMPLETE_MAYBE", 18: "LAND_COMPLETE",
+    21: "NOT_LANDED", 25: "SET_HOME",
+    28: "NOT_LANDED", 30: "FLIP_START", 31: "FLIP_END",
+    41: "SET_SIMPLE_ON", 42: "SET_SIMPLE_OFF",
+    43: "SET_SUPERSIMPLE_ON", 44: "LOST_GPS",
+    49: "EKF_ALT_RESET", 50: "EKF_YAW_RESET",
+    56: "SURFACED", 57: "NOT_SURFACED",
+    58: "BOTTOMED", 59: "NOT_BOTTOMED",
+}
+
 # Message prefixes to skip (boot/system noise)
 SKIP_MSG_PREFIXES = [
     "gimbal ", "fmuv", "chibios", "u-blox", "gps 1:", "ekf",
     "frame:", "rcout:", "barometer", "compass", "imu", "ins",
     "terrain:", "rally", "fence", "param ",
 ]
+
+
+def _gps_to_utc_iso(gps_week, gps_ms):
+    """Convert GPS week number + milliseconds to ISO 8601 UTC string."""
+    if gps_week is None or gps_ms is None:
+        return None
+    if gps_week <= 0 or gps_ms < 0:
+        return None
+    try:
+        dt = GPS_EPOCH + datetime.timedelta(weeks=int(gps_week), milliseconds=int(gps_ms))
+        return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    except (OverflowError, ValueError):
+        return None
 
 
 @app.route("/", methods=["GET"])
@@ -107,6 +151,10 @@ def _parse_bin(path: str) -> dict:
     attitude_list = []
     modes_list = []
     messages_list = []
+    vibe_list = []
+    err_list = []
+    ev_list = []
+    ctun_list = []
     params = {}
     vehicle_type = "ArduPilot"
     firmware_version = None
@@ -127,6 +175,8 @@ def _parse_bin(path: str) -> dict:
                     "alt": msg.Alt,
                     "spd": msg.Spd,
                     "nSat": getattr(msg, "NSats", getattr(msg, "nSat", 0)),
+                    "gps_week": getattr(msg, "GWk", None),
+                    "gps_ms": getattr(msg, "GMS", None),
                 })
             except Exception:
                 pass
@@ -140,6 +190,7 @@ def _parse_bin(path: str) -> dict:
                     "remaining": getattr(msg, "Rem", None),
                     "curr_tot": getattr(msg, "CurrTot", None),
                     "temp": getattr(msg, "Temp", None),
+                    "instance": getattr(msg, "Instance", 0),
                 })
             except Exception:
                 pass
@@ -160,7 +211,6 @@ def _parse_bin(path: str) -> dict:
                 mode_num = getattr(msg, "ModeNum", None)
                 mode_name = getattr(msg, "Mode", None)
 
-                # Try to resolve numeric mode to human-readable name
                 if mode_num is not None:
                     resolved = COPTER_MODES.get(mode_num)
                     if resolved is None:
@@ -184,7 +234,6 @@ def _parse_bin(path: str) -> dict:
         elif msg_type == "MSG":
             try:
                 text = msg.Message
-                # Extract firmware version
                 txt_lower = text.lower()
                 if firmware_version is None:
                     for tag in ("arducopter", "arduplane", "ardurover", "ardusub"):
@@ -192,12 +241,63 @@ def _parse_bin(path: str) -> dict:
                             firmware_version = text.strip()
                             break
 
-                # Filter out noise
                 if not _should_skip_message(text):
                     messages_list.append({
                         "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
                         "text": text,
                     })
+            except Exception:
+                pass
+
+        elif msg_type == "VIBE":
+            try:
+                vibe_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "vibe_x": getattr(msg, "VibeX", 0),
+                    "vibe_y": getattr(msg, "VibeY", 0),
+                    "vibe_z": getattr(msg, "VibeZ", 0),
+                    "clip0": getattr(msg, "Clip0", 0),
+                    "clip1": getattr(msg, "Clip1", 0),
+                    "clip2": getattr(msg, "Clip2", 0),
+                })
+            except Exception:
+                pass
+
+        elif msg_type == "ERR":
+            try:
+                subsys = getattr(msg, "Subsys", 0)
+                ecode = getattr(msg, "ECode", 0)
+                err_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "subsys": subsys,
+                    "subsys_name": ERR_SUBSYS.get(subsys, f"UNKNOWN_{subsys}"),
+                    "ecode": ecode,
+                })
+            except Exception:
+                pass
+
+        elif msg_type == "EV":
+            try:
+                ev_id = getattr(msg, "Id", 0)
+                ev_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "id": ev_id,
+                    "name": EV_NAMES.get(ev_id, f"EVENT_{ev_id}"),
+                })
+            except Exception:
+                pass
+
+        elif msg_type == "CTUN":
+            try:
+                ctun_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "alt": getattr(msg, "Alt", 0),
+                    "dalt": getattr(msg, "DAlt", 0),
+                    "thi": getattr(msg, "ThI", 0),
+                    "tho": getattr(msg, "ThO", 0),
+                    "crt": getattr(msg, "CRt", 0),
+                    "dsalt": getattr(msg, "DSAlt", 0),
+                })
             except Exception:
                 pass
 
@@ -207,7 +307,7 @@ def _parse_bin(path: str) -> dict:
             except Exception:
                 pass
 
-    # Detect vehicle type from firmware_version or messages
+    # Detect vehicle type
     if firmware_version:
         fl = firmware_version.lower()
         if "arducopter" in fl:
@@ -234,15 +334,31 @@ def _parse_bin(path: str) -> dict:
                 vehicle_type = "ArduSub"
                 break
 
+    # ── Compute UTC timestamps from GPS week/ms ──
+    start_utc = None
+    end_utc = None
+    for g in gps_list:
+        utc = _gps_to_utc_iso(g.get("gps_week"), g.get("gps_ms"))
+        if utc:
+            if start_utc is None:
+                start_utc = utc
+            end_utc = utc
+
     return {
         "gps": gps_list,
         "battery": battery_list,
         "attitude": attitude_list,
         "modes": modes_list,
         "messages": messages_list,
+        "vibe": vibe_list,
+        "errors": err_list,
+        "events": ev_list,
+        "ctun": ctun_list,
         "params": params,
         "vehicle_type": vehicle_type,
         "firmware_version": firmware_version,
+        "start_utc": start_utc,
+        "end_utc": end_utc,
     }
 
 
