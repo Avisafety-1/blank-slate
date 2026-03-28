@@ -719,6 +719,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_battery_id: batteryId,
             status: 'pending',
             parsed_result: data as any,
+            source_file_type: (data as any)?.source === 'ardupilot' ? 'ardupilot' : 'dji',
           } as any);
 
         if (insertError) throw new Error(insertError.message);
