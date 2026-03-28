@@ -606,8 +606,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!file) return;
     setIsProcessing(true);
     try {
+      // Read file into memory first — fixes cloud-picker issues on Android (Google Drive)
+      const buffer = await file.arrayBuffer();
+      const safeFile = new File([buffer], file.name, { type: file.type });
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', safeFile);
 
       // Route to correct edge function based on file type
       const fileName = file.name.toLowerCase();
