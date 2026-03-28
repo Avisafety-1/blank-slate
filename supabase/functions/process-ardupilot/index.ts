@@ -135,16 +135,22 @@ Deno.serve(async (req) => {
 /* ────────────────────────────────────────────────────────── */
 
 function normalizeToUnified(raw: any) {
-  const gps: Array<{ time_ms: number; lat: number; lng: number; alt: number; spd: number; nSat?: number }> =
+  const gps: Array<{ time_ms: number; lat: number; lng: number; alt: number; spd: number; nSat?: number; gps_week?: number; gps_ms?: number }> =
     raw.gps || [];
-  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; curr_tot?: number; temp?: number | null }> =
+  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; curr_tot?: number; temp?: number | null; instance?: number }> =
     raw.battery || [];
   const attitude: Array<{ time_ms: number; pitch: number; roll: number; yaw: number }> =
     raw.attitude || [];
   const modes: Array<{ time_ms: number; mode: string; mode_num?: number }> = raw.modes || [];
   const messages: Array<{ time_ms: number; text: string }> = raw.messages || [];
+  const ctun: Array<{ time_ms: number; crt?: number }> = raw.ctun || [];
+  const vibeData: Array<{ time_ms: number; vibe_x: number; vibe_y: number; vibe_z: number; clip0: number; clip1: number; clip2: number }> = raw.vibe || [];
+  const errData: Array<{ time_ms: number; subsys: number; subsys_name: string; ecode: number }> = raw.errors || [];
+  const evData: Array<{ time_ms: number; id: number; name: string }> = raw.events || [];
   const vehicleType: string = raw.vehicle_type || "ArduPilot";
   const firmwareVersion: string | null = raw.firmware_version || null;
+  const startUtc: string | null = raw.start_utc || null;
+  const endUtc: string | null = raw.end_utc || null;
 
   // ── Positions (sample ~2500 max) ──
   const sampleRate = Math.max(1, Math.floor(gps.length / 2500));
@@ -195,24 +201,50 @@ function normalizeToUnified(raw: any) {
     }
   }
 
-  // ── Battery — only use values 0-100 for remaining ──
-  const validBatteryReadings = battery
+  // ── Max vertical speed from CTUN ──
+  let maxVSpeed = 0;
+  for (const c of ctun) {
+    const vs = Math.abs(c.crt || 0); // CRt = climb rate m/s
+    if (vs > maxVSpeed) maxVSpeed = vs;
+  }
+
+  // ── Battery — split by instance for dual-battery ──
+  const batt0 = battery.filter((b) => (b.instance || 0) === 0);
+  const batt1 = battery.filter((b) => (b.instance || 0) === 1);
+  const isDualBattery = batt1.length > 0;
+
+  // Primary battery stats (instance 0, or all if no instance field)
+  const primaryBatt = batt0.length > 0 ? batt0 : battery;
+
+  const validBatteryReadings = primaryBatt
     .map((b) => b.remaining)
     .filter((r): r is number => r != null && r >= 0 && r <= 100);
 
   const minBattery = validBatteryReadings.length > 0 ? Math.min(...validBatteryReadings) : 0;
-  const batteryStart = validBatteryReadings.length > 0 ? validBatteryReadings[0] : 0;
-  const batteryEnd = validBatteryReadings.length > 0 ? validBatteryReadings[validBatteryReadings.length - 1] : 0;
 
   let minVoltage = 999;
   let maxCurrent = 0;
   let maxBatteryTemp: number | null = null;
-  for (const b of battery) {
+  for (const b of primaryBatt) {
     if (b.volt < minVoltage) minVoltage = b.volt;
     if (b.curr && b.curr > maxCurrent) maxCurrent = b.curr;
     if (b.temp != null) {
       if (maxBatteryTemp === null || b.temp > maxBatteryTemp) maxBatteryTemp = b.temp;
     }
+  }
+
+  // Secondary battery stats (instance 1)
+  let batt1MinVoltage: number | null = null;
+  let batt1TempMax: number | null = null;
+  if (isDualBattery) {
+    let v1Min = 999;
+    for (const b of batt1) {
+      if (b.volt < v1Min) v1Min = b.volt;
+      if (b.temp != null) {
+        if (batt1TempMax === null || b.temp > batt1TempMax) batt1TempMax = b.temp;
+      }
+    }
+    batt1MinVoltage = v1Min < 999 ? Math.round(v1Min * 100) / 100 : null;
   }
 
   // ── GPS satellites ──
@@ -248,6 +280,30 @@ function normalizeToUnified(raw: any) {
     });
   }
 
+  // ERR → error events
+  for (const e of errData) {
+    events.push({
+      type: "error",
+      message: `Feil: ${e.subsys_name} (kode ${e.ecode})`,
+      t_offset_ms: e.time_ms - firstTime,
+      raw_field: "ERR",
+      raw_value: `${e.subsys_name}:${e.ecode}`,
+    });
+  }
+
+  // EV → arm/disarm/failsafe events (only important ones)
+  const importantEvIds = new Set([10, 11, 15, 17, 18, 44]); // ARMED, DISARMED, AUTO_ARMED, LAND_COMPLETE_MAYBE, LAND_COMPLETE, LOST_GPS
+  for (const e of evData) {
+    if (!importantEvIds.has(e.id)) continue;
+    events.push({
+      type: e.id === 10 || e.id === 15 ? "arm" : e.id === 11 ? "disarm" : "event",
+      message: e.name,
+      t_offset_ms: e.time_ms - firstTime,
+      raw_field: "EV",
+      raw_value: e.name,
+    });
+  }
+
   // Messages — deduplicate identical text
   const seenMessages = new Set<string>();
   for (const msg of messages) {
@@ -276,6 +332,26 @@ function normalizeToUnified(raw: any) {
     warnings.push({ type: "rth", message: "RTL/Land modus aktivert under flyging" });
   }
 
+  // Vibration warnings
+  if (vibeData.length > 0) {
+    const maxVibe = Math.max(...vibeData.map((v) => Math.max(v.vibe_x, v.vibe_y, v.vibe_z)));
+    const totalClips = vibeData.reduce((sum, v) => sum + v.clip0 + v.clip1 + v.clip2, 0);
+    if (maxVibe > 60) {
+      warnings.push({ type: "high_vibration", message: `Høy vibrasjon registrert: ${Math.round(maxVibe)} m/s²`, value: Math.round(maxVibe) });
+    }
+    if (totalClips > 0) {
+      warnings.push({ type: "imu_clipping", message: `IMU clipping registrert (${totalClips} hendelser)`, value: totalClips });
+    }
+  }
+
+  // Failsafe warnings from ERR
+  const failsafeErrors = errData.filter((e) => e.subsys_name.startsWith("FAILSAFE_"));
+  if (failsafeErrors.length > 0) {
+    for (const f of failsafeErrors) {
+      warnings.push({ type: "failsafe", message: `Failsafe utløst: ${f.subsys_name}` });
+    }
+  }
+
   // ── Positions ──
   const startPosition = positions.length > 0
     ? { lat: positions[0].lat, lng: positions[0].lng }
@@ -284,7 +360,7 @@ function normalizeToUnified(raw: any) {
     ? { lat: positions[positions.length - 1].lat, lng: positions[positions.length - 1].lng }
     : null;
 
-  // ── Aircraft name: use firmware version if available, else vehicleType ──
+  // ── Aircraft name ──
   const aircraftName = firmwareVersion || vehicleType;
 
   return {
@@ -299,12 +375,12 @@ function normalizeToUnified(raw: any) {
     totalRows: gps.length,
     sampledPositions: positions.length,
     warnings,
-    startTime: null,
-    endTimeUtc: null,
+    startTime: startUtc,
+    endTimeUtc: endUtc,
     aircraftName,
     aircraftSN: null,
     aircraftSerial: null,
-    droneType: null, // null to avoid "ArduCopter ArduCopter" duplication in UI
+    droneType: null,
     totalDistance: totalDist > 0 ? Math.round(totalDist) : null,
     maxAltitude: maxAltitude > 0 ? Math.round(maxAltitude * 10) / 10 : null,
     detailsMaxSpeed: maxSpeed > 0 ? Math.round(maxSpeed * 10) / 10 : null,
@@ -321,19 +397,19 @@ function normalizeToUnified(raw: any) {
     batteryStatus: null,
     batteryCellDeviationMax: null,
     maxDistance: maxDist > 0 ? Math.round(maxDist) : null,
-    maxVSpeed: null,
+    maxVSpeed: maxVSpeed > 0 ? Math.round(maxVSpeed * 10) / 10 : null,
     totalTimeSeconds,
     sha256Hash: null,
     guid: null,
     rthTriggered,
     events,
-    isDualBattery: false,
+    isDualBattery,
     battery1Cycles: null,
     battery2Cycles: null,
-    battery1MinVoltage: null,
-    battery2MinVoltage: null,
-    battery1TempMax: null,
-    battery2TempMax: null,
+    battery1MinVoltage: minVoltage < 999 ? Math.round(minVoltage * 100) / 100 : null,
+    battery2MinVoltage: batt1MinVoltage,
+    battery1TempMax: maxBatteryTemp,
+    battery2TempMax: batt1TempMax,
     battery1FullCapacity: null,
     battery2FullCapacity: null,
     battery1CellDeviationMax: null,
