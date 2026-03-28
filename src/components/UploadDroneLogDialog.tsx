@@ -657,7 +657,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         // 1. Upload & parse
         const formData = new FormData();
         formData.append('file', bulkFiles[i]);
-        const bulkIsArduPilot = bulkFiles[i].name.toLowerCase().endsWith('.bin');
+        const bulkFileName = bulkFiles[i].name.toLowerCase();
+        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && bulkFileName.endsWith('.bin'));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
         const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
           method: 'POST',
