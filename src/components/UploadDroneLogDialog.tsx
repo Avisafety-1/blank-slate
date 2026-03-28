@@ -555,11 +555,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     const valid = files.filter(f => {
       const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
-      return ['.txt', '.zip'].includes(ext);
+      return ['.txt', '.zip', '.bin'].includes(ext);
     });
 
     if (valid.length !== files.length) {
-      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
+      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT, ZIP eller BIN.'));
     }
 
     if (valid.length === 0) return;
