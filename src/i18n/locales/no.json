@@ -628,10 +628,10 @@
     "nextInspection": "Neste inspeksjon"
   },
   "dronelog": {
-    "title": "Last opp DJI-flylogg",
+    "title": "Last opp flylogg",
     "logOrUpload": "Logg flytid / Last opp flylogg",
     "logManually": "Logg flytid manuelt",
-    "uploadDjiLog": "Last opp DJI-flylogg",
+    "uploadDjiLog": "Last opp flylogg",
     "selectFile": "Velg flylogg-fil",
     "dropOrClick": "Klikk for å velge fil (TXT eller ZIP)",
     "invalidFileType": "Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).",
