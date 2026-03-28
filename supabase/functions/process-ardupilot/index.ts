@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     const rawData = await parserResponse.json();
     console.log("ArduPilot raw data keys:", Object.keys(rawData));
 
-    const result = normalizeToUnified(rawData);
+    const result = sanitizeResult(normalizeToUnified(rawData));
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -175,8 +175,8 @@ function normalizeToUnified(raw: any) {
   const firstTime = gps.length > 0 ? gps[0].time_ms : 0;
   const lastTime = gps.length > 0 ? gps[gps.length - 1].time_ms : 0;
   const durationMs = lastTime - firstTime;
-  const durationMinutes = Math.round(durationMs / 60000);
-  const totalTimeSeconds = Math.round(durationMs / 1000);
+  const durationMinutes = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : 0;
+  const totalTimeSeconds = Number.isFinite(durationMs) ? Math.round(durationMs / 1000) : 0;
 
   // ── Max speed / altitude / distance ──
   let maxSpeed = 0;
@@ -356,6 +356,23 @@ function interpolateAttitude(
   }
   const closest = attitude[lo];
   return { pitch: closest.pitch, roll: closest.roll, yaw: closest.yaw };
+}
+
+function sanitizeResult(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'number') {
+    if (!Number.isFinite(obj)) return null;
+    return obj;
+  }
+  if (Array.isArray(obj)) return obj.map(sanitizeResult);
+  if (typeof obj === 'object') {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = sanitizeResult(v);
+    }
+    return out;
+  }
+  return obj;
 }
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
