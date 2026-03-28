@@ -617,6 +617,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                      <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
+                    <TableHead className="text-xs sm:text-sm">ArduPilot</TableHead>
                     <TableHead className="text-xs sm:text-sm">DroneTag</TableHead>
                     <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
                     <TableHead className="text-xs sm:text-sm">Sync fra dato</TableHead>
