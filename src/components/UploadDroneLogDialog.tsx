@@ -666,9 +666,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setBulkResults([...results]);
 
       try {
-        // 1. Upload & parse
+        // 1. Upload & parse — read into memory first for cloud-picker compatibility
+        const bulkBuffer = await bulkFiles[i].arrayBuffer();
+        const safeBulkFile = new File([bulkBuffer], bulkFiles[i].name, { type: bulkFiles[i].type });
         const formData = new FormData();
-        formData.append('file', bulkFiles[i]);
+        formData.append('file', safeBulkFile);
         const bulkFileName = bulkFiles[i].name.toLowerCase();
         const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
