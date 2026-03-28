@@ -2061,7 +2061,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            {t('dronelog.title', 'Last opp DJI-flylogg')}
+            {t('dronelog.title', 'Last opp flylogg')}
           </DialogTitle>
         </DialogHeader>
 
