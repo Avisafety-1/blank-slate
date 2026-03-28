@@ -147,6 +147,7 @@ function normalizeToUnified(raw: any) {
   const vibeData: Array<{ time_ms: number; vibe_x: number; vibe_y: number; vibe_z: number; clip0: number; clip1: number; clip2: number }> = raw.vibe || [];
   const errData: Array<{ time_ms: number; subsys: number; subsys_name: string; ecode: number }> = raw.errors || [];
   const evData: Array<{ time_ms: number; id: number; name: string }> = raw.events || [];
+  const rcin: Array<{ time_ms: number; c1: number; c2: number; c3: number; c4: number }> = raw.rcin || [];
   const vehicleType: string = raw.vehicle_type || "ArduPilot";
   const firmwareVersion: string | null = raw.firmware_version || null;
   const startUtc: string | null = raw.start_utc || null;
@@ -169,6 +170,7 @@ function normalizeToUnified(raw: any) {
 
     const att = interpolateAttitude(attitude, p.time_ms);
     const battReading = interpolateBattery(primaryBatt, p.time_ms);
+    const rc = interpolateRcin(rcin, p.time_ms);
 
     const pos: Record<string, any> = {
       lat: p.lat,
@@ -190,6 +192,13 @@ function normalizeToUnified(raw: any) {
       if (battReading.remaining != null && battReading.remaining >= 0 && battReading.remaining <= 100) {
         pos.battery = battReading.remaining;
       }
+    }
+
+    if (rc) {
+      pos.rcAileron = rc.c1;   // Roll
+      pos.rcElevator = rc.c2;  // Pitch
+      pos.rcThrottle = rc.c3;  // Throttle
+      pos.rcRudder = rc.c4;    // Yaw
     }
 
     positions.push(pos);
@@ -459,6 +468,21 @@ function interpolateBattery(
     else hi = mid;
   }
   return battery[lo];
+}
+
+function interpolateRcin(
+  rcin: Array<{ time_ms: number; c1: number; c2: number; c3: number; c4: number }>,
+  timeMs: number
+): { c1: number; c2: number; c3: number; c4: number } | null {
+  if (rcin.length === 0) return null;
+  let lo = 0;
+  let hi = rcin.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (rcin[mid].time_ms < timeMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return rcin[lo];
 }
 
 function sanitizeResult(obj: any): any {

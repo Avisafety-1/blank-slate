@@ -246,6 +246,7 @@ def _parse_bin(path: str) -> dict:
     err_list = []
     ev_list = []
     ctun_list = []
+    rcin_list = []
     params = {}
 
     while True:
@@ -387,6 +388,18 @@ def _parse_bin(path: str) -> dict:
             except Exception:
                 pass
 
+        elif msg_type == "RCIN":
+            try:
+                rcin_list.append({
+                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                    "c1": getattr(msg, "C1", 1500),
+                    "c2": getattr(msg, "C2", 1500),
+                    "c3": getattr(msg, "C3", 1000),
+                    "c4": getattr(msg, "C4", 1500),
+                })
+            except Exception:
+                pass
+
         elif msg_type == "PARM":
             try:
                 params[msg.Name] = msg.Value
@@ -417,6 +430,7 @@ def _parse_bin(path: str) -> dict:
         "errors": err_list,
         "events": ev_list,
         "ctun": ctun_list,
+        "rcin": rcin_list,
         "params": params,
         "vehicle_type": vehicle_type,
         "firmware_version": firmware_version,
