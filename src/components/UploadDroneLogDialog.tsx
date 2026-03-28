@@ -2211,6 +2211,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
+            <div className="space-y-2">
+              <Label>Loggtype</Label>
+              <RadioGroup value={logType} onValueChange={(v) => setLogType(v as 'auto' | 'dji' | 'ardupilot')} className="flex gap-4">
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="auto" id="lt-auto" />
+                  <Label htmlFor="lt-auto" className="cursor-pointer text-sm font-normal">Automatisk</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="dji" id="lt-dji" />
+                  <Label htmlFor="lt-dji" className="cursor-pointer text-sm font-normal">DJI</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="ardupilot" id="lt-ardu" />
+                  <Label htmlFor="lt-ardu" className="cursor-pointer text-sm font-normal">ArduPilot</Label>
+                </div>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">Velg ArduPilot for .zip med .bin-filer. Automatisk gjenkjenner .bin-filer.</p>
+            </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>{t('actions.cancel')}</Button>
               {bulkFiles.length > 1 ? (
