@@ -70,6 +70,7 @@ interface Company {
   dji_auto_sync_enabled: boolean;
   dji_sync_from_date: string | null;
   dronetag_enabled: boolean;
+  ardupilot_enabled: boolean;
   parent_company_id: string | null;
 }
 
@@ -81,6 +82,7 @@ const MobileCompanyCard = ({
   onToggleDji,
   onToggleAutoSync,
   onToggleDronetag,
+  onToggleArdupilot,
   onSyncDateChange,
   onEdit,
   onDelete,
@@ -91,6 +93,7 @@ const MobileCompanyCard = ({
   onToggleDji: (company: Company) => void;
   onToggleAutoSync: (company: Company) => void;
   onToggleDronetag: (company: Company) => void;
+  onToggleArdupilot: (company: Company) => void;
   onSyncDateChange: (company: Company, date: Date | undefined) => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
@@ -113,6 +116,9 @@ const MobileCompanyCard = ({
               )}
               {company.dji_flightlog_enabled && (
                 <Badge variant="outline" className="text-xs">DJI</Badge>
+              )}
+              {company.ardupilot_enabled && (
+                <Badge variant="outline" className="text-xs">ArduPilot</Badge>
               )}
               {company.dronetag_enabled && (
                 <Badge variant="outline" className="text-xs">DroneTag</Badge>
@@ -193,6 +199,13 @@ const MobileCompanyCard = ({
                       onCheckedChange={() => onToggleDji(company)}
                     />
                     <Label className="text-sm">DJI Flylogg</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={company.ardupilot_enabled}
+                      onCheckedChange={() => onToggleArdupilot(company)}
+                    />
+                    <Label className="text-sm">ArduPilot</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -410,6 +423,25 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleToggleArdupilot = async (company: Company) => {
+    const newValue = !company.ardupilot_enabled;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, ardupilot_enabled: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ ardupilot_enabled: newValue } as any)
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? "ArduPilot aktivert" : "ArduPilot deaktivert");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, ardupilot_enabled: !newValue } : c));
+      console.error("Error toggling ArduPilot status:", error);
+      toast.error("Kunne ikke oppdatere ArduPilot-status");
+    }
+  };
+
   const handleToggleAutoSync = async (company: Company) => {
     const newValue = !company.dji_auto_sync_enabled;
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: newValue } : c));
@@ -564,6 +596,7 @@ export const CompanyManagementSection = () => {
                 onToggleDji={handleToggleDji}
                 onToggleAutoSync={handleToggleAutoSync}
                 onToggleDronetag={handleToggleDronetag}
+                onToggleArdupilot={handleToggleArdupilot}
                 onSyncDateChange={handleSyncDateChange}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
@@ -584,6 +617,7 @@ export const CompanyManagementSection = () => {
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
                      <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
+                    <TableHead className="text-xs sm:text-sm">ArduPilot</TableHead>
                     <TableHead className="text-xs sm:text-sm">DroneTag</TableHead>
                     <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
                     <TableHead className="text-xs sm:text-sm">Sync fra dato</TableHead>
@@ -670,7 +704,7 @@ export const CompanyManagementSection = () => {
                         </div>
                       </TableCell>
                       {company.parent_company_id ? (
-                        <TableCell colSpan={5}>
+                        <TableCell colSpan={6}>
                           <span className="text-xs text-muted-foreground italic">Arvet fra morselskap</span>
                         </TableCell>
                       ) : (
@@ -703,6 +737,22 @@ export const CompanyManagementSection = () => {
                                   className="text-xs"
                                 >
                                   {company.dji_flightlog_enabled ? "På" : "Av"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={company.ardupilot_enabled}
+                                onCheckedChange={() => handleToggleArdupilot(company)}
+                              />
+                              <Label className="cursor-pointer">
+                                <Badge
+                                  variant={company.ardupilot_enabled ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {company.ardupilot_enabled ? "På" : "Av"}
                                 </Badge>
                               </Label>
                             </div>

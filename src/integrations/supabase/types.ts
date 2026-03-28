@@ -386,6 +386,7 @@ export type Database = {
           adresse_lat: number | null
           adresse_lon: number | null
           aktiv: boolean
+          ardupilot_enabled: boolean
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
           billing_user_id: string | null
@@ -418,6 +419,7 @@ export type Database = {
           adresse_lat?: number | null
           adresse_lon?: number | null
           aktiv?: boolean
+          ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
@@ -450,6 +452,7 @@ export type Database = {
           adresse_lat?: number | null
           adresse_lon?: number | null
           aktiv?: boolean
+          ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
