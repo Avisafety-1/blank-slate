@@ -58,7 +58,6 @@ Deno.serve(async (req) => {
     let binData: Uint8Array;
 
     if (fileName.endsWith(".zip")) {
-      // Extract .bin from zip
       const { default: JSZip } = await import("npm:jszip@3.10.1");
       const zip = await JSZip.loadAsync(await file.arrayBuffer());
       const binEntry = Object.keys(zip.files).find(
@@ -117,7 +116,6 @@ Deno.serve(async (req) => {
     const rawData = await parserResponse.json();
     console.log("ArduPilot raw data keys:", Object.keys(rawData));
 
-    // ── NORMALIZE to DroneLogResult format ──
     const result = normalizeToUnified(rawData);
 
     return new Response(JSON.stringify(result), {
@@ -132,22 +130,23 @@ Deno.serve(async (req) => {
   }
 });
 
-/**
- * Normalize raw ArduPilot parser output to the exact same DroneLogResult
- * format that process-dronelog returns for DJI logs.
- */
+/* ────────────────────────────────────────────────────────── */
+/*  Normalize raw ArduPilot parser output → DroneLogResult   */
+/* ────────────────────────────────────────────────────────── */
+
 function normalizeToUnified(raw: any) {
   const gps: Array<{ time_ms: number; lat: number; lng: number; alt: number; spd: number; nSat?: number }> =
     raw.gps || [];
-  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number }> =
+  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; curr_tot?: number; temp?: number | null }> =
     raw.battery || [];
   const attitude: Array<{ time_ms: number; pitch: number; roll: number; yaw: number }> =
     raw.attitude || [];
-  const modes: Array<{ time_ms: number; mode: string }> = raw.modes || [];
+  const modes: Array<{ time_ms: number; mode: string; mode_num?: number }> = raw.modes || [];
   const messages: Array<{ time_ms: number; text: string }> = raw.messages || [];
   const vehicleType: string = raw.vehicle_type || "ArduPilot";
+  const firmwareVersion: string | null = raw.firmware_version || null;
 
-  // Build positions array (sample ~2500 points max)
+  // ── Positions (sample ~2500 max) ──
   const sampleRate = Math.max(1, Math.floor(gps.length / 2500));
   const positions: Array<Record<string, any>> = [];
 
@@ -156,14 +155,13 @@ function normalizeToUnified(raw: any) {
     const p = gps[i];
     if (!p.lat || !p.lng || (p.lat === 0 && p.lng === 0)) continue;
 
-    // Interpolate attitude to this timestamp
     const att = interpolateAttitude(attitude, p.time_ms);
 
     positions.push({
       lat: p.lat,
       lng: p.lng,
       alt: p.alt || 0,
-      height: p.alt || 0, // ArduPilot GPS alt is typically relative
+      height: p.alt || 0,
       timestamp: `PT${Math.round(p.time_ms / 1000)}S`,
       speed: p.spd || 0,
       pitch: att?.pitch || 0,
@@ -173,14 +171,14 @@ function normalizeToUnified(raw: any) {
     });
   }
 
-  // Duration
+  // ── Duration ──
   const firstTime = gps.length > 0 ? gps[0].time_ms : 0;
   const lastTime = gps.length > 0 ? gps[gps.length - 1].time_ms : 0;
   const durationMs = lastTime - firstTime;
-  const durationMinutes = durationMs / 60000;
-  const totalTimeSeconds = durationMs / 1000;
+  const durationMinutes = Math.round((durationMs / 60000) * 10) / 10;
+  const totalTimeSeconds = Math.round(durationMs / 1000);
 
-  // Max speed / altitude
+  // ── Max speed / altitude / distance ──
   let maxSpeed = 0;
   let maxAltitude = 0;
   let totalDist = 0;
@@ -189,7 +187,6 @@ function normalizeToUnified(raw: any) {
   for (let i = 0; i < gps.length; i++) {
     if (gps[i].spd > maxSpeed) maxSpeed = gps[i].spd;
     if (gps[i].alt > maxAltitude) maxAltitude = gps[i].alt;
-
     if (i > 0 && gps[0].lat && gps[0].lng) {
       const d = haversine(gps[i].lat, gps[i].lng, gps[i - 1].lat, gps[i - 1].lng);
       totalDist += d;
@@ -198,24 +195,27 @@ function normalizeToUnified(raw: any) {
     }
   }
 
-  // Battery readings
-  const batteryReadings = battery.map((b) => b.remaining ?? 0);
-  const minBattery =
-    batteryReadings.length > 0 ? Math.min(...batteryReadings) : 0;
-  const batteryStart =
-    batteryReadings.length > 0 ? batteryReadings[0] : 0;
-  const batteryEnd =
-    batteryReadings.length > 0 ? batteryReadings[batteryReadings.length - 1] : 0;
+  // ── Battery — only use values 0-100 for remaining ──
+  const validBatteryReadings = battery
+    .map((b) => b.remaining)
+    .filter((r): r is number => r != null && r >= 0 && r <= 100);
 
-  // Min/max voltage
+  const minBattery = validBatteryReadings.length > 0 ? Math.min(...validBatteryReadings) : 0;
+  const batteryStart = validBatteryReadings.length > 0 ? validBatteryReadings[0] : 0;
+  const batteryEnd = validBatteryReadings.length > 0 ? validBatteryReadings[validBatteryReadings.length - 1] : 0;
+
   let minVoltage = 999;
   let maxCurrent = 0;
+  let maxBatteryTemp: number | null = null;
   for (const b of battery) {
     if (b.volt < minVoltage) minVoltage = b.volt;
     if (b.curr && b.curr > maxCurrent) maxCurrent = b.curr;
+    if (b.temp != null) {
+      if (maxBatteryTemp === null || b.temp > maxBatteryTemp) maxBatteryTemp = b.temp;
+    }
   }
 
-  // GPS satellites
+  // ── GPS satellites ──
   let minGpsSats = 99;
   let maxGpsSats = 0;
   for (const p of gps) {
@@ -225,7 +225,7 @@ function normalizeToUnified(raw: any) {
     }
   }
 
-  // Events from mode changes and messages
+  // ── Events (deduplicated) ──
   const events: Array<{
     type: string;
     message: string;
@@ -234,7 +234,11 @@ function normalizeToUnified(raw: any) {
     raw_value: string;
   }> = [];
 
+  // Mode changes — deduplicate consecutive same modes
+  let lastMode = "";
   for (const m of modes) {
+    if (m.mode === lastMode) continue;
+    lastMode = m.mode;
     events.push({
       type: "mode_change",
       message: `Modus: ${m.mode}`,
@@ -244,7 +248,11 @@ function normalizeToUnified(raw: any) {
     });
   }
 
+  // Messages — deduplicate identical text
+  const seenMessages = new Set<string>();
   for (const msg of messages) {
+    if (seenMessages.has(msg.text)) continue;
+    seenMessages.add(msg.text);
     events.push({
       type: "message",
       message: msg.text,
@@ -254,63 +262,53 @@ function normalizeToUnified(raw: any) {
     });
   }
 
-  // RTH detection
+  // ── RTH detection ──
   const rthTriggered = modes.some((m) =>
-    ["rtl", "smartrtl", "land", "brake"].includes(m.mode.toLowerCase())
+    ["rtl", "smartrtl", "smart_rtl", "land", "brake", "auto_rtl"].includes(m.mode.toLowerCase())
   );
 
-  // Warnings
+  // ── Warnings ──
   const warnings: Array<{ type: string; message: string; value?: number }> = [];
-  if (minBattery < 20 && minBattery > 0) {
-    warnings.push({
-      type: "low_battery",
-      message: `Lavt batterinivå: ${minBattery}%`,
-      value: minBattery,
-    });
+  if (minBattery > 0 && minBattery < 20) {
+    warnings.push({ type: "low_battery", message: `Lavt batterinivå: ${minBattery}%`, value: minBattery });
   }
   if (rthTriggered) {
-    warnings.push({
-      type: "rth",
-      message: "RTL/Land modus aktivert under flyging",
-    });
+    warnings.push({ type: "rth", message: "RTL/Land modus aktivert under flyging" });
   }
 
-  // Start/end positions
-  const startPosition =
-    positions.length > 0
-      ? { lat: positions[0].lat, lng: positions[0].lng }
-      : null;
-  const endPosition =
-    positions.length > 0
-      ? {
-          lat: positions[positions.length - 1].lat,
-          lng: positions[positions.length - 1].lng,
-        }
-      : null;
+  // ── Positions ──
+  const startPosition = positions.length > 0
+    ? { lat: positions[0].lat, lng: positions[0].lng }
+    : null;
+  const endPosition = positions.length > 0
+    ? { lat: positions[positions.length - 1].lat, lng: positions[positions.length - 1].lng }
+    : null;
 
-  // Build the exact same shape as DroneLogResult
+  // ── Aircraft name: use firmware version if available, else vehicleType ──
+  const aircraftName = firmwareVersion || vehicleType;
+
   return {
     positions,
     durationMinutes,
     durationMs,
-    maxSpeed,
+    maxSpeed: Math.round(maxSpeed * 10) / 10,
     minBattery,
-    batteryReadings,
+    batteryReadings: validBatteryReadings,
     startPosition,
     endPosition,
     totalRows: gps.length,
     sampledPositions: positions.length,
     warnings,
-    startTime: null, // ArduPilot .bin doesn't have absolute timestamps easily
+    startTime: null,
     endTimeUtc: null,
-    aircraftName: vehicleType,
+    aircraftName,
     aircraftSN: null,
     aircraftSerial: null,
-    droneType: vehicleType,
+    droneType: null, // null to avoid "ArduCopter ArduCopter" duplication in UI
     totalDistance: totalDist > 0 ? Math.round(totalDist) : null,
     maxAltitude: maxAltitude > 0 ? Math.round(maxAltitude * 10) / 10 : null,
     detailsMaxSpeed: maxSpeed > 0 ? Math.round(maxSpeed * 10) / 10 : null,
-    batteryTemperature: null,
+    batteryTemperature: maxBatteryTemp,
     batteryTempMin: null,
     batteryMinVoltage: minVoltage < 999 ? Math.round(minVoltage * 100) / 100 : null,
     batteryCycles: null,
@@ -324,12 +322,11 @@ function normalizeToUnified(raw: any) {
     batteryCellDeviationMax: null,
     maxDistance: maxDist > 0 ? Math.round(maxDist) : null,
     maxVSpeed: null,
-    totalTimeSeconds: Math.round(totalTimeSeconds),
-    sha256Hash: null, // Could compute from file, but parser should provide
+    totalTimeSeconds,
+    sha256Hash: null,
     guid: null,
     rthTriggered,
     events,
-    // No dual-battery for ArduPilot (simplified)
     isDualBattery: false,
     battery1Cycles: null,
     battery2Cycles: null,
@@ -341,21 +338,15 @@ function normalizeToUnified(raw: any) {
     battery2FullCapacity: null,
     battery1CellDeviationMax: null,
     battery2CellDeviationMax: null,
-    // Source marker
     source: "ardupilot",
   };
 }
 
-/**
- * Interpolate attitude data to a given GPS timestamp.
- */
 function interpolateAttitude(
   attitude: Array<{ time_ms: number; pitch: number; roll: number; yaw: number }>,
   timeMs: number
 ): { pitch: number; roll: number; yaw: number } | null {
   if (attitude.length === 0) return null;
-
-  // Binary search for closest
   let lo = 0;
   let hi = attitude.length - 1;
   while (lo < hi) {
@@ -363,14 +354,10 @@ function interpolateAttitude(
     if (attitude[mid].time_ms < timeMs) lo = mid + 1;
     else hi = mid;
   }
-
   const closest = attitude[lo];
   return { pitch: closest.pitch, roll: closest.roll, yaw: closest.yaw };
 }
 
-/**
- * Haversine distance in meters.
- */
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;

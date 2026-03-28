@@ -15,6 +15,35 @@ app = Flask(__name__)
 
 PARSER_SECRET = os.environ.get("PARSER_SECRET", "")
 
+# ArduCopter flight mode mapping
+COPTER_MODES = {
+    0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
+    4: "GUIDED", 5: "LOITER", 6: "RTL", 7: "CIRCLE",
+    8: "POSITION", 9: "LAND", 10: "OF_LOITER", 11: "DRIFT",
+    13: "SPORT", 14: "FLIP", 15: "AUTOTUNE", 16: "POSHOLD",
+    17: "BRAKE", 18: "THROW", 19: "AVOID_ADSB", 20: "GUIDED_NOGPS",
+    21: "SMART_RTL", 22: "FLOWHOLD", 23: "FOLLOW", 24: "ZIGZAG",
+    25: "SYSTEMID", 26: "AUTOROTATE", 27: "AUTO_RTL",
+}
+
+# ArduPlane flight mode mapping
+PLANE_MODES = {
+    0: "MANUAL", 1: "CIRCLE", 2: "STABILIZE", 3: "TRAINING",
+    4: "ACRO", 5: "FLY_BY_WIRE_A", 6: "FLY_BY_WIRE_B",
+    7: "CRUISE", 8: "AUTOTUNE", 10: "AUTO", 11: "RTL",
+    12: "LOITER", 14: "AVOID_ADSB", 15: "GUIDED",
+    17: "QSTABILIZE", 18: "QHOVER", 19: "QLOITER",
+    20: "QLAND", 21: "QRTL", 22: "QAUTOTUNE", 23: "QACRO",
+    24: "THERMAL",
+}
+
+# Message prefixes to skip (boot/system noise)
+SKIP_MSG_PREFIXES = [
+    "gimbal ", "fmuv", "chibios", "u-blox", "gps 1:", "ekf",
+    "frame:", "rcout:", "barometer", "compass", "imu", "ins",
+    "terrain:", "rally", "fence", "param ",
+]
+
 
 @app.route("/", methods=["GET"])
 def root():
@@ -59,6 +88,15 @@ def parse():
         os.unlink(tmp_path)
 
 
+def _should_skip_message(text: str) -> bool:
+    """Return True if this MSG should be filtered out."""
+    lower = text.lower().strip()
+    for prefix in SKIP_MSG_PREFIXES:
+        if lower.startswith(prefix):
+            return True
+    return False
+
+
 def _parse_bin(path: str) -> dict:
     from pymavlink import mavutil
 
@@ -71,6 +109,7 @@ def _parse_bin(path: str) -> dict:
     messages_list = []
     params = {}
     vehicle_type = "ArduPilot"
+    firmware_version = None
 
     while True:
         msg = mlog.recv_match(blocking=False)
@@ -98,7 +137,9 @@ def _parse_bin(path: str) -> dict:
                     "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
                     "volt": msg.Volt,
                     "curr": getattr(msg, "Curr", None),
-                    "remaining": getattr(msg, "CurrTot", getattr(msg, "EnrgTot", None)),
+                    "remaining": getattr(msg, "Rem", None),
+                    "curr_tot": getattr(msg, "CurrTot", None),
+                    "temp": getattr(msg, "Temp", None),
                 })
             except Exception:
                 pass
@@ -116,20 +157,47 @@ def _parse_bin(path: str) -> dict:
 
         elif msg_type == "MODE":
             try:
-                mode_name = getattr(msg, "Mode", str(getattr(msg, "ModeNum", "?")))
+                mode_num = getattr(msg, "ModeNum", None)
+                mode_name = getattr(msg, "Mode", None)
+
+                # Try to resolve numeric mode to human-readable name
+                if mode_num is not None:
+                    resolved = COPTER_MODES.get(mode_num)
+                    if resolved is None:
+                        resolved = PLANE_MODES.get(mode_num)
+                    if resolved:
+                        mode_name = resolved
+                    elif mode_name is None:
+                        mode_name = f"MODE_{mode_num}"
+
+                if mode_name is None:
+                    mode_name = "UNKNOWN"
+
                 modes_list.append({
                     "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
                     "mode": str(mode_name),
+                    "mode_num": mode_num,
                 })
             except Exception:
                 pass
 
         elif msg_type == "MSG":
             try:
-                messages_list.append({
-                    "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
-                    "text": msg.Message,
-                })
+                text = msg.Message
+                # Extract firmware version
+                txt_lower = text.lower()
+                if firmware_version is None:
+                    for tag in ("arducopter", "arduplane", "ardurover", "ardusub"):
+                        if tag in txt_lower:
+                            firmware_version = text.strip()
+                            break
+
+                # Filter out noise
+                if not _should_skip_message(text):
+                    messages_list.append({
+                        "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
+                        "text": text,
+                    })
             except Exception:
                 pass
 
@@ -139,21 +207,32 @@ def _parse_bin(path: str) -> dict:
             except Exception:
                 pass
 
-    # Detect vehicle type from params or messages
-    for m in messages_list:
-        txt = m.get("text", "").lower()
-        if "arducopter" in txt:
+    # Detect vehicle type from firmware_version or messages
+    if firmware_version:
+        fl = firmware_version.lower()
+        if "arducopter" in fl:
             vehicle_type = "ArduCopter"
-            break
-        elif "arduplane" in txt:
+        elif "arduplane" in fl:
             vehicle_type = "ArduPlane"
-            break
-        elif "ardurover" in txt:
+        elif "ardurover" in fl:
             vehicle_type = "ArduRover"
-            break
-        elif "ardusub" in txt:
+        elif "ardusub" in fl:
             vehicle_type = "ArduSub"
-            break
+    else:
+        for m in messages_list:
+            txt = m.get("text", "").lower()
+            if "arducopter" in txt:
+                vehicle_type = "ArduCopter"
+                break
+            elif "arduplane" in txt:
+                vehicle_type = "ArduPlane"
+                break
+            elif "ardurover" in txt:
+                vehicle_type = "ArduRover"
+                break
+            elif "ardusub" in txt:
+                vehicle_type = "ArduSub"
+                break
 
     return {
         "gps": gps_list,
@@ -163,6 +242,7 @@ def _parse_bin(path: str) -> dict:
         "messages": messages_list,
         "params": params,
         "vehicle_type": vehicle_type,
+        "firmware_version": firmware_version,
     }
 
 
