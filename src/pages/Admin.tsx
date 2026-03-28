@@ -1381,7 +1381,7 @@ const Admin = () => {
 
           {!isChildCompany && (
             <TabsContent value="training" className="mt-4 sm:mt-8">
-              {isSuperAdmin || departmentsEnabled ? (
+              {isSuperAdmin ? (
                 <TrainingSection />
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
