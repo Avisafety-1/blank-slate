@@ -135,16 +135,22 @@ Deno.serve(async (req) => {
 /* ────────────────────────────────────────────────────────── */
 
 function normalizeToUnified(raw: any) {
-  const gps: Array<{ time_ms: number; lat: number; lng: number; alt: number; spd: number; nSat?: number }> =
+  const gps: Array<{ time_ms: number; lat: number; lng: number; alt: number; spd: number; nSat?: number; gps_week?: number; gps_ms?: number }> =
     raw.gps || [];
-  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; curr_tot?: number; temp?: number | null }> =
+  const battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; curr_tot?: number; temp?: number | null; instance?: number }> =
     raw.battery || [];
   const attitude: Array<{ time_ms: number; pitch: number; roll: number; yaw: number }> =
     raw.attitude || [];
   const modes: Array<{ time_ms: number; mode: string; mode_num?: number }> = raw.modes || [];
   const messages: Array<{ time_ms: number; text: string }> = raw.messages || [];
+  const ctun: Array<{ time_ms: number; crt?: number }> = raw.ctun || [];
+  const vibeData: Array<{ time_ms: number; vibe_x: number; vibe_y: number; vibe_z: number; clip0: number; clip1: number; clip2: number }> = raw.vibe || [];
+  const errData: Array<{ time_ms: number; subsys: number; subsys_name: string; ecode: number }> = raw.errors || [];
+  const evData: Array<{ time_ms: number; id: number; name: string }> = raw.events || [];
   const vehicleType: string = raw.vehicle_type || "ArduPilot";
   const firmwareVersion: string | null = raw.firmware_version || null;
+  const startUtc: string | null = raw.start_utc || null;
+  const endUtc: string | null = raw.end_utc || null;
 
   // ── Positions (sample ~2500 max) ──
   const sampleRate = Math.max(1, Math.floor(gps.length / 2500));
