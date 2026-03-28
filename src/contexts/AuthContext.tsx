@@ -51,6 +51,7 @@ interface AuthContextType {
   companyLon: number | null;
   isSuperAdmin: boolean;
   djiFlightlogEnabled: boolean;
+  ardupilotFlightlogEnabled: boolean;
   departmentsEnabled: boolean;
   isAdmin: boolean;
   isApproved: boolean;
