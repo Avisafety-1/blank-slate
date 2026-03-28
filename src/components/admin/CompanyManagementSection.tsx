@@ -117,6 +117,9 @@ const MobileCompanyCard = ({
               {company.dji_flightlog_enabled && (
                 <Badge variant="outline" className="text-xs">DJI</Badge>
               )}
+              {company.ardupilot_enabled && (
+                <Badge variant="outline" className="text-xs">ArduPilot</Badge>
+              )}
               {company.dronetag_enabled && (
                 <Badge variant="outline" className="text-xs">DroneTag</Badge>
               )}
