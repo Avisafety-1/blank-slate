@@ -1601,10 +1601,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
-        tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
+        tittel: `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
         lokasjon: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
-        beskrivelse: `Importert fra DJI flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
+        beskrivelse: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'} flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
         latitude: result.startPosition?.lat ?? null,
         longitude: result.startPosition?.lng ?? null,
       }).select('id').single();
