@@ -164,26 +164,14 @@ interface UploadDroneLogDialogProps {
 // ── Helper: call edge function with JSON ──
 
 async function callDronelogAction(action: string, payload: Record<string, unknown>) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
-
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const res = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ action, ...payload }),
+  const { data, error } = await supabase.functions.invoke('process-dronelog', {
+    body: { action, ...payload },
   });
-
-  const data = await res.json();
-  if (!res.ok) {
-    // Attach upstream status info for richer error handling
-    const err: any = new Error(data.error || data.message || "Request failed");
-    err.upstreamStatus = data.upstreamStatus || res.status;
-    err.retryAfter = data.retryAfter;
-    err.remaining = data.remaining;
+  if (error) {
+    const err: any = new Error(error.message || "Request failed");
+    err.upstreamStatus = (data as any)?.upstreamStatus || 0;
+    err.retryAfter = (data as any)?.retryAfter;
+    err.remaining = (data as any)?.remaining;
     throw err;
   }
   return data;
