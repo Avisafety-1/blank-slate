@@ -440,6 +440,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin: isAdmin,
         isSuperAdmin: isSuperAdmin,
         djiFlightlogEnabled: false,
+        ardupilotFlightlogEnabled: false,
         stripeExempt: false,
         departmentsEnabled: false,
       };
