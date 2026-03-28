@@ -180,6 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsApproved(false);
     setProfileLoaded(false);
     setDjiFlightlogEnabled(false);
+    setArdupilotFlightlogEnabled(false);
     setDepartmentsEnabled(false);
     setUserRole(null);
     setStripeExempt(false);
