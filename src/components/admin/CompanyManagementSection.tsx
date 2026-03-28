@@ -202,6 +202,13 @@ const MobileCompanyCard = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
+                      checked={company.ardupilot_enabled}
+                      onCheckedChange={() => onToggleArdupilot(company)}
+                    />
+                    <Label className="text-sm">ArduPilot</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
                       checked={company.dronetag_enabled}
                       onCheckedChange={() => onToggleDronetag(company)}
                     />
