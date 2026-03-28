@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     const rawData = await parserResponse.json();
     console.log("ArduPilot raw data keys:", Object.keys(rawData));
 
-    const result = normalizeToUnified(rawData);
+    const result = sanitizeResult(normalizeToUnified(rawData));
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
