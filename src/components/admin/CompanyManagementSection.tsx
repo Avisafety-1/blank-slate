@@ -596,6 +596,7 @@ export const CompanyManagementSection = () => {
                 onToggleDji={handleToggleDji}
                 onToggleAutoSync={handleToggleAutoSync}
                 onToggleDronetag={handleToggleDronetag}
+                onToggleArdupilot={handleToggleArdupilot}
                 onSyncDateChange={handleSyncDateChange}
                 onEdit={handleEditCompany}
                 onDelete={handleDeleteClick}
