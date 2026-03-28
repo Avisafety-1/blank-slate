@@ -513,7 +513,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     modell: result?.aircraftName || result?.droneType || '',
     serienummer: unmatchedDroneSN,
     internal_serial: unmatchedDroneSN,
-    merknader: 'Importert fra DJI-logg',
+    merknader: (result as any)?.source === 'ardupilot' ? 'Importert fra ArduPilot-logg' : 'Importert fra DJI-logg',
   } : undefined;
 
   const fetchDrones = async () => {
@@ -555,11 +555,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     const valid = files.filter(f => {
       const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
-      return ['.txt', '.zip'].includes(ext);
+      return ['.txt', '.zip', '.bin'].includes(ext);
     });
 
     if (valid.length !== files.length) {
-      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT eller ZIP (DJI-format).'));
+      toast.error(t('dronelog.invalidFileType', 'Ugyldig filtype. Bruk TXT, ZIP eller BIN.'));
     }
 
     if (valid.length === 0) return;
@@ -589,7 +589,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
+      // Route to correct edge function based on file type
+      const isArduPilot = file.name.toLowerCase().endsWith('.bin');
+      const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
@@ -650,7 +654,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         // 1. Upload & parse
         const formData = new FormData();
         formData.append('file', bulkFiles[i]);
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/process-dronelog`, {
+        const bulkIsArduPilot = bulkFiles[i].name.toLowerCase().endsWith('.bin');
+        const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}` },
           body: formData,
@@ -713,6 +719,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_battery_id: batteryId,
             status: 'pending',
             parsed_result: data as any,
+            source_file_type: (data as any)?.source === 'ardupilot' ? 'ardupilot' : 'dji',
           } as any);
 
         if (insertError) throw new Error(insertError.message);
@@ -2197,7 +2204,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.zip" multiple className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             <DialogFooter>
