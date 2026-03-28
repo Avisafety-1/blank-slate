@@ -1,22 +1,38 @@
 
 
-## Fix: «Kunne ikke opprette oppdrag» — desimaltall i heltallskolonne
+## Fix: Sanitere ArduPilot-data før flight_logs insert
 
 ### Problem
-Konsollfeilen sier: `invalid input syntax for type integer: "10.6"`
+ArduPilot-data går allerede gjennom **nøyaktig samme insert-logikk** som DJI (linje 1622-1630 i `UploadDroneLogDialog.tsx`). Problemet er at edge function returnerer verdier som er ugyldige for databasen — f.eks. `NaN`, `Infinity`, eller sentinel-verdier som `999`/`-999` som lekker gjennom `buildExtendedFields`.
 
-Edge function `process-ardupilot` beregner `durationMinutes` med 1 desimal (`Math.round(x * 10) / 10` = `10.6`), men databasekolonnen `flight_logs.flight_duration_minutes` er av typen `integer`. Når frontenden prøver å lagre denne verdien, feiler INSERT-et.
+### Rot-årsak i edge function
+I `process-ardupilot/index.ts` settes f.eks.:
+- `minVoltage` starter som `999` og sjekkes med `< 999`, men kan lekke
+- `maxBatteryTemp` kan bli `-999` via dual-battery worst-case i frontend
+- `durationMinutes` kan bli `NaN` hvis ingen GPS-data
+- Diverse felter kan bli `Infinity` fra beregninger
 
-### Fix
-**`supabase/functions/process-ardupilot/index.ts`** linje 178:
+### Løsning
+**Én endring i `supabase/functions/process-ardupilot/index.ts`**: Legg til en sanitizer-funksjon som rydder hele returverdien før den sendes til frontend. Denne konverterer:
+- `NaN` → `null`
+- `Infinity` → `null`  
+- `-Infinity` → `null`
 
-```text
-// Nå:
-const durationMinutes = Math.round((durationMs / 60000) * 10) / 10;
+Pluss eksplisitt sikre at alle numeriske felter som sendes er enten gyldige tall eller `null`.
 
-// Endres til:
-const durationMinutes = Math.round(durationMs / 60000);
+### Filer som endres
+
+| Fil | Endring |
+|-----|---------|
+| `supabase/functions/process-ardupilot/index.ts` | Legg til `sanitize()`-funksjon som kjøres på hele resultatet før `return`. Sikre at `durationMinutes` aldri er `NaN`, at `minVoltage`/`maxBatteryTemp` sentinel-verdier erstattes med `null`. |
+
+### Konkret
+```typescript
+function sanitizeValue(v: any): any {
+  if (typeof v === 'number' && (!Number.isFinite(v))) return null;
+  return v;
+}
 ```
 
-En enkelt linje-endring. Edge function deployes automatisk.
+Kjøres rekursivt på hele result-objektet. I tillegg: sikre at `totalTimeSeconds` og `durationMinutes` har fallback til `0` (ikke `NaN`).
 
