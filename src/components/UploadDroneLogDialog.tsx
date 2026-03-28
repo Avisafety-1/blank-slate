@@ -2529,7 +2529,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
                 <p className={`font-semibold ${result.minBattery >= 0 && result.minBattery < 20 ? 'text-destructive' : ''}`}>
-                  {result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
+                  {(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage
+                    ? `${result.batteryMinVoltage}V`
+                    : result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
