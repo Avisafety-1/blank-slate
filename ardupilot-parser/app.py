@@ -377,12 +377,12 @@ def _parse_bin(path: str) -> dict:
             try:
                 ctun_list.append({
                     "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
-                    "alt": getattr(msg, "Alt", 0),
-                    "dalt": getattr(msg, "DAlt", 0),
-                    "thi": getattr(msg, "ThI", 0),
-                    "tho": getattr(msg, "ThO", 0),
-                    "crt": getattr(msg, "CRt", 0),
-                    "dsalt": getattr(msg, "DSAlt", 0),
+                    "alt": _safe_float(getattr(msg, "Alt", 0)),
+                    "dalt": _safe_float(getattr(msg, "DAlt", 0)),
+                    "thi": _safe_float(getattr(msg, "ThI", 0)),
+                    "tho": _safe_float(getattr(msg, "ThO", 0)),
+                    "crt": _safe_float(getattr(msg, "CRt", 0)),
+                    "dsalt": _safe_float(getattr(msg, "DSAlt", 0)),
                 })
             except Exception:
                 pass
