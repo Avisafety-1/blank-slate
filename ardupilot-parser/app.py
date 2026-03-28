@@ -98,6 +98,22 @@ SKIP_MSG_PREFIXES = [
 ]
 
 
+def _json_default(obj):
+    """Handle non-serializable types for json.dumps."""
+    if isinstance(obj, float) and (_math.isnan(obj) or _math.isinf(obj)):
+        return None
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def _safe_float(val):
+    """Return None for NaN/Inf, otherwise the float."""
+    if val is None:
+        return None
+    if isinstance(val, float) and (_math.isnan(val) or _math.isinf(val)):
+        return None
+    return val
+
+
 def _gps_to_utc_iso(gps_week, gps_ms):
     """Convert GPS week number + milliseconds to ISO 8601 UTC string."""
     if gps_week is None or gps_ms is None:
