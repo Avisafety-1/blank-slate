@@ -175,8 +175,8 @@ function normalizeToUnified(raw: any) {
   const firstTime = gps.length > 0 ? gps[0].time_ms : 0;
   const lastTime = gps.length > 0 ? gps[gps.length - 1].time_ms : 0;
   const durationMs = lastTime - firstTime;
-  const durationMinutes = Math.round(durationMs / 60000);
-  const totalTimeSeconds = Math.round(durationMs / 1000);
+  const durationMinutes = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : 0;
+  const totalTimeSeconds = Number.isFinite(durationMs) ? Math.round(durationMs / 1000) : 0;
 
   // ── Max speed / altitude / distance ──
   let maxSpeed = 0;
