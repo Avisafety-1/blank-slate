@@ -263,6 +263,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
+  const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
 
   // Logbook state
   const [pilotId, setPilotId] = useState("");
@@ -452,6 +453,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
     setSyncJustTriggered(false);
+    setLogType('auto');
   };
 
   // ── Battery matching helper ──
@@ -590,7 +592,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       formData.append('file', file);
 
       // Route to correct edge function based on file type
-      const isArduPilot = file.name.toLowerCase().endsWith('.bin');
+      const fileName = file.name.toLowerCase();
+      const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && fileName.endsWith('.bin'));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
@@ -654,7 +657,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         // 1. Upload & parse
         const formData = new FormData();
         formData.append('file', bulkFiles[i]);
-        const bulkIsArduPilot = bulkFiles[i].name.toLowerCase().endsWith('.bin');
+        const bulkFileName = bulkFiles[i].name.toLowerCase();
+        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && bulkFileName.endsWith('.bin'));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
         const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
           method: 'POST',
@@ -2205,6 +2209,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Loggtype</Label>
+              <RadioGroup value={logType} onValueChange={(v) => setLogType(v as 'auto' | 'dji' | 'ardupilot')} className="flex gap-4">
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="auto" id="lt-auto" />
+                  <Label htmlFor="lt-auto" className="cursor-pointer text-sm font-normal">Automatisk</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="dji" id="lt-dji" />
+                  <Label htmlFor="lt-dji" className="cursor-pointer text-sm font-normal">DJI</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="ardupilot" id="lt-ardu" />
+                  <Label htmlFor="lt-ardu" className="cursor-pointer text-sm font-normal">ArduPilot</Label>
+                </div>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">Velg ArduPilot for .zip med .bin-filer. Automatisk gjenkjenner .bin-filer.</p>
             </div>
 
             <DialogFooter>
