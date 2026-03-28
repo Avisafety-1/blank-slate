@@ -90,6 +90,7 @@ const AuthContext = createContext<AuthContextType>({
   companyLon: null,
   isSuperAdmin: false,
   djiFlightlogEnabled: false,
+  ardupilotFlightlogEnabled: false,
   departmentsEnabled: false,
   isAdmin: false,
   isApproved: false,
