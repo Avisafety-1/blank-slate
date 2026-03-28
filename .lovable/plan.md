@@ -1,23 +1,33 @@
 
+## Fix: Kystvakten får ikke åpnet flylogg-opplasting
 
-## Fix: Opplæring-tabben vises for Norconsult
+### Hva som faktisk feiler
+Dette ser ikke ut til å være feil i selve `UploadDroneLogDialog`. Dialogen har allerede støtte for:
+- kun DJI
+- kun ArduPilot
+- begge
 
-### Problem
-Betingelsen på linje 1384 er `isSuperAdmin || departmentsEnabled`. Norconsult har `departments_enabled = true` (de er morselskap med avdelinger), så de får full tilgang til opplæring.
+Problemet ligger i dashboard-knappen på `Index.tsx`:
+
+- `Index.tsx` viser dropdownen **kun når** `djiFlightlogEnabled` er `true`
+- hvis `djiFlightlogEnabled` er `false`, vises bare knappen **"Logg flytid manuelt"**
+- `Index.tsx` kjenner ikke til `ardupilot_enabled` i det hele tatt
+
+Dermed:
+- Kystvakten kan ha `ardupilot_enabled = true`
+- men dashboardet tror fortsatt at det ikke finnes loggopplasting
+- resultatet blir akkurat det du beskriver: bare manuell logging, ingen vei inn til opplastingsdialogen
 
 ### Løsning
-Endre betingelsen til kun `isSuperAdmin`. Da får bare AviSafe-superadmins tilgang til opplæringsinnholdet. Alle andre selskaper (inkludert Norconsult) ser "Side under utvikling".
+Jeg vil gjøre opplastings-entrypointet på forsiden avhengig av **begge** loggkapabilitetene, ikke bare DJI.
 
-### Endring
+## Endringer
 
-**`src/pages/Admin.tsx` linje 1384:**
-```
-// Fra:
-{isSuperAdmin || departmentsEnabled ? (
+### 1. Utvid `AuthContext` med ArduPilot-kapabilitet
+**Fil:** `src/contexts/AuthContext.tsx`
 
-// Til:
-{isSuperAdmin ? (
-```
-
-En enkelt linje-endring.
-
+Legg til `ardupilotFlightlogEnabled` i:
+- `CachedProfile`
+- `AuthContextType`
+- default context value
+- state
