@@ -513,6 +513,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(profileData.isAdmin);
       setIsSuperAdmin(profileData.isSuperAdmin);
       setDjiFlightlogEnabled(profileData.djiFlightlogEnabled);
+      setArdupilotFlightlogEnabled(profileData.ardupilotFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
       setProfileLoaded(true);
