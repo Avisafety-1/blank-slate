@@ -1687,7 +1687,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
-        notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
+        notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         ...buildExtendedFields(result),
       };
 
