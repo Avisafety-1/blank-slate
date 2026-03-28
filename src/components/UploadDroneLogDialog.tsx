@@ -651,10 +651,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setBulkResults([...results]);
     setStep('bulk-result');
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { toast.error('Ikke autentisert'); setIsBulkProcessing(false); return;  }
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-
     // Keep refs to allow background processing after dialog close
     const localCompanyId = companyId;
     const localDrones = [...drones];
@@ -672,16 +668,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const bulkFileName = bulkFiles[i].name.toLowerCase();
         const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
-        const response = await fetchWithRetry(`https://${projectId}.supabase.co/functions/v1/${bulkEndpoint}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` } as Record<string, string>,
-          body: formData,
-        });
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(err.error || err.details || 'Upload failed');
-        }
-        const data: DroneLogResult = await response.json();
+        const { data, error: invokeError } = await supabase.functions.invoke(bulkEndpoint, { body: formData });
+        if (invokeError) throw invokeError;
 
         // 2. SHA-256 dedup check (pending_dji_logs + flight_logs)
         if (data.sha256Hash) {
