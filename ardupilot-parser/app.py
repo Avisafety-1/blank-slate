@@ -7,6 +7,7 @@ using pymavlink.
 import datetime
 import io
 import json
+import math as _math
 import math
 import os
 import tempfile
@@ -97,6 +98,22 @@ SKIP_MSG_PREFIXES = [
 ]
 
 
+def _json_default(obj):
+    """Handle non-serializable types for json.dumps."""
+    if isinstance(obj, float) and (_math.isnan(obj) or _math.isinf(obj)):
+        return None
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def _safe_float(val):
+    """Return None for NaN/Inf, otherwise the float."""
+    if val is None:
+        return None
+    if isinstance(val, float) and (_math.isnan(val) or _math.isinf(val)):
+        return None
+    return val
+
+
 def _gps_to_utc_iso(gps_week, gps_ms):
     """Convert GPS week number + milliseconds to ISO 8601 UTC string."""
     if gps_week is None or gps_ms is None:
@@ -158,7 +175,7 @@ def parse():
     try:
         result = _parse_bin(tmp_path)
         return Response(
-            json.dumps(result, ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False, allow_nan=False, default=_json_default),
             mimetype="application/json",
         )
     except Exception as exc:
@@ -360,12 +377,12 @@ def _parse_bin(path: str) -> dict:
             try:
                 ctun_list.append({
                     "time_ms": int(getattr(msg, "TimeUS", 0) / 1000),
-                    "alt": getattr(msg, "Alt", 0),
-                    "dalt": getattr(msg, "DAlt", 0),
-                    "thi": getattr(msg, "ThI", 0),
-                    "tho": getattr(msg, "ThO", 0),
-                    "crt": getattr(msg, "CRt", 0),
-                    "dsalt": getattr(msg, "DSAlt", 0),
+                    "alt": _safe_float(getattr(msg, "Alt", 0)),
+                    "dalt": _safe_float(getattr(msg, "DAlt", 0)),
+                    "thi": _safe_float(getattr(msg, "ThI", 0)),
+                    "tho": _safe_float(getattr(msg, "ThO", 0)),
+                    "crt": _safe_float(getattr(msg, "CRt", 0)),
+                    "dsalt": _safe_float(getattr(msg, "DSAlt", 0)),
                 })
             except Exception:
                 pass
