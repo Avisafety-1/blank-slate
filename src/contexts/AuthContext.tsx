@@ -474,7 +474,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             const { data: parentCompany } = await supabase
               .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled')
+              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
               .eq('id', parentCompanyId)
               .single();
             // Re-check version after await
