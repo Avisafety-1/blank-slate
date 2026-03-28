@@ -28,9 +28,12 @@ interface FlightAnalysisDialogProps {
 }
 
 const getEventColor = (type: string) => {
-  if (type === 'RTH' || type === 'app_warning_critical') return 'hsl(0, 84%, 60%)';
+  if (type === 'RTH' || type === 'app_warning_critical' || type === 'error' || type === 'failsafe') return 'hsl(0, 84%, 60%)';
   if (type === 'LOW_BATTERY' || type === 'app_warning_important') return 'hsl(38, 92%, 50%)';
-  return 'hsl(25, 95%, 53%)'; // APP_WARNING / info
+  if (type === 'arm') return 'hsl(142, 76%, 36%)';
+  if (type === 'disarm') return 'hsl(215, 20%, 65%)';
+  if (type === 'mode_change') return 'hsl(210, 80%, 50%)';
+  return 'hsl(25, 95%, 53%)'; // APP_WARNING / info / message
 };
 
 const getSpeedColor = (speed: number, maxSpeed: number) => {

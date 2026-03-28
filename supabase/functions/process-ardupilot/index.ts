@@ -152,6 +152,12 @@ function normalizeToUnified(raw: any) {
   const startUtc: string | null = raw.start_utc || null;
   const endUtc: string | null = raw.end_utc || null;
 
+  // ── Battery — split by instance for dual-battery (needed before positions loop) ──
+  const batt0 = battery.filter((b) => (b.instance || 0) === 0);
+  const batt1 = battery.filter((b) => (b.instance || 0) === 1);
+  const isDualBattery = batt1.length > 0;
+  const primaryBatt = batt0.length > 0 ? batt0 : battery;
+
   // ── Positions (sample ~2500 max) ──
   const sampleRate = Math.max(1, Math.floor(gps.length / 2500));
   const positions: Array<Record<string, any>> = [];
@@ -162,8 +168,9 @@ function normalizeToUnified(raw: any) {
     if (!p.lat || !p.lng || (p.lat === 0 && p.lng === 0)) continue;
 
     const att = interpolateAttitude(attitude, p.time_ms);
+    const battReading = interpolateBattery(primaryBatt, p.time_ms);
 
-    positions.push({
+    const pos: Record<string, any> = {
       lat: p.lat,
       lng: p.lng,
       alt: p.alt || 0,
@@ -174,7 +181,18 @@ function normalizeToUnified(raw: any) {
       roll: att?.roll || 0,
       yaw: att?.yaw || 0,
       gpsNum: p.nSat || 0,
-    });
+    };
+
+    if (battReading) {
+      if (battReading.volt != null) pos.voltage = battReading.volt;
+      if (battReading.curr != null) pos.current = battReading.curr;
+      if (battReading.temp != null) pos.temp = battReading.temp;
+      if (battReading.remaining != null && battReading.remaining >= 0 && battReading.remaining <= 100) {
+        pos.battery = battReading.remaining;
+      }
+    }
+
+    positions.push(pos);
   }
 
   // ── Duration ──
@@ -208,13 +226,7 @@ function normalizeToUnified(raw: any) {
     if (vs > maxVSpeed) maxVSpeed = vs;
   }
 
-  // ── Battery — split by instance for dual-battery ──
-  const batt0 = battery.filter((b) => (b.instance || 0) === 0);
-  const batt1 = battery.filter((b) => (b.instance || 0) === 1);
-  const isDualBattery = batt1.length > 0;
-
-  // Primary battery stats (instance 0, or all if no instance field)
-  const primaryBatt = batt0.length > 0 ? batt0 : battery;
+  // Battery stats (using already-computed primaryBatt/batt0/batt1/isDualBattery)
 
   const validBatteryReadings = primaryBatt
     .map((b) => b.remaining)
@@ -432,6 +444,21 @@ function interpolateAttitude(
   }
   const closest = attitude[lo];
   return { pitch: closest.pitch, roll: closest.roll, yaw: closest.yaw };
+}
+
+function interpolateBattery(
+  battery: Array<{ time_ms: number; volt: number; curr?: number; remaining?: number | null; temp?: number | null }>,
+  timeMs: number
+): { volt: number; curr?: number; remaining?: number | null; temp?: number | null } | null {
+  if (battery.length === 0) return null;
+  let lo = 0;
+  let hi = battery.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (battery[mid].time_ms < timeMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return battery[lo];
 }
 
 function sanitizeResult(obj: any): any {

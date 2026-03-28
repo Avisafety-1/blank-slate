@@ -1271,7 +1271,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       : r.batteryFullCapacity;
 
     return {
-      source: 'dronelogapi' as any,
+      source: ((r as any)?.source === 'ardupilot' ? 'ardupilot' : 'dronelogapi') as any,
       dronelog_sha256: r.sha256Hash || null,
       start_time_utc: r.startTime ? (parseFlightDate(r.startTime)?.toISOString() || null) : null,
       end_time_utc: r.endTimeUtc ? (parseFlightDate(r.endTimeUtc)?.toISOString() || null) : null,
@@ -1601,10 +1601,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
-        tittel: `DJI-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
+        tittel: `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
         lokasjon: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
-        beskrivelse: `Importert fra DJI flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
+        beskrivelse: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'} flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
         latitude: result.startPosition?.lat ?? null,
         longitude: result.startPosition?.lng ?? null,
       }).select('id').single();
@@ -1625,7 +1625,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
-        notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
+        notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         ...extFields,
       } as any).select('id').single();
       if (logError) throw logError;
@@ -1644,7 +1644,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
       await markPendingLogApproved(logData?.id);
-      toast.success(t('dronelog.missionCreated', 'Nytt oppdrag opprettet fra DJI-flylogg!'));
+      toast.success(t('dronelog.missionCreated', `Nytt oppdrag opprettet fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg!`));
       // Return to method step so user can continue processing pending logs
       resetState();
       pendingLogsRef.current?.refresh();
@@ -1687,7 +1687,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         departure_location: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
-        notes: `Importert fra DJI-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
+        notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         ...buildExtendedFields(result),
       };
 
@@ -2061,7 +2061,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            {t('dronelog.title', 'Last opp DJI-flylogg')}
+            {t('dronelog.title', 'Last opp flylogg')}
           </DialogTitle>
         </DialogHeader>
 
@@ -2529,7 +2529,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
                 <p className={`font-semibold ${result.minBattery >= 0 && result.minBattery < 20 ? 'text-destructive' : ''}`}>
-                  {result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
+                  {(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage
+                    ? `${result.batteryMinVoltage}V`
+                    : result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
@@ -2646,8 +2648,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   });
                   const grouped = [...eventMap.values()];
                   // Separate APP_WARNING from others
-                  const nonAppWarnings = grouped.filter(g => g.ev.type !== 'APP_WARNING');
-                  const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING');
+                   const nonAppWarnings = grouped.filter(g => !['APP_WARNING', 'message'].includes(g.ev.type));
+                   const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING' || g.ev.type === 'message');
 
                   return (
                     <div className="space-y-1.5">
@@ -2656,7 +2658,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
                           {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
                           {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                          {!['RTH', 'LOW_BATTERY'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                          {(ev.type === 'error' || ev.type === 'failsafe') && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                          {ev.type === 'arm' && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
+                          {ev.type === 'disarm' && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
+                          {ev.type === 'mode_change' && <Plane className="w-3 h-3 text-primary shrink-0" />}
+                          {!['RTH', 'LOW_BATTERY', 'error', 'failsafe', 'arm', 'disarm', 'mode_change'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
                           <span className="font-medium">{ev.type}</span>
                           {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
                           {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
@@ -2696,8 +2702,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 else eventMap.set(key, { ev: e, count: 1 });
               });
               const grouped = [...eventMap.values()];
-              const nonAppWarnings = grouped.filter(g => g.ev.type !== 'APP_WARNING');
-              const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING');
+              const nonAppWarnings = grouped.filter(g => !['APP_WARNING', 'message'].includes(g.ev.type));
+              const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING' || g.ev.type === 'message');
 
               return (
                 <div className="space-y-1.5">
@@ -2706,7 +2712,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
                       {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
                       {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                      {!['RTH', 'LOW_BATTERY'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                      {(ev.type === 'error' || ev.type === 'failsafe') && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                      {ev.type === 'arm' && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
+                      {ev.type === 'disarm' && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
+                      {ev.type === 'mode_change' && <Plane className="w-3 h-3 text-primary shrink-0" />}
+                      {!['RTH', 'LOW_BATTERY', 'error', 'failsafe', 'arm', 'disarm', 'mode_change'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
                       <span className="font-medium">{ev.type}</span>
                       {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
                       {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
