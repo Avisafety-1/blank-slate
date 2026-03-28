@@ -423,6 +423,25 @@ export const CompanyManagementSection = () => {
     }
   };
 
+  const handleToggleArdupilot = async (company: Company) => {
+    const newValue = !company.ardupilot_enabled;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, ardupilot_enabled: newValue } : c));
+    
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ ardupilot_enabled: newValue } as any)
+        .eq("id", company.id);
+
+      if (error) throw error;
+      toast.success(newValue ? "ArduPilot aktivert" : "ArduPilot deaktivert");
+    } catch (error: any) {
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, ardupilot_enabled: !newValue } : c));
+      console.error("Error toggling ArduPilot status:", error);
+      toast.error("Kunne ikke oppdatere ArduPilot-status");
+    }
+  };
+
   const handleToggleAutoSync = async (company: Company) => {
     const newValue = !company.dji_auto_sync_enabled;
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: newValue } : c));
