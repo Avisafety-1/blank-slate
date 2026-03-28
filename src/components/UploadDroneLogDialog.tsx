@@ -2658,7 +2658,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
                           {ev.type === 'RTH' && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
                           {ev.type === 'LOW_BATTERY' && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                          {!['RTH', 'LOW_BATTERY'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
+                          {(ev.type === 'error' || ev.type === 'failsafe') && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                          {ev.type === 'arm' && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
+                          {ev.type === 'disarm' && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
+                          {ev.type === 'mode_change' && <Plane className="w-3 h-3 text-primary shrink-0" />}
+                          {!['RTH', 'LOW_BATTERY', 'error', 'failsafe', 'arm', 'disarm', 'mode_change'].includes(ev.type) && <Info className="w-3 h-3 text-muted-foreground shrink-0" />}
                           <span className="font-medium">{ev.type}</span>
                           {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
                           {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
