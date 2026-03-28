@@ -406,7 +406,7 @@ const Index = () => {
           {/* Mobile-only flight buttons */}
           <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
-            {djiFlightlogEnabled ? (
+            {hasFlightLogUpload ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2 justify-center" variant="secondary">
