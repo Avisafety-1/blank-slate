@@ -606,8 +606,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!file) return;
     setIsProcessing(true);
     try {
+      // Read file into memory first — fixes cloud-picker issues on Android (Google Drive)
+      const buffer = await file.arrayBuffer();
+      const safeFile = new File([buffer], file.name, { type: file.type });
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', safeFile);
 
       // Route to correct edge function based on file type
       const fileName = file.name.toLowerCase();
@@ -662,9 +666,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setBulkResults([...results]);
 
       try {
-        // 1. Upload & parse
+        // 1. Upload & parse — read into memory first for cloud-picker compatibility
+        const bulkBuffer = await bulkFiles[i].arrayBuffer();
+        const safeBulkFile = new File([bulkBuffer], bulkFiles[i].name, { type: bulkFiles[i].type });
         const formData = new FormData();
-        formData.append('file', bulkFiles[i]);
+        formData.append('file', safeBulkFile);
         const bulkFileName = bulkFiles[i].name.toLowerCase();
         const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
