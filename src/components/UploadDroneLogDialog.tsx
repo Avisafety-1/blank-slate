@@ -2702,8 +2702,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 else eventMap.set(key, { ev: e, count: 1 });
               });
               const grouped = [...eventMap.values()];
-              const nonAppWarnings = grouped.filter(g => g.ev.type !== 'APP_WARNING');
-              const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING');
+              const nonAppWarnings = grouped.filter(g => !['APP_WARNING', 'message'].includes(g.ev.type));
+              const appWarningEvents = grouped.filter(g => g.ev.type === 'APP_WARNING' || g.ev.type === 'message');
 
               return (
                 <div className="space-y-1.5">
