@@ -592,7 +592,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       formData.append('file', file);
 
       // Route to correct edge function based on file type
-      const isArduPilot = file.name.toLowerCase().endsWith('.bin');
+      const fileName = file.name.toLowerCase();
+      const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && fileName.endsWith('.bin'));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/${endpoint}`, {
