@@ -404,6 +404,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               adresse_lat,
               adresse_lon,
               dji_flightlog_enabled,
+              ardupilot_enabled,
               dronelog_api_key,
               stripe_exempt,
               parent_company_id,
