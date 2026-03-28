@@ -2091,7 +2091,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid ${djiEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
               <button
                 onClick={() => setStep('upload')}
                 className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
@@ -2099,9 +2099,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <Upload className="w-8 h-8 text-primary" />
                 <div>
                   <p className="font-medium text-sm">{t('dronelog.uploadFile', 'Last opp fil')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">TXT / ZIP</p>
+                  <p className="text-xs text-muted-foreground mt-1">{ardupilotEnabled && djiEnabled ? 'TXT / ZIP / BIN' : ardupilotEnabled ? 'ZIP / BIN' : 'TXT / ZIP'}</p>
                 </div>
               </button>
+              {djiEnabled && (
               <button
                 onClick={() => {
                   if (hasSavedCredentials) {
