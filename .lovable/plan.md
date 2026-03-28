@@ -1,31 +1,40 @@
 
 
-## Fix: 404 på Fly.io ArduPilot Parser
+## Fix: ArduPilot .zip-filer rutes til feil edge function
 
 ### Problem
-Appen returnerer 404 fordi den mangler en rot-rute (`/`). Fly.io (og brukere) som besøker `https://ardupilot-parser.fly.dev/` treffer ingen definert rute. Appen har kun `/health` og `/parse`.
+Frontenden sjekker kun `file.name.endsWith('.bin')` for å rute til `process-ardupilot`. Når du laster opp en `.zip`-fil (som inneholder en ArduPilot `.bin`), sendes den til `process-dronelog` (DJI-parseren), som ikke kan lese ArduPilot-data — derav 500-feilen.
+
+Edge function `process-ardupilot` håndterer allerede `.zip`-filer med `.bin` inni, men frontenden sender dem aldri dit.
 
 ### Løsning
-Legg til en `@app.route("/")` i `ardupilot-parser/app.py` som returnerer status OK. Etter denne endringen må du re-deploye med `fly deploy`.
+Brukeren må kunne velge filtype, eller systemet må forsøke å gjette. Enkleste tilnærming: legg til en valgmulighet i upload-dialogen der brukeren kan angi at det er en ArduPilot-logg, ELLER inspiser zip-innholdet klient-side.
+
+**Anbefalt: La brukeren velge loggtype** — en enkel toggle/select i upload-dialogen.
 
 ### Endring
 
-**`ardupilot-parser/app.py`** — legg til rot-rute:
+**`src/components/UploadDroneLogDialog.tsx`**
 
-```python
-@app.route("/", methods=["GET"])
-def root():
-    return jsonify({"status": "ok", "service": "ardupilot-parser"})
+1. Legg til state `logType: 'auto' | 'dji' | 'ardupilot'` (default `'auto'`)
+2. Vis en enkel Select/RadioGroup under filopplasteren: «Loggtype: Automatisk / DJI / ArduPilot»
+3. Oppdater rutinglogikken (linje 593 og 657):
+
+```text
+// Nåværende:
+const isArduPilot = file.name.toLowerCase().endsWith('.bin');
+
+// Nytt:
+const fileName = file.name.toLowerCase();
+const isArduPilot = logType === 'ardupilot' 
+  || (logType === 'auto' && (fileName.endsWith('.bin')));
 ```
 
-### Viktig: Auth-mismatch
-Koden du limte inn bruker `Authorization: Bearer ...` for auth, men edge function sender `X-Parser-Secret` header. **Filen i repoet bruker allerede riktig `X-Parser-Secret`-metode**, så den er korrekt. Ikke bytt til Bearer-metoden.
+Når brukeren eksplisitt velger «ArduPilot», sendes `.zip`-filer til `process-ardupilot`. I «auto»-modus fungerer det som i dag (`.bin` → ArduPilot, alt annet → DJI).
 
-### Etter endring
-```bash
-cd ardupilot-parser
-fly deploy
-```
+### Filer som endres
 
-Deretter verifiser: `curl https://ardupilot-parser.fly.dev/` skal returnere `{"status": "ok", "service": "ardupilot-parser"}`.
+| Fil | Endring |
+|-----|---------|
+| `src/components/UploadDroneLogDialog.tsx` | Legg til `logType` state + Select-komponent + oppdater ruting på 2 steder |
 
