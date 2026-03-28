@@ -159,7 +159,7 @@ def parse():
     try:
         result = _parse_bin(tmp_path)
         return Response(
-            json.dumps(result, ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False, allow_nan=False, default=_json_default),
             mimetype="application/json",
         )
     except Exception as exc:
