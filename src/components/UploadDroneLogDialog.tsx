@@ -220,6 +220,26 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const { user, companyId } = useAuth();
   const { hasAddon } = usePlanGating();
 
+  // Fetch company flight log capabilities
+  const [djiEnabled, setDjiEnabled] = useState(true);
+  const [ardupilotEnabled, setArdupilotEnabled] = useState(false);
+
+  useEffect(() => {
+    if (open && companyId) {
+      supabase
+        .from("companies")
+        .select("dji_flightlog_enabled, ardupilot_enabled")
+        .eq("id", companyId)
+        .single()
+        .then(({ data }: any) => {
+          if (data) {
+            setDjiEnabled(data.dji_flightlog_enabled ?? true);
+            setArdupilotEnabled(data.ardupilot_enabled ?? false);
+          }
+        });
+    }
+  }, [open, companyId]);
+
   useEffect(() => {
     if (open && !hasAddon('dji')) {
       toast.error('DJI-integrasjon krever DJI-tilleggsmodulen');
