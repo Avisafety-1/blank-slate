@@ -76,6 +76,7 @@ const InlineTextEditor = ({
       attributes: {
         class: "prose prose-sm max-w-none focus:outline-none h-full overflow-auto p-3",
       },
+      handleScrollToSelection: () => true,
     },
   });
 
