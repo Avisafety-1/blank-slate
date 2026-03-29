@@ -218,6 +218,38 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Dronens serienummer (hentes automatisk fra tilknyttet oppdrag)',
     autoFromField: 'drone_serial_number'
   },
+  {
+    code: 1376,
+    label: 'UAS driftstillatelsestype (Operation Authorization)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    helpText: 'Type driftstillatelse for UAS-operasjonen (VL1376)'
+  },
+  {
+    code: 1388,
+    label: 'Kontrollmodus RPAS/UAS (Control Mode)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    defaultValue: '4',
+    helpText: 'Kontrollmodus for RPAS/UAS under hendelsen (VL1388)'
+  },
+  {
+    code: 1238,
+    label: 'RPAS/UAS karakteristisk dimensjon',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    defaultValue: '1',
+    helpText: 'Karakteristisk dimensjon på RPAS/UAS (VL1238)'
+  },
 
   // ===== AIRSPACE GROUP =====
   { 
