@@ -1,71 +1,47 @@
 
 
-## Legg til ECCAIRS attributt 1091 og 1092 (Reporter's language / description)
+## Legg til Entity 53-attributter: 447, 476, 495, 800, 801, 802, 1064
 
-### Analyse
+### Oversikt
+Legge til de 7 gjenværende Reporting history-attributtene. Attributt 802 (Report) er av typen "Eccairs Resource Locator" med unlimited multiplicity — dette er for vedlegg/ressurslenker, ikke vanlig tekst. Vi hopper over 802 i UI-skjemaet foreløpig (den håndteres via vedleggsopplasting, ikke manuell input).
 
-Nåværende oppsett bruker attributt 424 (Narrative language) og 425 (Narrative text) under entity `22` (Narrative). Dette er **korrekt for selve narrativet**, men ECCAIRS har også separate attributter for **rapportørens egen beskrivelse** under "Reporting history" entity (`53`):
+### Feltene
 
-- **1091** – Reporter's language (PredefinedValueList, bruker VL424-verdier aka "V4 CD Languages")
-- **1092** – Reporter's description (fritekst)
+| Code | Label | Format | Type | Default | Note |
+|------|-------|--------|------|---------|------|
+| 447 | Reporting entity | value_list_int_array | select | — | Hvem som rapporterer |
+| 476 | Report source | value_list_int_array | select | — | Kilde for rapporten |
+| 495 | Reporting form type | value_list_int_array | select | — | Type skjema |
+| 800 | Report status | value_list_int_array | select | `7` (Draft) | Statusverdier du oppga |
+| 801 | Reporting date | local_date | date | auto fra hendelsesdato | Dato for rapportering |
+| 802 | Report (vedlegg) | raw_json | hidden | — | Resource locator, ikke manuell input |
+| 1064 | Parties informed | value_list_int_array | select | — | Parter informert |
 
-Attributt 424/425 bør **beholdes** (de er riktige for Narrative entity). 1091/1092 er tilleggsfelter under Reporting history.
+### 1. Database: Insert VL800 verdier
 
-### 1. Database: Insert VL1091 verdier
+VL800-verdier som må legges inn (hvis de ikke finnes):
+- 1=Preliminary, 2=Open, 3=Closed, 4=Data, 5=Initial notification, 6=Factual, 7=Draft, 8=Closed on issue
 
-1091 bruker "V4 CD Languages" som er **samme verdiliste som VL424**. Vi trenger å legge inn verdier med `value_list_key = 'VL1091'`. Minimum:
-- `43` = Norwegian
-- `13` = English
+### 2. `src/config/eccairsFields.ts`
 
-(Kan kopiere alle VL424-verdier til VL1091, eller bare de mest relevante.)
+Legg til 7 nye felt-definisjoner i narrative-gruppen (eller ny `reporting`-gruppe). Alle med `entityPath: '53'`. Felt 802 settes til `type: 'hidden'`.
 
-### 2. Kode: `src/config/eccairsFields.ts`
+### 3. `src/lib/eccairsAutoMapping.ts`
 
-Legg til to nye felter i narrative-gruppen:
+- `report_status` → default `7` (Draft)
+- `reporting_date` → auto fra hendelsesdato
+- Utvid `SuggestedMapping`-interfacet
 
-```ts
-{
-  code: 1091,
-  label: 'Rapportørens språk',
-  taxonomyCode: '24',
-  entityPath: '53',        // Reporting history entity
-  format: 'value_list_int_array',
-  type: 'select',
-  group: 'narrative',
-  defaultValue: '43',      // Norwegian
-  helpText: 'Språket rapportørens beskrivelse er skrevet på (VL1091)'
-},
-{
-  code: 1092,
-  label: 'Rapportørens beskrivelse',
-  taxonomyCode: '24',
-  entityPath: '53',        // Reporting history entity
-  format: 'text_content_array',
-  type: 'textarea',
-  group: 'narrative',
-  helpText: 'Rapportørens egen beskrivelse av hendelsen',
-  autoFromField: 'beskrivelse'
-}
-```
+### 4. `supabase/functions/_shared/eccairsPayload.js`
 
-### 3. Kode: `src/lib/eccairsAutoMapping.ts`
-
-Legg til auto-mapping slik at `beskrivelse` også fyller 1092, og språk settes til norsk (43) som default.
-
-### 4. Payload-builder: `eccairsPayload.js`
-
-Legg til entity path override for 1091/1092 → entity `53` i `ENTITY_PATH_OVERRIDES`.
-
-### Om eksisterende 424/425
-
-Attributt 424/425 er **korrekte** for Narrative entity (22) og bør beholdes. 1091/1092 er et supplement under Reporting history (53). Begge bør sendes.
+Legg til entity path overrides for `447, 476, 495, 800, 801, 802, 1064 → 53`.
 
 ### Filer som endres
 
 | Fil | Endring |
 |-----|---------|
-| Database (insert) | VL1091 verdier (minst `43`=Norwegian, `13`=English) |
-| `src/config/eccairsFields.ts` | To nye felt: 1091, 1092 |
-| `src/lib/eccairsAutoMapping.ts` | Auto-mapping for reporter language/description |
-| `supabase/functions/_shared/eccairsPayload.js` | Entity path override for 1091, 1092 → `53` |
+| Database (insert) | VL800 verdier (8 stk) |
+| `src/config/eccairsFields.ts` | 7 nye felt under entity 53 |
+| `src/lib/eccairsAutoMapping.ts` | Auto-mapping for report_status, reporting_date |
+| `supabase/functions/_shared/eccairsPayload.js` | Entity path overrides |
 
