@@ -419,7 +419,7 @@ export function OpenAIPMap({
     // NVE Kraftledninger (vector via ArcGIS REST)
     if (!map.getPane('powerPane')) {
       map.createPane('powerPane');
-      map.getPane('powerPane')!.style.zIndex = '450';
+      map.getPane('powerPane')!.style.zIndex = '692';
     }
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
