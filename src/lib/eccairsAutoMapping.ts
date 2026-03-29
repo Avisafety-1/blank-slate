@@ -169,6 +169,9 @@ export interface SuggestedMapping {
   reporter_description: string | null; // 1092: Reporter's description
   report_status: string | null;        // VL800: Report status
   reporting_date: string | null;       // 801: Reporting date
+  uas_operation_authorization: string | null; // VL1376: UAS operation authorization type
+  control_mode: string | null;         // VL1388: Control mode of RPAS/UAS
+  characteristic_dimension: string | null; // VL1238: RPAS/UAS Characteristic Dimension
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
@@ -205,6 +208,9 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
     reporting_date: incident.hendelsestidspunkt 
       ? new Date(incident.hendelsestidspunkt).toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10),
+    uas_operation_authorization: '3', // Not applicable (default)
+    control_mode: '4', // Manual control (default)
+    characteristic_dimension: '1', // less than 1m (default for typical drones)
   };
 }
 
