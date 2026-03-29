@@ -480,6 +480,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsAutoLoggingIn(false);
     setSyncJustTriggered(false);
     setLogType('auto');
+    setSelectedPendingLogId(null);
   };
 
   // ── Battery matching helper ──
