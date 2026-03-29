@@ -201,6 +201,10 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
     rpas_airspace_type: incident.kategori === 'Luftrom' ? '11' : '12',
     reporter_language: '43', // Norwegian
     reporter_description: incident.beskrivelse || null,
+    report_status: '7', // Draft
+    reporting_date: incident.hendelsestidspunkt 
+      ? new Date(incident.hendelsestidspunkt).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
   };
 }
 

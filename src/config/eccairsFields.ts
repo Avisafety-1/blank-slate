@@ -342,6 +342,80 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Rapportørens egen beskrivelse av hendelsen',
     autoFromField: 'beskrivelse'
   },
+
+  // ===== REPORTING HISTORY GROUP (Entity 53) =====
+  {
+    code: 447,
+    label: 'Rapporteringsenhet (Reporting Entity)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'content_object_array',
+    type: 'select',
+    group: 'narrative',
+    helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447)'
+  },
+  {
+    code: 476,
+    label: 'Rapportkilde (Report Source)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'narrative',
+    helpText: 'Kilde for rapporten (VL476)'
+  },
+  {
+    code: 495,
+    label: 'Rapportskjematype (Reporting Form Type)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'narrative',
+    helpText: 'Type rapporteringsskjema (VL495)'
+  },
+  {
+    code: 800,
+    label: 'Rapportstatus (Report Status)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'narrative',
+    defaultValue: '7',
+    helpText: 'Status på rapporten (VL800) - Draft = 7'
+  },
+  {
+    code: 801,
+    label: 'Rapporteringsdato (Reporting Date)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'local_date',
+    type: 'date',
+    group: 'narrative',
+    helpText: 'Dato for rapportering',
+    autoFromField: 'hendelsestidspunkt'
+  },
+  {
+    code: 802,
+    label: 'Rapport (vedlegg)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'raw_json',
+    type: 'hidden',
+    group: 'narrative',
+    helpText: 'Vedlegg/ressurslenker til rapporten (Eccairs Resource Locator)'
+  },
+  {
+    code: 1064,
+    label: 'Parter informert (Parties Informed)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'narrative',
+    helpText: 'Parter som er informert om hendelsen (VL1064)'
+  },
 ];
 
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {

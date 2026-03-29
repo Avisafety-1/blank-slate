@@ -123,6 +123,14 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 const ENTITY_PATH_OVERRIDES = {
   '390': '14',   // Event_Type -> Events entity (Entity 14)
   '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
+  '438': '53',   // Report identification -> Reporting history (Entity 53)
+  '447': '53',   // Reporting entity -> Reporting history (Entity 53)
+  '476': '53',   // Report source -> Reporting history (Entity 53)
+  '495': '53',   // Reporting form type -> Reporting history (Entity 53)
+  '800': '53',   // Report status -> Reporting history (Entity 53)
+  '801': '53',   // Reporting date -> Reporting history (Entity 53)
+  '802': '53',   // Report (attachments) -> Reporting history (Entity 53)
+  '1064': '53',  // Parties informed -> Reporting history (Entity 53)
   '1091': '53',  // Reporter's Language -> Reporting history (Entity 53)
   '1092': '53',  // Reporter's Description -> Reporting history (Entity 53)
 };
