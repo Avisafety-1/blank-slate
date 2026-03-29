@@ -1,34 +1,22 @@
 
 
-## Fix 3 ECCAIRS E2 API validation errors
+## Fix N+1 API Call: `useCompanySettings` repeated queries
 
-### Errors
-1. **Attribute 244** (Serial number): Value "1581F6GKB2373004" is 16 chars, E2 allows max 11. Need to truncate.
-2. **Attribute 495** (Reporting form type): Stored as `value_list_int_array` → sends integer `[501]`, but E2 expects `content_object_array` format `[{content: [501]}]`.
-3. **Attribute 1064** (Parties informed): Same issue — stored as `value_list_int_array` → sends integer `[5]`, but E2 expects `content_object_array`.
+### Problem
+Sentry reports 5 repeating identical queries to `companies?id=*&select=*` on the `/` route. The `useCompanySettings` hook is called by multiple components (MissionsSection, MissionDetailDialog, AddMissionDialog, IncidentsSection, MissionCard, etc.) that mount simultaneously. Despite the 30s in-memory cache, on initial load the cache is empty and all hooks fire their queries before the first one resolves -- causing N+1 duplicate requests.
 
-### Fixes
+### Solution
+Deduplicate in-flight requests by storing the active Promise. When multiple callers request the same `companyId` concurrently, they share the same Promise instead of each firing a separate query.
 
-#### 1. `src/config/eccairsFields.ts`
-- Change `code: 244` maxLength from `100` to `11`
-- Change `code: 495` format from `value_list_int_array` to `content_object_array`
-- Change `code: 1064` format from `value_list_int_array` to `content_object_array`
+Additionally, narrow `select("*")` to only the 5 fields actually used.
 
-#### 2. `supabase/functions/_shared/eccairsPayload.js`
-- Add a safety truncation for attribute 244 in `selectionToE2Value` or in the main builder: if format is `string_array` and attribute is 244, truncate to 11 chars
-- Alternatively, handle in the builder loop where string values are emitted
+### File: `src/hooks/useCompanySettings.ts`
 
-#### 3. Existing DB rows for this incident
-The `incident_eccairs_attributes` rows for 495 and 1064 have `format: 'value_list_int_array'`. The payload builder reads format from DB. Two options:
-- **Option A**: Update the DB rows to use `content_object_array` format (requires data update)
-- **Option B**: Add a format override map in `eccairsPayload.js` that forces certain attributes to use `content_object_array` regardless of what's stored
+1. Add an `inflight` map (`Record<string, Promise<CompanySettings>>`) alongside the existing `cache`
+2. When the cache misses, check `inflight[companyId]` first -- if a promise exists, await it instead of creating a new query
+3. If no inflight promise, create the query, store it in `inflight`, and on resolution populate the cache and delete the inflight entry
+4. Change `select("*")` to `select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")`
 
-I'll use **Option B** (format override in payload builder) since it's more robust and handles existing data.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `src/config/eccairsFields.ts` | Fix formats for 495, 1064; fix maxLength for 244 |
-| `supabase/functions/_shared/eccairsPayload.js` | Add FORMAT_OVERRIDES map + truncate string values for attr 244 |
+### Result
+Regardless of how many components call `useCompanySettings()` simultaneously, only ONE Supabase query fires per `companyId`. This resolves the Sentry N+1 issue.
 
