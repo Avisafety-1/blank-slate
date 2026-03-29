@@ -164,6 +164,7 @@ export interface SuggestedMapping {
   occurrence_date: string | null;
   state_area: string[] | null;  // VL454: [country, county?]
   event_type: string | null;    // VL390: Event Type
+  rpas_airspace_type: string | null; // VL1241: RPAS/UAS Airspace Type
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
