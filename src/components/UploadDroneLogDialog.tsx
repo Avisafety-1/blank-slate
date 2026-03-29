@@ -2725,7 +2725,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             )}
 
             {/* Pending auto-synced logs */}
-            <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} />
+            <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
             </div>
 
             {/* Right panel: result details (split view) */}

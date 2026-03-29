@@ -32,6 +32,7 @@ interface PendingDjiLog {
 
 interface PendingDjiLogsSectionProps {
   onSelectLog: (log: PendingDjiLog) => void;
+  expanded?: boolean;
 }
 
 export interface PendingDjiLogsSectionRef {
