@@ -336,6 +336,16 @@ export const CustomerManagementSection = () => {
                         )}
                       </TableCell>
                       <TableCell>
+                        {customer.intern_poc?.full_name ? (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{customer.intern_poc.full_name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <div className="space-y-1 text-sm">
                           {customer.epost && (
                             <div className="flex items-center gap-1 text-muted-foreground">
