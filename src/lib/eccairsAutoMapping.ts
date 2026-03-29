@@ -167,6 +167,8 @@ export interface SuggestedMapping {
   rpas_airspace_type: string | null; // VL1241: RPAS/UAS Airspace Type
   reporter_language: string | null;    // VL1091: Reporter's language
   reporter_description: string | null; // 1092: Reporter's description
+  report_status: string | null;        // VL800: Report status
+  reporting_date: string | null;       // 801: Reporting date
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
