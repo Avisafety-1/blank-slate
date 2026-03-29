@@ -86,7 +86,7 @@ const InlineTextEditor = ({
 
   useEffect(() => {
     if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, false, { preserveWhitespace: "full" });
     }
   }, [content]);
 

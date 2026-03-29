@@ -51,7 +51,7 @@ export const SlideEditor = ({ content, onChange, placeholder = "Skriv innhold he
   // Sync external content changes
   useEffect(() => {
     if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, false, { preserveWhitespace: "full" });
     }
   }, [content, editor]);
 
