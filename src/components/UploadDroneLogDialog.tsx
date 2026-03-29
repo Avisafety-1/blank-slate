@@ -3059,58 +3059,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         )}
 
         {/* ── Step: Result ── */}
-        {step === 'result' && result && (
-          <div className="space-y-4">
-            {/* Flight date/time & drone info header */}
-            {(result.startTime || result.aircraftName || result.droneType || matchedLog) && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
-                {result.startTime ? (
-                  <p className="text-sm font-medium">
-                    {(() => {
-                      const d = parseFlightDate(result.startTime!);
-                      const startStr = d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
-                      if (result.endTimeUtc) {
-                        const end = parseFlightDate(result.endTimeUtc);
-                        if (end) return `${startStr} → ${format(end, 'HH:mm')}`;
-                      }
-                      return startStr;
-                    })()}
-                  </p>
-                ) : matchedLog ? (
-                  <p className="text-sm font-medium">{matchedLog.flight_date}</p>
-                ) : null}
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                  {result.aircraftName && <span>{result.aircraftName}</span>}
-                  {result.droneType && <span>{result.droneType}</span>}
-                  {(result.aircraftSN || result.aircraftSerial) && <span>SN: {result.aircraftSN || result.aircraftSerial}</span>}
-                  {result.batterySN && <span>Batteri SN: {result.batterySN}</span>}
-                </div>
-              </div>
-            )}
-
-            {/* Primary KPIs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{t('dronelog.flightDuration', 'Flytid')}</div>
-                <p className="font-semibold">{result.durationMinutes} min</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap className="w-3 h-3" />{t('dronelog.maxSpeed', 'Maks hastighet')}</div>
-                <p className="font-semibold">{result.detailsMaxSpeed ?? result.maxSpeed} m/s</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
-                <p className={`font-semibold ${result.minBattery >= 0 && result.minBattery < 20 ? 'text-destructive' : ''}`}>
-                  {(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage
-                    ? `${result.batteryMinVoltage}V`
-                    : result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
-                </p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="w-3 h-3" />{t('dronelog.dataPoints', 'Datapunkter')}</div>
-                <p className="font-semibold">{result.totalRows}</p>
-              </div>
-            </div>
+        {step === 'result' && result && renderResultPanel()}
 
             {/* Extended KPIs */}
             {(result.totalDistance != null || result.maxAltitude != null || result.batteryTemperature != null || result.minGpsSatellites != null) && (
