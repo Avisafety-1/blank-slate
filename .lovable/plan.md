@@ -1,49 +1,39 @@
 
 
-## Fix: Filopplasting fra Google Disk feiler på Samsung
+## Legg til "Intern POC" på kunder
 
-### Problem
-Når en fil velges fra Google Disk (via Android file picker), er filen ofte en "content://" URI som ikke er ferdig nedlastet ennå. Når `FormData.append('file', file)` prøver å lese den, kan Android/Chrome feile med "Failed to fetch" fordi `File`-objektet ikke kan leses direkte.
+### Oversikt
+Legg til et nytt felt `intern_poc_id` (UUID, nullable) på `customers`-tabellen som refererer til `profiles.id`. I kunde-dialogen vises dette som en søkbar dropdown med alle personer i selskapets hierarki (inkl. underavdelinger). Bruker den eksisterende `SearchablePersonSelect`-komponenten.
 
-Lokalt nedlastede filer fungerer fordi de er fullstendig tilgjengelige i filsystemet.
+### 1. Database-migrasjon
 
-### Løsning
-Les filen eksplisitt inn i minnet med `file.arrayBuffer()` **før** den legges til FormData. Dette tvinger browseren til å fullføre nedlastingen fra Google Disk. Deretter opprett en ny `File` fra den leste bufferen.
-
-### Endring i `src/components/UploadDroneLogDialog.tsx`
-
-**`handleUpload` (linje 605-617):**
-```typescript
-const handleUpload = async () => {
-  if (!file) return;
-  setIsProcessing(true);
-  try {
-    // Read file into memory first — fixes cloud-picker issues on Android
-    const buffer = await file.arrayBuffer();
-    const safeFile = new File([buffer], file.name, { type: file.type });
-
-    const formData = new FormData();
-    formData.append('file', safeFile);
-    // ... rest unchanged
+```sql
+ALTER TABLE public.customers 
+ADD COLUMN intern_poc_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
 ```
 
-**`handleBulkUpload` (linje 664-671):**
-Samme fix for hver fil i bulk-loopen:
-```typescript
-const buffer = await bulkFiles[i].arrayBuffer();
-const safeFile = new File([buffer], bulkFiles[i].name, { type: bulkFiles[i].type });
-const formData = new FormData();
-formData.append('file', safeFile);
-```
+### 2. `CustomerManagementDialog.tsx`
+
+- Legg til state `internPocId` (utenfor react-hook-form, siden det er en separat velger)
+- Hent personliste via `get_user_visible_company_ids` RPC + profiles-query (samme mønster som `useStatusData`)
+- Legg til `SearchablePersonSelect` mellom "Kontaktperson" og "E-post" med label "Intern POC"
+- Inkluder `intern_poc_id` i insert/update-payload
+
+### 3. `CustomerManagementSection.tsx`
+
+- Utvid `fetchCustomers` til å joine `profiles` på `intern_poc_id`: `.select("*, intern_poc:profiles!customers_intern_poc_id_fkey(id, full_name)")`
+- Vis intern POC-navn i tabellvisning (ny kolonne) og mobilkort
+
+### 4. `CustomerDetailDialog.tsx`
+
+- Vis intern POC-navnet i detaljvisningen
 
 ### Filer som endres
+
 | Fil | Endring |
 |-----|---------|
-| `src/components/UploadDroneLogDialog.tsx` | Les fil til buffer for FormData i handleUpload og handleBulkUpload |
-
-### Hvorfor dette fungerer
-- Android file picker returnerer en lazy `File`-referanse for cloud-filer
-- `file.arrayBuffer()` tvinger fullstendig lesing inn i minnet
-- Den nye `File([buffer], ...)` er en vanlig in-memory blob som FormData kan sende uten problemer
-- Ingen endring i edge functions nødvendig
+| Migrasjon (SQL) | Legg til `intern_poc_id` kolonne |
+| `CustomerManagementDialog.tsx` | Søkbar person-velger, lagre POC |
+| `CustomerManagementSection.tsx` | Vis POC i tabell/kort, join profiles |
+| `CustomerDetailDialog.tsx` | Vis POC i detalj |
 
