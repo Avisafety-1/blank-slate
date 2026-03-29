@@ -45,6 +45,8 @@ interface Customer {
   user_id: string;
   opprettet_dato: string;
   oppdatert_dato: string;
+  intern_poc_id: string | null;
+  intern_poc?: { id: string; full_name: string | null } | null;
 }
 
 export const CustomerManagementSection = () => {
