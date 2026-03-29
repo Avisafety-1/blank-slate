@@ -279,6 +279,20 @@ export const CustomerManagementDialog = ({
               )}
             />
 
+            <div className="space-y-2">
+              <FormLabel>Intern POC</FormLabel>
+              <SearchablePersonSelect
+                persons={persons}
+                value={internPocId}
+                onValueChange={setInternPocId}
+                placeholder="Velg intern kontaktperson..."
+                searchPlaceholder="Søk person..."
+                emptyText="Ingen personer funnet."
+                allowNone
+                noneLabel="Ingen"
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="epost"

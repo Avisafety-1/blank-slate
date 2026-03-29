@@ -242,9 +242,16 @@ export const CustomerManagementSection = () => {
 
                 {/* Contact person */}
                 {customer.kontaktperson && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                     <User className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate">{customer.kontaktperson}</span>
+                  </p>
+                )}
+                {/* Intern POC */}
+                {customer.intern_poc?.full_name && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                    <User className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">POC: {customer.intern_poc.full_name}</span>
                   </p>
                 )}
 
