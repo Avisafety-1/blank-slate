@@ -90,6 +90,8 @@ export const CustomerManagementDialog = ({
   const { user, companyId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(false);
+  const [internPocId, setInternPocId] = useState<string | null>(null);
+  const [persons, setPersons] = useState<{ id: string; full_name?: string | null }[]>([]);
   const isCreating = !customer;
 
   const form = useForm<CustomerFormData>({
