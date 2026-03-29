@@ -2607,7 +2607,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh] h-[95vh]' : 'max-w-lg max-h-[90vh]'} overflow-y-auto transition-all`}>
+      <DialogContent className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col' : 'max-w-lg max-h-[90vh] overflow-y-auto'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
