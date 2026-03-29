@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ interface Customer {
   adresse: string | null;
   merknader: string | null;
   aktiv: boolean;
+  intern_poc_id?: string | null;
 }
 
 interface CustomerManagementDialogProps {
@@ -88,6 +90,8 @@ export const CustomerManagementDialog = ({
   const { user, companyId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(false);
+  const [internPocId, setInternPocId] = useState<string | null>(null);
+  const [persons, setPersons] = useState<{ id: string; full_name?: string | null }[]>([]);
   const isCreating = !customer;
 
   const form = useForm<CustomerFormData>({
@@ -102,6 +106,29 @@ export const CustomerManagementDialog = ({
     },
   });
 
+  // Fetch persons for intern POC selector
+  useEffect(() => {
+    if (!open || !user || !companyId) return;
+    const fetchPersons = async () => {
+      try {
+        const { data: visibleIds } = await supabase.rpc("get_user_visible_company_ids", {
+          _user_id: user.id,
+        });
+        const ids = visibleIds?.length ? visibleIds : [companyId];
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("approved", true)
+          .in("company_id", ids)
+          .order("full_name");
+        setPersons(data || []);
+      } catch (e) {
+        console.error("Error fetching persons for POC:", e);
+      }
+    };
+    fetchPersons();
+  }, [open, user, companyId]);
+
   useEffect(() => {
     if (open) {
       if (customer) {
@@ -113,6 +140,7 @@ export const CustomerManagementDialog = ({
           adresse: customer.adresse || "",
           merknader: customer.merknader || "",
         });
+        setInternPocId(customer.intern_poc_id || null);
       } else {
         form.reset({
           navn: "",
@@ -122,6 +150,7 @@ export const CustomerManagementDialog = ({
           adresse: "",
           merknader: "",
         });
+        setInternPocId(null);
       }
     }
   }, [open, customer, form]);
@@ -142,6 +171,7 @@ export const CustomerManagementDialog = ({
         telefon: data.telefon || null,
         adresse: data.adresse || null,
         merknader: data.merknader || null,
+        intern_poc_id: internPocId,
         user_id: user.id,
         company_id: companyId,
       };
@@ -192,6 +222,7 @@ export const CustomerManagementDialog = ({
             telefon: data.telefon || null,
             adresse: data.adresse || null,
             merknader: data.merknader || null,
+            intern_poc_id: internPocId,
           })
           .eq("id", customer.id);
 
@@ -247,6 +278,20 @@ export const CustomerManagementDialog = ({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-2">
+              <FormLabel>Intern POC</FormLabel>
+              <SearchablePersonSelect
+                persons={persons}
+                value={internPocId}
+                onValueChange={setInternPocId}
+                placeholder="Velg intern kontaktperson..."
+                searchPlaceholder="Søk person..."
+                emptyText="Ingen personer funnet."
+                allowNone
+                noneLabel="Ingen"
+              />
+            </div>
 
             <FormField
               control={form.control}

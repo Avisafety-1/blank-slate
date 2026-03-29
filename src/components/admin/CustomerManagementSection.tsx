@@ -45,6 +45,8 @@ interface Customer {
   user_id: string;
   opprettet_dato: string;
   oppdatert_dato: string;
+  intern_poc_id: string | null;
+  intern_poc?: { id: string; full_name: string | null } | null;
 }
 
 export const CustomerManagementSection = () => {
@@ -87,7 +89,7 @@ export const CustomerManagementSection = () => {
     try {
       let query = supabase
         .from("customers")
-        .select("*")
+        .select("*, intern_poc:profiles!customers_intern_poc_id_fkey(id, full_name)")
         .order("navn", { ascending: true });
 
       const { data, error } = await query;
@@ -240,9 +242,16 @@ export const CustomerManagementSection = () => {
 
                 {/* Contact person */}
                 {customer.kontaktperson && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                     <User className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate">{customer.kontaktperson}</span>
+                  </p>
+                )}
+                {/* Intern POC */}
+                {customer.intern_poc?.full_name && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                    <User className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">POC: {customer.intern_poc.full_name}</span>
                   </p>
                 )}
 
@@ -308,6 +317,7 @@ export const CustomerManagementSection = () => {
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Navn</TableHead>
                     <TableHead className="text-xs sm:text-sm">Kontaktperson</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Intern POC</TableHead>
                     <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
@@ -327,6 +337,16 @@ export const CustomerManagementSection = () => {
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <User className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">{customer.kontaktperson}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {customer.intern_poc?.full_name ? (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{customer.intern_poc.full_name}</span>
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>

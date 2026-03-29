@@ -36,6 +36,7 @@ interface Customer {
   merknader: string | null;
   aktiv: boolean;
   opprettet_dato: string;
+  intern_poc?: { id: string; full_name: string | null } | null;
 }
 
 interface Mission {
@@ -191,6 +192,15 @@ export const CustomerDetailDialog = ({
                     <div className="min-w-0">
                       <span className="font-medium">Kontaktperson: </span>
                       <span className="break-words">{customer.kontaktperson}</span>
+                    </div>
+                  </div>
+                )}
+                {customer.intern_poc?.full_name && (
+                  <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
+                    <div className="min-w-0">
+                      <span className="font-medium">Intern POC: </span>
+                      <span className="break-words">{customer.intern_poc.full_name}</span>
                     </div>
                   </div>
                 )}

@@ -652,6 +652,7 @@ export type Database = {
           company_id: string
           epost: string | null
           id: string
+          intern_poc_id: string | null
           kontaktperson: string | null
           merknader: string | null
           navn: string
@@ -666,6 +667,7 @@ export type Database = {
           company_id: string
           epost?: string | null
           id?: string
+          intern_poc_id?: string | null
           kontaktperson?: string | null
           merknader?: string | null
           navn: string
@@ -680,6 +682,7 @@ export type Database = {
           company_id?: string
           epost?: string | null
           id?: string
+          intern_poc_id?: string | null
           kontaktperson?: string | null
           merknader?: string | null
           navn?: string
@@ -694,6 +697,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_intern_poc_id_fkey"
+            columns: ["intern_poc_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
