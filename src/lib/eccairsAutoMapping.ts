@@ -165,6 +165,8 @@ export interface SuggestedMapping {
   state_area: string[] | null;  // VL454: [country, county?]
   event_type: string | null;    // VL390: Event Type
   rpas_airspace_type: string | null; // VL1241: RPAS/UAS Airspace Type
+  reporter_language: string | null;    // VL1091: Reporter's language
+  reporter_description: string | null; // 1092: Reporter's description
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
@@ -195,6 +197,8 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
       incident.kategori
     ),
     rpas_airspace_type: incident.kategori === 'Luftrom' ? '11' : '12',
+    reporter_language: '43', // Norwegian
+    reporter_description: incident.beskrivelse || null,
   };
 }
 

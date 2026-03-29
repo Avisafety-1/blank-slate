@@ -320,6 +320,28 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Detaljert beskrivelse av hendelsen',
     autoFromField: 'beskrivelse'
   },
+  {
+    code: 1091,
+    label: 'Rapportørens språk',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'narrative',
+    defaultValue: '43',
+    helpText: 'Språket rapportørens beskrivelse er skrevet på (VL1091)'
+  },
+  {
+    code: 1092,
+    label: 'Rapportørens beskrivelse',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'text_content_array',
+    type: 'textarea',
+    group: 'narrative',
+    helpText: 'Rapportørens egen beskrivelse av hendelsen',
+    autoFromField: 'beskrivelse'
+  },
 ];
 
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {
