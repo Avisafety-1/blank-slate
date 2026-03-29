@@ -142,10 +142,12 @@ export function EccairsAttachmentUpload({
 
     setIsUploading(true);
 
-    for (let i = 0; i < selectedDocs.length; i++) {
-      const item = selectedDocs[i];
-      if (item.status !== 'pending') continue;
+    // Snapshot pending docs to avoid closure/state issues with double-processing
+    const docsToUpload = selectedDocs
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.status === 'pending');
 
+    for (const { item, idx: i } of docsToUpload) {
       setSelectedDocs(prev => prev.map((s, idx) => 
         idx === i ? { ...s, status: 'uploading' } : s
       ));
@@ -215,18 +217,22 @@ export function EccairsAttachmentUpload({
 
     setIsUploading(false);
 
-    const successCount = selectedDocs.filter(s => s.status === 'success').length;
-    const errorCount = selectedDocs.filter(s => s.status === 'error').length;
+    // Use functional state read to get accurate counts after all updates
+    setSelectedDocs(prev => {
+      const successCount = prev.filter(s => s.status === 'success').length;
+      const errorCount = prev.filter(s => s.status === 'error').length;
 
-    if (successCount > 0 && errorCount === 0) {
-      toast.success(`${successCount} vedlegg lastet opp til ECCAIRS`);
-      onSuccess?.();
-      handleClose();
-    } else if (successCount > 0) {
-      toast.success(`${successCount} vedlegg lastet opp, ${errorCount} feilet`);
-    } else if (errorCount > 0) {
-      toast.error("Ingen vedlegg ble lastet opp");
-    }
+      if (successCount > 0 && errorCount === 0) {
+        toast.success(`${successCount} vedlegg lastet opp til ECCAIRS`);
+        onSuccess?.();
+        setTimeout(() => handleClose(), 0);
+      } else if (successCount > 0) {
+        toast.success(`${successCount} vedlegg lastet opp, ${errorCount} feilet`);
+      } else if (errorCount > 0) {
+        toast.error("Ingen vedlegg ble lastet opp");
+      }
+      return prev;
+    });
   };
 
   const handleClose = () => {
