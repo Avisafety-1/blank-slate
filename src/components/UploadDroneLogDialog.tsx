@@ -1139,7 +1139,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
     matchBatteryFromResult(data);
     await findMatchingFlightLog(data);
-    setStep('result');
+    // On desktop/tablet, show split view; on mobile, navigate to result step
+    if (isMobile) {
+      setStep('result');
+    } else {
+      setSelectedPendingLogId(pendingLog.id);
+    }
     
     // Mark the pending log as processing (will be marked approved on save)
     // Store the pending log id for later update
