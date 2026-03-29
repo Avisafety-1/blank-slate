@@ -2059,7 +2059,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh]' : 'max-w-lg max-h-[90vh]'} overflow-y-auto transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -2069,7 +2069,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-          <div className="space-y-3">
+          <div className={selectedPendingLogId && result ? 'flex gap-6' : ''}>
+            {/* Left panel: method + pending logs */}
+            <div className={`space-y-3 ${selectedPendingLogId && result ? 'w-1/3 min-w-[280px] shrink-0' : ''}`}>
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
             </p>
