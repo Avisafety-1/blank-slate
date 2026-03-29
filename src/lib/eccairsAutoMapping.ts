@@ -167,6 +167,8 @@ export interface SuggestedMapping {
   rpas_airspace_type: string | null; // VL1241: RPAS/UAS Airspace Type
   reporter_language: string | null;    // VL1091: Reporter's language
   reporter_description: string | null; // 1092: Reporter's description
+  report_status: string | null;        // VL800: Report status
+  reporting_date: string | null;       // 801: Reporting date
 }
 
 export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
@@ -199,6 +201,10 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
     rpas_airspace_type: incident.kategori === 'Luftrom' ? '11' : '12',
     reporter_language: '43', // Norwegian
     reporter_description: incident.beskrivelse || null,
+    report_status: '7', // Draft
+    reporting_date: incident.hendelsestidspunkt 
+      ? new Date(incident.hendelsestidspunkt).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
   };
 }
 
