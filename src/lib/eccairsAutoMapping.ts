@@ -197,6 +197,8 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
       incident.kategori
     ),
     rpas_airspace_type: incident.kategori === 'Luftrom' ? '11' : '12',
+    reporter_language: '43', // Norwegian
+    reporter_description: incident.beskrivelse || null,
   };
 }
 

@@ -121,8 +121,10 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 // Entity path overrides - attributter som alltid må ligge under en spesifikk entitet
 // -------------------------
 const ENTITY_PATH_OVERRIDES = {
-  '390': '14',  // Event_Type -> Events entity (Entity 14)
-  '32': '4',    // Aircraft Category -> Aircraft entity (Entity 4)
+  '390': '14',   // Event_Type -> Events entity (Entity 14)
+  '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
+  '1091': '53',  // Reporter's Language -> Reporting history (Entity 53)
+  '1092': '53',  // Reporter's Description -> Reporting history (Entity 53)
 };
 
 // -------------------------
