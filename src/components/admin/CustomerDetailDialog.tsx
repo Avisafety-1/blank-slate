@@ -36,6 +36,7 @@ interface Customer {
   merknader: string | null;
   aktiv: boolean;
   opprettet_dato: string;
+  intern_poc?: { id: string; full_name: string | null } | null;
 }
 
 interface Mission {
