@@ -89,7 +89,7 @@ export const CustomerManagementSection = () => {
     try {
       let query = supabase
         .from("customers")
-        .select("*")
+        .select("*, intern_poc:profiles!customers_intern_poc_id_fkey(id, full_name)")
         .order("navn", { ascending: true });
 
       const { data, error } = await query;
