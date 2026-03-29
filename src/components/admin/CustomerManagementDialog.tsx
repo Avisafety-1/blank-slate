@@ -222,6 +222,7 @@ export const CustomerManagementDialog = ({
             telefon: data.telefon || null,
             adresse: data.adresse || null,
             merknader: data.merknader || null,
+            intern_poc_id: internPocId,
           })
           .eq("id", customer.id);
 
