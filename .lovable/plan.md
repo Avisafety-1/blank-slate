@@ -1,22 +1,28 @@
 
 
-## Fix N+1 API Call: `useCompanySettings` repeated queries
+## Fix: Duplikat vedleggsopplasting + legg til overwrite-støtte
 
 ### Problem
-Sentry reports 5 repeating identical queries to `companies?id=*&select=*` on the `/` route. The `useCompanySettings` hook is called by multiple components (MissionsSection, MissionDetailDialog, AddMissionDialog, IncidentsSection, MissionCard, etc.) that mount simultaneously. Despite the 30s in-memory cache, on initial load the cache is empty and all hooks fire their queries before the first one resolves -- causing N+1 duplicate requests.
+1. Samme fil sendes to ganger til E2 API — andre gang feiler med "files already exist, set overwrite to true"
+2. Gatewayen sender aldri `overwrite=true` query-parameter
 
-### Solution
-Deduplicate in-flight requests by storing the active Promise. When multiple callers request the same `companyId` concurrently, they share the same Promise instead of each firing a separate query.
+### Endringer
 
-Additionally, narrow `select("*")` to only the 5 fields actually used.
+#### 1. `supabase/functions/_shared/eccairs-gateway-server.js`
+- Legg til `overwrite=true` som standard query-parameter i attachment-opplastingen:
+```js
+queryParams.append("overwrite", "true");
+```
+Dette sikrer at re-opplasting av samme filnavn alltid fungerer.
 
-### File: `src/hooks/useCompanySettings.ts`
+#### 2. `src/components/eccairs/EccairsAttachmentUpload.tsx`
+- Legg til guard mot dobbelt-klikk: disable upload-knappen umiddelbart ved klikk (allerede delvis gjort via `isUploading`, men sjekk at `selectedDocs` state-oppdateringen ikke fører til at samme fil prosesseres to ganger)
+- Sjekk `item.status !== 'pending'` er korrekt, men `selectedDocs` leses fra closure — bruk funksjonell oppdatering for å sikre at status-sjekken reflekterer nyeste state
 
-1. Add an `inflight` map (`Record<string, Promise<CompanySettings>>`) alongside the existing `cache`
-2. When the cache misses, check `inflight[companyId]` first -- if a promise exists, await it instead of creating a new query
-3. If no inflight promise, create the query, store it in `inflight`, and on resolution populate the cache and delete the inflight entry
-4. Change `select("*")` to `select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")`
+### Filer som endres
 
-### Result
-Regardless of how many components call `useCompanySettings()` simultaneously, only ONE Supabase query fires per `companyId`. This resolves the Sentry N+1 issue.
+| Fil | Endring |
+|-----|---------|
+| `eccairs-gateway-server.js` | Legg til `overwrite=true` i queryParams |
+| `EccairsAttachmentUpload.tsx` | Forhindre dobbelt-sending av samme dokument |
 
