@@ -44,6 +44,7 @@ export const SlideEditor = ({ content, onChange, placeholder = "Skriv innhold he
       attributes: {
         class: "prose prose-sm sm:prose max-w-none focus:outline-none min-h-[120px] p-3",
       },
+      handleScrollToSelection: () => true,
     },
   });
 
