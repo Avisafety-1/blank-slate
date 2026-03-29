@@ -36,6 +36,7 @@ interface Customer {
   adresse: string | null;
   merknader: string | null;
   aktiv: boolean;
+  intern_poc_id?: string | null;
 }
 
 interface CustomerManagementDialogProps {
