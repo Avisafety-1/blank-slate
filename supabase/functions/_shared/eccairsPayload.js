@@ -175,12 +175,22 @@ async function buildSelections({ supabase, incident_id, company_id }) {
         entityPath = r.entity_path || ENTITY_PATH_OVERRIDES[code] || null;
       }
       
+      
+      // Apply format overrides for attributes where DB may have wrong format
+      const format = FORMAT_OVERRIDES[code] || ensureString(r.format) || "value_list_int_array";
+      
+      // Apply max length truncation for string values
+      let textValue = ensureString(r.text_value);
+      if (textValue && MAX_LENGTH[code]) {
+        textValue = textValue.slice(0, MAX_LENGTH[code]);
+      }
+      
       selections.push({
         code,
         taxonomy_code: ensureString(r.taxonomy_code) || "24",
-        format: ensureString(r.format) || "value_list_int_array",
+        format,
         valueId: ensureString(r.value_id),
-        text: ensureString(r.text_value),
+        text: textValue,
         raw: r.payload_json || null,
         entity_path: entityPath,
       });
