@@ -250,6 +250,28 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     defaultValue: '1',
     helpText: 'Karakteristisk dimensjon på RPAS/UAS (VL1238)'
   },
+  {
+    code: 1243,
+    label: 'RPAS/UAS driftskategori (Operations Category)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    defaultValue: '2',
+    helpText: 'EU-driftskategori: Open, Specific, Certified (VL1243)'
+  },
+  {
+    code: 1246,
+    label: 'RPAS/UAS operasjonstype (Type of Operation)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    defaultValue: '1',
+    helpText: 'Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)'
+  },
 
   // ===== AIRSPACE GROUP =====
   { 
