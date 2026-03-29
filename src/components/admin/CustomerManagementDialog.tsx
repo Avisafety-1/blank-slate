@@ -106,6 +106,29 @@ export const CustomerManagementDialog = ({
     },
   });
 
+  // Fetch persons for intern POC selector
+  useEffect(() => {
+    if (!open || !user || !companyId) return;
+    const fetchPersons = async () => {
+      try {
+        const { data: visibleIds } = await supabase.rpc("get_user_visible_company_ids", {
+          _user_id: user.id,
+        });
+        const ids = visibleIds?.length ? visibleIds : [companyId];
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("approved", true)
+          .in("company_id", ids)
+          .order("full_name");
+        setPersons(data || []);
+      } catch (e) {
+        console.error("Error fetching persons for POC:", e);
+      }
+    };
+    fetchPersons();
+  }, [open, user, companyId]);
+
   useEffect(() => {
     if (open) {
       if (customer) {
@@ -117,6 +140,7 @@ export const CustomerManagementDialog = ({
           adresse: customer.adresse || "",
           merknader: customer.merknader || "",
         });
+        setInternPocId(customer.intern_poc_id || null);
       } else {
         form.reset({
           navn: "",
@@ -126,6 +150,7 @@ export const CustomerManagementDialog = ({
           adresse: "",
           merknader: "",
         });
+        setInternPocId(null);
       }
     }
   }, [open, customer, form]);
