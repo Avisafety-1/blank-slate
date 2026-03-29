@@ -194,6 +194,7 @@ export function suggestEccairsMapping(incident: Incident): SuggestedMapping {
       incident.medvirkende_aarsak || null, 
       incident.kategori
     ),
+    rpas_airspace_type: incident.kategori === 'Luftrom' ? '11' : '12',
   };
 }
 

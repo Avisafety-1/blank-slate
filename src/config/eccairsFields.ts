@@ -241,6 +241,17 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'airspace',
     helpText: 'Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)'
   },
+  { 
+    code: 1241,
+    label: 'RPAS/UAS luftromstype', 
+    taxonomyCode: '24',
+    entityPath: '3',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'airspace',
+    defaultValue: '12',
+    helpText: 'Type luftrom for RPAS/UAS-operasjon (VL1241)'
+  },
 
   // ===== DAMAGE GROUP =====
   { 
