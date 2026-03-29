@@ -832,6 +832,7 @@ app.post("/api/eccairs/attachments/:e2Id", upload.array("files", 10), async (req
     const queryParams = new URLSearchParams();
     queryParams.append("attributePath", attributePath);
     queryParams.append("versionType", versionType);
+    queryParams.append("overwrite", "true");
     if (entityID) {
       queryParams.append("entityID", entityID);
     }

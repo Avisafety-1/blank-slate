@@ -142,10 +142,12 @@ export function EccairsAttachmentUpload({
 
     setIsUploading(true);
 
-    for (let i = 0; i < selectedDocs.length; i++) {
-      const item = selectedDocs[i];
-      if (item.status !== 'pending') continue;
+    // Snapshot pending docs to avoid closure/state issues with double-processing
+    const docsToUpload = selectedDocs
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.status === 'pending');
 
+    for (const { item, idx: i } of docsToUpload) {
       setSelectedDocs(prev => prev.map((s, idx) => 
         idx === i ? { ...s, status: 'uploading' } : s
       ));
