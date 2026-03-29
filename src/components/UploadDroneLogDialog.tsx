@@ -2178,6 +2178,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
             {/* Pending auto-synced logs */}
             <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} />
+            </div>
+
+            {/* Right panel: result details (split view) */}
+            {selectedPendingLogId && result && (
+              <div className="flex-1 min-w-0 border-l border-border pl-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold">Flylogg-detaljer</p>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); }}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <ScrollArea className="max-h-[75vh]">
+                  {renderResultPanel()}
+                </ScrollArea>
+              </div>
+            )}
           </div>
         )}
 
