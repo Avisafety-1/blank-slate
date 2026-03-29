@@ -310,6 +310,7 @@ export const CustomerManagementSection = () => {
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Navn</TableHead>
                     <TableHead className="text-xs sm:text-sm">Kontaktperson</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Intern POC</TableHead>
                     <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
