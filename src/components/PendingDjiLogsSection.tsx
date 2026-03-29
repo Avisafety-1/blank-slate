@@ -124,7 +124,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const displayedLogs = onlyMine ? logs.filter(l => l.user_id === user?.id) : logs;
 
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
       <div className="flex items-center gap-2 flex-wrap">
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
@@ -134,7 +134,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
         </div>
       </div>
-      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+      <div className={`space-y-1.5 overflow-y-auto ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
           return (
