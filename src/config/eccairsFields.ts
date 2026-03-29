@@ -406,7 +406,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'content_object_array',
     type: 'select',
     group: 'narrative',
-    helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447)'
+    helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447)',
+    defaultValue: '2133',
   },
   {
     code: 476,
