@@ -423,7 +423,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'Rapportskjematype (Reporting Form Type)',
     taxonomyCode: '24',
     entityPath: '53',
-    format: 'value_list_int_array',
+    format: 'content_object_array',
     type: 'select',
     group: 'narrative',
     helpText: 'Type rapporteringsskjema (VL495)'
