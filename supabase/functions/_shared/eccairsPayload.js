@@ -141,6 +141,21 @@ const ENTITY_PATH_OVERRIDES = {
 const FORCE_TOP_LEVEL = new Set(['432', '448']);
 
 // -------------------------
+// Format overrides - force correct format for attributes where DB rows may have wrong format
+// -------------------------
+const FORMAT_OVERRIDES = {
+  '495': 'content_object_array',   // Reporting form type - E2 expects content_object_array
+  '1064': 'content_object_array',  // Parties informed - E2 expects content_object_array
+};
+
+// -------------------------
+// Max length constraints per E2 schema
+// -------------------------
+const MAX_LENGTH = {
+  '244': 11, // Aircraft serial number - E2 allows max 11 chars
+};
+
+// -------------------------
 // Build selections fra incident_eccairs_attributes
 // -------------------------
 async function buildSelections({ supabase, incident_id, company_id }) {

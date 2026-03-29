@@ -465,7 +465,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'Parter informert (Parties Informed)',
     taxonomyCode: '24',
     entityPath: '53',
-    format: 'value_list_int_array',
+    format: 'content_object_array',
     type: 'select',
     group: 'narrative',
     helpText: 'Parter som er informert om hendelsen (VL1064)'
