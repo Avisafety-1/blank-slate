@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.process-ardupilot]
 verify_jwt = false
+
+[functions.barentswatch-ais]
+verify_jwt = false
