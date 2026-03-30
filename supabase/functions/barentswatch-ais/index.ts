@@ -61,10 +61,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("[barentswatch-ais] Bounds:", JSON.stringify(bounds));
     const token = await getBarentsWatchToken();
 
-    // Use the "latest/combined" endpoint with geographic filter
-    const apiUrl = "https://live.ais.barentswatch.no/live/v1/latest/combined";
+    const apiUrl = "https://live.ais.barentswatch.no/v1/latest/combined?modelType=Full&modelFormat=Geojson";
     console.log("[barentswatch-ais] Calling:", apiUrl);
     const apiRes = await fetch(apiUrl, {
       method: "POST",
@@ -72,10 +72,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        modelType: "Full",
-        modelFormat: "Geojson",
-      }),
+      body: JSON.stringify({}),
     });
 
     if (!apiRes.ok) {
@@ -92,10 +89,7 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${newToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            modelType: "Full",
-            modelFormat: "Geojson",
-          }),
+          body: JSON.stringify({}),
         });
         if (!retryRes.ok) {
           const retryText = await retryRes.text();
@@ -118,7 +112,12 @@ Deno.serve(async (req) => {
     }
 
     const data = await apiRes.json();
-    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "features:", data?.features?.length ?? "N/A");
+    const rawCount = Array.isArray(data) ? data.length : data?.features?.length ?? 0;
+    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "raw count:", rawCount);
+    if (rawCount > 0) {
+      const sample = Array.isArray(data) ? data[0] : data.features?.[0];
+      console.log("[barentswatch-ais] Sample item keys:", Object.keys(sample || {}));
+    }
     const filtered = filterByBounds(data, bounds);
     console.log("[barentswatch-ais] Filtered vessels:", filtered.count);
 
