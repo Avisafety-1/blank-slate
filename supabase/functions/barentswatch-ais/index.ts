@@ -61,10 +61,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("[barentswatch-ais] Bounds:", JSON.stringify(bounds));
     const token = await getBarentsWatchToken();
 
-    // Use the "latest/combined" endpoint with geographic filter
-    const apiUrl = "https://live.ais.barentswatch.no/live/v1/latest/combined";
+    const apiUrl = "https://live.ais.barentswatch.no/v1/latest/combined?modelType=Full&modelFormat=Geojson";
     console.log("[barentswatch-ais] Calling:", apiUrl);
     const apiRes = await fetch(apiUrl, {
       method: "POST",
@@ -72,10 +72,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        modelType: "Full",
-        modelFormat: "Geojson",
-      }),
+      body: JSON.stringify({}),
     });
 
     if (!apiRes.ok) {
