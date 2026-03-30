@@ -606,6 +606,25 @@ export function OpenAIPMap({
     };
     map.on('moveend', debouncedFetchKraft);
 
+    // NAIS: refetch on moveend if layer is enabled
+    let naisDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchNais = () => {
+      if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
+      naisDebounceTimer = setTimeout(() => {
+        const isEnabled = naisLayer && map.hasLayer(naisLayer);
+        if (isEnabled) {
+          fetchAisVesselsInBounds({
+            layer: naisLayer,
+            bounds: map.getBounds(),
+            zoom: map.getZoom(),
+            pane: 'naisPane',
+            mode: modeRef.current,
+          });
+        }
+      }, 500);
+    };
+    map.on('moveend', debouncedFetchNais);
+
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
