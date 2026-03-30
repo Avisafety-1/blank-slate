@@ -89,10 +89,7 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${newToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            modelType: "Full",
-            modelFormat: "Geojson",
-          }),
+          body: JSON.stringify({}),
         });
         if (!retryRes.ok) {
           const retryText = await retryRes.text();
