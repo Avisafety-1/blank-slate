@@ -829,3 +829,132 @@ export async function fetchKraftledningerInBounds(params: {
 
   await Promise.all(fetches);
 }
+
+// --- NAIS / AIS skipstrafikk (BarentsWatch) ---
+
+const SHIP_TYPE_NAMES: Record<number, string> = {
+  30: "Fiskefartøy",
+  31: "Sleping",
+  32: "Sleping",
+  33: "Mudring",
+  34: "Dykking",
+  35: "Militær",
+  36: "Seilbåt",
+  37: "Fritidsfartøy",
+  40: "Hurtiggående fartøy",
+  50: "Losfartøy",
+  51: "SAR",
+  52: "Taubåt",
+  53: "Havneassistanse",
+  55: "Politi",
+  58: "Medisinsk",
+  60: "Passasjerskip",
+  70: "Lasteskip",
+  80: "Tankskip",
+};
+
+function getShipTypeName(type: number | null): string {
+  if (type == null) return "Ukjent";
+  // Types are grouped by tens (60-69 = passenger, 70-79 = cargo, etc.)
+  const base = Math.floor(type / 10) * 10;
+  return SHIP_TYPE_NAMES[type] || SHIP_TYPE_NAMES[base] || `Type ${type}`;
+}
+
+function createVesselIcon(cog: number | null, shipType: number | null): L.DivIcon {
+  const rotation = cog != null ? cog : 0;
+  // Color based on type
+  let color = "#2563eb"; // default blue
+  const base = shipType != null ? Math.floor(shipType / 10) * 10 : 0;
+  if (base === 30) color = "#059669"; // fishing = green
+  else if (base === 60) color = "#7c3aed"; // passenger = purple
+  else if (base === 70) color = "#d97706"; // cargo = amber
+  else if (base === 80) color = "#dc2626"; // tanker = red
+  else if (shipType === 35) color = "#475569"; // military = slate
+  else if (shipType === 51 || shipType === 52) color = "#ea580c"; // SAR/tug = orange
+
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      transform: rotate(${rotation}deg);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
+        <path d="M12 2 L6 20 L12 16 L18 20 Z"/>
+      </svg>
+    </div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10],
+  });
+}
+
+export async function fetchAisVesselsInBounds(params: {
+  layer: L.LayerGroup;
+  bounds: L.LatLngBounds;
+  zoom: number;
+  pane: string;
+  mode: string;
+}) {
+  const { layer, bounds, zoom, pane, mode } = params;
+  layer.clearLayers();
+
+  if (zoom < 8) return;
+
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  try {
+    const { data, error } = await supabase.functions.invoke("barentswatch-ais", {
+      body: {
+        bounds: {
+          minLat: sw.lat,
+          minLng: sw.lng,
+          maxLat: ne.lat,
+          maxLng: ne.lng,
+        },
+      },
+    });
+
+    if (error) {
+      console.error("[NAIS] Edge function error:", error);
+      return;
+    }
+
+    const vessels = data?.vessels;
+    if (!Array.isArray(vessels)) {
+      console.warn("[NAIS] Unexpected response:", data);
+      return;
+    }
+
+    for (const v of vessels) {
+      if (v.lat == null || v.lon == null) continue;
+
+      const icon = createVesselIcon(v.cog, v.shipType);
+      const marker = L.marker([v.lat, v.lon], {
+        icon,
+        interactive: mode !== "routePlanning",
+        pane,
+      });
+
+      const typeName = getShipTypeName(v.shipType);
+      const sogKnots = v.sog != null ? `${v.sog.toFixed(1)} kn` : "–";
+      const cogDeg = v.cog != null ? `${Math.round(v.cog)}°` : "–";
+      const name = v.name || "Ukjent";
+
+      let popup = `<strong>🚢 ${name}</strong><br/>`;
+      popup += `MMSI: ${v.mmsi || "–"}<br/>`;
+      popup += `Type: ${typeName}<br/>`;
+      popup += `Fart: ${sogKnots}<br/>`;
+      popup += `Kurs: ${cogDeg}<br/>`;
+      if (v.destination) popup += `Dest: ${v.destination}<br/>`;
+
+      marker.bindPopup(popup);
+      marker.addTo(layer);
+    }
+
+    console.log(`[NAIS] Rendered ${vessels.length} vessels`);
+  } catch (err) {
+    console.error("[NAIS] Error:", err);
+  }
+}

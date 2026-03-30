@@ -31,6 +31,7 @@ import {
   fetchNaturvernZones,
   fetchVernRestrictionZones,
   fetchKraftledningerInBounds,
+  fetchAisVesselsInBounds,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
