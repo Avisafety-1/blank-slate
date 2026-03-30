@@ -835,6 +835,32 @@ export function OpenAIPMap({
       );
       return;
     }
+
+    // NAIS skipstrafikk: fetch data on enable, clear on disable
+    if (id === 'nais') {
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) {
+              layer.layer.addTo(map);
+              fetchAisVesselsInBounds({
+                layer: layer.layer as L.LayerGroup,
+                bounds: map.getBounds(),
+                zoom: map.getZoom(),
+                pane: 'naisPane',
+                mode: modeRef.current,
+              });
+            } else {
+              (layer.layer as L.LayerGroup).clearLayers();
+              layer.layer.remove();
+            }
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
+    }
     
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
