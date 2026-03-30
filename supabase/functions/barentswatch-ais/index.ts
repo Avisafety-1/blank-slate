@@ -118,7 +118,9 @@ Deno.serve(async (req) => {
     }
 
     const data = await apiRes.json();
+    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "features:", data?.features?.length ?? "N/A");
     const filtered = filterByBounds(data, bounds);
+    console.log("[barentswatch-ais] Filtered vessels:", filtered.count);
 
     return new Response(JSON.stringify(filtered), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
