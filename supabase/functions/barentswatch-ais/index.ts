@@ -64,7 +64,9 @@ Deno.serve(async (req) => {
     const token = await getBarentsWatchToken();
 
     // Use the "latest/combined" endpoint with geographic filter
-    const apiRes = await fetch("https://live.ais.barentswatch.no/v1/latest/combined", {
+    const apiUrl = "https://live.ais.barentswatch.no/live/v1/latest/combined";
+    console.log("[barentswatch-ais] Calling:", apiUrl);
+    const apiRes = await fetch(apiUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -73,7 +75,6 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         modelType: "Full",
         modelFormat: "Geojson",
-        downsample: false,
       }),
     });
 
@@ -85,7 +86,7 @@ Deno.serve(async (req) => {
       if (apiRes.status === 401) {
         cachedToken = null;
         const newToken = await getBarentsWatchToken();
-        const retryRes = await fetch("https://live.ais.barentswatch.no/v1/latest/combined", {
+        const retryRes = await fetch(apiUrl, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${newToken}`,
@@ -94,7 +95,6 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             modelType: "Full",
             modelFormat: "Geojson",
-            downsample: false,
           }),
         });
         if (!retryRes.ok) {
@@ -118,7 +118,9 @@ Deno.serve(async (req) => {
     }
 
     const data = await apiRes.json();
+    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "features:", data?.features?.length ?? "N/A");
     const filtered = filterByBounds(data, bounds);
+    console.log("[barentswatch-ais] Filtered vessels:", filtered.count);
 
     return new Response(JSON.stringify(filtered), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
