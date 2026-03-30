@@ -1,28 +1,60 @@
 
 
-## Fix: Duplikat vedleggsopplasting + legg til overwrite-støtte
+## Legg til NAIS kartlag (båttrafikk fra BarentsWatch)
 
-### Problem
-1. Samme fil sendes to ganger til E2 API — andre gang feiler med "files already exist, set overwrite to true"
-2. Gatewayen sender aldri `overwrite=true` query-parameter
+### Oversikt
+Legge til et nytt kartlag som viser live skipstrafikk (AIS-data) fra BarentsWatch/Kystverket. Skipene vises som markører på kartet med popup-info (navn, type, hastighet, kurs).
+
+### Arkitektur
+BarentsWatch AIS API krever OAuth2 (client_id + client_secret). Vi trenger:
+
+1. **Edge function** (`barentswatch-ais`) som håndterer token-henting og proxyer forespørsler
+2. **Client-side fetcher** i `mapDataFetchers.ts` som henter skip innenfor kartets bounding box
+3. **Kartlag** i `OpenAIPMap.tsx` som fungerer likt kraftledninger-laget (hent ved aktivering, oppdater ved panorering)
+
+### API-flyt
+
+```text
+Bruker aktiverer lag → fetchAisInBounds(bounds)
+  → supabase.functions.invoke('barentswatch-ais', { body: { bounds } })
+    → Edge function henter OAuth token fra id.barentswatch.no
+    → POST /v1/latest/combined med bbox-filter
+    → Returnerer skip-posisjoner
+  → Vis som markører på kartet
+```
 
 ### Endringer
 
-#### 1. `supabase/functions/_shared/eccairs-gateway-server.js`
-- Legg til `overwrite=true` som standard query-parameter i attachment-opplastingen:
-```js
-queryParams.append("overwrite", "true");
-```
-Dette sikrer at re-opplasting av samme filnavn alltid fungerer.
+#### 1. Secrets
+To hemmeligheter trengs: `BARENTSWATCH_CLIENT_ID` og `BARENTSWATCH_CLIENT_SECRET`. Bruker må registrere en API-klient på barentswatch.no/minside.
 
-#### 2. `src/components/eccairs/EccairsAttachmentUpload.tsx`
-- Legg til guard mot dobbelt-klikk: disable upload-knappen umiddelbart ved klikk (allerede delvis gjort via `isUploading`, men sjekk at `selectedDocs` state-oppdateringen ikke fører til at samme fil prosesseres to ganger)
-- Sjekk `item.status !== 'pending'` er korrekt, men `selectedDocs` leses fra closure — bruk funksjonell oppdatering for å sikre at status-sjekken reflekterer nyeste state
+#### 2. `supabase/functions/barentswatch-ais/index.ts` (ny)
+- Henter OAuth2 token fra `https://id.barentswatch.no/connect/token` med scope `ais`
+- Cacher token i minnet (gyldig typisk 1 time)
+- Mottar bounding box fra klient
+- Kaller `POST https://live.ais.barentswatch.no/live/v1/latest/combined` med geografisk filter
+- Returnerer array med skip (mmsi, name, shipType, lat, lon, sog, cog, heading, destination)
 
-### Filer som endres
+#### 3. `src/lib/mapDataFetchers.ts`
+Ny funksjon `fetchAisVesselsInBounds`:
+- Tar layer, bounds, zoom, pane, mode som input
+- Kaller edge function med bbox
+- Rendrer skip som roterte markører (SVG skip-ikon) med popup
+- Skip-ikon roteres basert på `cog` (course over ground)
+- Popup viser: skipsnavn, MMSI, type, hastighet (knop), kurs, destinasjon
+
+#### 4. `src/components/OpenAIPMap.tsx`
+- Nytt kartlag `nais` med skip-ikon, disabled by default
+- Ved aktivering: hent data for nåværende bounds
+- Ved `moveend`: re-hent data (med debounce, kun zoom ≥ 8)
+- Ved deaktivering: fjern markører og stopp lytter
+
+### Filer som endres/opprettes
 
 | Fil | Endring |
 |-----|---------|
-| `eccairs-gateway-server.js` | Legg til `overwrite=true` i queryParams |
-| `EccairsAttachmentUpload.tsx` | Forhindre dobbelt-sending av samme dokument |
+| Secrets | `BARENTSWATCH_CLIENT_ID`, `BARENTSWATCH_CLIENT_SECRET` |
+| `supabase/functions/barentswatch-ais/index.ts` | Ny edge function |
+| `src/lib/mapDataFetchers.ts` | Ny `fetchAisVesselsInBounds` funksjon |
+| `src/components/OpenAIPMap.tsx` | Nytt kartlag + toggle-logikk |
 
