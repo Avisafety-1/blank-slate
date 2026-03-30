@@ -31,6 +31,7 @@ import {
   fetchNaturvernZones,
   fetchVernRestrictionZones,
   fetchKraftledningerInBounds,
+  fetchAisVesselsInBounds,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -424,6 +425,14 @@ export function OpenAIPMap({
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
+    // NAIS skipstrafikk (BarentsWatch)
+    if (!map.getPane('naisPane')) {
+      map.createPane('naisPane');
+      map.getPane('naisPane')!.style.zIndex = '655';
+    }
+    const naisLayer = L.layerGroup();
+    layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
+
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
@@ -597,6 +606,25 @@ export function OpenAIPMap({
     };
     map.on('moveend', debouncedFetchKraft);
 
+    // NAIS: refetch on moveend if layer is enabled
+    let naisDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchNais = () => {
+      if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
+      naisDebounceTimer = setTimeout(() => {
+        const isEnabled = naisLayer && map.hasLayer(naisLayer);
+        if (isEnabled) {
+          fetchAisVesselsInBounds({
+            layer: naisLayer,
+            bounds: map.getBounds(),
+            zoom: map.getZoom(),
+            pane: 'naisPane',
+            mode: modeRef.current,
+          });
+        }
+      }, 500);
+    };
+    map.on('moveend', debouncedFetchNais);
+
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
@@ -654,8 +682,10 @@ export function OpenAIPMap({
       clearInterval(droneInterval);
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
+      if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
+      map.off('moveend', debouncedFetchNais);
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
@@ -792,6 +822,32 @@ export function OpenAIPMap({
                 bounds: map.getBounds(),
                 zoom: map.getZoom(),
                 pane: 'powerPane',
+                mode: modeRef.current,
+              });
+            } else {
+              (layer.layer as L.LayerGroup).clearLayers();
+              layer.layer.remove();
+            }
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
+    }
+
+    // NAIS skipstrafikk: fetch data on enable, clear on disable
+    if (id === 'nais') {
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) {
+              layer.layer.addTo(map);
+              fetchAisVesselsInBounds({
+                layer: layer.layer as L.LayerGroup,
+                bounds: map.getBounds(),
+                zoom: map.getZoom(),
+                pane: 'naisPane',
                 mode: modeRef.current,
               });
             } else {
