@@ -1,48 +1,34 @@
 
 
-## Fix: NAIS kartlag viser ingen trafikk
+## Fix: NAIS returnerer 0 skip
 
 ### Problem
-Edge-funksjonen bruker feil URL. OpenAPI-dokumentasjonen viser at base-URL-en er:
-```
-https://live.ais.barentswatch.no/live
-```
+1. URL-en har feil sti: `/live/v1/latest/combined` skal være `/v1/latest/combined` (subdomenet er allerede `live.ais.barentswatch.no`)
+2. Vi logger ikke rå array-lengden, så vi kan ikke se om APIet gir 0 eller om filteret fjerner alt
+3. `modelType`/`modelFormat` sendes i body, men ifølge docs skal de sendes som **query-parametre** for `/v1/latest/combined`
 
-Men edge-funksjonen kaller:
-```
-https://live.ais.barentswatch.no/v1/latest/combined
-```
-
-Den mangler `/live` i stien. Riktig URL er:
-```
-https://live.ais.barentswatch.no/live/v1/latest/combined
+### BarentsWatch API-eksempel fra docs
+```bash
+curl --location --request POST \
+  'https://live.ais.barentswatch.no/v1/latest/combined' \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{ "shipTypes": [30] }'
 ```
 
-I tillegg: `POST /v1/latest/combined` bruker `LatestAisCombinedFilterInput`-skjemaet som forventer felter som `modelType`, `modelFormat`, og evt. `since` + `geometry`-filter. Nåværende body sender `downsample: false` som ikke er et gyldig felt for dette endepunktet.
+Respons-felt: `latitude`, `longitude`, `courseOverGround`, `speedOverGround`, `trueHeading`, `name`, `shipType`, `mmsi`, `destination`
 
-### Endringer
+### Endringer i `supabase/functions/barentswatch-ais/index.ts`
 
-#### `supabase/functions/barentswatch-ais/index.ts`
-
-1. Endre alle 3 forekomster av URL fra:
-   - `https://live.ais.barentswatch.no/v1/latest/combined`
-   til:
-   - `https://live.ais.barentswatch.no/live/v1/latest/combined`
-
-2. Oppdater request body til å bruke riktige feltnavn i henhold til OpenAPI-spesifikasjonen:
-```json
-{
-  "modelType": "Full",
-  "modelFormat": "Geojson"
-}
-```
-(fjern `downsample: false` som ikke er et gyldig felt for `/latest/combined`)
-
-3. Legg til bedre logging av API-responsen for enklere feilsøking
+1. **Fix URL**: Endre fra `/live/v1/latest/combined` tilbake til `/v1/latest/combined`
+2. **Flytt modelType/modelFormat til query-params**: `?modelType=Full&modelFormat=Geojson`
+3. **Legg til rå-lengde logging**: `console.log("Raw count:", Array.isArray(data) ? data.length : data?.features?.length)`
+4. **Logg bounds**: Print mottatte bounds for feilsøking
+5. Gjør samme endring for retry-blokken
 
 ### Filer som endres
 
 | Fil | Endring |
 |-----|---------|
-| `supabase/functions/barentswatch-ais/index.ts` | Fix URL (legg til `/live`), rett request body |
+| `supabase/functions/barentswatch-ais/index.ts` | Fix URL, flytt params, bedre logging |
 
