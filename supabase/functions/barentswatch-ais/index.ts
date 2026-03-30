@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       if (apiRes.status === 401) {
         cachedToken = null;
         const newToken = await getBarentsWatchToken();
-        const retryRes = await fetch("https://live.ais.barentswatch.no/v1/latest/combined", {
+        const retryRes = await fetch(apiUrl, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${newToken}`,
@@ -95,7 +95,6 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             modelType: "Full",
             modelFormat: "Geojson",
-            downsample: false,
           }),
         });
         if (!retryRes.ok) {
