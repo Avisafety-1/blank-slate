@@ -425,6 +425,14 @@ export function OpenAIPMap({
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
+    // NAIS skipstrafikk (BarentsWatch)
+    if (!map.getPane('naisPane')) {
+      map.createPane('naisPane');
+      map.getPane('naisPane')!.style.zIndex = '655';
+    }
+    const naisLayer = L.layerGroup();
+    layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
+
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
