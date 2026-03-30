@@ -112,7 +112,12 @@ Deno.serve(async (req) => {
     }
 
     const data = await apiRes.json();
-    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "features:", data?.features?.length ?? "N/A");
+    const rawCount = Array.isArray(data) ? data.length : data?.features?.length ?? 0;
+    console.log("[barentswatch-ais] Response type:", Array.isArray(data) ? "array" : typeof data, "raw count:", rawCount);
+    if (rawCount > 0) {
+      const sample = Array.isArray(data) ? data[0] : data.features?.[0];
+      console.log("[barentswatch-ais] Sample item keys:", Object.keys(sample || {}));
+    }
     const filtered = filterByBounds(data, bounds);
     console.log("[barentswatch-ais] Filtered vessels:", filtered.count);
 
