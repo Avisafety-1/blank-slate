@@ -105,9 +105,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       setCourse({ ...courseData, fullscreen: (courseData as any)?.fullscreen || false } as CourseData);
 
       if ((courseData as any)?.fullscreen && !previewMode) {
-        setTimeout(() => {
-          dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
-        }, 300);
+        setIsFullscreen(true);
       }
 
       const { data: questionsData } = await supabase
