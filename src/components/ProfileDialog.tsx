@@ -1220,31 +1220,53 @@ export const ProfileDialog = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {pendingTraining.map((assignment: any) => (
-                          <div
-                            key={assignment.id}
-                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm break-words">
-                                {(assignment.training_courses as any)?.title || "Kurs"}
-                              </p>
-                              {(assignment.training_courses as any)?.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {(assignment.training_courses as any).description}
-                                </p>
+                        {pendingTraining.map((assignment: any) => {
+                          const savedAnswers = assignment.saved_answers as Record<string, string> | null;
+                          const hasStarted = !!savedAnswers;
+                          const totalSlides = (assignment.training_courses as any)?.training_course_slides?.length || 0;
+                          const currentSlide = hasStarted && typeof (savedAnswers as any)?._currentSlide === "number"
+                            ? (savedAnswers as any)._currentSlide + 1
+                            : 0;
+                          const progressPercent = totalSlides > 0 ? Math.round((currentSlide / totalSlides) * 100) : 0;
+
+                          return (
+                            <div
+                              key={assignment.id}
+                              className="flex flex-col gap-2 p-3 rounded-lg border border-border"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm break-words">
+                                    {(assignment.training_courses as any)?.title || "Kurs"}
+                                  </p>
+                                  {(assignment.training_courses as any)?.description && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {(assignment.training_courses as any).description}
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={hasStarted ? "default" : "default"}
+                                  className="self-start sm:self-center shrink-0"
+                                  onClick={() => setTakeCourseAssignmentId(assignment.id)}
+                                >
+                                  <GraduationCap className="h-4 w-4 mr-1" />
+                                  {hasStarted ? "Fortsett kurs" : "Ta kurs"}
+                                </Button>
+                              </div>
+                              {hasStarted && totalSlides > 0 && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>Fremdrift: {currentSlide} av {totalSlides} sider</span>
+                                    <span>{progressPercent}%</span>
+                                  </div>
+                                  <Progress value={progressPercent} className="h-1.5" />
+                                </div>
                               )}
                             </div>
-                            <Button
-                              size="sm"
-                              className="self-start sm:self-center shrink-0"
-                              onClick={() => setTakeCourseAssignmentId(assignment.id)}
-                            >
-                              <GraduationCap className="h-4 w-4 mr-1" />
-                              Ta kurs
-                            </Button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
