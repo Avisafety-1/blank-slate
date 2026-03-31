@@ -378,7 +378,7 @@ export const ProfileDialog = () => {
       // Fetch pending training assignments
       const { data: trainingData } = await supabase
         .from("training_assignments")
-        .select("id, course_id, training_courses(title, description)")
+        .select("id, course_id, saved_answers, training_courses(title, description, training_course_slides(id))")
         .eq("profile_id", user.id)
         .is("completed_at", null);
       setPendingTraining(trainingData || []);
