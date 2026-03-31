@@ -762,7 +762,7 @@ export const ProfileDialog = () => {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl w-[95vw] md:w-[85vw] lg:w-full max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
         <DialogHeader>
         <DialogTitle>{t('profile.title')}</DialogTitle>
       </DialogHeader>
