@@ -470,34 +470,32 @@ export const EquipmentLogbookDialog = ({
             </p>
           </DialogHeader>
 
+          <div className="flex justify-end gap-2 mb-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowAddEntry(!showAddEntry)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Legg til
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleExportPDF}
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              PDF
+            </Button>
+          </div>
+
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-              <TabsList className="flex w-full sm:w-auto overflow-x-auto no-scrollbar">
-                <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
-                <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
-                <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
-                <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
-                {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
-              </TabsList>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowAddEntry(!showAddEntry)}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Legg til
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleExportPDF}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  PDF
-                </Button>
+            <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-2">
+              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
+              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
+              <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
+              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
               </div>
             </div>
 
