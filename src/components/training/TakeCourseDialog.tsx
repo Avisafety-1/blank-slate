@@ -61,18 +61,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     if (open) loadCourse();
   }, [open, assignmentId, directCourseId]);
 
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
-    }
+    setIsFullscreen(prev => !prev);
   }, []);
 
   const loadCourse = async () => {
@@ -115,9 +105,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       setCourse({ ...courseData, fullscreen: (courseData as any)?.fullscreen || false } as CourseData);
 
       if ((courseData as any)?.fullscreen && !previewMode) {
-        setTimeout(() => {
-          dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
-        }, 300);
+        setIsFullscreen(true);
       }
 
       const { data: questionsData } = await supabase
@@ -290,13 +278,13 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const handleCloseResults = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
+    setIsFullscreen(false);
     onOpenChange(false);
     if (!previewMode) onCompleted?.();
   };
 
   const handleClose = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
+    setIsFullscreen(false);
     onOpenChange(false);
   };
 
@@ -450,7 +438,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent ref={dialogRef} className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent ref={dialogRef} className={isFullscreen ? "fixed inset-0 max-w-none w-screen h-screen rounded-none border-none overflow-y-auto z-[100]" : "max-w-3xl max-h-[90vh] overflow-y-auto"}>
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
