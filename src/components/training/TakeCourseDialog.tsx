@@ -380,7 +380,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const currentSlide = slides[currentPage];
 
   const renderCourseView = () => (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${isFullscreen ? "flex flex-col flex-1" : ""}`}>
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
