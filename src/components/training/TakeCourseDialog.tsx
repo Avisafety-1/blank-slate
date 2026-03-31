@@ -61,18 +61,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     if (open) loadCourse();
   }, [open, assignmentId, directCourseId]);
 
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      dialogRef.current?.closest('[role="dialog"]')?.requestFullscreen?.();
-    }
+    setIsFullscreen(prev => !prev);
   }, []);
 
   const loadCourse = async () => {
