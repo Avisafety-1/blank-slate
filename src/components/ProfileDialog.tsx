@@ -181,7 +181,7 @@ export const ProfileDialog = () => {
             .single(),
           supabase
             .from("training_assignments")
-            .select("id, course_id, saved_answers, training_courses(title, description, training_course_slides(id))")
+            .select("id, course_id, saved_answers, training_courses(title, description)")
             .eq("profile_id", user.id)
             .is("completed_at", null),
         ]);
