@@ -278,13 +278,13 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const handleCloseResults = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
+    setIsFullscreen(false);
     onOpenChange(false);
     if (!previewMode) onCompleted?.();
   };
 
   const handleClose = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
+    setIsFullscreen(false);
     onOpenChange(false);
   };
 
