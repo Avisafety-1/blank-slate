@@ -496,8 +496,7 @@ export const EquipmentLogbookDialog = ({
               <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
               <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
               {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
-              </div>
-            </div>
+            </TabsList>
 
             {showAddEntry && (
               <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3">
