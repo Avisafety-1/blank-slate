@@ -436,9 +436,37 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     </div>
   );
 
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-background flex flex-col overflow-y-auto" ref={dialogRef}>
+        <div className="p-4 sm:p-6 max-w-4xl w-full mx-auto flex-1 flex flex-col">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2 className="text-lg font-semibold truncate">{course?.title || "Kurs"}</h2>
+              {previewMode && <Badge variant="secondary" className="shrink-0">Forhåndsvisning</Badge>}
+            </div>
+            <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={toggleFullscreen}>
+              <Minimize className="h-4 w-4" />
+            </Button>
+          </div>
+          {course?.description && <p className="text-sm text-muted-foreground mb-4">{course.description}</p>}
+          <div className="flex-1">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Laster kurs...</p>
+            ) : submitted ? (
+              renderResultView()
+            ) : (
+              renderCourseView()
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent ref={dialogRef} className={isFullscreen ? "fixed inset-0 max-w-none w-screen h-screen rounded-none border-none overflow-y-auto z-[100]" : "max-w-3xl max-h-[90vh] overflow-y-auto"}>
+      <DialogContent ref={dialogRef} className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -446,7 +474,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               {previewMode && <Badge variant="secondary" className="shrink-0">Forhåndsvisning</Badge>}
             </div>
             <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              <Maximize className="h-4 w-4" />
             </Button>
           </div>
           {course?.description && <p className="text-sm text-muted-foreground">{course.description}</p>}
