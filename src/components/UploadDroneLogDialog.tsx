@@ -2673,7 +2673,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                    try {
                     toast.info('Starter synkronisering...');
                     const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
-                      body: { companyId },
+                      body: { companyId, userId: user?.id },
                     });
                     if (error) throw error;
                     const companyDetails = data?.companies?.[0]?.details || '';
