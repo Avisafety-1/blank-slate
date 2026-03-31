@@ -390,12 +390,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!user) return;
     const { data } = await supabase
       .from('dji_credentials')
-      .select('id, dji_email')
+      .select('id, dji_email, auto_sync_enabled')
       .eq('user_id', user.id)
       .maybeSingle();
     if (data) {
       setHasSavedCredentials(true);
       setSavedDjiEmail(data.dji_email);
+      setEnableAutoSync(!!(data as any).auto_sync_enabled);
     } else {
       setHasSavedCredentials(false);
       setSavedDjiEmail("");
