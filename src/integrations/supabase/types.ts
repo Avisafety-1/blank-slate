@@ -4209,6 +4209,7 @@ export type Database = {
           global_visibility: boolean
           id: string
           passing_score: number
+          pptx_file_url: string | null
           status: string
           title: string
           updated_at: string
@@ -4226,6 +4227,7 @@ export type Database = {
           global_visibility?: boolean
           id?: string
           passing_score?: number
+          pptx_file_url?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -4243,6 +4245,7 @@ export type Database = {
           global_visibility?: boolean
           id?: string
           passing_score?: number
+          pptx_file_url?: string | null
           status?: string
           title?: string
           updated_at?: string
