@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, GripVertical, Maximize, Minimize, FileText, HelpCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { SlideEditor } from "@/components/training/SlideEditor";
-import { SlideCanvasEditor, type CanvasData } from "@/components/training/SlideCanvasEditor";
-import type { JSONContent } from "@tiptap/react";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Set worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 interface QuestionOption {
   id?: string;
@@ -25,10 +26,12 @@ interface Slide {
   id?: string;
   slide_type: "content" | "question";
   question_text: string;
-  content_json: JSONContent | null;
+  content_json: any;
   image_url: string | null;
   sort_order: number;
   options: QuestionOption[];
+  // local-only for preview
+  _localBlobUrl?: string;
 }
 
 interface Props {
@@ -43,32 +46,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [passingScore, setPassingScore] = useState(80);
   const [validityMonths, setValidityMonths] = useState<number | null>(null);
   const [hasPermanentValidity, setHasPermanentValidity] = useState(true);
-  const [displayMode, setDisplayMode] = useState<"list" | "paginated">("list");
+  const [displayMode, setDisplayMode] = useState<"list" | "paginated">("paginated");
   const [fullscreen, setFullscreen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
-  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
-  const [activeSlideIdx, setActiveSlideIdx] = useState(0);
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (courseId) loadCourse();
   }, [courseId]);
-
-  useEffect(() => {
-    const handler = () => setIsEditorFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  const toggleEditorFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      editorRef.current?.requestFullscreen?.();
-    }
-  }, []);
 
   const loadCourse = async () => {
     if (!courseId) return;
@@ -86,7 +74,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setPassingScore(course.passing_score);
         setValidityMonths(course.validity_months);
         setHasPermanentValidity(!course.validity_months);
-        setDisplayMode((course as any).display_mode === "paginated" ? "paginated" : "list");
+        setDisplayMode((course as any).display_mode === "list" ? "list" : "paginated");
         setFullscreen((course as any).fullscreen || false);
       }
 
@@ -130,26 +118,74 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
   };
 
-  const addSlide = (type: "content" | "question") => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Vennligst last opp en PDF-fil");
+      return;
+    }
+
+    setUploadingPdf(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pageCount = pdf.numPages;
+
+      const newSlides: Slide[] = [];
+
+      for (let i = 1; i <= pageCount; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const blobUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+        newSlides.push({
+          slide_type: "content",
+          question_text: `Slide ${i}`,
+          content_json: null,
+          image_url: null,
+          sort_order: i - 1,
+          options: [],
+          _localBlobUrl: blobUrl,
+        });
+      }
+
+      setSlides(newSlides);
+      toast.success(`${pageCount} sider lastet inn fra PDF`);
+    } catch (err) {
+      console.error("Error parsing PDF:", err);
+      toast.error("Kunne ikke lese PDF-filen");
+    } finally {
+      setUploadingPdf(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const addQuestionAfterSlide = (afterIdx: number) => {
     const newSlide: Slide = {
-      slide_type: type,
+      slide_type: "question",
       question_text: "",
       content_json: null,
       image_url: null,
-      sort_order: slides.length,
-      options: type === "question" ? [
+      sort_order: afterIdx + 1,
+      options: [
         { option_text: "", is_correct: true, sort_order: 0 },
         { option_text: "", is_correct: false, sort_order: 1 },
-      ] : [],
+      ],
     };
-    setSlides([...slides, newSlide]);
-    setActiveSlideIdx(slides.length);
+    const newSlides = [...slides];
+    newSlides.splice(afterIdx + 1, 0, newSlide);
+    setSlides(newSlides);
   };
 
   const removeSlide = (idx: number) => {
-    const newSlides = slides.filter((_, i) => i !== idx);
-    setSlides(newSlides);
-    if (activeSlideIdx >= newSlides.length) setActiveSlideIdx(Math.max(0, newSlides.length - 1));
+    setSlides(slides.filter((_, i) => i !== idx));
   };
 
   const updateSlide = (idx: number, field: keyof Slide, value: any) => {
@@ -185,7 +221,29 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     const [moved] = newSlides.splice(from, 1);
     newSlides.splice(to, 0, moved);
     setSlides(newSlides);
-    setActiveSlideIdx(to);
+  };
+
+  const uploadSlideImage = async (dataUrl: string, courseId: string, slideIndex: number): Promise<string> => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const path = `${companyId}/${courseId}/slide-${slideIndex}.jpg`;
+
+    const { error } = await supabase.storage
+      .from("training-slides")
+      .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from("training-slides")
+      .getPublicUrl(path);
+
+    // Since the bucket is private, we need signed URLs
+    const { data: signedData } = await supabase.storage
+      .from("training-slides")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10); // 10 year signed URL
+
+    return signedData?.signedUrl || urlData.publicUrl;
   };
 
   const handleSave = async () => {
@@ -194,25 +252,23 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       return;
     }
 
-    // Validate question slides
     const questionSlides = slides.filter(s => s.slide_type === "question");
-    for (let i = 0; i < questionSlides.length; i++) {
-      const q = questionSlides[i];
-      if (!q.question_text.trim() && !q.content_json) {
-        toast.error(`Spørsmålsside mangler tekst`);
+    for (const q of questionSlides) {
+      if (!q.question_text.trim()) {
+        toast.error("Spørsmålsside mangler tekst");
         return;
       }
       if (q.options.length < 2) {
-        toast.error(`Spørsmålet må ha minst 2 alternativer`);
+        toast.error("Spørsmålet må ha minst 2 alternativer");
         return;
       }
       if (!q.options.some(o => o.is_correct)) {
-        toast.error(`Spørsmålet må ha ett riktig svar`);
+        toast.error("Spørsmålet må ha ett riktig svar");
         return;
       }
       for (const o of q.options) {
         if (!o.option_text.trim()) {
-          toast.error(`Alle alternativer må ha tekst`);
+          toast.error("Alle alternativer må ha tekst");
           return;
         }
       }
@@ -245,23 +301,33 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         cId = data.id;
       }
 
+      // Upload slide images that have local blob URLs
+      const updatedSlides = [...slides];
+      for (let i = 0; i < updatedSlides.length; i++) {
+        const s = updatedSlides[i];
+        if (s._localBlobUrl && s.slide_type === "content") {
+          const imageUrl = await uploadSlideImage(s._localBlobUrl, cId!, i);
+          updatedSlides[i] = { ...s, image_url: imageUrl, _localBlobUrl: undefined };
+        }
+      }
+
       // Delete existing questions (cascade deletes options)
       if (courseId) {
         await supabase.from("training_questions").delete().eq("course_id", courseId);
       }
 
       // Insert slides
-      for (let i = 0; i < slides.length; i++) {
-        const s = slides[i];
+      for (let i = 0; i < updatedSlides.length; i++) {
+        const s = updatedSlides[i];
         const { data: qData, error: qErr } = await supabase
           .from("training_questions")
           .insert({
             course_id: cId!,
-            question_text: s.question_text.trim() || (s.slide_type === "content" ? "Innholdsside" : ""),
+            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : ""),
             image_url: s.image_url,
             sort_order: i,
             slide_type: s.slide_type,
-            content_json: s.content_json,
+            content_json: null,
           } as any)
           .select("id")
           .single();
@@ -289,193 +355,21 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
   };
 
-  // Helper to detect canvas format vs old TipTap format
-  const isCanvasFormat = (json: any): boolean => {
-    return json && Array.isArray(json.elements);
-  };
-
-  // Migrate old TipTap content to canvas format with a single text element
-  const migrateToCanvas = (json: JSONContent | null): CanvasData => {
-    if (!json) return { elements: [] };
-    return {
-      elements: [{
-        id: Math.random().toString(36).slice(2, 10),
-        type: "text",
-        x: 100,
-        y: 80,
-        width: 1720,
-        height: 920,
-        content: json,
-      }],
-    };
-  };
-
   if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
 
-  const activeSlide = slides[activeSlideIdx];
+  const contentSlideCount = slides.filter(s => s.slide_type === "content").length;
+  const questionSlideCount = slides.filter(s => s.slide_type === "question").length;
 
-  // Fullscreen editor layout
-  if (isEditorFullscreen) {
-    return (
-      <div ref={editorRef} className="bg-background h-screen flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 p-3 border-b bg-muted/30 shrink-0">
-          <Button variant="ghost" size="sm" onClick={toggleEditorFullscreen}>
-            <Minimize className="h-4 w-4 mr-1" />
-            Avslutt fullskjerm
-          </Button>
-          <h2 className="text-sm font-semibold flex-1 truncate">{title || "Nytt kurs"}</h2>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => addSlide("content")}>
-              <FileText className="h-3.5 w-3.5 mr-1" />
-              Innholdsside
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => addSlide("question")}>
-              <HelpCircle className="h-3.5 w-3.5 mr-1" />
-              Spørsmålsside
-            </Button>
-          </div>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? "Lagrer..." : "Lagre"}
-          </Button>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar thumbnails */}
-          <div className="w-48 border-r bg-muted/20 overflow-y-auto p-2 space-y-2 shrink-0">
-            {slides.map((s, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveSlideIdx(idx)}
-                className={`w-full text-left p-2 rounded-lg border text-xs transition-all hover:scale-[1.02] ${
-                  idx === activeSlideIdx ? "border-primary bg-primary/10" : "border-border bg-card"
-                }`}
-              >
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-muted-foreground">{idx + 1}.</span>
-                  {s.slide_type === "content" ? (
-                    <Badge variant="secondary" className="text-[10px] px-1 py-0">Innhold</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0">Spørsmål</Badge>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-4 w-4 p-0 ml-auto text-destructive opacity-0 group-hover:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); removeSlide(idx); }}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-                <p className="text-muted-foreground truncate text-[11px]">
-                  {s.slide_type === "question" ? (s.question_text || "Tom spørsmålsside") : "Innholdsside"}
-                </p>
-              </button>
-            ))}
-            {slides.length === 0 && (
-              <p className="text-[11px] text-muted-foreground text-center py-4">Ingen sider ennå</p>
-            )}
-          </div>
-
-          {/* Main editor area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {activeSlide ? (
-              <div className="max-w-3xl mx-auto space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={activeSlide.slide_type === "content" ? "secondary" : "outline"}>
-                      {activeSlide.slide_type === "content" ? "Innholdsside" : "Spørsmålsside"}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">Side {activeSlideIdx + 1} av {slides.length}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" disabled={activeSlideIdx === 0} onClick={() => moveSlide(activeSlideIdx, activeSlideIdx - 1)}>↑</Button>
-                    <Button size="sm" variant="ghost" disabled={activeSlideIdx === slides.length - 1} onClick={() => moveSlide(activeSlideIdx, activeSlideIdx + 1)}>↓</Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(activeSlideIdx)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Canvas editor for content */}
-                <SlideCanvasEditor
-                  data={isCanvasFormat(activeSlide.content_json) ? activeSlide.content_json as CanvasData : migrateToCanvas(activeSlide.content_json)}
-                  onChange={(canvasData) => updateSlide(activeSlideIdx, "content_json", canvasData)}
-                />
-
-                {/* Question options (only for question slides) */}
-                {activeSlide.slide_type === "question" && (
-                  <Card>
-                    <CardContent className="pt-4 space-y-3">
-                      <Label className="text-sm font-medium">Svaralternativer</Label>
-                      {activeSlide.options.map((o, oIdx) => (
-                        <div key={oIdx} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name={`correct-fs-${activeSlideIdx}`}
-                            checked={o.is_correct}
-                            onChange={() => updateOption(activeSlideIdx, oIdx, "is_correct", true)}
-                            className="accent-primary"
-                            title="Marker som riktig svar"
-                          />
-                          <Input
-                            value={o.option_text}
-                            onChange={(e) => updateOption(activeSlideIdx, oIdx, "option_text", e.target.value)}
-                            placeholder={`Alternativ ${oIdx + 1}`}
-                            className="flex-1"
-                          />
-                          {activeSlide.options.length > 2 && (
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removeOption(activeSlideIdx, oIdx)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button size="sm" variant="ghost" onClick={() => addOption(activeSlideIdx)} className="text-xs">
-                        <Plus className="h-3 w-3 mr-1" />
-                        Legg til alternativ
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center space-y-3">
-                  <p>Legg til en side for å begynne</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => addSlide("content")}>
-                      <FileText className="h-4 w-4 mr-1" />
-                      Innholdsside
-                    </Button>
-                    <Button variant="outline" onClick={() => addSlide("question")}>
-                      <HelpCircle className="h-4 w-4 mr-1" />
-                      Spørsmålsside
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Normal (non-fullscreen) editor layout
   return (
-    <div ref={editorRef} className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-xl font-bold flex-1">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
-        <Button variant="ghost" size="sm" onClick={toggleEditorFullscreen}>
-          <Maximize className="h-4 w-4 mr-1" />
-          Fullskjerm-redigering
-        </Button>
       </div>
 
+      {/* Course details */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Kursdetaljer</CardTitle>
@@ -507,19 +401,6 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               )}
             </div>
           </div>
-          <div>
-            <Label>Visningsformat</Label>
-            <div className="flex items-center gap-4 mt-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="displayMode" checked={displayMode === "list"} onChange={() => setDisplayMode("list")} className="accent-primary" />
-                <span className="text-sm">Alle sider på én side</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="displayMode" checked={displayMode === "paginated"} onChange={() => setDisplayMode("paginated")} className="accent-primary" />
-                <span className="text-sm">Én side om gangen</span>
-              </label>
-            </div>
-          </div>
           <div className="flex items-center gap-3 mt-3">
             <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
             <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
@@ -527,51 +408,107 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Sider ({slides.length})</h3>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => addSlide("content")}>
-              <FileText className="h-4 w-4 mr-1" />
-              Innholdsside
+      {/* PDF Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Last opp presentasjon</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Last opp en PDF-fil (eksporter fra PowerPoint/Keynote). Hver side blir en slide i kurset.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handlePdfUpload}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPdf}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {uploadingPdf ? "Leser PDF..." : "Velg PDF-fil"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => addSlide("question")}>
-              <HelpCircle className="h-4 w-4 mr-1" />
-              Spørsmålsside
-            </Button>
+            {contentSlideCount > 0 && (
+              <Badge variant="secondary">
+                <ImageIcon className="h-3 w-3 mr-1" />
+                {contentSlideCount} slides
+              </Badge>
+            )}
           </div>
-        </div>
+          {uploadingPdf && (
+            <p className="text-xs text-muted-foreground">Konverterer sider til bilder...</p>
+          )}
+        </CardContent>
+      </Card>
 
-        {slides.map((s, sIdx) => (
-          <Card key={sIdx} className={activeSlideIdx === sIdx ? "ring-2 ring-primary/30" : ""}>
-            <CardContent className="pt-4 space-y-3">
-              <div className="flex items-start gap-2">
-                <GripVertical className="h-5 w-5 text-muted-foreground mt-2 flex-shrink-0 cursor-grab" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground w-6">{sIdx + 1}.</span>
-                    <Badge variant={s.slide_type === "content" ? "secondary" : "outline"} className="text-xs">
-                      {s.slide_type === "content" ? "Innhold" : "Spørsmål"}
-                    </Badge>
-                    <div className="flex-1" />
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
-                      <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
-                    </div>
-                    <Button size="sm" variant="ghost" className="text-destructive flex-shrink-0" onClick={() => removeSlide(sIdx)}>
+      {/* Slides preview + question management */}
+      {slides.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">
+              Sider ({slides.length}) · {questionSlideCount} spørsmål
+            </h3>
+          </div>
+
+          {slides.map((s, sIdx) => (
+            <Card key={sIdx}>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-muted-foreground w-6">{sIdx + 1}.</span>
+                  <Badge variant={s.slide_type === "content" ? "secondary" : "outline"} className="text-xs">
+                    {s.slide_type === "content" ? "Slide" : "Spørsmål"}
+                  </Badge>
+                  <div className="flex-1" />
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
+                    <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
+                  </div>
+                  {s.slide_type === "question" && (
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                  )}
+                </div>
+
+                {/* Content slide: show image preview */}
+                {s.slide_type === "content" && (
+                  <div className="space-y-2">
+                    {(s._localBlobUrl || s.image_url) && (
+                      <img
+                        src={s._localBlobUrl || s.image_url!}
+                        alt={`Slide ${sIdx + 1}`}
+                        className="w-full max-h-64 object-contain rounded border bg-muted/20"
+                      />
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addQuestionAfterSlide(sIdx)}
+                      className="text-xs"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                      Legg til spørsmål etter denne sliden
+                    </Button>
                   </div>
+                )}
 
-                  {/* Canvas editor for content */}
-                  <SlideCanvasEditor
-                    data={isCanvasFormat(s.content_json) ? s.content_json as CanvasData : migrateToCanvas(s.content_json)}
-                    onChange={(canvasData) => updateSlide(sIdx, "content_json", canvasData)}
-                  />
-
-                  {/* Question options */}
-                  {s.slide_type === "question" && (
-                    <div className="space-y-2 pl-2">
+                {/* Question slide */}
+                {s.slide_type === "question" && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm">Spørsmål</Label>
+                      <Input
+                        value={s.question_text}
+                        onChange={(e) => updateSlide(sIdx, "question_text", e.target.value)}
+                        placeholder="Skriv spørsmålet her..."
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground">Svaralternativer</Label>
                       {s.options.map((o, oIdx) => (
                         <div key={oIdx} className="flex items-center gap-2">
@@ -601,32 +538,15 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                         Legg til alternativ
                       </Button>
                     </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-        {slides.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground text-sm space-y-3">
-              <p>Ingen sider ennå. Legg til en innholdsside eller spørsmålsside.</p>
-              <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={() => addSlide("content")}>
-                  <FileText className="h-4 w-4 mr-1" />
-                  Innholdsside
-                </Button>
-                <Button variant="outline" onClick={() => addSlide("question")}>
-                  <HelpCircle className="h-4 w-4 mr-1" />
-                  Spørsmålsside
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
+      {/* Save bar */}
       <div className="flex items-center gap-3 justify-end sticky bottom-4 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
         <Button variant="outline" onClick={onClose}>
           Avbryt

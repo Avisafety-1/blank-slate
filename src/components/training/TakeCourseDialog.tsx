@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { SlideReadonlyView } from "@/components/training/SlideReadonlyView";
-import { SlideCanvasReadonly } from "@/components/training/SlideCanvasReadonly";
 
 interface Props {
   assignmentId?: string;
@@ -43,7 +41,7 @@ interface CourseData {
 }
 
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
-  const { user, companyId } = useAuth();
+  const { user } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -57,7 +55,6 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  const isPaginated = course?.display_mode === "paginated";
   const questionSlides = slides.filter(s => s.slide_type === "question");
 
   useEffect(() => {
@@ -86,6 +83,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     setAnswers({});
     try {
       let targetCourseId: string;
+      let savedCurrentSlide = 0;
 
       if (previewMode && directCourseId) {
         targetCourseId = directCourseId;
@@ -99,7 +97,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         if (!assignment) throw new Error("Assignment not found");
         targetCourseId = assignment.course_id;
         const savedAnswers = assignment.saved_answers as Record<string, string> | null;
-        setAnswers(savedAnswers || {});
+        if (savedAnswers) {
+          const { _currentSlide, ...rest } = savedAnswers as any;
+          setAnswers(rest);
+          if (typeof _currentSlide === "number") savedCurrentSlide = _currentSlide;
+        }
       } else {
         throw new Error("No assignment or course specified");
       }
@@ -143,12 +145,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         }));
         setSlides(loadedSlides);
 
-        if (!previewMode && assignmentId) {
-          const savedAnswers = answers;
-          if (savedAnswers && (courseData as any)?.display_mode === "paginated") {
-            const firstUnanswered = loadedSlides.findIndex((s) => s.slide_type === "question" && !savedAnswers[s.id]);
-            if (firstUnanswered > 0) setCurrentPage(firstUnanswered);
-          }
+        if (savedCurrentSlide > 0 && savedCurrentSlide < loadedSlides.length) {
+          setCurrentPage(savedCurrentSlide);
         }
       }
     } catch (err) {
@@ -162,9 +160,10 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const handleSaveProgress = async () => {
     setSavingProgress(true);
     try {
+      const saveData = { ...answers, _currentSlide: currentPage };
       const { error } = await supabase
         .from("training_assignments")
-        .update({ saved_answers: answers as any })
+        .update({ saved_answers: saveData as any })
         .eq("id", assignmentId);
       if (error) throw error;
       toast.success("Fremgang lagret");
@@ -182,11 +181,18 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const handleSelectAnswer = (questionId: string, optionId: string) => {
-    const newAnswers = { ...answers, [questionId]: optionId };
-    setAnswers(newAnswers);
+    setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+  };
 
-    if (isPaginated && currentPage < slides.length - 1) {
-      setTimeout(() => setCurrentPage((p) => p + 1), 350);
+  const handleNext = () => {
+    if (currentPage < slides.length - 1) {
+      setCurrentPage(p => p + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentPage > 0) {
+      setCurrentPage(p => p - 1);
     }
   };
 
@@ -196,19 +202,16 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     const unanswered = questionSlides.filter((q) => !answers[q.id]);
     if (unanswered.length > 0) {
       toast.error(`Du må svare på alle ${questionSlides.length} spørsmål`);
-      if (isPaginated) {
-        const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !answers[s.id]);
-        setCurrentPage(firstIdx);
-      }
+      const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !answers[s.id]);
+      if (firstIdx >= 0) setCurrentPage(firstIdx);
       return;
     }
 
     if (previewMode) {
       let correct = 0;
       questionSlides.forEach((q) => {
-        const selectedOptionId = answers[q.id];
         const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === selectedOptionId) correct++;
+        if (correctOption && correctOption.id === answers[q.id]) correct++;
       });
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       setScore(scorePercent);
@@ -223,9 +226,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     try {
       let correct = 0;
       questionSlides.forEach((q) => {
-        const selectedOptionId = answers[q.id];
         const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === selectedOptionId) correct++;
+        if (correctOption && correctOption.id === answers[q.id]) correct++;
       });
 
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
@@ -299,43 +301,35 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   };
 
   const answeredCount = questionSlides.filter((q) => answers[q.id]).length;
-  const progressPercent = questionSlides.length > 0 ? Math.round((answeredCount / questionSlides.length) * 100) : 0;
+  const totalProgress = slides.length > 0 ? Math.round(((currentPage + 1) / slides.length) * 100) : 0;
 
-  const renderSlide = (s: SlideData, idx: number) => {
+  const renderSlide = (s: SlideData) => {
     if (s.slide_type === "content") {
       return (
-        <Card key={s.id}>
-          <CardContent className="pt-4">
-            {s.content_json ? (
-              s.content_json.elements ? (
-                <SlideCanvasReadonly data={s.content_json} />
-              ) : (
-                <SlideReadonlyView content={s.content_json} />
-              )
-            ) : (
-              <p className="text-muted-foreground text-sm">Innholdsside</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-center">
+          {s.image_url ? (
+            <img
+              src={s.image_url}
+              alt={s.question_text}
+              className={`w-full rounded-lg ${isFullscreen ? "max-h-[80vh]" : "max-h-[60vh]"} object-contain`}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Innholdsside</p>
+          )}
+        </div>
       );
     }
 
     // Question slide
     return (
-      <Card key={s.id}>
+      <Card>
         <CardContent className="pt-4 space-y-3">
-          {s.content_json ? (
-            s.content_json.elements ? (
-              <SlideCanvasReadonly data={s.content_json} />
-            ) : (
-              <SlideReadonlyView content={s.content_json} />
-            )
-          ) : (
-            <p className="font-medium">
-              <span className="text-muted-foreground mr-2">{questionSlides.indexOf(s) + 1}.</span>
-              {s.question_text}
-            </p>
-          )}
+          <p className="font-medium">
+            <span className="text-muted-foreground mr-2">
+              {questionSlides.indexOf(s) + 1}/{questionSlides.length}
+            </span>
+            {s.question_text}
+          </p>
           {s.image_url && (
             <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
           )}
@@ -393,98 +387,70 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     </div>
   );
 
-  const renderPaginatedView = () => {
-    const s = slides[currentPage];
-    if (!s) return null;
+  const currentSlide = slides[currentPage];
 
-    return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Side {currentPage + 1} av {slides.length}</span>
-            <span>{answeredCount}/{questionSlides.length} besvart</span>
-          </div>
-          <Progress value={progressPercent} className="h-2" />
+  const renderCourseView = () => (
+    <div className="space-y-4">
+      {/* Progress */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Side {currentPage + 1} av {slides.length}</span>
+          <span>{answeredCount}/{questionSlides.length} spørsmål besvart</span>
         </div>
+        <Progress value={totalProgress} className="h-2" />
+      </div>
 
-        {renderSlide(s, currentPage)}
+      {/* Current slide */}
+      {currentSlide && renderSlide(currentSlide)}
 
-        <div className="flex items-center justify-between sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
-          <div className="flex gap-2">
+      {/* Navigation */}
+      <div className="flex items-center justify-between sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 0}
+            onClick={handlePrev}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Forrige
+          </Button>
+          {currentPage < slides.length - 1 && (
             <Button
               variant="outline"
               size="sm"
-              disabled={currentPage === 0}
-              onClick={() => setCurrentPage((p) => p - 1)}
+              onClick={handleNext}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Forrige
+              Neste
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            {currentPage < slides.length - 1 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Neste
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {!previewMode && (
-              <Button variant="ghost" size="sm" onClick={handleSaveAndClose} disabled={savingProgress}>
-                <Save className="h-4 w-4 mr-1" />
-                {savingProgress ? "Lagrer..." : "Lagre og lukk"}
-              </Button>
-            )}
-            {previewMode && (
-              <Button variant="ghost" size="sm" onClick={handleClose}>
-                Lukk
-              </Button>
-            )}
-            {answeredCount === questionSlides.length && questionSlides.length > 0 && (
-              <Button size="sm" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Fullfører..." : "Fullfør"}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </div>
-    );
-  };
-
-  const renderListView = () => (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{answeredCount} av {questionSlides.length} besvart</span>
+        <div className="flex gap-2">
+          {!previewMode && (
+            <Button variant="ghost" size="sm" onClick={handleSaveAndClose} disabled={savingProgress}>
+              <Save className="h-4 w-4 mr-1" />
+              {savingProgress ? "Lagrer..." : "Lagre og lukk"}
+            </Button>
+          )}
+          {previewMode && (
+            <Button variant="ghost" size="sm" onClick={handleClose}>
+              Lukk
+            </Button>
+          )}
+          {answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1 && (
+            <Button size="sm" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Fullfører..." : "Fullfør"}
+            </Button>
+          )}
         </div>
-        <Progress value={progressPercent} className="h-2" />
-      </div>
-
-      {slides.map((s, idx) => renderSlide(s, idx))}
-
-      <div className="flex justify-end gap-2 sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
-        {!previewMode && (
-          <Button variant="ghost" onClick={handleSaveAndClose} disabled={savingProgress}>
-            <Save className="h-4 w-4 mr-1" />
-            {savingProgress ? "Lagrer..." : "Lagre og lukk"}
-          </Button>
-        )}
-        <Button variant="outline" onClick={handleClose}>
-          {previewMode ? "Lukk" : "Avbryt"}
-        </Button>
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Fullfører..." : "Fullfør"}
-        </Button>
       </div>
     </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent ref={dialogRef} className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent ref={dialogRef} className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -502,10 +468,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           <p className="text-sm text-muted-foreground">Laster kurs...</p>
         ) : submitted ? (
           renderResultView()
-        ) : isPaginated ? (
-          renderPaginatedView()
         ) : (
-          renderListView()
+          renderCourseView()
         )}
       </DialogContent>
     </Dialog>
