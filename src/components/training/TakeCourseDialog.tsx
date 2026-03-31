@@ -391,7 +391,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       </div>
 
       {/* Current slide */}
-      {currentSlide && renderSlide(currentSlide)}
+      <div className={isFullscreen ? "flex-1" : ""}>
+        {currentSlide && renderSlide(currentSlide)}
+      </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between sticky bottom-0 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
