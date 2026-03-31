@@ -438,7 +438,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent ref={dialogRef} className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent ref={dialogRef} className={isFullscreen ? "fixed inset-0 max-w-none w-screen h-screen rounded-none border-none overflow-y-auto z-[100]" : "max-w-3xl max-h-[90vh] overflow-y-auto"}>
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
