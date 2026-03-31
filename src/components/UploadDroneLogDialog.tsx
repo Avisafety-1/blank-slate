@@ -2671,6 +2671,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 onClick={async () => {
                   if ((window as any).__djiSyncing) return;
                   (window as any).__djiSyncing = true;
+                  setSyncJustTriggered(true);
                    try {
                     toast.info('Starter synkronisering...');
                     const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
@@ -2690,15 +2691,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     } else {
                       toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
                     }
-                    setSyncJustTriggered(true);
                   } catch (err: any) {
                     console.error('Manual sync error:', err);
                     toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
-                    setSyncJustTriggered(true);
                   } finally {
-                    // Always refresh pending logs list (even after errors)
+                    setSyncJustTriggered(false);
                     pendingLogsRef.current?.refresh();
-                    // Cooldown 15s
                     setTimeout(() => { (window as any).__djiSyncing = false; }, 15000);
                   }
                 }}
