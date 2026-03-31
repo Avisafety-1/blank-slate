@@ -934,14 +934,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
           
-          // Enable auto-sync on company if checkbox is checked
-          if (enableAutoSync && companyId) {
+          // Enable auto-sync on user's credentials if checkbox is checked
+          if (enableAutoSync && user) {
             try {
               await supabase
-                .from("companies")
-                .update({ dji_auto_sync_enabled: true })
-                .eq("id", companyId);
-              toast.success('Automatisk sync aktivert');
+                .from("dji_credentials")
+                .update({ auto_sync_enabled: true } as any)
+                .eq("user_id", user.id);
+              toast.success('Automatisk sync aktivert for din konto');
             } catch (syncErr) {
               console.error('Failed to enable auto sync:', syncErr);
             }
