@@ -448,14 +448,22 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       >
         <div className={isFullscreen ? "h-full flex flex-col overflow-y-auto p-4 sm:p-6" : ""}>
           <DialogHeader>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 min-w-0">
                 <DialogTitle className="truncate">{course?.title || "Kurs"}</DialogTitle>
                 {previewMode && <Badge variant="secondary" className="shrink-0">Forhåndsvisning</Badge>}
               </div>
-              <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={toggleFullscreen}>
-                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-lg border-border"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Avslutt fullskjerm" : "Fullskjerm"}
+                >
+                  {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                </Button>
+              </div>
             </div>
             {course?.description && <p className="text-sm text-muted-foreground">{course.description}</p>}
           </DialogHeader>
