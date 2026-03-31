@@ -359,7 +359,83 @@ Deno.serve(async (req) => {
   const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   try {
-    // Find companies with auto-sync enabled
+    // Check if this is a manual single-user sync
+    let manualUserId: string | null = null;
+    let manualCompanyId: string | null = null;
+    try {
+      const body = await req.json();
+      manualUserId = body?.userId || null;
+      manualCompanyId = body?.companyId || null;
+    } catch {
+      // No body (cron call) — that's fine
+    }
+
+    // ── Manual sync: single user ──
+    if (manualUserId) {
+      // Look up user's company
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("company_id")
+        .eq("id", manualUserId)
+        .single();
+
+      if (!profile?.company_id) {
+        return new Response(JSON.stringify({ error: "User profile not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const companyId = manualCompanyId || profile.company_id;
+
+      const { data: company } = await serviceClient
+        .from("companies")
+        .select("id, navn, dronelog_api_key, dji_sync_from_date")
+        .eq("id", companyId)
+        .eq("dji_flightlog_enabled", true)
+        .single();
+
+      if (!company) {
+        return new Response(JSON.stringify({ error: "Company not found or DJI not enabled" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
+      if (!dronelogKey) {
+        return new Response(JSON.stringify({ error: "No DroneLog API key" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: credentials } = await serviceClient
+        .from("dji_credentials")
+        .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at")
+        .eq("user_id", manualUserId);
+
+      if (!credentials || credentials.length === 0) {
+        return new Response(JSON.stringify({ error: "No DJI credentials for this user" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[dji-auto-sync] Manual sync for user ${manualUserId} in ${company.navn}`);
+
+      let synced = 0;
+      let errors = 0;
+      let rateLimited = false;
+
+      for (const cred of credentials) {
+        if (rateLimited) break;
+        const result = await syncSingleUser(serviceClient, dronelogKey, company, cred);
+        synced += result.synced;
+        errors += result.errors;
+        rateLimited = result.rateLimited;
+      }
+
+      const elapsed = Date.now() - startMs;
+      return new Response(JSON.stringify({
+        success: true,
+        synced,
+        errors,
+        rate_limited: rateLimited,
+        elapsed_ms: elapsed,
+        companies: [{ company: company.navn, synced, errors, details: rateLimited ? 'Rate limited' : undefined }],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Auto-sync (cron): all companies, only users with auto_sync_enabled ──
     const { data: companies, error: compErr } = await serviceClient
       .from("companies")
       .select("id, navn, dronelog_api_key, dji_sync_from_date")
@@ -387,7 +463,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Find users with DJI credentials in this company
+      // Find users with DJI credentials AND auto_sync_enabled in this company
       const { data: profiles } = await serviceClient
         .from("profiles")
         .select("id")
@@ -403,14 +479,15 @@ Deno.serve(async (req) => {
       const { data: credentials } = await serviceClient
         .from("dji_credentials")
         .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at")
-        .in("user_id", profileIds);
+        .in("user_id", profileIds)
+        .eq("auto_sync_enabled", true);
 
       if (!credentials || credentials.length === 0) {
-        results.push({ company: company.navn, synced: 0, errors: 0, details: "No DJI credentials" });
+        results.push({ company: company.navn, synced: 0, errors: 0, details: "No users with auto-sync enabled" });
         continue;
       }
 
-      console.log(`[dji-auto-sync] ${company.navn}: ${credentials.length} users with DJI credentials`);
+      console.log(`[dji-auto-sync] ${company.navn}: ${credentials.length} users with auto-sync enabled`);
 
       let companySynced = 0;
       let companyErrors = 0;
@@ -418,180 +495,11 @@ Deno.serve(async (req) => {
 
       for (const cred of credentials) {
         if (rateLimited) break;
-
-        try {
-          // Decrypt and login
-          const password = await decryptPassword(cred.dji_password_encrypted);
-
-          const loginRes = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ email: cred.dji_email, password }),
-          });
-
-          if (!loginRes.ok) {
-            const errBody = await loginRes.text();
-            console.error(`[dji-auto-sync] Login failed for ${cred.dji_email}: ${loginRes.status} ${errBody.slice(0, 200)}`);
-            loginFailures++;
-            if (loginRes.status === 429) { rateLimited = true; companyErrors++; break; }
-            companyErrors++;
-            continue;
-          }
-
-          const loginData = await loginRes.json();
-          const accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || cred.dji_account_id;
-
-          if (!accountId) {
-            console.error(`[dji-auto-sync] No accountId for ${cred.dji_email}`);
-            companyErrors++;
-            continue;
-          }
-
-          // List logs
-          const listRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}?limit=50`, {
-            headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
-          });
-
-          if (!listRes.ok) {
-            console.error(`[dji-auto-sync] List logs failed: ${listRes.status}`);
-            await listRes.text();
-            if (listRes.status === 429) { rateLimited = true; break; }
-            companyErrors++;
-            continue;
-          }
-
-          const listData = await listRes.json();
-          const logs = listData.result?.logs || listData.result || [];
-
-          if (!Array.isArray(logs) || logs.length === 0) {
-            console.log(`[dji-auto-sync] No logs found for ${cred.dji_email}`);
-            continue;
-          }
-
-          console.log(`[dji-auto-sync] Found ${logs.length} logs for ${cred.dji_email}`);
-
-          // Filter by sync_from_date if set
-          const syncFromDate = company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : null;
-
-          for (const log of logs) {
-            if (rateLimited) break;
-
-            const logId = log.id || log.logId;
-            if (!logId) continue;
-
-            const logDateStr = normalizeDateToISO(log.date);
-
-            // Check date filter
-            if (syncFromDate && log.date) {
-              const logDate = new Date(log.date);
-              if (logDate < syncFromDate) continue;
-            }
-
-            // Check if already in pending_dji_logs (any status)
-            const { data: existing } = await serviceClient
-              .from("pending_dji_logs")
-              .select("id")
-              .eq("company_id", company.id)
-              .eq("dji_log_id", String(logId))
-              .maybeSingle();
-
-            if (existing) continue;
-
-            // ── Download, parse, match ──
-            try {
-              console.log(`[dji-auto-sync] Downloading + parsing log ${logId}`);
-              const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId));
-              const { matchedDroneId, matchedBatteryId } = await matchDroneAndBattery(serviceClient, company.id, parsed);
-
-              // SHA-256 dedup check
-              let alreadyImported = false;
-              let existingFlightLogId: string | null = null;
-              if (parsed.sha256Hash) {
-                const { data: existingFlight } = await serviceClient
-                  .from("flight_logs")
-                  .select("id")
-                  .eq("company_id", company.id)
-                  .eq("dronelog_sha256", parsed.sha256Hash)
-                  .maybeSingle();
-
-                if (existingFlight) {
-                  alreadyImported = true;
-                  existingFlightLogId = existingFlight.id;
-                }
-              }
-
-              const { error: insertErr } = await serviceClient
-                .from("pending_dji_logs")
-                .insert({
-                  company_id: company.id,
-                  user_id: cred.user_id,
-                  dji_log_id: String(logId),
-                  aircraft_name: parsed.aircraftName || log.aircraft || null,
-                  aircraft_sn: parsed.aircraftSN || null,
-                  flight_date: parsed.startTime || logDateStr,
-                  duration_seconds: Math.round(parsed.durationSeconds),
-                  max_height_m: parsed.maxAltitude || null,
-                  total_distance_m: parsed.totalDistance || null,
-                  parsed_result: parsed as any,
-                  matched_drone_id: matchedDroneId,
-                  matched_battery_id: matchedBatteryId,
-                  status: alreadyImported ? "approved" : "pending",
-                  processed_flight_log_id: existingFlightLogId,
-                });
-
-              if (insertErr) {
-                if (insertErr.code === "23505") continue; // unique constraint
-                console.error(`[dji-auto-sync] Insert error for log ${logId}:`, insertErr);
-                companyErrors++;
-                continue;
-              }
-
-              companySynced++;
-              console.log(`[dji-auto-sync] Fully processed log ${logId}${alreadyImported ? " (already imported)" : ""}`);
-            } catch (parseErr: any) {
-              // If download/parse fails (e.g. rate limit, API error), store metadata only
-              if (parseErr.message?.includes("429") || parseErr.message?.includes("rate")) {
-                rateLimited = true;
-                console.warn(`[dji-auto-sync] Rate limited during download of ${logId}`);
-                break;
-              }
-              console.error(`[dji-auto-sync] Parse failed for log ${logId}:`, parseErr.message);
-              // Fallback: store metadata-only so it can be parsed on-demand later
-              const { error: insertErr } = await serviceClient
-                .from("pending_dji_logs")
-                .insert({
-                  company_id: company.id,
-                  user_id: cred.user_id,
-                  dji_log_id: String(logId),
-                  aircraft_name: log.aircraft || null,
-                  aircraft_sn: null,
-                  flight_date: logDateStr,
-                  duration_seconds: log.duration ? Math.round(log.duration) : null,
-                  parsed_result: null,
-                  matched_drone_id: null,
-                  matched_battery_id: null,
-                  status: "pending",
-                });
-
-              if (insertErr && insertErr.code !== "23505") {
-                console.error(`[dji-auto-sync] Fallback insert error:`, insertErr);
-                companyErrors++;
-              } else {
-                companySynced++;
-              }
-            }
-          }
-
-          // Update last_sync_at
-          await serviceClient
-            .from("dji_credentials")
-            .update({ last_sync_at: new Date().toISOString() })
-            .eq("user_id", cred.user_id);
-
-        } catch (credErr) {
-          console.error(`[dji-auto-sync] Error for user ${cred.dji_email}:`, credErr);
-          companyErrors++;
-        }
+        const result = await syncSingleUser(serviceClient, dronelogKey, company, cred);
+        companySynced += result.synced;
+        companyErrors += result.errors;
+        if (result.loginFailed) loginFailures++;
+        if (result.rateLimited) rateLimited = true;
       }
 
       totalSynced += companySynced;
@@ -619,3 +527,185 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Internal server error", details: String(error) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
+// ── Sync a single user's DJI logs ──
+
+async function syncSingleUser(
+  serviceClient: any,
+  dronelogKey: string,
+  company: { id: string; navn: string; dji_sync_from_date: string | null },
+  cred: { user_id: string; dji_email: string; dji_password_encrypted: string; dji_account_id: string | null; last_sync_at: string | null },
+): Promise<{ synced: number; errors: number; rateLimited: boolean; loginFailed: boolean }> {
+  let synced = 0;
+  let errors = 0;
+  let rateLimited = false;
+  let loginFailed = false;
+
+  try {
+    const password = await decryptPassword(cred.dji_password_encrypted);
+
+    const loginRes = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email: cred.dji_email, password }),
+    });
+
+    if (!loginRes.ok) {
+      const errBody = await loginRes.text();
+      console.error(`[dji-auto-sync] Login failed for ${cred.dji_email}: ${loginRes.status} ${errBody.slice(0, 200)}`);
+      loginFailed = true;
+      if (loginRes.status === 429) { rateLimited = true; }
+      errors++;
+      return { synced, errors, rateLimited, loginFailed };
+    }
+
+    const loginData = await loginRes.json();
+    const accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || cred.dji_account_id;
+
+    if (!accountId) {
+      console.error(`[dji-auto-sync] No accountId for ${cred.dji_email}`);
+      errors++;
+      return { synced, errors, rateLimited, loginFailed };
+    }
+
+    // List logs
+    const listRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}?limit=50`, {
+      headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
+    });
+
+    if (!listRes.ok) {
+      console.error(`[dji-auto-sync] List logs failed: ${listRes.status}`);
+      await listRes.text();
+      if (listRes.status === 429) { rateLimited = true; }
+      errors++;
+      return { synced, errors, rateLimited, loginFailed };
+    }
+
+    const listData = await listRes.json();
+    const logs = listData.result?.logs || listData.result || [];
+
+    if (!Array.isArray(logs) || logs.length === 0) {
+      console.log(`[dji-auto-sync] No logs found for ${cred.dji_email}`);
+      return { synced, errors, rateLimited, loginFailed };
+    }
+
+    console.log(`[dji-auto-sync] Found ${logs.length} logs for ${cred.dji_email}`);
+
+    const syncFromDate = company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : null;
+
+    for (const log of logs) {
+      if (rateLimited) break;
+
+      const logId = log.id || log.logId;
+      if (!logId) continue;
+
+      const logDateStr = normalizeDateToISO(log.date);
+
+      if (syncFromDate && log.date) {
+        const logDate = new Date(log.date);
+        if (logDate < syncFromDate) continue;
+      }
+
+      const { data: existing } = await serviceClient
+        .from("pending_dji_logs")
+        .select("id")
+        .eq("company_id", company.id)
+        .eq("dji_log_id", String(logId))
+        .maybeSingle();
+
+      if (existing) continue;
+
+      try {
+        console.log(`[dji-auto-sync] Downloading + parsing log ${logId}`);
+        const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId));
+        const { matchedDroneId, matchedBatteryId } = await matchDroneAndBattery(serviceClient, company.id, parsed);
+
+        let alreadyImported = false;
+        let existingFlightLogId: string | null = null;
+        if (parsed.sha256Hash) {
+          const { data: existingFlight } = await serviceClient
+            .from("flight_logs")
+            .select("id")
+            .eq("company_id", company.id)
+            .eq("dronelog_sha256", parsed.sha256Hash)
+            .maybeSingle();
+
+          if (existingFlight) {
+            alreadyImported = true;
+            existingFlightLogId = existingFlight.id;
+          }
+        }
+
+        const { error: insertErr } = await serviceClient
+          .from("pending_dji_logs")
+          .insert({
+            company_id: company.id,
+            user_id: cred.user_id,
+            dji_log_id: String(logId),
+            aircraft_name: parsed.aircraftName || log.aircraft || null,
+            aircraft_sn: parsed.aircraftSN || null,
+            flight_date: parsed.startTime || logDateStr,
+            duration_seconds: Math.round(parsed.durationSeconds),
+            max_height_m: parsed.maxAltitude || null,
+            total_distance_m: parsed.totalDistance || null,
+            parsed_result: parsed as any,
+            matched_drone_id: matchedDroneId,
+            matched_battery_id: matchedBatteryId,
+            status: alreadyImported ? "approved" : "pending",
+            processed_flight_log_id: existingFlightLogId,
+          });
+
+        if (insertErr) {
+          if (insertErr.code === "23505") continue;
+          console.error(`[dji-auto-sync] Insert error for log ${logId}:`, insertErr);
+          errors++;
+          continue;
+        }
+
+        synced++;
+        console.log(`[dji-auto-sync] Fully processed log ${logId}${alreadyImported ? " (already imported)" : ""}`);
+      } catch (parseErr: any) {
+        if (parseErr.message?.includes("429") || parseErr.message?.includes("rate")) {
+          rateLimited = true;
+          console.warn(`[dji-auto-sync] Rate limited during download of ${logId}`);
+          break;
+        }
+        console.error(`[dji-auto-sync] Parse failed for log ${logId}:`, parseErr.message);
+        const { error: insertErr } = await serviceClient
+          .from("pending_dji_logs")
+          .insert({
+            company_id: company.id,
+            user_id: cred.user_id,
+            dji_log_id: String(logId),
+            aircraft_name: log.aircraft || null,
+            aircraft_sn: null,
+            flight_date: logDateStr,
+            duration_seconds: log.duration ? Math.round(log.duration) : null,
+            parsed_result: null,
+            matched_drone_id: null,
+            matched_battery_id: null,
+            status: "pending",
+          });
+
+        if (insertErr && insertErr.code !== "23505") {
+          console.error(`[dji-auto-sync] Fallback insert error:`, insertErr);
+          errors++;
+        } else {
+          synced++;
+        }
+      }
+    }
+
+    // Update last_sync_at
+    await serviceClient
+      .from("dji_credentials")
+      .update({ last_sync_at: new Date().toISOString() })
+      .eq("user_id", cred.user_id);
+
+  } catch (credErr) {
+    console.error(`[dji-auto-sync] Error for user ${cred.dji_email}:`, credErr);
+    errors++;
+  }
+
+  return { synced, errors, rateLimited, loginFailed };
+}

@@ -390,12 +390,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!user) return;
     const { data } = await supabase
       .from('dji_credentials')
-      .select('id, dji_email')
+      .select('id, dji_email, auto_sync_enabled')
       .eq('user_id', user.id)
       .maybeSingle();
     if (data) {
       setHasSavedCredentials(true);
       setSavedDjiEmail(data.dji_email);
+      setEnableAutoSync(!!(data as any).auto_sync_enabled);
     } else {
       setHasSavedCredentials(false);
       setSavedDjiEmail("");
@@ -934,14 +935,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
           
-          // Enable auto-sync on company if checkbox is checked
-          if (enableAutoSync && companyId) {
+          // Enable auto-sync on user's credentials if checkbox is checked
+          if (enableAutoSync && user) {
             try {
               await supabase
-                .from("companies")
-                .update({ dji_auto_sync_enabled: true })
-                .eq("id", companyId);
-              toast.success('Automatisk sync aktivert');
+                .from("dji_credentials")
+                .update({ auto_sync_enabled: true } as any)
+                .eq("user_id", user.id);
+              toast.success('Automatisk sync aktivert for din konto');
             } catch (syncErr) {
               console.error('Failed to enable auto sync:', syncErr);
             }
@@ -2673,7 +2674,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                    try {
                     toast.info('Starter synkronisering...');
                     const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
-                      body: { companyId },
+                      body: { companyId, userId: user?.id },
                     });
                     if (error) throw error;
                     const companyDetails = data?.companies?.[0]?.details || '';

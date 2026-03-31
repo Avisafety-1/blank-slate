@@ -710,6 +710,7 @@ export type Database = {
       }
       dji_credentials: {
         Row: {
+          auto_sync_enabled: boolean | null
           created_at: string | null
           dji_account_id: string | null
           dji_email: string
@@ -720,6 +721,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          auto_sync_enabled?: boolean | null
           created_at?: string | null
           dji_account_id?: string | null
           dji_email: string
@@ -730,6 +732,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          auto_sync_enabled?: boolean | null
           created_at?: string | null
           dji_account_id?: string | null
           dji_email?: string
