@@ -310,30 +310,32 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
     // Question slide
     return (
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <p className="font-medium">
-            <span className="text-muted-foreground mr-2">
-              {questionSlides.indexOf(s) + 1}/{questionSlides.length}
-            </span>
-            {s.question_text}
-          </p>
-          {s.image_url && (
-            <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
-          )}
-          <RadioGroup
-            value={answers[s.id] || ""}
-            onValueChange={(v) => handleSelectAnswer(s.id, v)}
-          >
-            {s.options.map((o) => (
-              <div key={o.id} className="flex items-center gap-2">
-                <RadioGroupItem value={o.id} id={o.id} />
-                <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
+      <div className={isFullscreen ? "flex items-center justify-center min-h-[60vh]" : ""}>
+        <Card className="w-full max-w-2xl mx-auto">
+          <CardContent className="pt-4 space-y-3">
+            <p className="font-medium">
+              <span className="text-muted-foreground mr-2">
+                {questionSlides.indexOf(s) + 1}/{questionSlides.length}
+              </span>
+              {s.question_text}
+            </p>
+            {s.image_url && (
+              <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
+            )}
+            <RadioGroup
+              value={answers[s.id] || ""}
+              onValueChange={(v) => handleSelectAnswer(s.id, v)}
+            >
+              {s.options.map((o) => (
+                <div key={o.id} className="flex items-center gap-2">
+                  <RadioGroupItem value={o.id} id={o.id} />
+                  <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
