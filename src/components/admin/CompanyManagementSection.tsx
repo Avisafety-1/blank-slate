@@ -290,6 +290,17 @@ export const CompanyManagementSection = () => {
   const [usageDialogOpen, setUsageDialogOpen] = useState(false);
   const [usageData, setUsageData] = useState<any>(null);
   const [usageLoading, setUsageLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCompanies = useMemo(() => {
+    if (!searchQuery.trim()) return companies;
+    const q = searchQuery.toLowerCase();
+    return companies.filter((c) =>
+      c.navn.toLowerCase().includes(q) ||
+      (c.org_nummer && c.org_nummer.toLowerCase().includes(q)) ||
+      (c.kontakt_epost && c.kontakt_epost.toLowerCase().includes(q))
+    );
+  }, [companies, searchQuery]);
 
   useEffect(() => {
     fetchCompanies();
