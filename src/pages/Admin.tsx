@@ -1367,7 +1367,7 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          {!isSuperAdmin && !isChildCompany && (
+          {(isSuperAdmin || (!isChildCompany && departmentsEnabled)) && (
             <TabsContent value="child-companies" className="mt-4 sm:mt-8">
               <ChildCompaniesSection />
             </TabsContent>
