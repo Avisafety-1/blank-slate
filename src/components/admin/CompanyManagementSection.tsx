@@ -654,7 +654,7 @@ export const CompanyManagementSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
+                  {filteredCompanies.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell className="font-medium text-sm">
                         <div className="flex items-center gap-2">
