@@ -30,7 +30,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2, CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2, CalendarIcon, Search } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
