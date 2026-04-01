@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -29,7 +30,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2, CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Building2, Mail, Phone, MapPin, Hash, Plane, Radio, ChevronDown, BarChart3, Loader2, CalendarIcon, Search } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -289,6 +290,17 @@ export const CompanyManagementSection = () => {
   const [usageDialogOpen, setUsageDialogOpen] = useState(false);
   const [usageData, setUsageData] = useState<any>(null);
   const [usageLoading, setUsageLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCompanies = useMemo(() => {
+    if (!searchQuery.trim()) return companies;
+    const q = searchQuery.toLowerCase();
+    return companies.filter((c) =>
+      c.navn.toLowerCase().includes(q) ||
+      (c.org_nummer && c.org_nummer.toLowerCase().includes(q)) ||
+      (c.kontakt_epost && c.kontakt_epost.toLowerCase().includes(q))
+    );
+  }, [companies, searchQuery]);
 
   useEffect(() => {
     fetchCompanies();
@@ -580,14 +592,31 @@ export const CompanyManagementSection = () => {
           </div>
         </div>
 
+        {/* Search field */}
+        {companies.length > 0 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Søk etter navn, org.nr eller e-post..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+
         {companies.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen selskaper funnet. Opprett ditt første selskap.
           </div>
+        ) : filteredCompanies.length === 0 ? (
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
+            Ingen selskaper matcher søket «{searchQuery}»
+          </div>
         ) : isMobile ? (
           // Mobile: Expandable cards
           <div className="space-y-2">
-            {companies.map((company) => (
+            {filteredCompanies.map((company) => (
               <MobileCompanyCard
                 key={company.id}
                 company={company}
@@ -625,7 +654,7 @@ export const CompanyManagementSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
+                  {filteredCompanies.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell className="font-medium text-sm">
                         <div className="flex items-center gap-2">
