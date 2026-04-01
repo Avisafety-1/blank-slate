@@ -592,14 +592,31 @@ export const CompanyManagementSection = () => {
           </div>
         </div>
 
+        {/* Search field */}
+        {companies.length > 0 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Søk etter navn, org.nr eller e-post..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+
         {companies.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             Ingen selskaper funnet. Opprett ditt første selskap.
           </div>
+        ) : filteredCompanies.length === 0 ? (
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
+            Ingen selskaper matcher søket «{searchQuery}»
+          </div>
         ) : isMobile ? (
           // Mobile: Expandable cards
           <div className="space-y-2">
-            {companies.map((company) => (
+            {filteredCompanies.map((company) => (
               <MobileCompanyCard
                 key={company.id}
                 company={company}
