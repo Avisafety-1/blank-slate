@@ -111,8 +111,9 @@ Deno.serve(async (req) => {
         const centerLat = props.lat ?? null;
         const centerLng = props.lon ?? null;
 
-        // Store geometry as GeoJSON
-        const geometryGeojson = feature.geometry || null;
+        // Parse coordinates from NOTAM text for accurate polygons
+        const parsedPolygon = parseNotamCoordinates(props.text);
+        const geometryGeojson = parsedPolygon || feature.geometry || null;
 
         rows.push({
           notam_id: String(id),
