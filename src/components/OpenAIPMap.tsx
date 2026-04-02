@@ -369,7 +369,7 @@ export function OpenAIPMap({
       obstaclePane: '675', safeskyPane: '660', nsmPane: '650',
       notamPane: '648', rpasPane: '645', aipPane: '640', rmzPane: '635',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
