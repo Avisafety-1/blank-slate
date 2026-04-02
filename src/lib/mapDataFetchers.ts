@@ -893,10 +893,10 @@ export async function fetchNotamsInBounds(params: {
           geoLayer.bringToFront();
         } catch {
           // Fallback to center marker
-          addNotamCenterMarker(notam, layer, pane, mode);
+          addNotamCenterMarker(notam, layer, pane, mode, notamRenderer);
         }
       } else if (notam.center_lat != null && notam.center_lng != null) {
-        addNotamCenterMarker(notam, layer, pane, mode);
+        addNotamCenterMarker(notam, layer, pane, mode, notamRenderer);
       }
     }
 
