@@ -1,38 +1,51 @@
 
 
-## Parse NOTAM-koordinater fra tekst til polygon
+## Integrer Live NOTAM i luftromsadvarsler og risikovurdering
 
-### Problem
-Laminar API returnerer ofte en generalisert sirkel-geometri i stedet for det faktiske polygonet som er beskrevet med koordinater i NOTAM-teksten (f.eks. `623714N 0092208E`). Vi trenger å parse disse koordinatene og bygge riktige GeoJSON-polygoner.
+### Oversikt
+Inkludere aktive NOTAMs fra `notams`-tabellen i `check_mission_airspace`-funksjonen, og fjerne `aip_restriction_zones` (fareområder P/R/D) fra samme funksjon. Dette gjør at NOTAMs automatisk vises i luftromsadvarsler på oppdrag og brukes i AI-risikovurderingen.
 
-### Løsning
-Utvide edge-funksjonen `fetch-notams` til å:
-1. Etter at API-geometrien er hentet, sjekke om NOTAM-teksten inneholder koordinatpar i formatet `DDMMSSN DDDMMSSE`
-2. Hvis ja, parse koordinatene til desimalgrader og bygg et GeoJSON Polygon
-3. Bruk det parsede polygonet **i stedet for** API-ens geometri (som ofte bare er en sirkel)
+### Arkitektur
 
-### Koordinatformat
-NOTAMs bruker formatet:
-- Breddegrad: `DDMMSSN` eller `DDMMSSS` (6-7 tegn + N/S), f.eks. `623714N` = 62°37'14"N
-- Lengdegrad: `DDDMMSSE` eller `DDDMMSSS` (7-8 tegn + E/W), f.eks. `0092208E` = 9°22'08"E
-
-Typisk mønster i teksten: `623714N 0092208E - 624500N 0091500E - ...`
+```text
+check_mission_airspace()
+  ├── nsm_restriction_zones      (beholdes)
+  ├── rpas_5km_zones             (beholdes)
+  ├── naturvern_zones            (beholdes)
+  ├── vern_restriction_zones     (beholdes)
+  ├── aip_restriction_zones      (FJERNES — midlertidig)
+  └── notams                     (NY — aktive NOTAMs med geometri)
+```
 
 ### Tekniske detaljer
 
-**Fil: `supabase/functions/fetch-notams/index.ts`**
+**1. Ny migration — legg til PostGIS geometry-kolonne på `notams`**
+- `notams` har kun `geometry_geojson` (JSONB), men `check_mission_airspace` trenger en ekte `geometry`-kolonne for `ST_DWithin`/`ST_Intersects`
+- Legge til kolonne `geometry geometry(Geometry, 4326)`
+- Populere fra eksisterende `geometry_geojson` og `center_lat/center_lng`
+- Trigger/oppdatering i `fetch-notams` for å sette geometry ved upsert
+- GIST-indeks for ytelse
 
-1. Ny hjelpefunksjon `parseNotamCoordinates(text: string)`:
-   - Regex: `/(\d{2})(\d{2})(\d{2})([NS])\s+(\d{3})(\d{2})(\d{2})([EW])/g`
-   - Konverterer hvert treff til `[lng, lat]` desimalgrader
-   - Returnerer `null` hvis færre enn 3 koordinatpar funnet (trenger minst 3 for polygon)
-   - Bygger GeoJSON Polygon (lukker ringen ved å legge til første punkt på slutten)
+**2. Oppdatere `check_mission_airspace` SQL-funksjonen**
+- Fjerne `aip_restriction_zones`-blokken fra `candidate_zones` CTE
+- Legge til `notams`-blokk som henter aktive NOTAMs (der `effective_end IS NULL OR effective_end > NOW()`) med geometri innenfor 50 km
+- Sette `z_type = 'NOTAM'`, `z_name` = trunkert NOTAM-tekst (første 80 tegn)
+- Severity: `CAUTION` (oppgraderes til `WARNING` hvis ruten krysser NOTAM-sonen)
 
-2. I hovedløkken, etter linje 82 (`const geometryGeojson = feature.geometry || null`):
-   - Kall `parseNotamCoordinates(props.text)`
-   - Hvis det returnerer et polygon, bruk det i stedet for `feature.geometry`
-   - Fallback til API-geometrien hvis ingen koordinater finnes i teksten
+**3. Oppdatere `AirspaceWarnings.tsx`**
+- Legge til håndtering av `z_type === 'NOTAM'` i meldingsformatering
+- Inne i sone: `«Aktiv NOTAM i operasjonsområdet: [tekst]. Sjekk restriksjoner.»`
+- I nærheten: `«Aktiv NOTAM [distanse] unna: [tekst].»`
 
-### Filer som endres
-1. `supabase/functions/fetch-notams/index.ts` — legg til koordinat-parser og bruk den
+**4. Oppdatere `fetch-notams` edge function**
+- Sette den nye `geometry`-kolonnen ved upsert (konvertere GeoJSON til PostGIS via `ST_GeomFromGeoJSON`)
+
+### Filer som endres/opprettes
+1. **Ny migration** — `geometry`-kolonne + oppdatert `check_mission_airspace`
+2. **`supabase/functions/fetch-notams/index.ts`** — sette `geometry`-kolonne ved upsert
+3. **`src/components/dashboard/AirspaceWarnings.tsx`** — NOTAM-meldingsformatering
+
+### Merk
+- `aip_restriction_zones` fjernes kun fra luftromsadvarsler/risikovurdering — kartlaget «Fareområder (P/R/D)» forblir tilgjengelig på kartet
+- NOTAMs uten geometri (4 av 259) ignoreres i romlig sjekk
 
