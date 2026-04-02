@@ -906,11 +906,12 @@ export async function fetchNotamsInBounds(params: {
   }
 }
 
-function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mode: string) {
+function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mode: string, renderer?: L.Renderer) {
   if (notam.center_lat == null || notam.center_lng == null) return;
 
   const marker = L.circleMarker([notam.center_lat, notam.center_lng], {
     pane,
+    renderer,
     radius: 8,
     fillColor: "#f39c12",
     color: "#e67e22",
