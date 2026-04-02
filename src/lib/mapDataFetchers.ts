@@ -878,6 +878,19 @@ export async function fetchNotamsInBounds(params: {
             renderer: notamRenderer,
             interactive: mode !== "routePlanning",
             bubblingMouseEvents: false,
+            pointToLayer: (_feature: any, latlng: L.LatLng) => {
+              return L.marker(latlng, {
+                pane,
+                interactive: mode !== "routePlanning",
+                bubblingMouseEvents: false,
+                icon: L.divIcon({
+                  className: 'notam-pin-icon',
+                  html: '<div style="width:12px;height:12px;background:#f39c12;border:2px solid #e67e22;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+                  iconSize: [12, 12] as any,
+                  iconAnchor: [6, 6] as any,
+                }),
+              });
+            },
             style: {
               color: "#e67e22",
               weight: 2,
