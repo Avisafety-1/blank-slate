@@ -872,6 +872,7 @@ export async function fetchNotamsInBounds(params: {
           const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
             pane,
             interactive: mode !== "routePlanning",
+            bubblingMouseEvents: false,
             style: {
               color: "#e67e22",
               weight: 2,
@@ -912,6 +913,7 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
     weight: 2,
     fillOpacity: 0.6,
     interactive: mode !== "routePlanning",
+    bubblingMouseEvents: false,
   });
 
   if (mode !== "routePlanning") {
