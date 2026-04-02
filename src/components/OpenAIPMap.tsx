@@ -434,11 +434,7 @@ export function OpenAIPMap({
     const naisLayer = L.layerGroup();
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
 
-    // Live NOTAM
-    const notamLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
-
-    // RPAS, NSM, AIP, RMZ layers
+    // RPAS, NSM, AIP, RMZ layers — added to map BEFORE NOTAM for correct DOM order
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
 
@@ -450,6 +446,10 @@ export function OpenAIPMap({
 
     const rmzTmzAtzLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio" });
+
+    // Live NOTAM — added AFTER all airspace layers so it renders on top in DOM
+    const notamLayer = L.layerGroup().addTo(map);
+    layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
 
     const obstaclesLayer = L.layerGroup();
     layerConfigs.push({ id: "obstacles", name: "Hindringer (OpenAIP)", layer: obstaclesLayer, enabled: false, icon: "alertTriangle" });

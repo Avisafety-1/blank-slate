@@ -913,6 +913,7 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
     weight: 2,
     fillOpacity: 0.6,
     interactive: mode !== "routePlanning",
+    bubblingMouseEvents: false,
   });
 
   if (mode !== "routePlanning") {
