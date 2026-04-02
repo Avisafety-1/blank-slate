@@ -1,51 +1,49 @@
 
 
-## Integrer Live NOTAM i luftromsadvarsler og risikovurdering
+## Fix NOTAM-markører som vises under luftromslag
 
-### Oversikt
-Inkludere aktive NOTAMs fra `notams`-tabellen i `check_mission_airspace`-funksjonen, og fjerne `aip_restriction_zones` (fareområder P/R/D) fra samme funksjon. Dette gjør at NOTAMs automatisk vises i luftromsadvarsler på oppdrag og brukes i AI-risikovurderingen.
+### Problem
+NOTAM-markører (blå pinner) vises under luftromspolygoner på kartet, selv om `notamPane` har z-index 670.
 
-### Arkitektur
+### Rotårsak
+I `src/lib/mapDataFetchers.ts` linje 178-187 er `pane`-egenskapen for AIP-soner plassert **inne i `style`-objektet**. Leaflet ignorerer `pane` i `style` — den må være en top-level option på `L.geoJSON()`. Dette betyr at alle AIP-polygoner (P/R/D, CTR, RMZ, TMZ, ATZ, TIZ) rendres i Leaflets standard `overlayPane` i stedet for sine tiltenkte panes (`aipPane`, `rmzPane`).
 
-```text
-check_mission_airspace()
-  ├── nsm_restriction_zones      (beholdes)
-  ├── rpas_5km_zones             (beholdes)
-  ├── naturvern_zones            (beholdes)
-  ├── vern_restriction_zones     (beholdes)
-  ├── aip_restriction_zones      (FJERNES — midlertidig)
-  └── notams                     (NY — aktive NOTAMs med geometri)
+Selv om `overlayPane` (z-index 400) teknisk sett er under `notamPane` (670), kan DOM-rekkefølge og SVG-rendering forstyrre den visuelle stablingsrekkefølgen.
+
+### Løsning
+
+**Fil: `src/lib/mapDataFetchers.ts`**
+
+1. **Flytt `pane` ut av `style`-objektet** for AIP-soner (linje ~178-187):
+   - Gjør `pane` til en top-level option i `L.geoJSON()`-kallet, ved siden av `interactive` og `style`
+   - Fjern `pane` fra `style`-objektet
+
+Endring fra:
+```ts
+const geoJsonLayer = L.geoJSON(geojsonFeature, {
+  interactive: mode !== 'routePlanning',
+  style: {
+    color, weight: 2, fillColor: color, fillOpacity, dashArray,
+    pane,  // ← BUG: ignoreres av Leaflet her
+  },
+  ...
+});
 ```
 
-### Tekniske detaljer
+Til:
+```ts
+const geoJsonLayer = L.geoJSON(geojsonFeature, {
+  interactive: mode !== 'routePlanning',
+  pane,  // ← Riktig plassering
+  style: {
+    color, weight: 2, fillColor: color, fillOpacity, dashArray,
+  },
+  ...
+});
+```
 
-**1. Ny migration — legg til PostGIS geometry-kolonne på `notams`**
-- `notams` har kun `geometry_geojson` (JSONB), men `check_mission_airspace` trenger en ekte `geometry`-kolonne for `ST_DWithin`/`ST_Intersects`
-- Legge til kolonne `geometry geometry(Geometry, 4326)`
-- Populere fra eksisterende `geometry_geojson` og `center_lat/center_lng`
-- Trigger/oppdatering i `fetch-notams` for å sette geometry ved upsert
-- GIST-indeks for ytelse
+Dette fikser pane-tilordningen for alle luftromslag, slik at z-index-hierarkiet fungerer korrekt og NOTAM-markører (670) vises over AIP (640) og RMZ (635).
 
-**2. Oppdatere `check_mission_airspace` SQL-funksjonen**
-- Fjerne `aip_restriction_zones`-blokken fra `candidate_zones` CTE
-- Legge til `notams`-blokk som henter aktive NOTAMs (der `effective_end IS NULL OR effective_end > NOW()`) med geometri innenfor 50 km
-- Sette `z_type = 'NOTAM'`, `z_name` = trunkert NOTAM-tekst (første 80 tegn)
-- Severity: `CAUTION` (oppgraderes til `WARNING` hvis ruten krysser NOTAM-sonen)
-
-**3. Oppdatere `AirspaceWarnings.tsx`**
-- Legge til håndtering av `z_type === 'NOTAM'` i meldingsformatering
-- Inne i sone: `«Aktiv NOTAM i operasjonsområdet: [tekst]. Sjekk restriksjoner.»`
-- I nærheten: `«Aktiv NOTAM [distanse] unna: [tekst].»`
-
-**4. Oppdatere `fetch-notams` edge function**
-- Sette den nye `geometry`-kolonnen ved upsert (konvertere GeoJSON til PostGIS via `ST_GeomFromGeoJSON`)
-
-### Filer som endres/opprettes
-1. **Ny migration** — `geometry`-kolonne + oppdatert `check_mission_airspace`
-2. **`supabase/functions/fetch-notams/index.ts`** — sette `geometry`-kolonne ved upsert
-3. **`src/components/dashboard/AirspaceWarnings.tsx`** — NOTAM-meldingsformatering
-
-### Merk
-- `aip_restriction_zones` fjernes kun fra luftromsadvarsler/risikovurdering — kartlaget «Fareområder (P/R/D)» forblir tilgjengelig på kartet
-- NOTAMs uten geometri (4 av 259) ignoreres i romlig sjekk
+### Fil som endres
+- `src/lib/mapDataFetchers.ts` — én endring i AIP GeoJSON-rendering (~linje 178)
 
