@@ -24,10 +24,9 @@ Deno.serve(async (req) => {
 
   try {
     // Fetch NOTAMs for Norway
-    const apiUrl = "https://api.laminardata.aero/v2/countries/NOR/notams";
+    const apiUrl = `https://api.laminardata.aero/v2/countries/NOR/notams?user_key=${LAMINAR_API_KEY}`;
     const response = await fetch(apiUrl, {
       headers: {
-        Authorization: `Bearer ${LAMINAR_API_KEY}`,
         "Accept-Encoding": "gzip",
         Accept: "application/json",
       },
