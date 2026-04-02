@@ -842,11 +842,11 @@ export async function fetchNotamsInBounds(params: {
   const { layer, bounds, zoom, pane, mode } = params;
   layer.clearLayers();
 
-  // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
-  const map = (layer as any)._map;
-  const notamRenderer = map ? L.svg({ pane }).addTo(map) : L.svg({ pane });
-
   if (zoom < 6) return;
+
+  // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
+  const map = (layer as any)._map as L.Map | null;
+  const notamRenderer = map ? L.svg({ pane }).addTo(map) : L.svg({ pane });
 
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
