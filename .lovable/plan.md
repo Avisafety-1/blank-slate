@@ -1,49 +1,62 @@
 
 
-## Fix NOTAM-markører som vises under luftromslag
+## Fix NOTAM-markører z-indeks og klikkbarhet
 
 ### Problem
-NOTAM-markører (blå pinner) vises under luftromspolygoner på kartet, selv om `notamPane` har z-index 670.
+NOTAM-markører (circleMarkers og GeoJSON-polygoner) vises under andre luftromslag og kan ikke klikkes, til tross for at `notamPane` har z-index 670.
 
 ### Rotårsak
-I `src/lib/mapDataFetchers.ts` linje 178-187 er `pane`-egenskapen for AIP-soner plassert **inne i `style`-objektet**. Leaflet ignorerer `pane` i `style` — den må være en top-level option på `L.geoJSON()`. Dette betyr at alle AIP-polygoner (P/R/D, CTR, RMZ, TMZ, ATZ, TIZ) rendres i Leaflets standard `overlayPane` i stedet for sine tiltenkte panes (`aipPane`, `rmzPane`).
+To problemer:
 
-Selv om `overlayPane` (z-index 400) teknisk sett er under `notamPane` (670), kan DOM-rekkefølge og SVG-rendering forstyrre den visuelle stablingsrekkefølgen.
+1. **`bubblingMouseEvents`** er ikke satt til `false` på NOTAM-markørene. Dette gjør at musehendelser bobler opp gjennom pane-hierarkiet, slik at luftromspolygoner i andre panes fanger klikkene.
+
+2. **DOM-rekkefølge**: NOTAM-laget legges til kartet (linje 438) **før** RMZ/RPAS/NSM-lagene (linje 442-452). I Leaflet kan DOM-rekkefølgen overstyrer pane z-index i visse tilfeller. NOTAM-laget bør legges til **etter** alle luftromslag for å sikre at det rendres sist i DOM.
 
 ### Løsning
 
 **Fil: `src/lib/mapDataFetchers.ts`**
 
-1. **Flytt `pane` ut av `style`-objektet** for AIP-soner (linje ~178-187):
-   - Gjør `pane` til en top-level option i `L.geoJSON()`-kallet, ved siden av `interactive` og `style`
-   - Fjern `pane` fra `style`-objektet
-
-Endring fra:
+1. Legg til `bubblingMouseEvents: false` på NOTAM `circleMarker` (linje ~907):
 ```ts
-const geoJsonLayer = L.geoJSON(geojsonFeature, {
-  interactive: mode !== 'routePlanning',
-  style: {
-    color, weight: 2, fillColor: color, fillOpacity, dashArray,
-    pane,  // ← BUG: ignoreres av Leaflet her
-  },
-  ...
+const marker = L.circleMarker([notam.center_lat, notam.center_lng], {
+  pane,
+  radius: 8,
+  fillColor: "#f39c12",
+  color: "#e67e22",
+  weight: 2,
+  fillOpacity: 0.6,
+  interactive: mode !== "routePlanning",
+  bubblingMouseEvents: false,  // NY
 });
 ```
 
-Til:
+2. Legg til `bubblingMouseEvents: false` på NOTAM GeoJSON-laget (linje ~872):
 ```ts
-const geoJsonLayer = L.geoJSON(geojsonFeature, {
-  interactive: mode !== 'routePlanning',
-  pane,  // ← Riktig plassering
-  style: {
-    color, weight: 2, fillColor: color, fillOpacity, dashArray,
-  },
-  ...
+const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
+  pane,
+  interactive: mode !== "routePlanning",
+  bubblingMouseEvents: false,  // NY
+  style: { ... },
 });
 ```
 
-Dette fikser pane-tilordningen for alle luftromslag, slik at z-index-hierarkiet fungerer korrekt og NOTAM-markører (670) vises over AIP (640) og RMZ (635).
+**Fil: `src/components/OpenAIPMap.tsx`**
 
-### Fil som endres
-- `src/lib/mapDataFetchers.ts` — én endring i AIP GeoJSON-rendering (~linje 178)
+3. Flytt NOTAM-lagets opprettelse (linje 437-439) til **etter** alle luftromslag (etter linje 452), slik at det rendres sist i DOM:
+```ts
+// Luftromslag først
+const rpasLayer = L.layerGroup().addTo(map);
+const nsmLayer = L.layerGroup().addTo(map);
+const aipLayer = L.layerGroup();
+const rmzTmzAtzLayer = L.layerGroup().addTo(map);
+
+// Live NOTAM – etter alle luftromslag for riktig DOM-rekkefølge
+const notamLayer = L.layerGroup().addTo(map);
+```
+
+4. Sørg for at `layerConfigs`-arrayet oppdateres tilsvarende (rekkefølgen i UI-menyen kan beholdes uendret).
+
+### Filer som endres
+- `src/lib/mapDataFetchers.ts` — legg til `bubblingMouseEvents: false` på to steder
+- `src/components/OpenAIPMap.tsx` — flytt NOTAM-lag til etter luftromslag i DOM-rekkefølge
 
