@@ -872,6 +872,7 @@ export async function fetchNotamsInBounds(params: {
           const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
             pane,
             interactive: mode !== "routePlanning",
+            bubblingMouseEvents: false,
             style: {
               color: "#e67e22",
               weight: 2,
