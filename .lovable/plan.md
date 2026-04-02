@@ -1,53 +1,59 @@
 
+## Fix første rute-klikk over NOTAM-områder
 
-## Fix: NOTAM-pinner (ikoner) bak andre luftromslag
+### Sannsynlig rotårsak
+Problemet ser ut til å være at NOTAM-laget er rendret i vanlig visningsmodus først, og når brukeren går over til ruteplanlegging blir ikke de eksisterende NOTAM-featureene oppdatert umiddelbart nok. Etter første pan/zoom skjer en ny `fetchNotamsInBounds(...)`, og da bygges NOTAM-laget på nytt med riktig ikke-interaktiv oppførsel for ruteplanlegging. Derfor virker det først etter at kartet har “rørt seg”.
 
-### Problem
-Når NOTAM GeoJSON inneholder `Point`-geometri, oppretter `L.geoJSON` en standard `L.marker` (blå pin). Denne typen markør **ignorerer** `renderer`- og `pane`-opsjoner og havner alltid i Leaflets innebygde `markerPane` (z-index 600) — under alle luftromslag.
+Det er også et ekstra faresignal i dagens kode:
+- `notamPane` deaktiveres med `pointerEvents = "none"` på pane-nivå
+- men NOTAM-laget rebuildes ikke ved modusbytte
+- og CSS-fallbacken i `src/index.css` dekker ikke `.leaflet-notam-pane`
+- i tillegg opprettes en egen `notamRenderer` i `fetchNotamsInBounds`, som kan etterlate interaktive SVG-elementer fra view-modus til neste refresh
 
-### Løsning
-Legge til `pointToLayer` i NOTAM `L.geoJSON`-kallet som konverterer Point-geometrier til en `L.marker` med eksplisitt `pane: 'notamPane'`. I tillegg sette `pointerEvents: 'auto'` på `notamPane` ved opprettelse (noen Leaflet-paner deaktiverer dette som standard for overlay-paner).
+### Plan
+1. **Gå gjennom modusbytte i `OpenAIPMap.tsx`**
+   - Bekreft hvor `mode` skifter fra `view` til `routePlanning`
+   - Sørg for at NOTAM-laget reagerer eksplisitt ved modusbytte, ikke bare ved `moveend`
 
-### Endringer
+2. **Tving oppfriskning av NOTAM-laget når ruteplanlegging aktiveres**
+   - På samme sted der andre interaktivitetsendringer skjer ved `mode`-endring, trigge en umiddelbar re-render/re-fetch av `notamLayer`
+   - Dette gjør at NOTAM-featureene bygges med `interactive: false` med én gang, uten å vente på zoom/pan
 
-**1. `src/components/OpenAIPMap.tsx`** — Sett `pointerEvents` på notamPane
+3. **Gjør NOTAM-fallbacken robust**
+   - Oppdater CSS i `src/index.css` slik at også `.route-planning-active .leaflet-notam-pane .leaflet-interactive` får `pointer-events: none !important`
+   - Dette blir et ekstra sikkerhetsnett om Leaflet eller rendereren etterlater interaktive elementer
 
-Etter pane-opprettelsen (linje ~366), legg til:
-```ts
-// Etter createPane-løkken:
-map.getPane('notamPane')!.style.pointerEvents = 'auto';
+4. **Unngå hengende renderer-/DOM-tilstand**
+   - Se over `fetchNotamsInBounds` i `src/lib/mapDataFetchers.ts`
+   - Sikre at dedikert NOTAM-renderer ikke etterlater gamle interaktive elementer mellom refreshes
+   - Ved behov: rydde gammel renderer eller bruke en stabil renderer-instans i stedet for å opprette ny hver fetch
+
+5. **Verifisere oppførselen som skal fungere**
+   - Første klikk i ruteplanlegging på et område med NOTAM skal legge første rutepunkt direkte
+   - Skal fungere uten pan/zoom først
+   - NOTAM skal fortsatt være klikkbart i vanlig visning
+   - NOTAM skal fortsatt ligge over andre luftromslag, men under rute/UI
+
+### Filer som sannsynligvis må endres
+- `src/components/OpenAIPMap.tsx`
+- `src/lib/mapDataFetchers.ts`
+- `src/index.css`
+
+### Tekniske detaljer
+```text
+Nåværende flyt:
+view mode
+  -> NOTAM renderes som interactive
+  -> bruker aktiverer routePlanning
+  -> pane pointer-events endres
+  -> eksisterende NOTAM-featuree kan fortsatt blokkere første klikk
+  -> pan/zoom
+  -> NOTAM fetches på nytt
+  -> da fungerer det
+
+Ønsket flyt:
+view mode
+  -> bruker aktiverer routePlanning
+  -> NOTAM rebuildes/deaktiveres umiddelbart
+  -> første klikk går rett til kartets route handler
 ```
-
-**2. `src/lib/mapDataFetchers.ts`** — Legg til `pointToLayer` i L.geoJSON
-
-I NOTAM GeoJSON-kallet (linje 876), legg til `pointToLayer` som returnerer en `L.marker` med custom DivIcon (orange NOTAM-pin) i `notamPane`:
-
-```ts
-const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
-  pane,
-  renderer: notamRenderer,
-  interactive: mode !== "routePlanning",
-  bubblingMouseEvents: false,
-  pointToLayer: (_feature, latlng) => {
-    return L.marker(latlng, {
-      pane,
-      interactive: mode !== "routePlanning",
-      bubblingMouseEvents: false,
-      icon: L.divIcon({
-        className: 'notam-pin-icon',
-        html: '<div style="width:12px;height:12px;background:#f39c12;border:2px solid #e67e22;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
-      }),
-    });
-  },
-  style: { ... },
-} as any);
-```
-
-`L.marker` respekterer `pane`-opsjonen (til forskjell fra vektorer som trenger `renderer`), så markørene vil leve i `notamPane` (z-index 1000) og være klikkbare.
-
-### Filer som endres
-1. `src/components/OpenAIPMap.tsx` — 1 linje (pointerEvents)
-2. `src/lib/mapDataFetchers.ts` — legg til `pointToLayer` i NOTAM GeoJSON-opsjoner
-
