@@ -843,7 +843,8 @@ export async function fetchNotamsInBounds(params: {
   layer.clearLayers();
 
   // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
-  const notamRenderer = L.svg({ pane });
+  const map = (layer as any)._map;
+  const notamRenderer = map ? L.svg({ pane }).addTo(map) : L.svg({ pane });
 
   if (zoom < 6) return;
 
