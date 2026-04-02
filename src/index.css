@@ -12,7 +12,10 @@
 .route-planning-active .leaflet-airport-pane .leaflet-interactive,
 .route-planning-active .leaflet-safesky-pane .leaflet-interactive,
 .route-planning-active .leaflet-mission-pane .leaflet-interactive,
-.route-planning-active .leaflet-overlay-pane .leaflet-interactive {
+.route-planning-active .leaflet-overlay-pane .leaflet-interactive,
+.route-planning-active .leaflet-notam-pane path,
+.route-planning-active .leaflet-notam-pane .leaflet-interactive,
+.route-planning-active .leaflet-notam-pane .leaflet-marker-icon {
   pointer-events: none !important;
 }
 
