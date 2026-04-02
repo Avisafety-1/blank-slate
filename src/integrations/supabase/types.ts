@@ -3434,6 +3434,7 @@ export type Database = {
           effective_end_interpretation: string | null
           effective_start: string | null
           fetched_at: string
+          geometry: unknown
           geometry_geojson: Json | null
           id: string
           location: string | null
@@ -3460,6 +3461,7 @@ export type Database = {
           effective_end_interpretation?: string | null
           effective_start?: string | null
           fetched_at?: string
+          geometry?: unknown
           geometry_geojson?: Json | null
           id?: string
           location?: string | null
@@ -3486,6 +3488,7 @@ export type Database = {
           effective_end_interpretation?: string | null
           effective_start?: string | null
           fetched_at?: string
+          geometry?: unknown
           geometry_geojson?: Json | null
           id?: string
           location?: string | null
