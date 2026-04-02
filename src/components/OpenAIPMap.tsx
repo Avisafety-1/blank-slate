@@ -446,7 +446,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "nsm", name: "NSM Forbudsområder", layer: nsmLayer, enabled: true, icon: "ban" });
 
     const aipLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: true, icon: "shield" });
+    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: false, icon: "shield" });
 
     const rmzTmzAtzLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio" });
