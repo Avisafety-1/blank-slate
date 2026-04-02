@@ -5,6 +5,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function parseNotamCoordinates(text: string | null | undefined): object | null {
+  if (!text) return null;
+  const regex = /(\d{2})(\d{2})(\d{2})([NS])\s+(\d{3})(\d{2})(\d{2})([EW])/g;
+  const coords: [number, number][] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const latDeg = parseInt(match[1]);
+    const latMin = parseInt(match[2]);
+    const latSec = parseInt(match[3]);
+    const latDir = match[4];
+    const lngDeg = parseInt(match[5]);
+    const lngMin = parseInt(match[6]);
+    const lngSec = parseInt(match[7]);
+    const lngDir = match[8];
+    let lat = latDeg + latMin / 60 + latSec / 3600;
+    if (latDir === "S") lat = -lat;
+    let lng = lngDeg + lngMin / 60 + lngSec / 3600;
+    if (lngDir === "W") lng = -lng;
+    coords.push([lng, lat]);
+  }
+  if (coords.length < 3) return null;
+  // Close the ring
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    coords.push([...first] as [number, number]);
+  }
+  return {
+    type: "Polygon",
+    coordinates: [coords],
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
