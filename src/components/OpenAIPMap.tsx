@@ -436,7 +436,7 @@ export function OpenAIPMap({
 
     // Live NOTAM
     const notamLayer = L.layerGroup();
-    layerConfigs.push({ id: "notam", name: "Live NOTAM", layer: notamLayer, enabled: false, icon: "alertTriangle" });
+    layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
 
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
