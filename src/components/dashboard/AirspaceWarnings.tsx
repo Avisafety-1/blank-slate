@@ -118,6 +118,13 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
               message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             }
+          } else if (r.z_type === 'NOTAM') {
+            if (r.route_inside) {
+              message = `Aktiv NOTAM i operasjonsområdet: «${r.z_name}». Sjekk restriksjoner.`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Aktiv NOTAM ${distStr} unna: «${r.z_name}».`;
+            }
           } else if (r.z_type === 'NATURVERN') {
             if (r.route_inside) {
               message = `Ruten går gjennom naturvernområde «${r.z_name}». Sjekk verneforskriften for eventuelle restriksjoner.`;
