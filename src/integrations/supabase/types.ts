@@ -3424,6 +3424,87 @@ export type Database = {
         }
         Relationships: []
       }
+      notams: {
+        Row: {
+          center_lat: number | null
+          center_lng: number | null
+          country_code: string | null
+          created_at: string
+          effective_end: string | null
+          effective_end_interpretation: string | null
+          effective_start: string | null
+          fetched_at: string
+          geometry_geojson: Json | null
+          id: string
+          location: string | null
+          maximum_fl: number | null
+          minimum_fl: number | null
+          notam_id: string
+          notam_text: string | null
+          notam_type: string | null
+          number: number
+          properties: Json | null
+          purpose: string | null
+          qcode: string | null
+          scope: string | null
+          series: string | null
+          traffic: string | null
+          year: number
+        }
+        Insert: {
+          center_lat?: number | null
+          center_lng?: number | null
+          country_code?: string | null
+          created_at?: string
+          effective_end?: string | null
+          effective_end_interpretation?: string | null
+          effective_start?: string | null
+          fetched_at?: string
+          geometry_geojson?: Json | null
+          id?: string
+          location?: string | null
+          maximum_fl?: number | null
+          minimum_fl?: number | null
+          notam_id: string
+          notam_text?: string | null
+          notam_type?: string | null
+          number: number
+          properties?: Json | null
+          purpose?: string | null
+          qcode?: string | null
+          scope?: string | null
+          series?: string | null
+          traffic?: string | null
+          year: number
+        }
+        Update: {
+          center_lat?: number | null
+          center_lng?: number | null
+          country_code?: string | null
+          created_at?: string
+          effective_end?: string | null
+          effective_end_interpretation?: string | null
+          effective_start?: string | null
+          fetched_at?: string
+          geometry_geojson?: Json | null
+          id?: string
+          location?: string | null
+          maximum_fl?: number | null
+          minimum_fl?: number | null
+          notam_id?: string
+          notam_text?: string | null
+          notam_type?: string | null
+          number?: number
+          properties?: Json | null
+          purpose?: string | null
+          qcode?: string | null
+          scope?: string | null
+          series?: string | null
+          traffic?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           created_at: string

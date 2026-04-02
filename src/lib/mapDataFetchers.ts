@@ -830,6 +830,123 @@ export async function fetchKraftledningerInBounds(params: {
   await Promise.all(fetches);
 }
 
+// --- Live NOTAM ---
+
+export async function fetchNotamsInBounds(params: {
+  layer: L.LayerGroup;
+  bounds: L.LatLngBounds;
+  zoom: number;
+  pane: string;
+  mode: string;
+}) {
+  const { layer, bounds, zoom, pane, mode } = params;
+  layer.clearLayers();
+
+  if (zoom < 6) return;
+
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  try {
+    const { data, error } = await supabase
+      .from("notams")
+      .select("*")
+      .or(`effective_end.gt.${new Date().toISOString()},effective_end_interpretation.in.(PERM,EST),effective_end.is.null`)
+      .gte("center_lat", sw.lat)
+      .lte("center_lat", ne.lat)
+      .gte("center_lng", sw.lng)
+      .lte("center_lng", ne.lng)
+      .limit(500);
+
+    if (error) {
+      console.error("[NOTAM] Query error:", error);
+      return;
+    }
+
+    if (!data || data.length === 0) return;
+
+    for (const notam of data) {
+      // Try to render geometry
+      if (notam.geometry_geojson) {
+        try {
+          const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
+            pane,
+            interactive: mode !== "routePlanning",
+            style: {
+              color: "#e67e22",
+              weight: 2,
+              fillColor: "#f39c12",
+              fillOpacity: 0.15,
+              dashArray: "5, 5",
+            },
+          });
+
+          if (mode !== "routePlanning") {
+            geoLayer.bindPopup(buildNotamPopup(notam));
+          }
+
+          geoLayer.addTo(layer);
+        } catch {
+          // Fallback to center marker
+          addNotamCenterMarker(notam, layer, pane, mode);
+        }
+      } else if (notam.center_lat != null && notam.center_lng != null) {
+        addNotamCenterMarker(notam, layer, pane, mode);
+      }
+    }
+
+    console.log(`[NOTAM] Rendered ${data.length} NOTAMs`);
+  } catch (err) {
+    console.error("[NOTAM] Error:", err);
+  }
+}
+
+function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mode: string) {
+  if (notam.center_lat == null || notam.center_lng == null) return;
+
+  const marker = L.circleMarker([notam.center_lat, notam.center_lng], {
+    pane,
+    radius: 8,
+    fillColor: "#f39c12",
+    color: "#e67e22",
+    weight: 2,
+    fillOpacity: 0.6,
+    interactive: mode !== "routePlanning",
+  });
+
+  if (mode !== "routePlanning") {
+    marker.bindPopup(buildNotamPopup(notam));
+  }
+
+  marker.addTo(layer);
+}
+
+function buildNotamPopup(notam: any): string {
+  const start = notam.effective_start
+    ? new Date(notam.effective_start).toLocaleDateString("no-NO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "–";
+  const end = notam.effective_end
+    ? new Date(notam.effective_end).toLocaleDateString("no-NO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : notam.effective_end_interpretation === "PERM" ? "PERMANENT" : "Ukjent";
+
+  const qcode = notam.qcode ? `<br/><span style="font-size:10px;color:#888;">Q: ${notam.qcode}</span>` : "";
+  const location = notam.location ? `<br/><span style="font-size:11px;">📍 ${notam.location}</span>` : "";
+  const flLimits = (notam.minimum_fl != null || notam.maximum_fl != null)
+    ? `<br/><span style="font-size:11px;">FL${notam.minimum_fl ?? 0}–FL${notam.maximum_fl ?? "∞"}</span>`
+    : "";
+
+  const text = notam.notam_text
+    ? `<div style="max-height:150px;overflow-y:auto;font-size:11px;margin-top:4px;white-space:pre-wrap;">${notam.notam_text}</div>`
+    : "";
+
+  return `<div style="max-width:320px;">
+    <strong>⚠️ NOTAM ${notam.series || ""}${notam.number}/${notam.year}</strong>
+    ${location}${qcode}${flLimits}
+    <br/><span style="font-size:11px;">🕐 ${start} → ${end}</span>
+    ${text}
+  </div>`;
+}
+
 // --- NAIS / AIS skipstrafikk (BarentsWatch) ---
 
 const SHIP_TYPE_NAMES: Record<number, string> = {

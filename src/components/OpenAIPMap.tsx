@@ -32,6 +32,7 @@ import {
   fetchVernRestrictionZones,
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
+  fetchNotamsInBounds,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -366,9 +367,9 @@ export function OpenAIPMap({
     const paneConfig: Record<string, string> = {
       airportPane: '690', missionPane: '685', routePane: '680',
       obstaclePane: '675', safeskyPane: '660', nsmPane: '650',
-      rpasPane: '645', aipPane: '640', rmzPane: '635',
+      rpasPane: '645', aipPane: '640', rmzPane: '635', notamPane: '630',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
@@ -432,6 +433,10 @@ export function OpenAIPMap({
     }
     const naisLayer = L.layerGroup();
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
+
+    // Live NOTAM
+    const notamLayer = L.layerGroup();
+    layerConfigs.push({ id: "notam", name: "Live NOTAM", layer: notamLayer, enabled: false, icon: "alertTriangle" });
 
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
@@ -625,6 +630,25 @@ export function OpenAIPMap({
     };
     map.on('moveend', debouncedFetchNais);
 
+    // NOTAM: refetch on moveend if layer is enabled
+    let notamDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetchNotam = () => {
+      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
+      notamDebounceTimer = setTimeout(() => {
+        const isEnabled = notamLayer && map.hasLayer(notamLayer);
+        if (isEnabled) {
+          fetchNotamsInBounds({
+            layer: notamLayer,
+            bounds: map.getBounds(),
+            zoom: map.getZoom(),
+            pane: 'notamPane',
+            mode: modeRef.current,
+          });
+        }
+      }, 500);
+    };
+    map.on('moveend', debouncedFetchNotam);
+
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
     // Real-time subscriptions
@@ -683,9 +707,11 @@ export function OpenAIPMap({
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
+      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      map.off('moveend', debouncedFetchNotam);
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
