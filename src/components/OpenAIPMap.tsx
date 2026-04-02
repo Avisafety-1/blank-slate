@@ -367,7 +367,7 @@ export function OpenAIPMap({
     const paneConfig: Record<string, string> = {
       airportPane: '690', missionPane: '685', routePane: '680',
       obstaclePane: '675', safeskyPane: '660', nsmPane: '650',
-      rpasPane: '645', aipPane: '640', rmzPane: '635', notamPane: '630',
+      notamPane: '648', rpasPane: '645', aipPane: '640', rmzPane: '635',
     };
     const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
@@ -436,7 +436,7 @@ export function OpenAIPMap({
 
     // Live NOTAM
     const notamLayer = L.layerGroup();
-    layerConfigs.push({ id: "notam", name: "Live NOTAM", layer: notamLayer, enabled: false, icon: "alertTriangle" });
+    layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
 
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
@@ -446,7 +446,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "nsm", name: "NSM Forbudsområder", layer: nsmLayer, enabled: true, icon: "ban" });
 
     const aipLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: true, icon: "shield" });
+    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: false, icon: "shield" });
 
     const rmzTmzAtzLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio" });
