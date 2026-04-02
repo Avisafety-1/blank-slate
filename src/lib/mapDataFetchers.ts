@@ -884,7 +884,7 @@ export async function fetchNotamsInBounds(params: {
               fillOpacity: 0.15,
               dashArray: "5, 5",
             },
-          });
+          } as any);
 
           if (mode !== "routePlanning") {
             geoLayer.bindPopup(buildNotamPopup(notam));
