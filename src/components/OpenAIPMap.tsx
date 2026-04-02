@@ -434,6 +434,10 @@ export function OpenAIPMap({
     const naisLayer = L.layerGroup();
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
 
+    // Live NOTAM
+    const notamLayer = L.layerGroup();
+    layerConfigs.push({ id: "notam", name: "Live NOTAM", layer: notamLayer, enabled: false, icon: "alertTriangle" });
+
     // RPAS, NSM, AIP, RMZ layers
     const rpasLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
