@@ -177,13 +177,13 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
 
         const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
           interactive: mode !== 'routePlanning',
+          pane,
           style: {
             color,
             weight: 2,
             fillColor: color,
             fillOpacity,
             dashArray,
-            pane,
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
             const p = feature.properties || {};
