@@ -707,9 +707,11 @@ export function OpenAIPMap({
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
+      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      map.off('moveend', debouncedFetchNotam);
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
