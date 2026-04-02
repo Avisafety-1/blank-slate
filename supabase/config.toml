@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.barentswatch-ais]
 verify_jwt = false
+
+[functions.fetch-notams]
+verify_jwt = false
