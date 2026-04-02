@@ -435,7 +435,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
 
     // Live NOTAM
-    const notamLayer = L.layerGroup();
+    const notamLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
 
     // RPAS, NSM, AIP, RMZ layers
@@ -445,7 +445,7 @@ export function OpenAIPMap({
     const nsmLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "nsm", name: "NSM Forbudsområder", layer: nsmLayer, enabled: true, icon: "ban" });
 
-    const aipLayer = L.layerGroup().addTo(map);
+    const aipLayer = L.layerGroup();
     layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: false, icon: "shield" });
 
     const rmzTmzAtzLayer = L.layerGroup().addTo(map);
