@@ -887,6 +887,7 @@ export async function fetchNotamsInBounds(params: {
           }
 
           geoLayer.addTo(layer);
+          geoLayer.bringToFront();
         } catch {
           // Fallback to center marker
           addNotamCenterMarker(notam, layer, pane, mode);
@@ -921,6 +922,7 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
   }
 
   marker.addTo(layer);
+  marker.bringToFront();
 }
 
 function buildNotamPopup(notam: any): string {
