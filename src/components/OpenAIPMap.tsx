@@ -32,7 +32,7 @@ import {
   fetchVernRestrictionZones,
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
-  fetchNotamsInBounds,
+  fetchNotams,
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -563,6 +563,7 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    fetchNotams({ layer: notamLayer, pane: 'notamPane', mode });
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {
@@ -631,23 +632,6 @@ export function OpenAIPMap({
     map.on('moveend', debouncedFetchNais);
 
     // NOTAM: refetch on moveend if layer is enabled
-    let notamDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedFetchNotam = () => {
-      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
-      notamDebounceTimer = setTimeout(() => {
-        const isEnabled = notamLayer && map.hasLayer(notamLayer);
-        if (isEnabled) {
-          fetchNotamsInBounds({
-            layer: notamLayer,
-            bounds: map.getBounds(),
-            zoom: map.getZoom(),
-            pane: 'notamPane',
-            mode: modeRef.current,
-          });
-        }
-      }, 500);
-    };
-    map.on('moveend', debouncedFetchNotam);
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
@@ -707,11 +691,11 @@ export function OpenAIPMap({
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
-      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
+      
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
-      map.off('moveend', debouncedFetchNotam);
+      
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();

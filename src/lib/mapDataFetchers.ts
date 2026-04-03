@@ -832,30 +832,14 @@ export async function fetchKraftledningerInBounds(params: {
 
 // --- Live NOTAM ---
 
-export async function fetchNotamsInBounds(params: {
+export async function fetchNotams(params: {
   layer: L.LayerGroup;
-  bounds: L.LatLngBounds;
-  zoom: number;
   pane: string;
   mode: string;
 }) {
-  const { layer, bounds, zoom, pane, mode } = params;
-
-  // Skip refresh if a NOTAM popup is currently open (prevents popup disappearing on pan)
-  let hasOpenPopup = false;
-  layer.eachLayer((l: any) => {
-    if (l.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
-    if (l.eachLayer) {
-      l.eachLayer((sub: any) => {
-        if (sub.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
-      });
-    }
-  });
-  if (hasOpenPopup) return;
+  const { layer, pane, mode } = params;
 
   layer.clearLayers();
-
-  if (zoom < 6) return;
 
   // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
   const map = (layer as any)._map as L.Map | null;
@@ -870,19 +854,12 @@ export async function fetchNotamsInBounds(params: {
     (layer as any)._notamRenderer = notamRenderer;
   }
 
-  const sw = bounds.getSouthWest();
-  const ne = bounds.getNorthEast();
-
   try {
     const { data, error } = await supabase
       .from("notams")
       .select("*")
       .or(`effective_end.gt.${new Date().toISOString()},effective_end_interpretation.in.(PERM,EST),effective_end.is.null`)
-      .gte("center_lat", sw.lat)
-      .lte("center_lat", ne.lat)
-      .gte("center_lng", sw.lng)
-      .lte("center_lng", ne.lng)
-      .limit(500);
+      .limit(1000);
 
     if (error) {
       console.error("[NOTAM] Query error:", error);
