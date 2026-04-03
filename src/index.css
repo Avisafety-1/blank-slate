@@ -19,10 +19,17 @@
   pointer-events: none !important;
 }
 
-/* Disable NOTAM interactivity in weather mode so clicks pass through to map */
-.weather-mode-active .leaflet-notam-pane path,
-.weather-mode-active .leaflet-notam-pane .leaflet-interactive,
-.weather-mode-active .leaflet-notam-pane .leaflet-marker-icon {
+/* Disable all airspace layer interactivity in weather mode so clicks pass through to map */
+.weather-mode-active .leaflet-aip-pane path,
+.weather-mode-active .leaflet-rmz-pane path,
+.weather-mode-active .leaflet-rpas-pane path,
+.weather-mode-active .leaflet-nsm-pane path,
+.weather-mode-active .leaflet-obstacle-pane path,
+.weather-mode-active .leaflet-airport-pane .leaflet-interactive,
+.weather-mode-active .leaflet-safesky-pane .leaflet-interactive,
+.weather-mode-active .leaflet-mission-pane .leaflet-interactive,
+.weather-mode-active .leaflet-overlay-pane .leaflet-interactive,
+.weather-mode-active .leaflet-overlay-pane path {
   pointer-events: none !important;
 }
 
