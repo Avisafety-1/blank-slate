@@ -152,10 +152,12 @@ export const ProfileDialog = () => {
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDetailOpen, setMissionDetailOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackSubject, setFeedbackSubject] = useState("");
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackSending, setFeedbackSending] = useState(false);
+   const [feedbackOpen, setFeedbackOpen] = useState(false);
+   const [feedbackSubject, setFeedbackSubject] = useState("");
+   const [feedbackMessage, setFeedbackMessage] = useState("");
+   const [feedbackSending, setFeedbackSending] = useState(false);
+   const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
+   const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
