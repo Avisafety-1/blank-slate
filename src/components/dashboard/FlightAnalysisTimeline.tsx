@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StickWidget } from "./StickWidget";
+import { useMemo } from "react";
 
 interface TelemetryPoint {
   lat: number; lng: number; alt: number; height: number; timestamp: string;
