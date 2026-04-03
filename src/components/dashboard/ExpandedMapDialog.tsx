@@ -730,40 +730,49 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       }).addTo(zonesLayer);
     }
 
-    // AIP restriction zones from database
+    // Live NOTAMs from database
     try {
-      const { data: aipZones } = await supabase
-        .from('aip_restriction_zones')
-        .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry');
+      const { data: notams } = await supabase
+        .from('notams')
+        .select('notam_id, notam_text, geometry_geojson, effective_start, effective_end, effective_end_interpretation');
 
-      if (aipZones) {
-        for (const zone of aipZones) {
-          if (!zone.geometry) continue;
-          let color = '#f59e0b';
-          let label = 'Fareområde';
-          let dashArray: string | undefined = undefined;
-          if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
-          else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
-          else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
-          else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
-          else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
-          else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'ATZ'; }
-          else if (zone.zone_type === 'CTR') { color = '#ec4899'; label = 'CTR'; }
-          else if (zone.zone_type === 'TIZ') { color = '#a78bfa'; label = 'TIZ'; dashArray = '8, 6'; }
+      if (notams) {
+        for (const notam of notams) {
+          if (!notam.geometry_geojson) continue;
+          // Skip expired NOTAMs
+          if (notam.effective_end && new Date(notam.effective_end) < new Date() &&
+              notam.effective_end_interpretation !== 'PERM' && notam.effective_end_interpretation !== 'EST') continue;
 
           try {
-            L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
-              style: { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray },
-              onEachFeature: (feature, layer) => {
-                const displayName = zone.name || zone.zone_id || 'Ukjent';
-                layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
-              }
+            const geojson = typeof notam.geometry_geojson === 'string'
+              ? JSON.parse(notam.geometry_geojson)
+              : notam.geometry_geojson;
+
+            L.geoJSON(geojson, {
+              style: { color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.15 },
+              pointToLayer: (_feature, latlng) => {
+                return L.marker(latlng, {
+                  icon: L.divIcon({
+                    className: '',
+                    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+                      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill="#f59e0b" stroke="#b45309" stroke-width="1"/>
+                      <text x="12" y="16" text-anchor="middle" fill="white" font-weight="bold" font-size="14">!</text>
+                    </svg>`,
+                    iconSize: [24, 32],
+                    iconAnchor: [12, 32],
+                  }),
+                });
+              },
+              onEachFeature: (_feature, layer) => {
+                const text = notam.notam_text || notam.notam_id || 'NOTAM';
+                layer.bindPopup(`<strong>NOTAM</strong><br/><div style="max-width:300px;max-height:200px;overflow:auto;font-size:12px;">${text}</div>`);
+              },
             }).addTo(zonesLayer);
           } catch {}
         }
       }
     } catch (err) {
-      console.error("Feil ved henting av AIP-soner:", err);
+      console.error("Feil ved henting av NOTAMs:", err);
     }
   } catch (err) {
     console.error("Feil ved henting av luftromssoner:", err);
