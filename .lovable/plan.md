@@ -1,29 +1,38 @@
 
 
-## Fix: NOTAM-laget blinker ved kartbevegelse
+## Utvid oppdragsmatching til hele dagen
 
 ### Problem
-NOTAMs hentes på nytt fra databasen ved **hvert** `moveend`-event, og `layer.clearLayers()` kjøres før nye data tegnes. Dette gir et synlig blink. Andre luftromslag (NSM, RPAS, AIP) hentes én gang ved oppstart og ligger fast.
+Nåværende logikk søker kun etter oppdrag innenfor ±1 time fra flyloggens starttid. Dette gjør at oppdrag som er planlagt tidligere/senere på samme dag ikke dukker opp som valgmuligheter.
 
 ### Løsning
-Endre NOTAM-laget til å fungere som de andre lagene: **hent alle aktive NOTAMs én gang** ved oppstart (uten bounds-filter), og fjern `moveend`-lytteren. NOTAMs synkroniseres allerede daglig til databasen, så det er ingen grunn til å re-fetche ved kartbevegelse.
+Endre tidsvinduet i `findMatchingFlightLog` fra ±1 time til hele kalenderdagen (00:00–23:59) basert på flyloggens dato. Beholde sortering etter nærmest i tid, og forhåndsvelge det nærmeste oppdraget.
 
-### Endringer
+### Endring
 
-**1. `src/lib/mapDataFetchers.ts`**
-- Endre `fetchNotamsInBounds` til `fetchNotams` — fjern bounds-parametrene og bounds-filteret i Supabase-spørringen (behold bare tidsfilter for aktive NOTAMs)
-- Fjern `zoom < 6` early return (vises alltid)
-- Behold popup-sjekk og alt annet renderings-logikk
+**`src/components/UploadDroneLogDialog.tsx`** — i `findMatchingFlightLog` (linje ~1218-1221):
 
-**2. `src/components/OpenAIPMap.tsx`**
-- Flytt NOTAM-fetch til initial-fetch-blokken (sammen med NSM, RPAS, AIP)
-- Fjern hele `moveend`-lytteren og debounce-timer for NOTAM
-- Oppdater funksjonskallet til den nye signaturen (uten bounds/zoom)
+Erstatt:
+```typescript
+const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
+const windowMs = 60 * 60 * 1000; // 1 hour
+const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
+const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
+```
 
-### Resultat
-NOTAM-laget tegnes én gang og forblir stabilt ved panorering/zoom — ingen blinking, ingen unødvendige database-kall.
+Med:
+```typescript
+// Match all missions from the same calendar day (local time)
+const dayStart = new Date(flightStart);
+dayStart.setHours(0, 0, 0, 0);
+const dayEnd = new Date(flightStart);
+dayEnd.setHours(23, 59, 59, 999);
+const rangeStart = dayStart.toISOString();
+const rangeEnd = dayEnd.toISOString();
+```
 
-### Filer som endres
-- `src/lib/mapDataFetchers.ts`
-- `src/components/OpenAIPMap.tsx`
+Resten av logikken (sortering etter nærmest i tid, forhåndsvalg av nærmeste) forblir uendret.
+
+### Fil som endres
+- `src/components/UploadDroneLogDialog.tsx` — 4 linjer endres
 
