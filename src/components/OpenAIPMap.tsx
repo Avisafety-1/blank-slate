@@ -632,23 +632,6 @@ export function OpenAIPMap({
     map.on('moveend', debouncedFetchNais);
 
     // NOTAM: refetch on moveend if layer is enabled
-    let notamDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedFetchNotam = () => {
-      if (notamDebounceTimer) clearTimeout(notamDebounceTimer);
-      notamDebounceTimer = setTimeout(() => {
-        const isEnabled = notamLayer && map.hasLayer(notamLayer);
-        if (isEnabled) {
-          fetchNotamsInBounds({
-            layer: notamLayer,
-            bounds: map.getBounds(),
-            zoom: map.getZoom(),
-            pane: 'notamPane',
-            mode: modeRef.current,
-          });
-        }
-      }, 500);
-    };
-    map.on('moveend', debouncedFetchNotam);
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
 
