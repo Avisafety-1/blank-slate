@@ -29,7 +29,10 @@
 .weather-mode-active .leaflet-safesky-pane .leaflet-interactive,
 .weather-mode-active .leaflet-mission-pane .leaflet-interactive,
 .weather-mode-active .leaflet-overlay-pane .leaflet-interactive,
-.weather-mode-active .leaflet-overlay-pane path {
+.weather-mode-active .leaflet-overlay-pane path,
+.weather-mode-active .leaflet-notam-pane path,
+.weather-mode-active .leaflet-notam-pane .leaflet-interactive,
+.weather-mode-active .leaflet-notam-pane .leaflet-marker-icon {
   pointer-events: none !important;
 }
 
