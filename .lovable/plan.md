@@ -1,38 +1,30 @@
 
 
-## Utvid oppdragsmatching til hele dagen
+## Fix: Feil nullpunkt på stikke-widget for DJI vs ArduPilot
 
 ### Problem
-Nåværende logikk søker kun etter oppdrag innenfor ±1 time fra flyloggens starttid. Dette gjør at oppdrag som er planlagt tidligere/senere på samme dag ikke dukker opp som valgmuligheter.
+`StickWidget` bruker `x > 900 || y > 900` for å auto-detektere om verdiene er ArduPilot (1000–2000) eller DJI (364–1684). DJI-verdier går opp til 1684, som feilaktig treffer ArduPilot-sjekken. Da brukes feil min/max og nullpunktet forskyves.
 
 ### Løsning
-Endre tidsvinduet i `findMatchingFlightLog` fra ±1 time til hele kalenderdagen (00:00–23:59) basert på flyloggens dato. Beholde sortering etter nærmest i tid, og forhåndsvelge det nærmeste oppdraget.
+Flytte deteksjonen opp til `FlightAnalysisTimeline`, som har tilgang til **alle** RC-verdier i hele flyturen. Skann alle posisjoner én gang: hvis noen RC-verdi > 1700 → ArduPilot, ellers DJI. Send `inputRange` som prop ned til `StickWidget`.
 
-### Endring
+### Endringer
 
-**`src/components/UploadDroneLogDialog.tsx`** — i `findMatchingFlightLog` (linje ~1218-1221):
+**1. `src/components/dashboard/StickWidget.tsx`**
+- Legg til valgfri prop `inputRange: 'dji' | 'ardupilot'`
+- Bruk `inputRange` i stedet for auto-deteksjon
+- Fallback til auto-deteksjon hvis `inputRange` ikke er satt (bakoverkompatibel)
 
-Erstatt:
-```typescript
-const flightEndMs = flightStart.getTime() + (data.durationMinutes || 0) * 60 * 1000;
-const windowMs = 60 * 60 * 1000; // 1 hour
-const rangeStart = new Date(flightStart.getTime() - windowMs).toISOString();
-const rangeEnd = new Date(flightEndMs + windowMs).toISOString();
-```
+**2. `src/components/dashboard/FlightAnalysisTimeline.tsx`**
+- Beregn `rcInputRange` med `useMemo`: skann alle RC-verdier, hvis noen > 1700 → `'ardupilot'`, ellers `'dji'`
+- Send `inputRange={rcInputRange}` til begge `StickWidget`-instanser
 
-Med:
-```typescript
-// Match all missions from the same calendar day (local time)
-const dayStart = new Date(flightStart);
-dayStart.setHours(0, 0, 0, 0);
-const dayEnd = new Date(flightStart);
-dayEnd.setHours(23, 59, 59, 999);
-const rangeStart = dayStart.toISOString();
-const rangeEnd = dayEnd.toISOString();
-```
+### Teknisk detalj
+- DJI: 364–1684, nullpunkt 1024
+- ArduPilot: 1000–2000, nullpunkt 1500
+- Terskel 1700 er trygg: DJI maks er 1684, ArduPilot sentrum er 1500
 
-Resten av logikken (sortering etter nærmest i tid, forhåndsvalg av nærmeste) forblir uendret.
-
-### Fil som endres
-- `src/components/UploadDroneLogDialog.tsx` — 4 linjer endres
+### Filer som endres
+- `src/components/dashboard/StickWidget.tsx`
+- `src/components/dashboard/FlightAnalysisTimeline.tsx`
 
