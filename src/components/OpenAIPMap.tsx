@@ -159,7 +159,15 @@ export function OpenAIPMap({
   }, []);
 
   // Sync refs with state/props
-  useEffect(() => { weatherEnabledRef.current = weatherEnabled; }, [weatherEnabled]);
+  useEffect(() => {
+    weatherEnabledRef.current = weatherEnabled;
+    if (leafletMapRef.current) {
+      const notamPane = leafletMapRef.current.getPane('notamPane');
+      if (notamPane) {
+        notamPane.style.pointerEvents = weatherEnabled ? 'none' : (mode === 'routePlanning' ? 'none' : 'auto');
+      }
+    }
+  }, [weatherEnabled, mode]);
   useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
