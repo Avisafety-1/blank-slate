@@ -1,37 +1,34 @@
 
 
-## Legg til CTR/TIZ-sjekk i luftromsadvarsler
+## Slett gamle cron-jobblogger
 
 ### Problem
-Funksjonen `check_mission_airspace` ble skrevet om da NOTAMs ble lagt til, og `rpas_ctr_tiz`-tabellen ble utilsiktet utelatt. Dermed får man ingen advarsler når ruten er innenfor en CTR/TIZ-sone (med mindre den også er i en 5km-sone).
+`cron.job_run_details` inneholder **2.7 millioner rader** og tar **5 GB** lagringsplass. Disse loggene har ingen nytteverdi etter kort tid.
 
 ### Løsning
-Legge tilbake `rpas_ctr_tiz` som en `UNION ALL`-blokk i `candidate_zones`-spørringen, og endre severity fra `'INFO'` til `'CAUTION'` for CTR/TIZ.
+Legge til en ny cron-jobb som kjører daglig og sletter logger eldre enn 7 dager.
 
-### Endringer
+### Implementasjon
 
-**1. Ny migrasjon** — oppdater `check_mission_airspace`-funksjonen:
-- Legg til `rpas_ctr_tiz` i `candidate_zones`:
+**Kjøre SQL direkte** (ikke via migrasjon, da dette inneholder prosjekt-spesifikke nøkler):
+
 ```sql
-UNION ALL
--- RPAS CTR/TIZ zones
-SELECT
-  ct.id::text,
-  COALESCE(ct.properties->>'Zone', 'CTR/TIZ'),
-  COALESCE(ct.name, 'Ukjent'),
-  ct.geometry
-FROM rpas_ctr_tiz ct
-WHERE ct.geometry IS NOT NULL
-  AND ST_DWithin(ct.geometry::geography, v_envelope::geography, 50000)
+-- 1. Slett alle eksisterende gamle logger umiddelbart
+DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days';
+
+-- 2. Opprett daglig opprydningsjobb
+SELECT cron.schedule(
+  'cleanup-cron-logs',
+  '0 4 * * *',
+  $$DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days'$$
+);
 ```
 
-- Endre severity-mapping for CTR/TIZ fra `'INFO'` til `'CAUTION'`:
-```sql
-WHEN rc.cz_type IN ('CTR', 'TIZ', 'CTR/TIZ') THEN 'CAUTION'
-```
+### Detaljer
+- Kjører kl. 04:00 hver dag
+- Beholder de siste 7 dagenes logger for debugging
+- Første kjøring vil frigjøre ~5 GB
 
-**2. `src/components/dashboard/AirspaceWarnings.tsx`** — ingen endring nødvendig (håndterer allerede CTR/TIZ korrekt med riktig melding om 120m AGL).
-
-### Teknisk detalj
-`rpas_ctr_tiz`-tabellen har kolonnene `id`, `name`, `geometry` og `properties` (med `Zone`-felt som angir om det er CTR eller TIZ). Tabellen er allerede indeksert med GIST.
+### Filer som endres
+Ingen kodeendringer — kun SQL som kjøres mot databasen.
 
