@@ -162,12 +162,14 @@ export function OpenAIPMap({
   useEffect(() => {
     weatherEnabledRef.current = weatherEnabled;
     if (leafletMapRef.current) {
-      const notamPane = leafletMapRef.current.getPane('notamPane');
-      if (notamPane) {
-        notamPane.style.pointerEvents = weatherEnabled ? 'none' : (mode === 'routePlanning' ? 'none' : 'auto');
+      const container = leafletMapRef.current.getContainer();
+      if (weatherEnabled) {
+        container.classList.add('weather-mode-active');
+      } else {
+        container.classList.remove('weather-mode-active');
       }
     }
-  }, [weatherEnabled, mode]);
+  }, [weatherEnabled]);
   useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
