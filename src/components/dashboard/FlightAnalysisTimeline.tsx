@@ -313,6 +313,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                 label="Venstre stikke"
                 xLabel="Rudder"
                 yLabel="Throttle"
+                inputRange={rcInputRange}
               />
               <StickWidget
                 x={current.rcAileron ?? 0}
@@ -320,6 +321,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                 label="Høyre stikke"
                 xLabel="Aileron"
                 yLabel="Elevator"
+                inputRange={rcInputRange}
               />
             </div>
           )}
