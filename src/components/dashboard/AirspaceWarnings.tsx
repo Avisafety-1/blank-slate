@@ -92,10 +92,10 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           let level: AirspaceWarning["level"];
           
           if (r.route_inside) {
-            // Inside any zone → upgrade: CAUTION→warning, WARNING→warning, INFO→caution
-            level = baseSeverity === "INFO" ? "caution" : "warning";
+            // Inside: WARNING stays warning, CAUTION stays caution, INFO→caution
+            level = baseSeverity === "WARNING" ? "warning" : "caution";
           } else {
-            // Nearby (not inside) → downgrade: WARNING→caution, CAUTION→note, INFO→note
+            // Nearby (not inside) → downgrade one step
             level = baseSeverity === "WARNING" ? "caution" : baseSeverity === "CAUTION" ? "note" : "note";
           }
           const distMeters = Math.round(r.min_distance);
