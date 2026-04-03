@@ -73,6 +73,15 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
   const [activeChart, setActiveChart] = useState("altitude");
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
+  const rcInputRange = useMemo<'dji' | 'ardupilot'>(() => {
+    return positions.some(p =>
+      (p.rcElevator != null && p.rcElevator > 1700) ||
+      (p.rcAileron != null && p.rcAileron > 1700) ||
+      (p.rcRudder != null && p.rcRudder > 1700) ||
+      (p.rcThrottle != null && p.rcThrottle > 1700)
+    ) ? 'ardupilot' : 'dji';
+  }, [positions]);
+
   const isDualBattery = useMemo(() => hasData(positions, 'battery1'), [positions]);
 
   const chartData = useMemo(() => 
@@ -304,6 +313,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                 label="Venstre stikke"
                 xLabel="Rudder"
                 yLabel="Throttle"
+                inputRange={rcInputRange}
               />
               <StickWidget
                 x={current.rcAileron ?? 0}
@@ -311,6 +321,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                 label="Høyre stikke"
                 xLabel="Aileron"
                 yLabel="Elevator"
+                inputRange={rcInputRange}
               />
             </div>
           )}

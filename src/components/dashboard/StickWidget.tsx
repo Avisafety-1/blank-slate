@@ -4,6 +4,7 @@ interface StickWidgetProps {
   label: string;
   xLabel?: string;
   yLabel?: string;
+  inputRange?: 'dji' | 'ardupilot';
 }
 
 const SIZE = 80;
@@ -13,9 +14,11 @@ const RANGE = SIZE - PAD * 2;
 const normalize = (val: number, min: number, max: number) =>
   Math.max(0, Math.min(1, (val - min) / (max - min)));
 
-export const StickWidget = ({ x, y, label, xLabel, yLabel }: StickWidgetProps) => {
-  // Auto-detect range: ArduPilot PWM (1000-2000) vs DJI (364-1684)
-  const isArduPilot = x > 900 || y > 900;
+export const StickWidget = ({ x, y, label, xLabel, yLabel, inputRange }: StickWidgetProps) => {
+  // Use explicit inputRange if provided, otherwise fall back to auto-detect
+  const isArduPilot = inputRange
+    ? inputRange === 'ardupilot'
+    : (x > 1700 || y > 1700);
   const min = isArduPilot ? 1000 : 364;
   const max = isArduPilot ? 2000 : 1684;
   const nx = normalize(x, min, max);
