@@ -840,6 +840,19 @@ export async function fetchNotamsInBounds(params: {
   mode: string;
 }) {
   const { layer, bounds, zoom, pane, mode } = params;
+
+  // Skip refresh if a NOTAM popup is currently open (prevents popup disappearing on pan)
+  let hasOpenPopup = false;
+  layer.eachLayer((l: any) => {
+    if (l.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
+    if (l.eachLayer) {
+      l.eachLayer((sub: any) => {
+        if (sub.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
+      });
+    }
+  });
+  if (hasOpenPopup) return;
+
   layer.clearLayers();
 
   if (zoom < 6) return;
