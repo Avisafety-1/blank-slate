@@ -1,36 +1,29 @@
 
 
-## Fix: NOTAM-popup forsvinner ved kart-panorering
+## Fix: NOTAM-laget blinker ved kartbevegelse
 
 ### Problem
-Når man klikker på et NOTAM-område og Leaflet panorerer kartet for å vise popup-en, utløses `moveend`-eventet. Dette kaller `fetchNotamsInBounds()` som starter med `layer.clearLayers()` — og dermed fjernes popup-en umiddelbart.
+NOTAMs hentes på nytt fra databasen ved **hvert** `moveend`-event, og `layer.clearLayers()` kjøres før nye data tegnes. Dette gir et synlig blink. Andre luftromslag (NSM, RPAS, AIP) hentes én gang ved oppstart og ligger fast.
 
 ### Løsning
-Sjekke om det finnes en åpen popup i NOTAM-laget før oppdatering. Hvis en popup er åpen, hopp over oppdateringen (eller utsett den til popup-en lukkes).
+Endre NOTAM-laget til å fungere som de andre lagene: **hent alle aktive NOTAMs én gang** ved oppstart (uten bounds-filter), og fjern `moveend`-lytteren. NOTAMs synkroniseres allerede daglig til databasen, så det er ingen grunn til å re-fetche ved kartbevegelse.
 
 ### Endringer
 
-**`src/lib/mapDataFetchers.ts`** — Legg til sjekk i `fetchNotamsInBounds`:
-```ts
-// Sjekk om en NOTAM-popup er åpen — i så fall, ikke oppdater
-let hasOpenPopup = false;
-layer.eachLayer((l: any) => {
-  if (l.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
-  // Also check sub-layers (geoJSON groups)
-  if (l.eachLayer) {
-    l.eachLayer((sub: any) => {
-      if (sub.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
-    });
-  }
-});
-if (hasOpenPopup) return;
-```
+**1. `src/lib/mapDataFetchers.ts`**
+- Endre `fetchNotamsInBounds` til `fetchNotams` — fjern bounds-parametrene og bounds-filteret i Supabase-spørringen (behold bare tidsfilter for aktive NOTAMs)
+- Fjern `zoom < 6` early return (vises alltid)
+- Behold popup-sjekk og alt annet renderings-logikk
 
-Denne sjekken plasseres rett etter `layer.clearLayers()` erstattes — dvs. **før** `clearLayers()` kalles.
+**2. `src/components/OpenAIPMap.tsx`**
+- Flytt NOTAM-fetch til initial-fetch-blokken (sammen med NSM, RPAS, AIP)
+- Fjern hele `moveend`-lytteren og debounce-timer for NOTAM
+- Oppdater funksjonskallet til den nye signaturen (uten bounds/zoom)
 
 ### Resultat
-Popup-en forblir synlig etter at kartet har panorert. Neste gang brukeren selv panorerer/zoomer (etter at popup-en er lukket), oppdateres NOTAM-laget som normalt.
+NOTAM-laget tegnes én gang og forblir stabilt ved panorering/zoom — ingen blinking, ingen unødvendige database-kall.
 
-### Fil som endres
-- `src/lib/mapDataFetchers.ts` — 1 endring (legg til popup-sjekk før clearLayers)
+### Filer som endres
+- `src/lib/mapDataFetchers.ts`
+- `src/components/OpenAIPMap.tsx`
 
