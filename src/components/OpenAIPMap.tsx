@@ -563,6 +563,7 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    fetchNotams({ layer: notamLayer, pane: 'notamPane', mode });
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {
