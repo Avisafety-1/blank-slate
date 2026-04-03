@@ -695,7 +695,7 @@ export function OpenAIPMap({
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
-      map.off('moveend', debouncedFetchNotam);
+      
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
