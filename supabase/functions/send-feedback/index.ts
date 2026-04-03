@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const senderName = profile?.full_name || 'Ukjent bruker';
     const senderEmail = profile?.email || 'ukjent';
 
-    const { subject, message } = await req.json();
+    const { subject, message, imageUrl } = await req.json();
 
     if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Overskrift er påkrevd' }), { status: 400, headers: corsHeaders });
@@ -57,6 +57,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Melding kan ikke være lengre enn 5000 tegn' }), { status: 400, headers: corsHeaders });
     }
 
+    const imageSection = imageUrl
+      ? `<p><strong>Vedlagt bilde:</strong></p><img src="${imageUrl}" alt="Vedlegg" style="max-width: 100%; max-height: 600px; border-radius: 8px; border: 1px solid #e5e7eb;" />`
+      : '';
+
     const htmlBody = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -65,6 +69,7 @@ Deno.serve(async (req) => {
   <p><strong>Emne:</strong> ${subject.trim()}</p>
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;">
   <div style="white-space: pre-wrap;">${message.trim()}</div>
+  ${imageSection}
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;">
   <p style="font-size: 12px; color: #6b7280;">Denne meldingen ble sendt via AviSafe tilbakemeldingsskjema.</p>
 </body></html>`;

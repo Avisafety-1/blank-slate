@@ -152,10 +152,12 @@ export const ProfileDialog = () => {
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDetailOpen, setMissionDetailOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackSubject, setFeedbackSubject] = useState("");
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackSending, setFeedbackSending] = useState(false);
+   const [feedbackOpen, setFeedbackOpen] = useState(false);
+   const [feedbackSubject, setFeedbackSubject] = useState("");
+   const [feedbackMessage, setFeedbackMessage] = useState("");
+   const [feedbackSending, setFeedbackSending] = useState(false);
+   const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
+   const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
@@ -1047,6 +1049,11 @@ export const ProfileDialog = () => {
                   if (!open) {
                     setFeedbackSubject("");
                     setFeedbackMessage("");
+                    setFeedbackImage(null);
+                    if (feedbackImagePreview) {
+                      URL.revokeObjectURL(feedbackImagePreview);
+                      setFeedbackImagePreview(null);
+                    }
                   }
                 }}>
                   <DialogContent className="max-w-md">
@@ -1073,6 +1080,56 @@ export const ProfileDialog = () => {
                           maxLength={5000}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Vedlegg (valgfritt)</Label>
+                        {feedbackImagePreview ? (
+                          <div className="relative inline-block">
+                            <img src={feedbackImagePreview} alt="Vedlegg" className="max-h-32 rounded-md border border-border" />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                              onClick={() => {
+                                setFeedbackImage(null);
+                                URL.revokeObjectURL(feedbackImagePreview);
+                                setFeedbackImagePreview(null);
+                              }}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ) : (
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              id="feedback-image-input"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast.error("Bildet kan ikke være større enn 5 MB");
+                                    return;
+                                  }
+                                  setFeedbackImage(file);
+                                  setFeedbackImagePreview(URL.createObjectURL(file));
+                                }
+                                e.target.value = "";
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => document.getElementById("feedback-image-input")?.click()}
+                              type="button"
+                            >
+                              <Camera className="h-4 w-4 mr-1" />
+                              Legg til bilde
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
@@ -1089,14 +1146,34 @@ export const ProfileDialog = () => {
                             }
                             setFeedbackSending(true);
                             try {
+                              let imageUrl: string | undefined;
+                              if (feedbackImage) {
+                                const ext = feedbackImage.name.split('.').pop() || 'jpg';
+                                const filePath = `${user?.id}-${Date.now()}.${ext}`;
+                                const buf = await feedbackImage.arrayBuffer();
+                                const safeFile = new File([buf], feedbackImage.name, { type: feedbackImage.type });
+                                const { error: uploadError } = await supabase.storage
+                                  .from('feedback-attachments')
+                                  .upload(filePath, safeFile);
+                                if (uploadError) throw uploadError;
+                                const { data: urlData } = supabase.storage
+                                  .from('feedback-attachments')
+                                  .getPublicUrl(filePath);
+                                imageUrl = urlData.publicUrl;
+                              }
                               const { error } = await supabase.functions.invoke('send-feedback', {
-                                body: { subject: feedbackSubject.trim(), message: feedbackMessage.trim() },
+                                body: { subject: feedbackSubject.trim(), message: feedbackMessage.trim(), imageUrl },
                               });
                               if (error) throw error;
                               toast.success("Tilbakemelding sendt! Takk for innspillet.");
                               setFeedbackOpen(false);
                               setFeedbackSubject("");
                               setFeedbackMessage("");
+                              setFeedbackImage(null);
+                              if (feedbackImagePreview) {
+                                URL.revokeObjectURL(feedbackImagePreview);
+                                setFeedbackImagePreview(null);
+                              }
                             } catch (err: any) {
                               console.error("Error sending feedback:", err);
                               toast.error(err.message || "Kunne ikke sende tilbakemelding");
