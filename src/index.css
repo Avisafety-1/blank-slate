@@ -19,6 +19,13 @@
   pointer-events: none !important;
 }
 
+/* Disable NOTAM interactivity in weather mode so clicks pass through to map */
+.weather-mode-active .leaflet-notam-pane path,
+.weather-mode-active .leaflet-notam-pane .leaflet-interactive,
+.weather-mode-active .leaflet-notam-pane .leaflet-marker-icon {
+  pointer-events: none !important;
+}
+
 /* Route marker styling for Leaflet */
 .route-marker {
   background: transparent !important;
