@@ -1,34 +1,36 @@
 
 
-## Slett gamle cron-jobblogger
+## Fix: NOTAM-popup forsvinner ved kart-panorering
 
 ### Problem
-`cron.job_run_details` inneholder **2.7 millioner rader** og tar **5 GB** lagringsplass. Disse loggene har ingen nytteverdi etter kort tid.
+Når man klikker på et NOTAM-område og Leaflet panorerer kartet for å vise popup-en, utløses `moveend`-eventet. Dette kaller `fetchNotamsInBounds()` som starter med `layer.clearLayers()` — og dermed fjernes popup-en umiddelbart.
 
 ### Løsning
-Legge til en ny cron-jobb som kjører daglig og sletter logger eldre enn 7 dager.
+Sjekke om det finnes en åpen popup i NOTAM-laget før oppdatering. Hvis en popup er åpen, hopp over oppdateringen (eller utsett den til popup-en lukkes).
 
-### Implementasjon
+### Endringer
 
-**Kjøre SQL direkte** (ikke via migrasjon, da dette inneholder prosjekt-spesifikke nøkler):
-
-```sql
--- 1. Slett alle eksisterende gamle logger umiddelbart
-DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days';
-
--- 2. Opprett daglig opprydningsjobb
-SELECT cron.schedule(
-  'cleanup-cron-logs',
-  '0 4 * * *',
-  $$DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days'$$
-);
+**`src/lib/mapDataFetchers.ts`** — Legg til sjekk i `fetchNotamsInBounds`:
+```ts
+// Sjekk om en NOTAM-popup er åpen — i så fall, ikke oppdater
+let hasOpenPopup = false;
+layer.eachLayer((l: any) => {
+  if (l.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
+  // Also check sub-layers (geoJSON groups)
+  if (l.eachLayer) {
+    l.eachLayer((sub: any) => {
+      if (sub.getPopup?.()?.isOpen?.()) hasOpenPopup = true;
+    });
+  }
+});
+if (hasOpenPopup) return;
 ```
 
-### Detaljer
-- Kjører kl. 04:00 hver dag
-- Beholder de siste 7 dagenes logger for debugging
-- Første kjøring vil frigjøre ~5 GB
+Denne sjekken plasseres rett etter `layer.clearLayers()` erstattes — dvs. **før** `clearLayers()` kalles.
 
-### Filer som endres
-Ingen kodeendringer — kun SQL som kjøres mot databasen.
+### Resultat
+Popup-en forblir synlig etter at kartet har panorert. Neste gang brukeren selv panorerer/zoomer (etter at popup-en er lukket), oppdateres NOTAM-laget som normalt.
+
+### Fil som endres
+- `src/lib/mapDataFetchers.ts` — 1 endring (legg til popup-sjekk før clearLayers)
 
