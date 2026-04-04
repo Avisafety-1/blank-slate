@@ -12,6 +12,7 @@ export interface GlassCardProps {
 export const GlassCard = ({ children, className, dragHandleProps, id }: GlassCardProps) => {
   return (
     <div
+      id={id}
       className={cn(
         "bg-card/80 backdrop-blur-md border border-glass rounded-lg p-3 sm:p-5 shadow-lg relative group w-full",
         className,
