@@ -13,6 +13,7 @@ export interface SoraSettings {
   contingencyHeight: number;
   groundRiskDistance: number;
   bufferMode?: "corridor" | "convexHull";
+  droneId?: string;
 }
 
 /**
