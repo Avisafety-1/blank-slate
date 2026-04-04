@@ -534,7 +534,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           mode={isRoutePlanning ? "routePlanning" : "view"}
           existingRoute={routePlanningState?.existingRoute}
           onRouteChange={handleRouteChange}
-          initialCenter={routePlanningState?.initialCenter}
+          initialCenter={routePlanningState?.initialCenter || (viewMission?.latitude && viewMission?.longitude ? [viewMission.latitude, viewMission.longitude] : undefined)}
           controlledRoute={currentRoute}
           onStartRoutePlanning={handleStartRoutePlanning}
           onPilotPositionChange={handlePilotPositionChange}
