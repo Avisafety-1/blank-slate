@@ -70,9 +70,9 @@ export default function KartPage() {
     }
   }, [user, loading, navigate]);
 
-  // Check for route planning mode from navigation state
+  // Check for route planning mode or viewMission from navigation state
   useEffect(() => {
-    const state = location.state as (RoutePlanningState & { focusFlightId?: string }) | null;
+    const state = location.state as (RoutePlanningState & { focusFlightId?: string; viewMission?: any }) | null;
     if (state?.mode === "routePlanning") {
       setIsRoutePlanning(true);
       setRoutePlanningState(state);
@@ -81,6 +81,14 @@ export default function KartPage() {
         if (state.existingRoute.soraSettings) {
           setSoraSettings(state.existingRoute.soraSettings);
         }
+      }
+    }
+    if (state?.viewMission) {
+      setViewMission(state.viewMission);
+      // Show mission route on map if available
+      const route = state.viewMission.route as RouteData | null;
+      if (route?.coordinates?.length) {
+        setCurrentRoute(route);
       }
     }
     if (state?.focusFlightId) {
