@@ -34,7 +34,7 @@ export default function KartPage() {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [focusFlightId, setFocusFlightId] = useState<string | null>(null);
-  const [viewMission, setViewMission] = useState<any>(null);
+  
   
   // Route planning state
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
