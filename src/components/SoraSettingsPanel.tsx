@@ -44,13 +44,14 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId }: SoraSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const { companyId } = useAuth();
 
   // Drone selector state
   const [drones, setDrones] = useState<CompanyDrone[]>([]);
-  const [selectedDroneId, setSelectedDroneId] = useState<string>("");
+  const [selectedDroneId, setSelectedDroneId] = useState<string>(initialDroneId ?? "");
+  const initialDroneNotified = useRef(false);
   const [catalogSpecs, setCatalogSpecs] = useState<CatalogSpecs | null>(null);
 
   // Mission params state
