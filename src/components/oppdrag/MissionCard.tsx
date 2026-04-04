@@ -30,6 +30,7 @@ import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflict
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
