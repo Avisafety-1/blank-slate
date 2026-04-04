@@ -496,23 +496,6 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
       {/* Map Content */}
       <div className="flex-1 relative overflow-hidden">
         {/* Back to mission button */}
-        {viewMission && !isRoutePlanning && (
-          <div className="absolute top-2 left-2 z-[1000]">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              onClick={() => {
-                navigate('/oppdrag', { state: { scrollToMission: viewMission.id } });
-                setViewMission(null);
-                setCurrentRoute({ coordinates: [], totalDistance: 0 });
-              }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Tilbake til oppdrag
-            </Button>
-          </div>
-        )}
         {/* SafeSky Attribution */}
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Traffic data provided by</span>
