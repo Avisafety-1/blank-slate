@@ -83,14 +83,6 @@ export default function KartPage() {
         }
       }
     }
-    if (state?.viewMission) {
-      setViewMission(state.viewMission);
-      // Show mission route on map if available
-      const route = state.viewMission.route as RouteData | null;
-      if (route?.coordinates?.length) {
-        setCurrentRoute(route);
-      }
-    }
     if (state?.focusFlightId) {
       setFocusFlightId(state.focusFlightId);
     }
