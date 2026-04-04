@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, AlertTriangle, Zap, Plane } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,7 @@ interface SoraSettingsPanelProps {
   settings: SoraSettings;
   onChange: (settings: SoraSettings) => void;
   onDroneSelected?: (droneId: string | null) => void;
+  initialDroneId?: string;
 }
 
 interface CompanyDrone {
@@ -43,13 +44,14 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId }: SoraSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const { companyId } = useAuth();
 
   // Drone selector state
   const [drones, setDrones] = useState<CompanyDrone[]>([]);
-  const [selectedDroneId, setSelectedDroneId] = useState<string>("");
+  const [selectedDroneId, setSelectedDroneId] = useState<string>(initialDroneId ?? "");
+  const initialDroneNotified = useRef(false);
   const [catalogSpecs, setCatalogSpecs] = useState<CatalogSpecs | null>(null);
 
   // Mission params state
@@ -77,6 +79,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected }: SoraS
         .eq("aktiv", true)
         .order("modell");
       setDrones(data ?? []);
+      // Notify parent of initial drone selection after drones load
+      if (initialDroneId && !initialDroneNotified.current) {
+        initialDroneNotified.current = true;
+        onDroneSelected?.(initialDroneId);
+      }
     };
     fetchDrones();
   }, [companyId]);

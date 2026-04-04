@@ -84,7 +84,7 @@ export const ExpandedMapDialog = ({
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);
-  const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
+  const [soraDroneId, setSoraDroneId] = useState<string | null>(route?.soraSettings?.droneId ?? null);
 
   const handleSoraChange = (newSettings: SoraSettings) => {
     setSoraSettings(newSettings);
@@ -94,7 +94,8 @@ export const ExpandedMapDialog = ({
   const handleSaveSora = async () => {
     if (!missionId || !route) return;
     setSoraSaving(true);
-    const updatedRoute = { ...route, soraSettings };
+    const settingsWithDrone = { ...soraSettings, droneId: soraDroneId ?? undefined };
+    const updatedRoute = { ...route, soraSettings: settingsWithDrone };
     const { error } = await supabase
       .from("missions")
       .update({ route: updatedRoute as any })
@@ -126,6 +127,7 @@ export const ExpandedMapDialog = ({
   // Reset SORA settings when route changes
   useEffect(() => {
     setSoraSettings(route?.soraSettings ?? defaultSora);
+    setSoraDroneId(route?.soraSettings?.droneId ?? null);
     setSoraDirty(false);
   }, [route]);
 
@@ -582,10 +584,15 @@ export const ExpandedMapDialog = ({
         </DialogHeader>
 
         {route?.coordinates && route.coordinates.length >= 3 && (
-          <div>
-            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} onDroneSelected={setSoraDroneId} />
+          <div className="max-h-[40vh] overflow-y-auto border-b border-border">
+            <SoraSettingsPanel
+              settings={soraSettings}
+              onChange={handleSoraChange}
+              onDroneSelected={setSoraDroneId}
+              initialDroneId={route?.soraSettings?.droneId}
+            />
             {soraDirty && missionId && (
-              <div className="px-3 pb-2 sm:px-4">
+              <div className="px-3 pb-2 sm:px-4 sticky bottom-0 bg-background">
                 <button
                   onClick={handleSaveSora}
                   disabled={soraSaving}
