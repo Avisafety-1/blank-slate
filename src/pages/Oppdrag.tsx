@@ -83,6 +83,25 @@ const Oppdrag = () => {
   const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
   const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
 
+  // Scroll to mission card if navigating back from /kart
+  useEffect(() => {
+    const state = data.location.state as any;
+    if (state?.scrollToMission) {
+      const missionId = state.scrollToMission;
+      data.navigate(data.location.pathname, { replace: true, state: null });
+      // Wait for DOM to render, then scroll
+      setTimeout(() => {
+        const el = document.getElementById(`mission-${missionId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-2', 'ring-primary');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+        }
+      }, 300);
+      return;
+    }
+  }, [data.location.state]);
+
   // Handle navigation state from route planner
   useEffect(() => {
     const state = data.location.state as any;

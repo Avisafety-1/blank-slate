@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +60,7 @@ export interface MissionCardProps {
   onExportKmz: (mission: Mission) => void;
   onImportKml: (missionId: string) => void;
   onOpenSora: (missionId: string) => void;
-  onExpandMap: (mission: Mission) => void;
+  onExpandMap?: (mission: Mission) => void;
   onIncidentClick: (incident: any) => void;
   onDocumentClick: (doc: any) => void;
   onChecklistPicker: (mission: Mission) => void;
@@ -92,6 +93,7 @@ export const MissionCard = ({
   fetchMissions,
   onRiskBadgeClick,
 }: MissionCardProps) => {
+  const navigate = useNavigate();
   const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
@@ -117,7 +119,7 @@ export const MissionCard = ({
 
   return (
     <>
-    <GlassCard className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+    <GlassCard id={`mission-${mission.id}`} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 sm:gap-4">
         <div className="space-y-2 flex-1 w-full">
@@ -541,7 +543,7 @@ export const MissionCard = ({
               <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
               <div 
                 className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                onClick={() => onExpandMap(mission)}
+                onClick={() => navigate('/kart', { state: { viewMission: mission } })}
               >
                 <MissionMapPreview
                   latitude={effectiveLat}
