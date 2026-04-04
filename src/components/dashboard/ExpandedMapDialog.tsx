@@ -584,10 +584,15 @@ export const ExpandedMapDialog = ({
         </DialogHeader>
 
         {route?.coordinates && route.coordinates.length >= 3 && (
-          <div>
-            <SoraSettingsPanel settings={soraSettings} onChange={handleSoraChange} onDroneSelected={setSoraDroneId} />
+          <div className="max-h-[40vh] overflow-y-auto border-b border-border">
+            <SoraSettingsPanel
+              settings={soraSettings}
+              onChange={handleSoraChange}
+              onDroneSelected={setSoraDroneId}
+              initialDroneId={route?.soraSettings?.droneId}
+            />
             {soraDirty && missionId && (
-              <div className="px-3 pb-2 sm:px-4">
+              <div className="px-3 pb-2 sm:px-4 sticky bottom-0 bg-background">
                 <button
                   onClick={handleSaveSora}
                   disabled={soraSaving}
