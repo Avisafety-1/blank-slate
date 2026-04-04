@@ -1,30 +1,34 @@
 
 
-## Åpne kart i popup i stedet for navigering
+## Husk valgt drone i SORA + scrollbar-fix
 
 ### Problem
-Klikk på minikartet i oppdragskortet navigerer nå til `/kart`, som krever tilbakeknapp og mister kontekst. Brukeren ønsker en popup som kan lukkes direkte.
-
-### Løsning
-Det finnes allerede en `ExpandedMapDialog`-komponent som gjør akkurat dette — viser et fullskjerm-kart i en dialog med rute, flight tracks, SORA-soner og terrengprofil. Vi trenger bare å koble den opp igjen fra `MissionCard`.
+1. Valgt drone lagres ikke i SORA-innstillingene — neste gang dialogen åpnes er drone-feltet tomt
+2. SORA-panelet i ExpandedMapDialog kan ikke scrolles når innholdet blir langt (f.eks. ved dronevalg)
 
 ### Endringer
 
-**1. `src/components/oppdrag/MissionCard.tsx`**
-- Erstatt `navigate('/kart', { state: { viewMission: mission } })` med en lokal state `expandedMapOpen` som åpner `ExpandedMapDialog`
-- Importér og rendér `ExpandedMapDialog` inne i kortet med mission-data (koordinater, rute, flight tracks, tittel, missionId)
+**1. `src/types/map.ts`** — Legg til `droneId?: string` i `SoraSettings`-interfacet
 
-**2. `src/pages/Kart.tsx`**
-- Fjern `viewMission`-state og tilbakeknapp-logikken (linje ~500-520) da den ikke lenger brukes fra oppdragskort
+**2. `src/components/dashboard/ExpandedMapDialog.tsx`**
+- Når SORA lagres (`handleSaveSora`): inkludér `soraDroneId` i `soraSettings` som `droneId`
+- Initialiser `soraDroneId` fra `route?.soraSettings?.droneId ?? null`
 
-**3. `src/pages/Oppdrag.tsx`**
-- Fjern `scrollToMission`-logikken i `useEffect` da den ikke lenger trengs
+**3. `src/components/SoraSettingsPanel.tsx`**
+- Akseptér ny prop `initialDroneId?: string`
+- Sett `selectedDroneId` til `initialDroneId` som startverdi og kall `onDroneSelected` ved oppstart
 
-### Resultat
-Klikk på minikartet åpner en fullskjerm-dialog med alle kartfunksjoner. Lukk dialogen → tilbake til oppdragskortet umiddelbart.
+**4. `src/components/dashboard/ExpandedMapDialog.tsx`** — Scroll-fix
+- Wrap SORA-panelet + lagre-knappen i en scrollbar-container (`div` med `overflow-y-auto max-h-[40vh]` eller lignende) slik at innholdet kan scrolles når det er for langt
+
+### Teknisk flyt
+```text
+Lagring: soraSettings.droneId = soraDroneId → missions.route.soraSettings
+Åpning: route.soraSettings.droneId → soraDroneId → SoraSettingsPanel(initialDroneId)
+```
 
 ### Filer som endres
-- `src/components/oppdrag/MissionCard.tsx`
-- `src/pages/Kart.tsx`
-- `src/pages/Oppdrag.tsx`
+- `src/types/map.ts`
+- `src/components/SoraSettingsPanel.tsx`
+- `src/components/dashboard/ExpandedMapDialog.tsx`
 
