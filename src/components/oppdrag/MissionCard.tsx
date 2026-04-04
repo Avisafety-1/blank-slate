@@ -119,7 +119,7 @@ export const MissionCard = ({
 
   return (
     <>
-    <GlassCard className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+    <GlassCard id={`mission-${mission.id}`} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 sm:gap-4">
         <div className="space-y-2 flex-1 w-full">
