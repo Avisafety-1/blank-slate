@@ -94,7 +94,8 @@ export const ExpandedMapDialog = ({
   const handleSaveSora = async () => {
     if (!missionId || !route) return;
     setSoraSaving(true);
-    const updatedRoute = { ...route, soraSettings };
+    const settingsWithDrone = { ...soraSettings, droneId: soraDroneId ?? undefined };
+    const updatedRoute = { ...route, soraSettings: settingsWithDrone };
     const { error } = await supabase
       .from("missions")
       .update({ route: updatedRoute as any })
