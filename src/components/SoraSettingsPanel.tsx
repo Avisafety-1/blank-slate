@@ -24,6 +24,7 @@ interface SoraSettingsPanelProps {
   settings: SoraSettings;
   onChange: (settings: SoraSettings) => void;
   onDroneSelected?: (droneId: string | null) => void;
+  initialDroneId?: string;
 }
 
 interface CompanyDrone {
