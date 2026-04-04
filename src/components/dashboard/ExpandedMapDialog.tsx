@@ -127,6 +127,7 @@ export const ExpandedMapDialog = ({
   // Reset SORA settings when route changes
   useEffect(() => {
     setSoraSettings(route?.soraSettings ?? defaultSora);
+    setSoraDroneId(route?.soraSettings?.droneId ?? null);
     setSoraDirty(false);
   }, [route]);
 
