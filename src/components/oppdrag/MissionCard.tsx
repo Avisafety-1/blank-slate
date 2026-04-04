@@ -30,6 +30,7 @@ import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflict
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
@@ -98,6 +99,7 @@ export const MissionCard = ({
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
+  const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const companySettings = useCompanySettings();
@@ -543,7 +545,7 @@ export const MissionCard = ({
               <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
               <div 
                 className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                onClick={() => navigate('/kart', { state: { viewMission: mission } })}
+                onClick={() => setExpandedMapOpen(true)}
               >
                 <MissionMapPreview
                   latitude={effectiveLat}
@@ -791,6 +793,25 @@ export const MissionCard = ({
       onOpenChange={setAnalysisOpen}
       flightTrack={analysisTrack}
       droneName={mission.tittel}
+    />
+    <ExpandedMapDialog
+      open={expandedMapOpen}
+      onOpenChange={setExpandedMapOpen}
+      latitude={mission.latitude ?? (mission.route as any)?.coordinates?.[0]?.lat ?? 0}
+      longitude={mission.longitude ?? (mission.route as any)?.coordinates?.[0]?.lng ?? 0}
+      route={mission.route as any}
+      flightTracks={
+        mission.flightLogs
+          ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+          .map((log: any) => ({
+            positions: log.flight_track.positions,
+            flightLogId: log.id,
+            flightDate: log.flight_date,
+          })) || null
+      }
+      missionTitle={mission.tittel}
+      missionId={mission.id}
+      onSoraUpdated={fetchMissions}
     />
     </>
   );

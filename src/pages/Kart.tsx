@@ -6,7 +6,7 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, ArrowLeft } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +34,7 @@ export default function KartPage() {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [focusFlightId, setFocusFlightId] = useState<string | null>(null);
-  const [viewMission, setViewMission] = useState<any>(null);
+  
   
   // Route planning state
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
@@ -81,14 +81,6 @@ export default function KartPage() {
         if (state.existingRoute.soraSettings) {
           setSoraSettings(state.existingRoute.soraSettings);
         }
-      }
-    }
-    if (state?.viewMission) {
-      setViewMission(state.viewMission);
-      // Show mission route on map if available
-      const route = state.viewMission.route as RouteData | null;
-      if (route?.coordinates?.length) {
-        setCurrentRoute(route);
       }
     }
     if (state?.focusFlightId) {
@@ -504,23 +496,6 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
       {/* Map Content */}
       <div className="flex-1 relative overflow-hidden">
         {/* Back to mission button */}
-        {viewMission && !isRoutePlanning && (
-          <div className="absolute top-2 left-2 z-[1000]">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              onClick={() => {
-                navigate('/oppdrag', { state: { scrollToMission: viewMission.id } });
-                setViewMission(null);
-                setCurrentRoute({ coordinates: [], totalDistance: 0 });
-              }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Tilbake til oppdrag
-            </Button>
-          </div>
-        )}
         {/* SafeSky Attribution */}
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Traffic data provided by</span>
@@ -534,7 +509,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           mode={isRoutePlanning ? "routePlanning" : "view"}
           existingRoute={routePlanningState?.existingRoute}
           onRouteChange={handleRouteChange}
-          initialCenter={routePlanningState?.initialCenter || (viewMission?.latitude && viewMission?.longitude ? [viewMission.latitude, viewMission.longitude] : undefined)}
+          initialCenter={routePlanningState?.initialCenter}
           controlledRoute={currentRoute}
           onStartRoutePlanning={handleStartRoutePlanning}
           onPilotPositionChange={handlePilotPositionChange}
