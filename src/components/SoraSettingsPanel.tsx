@@ -79,6 +79,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         .eq("aktiv", true)
         .order("modell");
       setDrones(data ?? []);
+      // Notify parent of initial drone selection after drones load
+      if (initialDroneId && !initialDroneNotified.current) {
+        initialDroneNotified.current = true;
+        onDroneSelected?.(initialDroneId);
+      }
     };
     fetchDrones();
   }, [companyId]);
