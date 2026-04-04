@@ -2,13 +2,14 @@ import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 import { GripVertical } from "lucide-react";
 
-interface GlassCardProps {
+export interface GlassCardProps {
   children: ReactNode;
   className?: string;
   dragHandleProps?: any;
+  id?: string;
 }
 
-export const GlassCard = ({ children, className, dragHandleProps }: GlassCardProps) => {
+export const GlassCard = ({ children, className, dragHandleProps, id }: GlassCardProps) => {
   return (
     <div
       className={cn(
