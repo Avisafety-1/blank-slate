@@ -60,7 +60,7 @@ export interface MissionCardProps {
   onExportKmz: (mission: Mission) => void;
   onImportKml: (missionId: string) => void;
   onOpenSora: (missionId: string) => void;
-  onExpandMap: (mission: Mission) => void;
+  onExpandMap?: (mission: Mission) => void;
   onIncidentClick: (incident: any) => void;
   onDocumentClick: (doc: any) => void;
   onChecklistPicker: (mission: Mission) => void;
