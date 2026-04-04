@@ -794,6 +794,25 @@ export const MissionCard = ({
       flightTrack={analysisTrack}
       droneName={mission.tittel}
     />
+    <ExpandedMapDialog
+      open={expandedMapOpen}
+      onOpenChange={setExpandedMapOpen}
+      latitude={mission.latitude ?? (mission.route as any)?.coordinates?.[0]?.lat ?? 0}
+      longitude={mission.longitude ?? (mission.route as any)?.coordinates?.[0]?.lng ?? 0}
+      route={mission.route as any}
+      flightTracks={
+        mission.flightLogs
+          ?.filter((log: any) => log.flight_track?.positions?.length > 0)
+          .map((log: any) => ({
+            positions: log.flight_track.positions,
+            flightLogId: log.id,
+            flightDate: log.flight_date,
+          })) || null
+      }
+      missionTitle={mission.tittel}
+      missionId={mission.id}
+      onSoraUpdated={fetchMissions}
+    />
     </>
   );
 };
