@@ -99,6 +99,7 @@ export const MissionCard = ({
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
+  const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const companySettings = useCompanySettings();
