@@ -2782,7 +2782,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </div>
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.zip,.bin" multiple className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept={useOpenAccept ? "*/*" : ".txt,.zip,.bin,text/plain,application/zip,application/octet-stream"} multiple className="hidden" onChange={handleFileSelect} />
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline hover:text-foreground mt-1"
+                onClick={() => {
+                  setUseOpenAccept(true);
+                  setTimeout(() => fallbackFileInputRef.current?.click(), 100);
+                }}
+              >
+                Problemer med filvelgeren? Prøv uten filtype-filter
+              </button>
+              <input ref={fallbackFileInputRef} type="file" accept="*/*" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             {djiEnabled && ardupilotEnabled && (
