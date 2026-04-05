@@ -1,34 +1,28 @@
 
 
-## Husk valgt drone i SORA + scrollbar-fix
+## Fix: Filvelger henger på iOS ved valg av filer fra Google Drive
 
 ### Problem
-1. Valgt drone lagres ikke i SORA-innstillingene — neste gang dialogen åpnes er drone-feltet tomt
-2. SORA-panelet i ExpandedMapDialog kan ikke scrolles når innholdet blir langt (f.eks. ved dronevalg)
+På iOS Safari kan den native filvelgeren henge når man velger `.txt`-filer fra Google Drive eller andre skytjenester. Årsaken er at iOS sin `accept`-attributt med filendelser (`.txt,.zip,.bin`) kan skape problemer med skyfiler — iOS prøver å filtrere/laste ned filen før den leverer den til nettleseren, og dette kan henge.
 
-### Endringer
+### Løsning
 
-**1. `src/types/map.ts`** — Legg til `droneId?: string` i `SoraSettings`-interfacet
+**`src/components/UploadDroneLogDialog.tsx`** — To endringer:
 
-**2. `src/components/dashboard/ExpandedMapDialog.tsx`**
-- Når SORA lagres (`handleSaveSora`): inkludér `soraDroneId` i `soraSettings` som `droneId`
-- Initialiser `soraDroneId` fra `route?.soraSettings?.droneId ?? null`
+1. **Utvid `accept`-attributten med MIME-typer i tillegg til filendelser**
+   - Endre fra: `accept=".txt,.zip,.bin"`
+   - Til: `accept=".txt,.zip,.bin,text/plain,application/zip,application/octet-stream"`
+   - Dette hjelper iOS med å gjenkjenne filtyper fra skytjenester uten å forsøke nedlasting først
 
-**3. `src/components/SoraSettingsPanel.tsx`**
-- Akseptér ny prop `initialDroneId?: string`
-- Sett `selectedDroneId` til `initialDroneId` som startverdi og kall `onDroneSelected` ved oppstart
+2. **Legg til en timeout-sikkerhetsmekanisme**
+   - Vis en hjelpetekst/knapp etter ~5 sekunder dersom `handleFileSelect` ikke har blitt kalt etter at brukeren klikket på fil-input
+   - Teksten forklarer at skyfiler kan ta tid, og tilbyr å prøve igjen med `accept="*/*"` (uten filtype-filter)
 
-**4. `src/components/dashboard/ExpandedMapDialog.tsx`** — Scroll-fix
-- Wrap SORA-panelet + lagre-knappen i en scrollbar-container (`div` med `overflow-y-auto max-h-[40vh]` eller lignende) slik at innholdet kan scrolles når det er for langt
+3. **Fallback-knapp: "Velg alle filtyper"**
+   - Legg til en liten tekstlenke under filopplasteren: «Problemer med filvelgeren? Prøv uten filtype-filter»
+   - Denne setter `accept="*/*"` på input-elementet og trigger filopplasteren på nytt
+   - Valideringen av filtypen skjer allerede i `handleFileSelect`, så sikkerheten opprettholdes
 
-### Teknisk flyt
-```text
-Lagring: soraSettings.droneId = soraDroneId → missions.route.soraSettings
-Åpning: route.soraSettings.droneId → soraDroneId → SoraSettingsPanel(initialDroneId)
-```
-
-### Filer som endres
-- `src/types/map.ts`
-- `src/components/SoraSettingsPanel.tsx`
-- `src/components/dashboard/ExpandedMapDialog.tsx`
+### Fil som endres
+- `src/components/UploadDroneLogDialog.tsx`
 
