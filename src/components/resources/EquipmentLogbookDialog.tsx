@@ -242,12 +242,12 @@ export const EquipmentLogbookDialog = ({
         const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
         const userMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
 
-        manualEntries.forEach((entry: any) => {
+        for (const entry of manualEntries as any[]) {
           const isVedlikehold = entry.entry_type === 'vedlikehold';
           let imagePublicUrl: string | undefined;
           if (entry.image_url) {
-            const { data } = supabase.storage.from("logbook-images").getPublicUrl(entry.image_url);
-            imagePublicUrl = data.publicUrl;
+            const { data } = await supabase.storage.from("logbook-images").createSignedUrl(entry.image_url, 3600);
+            imagePublicUrl = data?.signedUrl || undefined;
           }
           logs.push({
             id: `manual-${entry.id}`,
@@ -263,7 +263,7 @@ export const EquipmentLogbookDialog = ({
             badgeText: entry.entry_type || 'Merknad',
             imageUrl: imagePublicUrl,
           });
-        });
+        }
       }
 
       logs.sort((a, b) => b.date.getTime() - a.date.getTime());

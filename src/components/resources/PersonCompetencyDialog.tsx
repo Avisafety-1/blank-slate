@@ -196,10 +196,11 @@ export function PersonCompetencyDialog({
 
   const getFileDisplayUrl = async (filUrl: string): Promise<string> => {
     if (filUrl.startsWith('http')) return filUrl;
-    // Files uploaded directly for competencies go to logbook-images (public)
+    // Files uploaded directly for competencies go to logbook-images (now private, needs signed URL)
     if (filUrl.includes('/competency-')) {
-      const { data } = supabase.storage.from('logbook-images').getPublicUrl(filUrl);
-      return data?.publicUrl || '';
+      const { data, error: signError } = await supabase.storage.from('logbook-images').createSignedUrl(filUrl, 3600);
+      if (signError) console.error('Signed URL error:', signError);
+      return data?.signedUrl || '';
     }
     // Files from /dokumenter go to documents bucket (private, needs signed URL)
     const { data, error } = await supabase.storage.from('documents').createSignedUrl(filUrl, 3600);
