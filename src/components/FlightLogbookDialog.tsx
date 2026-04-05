@@ -119,8 +119,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     const entries: PersonnelLogEntry[] = (data || []).map((e: any) => {
       let imagePublicUrl: string | undefined;
       if (e.image_url) {
-        const { data: urlData } = supabase.storage.from("logbook-images").getPublicUrl(e.image_url);
-        imagePublicUrl = urlData.publicUrl;
+        const { data: urlData } = await supabase.storage.from("logbook-images").createSignedUrl(e.image_url, 3600);
+        imagePublicUrl = urlData?.signedUrl || undefined;
       }
       return { ...e, imagePublicUrl };
     });

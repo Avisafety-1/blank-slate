@@ -241,8 +241,8 @@ export const DroneLogbookDialog = ({
         manualEntries.forEach((entry: any) => {
           let imagePublicUrl: string | undefined;
           if (entry.image_url) {
-            const { data } = supabase.storage.from("logbook-images").getPublicUrl(entry.image_url);
-            imagePublicUrl = data.publicUrl;
+            const { data } = await supabase.storage.from("logbook-images").createSignedUrl(entry.image_url, 3600);
+            imagePublicUrl = data?.signedUrl || undefined;
           }
           logs.push({
             id: `manual-${entry.id}`,
