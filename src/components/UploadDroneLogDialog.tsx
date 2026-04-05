@@ -308,6 +308,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
    const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
    const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
    const [linkDroneToExisting, setLinkDroneToExisting] = useState(false);
+   const [useOpenAccept, setUseOpenAccept] = useState(false);
+   const fallbackFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && companyId) {
