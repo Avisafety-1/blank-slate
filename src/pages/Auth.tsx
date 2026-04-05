@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { redirectToApp, isDevelopment } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,16 @@ const Auth = () => {
       setCheckingGoogleUser(true);
       
       try {
+        // Ensure token is fresh before querying profiles (RLS depends on valid JWT)
+        try {
+          await ensureFreshSession();
+        } catch {
+          console.warn('checkGoogleUserProfile: could not refresh session, skipping');
+          googleProfileCheckedRef.current = false;
+          setCheckingGoogleUser(false);
+          return;
+        }
+
         // Check if user has a profile with a valid company_id
         let { data: profile, error } = await supabase
           .from('profiles')
