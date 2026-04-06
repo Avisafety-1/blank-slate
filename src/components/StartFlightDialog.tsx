@@ -434,9 +434,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             if (flight.profile_id === user?.id) continue;
 
             const mode = flight.publish_mode || 'none';
-            if (mode === 'none') continue;
 
-            if (mode === 'live_uav' && flight.start_lat != null && flight.start_lng != null) {
+            if ((mode === 'live_uav' || mode === 'none') && flight.start_lat != null && flight.start_lng != null) {
               candidates.push({
                 callsign: flight.pilot_name || 'Pilot',
                 type: 'Live UAV',

@@ -186,8 +186,8 @@ export const useFlightTimer = () => {
           dronetagDeviceId: dbFlight.dronetag_device_id || null,
         });
 
-        // Restart GPS watch if in live_uav mode
-        if (publishMode === 'live_uav') {
+        // Restart GPS watch if in live_uav or none mode
+        if (publishMode === 'live_uav' || publishMode === 'none') {
           startGpsWatch();
         }
       } else {
@@ -258,7 +258,7 @@ export const useFlightTimer = () => {
         routeData = mission.route;
       }
       // Advisory was already published by StartFlightDialog with size validation
-    } else if (publishMode === 'live_uav') {
+    } else if (publishMode === 'live_uav' || publishMode === 'none') {
       // Start GPS watch for local tracking (position stored in active_flights)
       // No SafeSky publishing - only internal pilot position display and beacon fetching
       startGpsWatch();

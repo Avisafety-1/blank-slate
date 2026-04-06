@@ -665,8 +665,8 @@ export async function fetchPilotPositions(params: {
   try {
     const { data: liveFlights, error } = await supabase
       .from('active_flights')
-      .select('id, start_lat, start_lng, pilot_name, start_time')
-      .eq('publish_mode', 'live_uav')
+      .select('id, start_lat, start_lng, pilot_name, start_time, publish_mode')
+      .in('publish_mode', ['live_uav', 'none'])
       .not('start_lat', 'is', null)
       .not('start_lng', 'is', null);
     
@@ -683,12 +683,15 @@ export async function fetchPilotPositions(params: {
     for (const flight of liveFlights || []) {
       if (!flight.start_lat || !flight.start_lng) continue;
       
+      const isInternal = flight.publish_mode === 'none';
+      const bgColor = isInternal ? '#6b7280' : '#0ea5e9';
+      
       const pilotIcon = L.divIcon({
         className: '',
         html: `<div style="
           width: 32px;
           height: 32px;
-          background: #0ea5e9;
+          background: ${bgColor};
           border: 3px solid white;
           border-radius: 50%;
           display: flex;
@@ -713,11 +716,12 @@ export async function fetchPilotPositions(params: {
       
       const startTime = flight.start_time ? new Date(flight.start_time).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }) : 'Ukjent';
       const pilotName = flight.pilot_name || 'Ukjent pilot';
+      const label = isInternal ? 'Intern flytur' : 'Pilot (live posisjon)';
       
       marker.bindPopup(`
         <div>
           <strong>👤 ${pilotName}</strong><br/>
-          <span style="font-size: 11px; color: #666;">Pilot (live posisjon)</span><br/>
+          <span style="font-size: 11px; color: #666;">${label}</span><br/>
           <span style="font-size: 11px;">Startet: ${startTime}</span>
         </div>
       `);
