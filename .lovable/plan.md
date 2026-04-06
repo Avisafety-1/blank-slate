@@ -1,36 +1,57 @@
 
 
-## Fix: "Fullfør registrering"-dialog vises feilaktig ved retur til PWA
+## Intern kartvisning for flyturer med SafeSky «av» + sikkerhetsfix
 
 ### Problem
-Når en eksisterende Google-bruker returnerer til PWA-en, kan sesjonstokenet være utløpt. Profil-spørringen mot `profiles`-tabellen returnerer da 0 rader (RLS blokkerer med ugyldig token) uten å gi en feil. `maybeSingle()` returnerer `null`, og koden tolker dette som "ny bruker uten profil" → viser registreringsdialogen.
-
-Flyten som feiler (Auth.tsx linje 119–181):
-1. `user` finnes (fra localStorage-cache), men access token er utløpt
-2. `profiles`-query returnerer `null` (ikke error, bare ingen rader pga RLS)
-3. Koden treffer `else`-grenen (linje 175): "New Google user" → viser registreringsdialog
+1. Når `publish_mode = 'none'` lagres ingen posisjonsdata — flyturen er usynlig på kartet, selv for eget selskap
+2. **Sikkerhetssvakhet (error)**: RLS-policyen på `active_flights` bruker `auth.uid() IS NOT NULL`, som eksponerer ALLE selskapers aktive flyturer (pilotnavn, GPS-koordinater, rutedata) til alle autentiserte brukere
 
 ### Løsning
 
-**`src/pages/Auth.tsx`** — 1 endring i `checkGoogleUserProfile`:
+#### 1. Database-migrasjon — RLS-policy fix
 
-Før profil-spørringen kjøres, kall `ensureFreshSession()` for å sikre at tokenet er gyldig. Dette forhindrer at RLS blokkerer spørringen og gir falsk "ny bruker"-resultat.
+Erstatt den åpne SELECT-policyen med en selskaps-scoped policy som også tillater SafeSky-publiserte flyturer å være synlige for alle (for luftromsdekonflikt):
 
-```typescript
-// Før profile-query (linje ~117)
-try {
-  await ensureFreshSession();
-} catch {
-  // Refresh failed — don't show registration dialog on stale session
-  console.warn('checkGoogleUserProfile: could not refresh session, skipping');
-  googleProfileCheckedRef.current = false;
-  setCheckingGoogleUser(false);
-  return;
-}
+```sql
+DROP POLICY "Authenticated users can view all active flights" ON active_flights;
+
+CREATE POLICY "Company-scoped active flights visibility"
+  ON active_flights FOR SELECT TO authenticated
+  USING (
+    company_id = ANY(public.get_user_visible_company_ids(auth.uid()))
+    OR publish_mode IN ('advisory', 'live_uav')
+  );
 ```
 
-I tillegg: etter retry-feilen (linje 135–141), ikke redirect til app — vis en toast og la brukeren prøve igjen i stedet for å risikere å vise feil dialog.
+Flyturer med `publish_mode = 'none'` er KUN synlige for eget selskap/avdelinger. Flyturer med SafeSky-publisering er synlige for alle autentiserte brukere (nødvendig for luftromsikkerhet).
 
-### Fil som endres
-- `src/pages/Auth.tsx`
+**Viktig**: Kolonner som `route_data`, `start_lat`, `start_lng` og `pilot_name` eksponeres kun til eget selskap for `none`-flyturer. For advisory/live_uav er dette akseptabelt da formålet er luftromsdekonflikt.
+
+#### 2. Frontend — `useFlightTimer.ts`
+
+Når `publishMode === 'none'`, lagre GPS-startposisjon i `active_flights` (som allerede gjøres for `live_uav`). Kall `startGpsWatch()` også for `none`-modus slik at pilotens posisjon oppdateres.
+
+#### 3. Frontend — `mapDataFetchers.ts`
+
+**`fetchPilotPositions`**: Utvid filteret til å inkludere `publish_mode = 'none'` i tillegg til `live_uav`. Marker `none`-flyturer med en annen farge/ikon (f.eks. grå i stedet for blå) og label «Intern flytur» i stedet for «Pilot (live posisjon)».
+
+**`fetchActiveAdvisories`**: Ingen endring nødvendig — advisory-flyturer fungerer allerede.
+
+#### 4. Frontend — `ActiveFlightsSection.tsx`
+
+Allerede selskaps-scoped i frontend-koden. Ingen endring nødvendig — RLS-endringen beskytter dataene på databasenivå.
+
+#### 5. Frontend — `StartFlightDialog.tsx`
+
+I trafikk-sjekken (linje 426-465): Filteret som skipper `publish_mode === 'none'` flyturer bør oppdateres til å inkludere `none`-flyturer fra eget selskap som nærliggende trafikk.
+
+#### 6. Sikkerhetsvarsel-oppdatering
+
+Etter implementering, slett security finding `active_flights_all_companies` da den er løst.
+
+### Filer som endres
+- **Database-migrasjon**: Ny RLS-policy på `active_flights`
+- `src/hooks/useFlightTimer.ts` — GPS-tracking for `none`-modus
+- `src/lib/mapDataFetchers.ts` — Vis `none`-flyturer internt
+- `src/components/StartFlightDialog.tsx` — Inkluder interne flyturer i trafikk-sjekk
 
