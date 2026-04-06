@@ -119,7 +119,7 @@
     "noMission": "Ingen oppdrag",
     "safeskyPublishing": "SafeSky publisering",
     "safeskyOff": "Av",
-    "safeskyOffDesc": "Ingen deling med andre luftfartsaktører",
+    "safeskyOffDesc": "Deler kun posisjon internt i selskapet",
     "safeskyAdvisory": "Advisory (rute)",
     "safeskyAdvisoryDesc": "Publiserer planlagt ruteområde som SafeSky-advisory",
     "safeskyAdvisoryRequiresRoute": "Krever oppdrag med planlagt rute",
