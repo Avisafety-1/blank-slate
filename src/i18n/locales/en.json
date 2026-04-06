@@ -119,7 +119,7 @@
     "noMission": "No mission",
     "safeskyPublishing": "SafeSky publishing",
     "safeskyOff": "Off",
-    "safeskyOffDesc": "No sharing with other aviation operators",
+    "safeskyOffDesc": "Shares position internally within the company only",
     "safeskyAdvisory": "Advisory (route)",
     "safeskyAdvisoryDesc": "Publishes planned route area as SafeSky advisory",
     "safeskyAdvisoryRequiresRoute": "Requires mission with planned route",
