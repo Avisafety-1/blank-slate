@@ -26,7 +26,7 @@ export function getAipZones(): Promise<AipZone[]> {
   }
 
   cachedAt = now;
-  cachedPromise = supabase
+  cachedPromise = (supabase
     .from('aip_restriction_zones')
     .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry')
     .then(({ data, error }) => {
