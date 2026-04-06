@@ -38,7 +38,7 @@ export function getAipZones(): Promise<AipZone[]> {
         return [];
       }
       return (data ?? []) as AipZone[];
-    });
+    })) as Promise<AipZone[]>;
 
   return cachedPromise;
 }
