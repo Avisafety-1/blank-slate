@@ -186,8 +186,8 @@ export const useFlightTimer = () => {
           dronetagDeviceId: dbFlight.dronetag_device_id || null,
         });
 
-        // Restart GPS watch if in live_uav mode
-        if (publishMode === 'live_uav') {
+        // Restart GPS watch if in live_uav or none mode
+        if (publishMode === 'live_uav' || publishMode === 'none') {
           startGpsWatch();
         }
       } else {
