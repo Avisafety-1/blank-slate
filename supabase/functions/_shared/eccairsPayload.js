@@ -138,11 +138,10 @@ const ENTITY_PATH_OVERRIDES = {
   '1064': '53',  // Parties informed -> Reporting history (Entity 53)
   '1091': '53',  // Reporter's Language -> Reporting history (Entity 53)
   '1092': '53',  // Reporter's Description -> Reporting history (Entity 53)
-  '65': '7',     // Birds Seen -> Birdstrike entity (Entity 7)
-  '66': '7',     // Birds Struck -> Birdstrike entity (Entity 7)
-  '67': '7',     // Bird Size -> Birdstrike entity (Entity 7)
-  '68': '7',     // Species -> Birdstrike entity (Entity 7)
-  '92': '7',     // Effect on Flight -> Birdstrike entity (Entity 7)
+  '646': '4',    // Birds/wildlife seen -> Aircraft entity (Entity 4)
+  '647': '4',    // Birds/wildlife struck -> Aircraft entity (Entity 4)
+  '648': '4',    // Bird size -> Aircraft entity (Entity 4)
+  '649': '4',    // Pilot advised of birds -> Aircraft entity (Entity 4)
 };
 
 // -------------------------
