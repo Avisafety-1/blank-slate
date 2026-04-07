@@ -57,6 +57,7 @@ export interface EccairsFieldConfig {
   maxLength?: number;
   helpText?: string;
   autoFromField?: string; // Field from incident to auto-populate
+  valueIdPrefix?: string; // Filter value_id by prefix (e.g. '1' for 1000000-series)
 }
 
 // Fields ordered logically by group
@@ -508,7 +509,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'value_list_int_array',
     type: 'select',
     group: 'analysis',
-    helpText: 'Risikoklassifisering av hendelsen (VL391)'
+    valueIdPrefix: '1',
+    helpText: 'Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)'
   },
   {
     code: 393,
