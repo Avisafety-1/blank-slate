@@ -291,6 +291,16 @@ function selectionToE2Value(sel) {
     return [n];
   }
 
+  // 4b. Code and additional text (e.g. 215 Operator - integer code + free text name)
+  if (sel.format === "code_and_additional_text") {
+    const n = asInt(sel.valueId);
+    if (n == null) return null;
+    if (sel.text) {
+      return [{ content: [n], additionalText: sel.text }];
+    }
+    return [{ content: [n] }];
+  }
+
   // 5. Local date (433)
   if (sel.format === "local_date" || sel.format === "date_array") {
     if (!sel.text) return null;
