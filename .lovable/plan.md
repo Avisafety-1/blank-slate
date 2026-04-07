@@ -1,44 +1,67 @@
 
 
-## Ytelses- og stabilitetsfix for /oppdrag
+## ECCAIRS-mapping: Rettelser etter tilbakemelding fra Luftfartstilsynet
 
-### Problemer fra Sentry
+### Tilbakemeldinger og løsninger
 
-1. **N+1 API-kall**: Hver `MissionMapPreview` kjører sin egen `SELECT * FROM aip_restriction_zones` query. Med f.eks. 10 synlige oppdrag = 10 identiske spørringer mot databasen. Dette er den primære årsaken til treg lasting (p95 opp mot 10s).
+#### 1. Reporting entity (447) og Responsible entity (453) er byttet om
 
-2. **Leaflet `_leaflet_pos` TypeError**: Skjer når kartet fjernes (`map.remove()`) mens en zoom-animasjon pågår. Typisk ved rask scrolling gjennom oppdragslisten — MissionMapPreview mounter/unmounter kart raskt.
+**Nåværende (feil):**
+- 447 (Reporting entity) → defaultValue `2133` (Norway CAA)
+- 453 (Responsible entity) → defaultValue `6133` (Aircraft operator)
 
-3. **39% failure rate**: Sannsynligvis kombinasjon av nettverkstimeout fra N+1-kall og Leaflet-krasj.
+**Korrekt:**
+- 447 (Reporting entity) → skal være operatøren, default `6133` (Aircraft operator)
+- 453 (Responsible entity) → skal være `2133` (Norway CAA)
 
-### Løsning
+**Endring:** Bytt defaultValue mellom de to feltene i `eccairsFields.ts`. Oppdater hjelpetekster tilsvarende.
 
-#### 1. Eliminer N+1: Shared AIP-zone cache
+#### 2. Event type (390) må kodes til nivå 4
 
-Opprett en enkel modul-level cache i `mapDataFetchers.ts` (eller ny fil `lib/aipZoneCache.ts`):
-- En `Promise`-basert singleton som henter `aip_restriction_zones` en gang
-- Alle `MissionMapPreview`-instanser bruker cachen i stedet for egne queries
-- Cache-TTL: 5 min (zonene endres sjelden)
-- `MissionMapPreview.tsx` kaller `getAipZones()` i stedet for direkte Supabase-query
+Nåværende `EccairsEventTypeSelect` viser kun 7 toppnivå-kategorier (nivå 1). Luftfartstilsynet krever minimum nivå 4 i hierarkiet.
 
-#### 2. Fix Leaflet TypeError
+**Løsning:** Erstatt `EccairsEventTypeSelect` med standard `EccairsTaxonomySelect` for VL390, som allerede søker i hele value list-tabellen og returnerer alle nivåer. Fjern den spesialtilpassede komponenten fra renderField-logikken. Auto-mapping i `eccairsAutoMapping.ts` beholdes som utgangspunkt — brukeren velger deretter riktig underkategori.
 
-I `MissionMapPreview.tsx`, legg til guard i cleanup:
-- Sett `isMounted = false` (allerede gjort)
-- Wrapp `map.remove()` i try/catch for å fange zoom-animasjon race condition
-- Legg til `map.stop()` før `map.remove()` for å stoppe pågående animasjoner
+#### 3. Operator (215) mangler
 
-#### 3. Lazy-load MissionMapPreview
+Feltet finnes ikke i `ECCAIRS_FIELDS`. Må legges til under Aircraft-gruppen (Entity 4) med:
+- Format: `value_list_int_array` (VL215)
+- Fritekstfelt for operatørnavn: Attributt 216 (Operator name) som `string_array`
+- Hjelpetekst som forklarer at man kan velge "Norway - Other/Private operator" og spesifisere i fritekstfeltet
 
-MissionMapPreview renderes for ALLE synlige oppdragskort, selv de som ikke er synlige i viewport. Wrapp i `IntersectionObserver` slik at kartet kun initialiseres når kortet scrolles inn i visningen. Dette reduserer antall samtidige kart-initialiseringer dramatisk.
+**Nye felt i `eccairsFields.ts`:**
+- 215: Operator (VL215, select, entity 4)
+- 216: Operatørnavn (string_array, text, entity 4)
+
+Payload-builder trenger ingen endring — den leser allerede alle attributter generisk.
+
+#### 4. Analysis-felter (Risk, oppfølging, konklusjon)
+
+Disse tilhører Entity 14 (Events) i ECCAIRS. Legger til ny gruppe `analysis` med relevante felter:
+- 391: Risk Classification (VL391, select, entity 14)
+- 393: Assessment (VL393, select, entity 14) — risikovurdering
+- 394: Safety recommendation (text_content_array, textarea, entity 14)
+
+Ny feltgruppe `analysis` legges til i `EccairsFieldGroup` og `getOrderedGroups()`.
+
+#### 5. Birdstrike-felter
+
+Birdstrike er en egen entitet (Entity 7) i ECCAIRS. Legger til ny gruppe `birdstrike` med de viktigste feltene:
+- 65: Number of birds seen (VL65, select, entity 7)
+- 66: Number of birds struck (VL66, select, entity 7)  
+- 67: Size of birds (VL67, select, entity 7)
+- 68: Species (VL68, select, entity 7)
+- 92: Effect on flight (VL92, select, entity 7)
+
+Ny feltgruppe `birdstrike` vises kun når relevant, eller alltid tilgjengelig for utfylling.
 
 ### Filer som endres
 
-- **`src/lib/aipZoneCache.ts`** (ny) — Shared cache for AIP-soner
-- **`src/components/dashboard/MissionMapPreview.tsx`** — Bruk cache i stedet for direkte query, try/catch på map.remove(), IntersectionObserver for lazy-loading
-- **`src/lib/mapDataFetchers.ts`** — Eventuelt eksporter cache-funksjonen herfra i stedet for ny fil
+- **`src/config/eccairsFields.ts`** — Bytt defaults for 447/453, legg til 215, 216, analysis- og birdstrike-felt, nye grupper
+- **`src/components/eccairs/EccairsMappingDialog.tsx`** — Fjern spesialbehandling av VL390, bruk standard TaxonomySelect
+- **`src/lib/eccairsAutoMapping.ts`** — Oppdater kommentarer (auto-mapping til nivå 1 beholdes som startpunkt)
+- **`supabase/functions/_shared/eccairsPayload.js`** — Legg til entity path overrides for nye felt (entity 7 for birdstrike, entity 14 for analysis)
 
-### Forventet effekt
-- N+1 → 1 query uansett antall oppdrag
-- Leaflet-krasj eliminert
-- Raskere sidelasting (færre samtidige nettverkskall + færre kartinstanser)
+### Teknisk notat
+Ingen databaseendringer nødvendig — `incident_eccairs_attributes`-tabellen er allerede generisk og støtter alle attributtkoder og entity paths.
 
