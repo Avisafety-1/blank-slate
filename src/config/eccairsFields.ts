@@ -533,56 +533,46 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Sikkerhetsanbefalinger og konklusjon'
   },
 
-  // ===== BIRDSTRIKE GROUP (Entity 7) =====
+  // ===== BIRDSTRIKE GROUP (Entity 4 - Aircraft) =====
   {
-    code: 65,
-    label: 'Antall fugler observert (Birds Seen)',
+    code: 646,
+    label: 'Birds/wildlife seen',
     taxonomyCode: '24',
-    entityPath: '7',
+    entityPath: '4',
     format: 'value_list_int_array',
     type: 'select',
     group: 'birdstrike',
-    helpText: 'Antall fugler observert (VL65)'
+    helpText: 'Antall fugler/dyr observert (VL646)'
   },
   {
-    code: 66,
-    label: 'Antall fugler truffet (Birds Struck)',
+    code: 647,
+    label: 'Birds/wildlife struck',
     taxonomyCode: '24',
-    entityPath: '7',
+    entityPath: '4',
     format: 'value_list_int_array',
     type: 'select',
     group: 'birdstrike',
-    helpText: 'Antall fugler truffet (VL66)'
+    helpText: 'Antall fugler/dyr truffet (VL647)'
   },
   {
-    code: 67,
-    label: 'Størrelse på fugler (Bird Size)',
+    code: 648,
+    label: 'Bird size',
     taxonomyCode: '24',
-    entityPath: '7',
+    entityPath: '4',
     format: 'value_list_int_array',
     type: 'select',
     group: 'birdstrike',
-    helpText: 'Størrelse på fuglene (VL67)'
+    helpText: 'Estimert størrelse på fugl (VL648)'
   },
   {
-    code: 68,
-    label: 'Fugleart (Species)',
+    code: 649,
+    label: 'Pilot advised of birds',
     taxonomyCode: '24',
-    entityPath: '7',
+    entityPath: '4',
     format: 'value_list_int_array',
     type: 'select',
     group: 'birdstrike',
-    helpText: 'Art/type fugl (VL68)'
-  },
-  {
-    code: 92,
-    label: 'Effekt på flyging (Effect on Flight)',
-    taxonomyCode: '24',
-    entityPath: '7',
-    format: 'value_list_int_array',
-    type: 'select',
-    group: 'birdstrike',
-    helpText: 'Effekt fuglekollisjonen hadde på flygingen (VL92)'
+    helpText: 'Om piloten ble varslet om fugler (VL649)'
   },
 ];
 
