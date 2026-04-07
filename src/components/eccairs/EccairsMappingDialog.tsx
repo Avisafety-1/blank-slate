@@ -310,6 +310,43 @@ export function EccairsMappingDialog({
     const isMultiSelect = field.format === 'content_object_array';
     const fieldKey = makeFieldKey(field);
 
+    if (field.type === 'code_and_text') {
+      return (
+        <div key={fieldKey} className="space-y-2">
+          <Label>
+            {field.label} ({getVLKey(field)})
+            {field.entityPath && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                Entity {field.entityPath}
+              </Badge>
+            )}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+          <EccairsTaxonomySelect
+            valueListKey={getVLKey(field)}
+            value={getFieldValue(field) || null}
+            onChange={(val) => setFieldValue(field, val)}
+            placeholder={`Velg ${field.label.toLowerCase()}...`}
+            valueIdPrefix={field.valueIdPrefix}
+          />
+          {field.additionalTextField && (
+            <div className="mt-2">
+              <Label className="text-xs">{field.additionalTextField}</Label>
+              <Input
+                value={additionalTextValues[fieldKey] ?? ''}
+                onChange={(e) => setAdditionalTextValues(prev => ({ ...prev, [fieldKey]: e.target.value }))}
+                placeholder={`Skriv ${field.additionalTextField.toLowerCase()}...`}
+                className="mt-1"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (field.type === 'select') {
       const isMultiSelect = field.format === 'content_object_array';
       
