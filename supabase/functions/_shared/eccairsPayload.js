@@ -389,16 +389,16 @@ async function buildE2Payload({ supabase, incident, exportRow, integration, envi
     (ensureString(s.taxonomy_code) || "24") === "24"
   );
 
-  // Valider value-list seleksjoner
+  // Valider value-list seleksjoner (including code_and_additional_text which also uses VL codes)
   const valueListCandidates = filtered
-    .filter((s) => s.format === "value_list_int_array")
+    .filter((s) => s.format === "value_list_int_array" || s.format === "code_and_additional_text")
     .filter((s) => s.valueId)
     .map((s) => ({ code: s.code, valueId: s.valueId }));
 
   const validSet = await validateValueListSelections(supabase, valueListCandidates);
 
   for (const sel of filtered) {
-    if (sel.format === "value_list_int_array") {
+    if (sel.format === "value_list_int_array" || sel.format === "code_and_additional_text") {
       if (!sel.valueId) continue;
       const key = `VL${sel.code}:${sel.valueId}`;
       if (!validSet.has(key)) {
