@@ -79,7 +79,8 @@ export function EccairsMappingDialog({
   
   // Generic state: Record<`${code}_${taxonomyCode}_${entityPath}`, value>
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
-
+  // Additional text state for code_and_text fields: Record<fieldKey, additionalText>
+  const [additionalTextValues, setAdditionalTextValues] = useState<Record<string, string>>({});
   const makeFieldKey = (field: EccairsFieldConfig) => 
     `${field.code}_${field.taxonomyCode}_${field.entityPath ?? 'top'}`;
 
@@ -112,6 +113,7 @@ export function EccairsMappingDialog({
   useEffect(() => {
     if (!open) return;
     setFieldValues({});
+    setAdditionalTextValues({});
   }, [open, incident.id]);
 
   // Load existing attributes or apply auto-suggestions
@@ -135,9 +137,19 @@ export function EccairsMappingDialog({
       ECCAIRS_FIELDS.forEach(field => {
         const attr = getAttribute(field.code, field.taxonomyCode, field.entityPath ?? null);
         if (attr) {
-          const value = field.type === 'select' ? attr.value_id : attr.text_value;
-          if (value) {
-            newValues[makeFieldKey(field)] = value;
+          if (field.type === 'code_and_text') {
+            // For code_and_text: value_id has the code, text_value has the additional text
+            if (attr.value_id) {
+              newValues[makeFieldKey(field)] = attr.value_id;
+            }
+            if (attr.text_value) {
+              setAdditionalTextValues(prev => ({ ...prev, [makeFieldKey(field)]: attr.text_value! }));
+            }
+          } else {
+            const value = field.type === 'select' ? attr.value_id : attr.text_value;
+            if (value) {
+              newValues[makeFieldKey(field)] = value;
+            }
           }
         }
       });
@@ -263,8 +275,10 @@ export function EccairsMappingDialog({
             taxonomy_code: field.taxonomyCode,
             entity_path: field.entityPath ?? null,
             format: field.format,
-            value_id: field.type === 'select' ? value : null,
-            text_value: field.type !== 'select' ? value : null,
+            value_id: (field.type === 'select' || field.type === 'code_and_text') ? value : null,
+            text_value: field.type === 'code_and_text' 
+              ? (additionalTextValues[makeFieldKey(field)] || null)
+              : (field.type !== 'select' ? value : null),
           }
         });
       });
