@@ -127,7 +127,7 @@ const ENTITY_PATH_OVERRIDES = {
   '394': '14',   // Safety Recommendation -> Events entity (Entity 14)
   '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
   '215': '4',    // Operator -> Aircraft entity (Entity 4)
-  '216': '4',    // Operator Name -> Aircraft entity (Entity 4)
+  
   '438': '53',   // Report identification -> Reporting history (Entity 53)
   '447': '53',   // Reporting entity -> Reporting history (Entity 53)
   '476': '53',   // Report source -> Reporting history (Entity 53)
