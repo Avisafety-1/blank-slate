@@ -15,7 +15,9 @@ export type EccairsFieldGroup =
   | 'aircraft'
   | 'airspace'
   | 'damage'
-  | 'narrative';
+  | 'narrative'
+  | 'analysis'
+  | 'birdstrike';
 
 export const ECCAIRS_FIELD_GROUP_LABELS: Record<EccairsFieldGroup, string> = {
   identification: 'Grunnleggende identifikasjon',
@@ -25,6 +27,8 @@ export const ECCAIRS_FIELD_GROUP_LABELS: Record<EccairsFieldGroup, string> = {
   airspace: 'Luftrom',
   damage: 'Skade og konsekvenser',
   narrative: 'Narrativ',
+  analysis: 'Analyse og oppfølging',
+  birdstrike: 'Fuglekollisjon (Birdstrike)',
 };
 
 export const ECCAIRS_FIELD_GROUP_ICONS: Record<EccairsFieldGroup, string> = {
@@ -35,6 +39,8 @@ export const ECCAIRS_FIELD_GROUP_ICONS: Record<EccairsFieldGroup, string> = {
   airspace: '🌐',
   damage: '💥',
   narrative: '📝',
+  analysis: '🔍',
+  birdstrike: '🐦',
 };
 
 export interface EccairsFieldConfig {
@@ -141,14 +147,14 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   },
   { 
     code: 453, 
-    label: 'Ansvarlig enhet', 
+    label: 'Ansvarlig enhet (Responsible Entity)', 
     taxonomyCode: '24',
     entityPath: null,
     format: 'value_list_int_array',
     type: 'select',
     group: 'location',
-    defaultValue: '6133',
-    helpText: 'Enhet ansvarlig for rapportering (6133 = Aircraft operator)'
+    defaultValue: '2133',
+    helpText: 'Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)'
   },
 
   // ===== CLASSIFICATION GROUP =====
@@ -406,8 +412,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'content_object_array',
     type: 'select',
     group: 'narrative',
-    helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447)',
-    defaultValue: '2133',
+    helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447) — Operatøren som sender rapporten',
+    defaultValue: '6133',
   },
   {
     code: 476,
@@ -492,5 +498,5 @@ export function getFieldsByGroup(group: EccairsFieldGroup): EccairsFieldConfig[]
 
 export function getOrderedGroups(): EccairsFieldGroup[] {
   // Return groups in the order they should appear
-  return ['identification', 'location', 'classification', 'aircraft', 'airspace', 'damage', 'narrative'];
+  return ['identification', 'location', 'classification', 'aircraft', 'airspace', 'damage', 'narrative', 'analysis', 'birdstrike'];
 }
