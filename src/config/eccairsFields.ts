@@ -1,4 +1,5 @@
 export type EccairsFormat = 
+  | 'code_and_additional_text'
   | 'value_list_int_array' 
   | 'content_object_array'
   | 'text_content_array' 
