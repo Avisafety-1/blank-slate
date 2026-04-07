@@ -60,6 +60,7 @@ export interface EccairsFieldConfig {
   helpText?: string;
   autoFromField?: string; // Field from incident to auto-populate
   valueIdPrefix?: string; // Filter value_id by prefix (e.g. '1' for 1000000-series)
+  fixedLabel?: string; // Override displayed label for selected value (when DB description is ambiguous)
 }
 
 // Fields ordered logically by group
