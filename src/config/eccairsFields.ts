@@ -292,6 +292,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'aircraft',
     defaultValue: '1799998',
     additionalTextField: 'Operatørnavn',
+    fixedLabel: 'Norway → Other',
     helpText: 'Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.'
   },
 
