@@ -60,6 +60,7 @@ export interface EccairsFieldConfig {
   helpText?: string;
   autoFromField?: string; // Field from incident to auto-populate
   valueIdPrefix?: string; // Filter value_id by prefix (e.g. '1' for 1000000-series)
+  fixedLabel?: string; // Override displayed label for selected value (when DB description is ambiguous)
 }
 
 // Fields ordered logically by group
@@ -291,6 +292,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'aircraft',
     defaultValue: '1799998',
     additionalTextField: 'Operatørnavn',
+    fixedLabel: 'Norway → Other',
     helpText: 'Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.'
   },
 
