@@ -15,6 +15,8 @@ interface EccairsTaxonomySelectProps {
   placeholder?: string;
   disabled?: boolean;
   valueIdPrefix?: string;
+  /** Override the displayed label for the selected value (useful when DB description is ambiguous) */
+  fixedLabel?: string;
 }
 
 export function EccairsTaxonomySelect({
