@@ -278,6 +278,27 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     defaultValue: '1',
     helpText: 'Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)'
   },
+  {
+    code: 215,
+    label: 'Operatør (Operator)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'aircraft',
+    helpText: 'Operatør — velg «Norway - Other/Private operator» og spesifiser i fritekstfeltet under (VL215)'
+  },
+  {
+    code: 216,
+    label: 'Operatørnavn (Operator Name)',
+    taxonomyCode: '24',
+    entityPath: '4',
+    format: 'string_array',
+    type: 'text',
+    group: 'aircraft',
+    maxLength: 200,
+    helpText: 'Fritekst operatørnavn — spesifiser din organisasjon her'
+  },
 
   // ===== AIRSPACE GROUP =====
   { 
