@@ -1,26 +1,27 @@
 
 
-## Filter VL391 til kun RPAS-relevante verdier (1000000-serien)
+## Korriger Birdstrike-felt: Bird Size → Attributt 648
 
 ### Problem
-VL391 (Risikoklassifisering) viser alle verdier i dropdown, men kun verdier i 1000000-serien er relevante for RPAS/drone-operasjoner.
+Felt 67 (Bird Size) bruker feil attributt-ID. Korrekt ID ifølge ECCAIRS-taksonomien er **648** med value list VL648. Entiteten er **Aircraft (Entity 4)**, ikke Entity 7.
 
-### Løsning
-Legg til en valgfri `valueIdPrefix`-prop på `EccairsTaxonomySelect` og `useEccairsTaxonomy`-hooken. For VL391 settes denne til `"1"` slik at kun value_id-er som starter med "1" (1000000-serien) returneres fra databasen.
+Samtidig korrigerer vi de andre birdstrike-feltene som allerede er bekreftet feil (fra forrige godkjente plan som ikke ble implementert):
+- 65 → **646** (Birds/wildlife seen, Entity 4)
+- 66 → **647** (Birds/wildlife struck, Entity 4)
+- 67 → **648** (Bird size, Entity 4, VL648)
+- 92 → **649** (Pilot advised of birds, Entity 4)
+- 68 (Species) — fjernes inntil korrekt ID bekreftes
 
 ### Endringer
 
-**`src/hooks/useEccairsTaxonomy.ts`**
-- Legg til valgfri `valueIdPrefix`-parameter i `useEccairsTaxonomy`
-- Når satt, legg til `&value_id=like.{prefix}*` i URL-en for server-side filtrering
-
-**`src/components/eccairs/EccairsTaxonomySelect.tsx`**
-- Legg til valgfri `valueIdPrefix`-prop i interface og send videre til hooken
-
 **`src/config/eccairsFields.ts`**
-- Legg til valgfri `valueIdPrefix`-egenskap på `EccairsFieldConfig`-interfacet
-- Sett `valueIdPrefix: '1'` på felt 391
+- 65 → 646, label «Birds/wildlife seen», entityPath `'4'`, VL646
+- 66 → 647, label «Birds/wildlife struck», entityPath `'4'`, VL647
+- 67 → 648, label «Bird size», entityPath `'4'`, VL648
+- 68 → fjernes (art-ID ikke bekreftet)
+- 92 → 649, label «Pilot advised of birds», entityPath `'4'`, VL649
 
-**`src/components/eccairs/EccairsMappingDialog.tsx`**
-- Send `valueIdPrefix` fra feltkonfigurasjonen videre til `EccairsTaxonomySelect`
+**`supabase/functions/_shared/eccairsPayload.js`**
+- Fjern ENTITY_PATH_OVERRIDES for 65, 66, 67, 68, 92 (Entity 7)
+- Legg til overrides for 646, 647, 648, 649 → Entity 4
 
