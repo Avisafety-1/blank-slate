@@ -14,6 +14,7 @@ interface EccairsTaxonomySelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  valueIdPrefix?: string;
 }
 
 export function EccairsTaxonomySelect({
@@ -22,6 +23,7 @@ export function EccairsTaxonomySelect({
   onChange,
   placeholder = "Velg...",
   disabled = false,
+  valueIdPrefix = "",
 }: EccairsTaxonomySelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,7 +41,8 @@ export function EccairsTaxonomySelect({
   const { data: items, isLoading: isLoadingItems } = useEccairsTaxonomy(
     valueListKey, 
     debouncedSearch, 
-    open // Only fetch when popover is open
+    open, // Only fetch when popover is open
+    valueIdPrefix
   );
 
   // Separate query for selected item label

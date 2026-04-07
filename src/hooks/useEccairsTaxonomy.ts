@@ -13,12 +13,17 @@ export interface EccairsValueListItem {
 }
 
 // Fetch items with optional search (server-side filtering)
-export function useEccairsTaxonomy(valueListKey: string, search: string = "", enabled: boolean = true) {
+export function useEccairsTaxonomy(valueListKey: string, search: string = "", enabled: boolean = true, valueIdPrefix: string = "") {
   return useQuery({
-    queryKey: ['eccairs-taxonomy', valueListKey, search],
+    queryKey: ['eccairs-taxonomy', valueListKey, search, valueIdPrefix],
     queryFn: async () => {
       // Build query params
       let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=100`;
+      
+      // Add value_id prefix filter if provided
+      if (valueIdPrefix) {
+        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
+      }
       
       // Add search filter if provided (server-side ILIKE)
       if (search.trim()) {

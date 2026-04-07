@@ -326,6 +326,7 @@ export function EccairsMappingDialog({
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
               placeholder={`Velg ${field.label.toLowerCase()}...`}
+              valueIdPrefix={field.valueIdPrefix}
             />
           )}
         </div>
