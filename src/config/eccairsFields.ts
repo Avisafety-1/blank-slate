@@ -1,4 +1,5 @@
 export type EccairsFormat = 
+  | 'code_and_additional_text'
   | 'value_list_int_array' 
   | 'content_object_array'
   | 'text_content_array' 
@@ -48,7 +49,8 @@ export interface EccairsFieldConfig {
   label: string;
   taxonomyCode: string;
   format: EccairsFormat;
-  type: 'select' | 'text' | 'textarea' | 'date' | 'time' | 'hidden';
+  type: 'select' | 'text' | 'textarea' | 'date' | 'time' | 'hidden' | 'code_and_text';
+  additionalTextField?: string; // Label for the additional text input (used with code_and_text type)
   group: EccairsFieldGroup;
   deriveFrom?: number; // Attribute code to derive value from
   entityPath?: string | null; // null = top-level, "4" = Aircraft entity, etc.
@@ -284,11 +286,12 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     label: 'Operatør (Operator)',
     taxonomyCode: '24',
     entityPath: '4',
-    format: 'value_list_int_array',
-    type: 'select',
+    format: 'code_and_additional_text',
+    type: 'code_and_text',
     group: 'aircraft',
     defaultValue: '1799998',
-    helpText: 'Operatør (VL215) — standard: Norway → Other'
+    additionalTextField: 'Operatørnavn',
+    helpText: 'Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.'
   },
 
   // ===== AIRSPACE GROUP =====
