@@ -498,6 +498,90 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'narrative',
     helpText: 'Parter som er informert om hendelsen (VL1064)'
   },
+
+  // ===== ANALYSIS GROUP (Entity 14 - Events) =====
+  {
+    code: 391,
+    label: 'Risikoklassifisering (Risk Classification)',
+    taxonomyCode: '24',
+    entityPath: '14',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'analysis',
+    helpText: 'Risikoklassifisering av hendelsen (VL391)'
+  },
+  {
+    code: 393,
+    label: 'Vurdering (Assessment)',
+    taxonomyCode: '24',
+    entityPath: '14',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'analysis',
+    helpText: 'Risikovurdering/assessment av hendelsen (VL393)'
+  },
+  {
+    code: 394,
+    label: 'Sikkerhetsanbefaling (Safety Recommendation)',
+    taxonomyCode: '24',
+    entityPath: '14',
+    format: 'text_content_array',
+    type: 'textarea',
+    group: 'analysis',
+    helpText: 'Sikkerhetsanbefalinger og konklusjon'
+  },
+
+  // ===== BIRDSTRIKE GROUP (Entity 7) =====
+  {
+    code: 65,
+    label: 'Antall fugler observert (Birds Seen)',
+    taxonomyCode: '24',
+    entityPath: '7',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'birdstrike',
+    helpText: 'Antall fugler observert (VL65)'
+  },
+  {
+    code: 66,
+    label: 'Antall fugler truffet (Birds Struck)',
+    taxonomyCode: '24',
+    entityPath: '7',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'birdstrike',
+    helpText: 'Antall fugler truffet (VL66)'
+  },
+  {
+    code: 67,
+    label: 'Størrelse på fugler (Bird Size)',
+    taxonomyCode: '24',
+    entityPath: '7',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'birdstrike',
+    helpText: 'Størrelse på fuglene (VL67)'
+  },
+  {
+    code: 68,
+    label: 'Fugleart (Species)',
+    taxonomyCode: '24',
+    entityPath: '7',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'birdstrike',
+    helpText: 'Art/type fugl (VL68)'
+  },
+  {
+    code: 92,
+    label: 'Effekt på flyging (Effect on Flight)',
+    taxonomyCode: '24',
+    entityPath: '7',
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'birdstrike',
+    helpText: 'Effekt fuglekollisjonen hadde på flygingen (VL92)'
+  },
 ];
 
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {

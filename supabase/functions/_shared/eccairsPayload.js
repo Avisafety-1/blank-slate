@@ -122,7 +122,12 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 // -------------------------
 const ENTITY_PATH_OVERRIDES = {
   '390': '14',   // Event_Type -> Events entity (Entity 14)
+  '391': '14',   // Risk Classification -> Events entity (Entity 14)
+  '393': '14',   // Assessment -> Events entity (Entity 14)
+  '394': '14',   // Safety Recommendation -> Events entity (Entity 14)
   '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
+  '215': '4',    // Operator -> Aircraft entity (Entity 4)
+  '216': '4',    // Operator Name -> Aircraft entity (Entity 4)
   '438': '53',   // Report identification -> Reporting history (Entity 53)
   '447': '53',   // Reporting entity -> Reporting history (Entity 53)
   '476': '53',   // Report source -> Reporting history (Entity 53)
@@ -133,6 +138,11 @@ const ENTITY_PATH_OVERRIDES = {
   '1064': '53',  // Parties informed -> Reporting history (Entity 53)
   '1091': '53',  // Reporter's Language -> Reporting history (Entity 53)
   '1092': '53',  // Reporter's Description -> Reporting history (Entity 53)
+  '65': '7',     // Birds Seen -> Birdstrike entity (Entity 7)
+  '66': '7',     // Birds Struck -> Birdstrike entity (Entity 7)
+  '67': '7',     // Bird Size -> Birdstrike entity (Entity 7)
+  '68': '7',     // Species -> Birdstrike entity (Entity 7)
+  '92': '7',     // Effect on Flight -> Birdstrike entity (Entity 7)
 };
 
 // -------------------------
