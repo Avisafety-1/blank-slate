@@ -26,6 +26,7 @@ export function EccairsTaxonomySelect({
   placeholder = "Velg...",
   disabled = false,
   valueIdPrefix = "",
+  fixedLabel,
 }: EccairsTaxonomySelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -71,7 +72,7 @@ export function EccairsTaxonomySelect({
           disabled={disabled}
         >
           <span className="truncate">
-            {selectedItem?.value_description || (value ? `ID: ${value}` : placeholder)}
+            {fixedLabel && value ? fixedLabel : (selectedItem?.value_description || (value ? `ID: ${value}` : placeholder))}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
