@@ -428,11 +428,11 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                   variant="outline"
                   size="sm"
                   onClick={handleOpenNotam}
-                  className="h-8 px-2 sm:px-3"
+                  className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Sjekk NOTAM (åpner ippc.no)"
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">NOTAM</span>
+                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="ml-0.5 sm:ml-1">IPPC</span>
                 </Button>
 
                 {/* Sensor zone application link */}
@@ -440,11 +440,11 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                   variant="outline"
                   size="sm"
                   onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
-                  className="h-8 px-2 sm:px-3"
+                  className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Sensor</span>
+                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="ml-0.5 sm:ml-1">Sensor</span>
                 </Button>
               </div>
 
