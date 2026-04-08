@@ -29,7 +29,7 @@ import {
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
