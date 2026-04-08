@@ -62,7 +62,108 @@ export const ChildCompaniesSection = () => {
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
 
-  const fetchMissionRoles = useCallback(async () => {
+  // ── Flight alerts state ──
+  const ALERT_TYPES = [
+    { key: 'low_battery', label: 'Batteri under', unit: '%', defaultValue: 20, hasThreshold: true },
+    { key: 'rth_triggered', label: 'RTH ble trigget', unit: '', defaultValue: null, hasThreshold: false },
+    { key: 'max_height', label: 'Høyde over', unit: 'm AGL', defaultValue: 120, hasThreshold: true },
+    { key: 'max_speed', label: 'Maks hastighet over', unit: 'm/s', defaultValue: 20, hasThreshold: true },
+    { key: 'low_gps_sats', label: 'GPS-satellitter under', unit: 'stk', defaultValue: 6, hasThreshold: true },
+    { key: 'battery_cell_deviation', label: 'Battericelleavvik over', unit: 'V', defaultValue: 0.3, hasThreshold: true },
+    { key: 'battery_temp_high', label: 'Batteritemperatur over', unit: '°C', defaultValue: 50, hasThreshold: true },
+    { key: 'high_vibration', label: 'Høy vibrasjon (ArduPilot)', unit: '', defaultValue: null, hasThreshold: false },
+  ];
+
+  const [flightAlerts, setFlightAlerts] = useState<Record<string, { enabled: boolean; threshold_value: number | null }>>({});
+  const [alertRecipients, setAlertRecipients] = useState<{ id: string; profile_id: string; full_name: string | null }[]>([]);
+  const [companyProfiles, setCompanyProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+
+  const fetchFlightAlerts = useCallback(async () => {
+    if (!companyId) return;
+    setLoadingAlerts(true);
+    const { data: alerts } = await (supabase as any)
+      .from("company_flight_alerts")
+      .select("alert_type, enabled, threshold_value")
+      .eq("company_id", companyId);
+    const map: Record<string, { enabled: boolean; threshold_value: number | null }> = {};
+    (alerts || []).forEach((a: any) => { map[a.alert_type] = { enabled: a.enabled, threshold_value: a.threshold_value }; });
+    setFlightAlerts(map);
+
+    const { data: recipients } = await (supabase as any)
+      .from("company_flight_alert_recipients")
+      .select("id, profile_id")
+      .eq("company_id", companyId);
+    
+    // Fetch names for recipients
+    const profileIds = (recipients || []).map((r: any) => r.profile_id);
+    let profileMap: Record<string, string | null> = {};
+    if (profileIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
+      (profiles || []).forEach((p: any) => { profileMap[p.id] = p.full_name; });
+    }
+    setAlertRecipients((recipients || []).map((r: any) => ({
+      id: r.id, profile_id: r.profile_id, full_name: profileMap[r.profile_id] || null,
+    })));
+
+    // Fetch company profiles for the recipient selector
+    const { data: allProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("company_id", companyId)
+      .order("full_name");
+    setCompanyProfiles(allProfiles || []);
+    setLoadingAlerts(false);
+  }, [companyId]);
+
+  const handleToggleAlert = async (alertType: string, enabled: boolean) => {
+    if (!companyId) return;
+    const defaultVal = ALERT_TYPES.find(a => a.key === alertType)?.defaultValue ?? null;
+    const current = flightAlerts[alertType];
+    await (supabase as any).from("company_flight_alerts").upsert({
+      company_id: companyId,
+      alert_type: alertType,
+      enabled,
+      threshold_value: current?.threshold_value ?? defaultVal,
+    }, { onConflict: 'company_id,alert_type' });
+    setFlightAlerts(prev => ({ ...prev, [alertType]: { enabled, threshold_value: current?.threshold_value ?? defaultVal } }));
+  };
+
+  const handleChangeThreshold = async (alertType: string, value: number) => {
+    if (!companyId) return;
+    const current = flightAlerts[alertType];
+    await (supabase as any).from("company_flight_alerts").upsert({
+      company_id: companyId,
+      alert_type: alertType,
+      enabled: current?.enabled ?? true,
+      threshold_value: value,
+    }, { onConflict: 'company_id,alert_type' });
+    setFlightAlerts(prev => ({ ...prev, [alertType]: { enabled: current?.enabled ?? true, threshold_value: value } }));
+  };
+
+  const handleAddRecipient = async (profileId: string | null) => {
+    if (!companyId || !profileId) return;
+    if (alertRecipients.some(r => r.profile_id === profileId)) return;
+    const { data, error } = await (supabase as any).from("company_flight_alert_recipients")
+      .insert({ company_id: companyId, profile_id: profileId })
+      .select("id")
+      .single();
+    if (error) {
+      if (error.code === '23505') toast.error("Mottaker finnes allerede");
+      else toast.error("Kunne ikke legge til mottaker");
+      return;
+    }
+    const profile = companyProfiles.find(p => p.id === profileId);
+    setAlertRecipients(prev => [...prev, { id: data.id, profile_id: profileId, full_name: profile?.full_name || null }]);
+    toast.success("Mottaker lagt til");
+  };
+
+  const handleRemoveRecipient = async (recipientId: string) => {
+    await (supabase as any).from("company_flight_alert_recipients").delete().eq("id", recipientId);
+    setAlertRecipients(prev => prev.filter(r => r.id !== recipientId));
+    toast.success("Mottaker fjernet");
+  };
+
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("company_mission_roles")
