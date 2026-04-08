@@ -889,7 +889,64 @@ export const ChildCompaniesSection = () => {
         </GlassCard>
       </Collapsible>
 
+      {/* FlightHub 2 Integration */}
       <GlassCard>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-muted-foreground" />
+            <div className="font-medium text-sm">DJI FlightHub 2</div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[220px]">Send rutefiler og SORA-korridorer direkte til DJI FlightHub 2</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Organisasjonsnøkkel</Label>
+            <div className="flex gap-2">
+              <Input
+                type={fh2ShowToken ? "text" : "password"}
+                value={fh2Token}
+                onChange={(e) => setFh2Token(e.target.value)}
+                placeholder="Lim inn nøkkel fra FlightHub 2..."
+                className="h-8 text-sm font-mono"
+              />
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
+                {fh2ShowToken ? "Skjul" : "Vis"}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Finnes under FlightHub 2 → Min organisasjon → Organisasjonsinnstillinger → FlightHub Sync
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Base URL (valgfri)</Label>
+            <Input
+              value={fh2BaseUrl}
+              onChange={(e) => setFh2BaseUrl(e.target.value)}
+              placeholder="https://openapi.dji.com"
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
+              {savingFh2 ? "Lagrer..." : "Lagre"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
+              {testingFh2 ? "Tester..." : "Test tilkobling"}
+            </Button>
+          </div>
+        </div>
+      </GlassCard>
+
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
