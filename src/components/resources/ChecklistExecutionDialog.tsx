@@ -186,7 +186,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
 
         {showTabs && (
           <Tabs value={activeChecklistId} onValueChange={handleTabChange}>
-            <TabsList className="w-full">
+            <TabsList className="w-full flex-wrap h-auto gap-1">
               {checklistIds.map((id) => (
                 <TabsTrigger key={id} value={id} className="flex-1 gap-1.5 text-xs whitespace-normal text-left leading-tight py-2 min-h-[2.5rem] h-auto">
                   {completedChecklistIds.has(id) && (
