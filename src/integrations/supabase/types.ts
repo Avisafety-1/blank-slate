@@ -497,6 +497,35 @@ export type Database = {
           },
         ]
       }
+      company_mission_roles: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_mission_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_sora_config: {
         Row: {
           allow_bvlos: boolean
@@ -2986,16 +3015,19 @@ export type Database = {
           id: string
           mission_id: string
           profile_id: string
+          role_id: string | null
         }
         Insert: {
           id?: string
           mission_id: string
           profile_id: string
+          role_id?: string | null
         }
         Update: {
           id?: string
           mission_id?: string
           profile_id?: string
+          role_id?: string | null
         }
         Relationships: [
           {
@@ -3010,6 +3042,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_personnel_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "company_mission_roles"
             referencedColumns: ["id"]
           },
         ]
