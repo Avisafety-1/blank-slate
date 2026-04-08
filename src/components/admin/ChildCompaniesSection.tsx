@@ -227,6 +227,7 @@ export const ChildCompaniesSection = () => {
     fetchChildren();
     fetchParentSettings();
     fetchMissionRoles();
+    fetchFlightAlerts();
 
     if (!companyId) return;
     const channel = supabase
@@ -600,7 +601,78 @@ export const ChildCompaniesSection = () => {
                   </div>
                 )}
               </div>
-              <div className="rounded-lg border-2 border-primary/20 border-dashed bg-muted/20 p-3 flex items-center justify-between">
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <div className="font-medium text-sm">Flylogg-varsler</div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[220px]">Motta e-postvarsler når kritiske terskelverdier nås under flyging (DJI/ArduPilot)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="space-y-2">
+                  {ALERT_TYPES.map((alert) => {
+                    const current = flightAlerts[alert.key];
+                    const enabled = current?.enabled ?? false;
+                    const thresholdValue = current?.threshold_value ?? alert.defaultValue;
+                    return (
+                      <div key={alert.key} className="flex items-center gap-2 flex-wrap">
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={(checked) => handleToggleAlert(alert.key, checked)}
+                          className="shrink-0"
+                        />
+                        <span className="text-sm min-w-0">{alert.label}</span>
+                        {alert.hasThreshold && (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={thresholdValue ?? ''}
+                              onChange={(e) => handleChangeThreshold(alert.key, parseFloat(e.target.value) || 0)}
+                              className="h-7 w-16 text-xs"
+                              step={alert.key === 'battery_cell_deviation' ? 0.1 : 1}
+                              disabled={!enabled}
+                            />
+                            <span className="text-xs text-muted-foreground">{alert.unit}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="border-t pt-2 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Mottakere av varsler:</p>
+                  <SearchablePersonSelect
+                    persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
+                    value={null}
+                    onValueChange={handleAddRecipient}
+                    placeholder="Legg til mottaker..."
+                    searchPlaceholder="Søk person..."
+                    emptyText="Ingen tilgjengelige personer."
+                  />
+                  {alertRecipients.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {alertRecipients.map((r) => (
+                        <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                          <span>{r.full_name || 'Ukjent bruker'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRecipient(r.id)}
+                            className="hover:bg-destructive/20 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
