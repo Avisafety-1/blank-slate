@@ -1,10 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Circle, ClipboardCheck } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardCheck, ImageIcon } from "lucide-react";
 
 interface ChecklistItem {
   id: string;
@@ -14,21 +13,28 @@ interface ChecklistItem {
 interface ChecklistExecutionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Array of checklist IDs (multi-tab mode) */
   checklistIds?: string[];
-  /** Already-completed checklist IDs */
   completedIds?: string[];
-  /** Backward-compat: single checklist ID */
   checklistId?: string;
   itemName: string;
-  /** Called with the completed checklistId */
   onComplete: (checklistId: string) => void | Promise<void>;
+}
+
+function tryParseChecklistItems(beskrivelse: string | null): ChecklistItem[] | null {
+  if (!beskrivelse) return null;
+  try {
+    const parsed = JSON.parse(beskrivelse);
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.id && parsed[0]?.text) {
+      return parsed as ChecklistItem[];
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) => {
   const { open, onOpenChange, itemName, onComplete, completedIds = [] } = props;
-
-  // Resolve IDs — support both old single-ID and new array prop
   const checklistIds: string[] = props.checklistIds ?? (props.checklistId ? [props.checklistId] : []);
 
   const [activeChecklistId, setActiveChecklistId] = useState<string>("");
@@ -38,12 +44,15 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const completedChecklistIds = new Set(completedIds);
+  // Image-based checklist state
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [manuallyCompleted, setManuallyCompleted] = useState(false);
 
-  // Derived checked items for active tab
+  const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
 
-  // When dialog opens, initialise active tab to first incomplete checklist
+  const isImageMode = imageUrl !== null && items.length === 0;
+
   const prevOpenRef = useRef(false);
   useEffect(() => {
     if (open && !prevOpenRef.current && checklistIds.length > 0) {
@@ -51,11 +60,12 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
       setActiveChecklistId(firstIncomplete);
       setCheckedByTab({});
+      setManuallyCompleted(false);
     }
     prevOpenRef.current = open;
   }, [open]);
 
-  // Fetch all checklist titles once when IDs are known
+  // Fetch titles
   useEffect(() => {
     if (!open || checklistIds.length === 0) return;
     const fetchTitles = async () => {
@@ -72,34 +82,44 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     fetchTitles();
   }, [open, checklistIds.join(",")]);
 
-  // Fetch items for the active checklist whenever it changes
+  // Fetch items or image for active checklist
   useEffect(() => {
     if (!open || !activeChecklistId) return;
-    const fetchItems = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
+      setImageUrl(null);
+      setManuallyCompleted(false);
       try {
         const { data, error } = await supabase
           .from("documents")
-          .select("beskrivelse")
+          .select("beskrivelse, fil_url")
           .eq("id", activeChecklistId)
           .single();
         if (error) throw error;
-        if (data?.beskrivelse) {
-          try {
-            setItems(JSON.parse(data.beskrivelse) as ChecklistItem[]);
-          } catch {
-            setItems([]);
-          }
+
+        const parsed = tryParseChecklistItems(data?.beskrivelse ?? null);
+        if (parsed) {
+          setItems(parsed);
+          setImageUrl(null);
+        } else if (data?.fil_url) {
+          setItems([]);
+          // Generate signed URL
+          const { data: signedData } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(data.fil_url, 3600);
+          setImageUrl(signedData?.signedUrl ?? null);
         } else {
           setItems([]);
+          setImageUrl(null);
         }
       } catch {
         setItems([]);
+        setImageUrl(null);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchItems();
+    fetchData();
   }, [open, activeChecklistId]);
 
   const handleTabChange = (newId: string) => {
@@ -115,7 +135,9 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     });
   };
 
-  const allItemsChecked = items.length > 0 && checkedItems.size === items.length;
+  const allItemsChecked = isImageMode
+    ? manuallyCompleted
+    : items.length > 0 && checkedItems.size === items.length;
   const checkedCount = checkedItems.size;
   const totalCount = items.length;
   const progressPercentage = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
@@ -124,16 +146,11 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     setIsCompleting(true);
     try {
       await onComplete(activeChecklistId);
-
-      // Mark this tab as completed in local state so the icon updates immediately
       const nowCompleted = new Set([...completedChecklistIds, activeChecklistId]);
-
-      // Find the next incomplete tab
       const nextIncomplete = checklistIds.find((id) => !nowCompleted.has(id));
       if (nextIncomplete) {
         setActiveChecklistId(nextIncomplete);
       } else {
-        // All done — close dialog
         onOpenChange(false);
       }
     } catch (error) {
@@ -167,16 +184,11 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
           )}
         </DialogHeader>
 
-        {/* Tab navigation — only shown when multiple checklists */}
         {showTabs && (
           <Tabs value={activeChecklistId} onValueChange={handleTabChange}>
             <TabsList className="w-full">
               {checklistIds.map((id) => (
-                <TabsTrigger
-                  key={id}
-                  value={id}
-                  className="flex-1 gap-1.5 text-xs"
-                >
+                <TabsTrigger key={id} value={id} className="flex-1 gap-1.5 text-xs">
                   {completedChecklistIds.has(id) && (
                     <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
                   )}
@@ -187,30 +199,62 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
           </Tabs>
         )}
 
-        {/* Progress bar */}
-        <div className="space-y-1 flex-shrink-0">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Fremgang</span>
-            <span className="font-medium">{checkedCount} av {totalCount}</span>
+        {/* Progress bar — only for JSON checklists */}
+        {!isImageMode && !isLoading && items.length > 0 && (
+          <div className="space-y-1 flex-shrink-0">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Fremgang</span>
+              <span className="font-medium">{checkedCount} av {totalCount}</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 260px)' }}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Laster sjekkliste...</p>
             </div>
+          ) : isImageMode ? (
+            /* Image-based checklist */
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border overflow-hidden">
+                <img
+                  src={imageUrl!}
+                  alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
+                  className="w-full h-auto cursor-pointer"
+                  onClick={() => window.open(imageUrl!, '_blank')}
+                />
+              </div>
+              <Button
+                variant={manuallyCompleted ? "default" : "outline"}
+                className="w-full gap-2"
+                onClick={() => setManuallyCompleted(!manuallyCompleted)}
+              >
+                {manuallyCompleted ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Markert som utført
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-4 h-4" />
+                    Marker som utført
+                  </>
+                )}
+              </Button>
+            </div>
           ) : items.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Ingen punkter i sjekklisten</p>
             </div>
           ) : (
+            /* JSON-based checklist */
             <div className="space-y-3 py-2">
               {items.map((item, index) => {
                 const isChecked = checkedItems.has(item.id);
@@ -268,6 +312,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <CheckCircle2 className="w-4 h-4" />
                 Fullfør
               </>
+            ) : isImageMode ? (
+              "Marker sjekklisten som utført"
             ) : (
               `Kryss av alle punkter (${checkedCount}/${totalCount})`
             )}
