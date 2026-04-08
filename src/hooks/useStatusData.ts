@@ -35,6 +35,24 @@ const fetchDrones = async () => {
 
   const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
 
+  // Fetch last flown dates
+  const droneIds = (dronesData || []).map((d: any) => d.id);
+  let lastFlownMap: Record<string, string> = {};
+  if (droneIds.length > 0) {
+    const { data: flightData } = await supabase
+      .from("flight_logs")
+      .select("drone_id, flight_date")
+      .in("drone_id", droneIds)
+      .order("flight_date", { ascending: false });
+    if (flightData) {
+      for (const row of flightData) {
+        if (row.drone_id && !lastFlownMap[row.drone_id]) {
+          lastFlownMap[row.drone_id] = row.flight_date;
+        }
+      }
+    }
+  }
+
   const dronesWithMissions = await Promise.all(dronesData.map(async (drone: any) => {
     const accessories = drone.drone_accessories || [];
     const linkedEquipment = (drone.drone_equipment || [])
@@ -63,7 +81,7 @@ const fetchDrones = async () => {
     );
 
     const dbStatus = (drone.status as Status) || "Grønn";
-    return { ...drone, status: worstStatus(status, dbStatus) };
+    return { ...drone, status: worstStatus(status, dbStatus), last_flown: lastFlownMap[drone.id] || null };
   }));
 
   return dronesWithMissions;

@@ -60,6 +60,7 @@ const Resources = () => {
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState("alle");
   const [personnelStatusFilter, setPersonnelStatusFilter] = useState("alle");
   const [personnelRoleFilter, setPersonnelRoleFilter] = useState("alle");
+  const [droneSortBy, setDroneSortBy] = useState<"default" | "last_flown">("default");
   const [pendingCourseCounts, setPendingCourseCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -150,6 +151,24 @@ const Resources = () => {
 
       // Calculate aggregated status for each drone (including unique missions since inspection)
       const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
+      // Fetch last flown dates from flight_logs
+      const droneIds = (data || []).map((d: any) => d.id);
+      let lastFlownMap: Record<string, string> = {};
+      if (droneIds.length > 0) {
+        const { data: flightData } = await supabase
+          .from("flight_logs")
+          .select("drone_id, flight_date")
+          .in("drone_id", droneIds)
+          .order("flight_date", { ascending: false });
+        if (flightData) {
+          for (const row of flightData) {
+            if (row.drone_id && !lastFlownMap[row.drone_id]) {
+              lastFlownMap[row.drone_id] = row.flight_date;
+            }
+          }
+        }
+      }
+
       const dronesWithStatus = await Promise.all((data || []).map(async (drone: any) => {
         const accessories = drone.drone_accessories || [];
         const linkedEquipment = (drone.drone_equipment || [])
@@ -179,7 +198,7 @@ const Resources = () => {
         );
         const dbStatus = (drone.status as Status) || "Grønn";
         const finalStatus = worstStatus(status, dbStatus);
-        return { ...drone, _aggregatedStatus: finalStatus };
+        return { ...drone, _aggregatedStatus: finalStatus, last_flown: lastFlownMap[drone.id] || null };
       }));
       setDrones(dronesWithStatus);
       if (companyId) setCachedData(`offline_drones_${companyId}`, dronesWithStatus);
@@ -426,6 +445,15 @@ const Resources = () => {
                     <SelectItem value="Rød">🔴 Rød</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={droneSortBy} onValueChange={(v) => setDroneSortBy(v as "default" | "last_flown")}>
+                  <SelectTrigger className="h-8 text-xs w-[120px]">
+                    <SelectValue placeholder="Sortering" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Standard</SelectItem>
+                    <SelectItem value="last_flown">Sist flydd</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1">
@@ -445,6 +473,15 @@ const Resources = () => {
                       if (status !== droneStatusFilter) return false;
                     }
                     return true;
+                  })
+                  .sort((a, b) => {
+                    if (droneSortBy === "last_flown") {
+                      if (!a.last_flown && !b.last_flown) return 0;
+                      if (!a.last_flown) return 1;
+                      if (!b.last_flown) return -1;
+                      return new Date(b.last_flown).getTime() - new Date(a.last_flown).getTime();
+                    }
+                    return 0;
                   })
                   .map((drone) => (
                   <div 
@@ -469,6 +506,7 @@ const Resources = () => {
                       <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
+                      <p>Sist flydd: {drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
                       <p>{t('flight.flightHours')}: {drone.flyvetimer}</p>
                       {drone.neste_inspeksjon && (
                         <p>{t('flight.nextInspection')}: {format(new Date(drone.neste_inspeksjon), "dd.MM.yyyy")}</p>

@@ -93,6 +93,10 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
               
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
+                  <p className="text-muted-foreground text-xs">Sist flydd</p>
+                  <p className="font-medium">{drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground text-xs">Flyvetimer</p>
                   <p className="font-medium">{drone.flyvetimer}</p>
                 </div>

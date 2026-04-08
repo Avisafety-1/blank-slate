@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 
 import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
@@ -106,6 +107,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
   const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
@@ -208,6 +210,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchMissionsSinceInspection();
       fetchLatestWarning();
       fetchTechnicalResponsibleName();
+      fetchLastFlown();
     }
   }, [drone]);
 
@@ -277,6 +280,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .limit(1)
       .maybeSingle();
     setLatestWarning(data || null);
+  };
+
+  const fetchLastFlown = async () => {
+    if (!drone) { setLastFlown(null); return; }
+    const { data } = await supabase
+      .from("flight_logs")
+      .select("flight_date")
+      .eq("drone_id", drone.id)
+      .order("flight_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLastFlown(data?.flight_date || null);
   };
 
   // Fetch matching catalog model for extra specs
@@ -882,6 +897,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sist flydd</p>
+                  <p className="text-sm sm:text-base">{lastFlown ? format(new Date(lastFlown), "dd.MM.yyyy") : "–"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
