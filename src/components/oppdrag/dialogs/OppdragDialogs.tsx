@@ -21,6 +21,7 @@ export interface OppdragDialogsProps {
   addDialogOpen: boolean;
   setAddDialogOpen: (open: boolean) => void;
   onMissionAdded: () => void;
+  onMissionAddedWithData?: (mission: any) => void;
   initialRouteData: RouteData | null;
   initialFormData: any;
   initialSelectedPersonnel: string[];
@@ -109,6 +110,12 @@ export interface OppdragDialogsProps {
   activeMissions: Mission[];
   completedMissions: Mission[];
   onMissionChecklistComplete: (checklistId: string) => void;
+
+  // Risk prompt after creation
+  riskPromptOpen?: boolean;
+  setRiskPromptOpen?: (open: boolean) => void;
+  onPerformRiskAssessment?: () => void;
+  onSkipRiskAssessment?: () => void;
 }
 
 export const OppdragDialogs = (props: OppdragDialogsProps) => {
@@ -122,6 +129,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           if (!open) props.clearInitialData();
         }}
         onMissionAdded={props.onMissionAdded}
+        onMissionAddedWithData={props.onMissionAddedWithData}
         initialRouteData={props.initialRouteData}
         initialFormData={props.initialFormData}
         initialSelectedPersonnel={props.initialSelectedPersonnel}
@@ -520,6 +528,26 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           />
         );
       })()}
+
+      {/* Risk assessment prompt after mission creation */}
+      <AlertDialog open={props.riskPromptOpen} onOpenChange={props.setRiskPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Risikovurdering</AlertDialogTitle>
+            <AlertDialogDescription>
+              Oppdraget er opprettet. Ønsker du å utføre en risikovurdering nå, eller fortsette uten?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={props.onSkipRiskAssessment}>
+              Fortsett uten risikovurdering
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={props.onPerformRiskAssessment}>
+              Utfør risikovurdering
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

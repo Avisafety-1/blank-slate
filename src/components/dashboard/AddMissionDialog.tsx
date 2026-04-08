@@ -41,6 +41,7 @@ interface AddMissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMissionAdded: () => void;
+  onMissionAddedWithData?: (mission: any) => void;
   mission?: any;
   initialRouteData?: RouteData | null;
   initialFormData?: any;
@@ -66,6 +67,7 @@ export const AddMissionDialog = ({
   open, 
   onOpenChange, 
   onMissionAdded, 
+  onMissionAddedWithData,
   mission,
   initialRouteData,
   initialFormData,
@@ -592,9 +594,10 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionUpdated'));
+        onMissionAdded();
       } else {
         // INSERT mode
-        const { data: newMission, error: missionError } = await (supabase as any)
+        const { data: createdMission, error: missionError } = await (supabase as any)
           .from("missions")
           .insert({
             tittel: formData.tittel,
@@ -619,7 +622,7 @@ export const AddMissionDialog = ({
         // Insert mission personnel
         if (selectedPersonnel.length > 0) {
           const personnelData = selectedPersonnel.map(profileId => ({
-            mission_id: newMission.id,
+            mission_id: createdMission.id,
             profile_id: profileId,
           }));
           
@@ -633,7 +636,7 @@ export const AddMissionDialog = ({
         // Insert mission equipment
         if (selectedEquipment.length > 0) {
           const equipmentData = selectedEquipment.map(equipmentId => ({
-            mission_id: newMission.id,
+            mission_id: createdMission.id,
             equipment_id: equipmentId,
           }));
           
@@ -647,7 +650,7 @@ export const AddMissionDialog = ({
         // Insert mission drones
         if (selectedDrones.length > 0) {
           const dronesData = selectedDrones.map(droneId => ({
-            mission_id: newMission.id,
+            mission_id: createdMission.id,
             drone_id: droneId,
           }));
           
@@ -661,7 +664,7 @@ export const AddMissionDialog = ({
         // Insert mission documents
         if (selectedDocuments.length > 0) {
           const documentsData = selectedDocuments.map(documentId => ({
-            mission_id: newMission.id,
+            mission_id: createdMission.id,
             document_id: documentId,
           }));
           
@@ -696,7 +699,7 @@ export const AddMissionDialog = ({
             await (supabase as any)
               .from("missions")
               .update({ checklist_ids: allChecklistIds })
-              .eq("id", newMission.id);
+              .eq("id", createdMission.id);
           }
         }
 
@@ -747,9 +750,13 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionCreated'));
+
+        if (onMissionAddedWithData && createdMission) {
+          onMissionAddedWithData(createdMission);
+        } else {
+          onMissionAdded();
+        }
       }
-      
-      onMissionAdded();
       onOpenChange(false);
       
       // Reset form
