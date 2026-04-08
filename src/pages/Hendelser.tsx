@@ -420,6 +420,7 @@ const Hendelser = () => {
     }
   }, [incidents, location.state]);
 
+  const filterIncidents = () => {
     let filtered = [...incidents];
 
     // Filter by status
