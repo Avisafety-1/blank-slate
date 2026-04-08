@@ -164,6 +164,7 @@ export const ChildCompaniesSection = () => {
     toast.success("Mottaker fjernet");
   };
 
+  const fetchMissionRoles = useCallback(async () => {
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("company_mission_roles")
